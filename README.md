@@ -42,8 +42,8 @@ For more details on how to develop a plugin refer to the official [documentation
 
 ## Acknowledgments
 
-This couldn't have been possible without the **awesome** [Pion WebRTC API](https://github.com/pion/webrtc).
-Special thanks to @isacikoz for offering his time to help testing this plugin.
+This couldn't have been possible without the **awesome** [Pion WebRTC API](https://github.com/pion/webrtc).  
+Special thanks to [@isacikoz](https://github.com/isacikgoz) for offering his time to help testing this plugin.
 
 ## License
 
