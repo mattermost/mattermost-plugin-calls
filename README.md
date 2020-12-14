@@ -40,6 +40,11 @@ Use `make deploy` to deploy the plugin to your local server.
 
 For more details on how to develop a plugin refer to the official [documentation](https://developers.mattermost.com/extend/plugins/).
 
+## Acknowledgments
+
+This couldn't have been possible without the **awesome** [Pion WebRTC API](https://github.com/pion/webrtc).
+Special thanks to @isacikoz for offering his time to help testing this plugin.
+
 ## License
 
 [mattermost-plugin-talk](https://github.com/streamer45/mattermost-plugin-talk) is licensed under [MIT](LICENSE)  
