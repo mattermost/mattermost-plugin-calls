@@ -6,7 +6,7 @@ A plugin that integrates real-time voice communication in Mattermost.
 
 ## Demo
 
-A demo server running the latest version of this plugin is located [here](https://mm.krad.stream/testing/channels/town-square).  
+A demo server running the latest version of this plugin is located [here](https://mm.krad.stream/talk/channels/town-square).  
 You can login using the following details:
 
 ```
