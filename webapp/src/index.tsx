@@ -8,7 +8,8 @@ import axios from 'axios';
 
 import {Client4} from 'mattermost-redux/client';
 
-import {canManageChannelMembers, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {canManageChannelMembers, getCurrentChannelId, getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
+import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
@@ -150,7 +151,11 @@ export default class Plugin {
                 }
 
                 if (!hasRegisteredMenuAction) {
-                    if (canManageChannelMembers(store.getState())) {
+                    const channel = getCurrentChannel(store.getState());
+                    if (!channel) {
+                        return;
+                    }
+                    if ((isDirectChannel(channel) || isGroupChannel(channel)) || canManageChannelMembers(store.getState())) {
                         registerChannelHeaderMenuAction();
                         hasRegisteredMenuAction = true;
                     }

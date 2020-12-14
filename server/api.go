@@ -56,6 +56,14 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 
 func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	userID := r.Header.Get("Mattermost-User-Id")
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.API.LogError(appErr.Error())
+		http.Error(w, appErr.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	cm, appErr := p.API.GetChannelMember(channelID, userID)
 	if appErr != nil {
 		p.API.LogError(appErr.Error())
@@ -63,9 +71,17 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		return
 	}
 
-	if !cm.SchemeAdmin && !p.API.HasPermissionTo(userID, model.PERMISSION_MANAGE_SYSTEM) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
-		return
+	switch channel.Type {
+	case model.CHANNEL_OPEN, model.CHANNEL_PRIVATE:
+		if !cm.SchemeAdmin && !p.API.HasPermissionTo(userID, model.PERMISSION_MANAGE_SYSTEM) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+	case model.CHANNEL_DIRECT, model.CHANNEL_GROUP:
+		if !p.API.HasPermissionToChannel(userID, channelID, model.PERMISSION_CREATE_POST) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
 	}
 
 	data, err := ioutil.ReadAll(r.Body)
