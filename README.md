@@ -29,7 +29,7 @@ This plugin only works on web client and desktop app. Mobile native apps are **n
 
 ## Installation
 
-1. Download the latest version from the [release page](https://github.com/streamer45/mattermost-plugin-voice/releases).
+1. Download the latest version from the [release page](https://github.com/streamer45/mattermost-plugin-talk/releases).
 2. Upload the file through **System Console > Plugins > Plugin Management**, or manually upload it to the Mattermost server under plugin directory. See [documentation](https://docs.mattermost.com/administration/plugins.html#set-up-guide) for more details.
 
 ## Development
