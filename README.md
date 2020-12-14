@@ -14,7 +14,7 @@ Username: demo
 Password: password
 ```
 
-## Missing/Upcoming Features:
+## Todo
 
 - Configuration.
 - [VAD](https://en.wikipedia.org/wiki/Voice_activity_detection) support.
