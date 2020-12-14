@@ -16,10 +16,12 @@ Password: password
 
 ## Todo
 
+- Code cleanup & linting.
 - Configuration.
 - [VAD](https://en.wikipedia.org/wiki/Voice_activity_detection) support.
-- Proper [ICE](https://webrtcglossary.com/ice/) candidates handling.
+- Proper [ICE](https://webrtcglossary.com/ice/) handling.
 - [TURN](https://webrtcglossary.com/turn/) support.
+- [HA](https://developers.mattermost.com/extend/plugins/server/ha/) support.
 
 ## Limitations
 
