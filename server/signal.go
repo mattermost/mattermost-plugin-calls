@@ -81,6 +81,23 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID})
 
+	// notify connected user about other users state.
+	p.mut.RLock()
+	for id, session := range p.sessions {
+		var evType string
+		if session.isMuted {
+			evType = wsEventUserMuted
+		} else {
+			evType = wsEventUserUnmuted
+		}
+		if id != userID {
+			p.API.PublishWebSocketEvent(evType, map[string]interface{}{
+				"userID": id,
+			}, &model.WebsocketBroadcast{ChannelId: channelID, UserId: userID})
+		}
+	}
+	p.mut.RUnlock()
+
 	go func() {
 		defer wg.Done()
 		for {
