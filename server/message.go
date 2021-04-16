@@ -10,10 +10,12 @@ type message struct {
 }
 
 const (
-	messageTypeSignal = "signal"
-	messageTypeICE    = "ice"
-	messageTypeMute   = "mute"
-	messageTypeUnmute = "unmute"
+	messageTypeSignal   = "signal"
+	messageTypeICE      = "ice"
+	messageTypeMute     = "mute"
+	messageTypeUnmute   = "unmute"
+	messageTypeVoiceOn  = "voice_on"
+	messageTypeVoiceOff = "voice_off"
 )
 
 func (m *message) ToJSON() ([]byte, error) {

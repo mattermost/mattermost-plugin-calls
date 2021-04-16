@@ -13,13 +13,15 @@ export default class RHSView extends React.PureComponent {
     }
 
     render() {
+        // console.log(this.props.statuses);
         const listItems = this.props.profiles.map((user) => {
-            const muteIcon = this.props.statuses[user.id] === false ? faMicrophoneAlt : faMicrophoneAltSlash;
-            const muteStyle = this.props.statuses[user.id] === false ? {color: 'inherit'} : {color: '#E00000'};
+            const muteIcon = this.props.statuses[user.id] && this.props.statuses[user.id].unmuted === true ? faMicrophoneAlt : faMicrophoneAltSlash;
+            const muteStyle = this.props.statuses[user.id] && this.props.statuses[user.id].unmuted === true ? {color: 'inherit'} : {color: '#E00000'};
+            const voiceStyle = this.props.statuses[user.id] && this.props.statuses[user.id].voice === true ? {fontWeight: 'bold'} : {fontWeight: 'normal'};
             return (
                 <li key={user.id}>
                     <div style={style.user}>
-                        {user.username}
+                        <span style={voiceStyle}>{user.username}</span>
                         <FontAwesomeIcon
                             icon={muteIcon}
                             style={muteStyle}
