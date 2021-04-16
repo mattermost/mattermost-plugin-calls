@@ -18,16 +18,19 @@ const (
 	wsEventUserDisconnected = "user_disconnected"
 	wsEventUserMuted        = "user_muted"
 	wsEventUserUnmuted      = "user_unmuted"
+	wsEventUserVoiceOn      = "user_voice_on"
+	wsEventUserVoiceOff     = "user_voice_off"
 )
 
 type session struct {
-	wsInCh    <-chan []byte
-	wsOutCh   chan<- []byte
-	outTrack  *webrtc.TrackLocalStaticRTP
-	outConn   *webrtc.PeerConnection
-	channelID string
-	isMuted   bool
-	mut       sync.RWMutex
+	wsInCh     <-chan []byte
+	wsOutCh    chan<- []byte
+	outTrack   *webrtc.TrackLocalStaticRTP
+	outConn    *webrtc.PeerConnection
+	channelID  string
+	isMuted    bool
+	isSpeaking bool
+	mut        sync.RWMutex
 }
 
 func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channelID string) {
@@ -84,14 +87,23 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 	// notify connected user about other users state.
 	p.mut.RLock()
 	for id, session := range p.sessions {
-		var evType string
+		var mutedEvType string
+		var voiceEvType string
 		if session.isMuted {
-			evType = wsEventUserMuted
+			mutedEvType = wsEventUserMuted
 		} else {
-			evType = wsEventUserUnmuted
+			mutedEvType = wsEventUserUnmuted
+		}
+		if session.isSpeaking {
+			voiceEvType = wsEventUserVoiceOn
+		} else {
+			voiceEvType = wsEventUserVoiceOff
 		}
 		if id != userID {
-			p.API.PublishWebSocketEvent(evType, map[string]interface{}{
+			p.API.PublishWebSocketEvent(mutedEvType, map[string]interface{}{
+				"userID": id,
+			}, &model.WebsocketBroadcast{ChannelId: channelID, UserId: userID})
+			p.API.PublishWebSocketEvent(voiceEvType, map[string]interface{}{
 				"userID": id,
 			}, &model.WebsocketBroadcast{ChannelId: channelID, UserId: userID})
 		}
@@ -135,6 +147,17 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 				evType := wsEventUserUnmuted
 				if msg.Type == messageTypeMute {
 					evType = wsEventUserMuted
+				}
+				p.API.PublishWebSocketEvent(evType, map[string]interface{}{
+					"userID": userID,
+				}, &model.WebsocketBroadcast{ChannelId: channelID})
+			case messageTypeVoiceOn, messageTypeVoiceOff:
+				userSession.mut.Lock()
+				userSession.isSpeaking = (msg.Type == messageTypeVoiceOn)
+				userSession.mut.Unlock()
+				evType := wsEventUserVoiceOff
+				if msg.Type == messageTypeVoiceOn {
+					evType = wsEventUserVoiceOn
 				}
 				p.API.PublishWebSocketEvent(evType, map[string]interface{}{
 					"userID": userID,

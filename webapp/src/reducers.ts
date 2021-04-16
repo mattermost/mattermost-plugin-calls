@@ -11,6 +11,8 @@ import {
     VOICE_CHANNEL_PROFILE_CONNECTED,
     VOICE_CHANNEL_USER_MUTED,
     VOICE_CHANNEL_USER_UNMUTED,
+    VOICE_CHANNEL_USER_VOICE_ON,
+    VOICE_CHANNEL_USER_VOICE_OFF,
 } from './action_types';
 
 const isVoiceEnabled = (state = false, action) => {
@@ -108,19 +110,91 @@ const connectedChannelID = (state = null, action) => {
 const voiceUsersStatuses = (state = {}, action) => {
     switch (action.type) {
     case VOICE_CHANNEL_USER_MUTED:
+        if (!state[action.data.channelID]) {
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    [action.data.userID]: {
+                        unmuted: false,
+                        voice: false,
+                    },
+                },
+            };
+        }
         return {
             ...state,
             [action.data.channelID]: {
                 ...state[action.data.channelID],
-                [action.data.userID]: true,
+                [action.data.userID]: {
+                    ...state[action.data.channelID][action.data.userID],
+                    unmuted: false,
+                },
             },
         };
     case VOICE_CHANNEL_USER_UNMUTED:
+        if (!state[action.data.channelID]) {
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    [action.data.userID]: {
+                        unmuted: true,
+                        voice: false,
+                    },
+                },
+            };
+        }
         return {
             ...state,
             [action.data.channelID]: {
                 ...state[action.data.channelID],
-                [action.data.userID]: false,
+                [action.data.userID]: {
+                    ...state[action.data.channelID][action.data.userID],
+                    unmuted: true,
+                },
+            },
+        };
+    case VOICE_CHANNEL_USER_VOICE_ON:
+        if (!state[action.data.channelID]) {
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    [action.data.userID]: {
+                        unmuted: false,
+                        voice: true,
+                    },
+                },
+            };
+        }
+        return {
+            ...state,
+            [action.data.channelID]: {
+                ...state[action.data.channelID],
+                [action.data.userID]: {
+                    ...state[action.data.channelID][action.data.userID],
+                    voice: true,
+                },
+            },
+        };
+    case VOICE_CHANNEL_USER_VOICE_OFF:
+        if (!state[action.data.channelID]) {
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    [action.data.userID]: {
+                        unmuted: false,
+                        voice: false,
+                    },
+                },
+            };
+        }
+        return {
+            ...state,
+            [action.data.channelID]: {
+                ...state[action.data.channelID],
+                [action.data.userID]: {
+                    ...state[action.data.channelID][action.data.userID],
+                    voice: false,
+                },
             },
         };
     default:

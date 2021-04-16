@@ -39,6 +39,8 @@ import {
     VOICE_CHANNEL_PROFILE_CONNECTED,
     VOICE_CHANNEL_USER_MUTED,
     VOICE_CHANNEL_USER_UNMUTED,
+    VOICE_CHANNEL_USER_VOICE_OFF,
+    VOICE_CHANNEL_USER_VOICE_ON,
 } from './action_types';
 
 // eslint-disable-next-line import/no-unresolved
@@ -123,7 +125,6 @@ export default class Plugin {
         store.subscribe(async () => {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
-                console.log('channel switched');
                 currChannelId = currentChannelId;
                 registry.unregisterComponent(actionID);
                 try {
@@ -138,7 +139,6 @@ export default class Plugin {
                             channelID: currChannelId,
                         },
                     });
-                    console.log(store.getState());
 
                     if (resp.data.enabled) {
                         actionID = registerChannelHeaderButtonAction();
@@ -225,6 +225,26 @@ export default class Plugin {
         registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_unmuted`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_UNMUTED,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                    userID: ev.data.userID,
+                },
+            });
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_voice_on`, (ev) => {
+            store.dispatch({
+                type: VOICE_CHANNEL_USER_VOICE_ON,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                    userID: ev.data.userID,
+                },
+            });
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_voice_off`, (ev) => {
+            store.dispatch({
+                type: VOICE_CHANNEL_USER_VOICE_OFF,
                 data: {
                     channelID: ev.broadcast.channel_id,
                     userID: ev.data.userID,
