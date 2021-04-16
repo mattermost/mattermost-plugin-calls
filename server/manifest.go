@@ -15,7 +15,7 @@ const manifestStr = `
   "id": "com.mattermost.talk",
   "name": "Talk",
   "description": "Integrates real-time voice communication in Mattermost",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "min_server_version": "5.26.0",
   "server": {
     "executables": {
