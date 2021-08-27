@@ -5,6 +5,8 @@ import (
 	"github.com/mattermost/mattermost-server/v5/plugin"
 )
 
+var isDebug string
+
 func main() {
 	plugin.ClientMain(&Plugin{
 		stopCh:      make(chan struct{}),

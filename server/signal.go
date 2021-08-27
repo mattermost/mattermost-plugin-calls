@@ -55,16 +55,12 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 			close(doneCh)
 			return
 		}
-		p.API.LogInfo(string(data))
 
 		var msg clientMessage
 		if err := msg.FromJSON(data); err != nil {
 			p.API.LogError(err.Error())
 			continue
 		}
-
-		p.API.LogInfo(msg.Type)
-		p.API.LogInfo(string(msg.Data))
 
 		switch msg.Type {
 		case clientMessageTypeSignal:
@@ -88,7 +84,7 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 			}
 		case clientMessageTypeICE:
 			// TODO: handle ICE properly.
-			p.API.LogInfo("candidate!")
+			p.LogDebug("candidate!")
 		case clientMessageTypeMute, clientMessageTypeUnmute:
 			us.mut.Lock()
 			us.isMuted = (msg.Type == clientMessageTypeMute)
@@ -151,20 +147,13 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		return
 	}
 
-	// DEBUG STUFF, remove me
-	if handlerID == nodeID {
-		p.API.LogInfo("I am handler")
-	} else {
-		p.API.LogInfo(fmt.Sprintf("%s is handler", handlerID))
-	}
-
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		p.API.LogError(err.Error())
 		return
 	}
 
-	p.API.LogInfo("ws connected")
+	p.LogDebug("ws connected")
 
 	us := newUserSession(userID, channelID)
 	us.wsConn = conn
@@ -182,7 +171,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		go func() {
 			defer wg.Done()
 			p.handleTracks(userID)
-			p.API.LogInfo("handleTracks DONE")
+			p.LogDebug("handleTracks DONE")
 		}()
 	} else {
 		if err := p.sendClusterMessage(clusterMessage{
@@ -198,32 +187,6 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID})
 
-	// notify connected user about other users state.
-	// p.mut.RLock()
-	// for id, session := range p.sessions {
-	// var mutedEvType string
-	// var voiceEvType string
-	// if session.isMuted {
-	// 	mutedEvType = wsEventUserMuted
-	// } else {
-	// 	mutedEvType = wsEventUserUnmuted
-	// }
-	// if session.isSpeaking {
-	// 	voiceEvType = wsEventUserVoiceOn
-	// } else {
-	// 	voiceEvType = wsEventUserVoiceOff
-	// }
-	// if id != userID {
-	// 	p.API.PublishWebSocketEvent(mutedEvType, map[string]interface{}{
-	// 		"userID": id,
-	// 	}, &model.WebsocketBroadcast{ChannelId: channelID, UserId: userID})
-	// 	p.API.PublishWebSocketEvent(voiceEvType, map[string]interface{}{
-	// 		"userID": id,
-	// 	}, &model.WebsocketBroadcast{ChannelId: channelID, UserId: userID})
-	// }
-	// }
-	// p.mut.RUnlock()
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -238,10 +201,10 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 
 	select {
 	case <-p.stopCh:
-		p.API.LogInfo("stop received, closing connection")
+		p.LogDebug("stop received, closing connection")
 		conn.Close()
 	case <-doneCh:
-		p.API.LogInfo("done")
+		p.LogDebug("done")
 	}
 
 	if err := p.removeUserSession(userID, channelID); err != nil {

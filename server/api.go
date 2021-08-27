@@ -132,7 +132,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	if matches := wsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 		p.handleWebSocket(w, r, matches[1])
-		p.API.LogInfo("ws handler done")
+		p.LogDebug("ws handler done")
 		return
 	}
 

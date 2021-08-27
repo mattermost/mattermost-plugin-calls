@@ -36,7 +36,7 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 	go func() {
 		defer wg.Done()
 		p.handleTracks(msg.UserID)
-		p.API.LogInfo("handleTracks DONE")
+		p.LogDebug("handleTracks DONE")
 	}()
 
 	if msg.ClientMessage.Type == clientMessageTypeSignal {
@@ -64,7 +64,7 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 
 	wg.Wait()
 
-	p.API.LogInfo("exiting session handler")
+	p.LogDebug("exiting session handler")
 }
 
 func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterEvent) {
@@ -76,7 +76,7 @@ func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterE
 }
 
 func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
-	p.API.LogInfo(fmt.Sprintf("got %q event!", ev.Id))
+	p.LogDebug("got cluster event", ev.Id)
 
 	var msg clusterMessage
 	if err := msg.FromJSON(ev.Data); err != nil {
@@ -97,7 +97,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", us.userID, us.channelID)
 		}
-		p.API.LogInfo("disconnect event", msg.ChannelID, msg.UserID)
+		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID)
 		close(us.wsOutCh)
 		p.mut.Lock()
 		delete(p.sessions, us.userID)
