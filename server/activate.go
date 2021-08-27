@@ -1,12 +1,6 @@
 package main
 
-import (
-	"fmt"
-)
-
 func (p *Plugin) OnActivate() error {
-	p.API.LogInfo("activate")
-
 	status, appErr := p.API.GetPluginStatus(manifest.Id)
 	if appErr != nil {
 		p.API.LogError(appErr.Error())
@@ -16,7 +10,7 @@ func (p *Plugin) OnActivate() error {
 	p.nodeID = status.ClusterId
 	p.mut.Unlock()
 
-	p.API.LogInfo(fmt.Sprintf("ClusterID: %s", status.ClusterId))
+	p.LogDebug("activate", "ClusterID", status.ClusterId)
 
 	if err := p.cleanUpState(); err != nil {
 		p.API.LogError(err.Error())
@@ -29,7 +23,7 @@ func (p *Plugin) OnActivate() error {
 }
 
 func (p *Plugin) OnDeactivate() error {
-	p.API.LogInfo("deactivate")
+	p.LogDebug("deactivate")
 	close(p.stopCh)
 	return nil
 }

@@ -43,7 +43,7 @@ func newUserSession(userID, channelID string) *session {
 
 func (p *Plugin) addUserSession(userID, channelID string, userSession *session) error {
 	p.mut.Lock()
-	p.API.LogInfo("adding session", userID, channelID)
+	p.LogDebug("adding session", "UserID", userID, "ChannelID", channelID)
 	p.sessions[userID] = userSession
 	p.mut.Unlock()
 	return p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
@@ -60,7 +60,7 @@ func (p *Plugin) addUserSession(userID, channelID string, userSession *session) 
 
 func (p *Plugin) removeUserSession(userID, channelID string) error {
 	p.mut.Lock()
-	p.API.LogInfo("removing session", userID, channelID)
+	p.LogDebug("removing session", "UserID", userID, "ChannelID", channelID)
 	delete(p.sessions, userID)
 	p.mut.Unlock()
 	return p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {

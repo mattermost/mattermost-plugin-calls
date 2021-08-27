@@ -66,7 +66,7 @@ func (p *Plugin) newConnWithTracks(userSession *session, api *webrtc.API, tracks
 		return nil
 	}
 
-	p.API.LogInfo(string(msg))
+	p.LogDebug(string(msg))
 	if err := json.Unmarshal(msg, &answer); err != nil {
 		p.API.LogError(err.Error())
 		return nil
@@ -115,7 +115,7 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 	if !ok {
 		return
 	}
-	p.API.LogInfo(string(msg))
+	p.LogDebug(string(msg))
 	if err := json.Unmarshal(msg, &answer); err != nil {
 		p.API.LogError(err.Error())
 		return
@@ -204,26 +204,26 @@ func (p *Plugin) handleTracks(userID string) {
 
 	peerConn.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		if state == webrtc.PeerConnectionStateConnected {
-			p.API.LogInfo("connected!")
+			p.LogDebug("connected!")
 		} else if state == webrtc.PeerConnectionStateDisconnected {
-			p.API.LogInfo("peer connection disconnected")
+			p.LogDebug("peer connection disconnected")
 		} else if state == webrtc.PeerConnectionStateClosed {
-			p.API.LogInfo("peer connection closed")
+			p.LogDebug("peer connection closed")
 		}
 	})
 
 	peerConn.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
 		if state == webrtc.ICEConnectionStateDisconnected {
-			p.API.LogInfo("ice disconnected")
+			p.LogDebug("ice disconnected")
 		} else if state == webrtc.ICEConnectionStateClosed {
-			p.API.LogInfo("ice closed")
+			p.LogDebug("ice closed")
 		}
 	})
 
 	peerConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		p.API.LogInfo("Got remote track!!!")
-		p.API.LogInfo(fmt.Sprintf("%+v", remoteTrack.Codec().RTPCodecCapability))
-		p.API.LogInfo(fmt.Sprintf("Track has started, of type %d: %s", remoteTrack.PayloadType(), remoteTrack.Codec().MimeType))
+		p.LogDebug("Got remote track!!!")
+		p.LogDebug(fmt.Sprintf("%+v", remoteTrack.Codec().RTPCodecCapability))
+		p.LogDebug(fmt.Sprintf("Track has started, of type %d: %s", remoteTrack.PayloadType(), remoteTrack.Codec().MimeType))
 
 		for {
 			rtp, readErr := remoteTrack.ReadRTP()
@@ -243,7 +243,7 @@ func (p *Plugin) handleTracks(userID string) {
 	if !ok {
 		return
 	}
-	p.API.LogInfo(string(msg))
+	p.LogDebug(string(msg))
 	if err := json.Unmarshal(msg, &offer); err != nil {
 		p.API.LogError(err.Error())
 		return
@@ -268,7 +268,7 @@ func (p *Plugin) handleTracks(userID string) {
 	// FIXME: handle ICE trickle properly.
 	<-webrtc.GatheringCompletePromise(peerConn)
 
-	p.API.LogInfo("gather complete!")
+	p.LogDebug("gather complete!")
 
 	sdp, err := json.Marshal(peerConn.LocalDescription())
 	if err != nil {
@@ -276,7 +276,7 @@ func (p *Plugin) handleTracks(userID string) {
 		return
 	}
 
-	p.API.LogInfo(string(sdp))
+	p.LogDebug(string(sdp))
 
 	userSession.wsOutCh <- sdp
 
