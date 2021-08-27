@@ -5,52 +5,45 @@ run:
 linters-settings:
   gofmt:
     simplify: true
-  goimports:
-    local-prefixes: github.com/mattermost/mattermost-starter-template
-  golint:
-    min-confidence: 0
   govet:
-    check-shadowing: true
-    enable-all: true
-  misspell:
-    locale: US
+    check-shadowing: false # set this to true from time to time to check for possible issues
+    disable-all: true
+    enable:
+      - asmdecl      # report mismatches between assembly files and Go declarations
+      - assign       # check for useless assignments
+      - atomic       # check for common mistakes using the sync/atomic package
+      - bools        # check for common mistakes involving boolean operators
+      - buildtag     # check that +build tags are well-formed and correctly located
+      - cgocall      # detect some violations of the cgo pointer passing rules
+      - composites   # check for unkeyed composite literals
+      - copylocks    # check for locks erroneously passed by value
+      - errorsas     # report passing non-pointer or non-error values to errors.As
+      - httpresponse # check for mistakes using HTTP responses
+      - loopclosure  # check references to loop variables from within nested functions
+      - lostcancel   # check cancel func returned by context.WithCancel is called
+      - nilfunc      # check for useless comparisons between functions and nil
+      - printf       # check consistency of Printf format strings and arguments
+      - shift        # check for shifts that equal or exceed the width of the integer
+      - stdmethods   # check signature of methods of well-known interfaces
+      - structtag    # check that struct field tags conform to reflect.StructTag.Get
+      - tests        # check for common mistaken usages of tests and examples
+      - unmarshal    # report passing non-pointer or non-interface values to unmarshal
+      - unreachable  # check for unreachable code
+      - unsafeptr    # check for invalid conversions of uintptr to unsafe.Pointer
+      - unusedresult # check for unused results of calls to some functions
 
 linters:
   disable-all: true
   enable:
-    - bodyclose
-    - deadcode
-    - errcheck
-    - gocritic
-    - gofmt
-    - goimports
-    - golint
-    - gosec
-    - gosimple
-    - govet
-    - ineffassign
-    - misspell
-    - nakedret
-    - staticcheck
-    - structcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unused
-    - varcheck
-    - whitespace
-
-issues:
-  exclude-rules:
-    - path: server/manifest.go
-      linters:
-        - deadcode
-        - unused
-        - varcheck
-    - path: server/configuration.go
-      linters:
-        - unused
-    - path: _test\.go
-      linters:
-        - bodyclose
-        - scopelint # https://github.com/kyoh86/scopelint/issues/4
+    - deadcode      # Finds unused code
+    - gofmt         # Checks whether code was gofmt-ed
+    - golint        # Differs from gofmt. Gofmt reformats Go source code, whereas golint prints out style mistakes
+    - gosimple      # Linter for Go source code that specializes in simplifying a code
+    - govet         # Examines Go source code and reports suspicious constructs, such as Printf calls whose arguments do not align with the format string
+    - ineffassign   # Detects when assignments to existing variables are not used
+    - structcheck   # Finds unused struct fields
+    - unconvert     # Removes unnecessary type conversions
+    - unused        # Checks Go code for unused constants, variables, functions and types
+    - varcheck      # Finds unused global variables and constants
+    - exportloopref # Checks for pointers to enclosing loop variables
+    - errcheck      # Detects unchecked errors.
