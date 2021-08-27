@@ -13,6 +13,11 @@ import (
 var wsRE = regexp.MustCompile(`^\/([a-z0-9]+)\/ws$`)
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
 
+type ChannelState struct {
+	Enabled bool     `json:"enabled"`
+	Users   []string `json:"users"`
+}
+
 func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	userID := r.Header.Get("Mattermost-User-Id")
 	if !p.API.HasPermissionToChannel(userID, channelID, model.PERMISSION_CREATE_POST) {
@@ -20,38 +25,32 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 		return
 	}
 
-	data, err := p.API.KVGet(channelID)
+	state, err := p.kvGetChannelState(channelID)
 	if err != nil {
 		p.API.LogError(err.Error())
+	}
+	if state == nil {
 		http.NotFound(w, r)
 		return
 	}
-	if data == nil {
-		http.NotFound(w, r)
-		return
+
+	var i int
+	users := make([]string, len(state.Users))
+	for id := range state.Users {
+		users[i] = id
+		i++
 	}
 
-	var info map[string]interface{}
-	if err := json.Unmarshal(data, &info); err != nil {
-		p.API.LogError(err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	info := ChannelState{
+		Enabled: state.Enabled,
+		Users:   users,
 	}
-
-	users := make([]string, 0)
-	p.mut.RLock()
-	for userID, session := range p.sessions {
-		if session.channelID == channelID {
-			users = append(users, userID)
-		}
-	}
-	p.mut.RUnlock()
-
-	info["users"] = users
 
 	w.Header().Set("Content-Type", "application/json")
 
-	json.NewEncoder(w).Encode(info)
+	if err := json.NewEncoder(w).Encode(info); err != nil {
+		p.API.LogError(err.Error())
+	}
 }
 
 func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
@@ -91,20 +90,28 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		return
 	}
 
-	var info map[string]interface{}
+	var info ChannelState
 	if err := json.Unmarshal(data, &info); err != nil {
 		p.API.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := p.API.KVSet(channelID, data); err != nil {
+	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+		if state == nil {
+			state = &channelState{}
+		}
+		state.Enabled = info.Enabled
+		return state, nil
+	}); err != nil {
+		// handle creation case
+		p.API.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	var evType string
-	if info["enabled"].(bool) {
+	if info.Enabled {
 		evType = "channel_enable_voice"
 	} else {
 		evType = "channel_disable_voice"
@@ -112,7 +119,9 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 
 	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID})
 
-	w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		p.API.LogError(err.Error())
+	}
 }
 
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
@@ -123,6 +132,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	if matches := wsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 		p.handleWebSocket(w, r, matches[1])
+		p.API.LogInfo("ws handler done")
 		return
 	}
 
