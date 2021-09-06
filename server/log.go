@@ -26,3 +26,13 @@ func (p *Plugin) LogDebug(msg string, keyValuePairs ...interface{}) {
 	}
 	p.API.LogDebug(msg, args...)
 }
+
+func (p *Plugin) LogInfo(msg string, keyValuePairs ...interface{}) {
+	args := append([]interface{}{"origin", getErrOrigin()}, keyValuePairs...)
+	p.API.LogInfo(msg, args...)
+}
+
+func (p *Plugin) LogError(msg string, keyValuePairs ...interface{}) {
+	args := append([]interface{}{"origin", getErrOrigin()}, keyValuePairs...)
+	p.API.LogError(msg, args...)
+}

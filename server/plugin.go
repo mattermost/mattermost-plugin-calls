@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/mattermost/mattermost-server/v5/plugin"
+	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/plugin"
 )
 
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
@@ -43,7 +43,7 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 		select {
 		case us.wsInCh <- []byte(msg.ClientMessage.Data):
 		default:
-			p.API.LogError("channel is full, dropping msg")
+			p.LogError("channel is full, dropping msg")
 		}
 	}
 
@@ -58,7 +58,7 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 			},
 		}
 		if err := p.sendClusterMessage(clusterMsg, clusterMessageTypeSignaling, msg.SenderID); err != nil {
-			p.API.LogError(err.Error())
+			p.LogError(err.Error())
 		}
 	}
 
@@ -71,7 +71,7 @@ func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterE
 	select {
 	case p.clusterEvCh <- ev:
 	default:
-		p.API.LogError("too many cluster events, channel is full, dropping.")
+		p.LogError("too many cluster events, channel is full, dropping.")
 	}
 }
 
@@ -132,7 +132,7 @@ func (p *Plugin) clusterEventsHandler() {
 		select {
 		case ev := <-p.clusterEvCh:
 			if err := p.handleEvent(ev); err != nil {
-				p.API.LogError(err.Error())
+				p.LogError(err.Error())
 			}
 		case <-p.stopCh:
 			return

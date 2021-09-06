@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/mattermost/mattermost-server/v5/plugin"
+	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/plugin"
 )
 
 var wsRE = regexp.MustCompile(`^\/([a-z0-9]+)\/ws$`)
@@ -20,14 +20,14 @@ type ChannelState struct {
 
 func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	userID := r.Header.Get("Mattermost-User-Id")
-	if !p.API.HasPermissionToChannel(userID, channelID, model.PERMISSION_CREATE_POST) {
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
 	state, err := p.kvGetChannelState(channelID)
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 	}
 	if state == nil {
 		http.NotFound(w, r)
@@ -49,7 +49,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(info); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 	}
 }
 
@@ -58,26 +58,26 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 
 	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
-		p.API.LogError(appErr.Error())
+		p.LogError(appErr.Error())
 		http.Error(w, appErr.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	cm, appErr := p.API.GetChannelMember(channelID, userID)
 	if appErr != nil {
-		p.API.LogError(appErr.Error())
+		p.LogError(appErr.Error())
 		http.Error(w, appErr.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	switch channel.Type {
-	case model.CHANNEL_OPEN, model.CHANNEL_PRIVATE:
-		if !cm.SchemeAdmin && !p.API.HasPermissionTo(userID, model.PERMISSION_MANAGE_SYSTEM) {
+	case model.ChannelTypeOpen, model.ChannelTypePrivate:
+		if !cm.SchemeAdmin && !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
-	case model.CHANNEL_DIRECT, model.CHANNEL_GROUP:
-		if !p.API.HasPermissionToChannel(userID, channelID, model.PERMISSION_CREATE_POST) {
+	case model.ChannelTypeDirect, model.ChannelTypeGroup:
+		if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
@@ -85,14 +85,14 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	var info ChannelState
 	if err := json.Unmarshal(data, &info); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -105,7 +105,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		return state, nil
 	}); err != nil {
 		// handle creation case
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -120,7 +120,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID})
 
 	if _, err := w.Write(data); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 	}
 }
 

@@ -3,25 +3,23 @@
 package main
 
 import (
-	"strings"
+	"encoding/json"
 
-	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v6/model"
 )
 
-var manifest *model.Manifest
+var manifest model.Manifest
 
 const manifestStr = `
 {
   "id": "com.mattermost.talk",
   "name": "Talk",
   "description": "Integrates real-time voice communication in Mattermost",
-  "version": "0.2.0",
-  "min_server_version": "5.26.0",
+  "version": "0.3.0",
+  "min_server_version": "6.0.0",
   "server": {
     "executables": {
-      "linux-amd64": "server/dist/plugin-linux-amd64",
-      "darwin-amd64": "server/dist/plugin-darwin-amd64",
-      "windows-amd64": "server/dist/plugin-windows-amd64.exe"
+      "linux-amd64": "server/dist/plugin-linux-amd64"
     },
     "executable": ""
   },
@@ -37,5 +35,7 @@ const manifestStr = `
 `
 
 func init() {
-	manifest = model.ManifestFromJson(strings.NewReader(manifestStr))
+	if err := json.Unmarshal([]byte(manifestStr), &manifest); err != nil {
+		panic(err.Error())
+	}
 }
