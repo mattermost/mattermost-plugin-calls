@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/pion/webrtc/v3"
 )
@@ -26,26 +26,26 @@ func (p *Plugin) newConnWithTracks(userSession *session, api *webrtc.API, tracks
 
 	peerConn, err := api.NewPeerConnection(peerConnConfig)
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return nil
 	}
 
 	for _, track := range tracks {
 		if _, err := peerConn.AddTrack(track); err != nil {
-			p.API.LogError(err.Error())
+			p.LogError(err.Error())
 			return nil
 		}
 	}
 
 	offer, err := peerConn.CreateOffer(nil)
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return nil
 	}
 
 	err = peerConn.SetLocalDescription(offer)
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return nil
 	}
 
@@ -54,7 +54,7 @@ func (p *Plugin) newConnWithTracks(userSession *session, api *webrtc.API, tracks
 
 	sdp, err := json.Marshal(peerConn.LocalDescription())
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return nil
 	}
 
@@ -68,12 +68,12 @@ func (p *Plugin) newConnWithTracks(userSession *session, api *webrtc.API, tracks
 
 	p.LogDebug(string(msg))
 	if err := json.Unmarshal(msg, &answer); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return nil
 	}
 
 	if err := peerConn.SetRemoteDescription(answer); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return nil
 	}
 
@@ -86,25 +86,25 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 	userSession.mut.RUnlock()
 
 	if _, err := peerConn.AddTrack(track); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
 	offer, err := peerConn.CreateOffer(nil)
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
 	err = peerConn.SetLocalDescription(offer)
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
 	sdp, err := json.Marshal(peerConn.LocalDescription())
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
@@ -117,12 +117,12 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 	}
 	p.LogDebug(string(msg))
 	if err := json.Unmarshal(msg, &answer); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
 	if err := peerConn.SetRemoteDescription(answer); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 }
@@ -158,7 +158,7 @@ func (p *Plugin) handleTracks(userID string) {
 		RTPCodecCapability: rtpCodec,
 		PayloadType:        111,
 	}, webrtc.RTPCodecTypeAudio); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
@@ -166,13 +166,13 @@ func (p *Plugin) handleTracks(userID string) {
 
 	peerConn, err := api.NewPeerConnection(peerConnConfig)
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
 	outputTrack, err := webrtc.NewTrackLocalStaticRTP(rtpCodec, "audio", model.NewId())
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
@@ -228,11 +228,11 @@ func (p *Plugin) handleTracks(userID string) {
 		for {
 			rtp, readErr := remoteTrack.ReadRTP()
 			if readErr != nil {
-				p.API.LogError(readErr.Error())
+				p.LogError(readErr.Error())
 				return
 			}
 			if err := outputTrack.WriteRTP(rtp); err != nil && !errors.Is(err, io.ErrClosedPipe) {
-				p.API.LogError(err.Error())
+				p.LogError(err.Error())
 				return
 			}
 		}
@@ -245,23 +245,23 @@ func (p *Plugin) handleTracks(userID string) {
 	}
 	p.LogDebug(string(msg))
 	if err := json.Unmarshal(msg, &offer); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
 	if err := peerConn.SetRemoteDescription(offer); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
 	answer, err := peerConn.CreateAnswer(nil)
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
 	if err := peerConn.SetLocalDescription(answer); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
@@ -272,7 +272,7 @@ func (p *Plugin) handleTracks(userID string) {
 
 	sdp, err := json.Marshal(peerConn.LocalDescription())
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 

@@ -3,7 +3,7 @@ package main
 func (p *Plugin) OnActivate() error {
 	status, appErr := p.API.GetPluginStatus(manifest.Id)
 	if appErr != nil {
-		p.API.LogError(appErr.Error())
+		p.LogError(appErr.Error())
 		return appErr
 	}
 	p.mut.Lock()
@@ -13,7 +13,7 @@ func (p *Plugin) OnActivate() error {
 	p.LogDebug("activate", "ClusterID", status.ClusterId)
 
 	if err := p.cleanUpState(); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return err
 	}
 

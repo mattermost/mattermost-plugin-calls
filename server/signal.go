@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/gorilla/websocket"
 )
@@ -33,12 +33,12 @@ func (p *Plugin) wsWriter(us *session, doneCh chan struct{}) {
 		case msg := <-us.wsOutCh:
 			err := us.wsConn.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
-				p.API.LogError(err.Error())
+				p.LogError(err.Error())
 			}
 		case <-pingTicker.C:
 			err := us.wsConn.WriteMessage(websocket.TextMessage, json.RawMessage(`{"type":"ping"}`))
 			if err != nil {
-				p.API.LogError(err.Error())
+				p.LogError(err.Error())
 			}
 			pingTicker.Reset(wsPingDuration)
 		case <-doneCh:
@@ -51,14 +51,14 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 	for {
 		_, data, err := us.wsConn.ReadMessage()
 		if err != nil {
-			p.API.LogError(err.Error())
+			p.LogError(err.Error())
 			close(doneCh)
 			return
 		}
 
 		var msg clientMessage
 		if err := msg.FromJSON(data); err != nil {
-			p.API.LogError(err.Error())
+			p.LogError(err.Error())
 			continue
 		}
 
@@ -73,13 +73,13 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 					SenderID:      p.nodeID,
 					ClientMessage: msg,
 				}, clusterMessageTypeSignaling, handlerID); err != nil {
-					p.API.LogError(err.Error())
+					p.LogError(err.Error())
 				}
 			} else {
 				select {
 				case us.wsInCh <- []byte(msg.Data):
 				default:
-					p.API.LogError("channel is full, dropping msg")
+					p.LogError("channel is full, dropping msg")
 				}
 			}
 		case clientMessageTypeICE:
@@ -115,7 +115,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 	userID := r.Header.Get("Mattermost-User-Id")
 	nodeID := p.nodeID
 
-	if !p.API.HasPermissionToChannel(userID, channelID, model.PERMISSION_CREATE_POST) {
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -142,14 +142,14 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		handlerID = state.NodeID
 		return nil, nil
 	}); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		return
 	}
 
@@ -158,7 +158,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 	us := newUserSession(userID, channelID)
 	us.wsConn = conn
 	if err := p.addUserSession(userID, channelID, us); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -179,7 +179,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 			ChannelID: channelID,
 			SenderID:  p.nodeID,
 		}, clusterMessageTypeConnect, handlerID); err != nil {
-			p.API.LogError(err.Error())
+			p.LogError(err.Error())
 		}
 	}
 
@@ -208,7 +208,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 	}
 
 	if err := p.removeUserSession(userID, channelID); err != nil {
-		p.API.LogError(err.Error())
+		p.LogError(err.Error())
 	}
 
 	if handlerID != nodeID {
@@ -217,7 +217,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 			ChannelID: channelID,
 			SenderID:  p.nodeID,
 		}, clusterMessageTypeDisconnect, handlerID); err != nil {
-			p.API.LogError(err.Error())
+			p.LogError(err.Error())
 		}
 	}
 
