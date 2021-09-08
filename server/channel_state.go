@@ -11,6 +11,16 @@ type channelState struct {
 	Enabled bool                `json:"enabled"`
 }
 
+func (cs *channelState) getUsers() []string {
+	var i int
+	users := make([]string, len(cs.Users))
+	for id := range cs.Users {
+		users[i] = id
+		i++
+	}
+	return users
+}
+
 func (p *Plugin) kvGetChannelState(channelID string) (*channelState, error) {
 	data, appErr := p.API.KVGet(channelID)
 	if appErr != nil {

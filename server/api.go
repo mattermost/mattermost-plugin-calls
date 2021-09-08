@@ -14,13 +14,14 @@ var wsRE = regexp.MustCompile(`^\/([a-z0-9]+)\/ws$`)
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
 
 type ChannelState struct {
-	Enabled bool     `json:"enabled"`
-	Users   []string `json:"users"`
+	ChannelID string   `json:"channel_id"`
+	Enabled   bool     `json:"enabled"`
+	Users     []string `json:"users"`
 }
 
 func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	userID := r.Header.Get("Mattermost-User-Id")
-	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -34,21 +35,50 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 		return
 	}
 
-	var i int
-	users := make([]string, len(state.Users))
-	for id := range state.Users {
-		users[i] = id
-		i++
-	}
-
 	info := ChannelState{
-		Enabled: state.Enabled,
-		Users:   users,
+		ChannelID: channelID,
+		Enabled:   state.Enabled,
+		Users:     state.getUsers(),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-
 	if err := json.NewEncoder(w).Encode(info); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
+func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	// TODO: implement proper paging
+	channelIDs, appErr := p.API.KVList(0, 30)
+	if appErr != nil {
+		p.LogError(appErr.Error())
+		http.Error(w, appErr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var channels []ChannelState
+	for _, channelID := range channelIDs {
+		if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+			continue
+		}
+
+		state, err := p.kvGetChannelState(channelID)
+		if err != nil {
+			p.LogError(err.Error())
+			http.Error(w, appErr.Error(), http.StatusInternalServerError)
+		}
+
+		channels = append(channels, ChannelState{
+			ChannelID: channelID,
+			Enabled:   state.Enabled,
+			Users:     state.getUsers(),
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(channels); err != nil {
 		p.LogError(err.Error())
 	}
 }
@@ -137,6 +167,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	if r.Method == http.MethodGet {
+		if r.URL.Path == "/channels" {
+			p.handleGetAllChannels(w, r)
+			return
+		}
+
 		if matches := chRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handleGetChannel(w, r, matches[1])
 			return
