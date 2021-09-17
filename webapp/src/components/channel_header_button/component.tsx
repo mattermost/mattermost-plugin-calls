@@ -15,7 +15,10 @@ export default class ChannelHeaderButton extends React.PureComponent {
         return (
             <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
                 <CallIcon style={{margin: '0 4px'}}/>
-                <span className='icon__text' style={{margin: '0 4px'}}>
+                <span
+                    className='icon__text'
+                    style={{margin: '0 4px'}}
+                >
                     {this.props.hasCall ? 'Join Call' : 'Start Call'}
                 </span>
             </div>
