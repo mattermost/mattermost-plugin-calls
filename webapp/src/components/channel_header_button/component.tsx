@@ -1,13 +1,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import {FormattedMessage} from 'react-intl';
 
-import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
-import {faPhoneAlt} from '@fortawesome/free-solid-svg-icons';
+import CallIcon from 'components/icons/call_icon';
 
 export default class ChannelHeaderButton extends React.PureComponent {
     static propTypes = {
-        userCount: PropTypes.number.isRequired,
+        hasCall: PropTypes.bool.isRequired,
         show: PropTypes.bool.isRequired,
     }
     render() {
@@ -16,15 +14,9 @@ export default class ChannelHeaderButton extends React.PureComponent {
         }
         return (
             <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
-                <FontAwesomeIcon
-                    icon={faPhoneAlt}
-                    style={{marginRight: '4px'}}
-                />
-                <span
-                    className='icon__text'
-                >
-                    {/* { `${this.props.userCount}` } */}
-                    {'Join Call'}
+                <CallIcon style={{margin: '0 4px'}}/>
+                <span className='icon__text' style={{margin: '0 4px'}}>
+                    {this.props.hasCall ? 'Join Call' : 'Start Call'}
                 </span>
             </div>
         );

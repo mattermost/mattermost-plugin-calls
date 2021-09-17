@@ -8,7 +8,7 @@ import {voiceConnectedUsers, connectedChannelID} from 'selectors';
 import ChannelHeaderButton from './component';
 
 const mapStateToProps = (state) => ({
-    userCount: voiceConnectedUsers(state).length,
+    hasCall: voiceConnectedUsers(state).length > 0,
     show: !connectedChannelID(state) || getCurrentChannelId(state) !== connectedChannelID(state),
 });
 
