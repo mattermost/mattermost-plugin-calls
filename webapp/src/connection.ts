@@ -7,7 +7,7 @@ import {VOICE_CHANNEL_USER_CONNECTED} from './action_types';
 
 import VoiceActivityDetector from './vad';
 
-export async function newClient(store, channelID: string, closeCb) {
+export async function newClient(channelID: string, closeCb) {
     let peer = null;
     let receiver = null;
     const streams = [];
@@ -70,7 +70,7 @@ export async function newClient(store, channelID: string, closeCb) {
         if (voiceDetector) {
             voiceDetector.stop();
         }
-        const audioTrack = stream.getAudioTracks()[0];
+
         audioTrack.enabled = false;
         if (ws) {
             ws.send(JSON.stringify({
@@ -83,7 +83,7 @@ export async function newClient(store, channelID: string, closeCb) {
         if (voiceDetector) {
             voiceDetector.start();
         }
-        const audioTrack = stream.getAudioTracks()[0];
+
         audioTrack.enabled = true;
         if (ws) {
             ws.send(JSON.stringify({
@@ -95,28 +95,19 @@ export async function newClient(store, channelID: string, closeCb) {
     ws.onerror = (err) => console.log(err);
 
     ws.onopen = () => {
-        // console.log('ws connected');
-
         peer = new Peer({initiator: true, stream, trickle: true});
-        peer.on('connect', () => {
-            // console.log('connected!');
-        });
         peer.on('signal', (data) => {
-            // console.log(data);
             if (data.type === 'offer') {
-                // console.log('sending offer');
                 ws.send(JSON.stringify({
                     type: 'signal',
                     data,
                 }));
             } else if (data.type === 'answer') {
-                // console.log('sending answer');
                 ws.send(JSON.stringify({
                     type: 'signal',
                     data,
                 }));
             } else if (data.type === 'candidate') {
-                // console.log('sending candidate');
                 ws.send(JSON.stringify({
                     type: 'ice',
                     data,
@@ -125,47 +116,36 @@ export async function newClient(store, channelID: string, closeCb) {
         });
         peer.on('error', (err) => console.log(err));
         ws.onmessage = ({data}) => {
-            // console.log('ws msg');
-
             const msg = JSON.parse(data);
             if (msg.type === 'answer') {
                 peer.signal(data);
             } else if (msg.type === 'offer') {
-                // console.log('offer!');
-
                 if (receiver) {
                     receiver.signal(data);
                     return;
                 }
 
                 receiver = new Peer({trickle: true});
-
-                // receiver.on('connect', () => console.log('receiver connected!'));
                 receiver.on('error', (err) => console.log(err));
-                receiver.on('signal', (data) => {
-                    // console.log(data);
-                    if (data.type === 'offer') {
-                        // console.log('rcv sending offer');
+                receiver.on('signal', (signalData) => {
+                    if (signalData.type === 'offer') {
                         ws.send(JSON.stringify({
                             type: 'signal',
-                            data,
+                            data: signalData,
                         }));
-                    } else if (data.type === 'answer') {
-                        // console.log('rcv sending answer');
+                    } else if (signalData.type === 'answer') {
                         ws.send(JSON.stringify({
                             type: 'signal',
-                            data,
+                            data: signalData,
                         }));
                     }
                 });
                 receiver.signal(data);
-                receiver.on('stream', (stream) => {
-                    // console.log('receiver stream');
-
-                    streams.push(stream);
+                receiver.on('stream', (remoteStream) => {
+                    streams.push(remoteStream);
 
                     const audio = document.createElement('audio');
-                    audio.srcObject = stream;
+                    audio.srcObject = remoteStream;
                     audio.controls = false;
                     audio.autoplay = true;
                     audio.style.display = 'none';
@@ -174,13 +154,10 @@ export async function newClient(store, channelID: string, closeCb) {
 
                     document.body.appendChild(audio);
                     receiver.on('close', () => {
-                        // console.log('receiver closed!');
                         audio.remove();
                     });
                 });
             }
-
-            // console.log(data);
         };
     };
 

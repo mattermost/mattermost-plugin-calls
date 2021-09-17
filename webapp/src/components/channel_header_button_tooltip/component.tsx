@@ -10,6 +10,7 @@ export default class RHSView extends React.PureComponent {
     }
 
     render() {
+        return null;
         if (this.props.channelID === this.props.currChannelID) {
             return (
                 <FormattedMessage
@@ -22,7 +23,7 @@ export default class RHSView extends React.PureComponent {
         return (
             <FormattedMessage
                 id='button.connect'
-                defaultMessage='Connect'
+                defaultMessage='Join Call'
             />
         );
     }
