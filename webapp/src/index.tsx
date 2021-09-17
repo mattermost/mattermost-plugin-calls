@@ -54,7 +54,7 @@ export default class Plugin {
         registry.registerReducer(reducer);
         registry.registerGlobalHeaderRightControlsComponent(GlobalHeaderRightControls);
         registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
-        registry.registerPostListContentComponent(CallToast);
+        registry.registerChannelToastComponent(CallToast);
 
         let actionID;
 
