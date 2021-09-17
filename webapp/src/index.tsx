@@ -24,7 +24,7 @@ import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import GlobalHeaderRightControls from './components/global_header_right_controls';
 import ChannelHeaderTooltip from './components/channel_header_button_tooltip';
 import ChannelLinkLabel from './components/channel_link_label';
-import CallToast from './components/call_toast';
+import ChannelCallToast from './components/channel_call_toast';
 
 import reducer from './reducers';
 
@@ -53,7 +53,7 @@ export default class Plugin {
         registry.registerReducer(reducer);
         registry.registerGlobalHeaderRightControlsComponent(GlobalHeaderRightControls);
         registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
-        registry.registerChannelToastComponent(CallToast);
+        registry.registerChannelToastComponent(ChannelCallToast);
 
         let actionID;
 
