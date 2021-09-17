@@ -162,7 +162,12 @@ func (p *Plugin) handleTracks(userID string) {
 		return
 	}
 
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m))
+	s := webrtc.SettingEngine{}
+	if err := s.SetEphemeralUDPPortRange(10000, 11000); err != nil {
+		p.LogError(err.Error())
+	}
+
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m), webrtc.WithSettingEngine(s))
 
 	peerConn, err := api.NewPeerConnection(peerConnConfig)
 	if err != nil {
