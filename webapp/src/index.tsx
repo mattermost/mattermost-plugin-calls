@@ -160,7 +160,7 @@ export default class Plugin {
                             currentChannelData = resp.data[i];
                         }
                     }
-                    if (currentChannelData) {
+                    if (currentChannelData && currentChannelData.users.length > 0) {
                         store.dispatch({
                             type: VOICE_CHANNEL_PROFILES_CONNECTED,
                             data: {
