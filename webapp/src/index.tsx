@@ -21,7 +21,6 @@ import {newClient} from './connection';
 
 import ChannelHeaderButton from './components/channel_header_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
-import LeftSidebarHeader from './components/left_sidebar_header';
 import GlobalHeaderRightControls from './components/global_header_right_controls';
 import ChannelHeaderTooltip from './components/channel_header_button_tooltip';
 import ChannelLinkLabel from './components/channel_link_label';

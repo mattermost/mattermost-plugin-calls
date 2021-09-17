@@ -78,7 +78,7 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
                         className='user_call_status'
                         style={{display: isMuted ? 'block' : 'none', position: 'absolute', top: 'auto', bottom: '-4px', right: '-4px', fontSize: '12px', color: 'red'}}
                     >
-                      <MutedIcon fill="red"/>
+                        <MutedIcon fill='red'/>
                     </div>
                 </div>
             );
