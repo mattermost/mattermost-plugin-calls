@@ -22,8 +22,11 @@ import {newClient} from './connection';
 import ChannelHeaderButton from './components/channel_header_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import LeftSidebarHeader from './components/left_sidebar_header';
+import GlobalHeaderRightControls from './components/global_header_right_controls';
 import RHSView from './components/right_hand_sidebar';
 import ChannelHeaderTooltip from './components/channel_header_button_tooltip';
+import ChannelLinkLabel from './components/channel_link_label';
+import CallToast from './components/call_toast';
 
 import reducer from './reducers';
 
@@ -50,14 +53,20 @@ export default class Plugin {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function
     public async initialize(registry: PluginRegistry, store: Store<GlobalState, Action<Record<string, unknown>>>) {
         registry.registerReducer(reducer);
-        registry.registerLeftSidebarHeaderComponent(LeftSidebarHeader);
+        registry.registerGlobalHeaderRightControlsComponent(GlobalHeaderRightControls);
+        registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
 
+        // registry.registerRootComponent(CallToast);
+        registry.registerPostListContentComponent(CallToast);
+
+        /*
         const {showRHSPlugin, hideRHSPlugin} = registry.registerRightHandSidebarComponent(
             RHSView,
             <FormattedMessage
                 id='rhs.title'
                 defaultMessage='Connected Users'
             />);
+       */
 
         let actionID;
 
@@ -85,24 +94,26 @@ export default class Plugin {
 
                     if (!connectedChannelID(store.getState())) {
                         try {
-                            window.voiceClient = await newClient(store, channel.id, () => store.dispatch(hideRHSPlugin));
+                            // window.voiceClient = await newClient(channel.id, () => store.dispatch(hideRHSPlugin));
+                            window.voiceClient = await newClient(channel.id);
                         } catch (err) {
                             console.log(err);
-                            return;
                         }
 
-                        store.dispatch(showRHSPlugin);
+                        // store.dispatch(showRHSPlugin);
                     } else if (connectedChannelID(store.getState()) === getCurrentChannelId(store.getState())) {
-                        store.dispatch(showRHSPlugin);
+                        // store.dispatch(showRHSPlugin);
 
                         // TODO: show an error or let the user switch connection.
                     }
                 },
-                ChannelHeaderTooltip,
+
+                // ChannelHeaderTooltip,
             );
         };
 
         let currChannelId = getCurrentChannelId(store.getState());
+
         let hasRegisteredMenuAction;
         const registerChannelHeaderMenuAction = () => {
             registry.registerChannelHeaderMenuAction(
@@ -124,7 +135,8 @@ export default class Plugin {
 
         store.subscribe(async () => {
             const currentChannelId = getCurrentChannelId(store.getState());
-            if (currChannelId !== currentChannelId) {
+            const firstLoad = currChannelId.length === 0 && currentChannelId.length > 0;
+            if (firstLoad || currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
                 registry.unregisterComponent(actionID);
                 try {
@@ -148,6 +160,34 @@ export default class Plugin {
                     store.dispatch({
                         type: VOICE_CHANNEL_DISABLE,
                     });
+                }
+
+                try {
+                    const resp = await axios.get(`${getPluginPath()}/channels`);
+                    let currentChannelData;
+                    for (let i = 0; i < resp.data.length; i++) {
+                        store.dispatch({
+                            type: VOICE_CHANNEL_USERS_CONNECTED,
+                            data: {
+                                users: resp.data[i].users,
+                                channelID: resp.data[i].channel_id,
+                            },
+                        });
+                        if (resp.data[i].channel_id === currentChannelId) {
+                            currentChannelData = resp.data[i];
+                        }
+                    }
+                    if (currentChannelData) {
+                        store.dispatch({
+                            type: VOICE_CHANNEL_PROFILES_CONNECTED,
+                            data: {
+                                profiles: await Client4.getProfilesByIds(currentChannelData.users),
+                                channelID: currentChannelData.channel_id,
+                            },
+                        });
+                    }
+                } catch (err) {
+                    console.log(err);
                 }
 
                 if (!hasRegisteredMenuAction) {

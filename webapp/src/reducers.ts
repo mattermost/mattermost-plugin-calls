@@ -48,10 +48,9 @@ const voiceConnectedProfiles = (state = {}, action) => {
             ],
         };
     case VOICE_CHANNEL_USER_DISCONNECTED:
-        const profiles = state[action.data.channelID] || [];
         return {
             ...state,
-            [action.data.channelID]: profiles.filter((val) => val.id !== action.data.userID),
+            [action.data.channelID]: state[action.data.channelID]?.filter((val) => val.id !== action.data.userID),
         };
     default:
         return state;
@@ -75,10 +74,9 @@ const voiceConnectedChannels = (state = {}, action) => {
             ],
         };
     case VOICE_CHANNEL_USER_DISCONNECTED:
-        const users = state[action.data.channelID] || [];
         return {
             ...state,
-            [action.data.channelID]: users.filter((val) => val !== action.data.userID),
+            [action.data.channelID]: state[action.data.channelID]?.filter((val) => val !== action.data.userID),
         };
     case VOICE_CHANNEL_USERS_CONNECTED:
         return {

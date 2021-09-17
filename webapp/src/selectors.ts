@@ -26,6 +26,13 @@ export const voiceConnectedProfiles = (state) => {
     return getPluginState(state).voiceConnectedProfiles[connectedChannelID(state)] || [];
 };
 
+export const voiceConnectedProfilesInChannel = (state, channelID) => {
+    if (!getPluginState(state).voiceConnectedProfiles) {
+        return [];
+    }
+    return getPluginState(state).voiceConnectedProfiles[channelID] || [];
+};
+
 export const voiceUsersStatuses = (state) => {
     return getPluginState(state).voiceUsersStatuses[connectedChannelID(state)];
 };
