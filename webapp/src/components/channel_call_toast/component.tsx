@@ -12,7 +12,7 @@ import {newClient} from '../../connection';
 
 import Avatar, {TAvatarSizeToken} from '../avatar';
 
-export default class CallToast extends React.PureComponent {
+export default class ChannelCallToast extends React.PureComponent {
     static propTypes = {
         currChannelID: PropTypes.string,
         connectedID: PropTypes.string,

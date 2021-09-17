@@ -6,7 +6,7 @@ import {Client4} from 'mattermost-redux/client';
 
 import {voiceConnectedChannels, voiceConnectedProfilesInChannel, connectedChannelID} from 'selectors';
 
-import CallToast from './component';
+import ChannelCallToast from './component';
 
 const mapStateToProps = (state) => {
     let hasCall = false;
@@ -35,4 +35,4 @@ const mapStateToProps = (state) => {
     };
 };
 
-export default connect(mapStateToProps)(CallToast);
+export default connect(mapStateToProps)(ChannelCallToast);
