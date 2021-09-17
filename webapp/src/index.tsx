@@ -23,7 +23,6 @@ import ChannelHeaderButton from './components/channel_header_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import LeftSidebarHeader from './components/left_sidebar_header';
 import GlobalHeaderRightControls from './components/global_header_right_controls';
-import RHSView from './components/right_hand_sidebar';
 import ChannelHeaderTooltip from './components/channel_header_button_tooltip';
 import ChannelLinkLabel from './components/channel_link_label';
 import CallToast from './components/call_toast';
@@ -55,18 +54,7 @@ export default class Plugin {
         registry.registerReducer(reducer);
         registry.registerGlobalHeaderRightControlsComponent(GlobalHeaderRightControls);
         registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
-
-        // registry.registerRootComponent(CallToast);
         registry.registerPostListContentComponent(CallToast);
-
-        /*
-        const {showRHSPlugin, hideRHSPlugin} = registry.registerRightHandSidebarComponent(
-            RHSView,
-            <FormattedMessage
-                id='rhs.title'
-                defaultMessage='Connected Users'
-            />);
-       */
 
         let actionID;
 
@@ -94,16 +82,11 @@ export default class Plugin {
 
                     if (!connectedChannelID(store.getState())) {
                         try {
-                            // window.voiceClient = await newClient(channel.id, () => store.dispatch(hideRHSPlugin));
                             window.voiceClient = await newClient(channel.id);
                         } catch (err) {
                             console.log(err);
                         }
-
-                        // store.dispatch(showRHSPlugin);
                     } else if (connectedChannelID(store.getState()) === getCurrentChannelId(store.getState())) {
-                        // store.dispatch(showRHSPlugin);
-
                         // TODO: show an error or let the user switch connection.
                     }
                 },
