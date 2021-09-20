@@ -25,6 +25,7 @@ import GlobalHeaderRightControls from './components/global_header_right_controls
 import ChannelHeaderTooltip from './components/channel_header_button_tooltip';
 import ChannelLinkLabel from './components/channel_link_label';
 import ChannelCallToast from './components/channel_call_toast';
+import PostType from './components/post_type';
 
 import reducer from './reducers';
 
@@ -54,6 +55,7 @@ export default class Plugin {
         registry.registerGlobalHeaderRightControlsComponent(GlobalHeaderRightControls);
         registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         registry.registerChannelToastComponent(ChannelCallToast);
+        registry.registerPostTypeComponent('custom_calls', PostType);
 
         let actionID;
 
