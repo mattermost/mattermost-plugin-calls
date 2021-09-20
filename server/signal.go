@@ -157,10 +157,15 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 
 	us := newUserSession(userID, channelID)
 	us.wsConn = conn
-	if err := p.addUserSession(userID, channelID, us); err != nil {
+	if first, err := p.addUserSession(userID, channelID, us); err != nil {
 		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	} else if first {
+		// new call has started
+		if err := p.startNewCallThread(userID, channelID); err != nil {
+			p.LogError(err.Error())
+		}
 	}
 
 	var wg sync.WaitGroup

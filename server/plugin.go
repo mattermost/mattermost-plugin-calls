@@ -139,3 +139,51 @@ func (p *Plugin) clusterEventsHandler() {
 		}
 	}
 }
+
+func (p *Plugin) startNewCallThread(userID, channelID string) error {
+	user, appErr := p.API.GetUser(userID)
+	if appErr != nil {
+		return appErr
+	}
+
+	var postMsg string
+	if user.FirstName != "" && user.LastName != "" {
+		postMsg = fmt.Sprintf("%s %s started a call", user.FirstName, user.LastName)
+	} else {
+		postMsg = fmt.Sprintf("%s started a call", user.Username)
+	}
+
+	slackAttachment := model.SlackAttachment{
+		Fallback: postMsg,
+		Title:    postMsg,
+		Text:     postMsg,
+	}
+
+	post := &model.Post{
+		UserId:    userID,
+		ChannelId: channelID,
+		Message:   postMsg,
+		Type:      "custom_calls",
+		Props: map[string]interface{}{
+			"attachments": []*model.SlackAttachment{&slackAttachment},
+		},
+	}
+
+	createdPost, appErr := p.API.CreatePost(post)
+	if appErr != nil {
+		return appErr
+	}
+
+	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+		if state == nil {
+			return nil, fmt.Errorf("channel state is missing from store")
+		}
+		state.ThreadID = createdPost.Id
+		return state, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

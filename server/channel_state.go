@@ -6,9 +6,10 @@ import (
 )
 
 type channelState struct {
-	NodeID  string              `json:"node_id,omitempty"`
-	Users   map[string]struct{} `json:"users,omitempty"`
-	Enabled bool                `json:"enabled"`
+	NodeID   string              `json:"node_id,omitempty"`
+	Users    map[string]struct{} `json:"users,omitempty"`
+	ThreadID string              `json:"thread_id"`
+	Enabled  bool                `json:"enabled"`
 }
 
 func (cs *channelState) getUsers() []string {

@@ -41,12 +41,14 @@ func newUserSession(userID, channelID string) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(userID, channelID string, userSession *session) error {
+func (p *Plugin) addUserSession(userID, channelID string, userSession *session) (bool, error) {
 	p.mut.Lock()
 	p.LogDebug("adding session", "UserID", userID, "ChannelID", channelID)
 	p.sessions[userID] = userSession
 	p.mut.Unlock()
-	return p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+
+	var isFirst bool
+	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
 		}
@@ -54,8 +56,15 @@ func (p *Plugin) addUserSession(userID, channelID string, userSession *session) 
 			state.Users = make(map[string]struct{})
 		}
 		state.Users[userID] = struct{}{}
+		isFirst = len(state.Users) == 1
 		return state, nil
 	})
+
+	if err != nil {
+		return false, err
+	}
+
+	return isFirst, err
 }
 
 func (p *Plugin) removeUserSession(userID, channelID string) error {
