@@ -4,13 +4,10 @@ import PropTypes from 'prop-types';
 
 import {Channel} from 'mattermost-redux/types/channels';
 
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-
-import ActiveCallIcon from 'components/icons/active_call_icon';
-
 import {newClient} from '../../connection';
 
-import Avatar, {TAvatarSizeToken} from '../avatar';
+import ActiveCallIcon from 'components/icons/active_call_icon';
+import ConnectedProfiles from 'components/connected_profiles';
 
 export default class ChannelCallToast extends React.PureComponent {
     static propTypes = {
@@ -42,29 +39,6 @@ export default class ChannelCallToast extends React.PureComponent {
 
     onDismissClick = () => {
         this.setState({hidden: true});
-    }
-
-    renderProfiles = () => {
-        return this.props.profiles.map((profile, idx) => {
-            return (
-                <OverlayTrigger
-                    placement='bottom'
-                    key={'call_toast_profile_' + profile.id}
-                    overlay={
-                        <Tooltip id='tooltip-username'>
-                            { profile.username }
-                        </Tooltip>
-                    }
-                >
-
-                    <Avatar
-                        size='sm'
-                        url={this.props.pictures[idx]}
-                    />
-
-                </OverlayTrigger>
-            );
-        });
     }
 
     render() {
@@ -102,7 +76,13 @@ export default class ChannelCallToast extends React.PureComponent {
                             right: '40px'}
                     }
                 >
-                    {this.renderProfiles()}
+                    <ConnectedProfiles
+                        profiles={this.props.profiles}
+                        pictures={this.props.pictures}
+                        size='sm'
+                        maxShowedProfiles={2}
+                    />
+
                 </div>
 
                 <div
