@@ -1,6 +1,7 @@
 const exec = require('child_process').exec;
-
 const path = require('path');
+
+const webpack = require('webpack');
 
 const PLUGIN_ID = require('../plugin.json').id;
 
@@ -9,10 +10,15 @@ let mode = 'production';
 let devtool = '';
 if (NPM_TARGET === 'debug' || NPM_TARGET === 'debug:watch') {
     mode = 'development';
-    devtool = 'source-map';
+    devtool = 'eval-cheap-module-source-map';
 }
 
-const plugins = [];
+const plugins = [
+    new webpack.ProvidePlugin({
+        process: 'process/browser',
+    }),
+];
+
 if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
     plugins.push({
         apply: (compiler) => {
@@ -42,7 +48,6 @@ module.exports = {
         modules: [
             'src',
             'node_modules',
-            path.resolve(__dirname),
         ],
         extensions: ['*', '.js', '.jsx', '.ts', '.tsx'],
     },
@@ -69,11 +74,6 @@ module.exports = {
                     },
                     {
                         loader: 'sass-loader',
-                        options: {
-                            sassOptions: {
-                                includePaths: ['node_modules/compass-mixins/lib', 'sass'],
-                            },
-                        },
                     },
                 ],
             },
@@ -86,6 +86,7 @@ module.exports = {
         'prop-types': 'PropTypes',
         'react-bootstrap': 'ReactBootstrap',
         'react-router-dom': 'ReactRouterDom',
+        'react-intl': 'ReactIntl',
     },
     output: {
         devtoolNamespace: PLUGIN_ID,

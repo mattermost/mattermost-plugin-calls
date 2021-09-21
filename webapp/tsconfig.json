@@ -20,15 +20,16 @@
     "noEmit": true,
     "experimentalDecorators": true,
     "jsx": "react",
-    "baseUrl": "./src",
-    "typeRoots": [ "./src/types", "./node_modules/@types"],
+    "baseUrl": ".",
+    "paths": {
+      "src": ["src"],
+    },
   },
   "include": [
-    "src"
+    "./**/*"
   ],
   "exclude": [
     "dist",
-    "node_modules",
     "!node_modules/@types"
-  ]
+  ],
 }
