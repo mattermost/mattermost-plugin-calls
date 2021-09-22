@@ -2,8 +2,6 @@ import {Store, Action} from 'redux';
 
 import {GlobalState} from 'mattermost-redux/types/store';
 
-import {FormattedMessage} from 'react-intl';
-
 import axios from 'axios';
 
 import {Client4} from 'mattermost-redux/client';
