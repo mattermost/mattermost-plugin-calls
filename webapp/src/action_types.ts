@@ -11,3 +11,4 @@ export const VOICE_CHANNEL_USER_VOICE_OFF = pluginId + '_voice_channel_user_voic
 export const VOICE_CHANNEL_USERS_CONNECTED = pluginId + '_voice_channel_users_connected';
 export const VOICE_CHANNEL_PROFILES_CONNECTED = pluginId + '_voice_channel_profiles_connected';
 export const VOICE_CHANNEL_PROFILE_CONNECTED = pluginId + '_voice_channel_profile_connected';
+export const VOICE_CHANNEL_CALL_START = pluginId + '_voice_channel_call_start';

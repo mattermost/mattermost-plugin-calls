@@ -11,7 +11,7 @@ import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_ut
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers} from 'selectors';
+import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from 'selectors';
 
 import manifest from './manifest';
 
@@ -41,6 +41,7 @@ import {
     VOICE_CHANNEL_USER_UNMUTED,
     VOICE_CHANNEL_USER_VOICE_OFF,
     VOICE_CHANNEL_USER_VOICE_ON,
+    VOICE_CHANNEL_CALL_START,
 } from './action_types';
 
 // eslint-disable-next-line import/no-unresolved
@@ -123,7 +124,6 @@ export default class Plugin {
                 registry.unregisterComponent(actionID);
                 try {
                     const resp = await axios.get(`${getPluginPath()}/${currChannelId}`);
-                    console.log(resp.data);
                     store.dispatch({
                         type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                     });
@@ -147,7 +147,6 @@ export default class Plugin {
 
                 try {
                     const resp = await axios.get(`${getPluginPath()}/channels`);
-                    console.log(resp.data);
                     let currentChannelData;
                     for (let i = 0; i < resp.data.length; i++) {
                         store.dispatch({
@@ -160,7 +159,18 @@ export default class Plugin {
                         if (resp.data[i].channel_id === currentChannelId) {
                             currentChannelData = resp.data[i];
                         }
+
+                        if (!voiceChannelCallStartAt(store.getState(), resp.data[i].channel_id)) {
+                            store.dispatch({
+                                type: VOICE_CHANNEL_CALL_START,
+                                data: {
+                                    channelID: resp.data[i].channel_id,
+                                    startAt: resp.data[i].call?.start_at,
+                                },
+                            });
+                        }
                     }
+
                     if (currentChannelData && currentChannelData.call?.users.length > 0) {
                         store.dispatch({
                             type: VOICE_CHANNEL_PROFILES_CONNECTED,
@@ -272,6 +282,16 @@ export default class Plugin {
                 data: {
                     channelID: ev.broadcast.channel_id,
                     userID: ev.data.userID,
+                },
+            });
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${manifest.id}_call_start`, (ev) => {
+            store.dispatch({
+                type: VOICE_CHANNEL_CALL_START,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                    startAt: ev.data.start_at,
                 },
             });
         });
