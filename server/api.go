@@ -13,10 +13,17 @@ import (
 var wsRE = regexp.MustCompile(`^\/([a-z0-9]+)\/ws$`)
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
 
+type Call struct {
+	ID       string   `json:"id"`
+	StartAt  int64    `json:"start_at"`
+	Users    []string `json:"users"`
+	ThreadID string   `json:"thread_id"`
+}
+
 type ChannelState struct {
-	ChannelID string   `json:"channel_id"`
-	Enabled   bool     `json:"enabled"`
-	Users     []string `json:"users"`
+	ChannelID string `json:"channel_id"`
+	Enabled   bool   `json:"enabled"`
+	Call      *Call  `json:"call,omitempty"`
 }
 
 func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
@@ -38,7 +45,14 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 	info := ChannelState{
 		ChannelID: channelID,
 		Enabled:   state.Enabled,
-		Users:     state.getUsers(),
+	}
+	if state.Call != nil {
+		info.Call = &Call{
+			ID:       state.Call.ID,
+			StartAt:  state.Call.StartAt,
+			Users:    state.Call.getUsers(),
+			ThreadID: state.Call.ThreadID,
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -70,11 +84,19 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, appErr.Error(), http.StatusInternalServerError)
 		}
 
-		channels = append(channels, ChannelState{
+		info := ChannelState{
 			ChannelID: channelID,
 			Enabled:   state.Enabled,
-			Users:     state.getUsers(),
-		})
+		}
+		if state.Call != nil {
+			info.Call = &Call{
+				ID:       state.Call.ID,
+				StartAt:  state.Call.StartAt,
+				Users:    state.Call.getUsers(),
+				ThreadID: state.Call.ThreadID,
+			}
+		}
+		channels = append(channels, info)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

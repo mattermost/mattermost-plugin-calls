@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
@@ -41,42 +44,56 @@ func newUserSession(userID, channelID string) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(userID, channelID string, userSession *session) (bool, error) {
+func (p *Plugin) addUserSession(userID, channelID string, userSession *session) (channelState, error) {
 	p.mut.Lock()
 	p.LogDebug("adding session", "UserID", userID, "ChannelID", channelID)
 	p.sessions[userID] = userSession
 	p.mut.Unlock()
 
-	var isFirst bool
+	var st channelState
 	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
 		}
-		if state.Users == nil {
-			state.Users = make(map[string]struct{})
+		if state.Call == nil {
+			state.Call = &callState{
+				ID:      model.NewId(),
+				StartAt: time.Now().UnixMilli(),
+				Users:   make(map[string]struct{}),
+			}
 		}
-		state.Users[userID] = struct{}{}
-		isFirst = len(state.Users) == 1
+		state.Call.Users[userID] = struct{}{}
+		st = *state
 		return state, nil
 	})
 
-	if err != nil {
-		return false, err
-	}
-
-	return isFirst, err
+	return st, err
 }
 
-func (p *Plugin) removeUserSession(userID, channelID string) error {
+func (p *Plugin) removeUserSession(userID, channelID string) (channelState, error) {
 	p.mut.Lock()
 	p.LogDebug("removing session", "UserID", userID, "ChannelID", channelID)
 	delete(p.sessions, userID)
 	p.mut.Unlock()
-	return p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+
+	var st channelState
+	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
 		}
-		delete(state.Users, userID)
+		if state.Call == nil {
+			return nil, fmt.Errorf("call state is missing from channel state")
+		}
+
+		delete(state.Call.Users, userID)
+
+		if len(state.Call.Users) == 0 {
+			state.Call = nil
+		}
+
+		st = *state
 		return state, nil
 	})
+
+	return st, err
 }

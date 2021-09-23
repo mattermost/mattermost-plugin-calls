@@ -5,14 +5,20 @@ import (
 	"fmt"
 )
 
-type channelState struct {
-	NodeID   string              `json:"node_id,omitempty"`
+type callState struct {
+	ID       string              `json:"id"`
 	Users    map[string]struct{} `json:"users,omitempty"`
+	StartAt  int64               `json:"create_at"`
 	ThreadID string              `json:"thread_id"`
-	Enabled  bool                `json:"enabled"`
 }
 
-func (cs *channelState) getUsers() []string {
+type channelState struct {
+	NodeID  string     `json:"node_id,omitempty"`
+	Enabled bool       `json:"enabled"`
+	Call    *callState `json:"call",omitempty"`
+}
+
+func (cs *callState) getUsers() []string {
 	var i int
 	users := make([]string, len(cs.Users))
 	for id := range cs.Users {
@@ -74,7 +80,7 @@ func (p *Plugin) cleanUpState() error {
 					return nil, nil
 				}
 				state.NodeID = ""
-				state.Users = nil
+				state.Call = nil
 				return state, nil
 			}); err != nil {
 				return fmt.Errorf("failed to clean up state: %w", err)
