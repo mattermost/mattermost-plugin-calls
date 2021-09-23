@@ -13,6 +13,7 @@ import {
     VOICE_CHANNEL_USER_UNMUTED,
     VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_USER_VOICE_OFF,
+    VOICE_CHANNEL_CALL_START,
 } from './action_types';
 
 const isVoiceEnabled = (state = false, action) => {
@@ -200,10 +201,23 @@ const voiceUsersStatuses = (state = {}, action) => {
     }
 };
 
+const callStartAt = (state = {}, action) => {
+    switch (action.type) {
+    case VOICE_CHANNEL_CALL_START:
+        return {
+            ...state,
+            [action.data.channelID]: action.data.startAt,
+        };
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     isVoiceEnabled,
     voiceConnectedChannels,
     connectedChannelID,
     voiceConnectedProfiles,
     voiceUsersStatuses,
+    callStartAt,
 });

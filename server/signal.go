@@ -21,6 +21,7 @@ const (
 	wsEventUserUnmuted      = "user_unmuted"
 	wsEventUserVoiceOn      = "user_voice_on"
 	wsEventUserVoiceOff     = "user_voice_off"
+	wsEventCallStart        = "call_start"
 
 	wsPingDuration = 10 * time.Second
 )
@@ -166,6 +167,12 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		if err := p.startNewCallThread(userID, channelID, state.Call.StartAt); err != nil {
 			p.LogError(err.Error())
 		}
+
+		// TODO: send all the info attached to a call.
+		p.API.PublishWebSocketEvent(wsEventCallStart, map[string]interface{}{
+			"channelID": channelID,
+			"start_at":  state.Call.StartAt,
+		}, &model.WebsocketBroadcast{ChannelId: channelID})
 	}
 
 	var wg sync.WaitGroup

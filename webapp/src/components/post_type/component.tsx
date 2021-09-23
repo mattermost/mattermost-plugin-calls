@@ -4,6 +4,8 @@ import PropTypes from 'prop-types';
 
 import {Channel} from 'mattermost-redux/types/channels';
 
+import moment from 'moment-timezone';
+
 import ActiveCallIcon from 'components/icons/active_call_icon';
 import CallIcon from 'components/icons/call_icon';
 import ConnectedProfiles from 'components/connected_profiles';
@@ -43,7 +45,7 @@ export default class PostType extends React.PureComponent {
                 </div>
                 <div style={style.messageWrapper}>
                     <span style={style.message}>{this.props.post.message}</span>
-                    <span style={style.duration}>{'5 minutes ago'}</span>
+                    <span style={style.duration}>{moment(this.props.post.props.start_at).fromNow()}</span>
                 </div>
                 <div style={style.profiles}>
                     <ConnectedProfiles

@@ -4,6 +4,8 @@ import PropTypes from 'prop-types';
 
 import {Channel} from 'mattermost-redux/types/channels';
 
+import moment from 'moment-timezone';
+
 import {newClient} from '../../connection';
 
 import ActiveCallIcon from 'components/icons/active_call_icon';
@@ -14,6 +16,7 @@ export default class ChannelCallToast extends React.PureComponent {
         currChannelID: PropTypes.string,
         connectedID: PropTypes.string,
         hasCall: PropTypes.bool.isRequired,
+        startAt: PropTypes.number,
         pictures: PropTypes.array,
         profiles: PropTypes.array,
     }
@@ -23,6 +26,21 @@ export default class ChannelCallToast extends React.PureComponent {
         this.state = {
             hidden: false,
         };
+    }
+
+    public componentDidMount() {
+      // This is needed to force a re-render to periodically update
+      // the start time.
+      const id = setInterval(() => this.forceUpdate(), 60000)
+      this.setState({
+        intervalID: id,
+      });
+    }
+
+    public componentWillUnmount() {
+      if (this.state.intervalID) {
+        clearInterval(this.state.intervalID)
+      }
     }
 
     onJoinCallClick = async () => {
@@ -60,7 +78,7 @@ export default class ChannelCallToast extends React.PureComponent {
                             style={{margin: '0 4px'}}
                         />
                         <span style={{margin: '0 4px'}}>{'Join Call'}</span>
-                        <span style={{opacity: '0.80', margin: '0 4px'}}>{'Started X minutes ago'}</span>
+                        <span style={{opacity: '0.80', margin: '0 4px'}}>{`Started ${moment(this.props.startAt).fromNow()}`}</span>
                         <div/>
                     </div>
 

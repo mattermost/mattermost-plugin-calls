@@ -36,3 +36,7 @@ export const voiceConnectedProfilesInChannel = (state, channelID) => {
 export const voiceUsersStatuses = (state) => {
     return getPluginState(state).voiceUsersStatuses[connectedChannelID(state)];
 };
+
+export const voiceChannelCallStartAt = (state, channelID) => {
+    return getPluginState(state).callStartAt[channelID];
+};
