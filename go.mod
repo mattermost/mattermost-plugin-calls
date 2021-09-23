@@ -1,4 +1,4 @@
-module github.com/mattermost/mattermost-plugin-talk
+module github.com/mattermost/mattermost-plugin-calls
 
 go 1.17
 

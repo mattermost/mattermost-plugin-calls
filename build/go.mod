@@ -1,4 +1,4 @@
-module github.com/mattermost/mattermost-plugin-talk/build
+module github.com/mattermost/mattermost-plugin-calls/build
 
 go 1.17
 

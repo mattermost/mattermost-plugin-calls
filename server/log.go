@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const pkgPath = "github.com/mattermost/mattermost-plugin-talk/server/"
+const pkgPath = "github.com/mattermost/mattermost-plugin-calls/server/"
 
 func getErrOrigin() string {
 	var origin string
