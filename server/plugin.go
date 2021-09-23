@@ -140,7 +140,7 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) startNewCallThread(userID, channelID string) error {
+func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64) error {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return appErr
@@ -166,6 +166,7 @@ func (p *Plugin) startNewCallThread(userID, channelID string) error {
 		Type:      "custom_calls",
 		Props: map[string]interface{}{
 			"attachments": []*model.SlackAttachment{&slackAttachment},
+			"start_at":    startAt,
 		},
 	}
 
@@ -178,7 +179,11 @@ func (p *Plugin) startNewCallThread(userID, channelID string) error {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
 		}
-		state.ThreadID = createdPost.Id
+		if state.Call == nil {
+			return nil, fmt.Errorf("call is missing from channel state")
+		}
+
+		state.Call.ThreadID = createdPost.Id
 		return state, nil
 	})
 	if err != nil {

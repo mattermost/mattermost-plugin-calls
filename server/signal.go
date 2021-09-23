@@ -157,13 +157,13 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 
 	us := newUserSession(userID, channelID)
 	us.wsConn = conn
-	if first, err := p.addUserSession(userID, channelID, us); err != nil {
+	if state, err := p.addUserSession(userID, channelID, us); err != nil {
 		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	} else if first {
+	} else if state.Call != nil && len(state.Call.Users) == 1 {
 		// new call has started
-		if err := p.startNewCallThread(userID, channelID); err != nil {
+		if err := p.startNewCallThread(userID, channelID, state.Call.StartAt); err != nil {
 			p.LogError(err.Error())
 		}
 	}
@@ -212,7 +212,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		p.LogDebug("done")
 	}
 
-	if err := p.removeUserSession(userID, channelID); err != nil {
+	if _, err := p.removeUserSession(userID, channelID); err != nil {
 		p.LogError(err.Error())
 	}
 

@@ -123,13 +123,14 @@ export default class Plugin {
                 registry.unregisterComponent(actionID);
                 try {
                     const resp = await axios.get(`${getPluginPath()}/${currChannelId}`);
+                    console.log(resp.data);
                     store.dispatch({
                         type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                     });
                     store.dispatch({
                         type: VOICE_CHANNEL_USERS_CONNECTED,
                         data: {
-                            users: resp.data.users,
+                            users: resp.data.call?.users,
                             channelID: currChannelId,
                         },
                     });
@@ -146,12 +147,13 @@ export default class Plugin {
 
                 try {
                     const resp = await axios.get(`${getPluginPath()}/channels`);
+                    console.log(resp.data);
                     let currentChannelData;
                     for (let i = 0; i < resp.data.length; i++) {
                         store.dispatch({
                             type: VOICE_CHANNEL_USERS_CONNECTED,
                             data: {
-                                users: resp.data[i].users,
+                                users: resp.data[i].call?.users,
                                 channelID: resp.data[i].channel_id,
                             },
                         });
@@ -159,11 +161,11 @@ export default class Plugin {
                             currentChannelData = resp.data[i];
                         }
                     }
-                    if (currentChannelData && currentChannelData.users.length > 0) {
+                    if (currentChannelData && currentChannelData.call?.users.length > 0) {
                         store.dispatch({
                             type: VOICE_CHANNEL_PROFILES_CONNECTED,
                             data: {
-                                profiles: await Client4.getProfilesByIds(currentChannelData.users),
+                                profiles: await Client4.getProfilesByIds(currentChannelData.call?.users),
                                 channelID: currentChannelData.channel_id,
                             },
                         });
