@@ -19,6 +19,7 @@ const manifestStr = `
   "min_server_version": "6.0.0",
   "server": {
     "executables": {
+      "darwin-amd64": "server/dist/plugin-darwin-amd64",
       "linux-amd64": "server/dist/plugin-linux-amd64"
     },
     "executable": ""
