@@ -51,7 +51,7 @@ export default class Plugin {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function
     public async initialize(registry: PluginRegistry, store: Store<GlobalState, Action<Record<string, unknown>>>) {
         registry.registerReducer(reducer);
-        registry.registerGlobalHeaderRightControlsComponent(GlobalHeaderRightControls);
+        registry.registerRootComponent(GlobalHeaderRightControls);
         registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
