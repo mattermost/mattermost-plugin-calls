@@ -9,7 +9,6 @@ import VoiceActivityDetector from './vad';
 
 export async function newClient(channelID: string, closeCb) {
     let peer = null;
-    let receiver = null;
     const streams = [];
 
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -57,10 +56,6 @@ export async function newClient(channelID: string, closeCb) {
             peer.destroy();
         }
 
-        if (receiver) {
-            receiver.destroy();
-        }
-
         if (closeCb) {
             closeCb();
         }
@@ -97,12 +92,8 @@ export async function newClient(channelID: string, closeCb) {
     ws.onopen = () => {
         peer = new Peer({initiator: true, stream, trickle: true});
         peer.on('signal', (data) => {
-            if (data.type === 'offer') {
-                ws.send(JSON.stringify({
-                    type: 'signal',
-                    data,
-                }));
-            } else if (data.type === 'answer') {
+            console.log('signal', data);
+            if (data.type === 'offer' || data.type === 'answer') {
                 ws.send(JSON.stringify({
                     type: 'signal',
                     data,
@@ -115,48 +106,37 @@ export async function newClient(channelID: string, closeCb) {
             }
         });
         peer.on('error', (err) => console.log(err));
+        peer.on('stream', (remoteStream) => {
+            console.log('new remote stream received');
+            console.log(remoteStream);
+
+            streams.push(remoteStream);
+
+            if (remoteStream.getAudioTracks().length > 0) {
+                const voiceTrack = remoteStream.getAudioTracks()[0];
+                console.log(voiceTrack);
+                const audioEl = document.createElement('audio');
+                audioEl.srcObject = remoteStream;
+                audioEl.controls = false;
+                audioEl.autoplay = true;
+                audioEl.style.display = 'none';
+
+                audioEl.onerror = (err) => console.log(err);
+
+                document.body.appendChild(audioEl);
+
+                voiceTrack.onended = () => {
+                    console.log('voice track ended');
+                    audioEl.remove();
+                };
+            }
+        });
+
         ws.onmessage = ({data}) => {
+            console.log('ws', data);
             const msg = JSON.parse(data);
-            if (msg.type === 'answer') {
+            if (msg.type === 'answer' || msg.type === 'offer') {
                 peer.signal(data);
-            } else if (msg.type === 'offer') {
-                if (receiver) {
-                    receiver.signal(data);
-                    return;
-                }
-
-                receiver = new Peer({trickle: true});
-                receiver.on('error', (err) => console.log(err));
-                receiver.on('signal', (signalData) => {
-                    if (signalData.type === 'offer') {
-                        ws.send(JSON.stringify({
-                            type: 'signal',
-                            data: signalData,
-                        }));
-                    } else if (signalData.type === 'answer') {
-                        ws.send(JSON.stringify({
-                            type: 'signal',
-                            data: signalData,
-                        }));
-                    }
-                });
-                receiver.signal(data);
-                receiver.on('stream', (remoteStream) => {
-                    streams.push(remoteStream);
-
-                    const audio = document.createElement('audio');
-                    audio.srcObject = remoteStream;
-                    audio.controls = false;
-                    audio.autoplay = true;
-                    audio.style.display = 'none';
-
-                    audio.onerror = (err) => console.log(err);
-
-                    document.body.appendChild(audio);
-                    receiver.on('close', () => {
-                        audio.remove();
-                    });
-                });
             }
         };
     };
