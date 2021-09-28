@@ -15,7 +15,7 @@ type callState struct {
 type channelState struct {
 	NodeID  string     `json:"node_id,omitempty"`
 	Enabled bool       `json:"enabled"`
-	Call    *callState `json:"call",omitempty"`
+	Call    *callState `json:"call,omitempty"`
 }
 
 func (cs *callState) getUsers() []string {
