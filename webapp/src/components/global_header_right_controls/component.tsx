@@ -11,10 +11,11 @@ import LeaveCallIcon from 'components/icons/leave_call_icon';
 import HorizontalDotsIcon from 'components/icons/horizontal_dots';
 import ParticipantsIcon from 'components/icons/participants';
 import ShowMoreIcon from 'components/icons/show_more';
+import CompassIcon from 'components/icons/compassIcon';
+
 
 import {handleFormattedTextClick} from 'browser_routing';
 import {getUserDisplayName} from 'utils';
-
 import './component.scss';
 
 export default class GlobalHeaderRightControls extends React.PureComponent {
@@ -146,7 +147,10 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
                 className='Menu'
                 style={{position: 'relative', left: '-100%'}}
             >
-                <ul className='Menu__content dropdown-menu'>
+                <ul
+                    className='Menu__content dropdown-menu'
+                    style={{bottom: 'calc(100% + 4px)', top: 'auto'}}
+                >
                     { renderParticipants() }
                 </ul>
             </div>
@@ -161,7 +165,10 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
         const {channel} = this.props;
         return (
             <div className='Menu'>
-                <ul className='Menu__content dropdown-menu'>
+                <ul
+                    className='Menu__content dropdown-menu'
+                    style={{bottom: 'calc(100% + 4px)', top: 'auto'}}
+                >
                     <li className='MenuItem'>
                         <span
                             className='MenuItem__primary-text'
@@ -176,57 +183,6 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
                             >{`~${channel.display_name}`}</a>
                         </span>
                     </li>
-
-                    <li className='MenuGroup menu-divider'/>
-
-                    {this.renderParticipantsList()}
-
-                    <li
-                        className='MenuItem'
-                        onClick={this.onParticipantsClick}
-                    >
-                        <button
-                            className='style--none'
-                            style={{display: 'flex', alignItems: 'center'}}
-                            onClick={this.onParticipantsButtonClick}
-                        >
-                            <ParticipantsIcon
-                                style={{width: '16px', height: '16px', marginRight: '8px'}}
-                                fill='rgba(61, 60, 64, 0.56)'
-                            />
-
-                            <span className='MenuItem__primary-text'>Participants</span>
-
-                            <div style={{display: 'flex', alignItems: 'center', marginLeft: 'auto', fontSize: '12px'}}>
-                                <span style={{color: 'rgba(61, 60, 64, 0.56)'}}>{this.props.profiles.length}</span>
-                                <ShowMoreIcon
-                                    style={{width: '11px', height: '11px', marginLeft: '4px'}}
-                                    fill='rgba(61, 60, 64, 0.56)'
-                                />
-                            </div>
-                        </button>
-                    </li>
-
-                    <li className='MenuGroup menu-divider'/>
-
-                    <li
-                        className='MenuItem'
-                        onClick={this.onDisconnectClick}
-                    >
-                        <button
-                            className='style--none'
-                            style={{display: 'flex', alignItems: 'center'}}
-                        >
-                            <LeaveCallIcon
-                                style={{width: '16px', height: '16px', marginRight: '8px'}}
-                                fill='#D24B4E'
-                            />
-                            <span
-                                className='MenuItem__primary-text'
-                                style={{color: '#D24B4E'}}
-                            >Leave call</span>
-                        </button>
-                    </li>
                 </ul>
             </div>
         );
@@ -235,10 +191,8 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
     renderProfiles = () => {
         return this.props.profiles.map((profile, idx) => {
             const status = this.props.statuses[profile.id];
-            let isMuted = true;
             let isSpeaking = false;
             if (status) {
-                isMuted = !status.unmuted;
                 isSpeaking = status.voice;
             }
 
@@ -247,28 +201,11 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
                     key={'call_profile_' + profile.id}
                     style={{position: 'relative', display: 'flex', height: 'auto', alignItems: 'center'}}
                 >
-                    <OverlayTrigger
-                        placement='bottom'
-                        overlay={
-                            <Tooltip id='tooltip-username'>
-                                { profile.username }
-                            </Tooltip>
-                        }
-                    >
-
-                        <Avatar
-                            size='sm'
-                            url={this.props.pictures[idx]}
-                            style={{boxShadow: isSpeaking ? '0 0 0 2px rgba(255, 255, 255, 0.7)' : ''}}
-                        />
-
-                    </OverlayTrigger>
-                    <div
-                        className='user_call_status'
-                        style={{display: isMuted ? 'block' : 'none', position: 'absolute', top: 'auto', bottom: '-4px', right: '-4px', fontSize: '12px', color: 'red'}}
-                    >
-                        <MutedIcon fill='red'/>
-                    </div>
+                    <Avatar
+                        size='sm'
+                        url={this.props.pictures[idx]}
+                        style={{boxShadow: isSpeaking ? '0 0 0 2px rgba(255, 255, 255, 0.7)' : ''}}
+                    />
                 </div>
             );
         });
@@ -290,70 +227,114 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
             >
                 <div style={style.status}>
 
-                    <div style={style.profiles}>
-                        {this.renderProfiles()}
+                    <div style={style.topBar}>
+                        <div style={style.profiles}>
+                            {this.renderProfiles()}
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '12px' }}><span style={{ fontWeight: '600' }}>Lance Riley</span> is talking...</div>
+                            <div style={style.callInfo}>
+                                <div style={{ fontWeight: '600' }}>3:39</div>
+                                <div style={{ margin: '0 2px 0 4px' }}>•</div>
+                                {this.props.channel.type === 'O' ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
+                                {this.props.channel.display_name}
+                            </div>
+                        </div>
                     </div>
 
-                    <div style={style.controls}>
-                        <OverlayTrigger
-                            key='mute'
-                            placement='bottom'
-                            overlay={
-                                <Tooltip id='tooltip-mute'>
-                                    { muteTooltipText }
-                                </Tooltip>
-                            }
-                        >
-                            <button
-                                id='voice-mute-unmute'
-                                className='cursor--pointer style--none'
-                                style={this.state.isMuted ? style.mutedButton : style.unmutedButton}
-                                onClick={this.onMuteToggle}
-                            >
-                                <MuteIcon
-                                    fill='rgba(255, 255, 255, 0.8)'
-                                    style={{width: '16px', height: '16px'}}
-                                />
-                            </button>
-                        </OverlayTrigger>
-
-                        {/* <OverlayTrigger */}
-                        {/*     key='disconnect' */}
-                        {/*     placement='bottom' */}
-                        {/*     overlay={ */}
-                        {/*         <Tooltip id='tooltip-disconnect'> */}
-                        {/*             {'Leave Call'} */}
-                        {/*         </Tooltip> */}
-                        {/*     } */}
-                        {/* > */}
-
-                        {/*     <button */}
-                        {/*         id='voice-disconnect' */}
-                        {/*         className='cursor--pointer style--none' */}
-                        {/*         style={style.disconnectButton} */}
-                        {/*         onClick={this.onDisconnectClick} */}
-                        {/*     > */}
-                        {/*         <LeaveCallIcon */}
-                        {/*             style={{width: '16px', height: '16px'}} */}
-                        {/*             fill='white' */}
-                        {/*         /> */}
-                        {/*     </button> */}
-                        {/* </OverlayTrigger> */}
-
+                    <div style={style.bottomBar}>
                         <button
-                            id='voice-menu'
-                            className='cursor--pointer style--none'
-                            style={style.menuButton}
-                            onClick={this.onMenuClick}
+                            className='style--none'
+                            style={{ display: 'flex', alignItems: 'center', padding: '0 8px', height: '28px', borderRadius: '4px', background: 'rgba(210, 75, 78, 0.04)'}}
+                            onClick={this.onDisconnectClick}
                         >
-                            <HorizontalDotsIcon
-                                style={{width: '16px', height: '16px'}}
-                                fill='white'
+                            <LeaveCallIcon
+                                style={{width: '16px', height: '16px', marginRight: '8px'}}
+                                fill='#D24B4E'
                             />
+                            <span
+                                className='MenuItem__primary-text'
+                                style={{color: '#D24B4E', fontSize: '12px', fontWeight: 600}}
+                            >Leave</span>
                         </button>
 
-                        {this.renderMenu()}
+                        <div>
+                            <div style={style.controls}>
+                                {/* <OverlayTrigger */}
+                                {/*     key='disconnect' */}
+                                {/*     placement='bottom' */}
+                                {/*     overlay={ */}
+                                {/*         <Tooltip id='tooltip-disconnect'> */}
+                                {/*             {'Leave Call'} */}
+                                {/*         </Tooltip> */}
+                                {/*     } */}
+                                {/* > */}
 
+                                {/*     <button */}
+                                {/*         id='voice-disconnect' */}
+                                {/*         className='cursor--pointer style--none' */}
+                                {/*         style={style.disconnectButton} */}
+                                {/*         onClick={this.onDisconnectClick} */}
+                                {/*     > */}
+                                {/*         <LeaveCallIcon */}
+                                {/*             style={{width: '16px', height: '16px'}} */}
+                                {/*             fill='white' */}
+                                {/*         /> */}
+                                {/*     </button> */}
+                                {/* </OverlayTrigger> */}
+
+                                <button
+                                    id='voice-menu'
+                                    className='cursor--pointer style--none button-controls'
+                                    style={style.menuButton}
+                                    onClick={this.onMenuClick}
+                                >
+                                    <HorizontalDotsIcon
+                                        style={{ width: '16px', height: '16px' }}
+                                    />
+                                </button>
+                                {this.renderMenu()}
+
+                                {this.renderParticipantsList()}
+
+                                <div
+                                    className='MenuItem'
+                                >
+                                    <button
+                                        className='style--none button-controls button-controls--wide'
+                                        style={{ display: 'flex', alignItems: 'center' }}
+                                        onClick={this.onParticipantsButtonClick}
+                                    >
+                                        <ParticipantsIcon
+                                            style={{ width: '16px', height: '16px', marginRight: '4px' }}
+                                        />
+
+                                        <span className='MenuItem__primary-text'>{this.props.profiles.length}</span>
+                                    </button>
+                                </div>
+
+                                <OverlayTrigger
+                                    key='mute'
+                                    placement='top'
+                                    overlay={
+                                        <Tooltip id='tooltip-mute'>
+                                            {muteTooltipText}
+                                        </Tooltip>
+                                    }
+                                >
+                                    <button
+                                        id='voice-mute-unmute'
+                                        className='cursor--pointer style--none button-controls'
+                                        style={this.state.isMuted ? style.mutedButton : style.unmutedButton}
+                                        onClick={this.onMuteToggle}
+                                    >
+                                        <MuteIcon
+                                            style={{ width: '16px', height: '16px' }}
+                                        />
+                                    </button>
+                                </OverlayTrigger>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -363,12 +344,29 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
 
 const style = {
     main: {
-        position: 'relative',
-        padding: '0 8px',
-        background: 'rgba(255, 255, 255, 0.08)',
-        borderRadius: '4px',
-        height: '32px',
+        position: 'fixed',
+        background: 'rgba(255, 255, 255, 1)',
+        borderRadius: '8px',
         display: 'flex',
+        bottom: '12px',
+        left: '12px',
+        width: '216px',
+        zIndex: '20',
+    },
+    topBar: {
+        background: 'rgba(63, 67, 80, 0.04)',
+        padding: '0 12px',
+        display: 'flex',
+        width: '100%',
+        alignItems: 'center',
+        height: '44px',
+    },
+    bottomBar: {
+        padding: '6px 8px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        width: '100%',
+        alignItems: 'center',
     },
     mutedButton: {
         display: 'flex',
@@ -402,6 +400,7 @@ const style = {
     },
     status: {
         display: 'flex',
+        flexDirection: 'column',
         justifyContent: 'space-between',
         alignItems: 'center',
         width: '100%',
@@ -410,9 +409,14 @@ const style = {
         display: 'flex',
         justifyContent: 'space-between',
     },
+    callInfo: {
+        display: 'flex',
+        fontSize: '10px',
+        opacity: '0.64',
+    },
     profiles: {
         display: 'flex',
-        marginRight: '16px',
+        marginRight: '8px',
     },
     menuButton: {
         display: 'flex',

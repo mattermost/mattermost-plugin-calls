@@ -1,9 +1,26 @@
-#voice-menu:hover {
-  background: rgba(255,255,255, 0.1);
-  color: rgba(255, 255, 255, 1.0);
-}
+.button-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  margin-left: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: rgba(63, 67, 80, 0.64);
 
-#voice-mute-unmute:hover {
-  background: rgba(255,255,255, 0.1);
-  color: rgba(255, 255, 255, 1.0);
+  &.button-controls--wide {
+    width: auto;
+    padding: 0 6px;
+  }
+
+  &:hover {
+    color: rgba(28, 88, 217);
+    background: rgba(28, 88, 217, 0.12);
+  }
+
+  svg {
+    fill: currentColor;
+  }
 }
