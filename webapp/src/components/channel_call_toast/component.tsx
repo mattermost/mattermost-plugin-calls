@@ -29,18 +29,18 @@ export default class ChannelCallToast extends React.PureComponent {
     }
 
     public componentDidMount() {
-      // This is needed to force a re-render to periodically update
-      // the start time.
-      const id = setInterval(() => this.forceUpdate(), 60000)
-      this.setState({
-        intervalID: id,
-      });
+        // This is needed to force a re-render to periodically update
+        // the start time.
+        const id = setInterval(() => this.forceUpdate(), 60000);
+        this.setState({
+            intervalID: id,
+        });
     }
 
     public componentWillUnmount() {
-      if (this.state.intervalID) {
-        clearInterval(this.state.intervalID)
-      }
+        if (this.state.intervalID) {
+            clearInterval(this.state.intervalID);
+        }
     }
 
     onJoinCallClick = async () => {
