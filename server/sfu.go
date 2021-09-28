@@ -15,74 +15,9 @@ var (
 	stunServers = []string{"stun:stun.l.google.com:19302", "stun:global.stun.twilio.com:3478"}
 )
 
-func (p *Plugin) newConnWithTracks(userSession *session, api *webrtc.API, tracks []*webrtc.TrackLocalStaticRTP) *webrtc.PeerConnection {
-	peerConnConfig := webrtc.Configuration{
-		ICEServers: []webrtc.ICEServer{
-			{
-				URLs: stunServers,
-			},
-		},
-	}
-
-	peerConn, err := api.NewPeerConnection(peerConnConfig)
-	if err != nil {
-		p.LogError(err.Error())
-		return nil
-	}
-
-	for _, track := range tracks {
-		if _, err := peerConn.AddTrack(track); err != nil {
-			p.LogError(err.Error())
-			return nil
-		}
-	}
-
-	offer, err := peerConn.CreateOffer(nil)
-	if err != nil {
-		p.LogError(err.Error())
-		return nil
-	}
-
-	err = peerConn.SetLocalDescription(offer)
-	if err != nil {
-		p.LogError(err.Error())
-		return nil
-	}
-
-	// FIXME: handle ICE trickle properly.
-	<-webrtc.GatheringCompletePromise(peerConn)
-
-	sdp, err := json.Marshal(peerConn.LocalDescription())
-	if err != nil {
-		p.LogError(err.Error())
-		return nil
-	}
-
-	userSession.wsOutCh <- sdp
-
-	var answer webrtc.SessionDescription
-	msg, ok := <-userSession.wsInCh
-	if !ok {
-		return nil
-	}
-
-	p.LogDebug(string(msg))
-	if err := json.Unmarshal(msg, &answer); err != nil {
-		p.LogError(err.Error())
-		return nil
-	}
-
-	if err := peerConn.SetRemoteDescription(answer); err != nil {
-		p.LogError(err.Error())
-		return nil
-	}
-
-	return peerConn
-}
-
 func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRTP) {
 	userSession.mut.RLock()
-	peerConn := userSession.outConn
+	peerConn := userSession.rtcConn
 	userSession.mut.RUnlock()
 
 	if _, err := peerConn.AddTrack(track); err != nil {
@@ -134,8 +69,8 @@ func (p *Plugin) getOtherTracks(userID, channelID string) []*webrtc.TrackLocalSt
 	for id, session := range p.sessions {
 		if id != userID && session.channelID == channelID {
 			session.mut.RLock()
-			if session.outTrack != nil {
-				tracks = append(tracks, session.outTrack)
+			if session.outVoiceTrack != nil {
+				tracks = append(tracks, session.outVoiceTrack)
 			}
 			session.mut.RUnlock()
 		}
@@ -153,9 +88,9 @@ func (p *Plugin) handleTracks(userID string) {
 	}
 
 	var m webrtc.MediaEngine
-	rtpCodec := webrtc.RTPCodecCapability{MimeType: "audio/opus", ClockRate: 48000, Channels: 2, SDPFmtpLine: "", RTCPFeedback: nil}
+	rtpAudioCodec := webrtc.RTPCodecCapability{MimeType: "audio/opus", ClockRate: 48000, Channels: 2, SDPFmtpLine: "minptime=10;useinbandfec=1", RTCPFeedback: nil}
 	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: rtpCodec,
+		RTPCodecCapability: rtpAudioCodec,
 		PayloadType:        111,
 	}, webrtc.RTPCodecTypeAudio); err != nil {
 		p.LogError(err.Error())
@@ -175,7 +110,7 @@ func (p *Plugin) handleTracks(userID string) {
 		return
 	}
 
-	outputTrack, err := webrtc.NewTrackLocalStaticRTP(rtpCodec, "audio", model.NewId())
+	outVoiceTrack, err := webrtc.NewTrackLocalStaticRTP(rtpAudioCodec, "voice", model.NewId())
 	if err != nil {
 		p.LogError(err.Error())
 		return
@@ -185,23 +120,14 @@ func (p *Plugin) handleTracks(userID string) {
 	userSession := p.sessions[userID]
 	p.mut.RUnlock()
 
-	userSession.outTrack = outputTrack
+	userSession.outVoiceTrack = outVoiceTrack
+	userSession.rtcConn = peerConn
 
 	p.mut.RLock()
 	for id, s := range p.sessions {
 		if id != userID && userSession.channelID == s.channelID {
 			p.mut.RUnlock()
-			s.mut.RLock()
-			outConn := s.outConn
-			s.mut.RUnlock()
-			if outConn == nil {
-				outConn = p.newConnWithTracks(s, api, p.getOtherTracks(id, s.channelID))
-				s.mut.Lock()
-				s.outConn = outConn
-				s.mut.Unlock()
-			} else {
-				p.addTrack(s, outputTrack)
-			}
+			p.addTrack(s, outVoiceTrack)
 			p.mut.RLock()
 		}
 	}
@@ -229,14 +155,13 @@ func (p *Plugin) handleTracks(userID string) {
 		p.LogDebug("Got remote track!!!")
 		p.LogDebug(fmt.Sprintf("%+v", remoteTrack.Codec().RTPCodecCapability))
 		p.LogDebug(fmt.Sprintf("Track has started, of type %d: %s", remoteTrack.PayloadType(), remoteTrack.Codec().MimeType))
-
 		for {
 			rtp, readErr := remoteTrack.ReadRTP()
 			if readErr != nil {
 				p.LogError(readErr.Error())
 				return
 			}
-			if err := outputTrack.WriteRTP(rtp); err != nil && !errors.Is(err, io.ErrClosedPipe) {
+			if err := outVoiceTrack.WriteRTP(rtp); err != nil && !errors.Is(err, io.ErrClosedPipe) {
 				p.LogError(err.Error())
 				return
 			}
@@ -286,10 +211,7 @@ func (p *Plugin) handleTracks(userID string) {
 	userSession.wsOutCh <- sdp
 
 	tracks := p.getOtherTracks(userID, userSession.channelID)
-	if len(tracks) > 0 {
-		outConn := p.newConnWithTracks(userSession, api, tracks)
-		userSession.mut.Lock()
-		userSession.outConn = outConn
-		userSession.mut.Unlock()
+	for _, t := range tracks {
+		p.addTrack(userSession, t)
 	}
 }
