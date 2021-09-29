@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react'
+import React from 'react';
 
 type Props = {
     icon: string,
@@ -13,5 +13,5 @@ export default function CompassIcon(props: Props): JSX.Element {
     // so not expecting that prefix in props.
     return (
         <i className={`CompassIcon icon-${props.icon} ${props.className}`}/>
-    )
+    );
 }
