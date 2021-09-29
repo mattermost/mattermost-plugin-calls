@@ -13,12 +13,13 @@ import ParticipantsIcon from 'components/icons/participants';
 import ShowMoreIcon from 'components/icons/show_more';
 import CompassIcon from 'components/icons/compassIcon';
 
+import moment from 'moment-timezone';
 
 import {handleFormattedTextClick} from 'browser_routing';
 import {getUserDisplayName} from 'utils';
 import './component.scss';
 
-export default class GlobalHeaderRightControls extends React.PureComponent {
+export default class CallWidget extends React.PureComponent {
     private node: React.RefObject<HTMLDivElement>;
 
     static propTypes = {
@@ -28,6 +29,7 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
         profiles: PropTypes.array,
         pictures: PropTypes.array,
         statuses: PropTypes.object,
+        callStartAt: PropTypes.number,
     }
 
     constructor(props) {
@@ -43,11 +45,20 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
     public componentDidMount() {
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
+        // This is needed to force a re-render to periodically update
+        // the start time.
+        const id = setInterval(() => this.forceUpdate(), 1000);
+        this.setState({
+            intervalID: id,
+        });
     }
 
     public componentWillUnmount() {
         document.removeEventListener('click', this.closeOnBlur, true);
         document.removeEventListener('keyup', this.keyboardClose, true);
+        if (this.state.intervalID) {
+            clearInterval(this.state.intervalID);
+        }
     }
 
     private keyboardClose = (e: KeyboardEvent) => {
@@ -61,6 +72,15 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
             return;
         }
         this.setState({showMenu: false});
+    }
+
+    getCallDuration = () => {
+      const dur = moment.utc(moment().diff(moment(this.props.callStartAt)));
+      if (dur.hours() === 0) {
+        return dur.format("mm:ss");
+      } else {
+        return dur.format("HH:mm:ss");
+      }
     }
 
     onMuteToggle = () => {
@@ -234,7 +254,7 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
                         <div>
                             <div style={{ fontSize: '12px' }}><span style={{ fontWeight: '600' }}>Lance Riley</span> is talking...</div>
                             <div style={style.callInfo}>
-                                <div style={{ fontWeight: '600' }}>3:39</div>
+                                <div style={{ fontWeight: '600' }}>{this.getCallDuration()}</div>
                                 <div style={{ margin: '0 2px 0 4px' }}>•</div>
                                 {this.props.channel.type === 'O' ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
                                 {this.props.channel.display_name}
@@ -260,29 +280,6 @@ export default class GlobalHeaderRightControls extends React.PureComponent {
 
                         <div>
                             <div style={style.controls}>
-                                {/* <OverlayTrigger */}
-                                {/*     key='disconnect' */}
-                                {/*     placement='bottom' */}
-                                {/*     overlay={ */}
-                                {/*         <Tooltip id='tooltip-disconnect'> */}
-                                {/*             {'Leave Call'} */}
-                                {/*         </Tooltip> */}
-                                {/*     } */}
-                                {/* > */}
-
-                                {/*     <button */}
-                                {/*         id='voice-disconnect' */}
-                                {/*         className='cursor--pointer style--none' */}
-                                {/*         style={style.disconnectButton} */}
-                                {/*         onClick={this.onDisconnectClick} */}
-                                {/*     > */}
-                                {/*         <LeaveCallIcon */}
-                                {/*             style={{width: '16px', height: '16px'}} */}
-                                {/*             fill='white' */}
-                                {/*         /> */}
-                                {/*     </button> */}
-                                {/* </OverlayTrigger> */}
-
                                 <button
                                     id='voice-menu'
                                     className='cursor--pointer style--none button-controls'
@@ -381,10 +378,7 @@ const style = {
         width: '24px',
         background: '#3DB887',
         borderRadius: '4px',
-    },
-    mutedIcon: {
-    },
-    unmutedIcon: {
+        color: 'white',
     },
     disconnectButton: {
         display: 'flex',
