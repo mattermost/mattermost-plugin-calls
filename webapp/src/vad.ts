@@ -41,6 +41,10 @@ export default class VoiceActivityDetector extends EventEmitter {
             });
             const avg = sum / frequencies.length;
 
+            if (!this.startTime) {
+                this.startTime = Date.now();
+            }
+
             if (Date.now() < (this.startTime + config.noiseCaptureMs)) {
                 noiseSamples.push(avg);
                 return;
@@ -51,6 +55,9 @@ export default class VoiceActivityDetector extends EventEmitter {
                 noiseSamples = [];
 
                 // console.log('noise avg', noiseAvg);
+
+                this.stop();
+                this.emit('ready');
             }
 
             if (avg > noiseAvg * config.noiseMultiplier) {
@@ -69,11 +76,12 @@ export default class VoiceActivityDetector extends EventEmitter {
                 this.emit('stop');
             }
         };
+
+        this.start();
     }
 
     start() {
         // console.log('vad start');
-        this.startTime = Date.now();
         this.isActive = false;
         if (this.sourceNode) {
             this.sourceNode.connect(this.analyserNode);
