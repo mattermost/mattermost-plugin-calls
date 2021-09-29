@@ -5,13 +5,13 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {Client4} from 'mattermost-redux/client';
 
-import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses} from 'selectors';
+import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelCallStartAt} from 'selectors';
 
 import {disconnectVoice} from 'actions';
 
 import {getChannelURL} from 'utils';
 
-import GlobalHeaderRightControls from './component';
+import CallWidget from './component';
 
 const mapStateToProps = (state) => {
     const profiles = voiceConnectedProfiles(state);
@@ -34,8 +34,9 @@ const mapStateToProps = (state) => {
         profiles,
         pictures,
         statuses: voiceUsersStatuses(state) || {},
+        callStartAt: voiceChannelCallStartAt(state, channel?.id),
     };
 };
 
-export default connect(mapStateToProps)(GlobalHeaderRightControls);
+export default connect(mapStateToProps)(CallWidget);
 
