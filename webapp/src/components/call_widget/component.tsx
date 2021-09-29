@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
+import moment from 'moment-timezone';
+
 import Avatar, {TAvatarSizeToken} from '../avatar';
 
 import MutedIcon from 'components/icons/muted_icon';
@@ -12,8 +14,6 @@ import HorizontalDotsIcon from 'components/icons/horizontal_dots';
 import ParticipantsIcon from 'components/icons/participants';
 import ShowMoreIcon from 'components/icons/show_more';
 import CompassIcon from 'components/icons/compassIcon';
-
-import moment from 'moment-timezone';
 
 import {handleFormattedTextClick} from 'browser_routing';
 import {getUserDisplayName} from 'utils';
@@ -45,6 +45,7 @@ export default class CallWidget extends React.PureComponent {
     public componentDidMount() {
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
+
         // This is needed to force a re-render to periodically update
         // the start time.
         const id = setInterval(() => this.forceUpdate(), 1000);
@@ -75,12 +76,11 @@ export default class CallWidget extends React.PureComponent {
     }
 
     getCallDuration = () => {
-      const dur = moment.utc(moment().diff(moment(this.props.callStartAt)));
-      if (dur.hours() === 0) {
-        return dur.format("mm:ss");
-      } else {
-        return dur.format("HH:mm:ss");
-      }
+        const dur = moment.utc(moment().diff(moment(this.props.callStartAt)));
+        if (dur.hours() === 0) {
+            return dur.format('mm:ss');
+        }
+        return dur.format('HH:mm:ss');
     }
 
     onMuteToggle = () => {
@@ -252,10 +252,10 @@ export default class CallWidget extends React.PureComponent {
                             {this.renderProfiles()}
                         </div>
                         <div>
-                            <div style={{ fontSize: '12px' }}><span style={{ fontWeight: '600' }}>Lance Riley</span> is talking...</div>
+                            <div style={{fontSize: '12px'}}><span style={{fontWeight: '600'}}>Lance Riley</span> is talking...</div>
                             <div style={style.callInfo}>
-                                <div style={{ fontWeight: '600' }}>{this.getCallDuration()}</div>
-                                <div style={{ margin: '0 2px 0 4px' }}>•</div>
+                                <div style={{fontWeight: '600'}}>{this.getCallDuration()}</div>
+                                <div style={{margin: '0 2px 0 4px'}}>•</div>
                                 {this.props.channel.type === 'O' ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
                                 {this.props.channel.display_name}
                             </div>
@@ -265,7 +265,7 @@ export default class CallWidget extends React.PureComponent {
                     <div style={style.bottomBar}>
                         <button
                             className='style--none'
-                            style={{ display: 'flex', alignItems: 'center', padding: '0 8px', height: '28px', borderRadius: '4px', background: 'rgba(210, 75, 78, 0.04)'}}
+                            style={{display: 'flex', alignItems: 'center', padding: '0 8px', height: '28px', borderRadius: '4px', background: 'rgba(210, 75, 78, 0.04)'}}
                             onClick={this.onDisconnectClick}
                         >
                             <LeaveCallIcon
@@ -287,7 +287,7 @@ export default class CallWidget extends React.PureComponent {
                                     onClick={this.onMenuClick}
                                 >
                                     <HorizontalDotsIcon
-                                        style={{ width: '16px', height: '16px' }}
+                                        style={{width: '16px', height: '16px'}}
                                     />
                                 </button>
                                 {this.renderMenu()}
@@ -299,11 +299,11 @@ export default class CallWidget extends React.PureComponent {
                                 >
                                     <button
                                         className='style--none button-controls button-controls--wide'
-                                        style={{ display: 'flex', alignItems: 'center' }}
+                                        style={{display: 'flex', alignItems: 'center'}}
                                         onClick={this.onParticipantsButtonClick}
                                     >
                                         <ParticipantsIcon
-                                            style={{ width: '16px', height: '16px', marginRight: '4px' }}
+                                            style={{width: '16px', height: '16px', marginRight: '4px'}}
                                         />
 
                                         <span className='MenuItem__primary-text'>{this.props.profiles.length}</span>
@@ -326,7 +326,7 @@ export default class CallWidget extends React.PureComponent {
                                         onClick={this.onMuteToggle}
                                     >
                                         <MuteIcon
-                                            style={{ width: '16px', height: '16px' }}
+                                            style={{width: '16px', height: '16px'}}
                                         />
                                     </button>
                                 </OverlayTrigger>
