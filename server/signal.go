@@ -66,6 +66,7 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 		switch msg.Type {
 		case clientMessageTypeSignal:
 			// if I am not the handler for this we relay the signaling message.
+			p.LogDebug(string(msg.Data))
 			if handlerID != p.nodeID {
 				// need to relay signaling.
 				if err := p.sendClusterMessage(clusterMessage{
