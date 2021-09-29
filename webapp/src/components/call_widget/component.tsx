@@ -165,11 +165,11 @@ export default class CallWidget extends React.PureComponent {
         return (
             <div
                 className='Menu'
-                style={{position: 'relative', left: '-100%'}}
+                style={{}}
             >
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={{bottom: 'calc(100% + 4px)', top: 'auto'}}
+                    style={{bottom: 'calc(100% + 4px)', top: 'auto', width: '100%', minWidth: 'revert'}}
                 >
                     { renderParticipants() }
                 </ul>
@@ -247,12 +247,13 @@ export default class CallWidget extends React.PureComponent {
             >
                 <div style={style.status}>
 
+                    {this.renderParticipantsList()}
+
                     <div style={style.topBar}>
                         <div style={style.profiles}>
                             {this.renderProfiles()}
                         </div>
                         <div>
-                            <div style={{fontSize: '12px'}}><span style={{fontWeight: '600'}}>Lance Riley</span> is talking...</div>
                             <div style={style.callInfo}>
                                 <div style={{fontWeight: '600'}}>{this.getCallDuration()}</div>
                                 <div style={{margin: '0 2px 0 4px'}}>•</div>
@@ -291,8 +292,6 @@ export default class CallWidget extends React.PureComponent {
                                     />
                                 </button>
                                 {this.renderMenu()}
-
-                                {this.renderParticipantsList()}
 
                                 <div
                                     className='MenuItem'
