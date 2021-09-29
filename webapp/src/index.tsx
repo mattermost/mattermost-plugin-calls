@@ -19,7 +19,7 @@ import {newClient} from './connection';
 
 import ChannelHeaderButton from './components/channel_header_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
-import GlobalHeaderRightControls from './components/global_header_right_controls';
+import CallWidget from './components/call_widget';
 import ChannelHeaderTooltip from './components/channel_header_button_tooltip';
 import ChannelLinkLabel from './components/channel_link_label';
 import ChannelCallToast from './components/channel_call_toast';
@@ -51,7 +51,7 @@ export default class Plugin {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function
     public async initialize(registry: PluginRegistry, store: Store<GlobalState, Action<Record<string, unknown>>>) {
         registry.registerReducer(reducer);
-        registry.registerGlobalHeaderRightControlsComponent(GlobalHeaderRightControls);
+        registry.registerRootComponent(CallWidget);
         registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
