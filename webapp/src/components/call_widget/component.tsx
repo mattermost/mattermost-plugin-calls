@@ -117,6 +117,24 @@ export default class CallWidget extends React.PureComponent {
         });
     }
 
+    renderSpeaking = () => {
+        let speakingProfile;
+        for (let i = 0; i < this.props.profiles.length; i++) {
+            const profile = this.props.profiles[i];
+            const status = this.props.statuses[profile.id];
+            if (status?.voice) {
+                speakingProfile = profile;
+                break;
+            }
+        }
+        if (!speakingProfile) {
+            return null;
+        }
+        return (
+            <div style={{fontSize: '12px'}}><span style={{fontWeight: '600'}}>{getUserDisplayName(speakingProfile)}</span> is talking...</div>
+        );
+    }
+
     renderParticipantsList = () => {
         if (!this.state.showParticipantsList) {
             return null;
@@ -209,26 +227,29 @@ export default class CallWidget extends React.PureComponent {
     }
 
     renderProfiles = () => {
-        return this.props.profiles.map((profile, idx) => {
+        let speakingPictureURL;
+        for (let i = 0; i < this.props.profiles.length; i++) {
+            const profile = this.props.profiles[i];
             const status = this.props.statuses[profile.id];
-            let isSpeaking = false;
-            if (status) {
-                isSpeaking = status.voice;
+            if (status?.voice) {
+                speakingPictureURL = this.props.pictures[i];
+                break;
             }
+        }
+        if (!speakingPictureURL) {
+            return null;
+        }
 
-            return (
-                <div
-                    key={'call_profile_' + profile.id}
-                    style={{position: 'relative', display: 'flex', height: 'auto', alignItems: 'center'}}
-                >
-                    <Avatar
-                        size='sm'
-                        url={this.props.pictures[idx]}
-                        style={{boxShadow: isSpeaking ? '0 0 0 2px rgba(255, 255, 255, 0.7)' : ''}}
-                    />
-                </div>
-            );
-        });
+        return (
+            <div
+                style={{position: 'relative', display: 'flex', height: 'auto', alignItems: 'center'}}
+            >
+                <Avatar
+                    size='sm'
+                    url={speakingPictureURL}
+                />
+            </div>
+        );
     }
 
     render() {
@@ -254,6 +275,7 @@ export default class CallWidget extends React.PureComponent {
                             {this.renderProfiles()}
                         </div>
                         <div>
+                            {this.renderSpeaking()}
                             <div style={style.callInfo}>
                                 <div style={{fontWeight: '600'}}>{this.getCallDuration()}</div>
                                 <div style={{margin: '0 2px 0 4px'}}>•</div>
