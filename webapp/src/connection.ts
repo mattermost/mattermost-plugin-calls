@@ -17,7 +17,6 @@ export async function newClient(channelID: string, closeCb) {
     });
 
     const audioTrack = stream.getAudioTracks()[0];
-    audioTrack.enabled = false;
     streams.push(stream);
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -27,22 +26,25 @@ export async function newClient(channelID: string, closeCb) {
     const audioCtx = new AudioContext();
     const voiceDetector = new VoiceActivityDetector(audioCtx, stream);
 
-    const ws = new WebSocket(getWSConnectionURL(channelID));
+    voiceDetector.on('ready', () => {
+        audioTrack.enabled = false;
+        voiceDetector.on('start', () => {
+            if (ws) {
+                ws.send(JSON.stringify({
+                    type: 'voice_on',
+                }));
+            }
+        });
+        voiceDetector.on('stop', () => {
+            if (ws) {
+                ws.send(JSON.stringify({
+                    type: 'voice_off',
+                }));
+            }
+        });
+    });
 
-    voiceDetector.on('start', () => {
-        if (ws) {
-            ws.send(JSON.stringify({
-                type: 'voice_on',
-            }));
-        }
-    });
-    voiceDetector.on('stop', () => {
-        if (ws) {
-            ws.send(JSON.stringify({
-                type: 'voice_off',
-            }));
-        }
-    });
+    const ws = new WebSocket(getWSConnectionURL(channelID));
 
     const disconnect = () => {
         streams.forEach((s) => {
