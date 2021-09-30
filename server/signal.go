@@ -21,10 +21,49 @@ const (
 	wsEventUserUnmuted      = "user_unmuted"
 	wsEventUserVoiceOn      = "user_voice_on"
 	wsEventUserVoiceOff     = "user_voice_off"
+	wsEventUserScreenOn     = "user_screen_on"
+	wsEventUserScreenOff    = "user_screen_off"
 	wsEventCallStart        = "call_start"
 
 	wsPingDuration = 10 * time.Second
 )
+
+func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, userID string) error {
+	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+		if state == nil {
+			return nil, fmt.Errorf("channel state is missing from store")
+		}
+		if state.Call == nil {
+			return nil, fmt.Errorf("call state is missing from channel state")
+		}
+
+		if msg.Type == clientMessageTypeScreenOn {
+			if state.Call.ScreenSharingID != "" {
+				return nil, fmt.Errorf("cannot start screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
+			}
+			state.Call.ScreenSharingID = userID
+		} else {
+			if state.Call.ScreenSharingID != userID {
+				return nil, fmt.Errorf("cannot stop screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
+			}
+			state.Call.ScreenSharingID = ""
+		}
+
+		return state, nil
+	}); err != nil {
+		return err
+	}
+
+	if msg.Type == clientMessageTypeScreenOn {
+		p.API.PublishWebSocketEvent(wsEventUserScreenOn, map[string]interface{}{
+			"userID": userID,
+		}, &model.WebsocketBroadcast{ChannelId: channelID})
+	} else {
+		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID})
+	}
+
+	return nil
+}
 
 func (p *Plugin) wsWriter(us *session, doneCh chan struct{}) {
 	pingTicker := time.NewTicker(wsPingDuration)
@@ -109,6 +148,10 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 			p.API.PublishWebSocketEvent(evType, map[string]interface{}{
 				"userID": us.userID,
 			}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+		case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
+			if err := p.handleClientMessageTypeScreen(msg, us.channelID, us.userID); err != nil {
+				p.LogError(err.Error())
+			}
 		}
 	}
 }

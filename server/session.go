@@ -85,6 +85,10 @@ func (p *Plugin) removeUserSession(userID, channelID string) (channelState, erro
 			return nil, fmt.Errorf("call state is missing from channel state")
 		}
 
+		if state.Call.ScreenSharingID == userID {
+			state.Call.ScreenSharingID = ""
+		}
+
 		delete(state.Call.Users, userID)
 
 		if len(state.Call.Users) == 0 {

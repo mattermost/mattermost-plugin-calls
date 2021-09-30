@@ -42,6 +42,8 @@ import {
     VOICE_CHANNEL_USER_VOICE_OFF,
     VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_USER_SCREEN_ON,
+    VOICE_CHANNEL_USER_SCREEN_OFF,
 } from './action_types';
 
 // eslint-disable-next-line import/no-unresolved
@@ -82,7 +84,7 @@ export default class Plugin {
 
                     if (!connectedChannelID(store.getState())) {
                         try {
-                            window.voiceClient = await newClient(channel.id);
+                            window.callsClient = await newClient(channel.id);
                         } catch (err) {
                             console.log(err);
                         }
@@ -295,12 +297,31 @@ export default class Plugin {
                 },
             });
         });
+
+        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_screen_on`, (ev) => {
+            store.dispatch({
+                type: VOICE_CHANNEL_USER_SCREEN_ON,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                    userID: ev.data.userID,
+                },
+            });
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_screen_off`, (ev) => {
+            store.dispatch({
+                type: VOICE_CHANNEL_USER_SCREEN_OFF,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                },
+            });
+        });
     }
 
     uninitialize() {
-        if (window.voiceClient) {
-            window.voiceClient.disconnect();
-            delete window.voiceClient;
+        if (window.callsClient) {
+            window.callsClient.disconnect();
+            delete window.callsClient;
         }
     }
 }

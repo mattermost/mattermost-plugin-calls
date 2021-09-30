@@ -49,7 +49,7 @@ export default class ChannelCallToast extends React.PureComponent {
         }
 
         try {
-            window.voiceClient = await newClient(this.props.currChannelID);
+            window.callsClient = await newClient(this.props.currChannelID);
         } catch (err) {
             console.log(err);
         }

@@ -10,12 +10,14 @@ type clientMessage struct {
 }
 
 const (
-	clientMessageTypeSignal   = "signal"
-	clientMessageTypeICE      = "ice"
-	clientMessageTypeMute     = "mute"
-	clientMessageTypeUnmute   = "unmute"
-	clientMessageTypeVoiceOn  = "voice_on"
-	clientMessageTypeVoiceOff = "voice_off"
+	clientMessageTypeSignal    = "signal"
+	clientMessageTypeICE       = "ice"
+	clientMessageTypeMute      = "mute"
+	clientMessageTypeUnmute    = "unmute"
+	clientMessageTypeVoiceOn   = "voice_on"
+	clientMessageTypeVoiceOff  = "voice_off"
+	clientMessageTypeScreenOn  = "screen_on"
+	clientMessageTypeScreenOff = "screen_off"
 )
 
 func (m *clientMessage) ToJSON() ([]byte, error) {
