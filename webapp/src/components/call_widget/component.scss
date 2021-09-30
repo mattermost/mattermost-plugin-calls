@@ -1,4 +1,4 @@
-.button-controls {
+%button-controls {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -13,6 +13,10 @@
     width: auto;
     padding: 0 6px;
   }
+}
+
+.button-controls {
+  @extend %button-controls;
 
   &:hover {
     color: rgba(28, 88, 217);
@@ -21,5 +25,13 @@
 
   svg {
     fill: currentColor;
+  }
+}
+
+.button-controls-disabled {
+  @extend %button-controls;
+
+  svg {
+    fill: rgba(63, 67, 80, 0.34);
   }
 }
