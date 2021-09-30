@@ -454,6 +454,7 @@ const style = {
         bottom: '12px',
         left: '12px',
         zIndex: '20',
+        border: '1px solid rgba(63, 67, 80, 0.3)',
     },
     topBar: {
         background: 'rgba(63, 67, 80, 0.04)',
