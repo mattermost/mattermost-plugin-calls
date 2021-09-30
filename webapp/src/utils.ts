@@ -54,3 +54,26 @@ export function getUserDisplayName(user) {
 
     return user.username;
 }
+
+export function getPixelRatio() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const bsr = ctx.webkitBackingStorePixelRatio ||
+    ctx.mozBackingStorePixelRatio ||
+    ctx.msBackingStorePixelRatio ||
+    ctx.oBackingStorePixelRatio ||
+    ctx.backingStorePixelRatio || 1;
+    canvas.remove();
+    return dpr / bsr;
+}
+
+export function getScreenResolution() {
+    const pixelRatio = getPixelRatio();
+    const width = Math.ceil((pixelRatio * window.screen.width) / 8.0) * 8;
+    const height = Math.ceil((pixelRatio * window.screen.height) / 8.0) * 8;
+    return {
+        width,
+        height,
+    };
+}

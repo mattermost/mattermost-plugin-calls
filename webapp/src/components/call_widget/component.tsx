@@ -42,6 +42,7 @@ export default class CallWidget extends React.PureComponent {
             showParticipantsList: false,
         };
         this.node = React.createRef();
+        this.screenPlayer = React.createRef();
     }
 
     public componentDidMount() {
@@ -61,6 +62,13 @@ export default class CallWidget extends React.PureComponent {
         document.removeEventListener('keyup', this.keyboardClose, true);
         if (this.state.intervalID) {
             clearInterval(this.state.intervalID);
+        }
+    }
+
+    public componentDidUpdate(prevProps) {
+        if (!prevProps.screenSharingID && this.props.screenSharingID === this.props.currentUserID) {
+            console.log(this.screenPlayer);
+            this.screenPlayer.current.srcObject = this.state.screenStream;
         }
     }
 
@@ -85,11 +93,14 @@ export default class CallWidget extends React.PureComponent {
         return dur.format('HH:mm:ss');
     }
 
-    onShareScreenToggle = () => {
+    onShareScreenToggle = async () => {
         if (this.props.screenSharingID === this.props.currentUserID) {
             window.callsClient.unshareScreen();
         } else if (!this.props.screenSharingID) {
-            window.callsClient.shareScreen();
+            const stream = await window.callsClient.shareScreen();
+            this.setState({
+                screenStream: stream,
+            });
         }
     }
 
@@ -155,11 +166,16 @@ export default class CallWidget extends React.PureComponent {
                     className='Menu__content dropdown-menu'
                     style={style.screenSharingPanel}
                 >
-
                     <div
-                        id='screen-player'
                         style={{width: '192px', height: '108px', background: '#C4C4C4'}}
-                    />
+                    >
+                        <video
+                            ref={this.screenPlayer}
+                            width='100%'
+                            height='100%'
+                            autoPlay={true}
+                        />
+                    </div>
                     <span style={{marginTop: 'auto', color: 'rgba(63, 67, 80, 0.72)', fontSize: '12px'}}>{msg}</span>
                 </ul>
             </div>

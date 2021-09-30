@@ -2,13 +2,13 @@ import Peer from 'simple-peer';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {getWSConnectionURL} from './utils';
-import {VOICE_CHANNEL_USER_CONNECTED} from './action_types';
+import {getWSConnectionURL, getScreenResolution} from './utils';
 
 import VoiceActivityDetector from './vad';
 
 export async function newClient(channelID: string, closeCb) {
     let peer = null;
+    let localScreenTrack;
     const streams = [];
 
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -89,20 +89,58 @@ export async function newClient(channelID: string, closeCb) {
         }
     };
 
-    const shareScreen = () => {
-        if (ws) {
-            ws.send(JSON.stringify({
-                type: 'screen_on',
-            }));
+    const shareScreen = async () => {
+        let screenStream;
+        if (!ws) {
+            return screenStream;
         }
-    };
 
-    const unshareScreen = () => {
-        if (ws) {
+        try {
+            const resolution = getScreenResolution();
+            screenStream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    cursor: 'always',
+                    width: resolution.width / 2,
+                },
+                audio: false,
+            });
+        } catch (err) {
+            console.log(err);
+            return screenStream;
+        }
+
+        streams.push(screenStream);
+        const screenTrack = screenStream.getVideoTracks()[0];
+        localScreenTrack = screenTrack;
+        screenTrack.onended = () => {
+            if (!ws) {
+                return;
+            }
             ws.send(JSON.stringify({
                 type: 'screen_off',
             }));
+        };
+
+        ws.send(JSON.stringify({
+            type: 'screen_on',
+        }));
+
+        return screenStream;
+    };
+
+    const unshareScreen = () => {
+        if (!ws) {
+            return;
         }
+
+        if (localScreenTrack) {
+            localScreenTrack.stop();
+            localScreenTrack = null;
+        }
+
+        ws.send(JSON.stringify({
+            type: 'screen_off',
+        }));
     };
 
     ws.onerror = (err) => console.log(err);
