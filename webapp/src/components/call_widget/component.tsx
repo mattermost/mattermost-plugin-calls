@@ -38,7 +38,6 @@ export default class CallWidget extends React.PureComponent {
         super(props);
         this.state = {
             isMuted: true,
-            isSharingScreen: false,
             showMenu: false,
             showParticipantsList: false,
         };
@@ -87,12 +86,10 @@ export default class CallWidget extends React.PureComponent {
     }
 
     onShareScreenToggle = () => {
-        if (this.state.isSharingScreen) {
+        if (this.props.screenSharingID === this.props.currentUserID) {
             window.callsClient.unshareScreen();
-            this.setState({isSharingScreen: false});
-        } else {
+        } else if (!this.props.screenSharingID) {
             window.callsClient.shareScreen();
-            this.setState({isSharingScreen: true});
         }
     }
 
@@ -113,7 +110,6 @@ export default class CallWidget extends React.PureComponent {
         window.callsClient.disconnect();
         this.setState({
             isMuted: true,
-            isSharingScreen: false,
             showMenu: false,
             showParticipantsList: false,
         });
@@ -132,22 +128,24 @@ export default class CallWidget extends React.PureComponent {
     }
 
     renderScreenSharingPanel = () => {
-        if (!this.state.isSharingScreen && !this.props.screenSharingID) {
+        if (!this.props.screenSharingID) {
             return null;
         }
 
         let profile;
-        if (!this.state.isSharingScreen && this.props.screenSharingID) {
-          this.props.profiles.filter
-          for (let i = 0; i < this.props.profiles.length; i++) {
-            if (this.props.profiles[i].id === this.props.screenSharingID) {
-              profile = this.props.profiles[i];
-              break;
+        if (this.props.screenSharingID !== this.props.currentUserID) {
+            for (let i = 0; i < this.props.profiles.length; i++) {
+                if (this.props.profiles[i].id === this.props.screenSharingID) {
+                    profile = this.props.profiles[i];
+                    break;
+                }
             }
-          }
+            if (!profile) {
+                return null;
+            }
         }
 
-        const msg = this.state.isSharingScreen ? 'You are sharing your screen' : `Your are viewing ${getUserDisplayName(profile)}'s screen`;
+        const msg = this.props.screenSharingID === this.props.currentUserID ? 'You are sharing your screen' : `Your are viewing ${getUserDisplayName(profile)}'s screen`;
         return (
             <div
                 className='Menu'
@@ -165,6 +163,39 @@ export default class CallWidget extends React.PureComponent {
                     <span style={{marginTop: 'auto', color: 'rgba(63, 67, 80, 0.72)', fontSize: '12px'}}>{msg}</span>
                 </ul>
             </div>
+        );
+    }
+
+    renderScreenShareButton = () => {
+        const sharingID = this.props.screenSharingID;
+        const currentID = this.props.currentUserID;
+        const isSharing = sharingID === currentID;
+
+        return (
+
+            <OverlayTrigger
+                key='share_screen'
+                placement='top'
+                overlay={
+                    <Tooltip
+                        id='tooltip-mute'
+                        style={{display: sharingID && !isSharing ? 'none' : ''}}
+                    >
+                        {isSharing ? 'Stop sharing' : 'Share screen'}
+                    </Tooltip>
+                }
+            >
+                <button
+                    className={`style--none ${!sharingID || isSharing ? 'button-controls' : 'button-controls-disabled'} button-controls--wide`}
+                    disabled={sharingID && !isSharing}
+                    style={{background: isSharing ? '#D24B4E' : ''}}
+                    onClick={this.onShareScreenToggle}
+                >
+                    <ScreenIcon
+                        style={{width: '16px', height: '16px', fill: isSharing ? 'white' : ''}}
+                    />
+                </button>
+            </OverlayTrigger>
         );
     }
 
@@ -324,9 +355,9 @@ export default class CallWidget extends React.PureComponent {
             >
                 <div style={style.status}>
 
+                    {this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
                     {this.renderMenu()}
-                    {this.renderScreenSharingPanel()}
 
                     <div style={style.topBar}>
                         <div style={style.profiles}>
@@ -385,26 +416,7 @@ export default class CallWidget extends React.PureComponent {
                             >{this.props.profiles.length}</span>
                         </button>
 
-                        <OverlayTrigger
-                            key='share_screen'
-                            placement='top'
-                            overlay={
-                                <Tooltip id='tooltip-mute'>
-                                    {this.state.isSharingScreen ? 'Stop sharing' : 'Share screen'}
-                                </Tooltip>
-                            }
-                        >
-
-                            <button
-                                className='style--none button-controls button-controls--wide'
-                                style={{background: this.state.isSharingScreen ? '#D24B4E' : ''}}
-                                onClick={this.onShareScreenToggle}
-                            >
-                                <ScreenIcon
-                                    style={{width: '16px', height: '16px', fill: this.state.isSharingScreen ? 'white' : 'inherit'}}
-                                />
-                            </button>
-                        </OverlayTrigger>
+                        {this.renderScreenShareButton()}
 
                         <OverlayTrigger
                             key='mute'
