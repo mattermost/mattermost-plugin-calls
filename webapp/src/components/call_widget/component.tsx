@@ -187,7 +187,7 @@ export default class CallWidget extends React.PureComponent {
             >
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={{bottom: 'calc(100% + 4px)', top: 'auto', width: '100%', minWidth: 'revert'}}
+                    style={{bottom: 'calc(100% + 4px)', top: 'auto', width: '100%', minWidth: 'revert', maxWidth: 'revert'}}
                 >
                     { renderParticipants() }
                 </ul>
@@ -261,14 +261,20 @@ export default class CallWidget extends React.PureComponent {
         const muteIconStyle = this.state.isMuted ? style.MutedIcon : style.UnmutedIcon;
         const muteTooltipText = this.state.isMuted ? 'Unmute' : 'Mute';
 
+        const mainWidth = document.querySelector('.team-sidebar') ? '280px' : '216px';
+
         return (
             <div
-                style={style.main}
+              style={{
+              ...style.main,
+              width: mainWidth,
+              }}
                 ref={this.node}
             >
                 <div style={style.status}>
 
                     {this.renderParticipantsList()}
+                    {this.renderMenu()}
 
                     <div style={style.topBar}>
                         <div style={style.profiles}>
@@ -287,72 +293,63 @@ export default class CallWidget extends React.PureComponent {
 
                     <div style={style.bottomBar}>
                         <button
-                            className='style--none'
-                            style={{display: 'flex', alignItems: 'center', padding: '0 8px', height: '28px', borderRadius: '4px', background: 'rgba(210, 75, 78, 0.04)'}}
+                            className='style--none button-controls button-controls--wide'
+                            style={style.leaveCallButton}
                             onClick={this.onDisconnectClick}
                         >
                             <LeaveCallIcon
-                                style={{width: '16px', height: '16px', marginRight: '8px'}}
+                                style={{width: '16px', height: '16px'}}
                                 fill='#D24B4E'
                             />
                             <span
                                 className='MenuItem__primary-text'
-                                style={{color: '#D24B4E', fontSize: '12px', fontWeight: 600}}
+                                style={{color: '#D24B4E', fontSize: '12px', fontWeight: 600, marginLeft: '8px'}}
                             >Leave</span>
                         </button>
 
-                        <div>
-                            <div style={style.controls}>
-                                <button
-                                    id='voice-menu'
-                                    className='cursor--pointer style--none button-controls'
-                                    style={style.menuButton}
-                                    onClick={this.onMenuClick}
-                                >
-                                    <HorizontalDotsIcon
-                                        style={{width: '16px', height: '16px'}}
-                                    />
-                                </button>
-                                {this.renderMenu()}
+                        <button
+                            id='voice-menu'
+                            className='cursor--pointer style--none button-controls'
+                            style={style.menuButton}
+                            onClick={this.onMenuClick}
+                        >
+                            <HorizontalDotsIcon
+                                style={{width: '16px', height: '16px'}}
+                            />
+                        </button>
 
-                                <div
-                                    className='MenuItem'
-                                >
-                                    <button
-                                        className='style--none button-controls button-controls--wide'
-                                        style={{display: 'flex', alignItems: 'center'}}
-                                        onClick={this.onParticipantsButtonClick}
-                                    >
-                                        <ParticipantsIcon
-                                            style={{width: '16px', height: '16px', marginRight: '4px'}}
-                                        />
+                        <button
+                            className='style--none button-controls button-controls--wide'
+                            style={{display: 'flex', alignItems: 'center'}}
+                            onClick={this.onParticipantsButtonClick}
+                        >
+                            <ParticipantsIcon
+                                style={{width: '16px', height: '16px', marginRight: '4px'}}
+                            />
 
-                                        <span className='MenuItem__primary-text'>{this.props.profiles.length}</span>
-                                    </button>
-                                </div>
+                            <span className='MenuItem__primary-text'>{this.props.profiles.length}</span>
+                        </button>
 
-                                <OverlayTrigger
-                                    key='mute'
-                                    placement='top'
-                                    overlay={
-                                        <Tooltip id='tooltip-mute'>
-                                            {muteTooltipText}
-                                        </Tooltip>
-                                    }
-                                >
-                                    <button
-                                        id='voice-mute-unmute'
-                                        className='cursor--pointer style--none button-controls'
-                                        style={this.state.isMuted ? style.mutedButton : style.unmutedButton}
-                                        onClick={this.onMuteToggle}
-                                    >
-                                        <MuteIcon
-                                            style={{width: '16px', height: '16px'}}
-                                        />
-                                    </button>
-                                </OverlayTrigger>
-                            </div>
-                        </div>
+                        <OverlayTrigger
+                            key='mute'
+                            placement='top'
+                            overlay={
+                                <Tooltip id='tooltip-mute'>
+                                    {muteTooltipText}
+                                </Tooltip>
+                            }
+                        >
+                            <button
+                                id='voice-mute-unmute'
+                                className='cursor--pointer style--none button-controls'
+                                style={this.state.isMuted ? style.mutedButton : style.unmutedButton}
+                                onClick={this.onMuteToggle}
+                            >
+                                <MuteIcon
+                                    style={{width: '16px', height: '16px'}}
+                                />
+                            </button>
+                        </OverlayTrigger>
                     </div>
                 </div>
             </div>
@@ -368,7 +365,7 @@ const style = {
         display: 'flex',
         bottom: '12px',
         left: '12px',
-        width: '216px',
+        // width: '216px',
         zIndex: '20',
     },
     topBar: {
@@ -382,7 +379,7 @@ const style = {
     bottomBar: {
         padding: '6px 8px',
         display: 'flex',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         width: '100%',
         alignItems: 'center',
     },
@@ -420,13 +417,9 @@ const style = {
         alignItems: 'center',
         width: '100%',
     },
-    controls: {
-        display: 'flex',
-        justifyContent: 'space-between',
-    },
     callInfo: {
         display: 'flex',
-        fontSize: '10px',
+        fontSize: '11px',
         opacity: '0.64',
     },
     profiles: {
@@ -439,7 +432,6 @@ const style = {
         alignItems: 'center',
         color: 'color: rgba(255, 255, 255, 0.8)',
         fontSize: '14px',
-        margin: '0 8px',
         width: '24px',
         height: '24px',
     },
@@ -447,5 +439,15 @@ const style = {
         position: 'absolute',
         background: 'white',
         color: 'black',
+    },
+    leaveCallButton: {
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 8px',
+        height: '28px',
+        borderRadius: '4px',
+        color: '#D24B4E',
+        background: 'rgba(210, 75, 78, 0.04)',
+        marginRight: 'auto',
     },
 };
