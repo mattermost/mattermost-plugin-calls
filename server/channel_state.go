@@ -6,10 +6,11 @@ import (
 )
 
 type callState struct {
-	ID       string              `json:"id"`
-	Users    map[string]struct{} `json:"users,omitempty"`
-	StartAt  int64               `json:"create_at"`
-	ThreadID string              `json:"thread_id"`
+	ID              string              `json:"id"`
+	StartAt         int64               `json:"create_at"`
+	Users           map[string]struct{} `json:"users,omitempty"`
+	ThreadID        string              `json:"thread_id"`
+	ScreenSharingID string              `json:"screen_sharing_id"`
 }
 
 type channelState struct {

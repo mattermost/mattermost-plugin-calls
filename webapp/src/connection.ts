@@ -89,6 +89,22 @@ export async function newClient(channelID: string, closeCb) {
         }
     };
 
+    const shareScreen = () => {
+        if (ws) {
+            ws.send(JSON.stringify({
+                type: 'screen_on',
+            }));
+        }
+    };
+
+    const unshareScreen = () => {
+        if (ws) {
+            ws.send(JSON.stringify({
+                type: 'screen_off',
+            }));
+        }
+    };
+
     ws.onerror = (err) => console.log(err);
 
     ws.onopen = () => {
@@ -147,5 +163,7 @@ export async function newClient(channelID: string, closeCb) {
         disconnect,
         mute,
         unmute,
+        shareScreen,
+        unshareScreen,
     };
 }

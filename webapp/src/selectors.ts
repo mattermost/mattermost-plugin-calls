@@ -1,4 +1,3 @@
-
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 
@@ -39,4 +38,8 @@ export const voiceUsersStatuses = (state) => {
 
 export const voiceChannelCallStartAt = (state, channelID) => {
     return getPluginState(state).callStartAt[channelID];
+};
+
+export const voiceChannelScreenSharingID = (state, channelID) => {
+    return getPluginState(state).voiceChannelScreenSharingID[channelID];
 };

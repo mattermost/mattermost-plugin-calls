@@ -14,6 +14,7 @@ import HorizontalDotsIcon from 'components/icons/horizontal_dots';
 import ParticipantsIcon from 'components/icons/participants';
 import ShowMoreIcon from 'components/icons/show_more';
 import CompassIcon from 'components/icons/compassIcon';
+import ScreenIcon from 'components/icons/screen_icon';
 
 import {handleFormattedTextClick} from 'browser_routing';
 import {getUserDisplayName} from 'utils';
@@ -30,12 +31,14 @@ export default class CallWidget extends React.PureComponent {
         pictures: PropTypes.array,
         statuses: PropTypes.object,
         callStartAt: PropTypes.number,
+        screenSharingID: PropTypes.string,
     }
 
     constructor(props) {
         super(props);
         this.state = {
             isMuted: true,
+            isSharingScreen: false,
             showMenu: false,
             showParticipantsList: false,
         };
@@ -83,23 +86,34 @@ export default class CallWidget extends React.PureComponent {
         return dur.format('HH:mm:ss');
     }
 
+    onShareScreenToggle = () => {
+        if (this.state.isSharingScreen) {
+            window.callsClient.unshareScreen();
+            this.setState({isSharingScreen: false});
+        } else {
+            window.callsClient.shareScreen();
+            this.setState({isSharingScreen: true});
+        }
+    }
+
     onMuteToggle = () => {
         if (this.state.isMuted) {
             console.log('unmute');
-            window.voiceClient.unmute();
+            window.callsClient.unmute();
             this.setState({isMuted: false});
         } else {
             console.log('mute!');
-            window.voiceClient.mute();
+            window.callsClient.mute();
             this.setState({isMuted: true});
         }
     }
 
     onDisconnectClick = () => {
         console.log('disconnect!');
-        window.voiceClient.disconnect();
+        window.callsClient.disconnect();
         this.setState({
             isMuted: true,
+            isSharingScreen: false,
             showMenu: false,
             showParticipantsList: false,
         });
@@ -115,6 +129,43 @@ export default class CallWidget extends React.PureComponent {
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
         });
+    }
+
+    renderScreenSharingPanel = () => {
+        if (!this.state.isSharingScreen && !this.props.screenSharingID) {
+            return null;
+        }
+
+        let profile;
+        if (!this.state.isSharingScreen && this.props.screenSharingID) {
+          this.props.profiles.filter
+          for (let i = 0; i < this.props.profiles.length; i++) {
+            if (this.props.profiles[i].id === this.props.screenSharingID) {
+              profile = this.props.profiles[i];
+              break;
+            }
+          }
+        }
+
+        const msg = this.state.isSharingScreen ? 'You are sharing your screen' : `Your are viewing ${getUserDisplayName(profile)}'s screen`;
+        return (
+            <div
+                className='Menu'
+                style={{}}
+            >
+                <ul
+                    className='Menu__content dropdown-menu'
+                    style={style.screenSharingPanel}
+                >
+
+                    <div
+                        id='screen-player'
+                        style={{width: '192px', height: '108px', background: '#C4C4C4'}}
+                    />
+                    <span style={{marginTop: 'auto', color: 'rgba(63, 67, 80, 0.72)', fontSize: '12px'}}>{msg}</span>
+                </ul>
+            </div>
+        );
     }
 
     renderSpeaking = () => {
@@ -265,16 +316,17 @@ export default class CallWidget extends React.PureComponent {
 
         return (
             <div
-              style={{
-              ...style.main,
-              width: mainWidth,
-              }}
+                style={{
+                    ...style.main,
+                    width: mainWidth,
+                }}
                 ref={this.node}
             >
                 <div style={style.status}>
 
                     {this.renderParticipantsList()}
                     {this.renderMenu()}
+                    {this.renderScreenSharingPanel()}
 
                     <div style={style.topBar}>
                         <div style={style.profiles}>
@@ -320,15 +372,39 @@ export default class CallWidget extends React.PureComponent {
 
                         <button
                             className='style--none button-controls button-controls--wide'
-                            style={{display: 'flex', alignItems: 'center'}}
+                            style={{display: 'flex', alignItems: 'center', color: this.state.showParticipantsList ? 'white' : '', background: this.state.showParticipantsList ? '#1C58D9' : ''}}
                             onClick={this.onParticipantsButtonClick}
                         >
                             <ParticipantsIcon
                                 style={{width: '16px', height: '16px', marginRight: '4px'}}
                             />
 
-                            <span className='MenuItem__primary-text'>{this.props.profiles.length}</span>
+                            <span
+                                className='MenuItem__primary-text'
+                                style={{fontWeight: '600'}}
+                            >{this.props.profiles.length}</span>
                         </button>
+
+                        <OverlayTrigger
+                            key='share_screen'
+                            placement='top'
+                            overlay={
+                                <Tooltip id='tooltip-mute'>
+                                    {this.state.isSharingScreen ? 'Stop sharing' : 'Share screen'}
+                                </Tooltip>
+                            }
+                        >
+
+                            <button
+                                className='style--none button-controls button-controls--wide'
+                                style={{background: this.state.isSharingScreen ? '#D24B4E' : ''}}
+                                onClick={this.onShareScreenToggle}
+                            >
+                                <ScreenIcon
+                                    style={{width: '16px', height: '16px', fill: this.state.isSharingScreen ? 'white' : 'inherit'}}
+                                />
+                            </button>
+                        </OverlayTrigger>
 
                         <OverlayTrigger
                             key='mute'
@@ -365,7 +441,6 @@ const style = {
         display: 'flex',
         bottom: '12px',
         left: '12px',
-        // width: '216px',
         zIndex: '20',
     },
     topBar: {
@@ -439,6 +514,17 @@ const style = {
         position: 'absolute',
         background: 'white',
         color: 'black',
+    },
+    screenSharingPanel: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        bottom: 'calc(100% + 4px)',
+        top: 'auto',
+        width: '100%',
+        height: '150px',
+        minWidth: 'revert',
+        maxWidth: 'revert',
     },
     leaveCallButton: {
         display: 'flex',

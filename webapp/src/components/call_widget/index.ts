@@ -5,7 +5,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {Client4} from 'mattermost-redux/client';
 
-import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelCallStartAt} from 'selectors';
+import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelCallStartAt, voiceChannelScreenSharingID} from 'selectors';
 
 import {disconnectVoice} from 'actions';
 
@@ -35,6 +35,7 @@ const mapStateToProps = (state) => {
         pictures,
         statuses: voiceUsersStatuses(state) || {},
         callStartAt: voiceChannelCallStartAt(state, channel?.id),
+        screenSharingID: voiceChannelScreenSharingID(state, channel?.id),
     };
 };
 
