@@ -8,12 +8,55 @@ import (
 
 	"github.com/mattermost/mattermost-server/v6/model"
 
+	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
 
 var (
 	stunServers = []string{"stun:stun.l.google.com:19302", "stun:global.stun.twilio.com:3478"}
 )
+
+func (p *Plugin) handleSignaling(us *session, msg []byte) error {
+	us.mut.RLock()
+	peerConn := us.rtcConn
+	us.mut.RUnlock()
+
+	var offer webrtc.SessionDescription
+	if err := json.Unmarshal(msg, &offer); err != nil {
+		return err
+	}
+
+	p.LogDebug(string(msg))
+
+	if err := peerConn.SetRemoteDescription(offer); err != nil {
+		return err
+	}
+
+	answer, err := peerConn.CreateAnswer(nil)
+	if err != nil {
+		return err
+	}
+
+	if err := peerConn.SetLocalDescription(answer); err != nil {
+		return err
+	}
+
+	// FIXME: handle ICE trickle properly.
+	<-webrtc.GatheringCompletePromise(peerConn)
+
+	p.LogDebug("gather complete!")
+
+	sdp, err := json.Marshal(peerConn.LocalDescription())
+	if err != nil {
+		return err
+	}
+
+	p.LogDebug(string(sdp))
+
+	us.wsOutCh <- sdp
+
+	return nil
+}
 
 func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRTP) {
 	userSession.mut.RLock()
@@ -62,23 +105,7 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 	}
 }
 
-func (p *Plugin) getOtherTracks(userID, channelID string) []*webrtc.TrackLocalStaticRTP {
-	var tracks []*webrtc.TrackLocalStaticRTP
-	p.mut.RLock()
-	defer p.mut.RUnlock()
-	for id, session := range p.sessions {
-		if id != userID && session.channelID == channelID {
-			session.mut.RLock()
-			if session.outVoiceTrack != nil {
-				tracks = append(tracks, session.outVoiceTrack)
-			}
-			session.mut.RUnlock()
-		}
-	}
-	return tracks
-}
-
-func (p *Plugin) handleTracks(userID string) {
+func (p *Plugin) initRTCConn(userID string) {
 	peerConnConfig := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
@@ -88,11 +115,36 @@ func (p *Plugin) handleTracks(userID string) {
 	}
 
 	var m webrtc.MediaEngine
-	rtpAudioCodec := webrtc.RTPCodecCapability{MimeType: "audio/opus", ClockRate: 48000, Channels: 2, SDPFmtpLine: "minptime=10;useinbandfec=1", RTCPFeedback: nil}
+	rtpAudioCodec := webrtc.RTPCodecCapability{
+		MimeType:     "audio/opus",
+		ClockRate:    48000,
+		Channels:     2,
+		SDPFmtpLine:  "minptime=10;useinbandfec=1",
+		RTCPFeedback: nil,
+	}
 	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
 		RTPCodecCapability: rtpAudioCodec,
 		PayloadType:        111,
 	}, webrtc.RTPCodecTypeAudio); err != nil {
+		p.LogError(err.Error())
+		return
+	}
+	rtpVideoCodec := webrtc.RTPCodecCapability{
+		MimeType:    "video/VP8",
+		ClockRate:   90000,
+		Channels:    0,
+		SDPFmtpLine: "",
+		RTCPFeedback: []webrtc.RTCPFeedback{
+			{Type: "goog-remb", Parameter: ""},
+			{Type: "ccm", Parameter: "fir"},
+			{Type: "nack", Parameter: ""},
+			{Type: "nack", Parameter: "pli"},
+		},
+	}
+	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
+		RTPCodecCapability: rtpVideoCodec,
+		PayloadType:        96,
+	}, webrtc.RTPCodecTypeVideo); err != nil {
 		p.LogError(err.Error())
 		return
 	}
@@ -127,7 +179,7 @@ func (p *Plugin) handleTracks(userID string) {
 	for id, s := range p.sessions {
 		if id != userID && userSession.channelID == s.channelID {
 			p.mut.RUnlock()
-			p.addTrack(s, outVoiceTrack)
+			s.tracksCh <- outVoiceTrack
 			p.mut.RLock()
 		}
 	}
@@ -155,63 +207,106 @@ func (p *Plugin) handleTracks(userID string) {
 		p.LogDebug("Got remote track!!!")
 		p.LogDebug(fmt.Sprintf("%+v", remoteTrack.Codec().RTPCodecCapability))
 		p.LogDebug(fmt.Sprintf("Track has started, of type %d: %s", remoteTrack.PayloadType(), remoteTrack.Codec().MimeType))
-		for {
-			rtp, readErr := remoteTrack.ReadRTP()
-			if readErr != nil {
-				p.LogError(readErr.Error())
-				return
+
+		if remoteTrack.Codec().MimeType == rtpAudioCodec.MimeType {
+			for {
+				rtp, _, readErr := remoteTrack.ReadRTP()
+				if readErr != nil {
+					p.LogError(readErr.Error())
+					return
+				}
+				if err := outVoiceTrack.WriteRTP(rtp); err != nil && !errors.Is(err, io.ErrClosedPipe) {
+					p.LogError(err.Error())
+					return
+				}
 			}
-			if err := outVoiceTrack.WriteRTP(rtp); err != nil && !errors.Is(err, io.ErrClosedPipe) {
+		} else if remoteTrack.Codec().MimeType == rtpVideoCodec.MimeType {
+			outScreenTrack, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodec, "screen", model.NewId())
+			if err != nil {
 				p.LogError(err.Error())
 				return
+			}
+			userSession.mut.Lock()
+			userSession.outScreenTrack = outScreenTrack
+			userSession.remoteScreenTrack = remoteTrack
+			userSession.mut.Unlock()
+
+			p.mut.RLock()
+			for id, s := range p.sessions {
+				if id != userID && userSession.channelID == s.channelID {
+					p.mut.RUnlock()
+					s.tracksCh <- outScreenTrack
+					if err := peerConn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}}); err != nil {
+						p.LogError(err.Error())
+					}
+					p.mut.RLock()
+				}
+			}
+			p.mut.RUnlock()
+
+			for {
+				rtp, _, readErr := remoteTrack.ReadRTP()
+				if readErr != nil {
+					p.LogError(readErr.Error())
+					return
+				}
+				if err := outScreenTrack.WriteRTP(rtp); err != nil && !errors.Is(err, io.ErrClosedPipe) {
+					p.LogError(err.Error())
+					return
+				}
 			}
 		}
 	})
 
-	var offer webrtc.SessionDescription
 	msg, ok := <-userSession.wsInCh
 	if !ok {
 		return
 	}
-	p.LogDebug(string(msg))
-	if err := json.Unmarshal(msg, &offer); err != nil {
+
+	if err := p.handleSignaling(userSession, msg); err != nil {
 		p.LogError(err.Error())
-		return
 	}
+}
 
-	if err := peerConn.SetRemoteDescription(offer); err != nil {
-		p.LogError(err.Error())
-		return
+func (p *Plugin) handleTracks(us *session) {
+	p.mut.RLock()
+	for id, session := range p.sessions {
+		if id != us.userID && session.channelID == us.channelID {
+			session.mut.RLock()
+			outVoiceTrack := session.outVoiceTrack
+			outScreenTrack := session.outScreenTrack
+			session.mut.RUnlock()
+			if outVoiceTrack != nil {
+				p.mut.RUnlock()
+				p.addTrack(us, outVoiceTrack)
+				p.mut.RLock()
+			}
+			if outScreenTrack != nil {
+				p.mut.RUnlock()
+				p.addTrack(us, outScreenTrack)
+				p.mut.RLock()
+				if err := session.rtcConn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(session.remoteScreenTrack.SSRC())}}); err != nil {
+					p.LogError(err.Error())
+				}
+			}
+		}
 	}
+	p.mut.RUnlock()
 
-	answer, err := peerConn.CreateAnswer(nil)
-	if err != nil {
-		p.LogError(err.Error())
-		return
-	}
-
-	if err := peerConn.SetLocalDescription(answer); err != nil {
-		p.LogError(err.Error())
-		return
-	}
-
-	// FIXME: handle ICE trickle properly.
-	<-webrtc.GatheringCompletePromise(peerConn)
-
-	p.LogDebug("gather complete!")
-
-	sdp, err := json.Marshal(peerConn.LocalDescription())
-	if err != nil {
-		p.LogError(err.Error())
-		return
-	}
-
-	p.LogDebug(string(sdp))
-
-	userSession.wsOutCh <- sdp
-
-	tracks := p.getOtherTracks(userID, userSession.channelID)
-	for _, t := range tracks {
-		p.addTrack(userSession, t)
+	for {
+		select {
+		case track, ok := <-us.tracksCh:
+			if !ok {
+				return
+			}
+			p.addTrack(us, track)
+		case msg, ok := <-us.wsInCh:
+			if !ok {
+				return
+			}
+			if err := p.handleSignaling(us, msg); err != nil {
+				p.LogError(err.Error())
+			}
+		}
 	}
 }

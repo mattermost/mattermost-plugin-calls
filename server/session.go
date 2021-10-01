@@ -31,8 +31,11 @@ type session struct {
 	wsConn  *websocket.Conn
 
 	// WebRTC
-	outVoiceTrack *webrtc.TrackLocalStaticRTP
-	rtcConn       *webrtc.PeerConnection
+	outVoiceTrack     *webrtc.TrackLocalStaticRTP
+	outScreenTrack    *webrtc.TrackLocalStaticRTP
+	remoteScreenTrack *webrtc.TrackRemote
+	rtcConn           *webrtc.PeerConnection
+	tracksCh          chan *webrtc.TrackLocalStaticRTP
 }
 
 func newUserSession(userID, channelID string) *session {
@@ -41,6 +44,7 @@ func newUserSession(userID, channelID string) *session {
 		channelID: channelID,
 		wsInCh:    make(chan []byte, wsChSize),
 		wsOutCh:   make(chan []byte, wsChSize),
+		tracksCh:  make(chan *webrtc.TrackLocalStaticRTP, 5),
 	}
 }
 

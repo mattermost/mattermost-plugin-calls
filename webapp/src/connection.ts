@@ -91,16 +91,17 @@ export async function newClient(channelID: string, closeCb) {
 
     const shareScreen = async () => {
         let screenStream;
-        if (!ws) {
+        if (!ws || !peer) {
             return screenStream;
         }
 
         try {
             const resolution = getScreenResolution();
+            console.log(resolution);
             screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: {
-                    cursor: 'always',
-                    width: resolution.width / 2,
+                    frameRate: 10,
+                    width: (resolution.width / 16) * 10,
                 },
                 audio: false,
             });
@@ -113,13 +114,16 @@ export async function newClient(channelID: string, closeCb) {
         const screenTrack = screenStream.getVideoTracks()[0];
         localScreenTrack = screenTrack;
         screenTrack.onended = () => {
-            if (!ws) {
+            if (!ws || !peer) {
                 return;
             }
+            peer.removeStream(screenStream);
             ws.send(JSON.stringify({
                 type: 'screen_off',
             }));
         };
+
+        peer.addStream(screenStream);
 
         ws.send(JSON.stringify({
             type: 'screen_on',
@@ -185,6 +189,10 @@ export async function newClient(channelID: string, closeCb) {
                     console.log('voice track ended');
                     audioEl.remove();
                 };
+            } else if (remoteStream.getVideoTracks().length > 0) {
+                console.log('video track!');
+                const videoEl = document.getElementById('screen-player');
+                videoEl.srcObject = remoteStream;
             }
         });
 
