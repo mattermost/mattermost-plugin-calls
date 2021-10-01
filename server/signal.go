@@ -226,7 +226,9 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			p.handleTracks(userID)
+			p.initRTCConn(userID)
+			p.LogDebug("initRTCConn DONE")
+			p.handleTracks(us)
 			p.LogDebug("handleTracks DONE")
 		}()
 	} else {
@@ -266,6 +268,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 	if _, err := p.removeUserSession(userID, channelID); err != nil {
 		p.LogError(err.Error())
 	}
+	close(us.tracksCh)
 
 	if handlerID != nodeID {
 		if err := p.sendClusterMessage(clusterMessage{

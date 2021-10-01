@@ -35,7 +35,9 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		p.handleTracks(msg.UserID)
+		p.initRTCConn(msg.UserID)
+		p.LogDebug("initRTCConn DONE")
+		p.handleTracks(us)
 		p.LogDebug("handleTracks DONE")
 	}()
 

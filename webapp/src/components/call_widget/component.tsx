@@ -170,6 +170,7 @@ export default class CallWidget extends React.PureComponent {
                         style={{width: '192px', height: '108px', background: '#C4C4C4'}}
                     >
                         <video
+                            id='screen-player'
                             ref={this.screenPlayer}
                             width='100%'
                             height='100%'
