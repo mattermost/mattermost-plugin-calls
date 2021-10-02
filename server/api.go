@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/http/pprof"
 	"regexp"
+	"strings"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
@@ -180,6 +182,17 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 }
 
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/debug/pprof/profile") {
+		pprof.Profile(w, r)
+		return
+	} else if strings.HasPrefix(r.URL.Path, "/debug/pprof/trace") {
+		pprof.Trace(w, r)
+		return
+	} else if strings.HasPrefix(r.URL.Path, "/debug/pprof") {
+		pprof.Index(w, r)
+		return
+	}
+
 	if r.Header.Get("Mattermost-User-Id") == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
