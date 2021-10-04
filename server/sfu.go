@@ -112,6 +112,7 @@ func (p *Plugin) initRTCConn(userID string) {
 				URLs: stunServers,
 			},
 		},
+		SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 	}
 
 	var m webrtc.MediaEngine
