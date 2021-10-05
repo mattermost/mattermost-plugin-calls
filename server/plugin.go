@@ -80,7 +80,7 @@ func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterE
 }
 
 func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
-	p.LogDebug("got cluster event", ev.Id)
+	p.LogDebug("got cluster event", "type", ev.Id)
 
 	var msg clusterMessage
 	if err := msg.FromJSON(ev.Data); err != nil {
