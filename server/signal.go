@@ -174,24 +174,6 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 	}
 	p.mut.RUnlock()
 
-	var handlerID string
-	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil {
-			return nil, fmt.Errorf("channel state is missing from store")
-		}
-		if state.NodeID == "" {
-			state.NodeID = nodeID
-			handlerID = nodeID
-			return state, nil
-		}
-		handlerID = state.NodeID
-		return nil, nil
-	}); err != nil {
-		p.LogError(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		p.LogError(err.Error())
@@ -202,11 +184,16 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 
 	us := newUserSession(userID, channelID)
 	us.wsConn = conn
-	if state, err := p.addUserSession(userID, channelID, us); err != nil {
+
+	var handlerID string
+	state, err := p.addUserSession(userID, channelID, us)
+	if err != nil {
 		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	} else if state.Call != nil && len(state.Call.Users) == 1 {
+	}
+	handlerID = state.NodeID
+	if state.Call != nil && len(state.Call.Users) == 1 {
 		// new call has started
 		if err := p.startNewCallThread(userID, channelID, state.Call.StartAt); err != nil {
 			p.LogError(err.Error())
