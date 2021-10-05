@@ -47,6 +47,9 @@ func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, use
 				return nil, fmt.Errorf("cannot stop screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
 			}
 			state.Call.ScreenSharingID = ""
+			if call := p.getCall(channelID); call != nil {
+				call.setScreenSession(nil)
+			}
 		}
 
 		return state, nil
