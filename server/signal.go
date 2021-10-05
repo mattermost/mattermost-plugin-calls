@@ -263,6 +263,12 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		p.LogDebug("done")
 	}
 
+	if state, err := p.kvGetChannelState(channelID); err != nil {
+		p.LogError(err.Error())
+	} else if state.Call != nil && state.Call.ScreenSharingID == userID {
+		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID})
+	}
+
 	if _, err := p.removeUserSession(userID, channelID); err != nil {
 		p.LogError(err.Error())
 	}
