@@ -65,6 +65,7 @@ func (p *Plugin) addUserSession(userID, channelID string, userSession *session) 
 				StartAt: time.Now().UnixMilli(),
 				Users:   make(map[string]struct{}),
 			}
+			state.NodeID = p.nodeID
 		}
 		state.Call.Users[userID] = struct{}{}
 		st = *state
@@ -97,6 +98,7 @@ func (p *Plugin) removeUserSession(userID, channelID string) (channelState, erro
 
 		if len(state.Call.Users) == 0 {
 			state.Call = nil
+			state.NodeID = ""
 		}
 
 		st = *state
