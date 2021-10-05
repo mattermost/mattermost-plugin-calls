@@ -92,6 +92,9 @@ func (p *Plugin) removeUserSession(userID, channelID string) (channelState, erro
 
 		if state.Call.ScreenSharingID == userID {
 			state.Call.ScreenSharingID = ""
+			if call := p.getCall(channelID); call != nil {
+				call.setScreenSession(nil)
+			}
 		}
 
 		delete(state.Call.Users, userID)

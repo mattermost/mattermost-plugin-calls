@@ -191,9 +191,20 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	} else if state.Call == nil {
+		p.LogError("state.Call should not be nil")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	handlerID = state.NodeID
-	if state.Call != nil && len(state.Call.Users) == 1 {
+	if len(state.Call.Users) == 1 {
+		p.mut.Lock()
+		p.calls[channelID] = &call{
+			channelID: channelID,
+			sessions:  map[string]*session{},
+		}
+		p.mut.Unlock()
+
 		// new call has started
 		if err := p.startNewCallThread(userID, channelID, state.Call.StartAt); err != nil {
 			p.LogError(err.Error())
@@ -255,6 +266,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 	if _, err := p.removeUserSession(userID, channelID); err != nil {
 		p.LogError(err.Error())
 	}
+
 	close(us.tracksCh)
 
 	if handlerID != nodeID {
@@ -274,4 +286,8 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 	close(us.wsInCh)
 	wg.Wait()
 	close(us.wsOutCh)
+
+	if us.rtcConn != nil {
+		us.rtcConn.Close()
+	}
 }
