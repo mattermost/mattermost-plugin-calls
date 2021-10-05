@@ -67,7 +67,6 @@ export default class CallWidget extends React.PureComponent {
 
     public componentDidUpdate(prevProps) {
         if (!prevProps.screenSharingID && this.props.screenSharingID === this.props.currentUserID) {
-            console.log(this.screenPlayer);
             this.screenPlayer.current.srcObject = this.state.screenStream;
         }
     }
@@ -106,18 +105,15 @@ export default class CallWidget extends React.PureComponent {
 
     onMuteToggle = () => {
         if (this.state.isMuted) {
-            console.log('unmute');
             window.callsClient.unmute();
             this.setState({isMuted: false});
         } else {
-            console.log('mute!');
             window.callsClient.mute();
             this.setState({isMuted: true});
         }
     }
 
     onDisconnectClick = () => {
-        console.log('disconnect!');
         window.callsClient.disconnect();
         this.setState({
             isMuted: true,
@@ -138,13 +134,31 @@ export default class CallWidget extends React.PureComponent {
         });
     }
 
+    onExpandScreenClick = () => {
+        const el = this.screenPlayer.current;
+        if (!el) {
+            return;
+        }
+        if (el.requestFullscreen) {
+            el.requestFullscreen();
+        } else if (el.webkitRequestFullscreen) {
+            el.webkitRequestFullscreen();
+        } else if (el.msRequestFullscreen) {
+            el.msRequestFullscreen();
+        } else if (el.mozRequestFullscreen()) {
+            el.mozRequestFullscreen();
+        }
+    }
+
     renderScreenSharingPanel = () => {
         if (!this.props.screenSharingID) {
             return null;
         }
 
+        const isSharing = this.props.screenSharingID === this.props.currentUserID;
+
         let profile;
-        if (this.props.screenSharingID !== this.props.currentUserID) {
+        if (!isSharing) {
             for (let i = 0; i < this.props.profiles.length; i++) {
                 if (this.props.profiles[i].id === this.props.screenSharingID) {
                     profile = this.props.profiles[i];
@@ -156,7 +170,7 @@ export default class CallWidget extends React.PureComponent {
             }
         }
 
-        const msg = this.props.screenSharingID === this.props.currentUserID ? 'You are sharing your screen' : `Your are viewing ${getUserDisplayName(profile)}'s screen`;
+        const msg = isSharing ? 'You are sharing your screen' : `Your are viewing ${getUserDisplayName(profile)}'s screen`;
         return (
             <div
                 className='Menu'
@@ -166,6 +180,14 @@ export default class CallWidget extends React.PureComponent {
                     className='Menu__content dropdown-menu'
                     style={style.screenSharingPanel}
                 >
+                    <button
+                        className='cursor--pointer style--none button-controls'
+                        style={{display: isSharing ? 'none' : '', position: 'absolute', top: '0', right: '0'}}
+                        onClick={this.onExpandScreenClick}
+                    >
+                        <CompassIcon icon='arrow-expand'/>
+                    </button>
+
                     <div
                         style={{width: '192px', height: '108px', background: '#C4C4C4'}}
                     >
@@ -177,7 +199,7 @@ export default class CallWidget extends React.PureComponent {
                             autoPlay={true}
                         />
                     </div>
-                    <span style={{marginTop: 'auto', color: 'rgba(63, 67, 80, 0.72)', fontSize: '12px'}}>{msg}</span>
+                    <span style={{marginTop: '8px', color: 'rgba(63, 67, 80, 0.72)', fontSize: '12px'}}>{msg}</span>
                 </ul>
             </div>
         );
@@ -189,7 +211,6 @@ export default class CallWidget extends React.PureComponent {
         const isSharing = sharingID === currentID;
 
         return (
-
             <OverlayTrigger
                 key='share_screen'
                 placement='top'
@@ -552,9 +573,9 @@ const style = {
         bottom: 'calc(100% + 4px)',
         top: 'auto',
         width: '100%',
-        height: '150px',
         minWidth: 'revert',
         maxWidth: 'revert',
+        paddingTop: '28px',
     },
     leaveCallButton: {
         display: 'flex',
