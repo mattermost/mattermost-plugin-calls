@@ -58,14 +58,43 @@ func (p *Plugin) handleSignaling(us *session, msg []byte) error {
 	return nil
 }
 
+func (p *Plugin) handlePLI(sender *webrtc.RTPSender, channelID string) {
+	for {
+		pkts, _, readErr := sender.ReadRTCP()
+		if readErr != nil {
+			p.LogError(readErr.Error())
+			return
+		}
+		for _, pkt := range pkts {
+			if _, ok := pkt.(*rtcp.PictureLossIndication); ok {
+				call := p.getCall(channelID)
+				if call == nil {
+					p.LogError("call should not be nil")
+					return
+				}
+				screenSession := call.getScreenSession()
+				if screenSession == nil {
+					p.LogError("screenSession should not be nil")
+					return
+				}
+				if err := screenSession.rtcConn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(screenSession.remoteScreenTrack.SSRC())}}); err != nil {
+					p.LogError(err.Error())
+				}
+			}
+		}
+	}
+}
+
 func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRTP) {
 	userSession.mut.RLock()
 	peerConn := userSession.rtcConn
 	userSession.mut.RUnlock()
 
-	if _, err := peerConn.AddTrack(track); err != nil {
+	if sender, err := peerConn.AddTrack(track); err != nil {
 		p.LogError(err.Error())
 		return
+	} else if track.Codec().MimeType == webrtc.MimeTypeVP8 {
+		go p.handlePLI(sender, userSession.channelID)
 	}
 
 	offer, err := peerConn.CreateOffer(nil)
@@ -222,6 +251,18 @@ func (p *Plugin) initRTCConn(userID string) {
 				}
 			}
 		} else if remoteTrack.Codec().MimeType == rtpVideoCodec.MimeType {
+			// TODO: actually check if the userID matches the expected publisher.
+			call := p.getCall(userSession.channelID)
+			if call == nil {
+				p.LogError("call should not be nil")
+				return
+			}
+			if s := call.getScreenSession(); s != nil {
+				p.LogError("screenSession should be nil")
+				return
+			}
+			call.setScreenSession(userSession)
+
 			outScreenTrack, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodec, "screen", model.NewId())
 			if err != nil {
 				p.LogError(err.Error())
@@ -237,9 +278,6 @@ func (p *Plugin) initRTCConn(userID string) {
 				if id != userID && userSession.channelID == s.channelID {
 					p.mut.RUnlock()
 					s.tracksCh <- outScreenTrack
-					if err := peerConn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}}); err != nil {
-						p.LogError(err.Error())
-					}
 					p.mut.RLock()
 				}
 			}
@@ -286,9 +324,6 @@ func (p *Plugin) handleTracks(us *session) {
 				p.mut.RUnlock()
 				p.addTrack(us, outScreenTrack)
 				p.mut.RLock()
-				if err := session.rtcConn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(session.remoteScreenTrack.SSRC())}}); err != nil {
-					p.LogError(err.Error())
-				}
 			}
 		}
 	}
