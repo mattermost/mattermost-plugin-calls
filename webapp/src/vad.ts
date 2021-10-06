@@ -4,6 +4,8 @@ export default class VoiceActivityDetector extends EventEmitter {
     constructor(audioContext, stream) {
         super();
 
+        this.inputStream = stream;
+
         const config = {
             freqRange: [80, 400],
             noiseCaptureMs: 500,
@@ -54,7 +56,7 @@ export default class VoiceActivityDetector extends EventEmitter {
                 noiseAvg = noiseSamples.reduce((acc, val) => acc + val) / noiseSamples.length;
                 noiseSamples = [];
 
-                // console.log('noise avg', noiseAvg);
+                console.log('vad: noise avg', noiseAvg);
 
                 this.stop();
                 this.emit('ready');
@@ -106,6 +108,15 @@ export default class VoiceActivityDetector extends EventEmitter {
         if (this.sourceNode) {
             this.sourceNode.disconnect();
         }
+    }
+
+    destroy() {
+        this.removeAllListeners('start');
+        this.removeAllListeners('stop');
+        this.removeAllListeners('ready');
+        this.inputStream.getTracks().forEach((track) => {
+            track.stop();
+        });
     }
 }
 

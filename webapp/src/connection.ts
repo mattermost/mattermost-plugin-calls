@@ -9,6 +9,8 @@ import VoiceActivityDetector from './vad';
 export async function newClient(channelID: string, closeCb) {
     let peer = null;
     let localScreenTrack;
+    let currentAudioDeviceID;
+    let voiceDetector;
     const streams = [];
 
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -16,7 +18,18 @@ export async function newClient(channelID: string, closeCb) {
         audio: true,
     });
 
-    const audioTrack = stream.getAudioTracks()[0];
+    let audioDevices;
+    const updateDevices = async () => {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        audioDevices = {
+            inputs: devices.filter((device) => device.kind === 'audioinput'),
+            outputs: devices.filter((device) => device.kind === 'audiooutput'),
+        };
+    };
+    updateDevices();
+    navigator.mediaDevices.ondevicechange = updateDevices;
+
+    let audioTrack = stream.getAudioTracks()[0];
     streams.push(stream);
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -24,12 +37,9 @@ export async function newClient(channelID: string, closeCb) {
         throw new Error('AudioCtx unsupported');
     }
     const audioCtx = new AudioContext();
-    const clonedStream = stream.clone();
-    streams.push(clonedStream);
-    const voiceDetector = new VoiceActivityDetector(audioCtx, clonedStream);
-    audioTrack.enabled = false;
 
-    voiceDetector.on('ready', () => {
+    const initVAD = (inputStream) => {
+        voiceDetector = new VoiceActivityDetector(audioCtx, inputStream.clone());
         voiceDetector.on('start', () => {
             if (ws) {
                 ws.send(JSON.stringify({
@@ -44,9 +54,38 @@ export async function newClient(channelID: string, closeCb) {
                 }));
             }
         });
-    });
+    };
+
+    initVAD(stream);
+    audioTrack.enabled = false;
 
     const ws = new WebSocket(getWSConnectionURL(channelID));
+
+    const setAudioInputDevice = async (device) => {
+        const isEnabled = audioTrack.enabled;
+        voiceDetector.stop();
+        voiceDetector.destroy();
+        audioTrack.stop();
+        const newStream = await navigator.mediaDevices.getUserMedia({
+            video: false,
+            audio: {deviceId: {exact: device.deviceId}},
+        });
+        streams.push(newStream);
+        const newTrack = newStream.getAudioTracks()[0];
+        stream.removeTrack(audioTrack);
+        stream.addTrack(newTrack);
+        initVAD(stream);
+        if (isEnabled) {
+            voiceDetector.on('ready', () => voiceDetector.start());
+        }
+        newTrack.enabled = isEnabled;
+        peer.replaceTrack(audioTrack, newTrack, stream);
+        audioTrack = newTrack;
+    };
+
+    const getAudioDevices = () => {
+        return audioDevices;
+    };
 
     const disconnect = () => {
         streams.forEach((s) => {
@@ -59,6 +98,10 @@ export async function newClient(channelID: string, closeCb) {
         ws.close();
         if (peer) {
             peer.destroy();
+        }
+
+        if (voiceDetector) {
+            voiceDetector.destroy();
         }
 
         if (closeCb) {
@@ -213,5 +256,7 @@ export async function newClient(channelID: string, closeCb) {
         unmute,
         shareScreen,
         unshareScreen,
+        getAudioDevices,
+        setAudioInputDevice,
     };
 }
