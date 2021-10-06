@@ -52,6 +52,7 @@ export async function newClient(channelID: string, closeCb) {
         streams.forEach((s) => {
             s.getTracks().forEach((track) => {
                 track.stop();
+                track.dispatchEvent(new Event('ended'));
             });
         });
 
@@ -188,7 +189,6 @@ export async function newClient(channelID: string, closeCb) {
                 document.body.appendChild(audioEl);
 
                 voiceTrack.onended = () => {
-                    console.log('voice track ended');
                     audioEl.remove();
                 };
             } else if (remoteStream.getVideoTracks().length > 0) {
