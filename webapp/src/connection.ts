@@ -7,10 +7,11 @@ import {getWSConnectionURL, getScreenResolution} from './utils';
 import VoiceActivityDetector from './vad';
 
 export async function newClient(channelID: string, closeCb) {
-    let peer = null;
+    let peer;
     let localScreenTrack;
     let currentAudioDeviceID;
     let voiceDetector;
+    let voiceTrackAdded;
     const streams = [];
 
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -114,7 +115,9 @@ export async function newClient(channelID: string, closeCb) {
             voiceDetector.stop();
         }
 
+        peer.replaceTrack(audioTrack, null, stream);
         audioTrack.enabled = false;
+
         if (ws) {
             ws.send(JSON.stringify({
                 type: 'mute',
@@ -127,6 +130,12 @@ export async function newClient(channelID: string, closeCb) {
             voiceDetector.start();
         }
 
+        if (voiceTrackAdded) {
+            peer.replaceTrack(audioTrack, audioTrack, stream);
+        } else {
+            peer.addTrack(audioTrack, stream);
+            voiceTrackAdded = true;
+        }
         audioTrack.enabled = true;
         if (ws) {
             ws.send(JSON.stringify({
@@ -196,7 +205,7 @@ export async function newClient(channelID: string, closeCb) {
     ws.onerror = (err) => console.log(err);
 
     ws.onopen = () => {
-        peer = new Peer({initiator: true, stream, trickle: true});
+        peer = new Peer({initiator: true, trickle: true});
         peer.on('signal', (data) => {
             console.log('signal', data);
             if (data.type === 'offer' || data.type === 'answer') {
