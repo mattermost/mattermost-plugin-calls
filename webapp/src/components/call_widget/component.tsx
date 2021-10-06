@@ -119,12 +119,14 @@ export default class CallWidget extends React.PureComponent {
             isMuted: true,
             showMenu: false,
             showParticipantsList: false,
+            currentAudioInputDevice: null,
         });
     }
 
     onMenuClick = () => {
         this.setState({
             showMenu: !this.state.showMenu,
+            devices: window.callsClient?.getAudioDevices(),
         });
     }
 
@@ -148,6 +150,11 @@ export default class CallWidget extends React.PureComponent {
         } else if (el.mozRequestFullscreen()) {
             el.mozRequestFullscreen();
         }
+    }
+
+    onAudioInputDeviceClick = (device) => {
+        window.callsClient.setAudioInputDevice(device);
+        this.setState({showAudioInputsMenu: false, currentAudioInputDevice: device});
     }
 
     renderScreenSharingPanel = () => {
@@ -315,6 +322,87 @@ export default class CallWidget extends React.PureComponent {
         );
     }
 
+    renderAudioInputsMenu = () => {
+        if (!this.state.showAudioInputsMenu) {
+            return null;
+        }
+        return (
+            <div className='Menu'>
+                <ul
+                    className='Menu__content dropdown-menu'
+                    style={style.audioInputsMenu}
+                >
+                    {
+                        this.state.devices.inputs.map((device, idx) => {
+                            return (
+                                <li
+                                    className='MenuItem'
+                                    key={'audio-input-device-' + idx}
+                                >
+                                    <button
+                                        className='style--none'
+                                        style={{background: device.deviceId === this.state.currentAudioInputDevice?.deviceId ? 'rgba(28, 88, 217, 0.12)' : ''}}
+                                        onClick={() => this.onAudioInputDeviceClick(device)}
+                                    >
+                                        <span style={{color: 'rgba(61, 60, 64, 0.56)', fontSize: '12px', width: '100%'}}>{device.label}</span>
+                                    </button>
+                                </li>
+                            );
+                        })
+                    }
+                </ul>
+            </div>
+        );
+    }
+
+    renderAudioDevices = () => {
+        if (!window.callsClient || !this.state.devices) {
+            return null;
+        }
+
+        return (
+            <React.Fragment>
+                {this.renderAudioInputsMenu()}
+                <li
+                    className='MenuItem'
+                >
+                    <button
+                        className='style--none'
+                        style={{display: 'flex', flexDirection: 'column'}}
+                        onClick={() => this.setState({showAudioInputsMenu: !this.state.showAudioInputsMenu, devices: window.callsClient?.getAudioDevices()})}
+                    >
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%'}}>
+                            <UnmutedIcon
+                                style={{width: '14px', height: '14px', marginRight: '8px'}}
+                                fill='rgba(61, 60, 64, 0.56)'
+                            />
+                            <span
+                                className='MenuItem__primary-text'
+                                style={{padding: '0'}}
+                            >Microphone</span>
+                            <ShowMoreIcon
+                                style={{width: '11px', height: '11px', marginLeft: 'auto'}}
+                                fill='rgba(61, 60, 64, 0.56)'
+                            />
+                        </div>
+                        <span
+                            style={{
+                                color: 'rgba(61, 60, 64, 0.56)',
+                                fontSize: '12px',
+                                width: '100%',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                            }}
+                        >
+                            {this.state.currentAudioInputDevice?.label || 'Default'}
+                        </span>
+                    </button>
+                </li>
+            </React.Fragment>
+        );
+    }
+
     renderMenu = () => {
         if (!this.state.showMenu) {
             return null;
@@ -325,22 +413,9 @@ export default class CallWidget extends React.PureComponent {
             <div className='Menu'>
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={{bottom: 'calc(100% + 4px)', top: 'auto'}}
+                    style={style.dotsMenu}
                 >
-                    <li className='MenuItem'>
-                        <span
-                            className='MenuItem__primary-text'
-                            style={{padding: '1px 16px'}}
-                        >
-                            <span>Call in</span>
-                                &nbsp;
-                            <a
-                                className='mention-link'
-                                style={{color: 'rgb(56, 111, 229)'}}
-                                onClick={((e) => handleFormattedTextClick(e, this.props.channelURL))}
-                            >{`~${channel.display_name}`}</a>
-                        </span>
-                    </li>
+                    {this.renderAudioDevices()}
                 </ul>
             </div>
         );
@@ -586,5 +661,16 @@ const style = {
         color: '#D24B4E',
         background: 'rgba(210, 75, 78, 0.04)',
         marginRight: 'auto',
+    },
+    dotsMenu: {
+        bottom: 'calc(100% + 4px)',
+        top: 'auto',
+        width: '100%',
+        minWidth: 'revert',
+        maxWidth: 'revert',
+    },
+    audioInputsMenu: {
+        left: 'calc(100% + 4px)',
+        top: '0',
     },
 };
