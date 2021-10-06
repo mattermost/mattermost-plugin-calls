@@ -41,14 +41,14 @@ export async function newClient(channelID: string, closeCb) {
     const initVAD = (inputStream) => {
         voiceDetector = new VoiceActivityDetector(audioCtx, inputStream.clone());
         voiceDetector.on('start', () => {
-            if (ws) {
+            if (ws && ws.readyState === WebSocket.OPEN && audioTrack.enabled) {
                 ws.send(JSON.stringify({
                     type: 'voice_on',
                 }));
             }
         });
         voiceDetector.on('stop', () => {
-            if (ws) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     type: 'voice_off',
                 }));
@@ -146,8 +146,8 @@ export async function newClient(channelID: string, closeCb) {
             console.log(resolution);
             screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: {
-                    frameRate: 10,
-                    width: (resolution.width / 16) * 10,
+                    frameRate: 15,
+                    width: (resolution.width / 8) * 5,
                 },
                 audio: false,
             });
