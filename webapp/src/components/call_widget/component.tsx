@@ -314,7 +314,7 @@ export default class CallWidget extends React.PureComponent {
             >
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={{bottom: 'calc(100% + 4px)', top: 'auto', width: '100%', minWidth: 'revert', maxWidth: 'revert'}}
+                    style={{bottom: 'calc(100% + 4px)', top: 'auto', width: '100%', minWidth: 'revert', maxWidth: 'revert', maxHeight: '188px', overflow: 'auto'}}
                 >
                     { renderParticipants() }
                 </ul>
