@@ -24,10 +24,12 @@ export async function newClient(channelID: string, closeCb) {
         throw new Error('AudioCtx unsupported');
     }
     const audioCtx = new AudioContext();
-    const voiceDetector = new VoiceActivityDetector(audioCtx, stream);
+    const clonedStream = stream.clone();
+    streams.push(clonedStream);
+    const voiceDetector = new VoiceActivityDetector(audioCtx, clonedStream);
+    audioTrack.enabled = false;
 
     voiceDetector.on('ready', () => {
-        audioTrack.enabled = false;
         voiceDetector.on('start', () => {
             if (ws) {
                 ws.send(JSON.stringify({
