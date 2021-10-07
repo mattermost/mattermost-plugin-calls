@@ -47,3 +47,9 @@ linters:
     - varcheck      # Finds unused global variables and constants
     - exportloopref # Checks for pointers to enclosing loop variables
     - errcheck      # Detects unchecked errors.
+
+issues:
+  exclude-rules:
+    - linters:
+      - unused
+      text: "getConfiguration"

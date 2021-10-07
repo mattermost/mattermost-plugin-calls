@@ -20,7 +20,6 @@ import {newClient} from './connection';
 import ChannelHeaderButton from './components/channel_header_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import CallWidget from './components/call_widget';
-import ChannelHeaderTooltip from './components/channel_header_button_tooltip';
 import ChannelLinkLabel from './components/channel_link_label';
 import ChannelCallToast from './components/channel_call_toast';
 import PostType from './components/post_type';
@@ -92,8 +91,6 @@ export default class Plugin {
                         // TODO: show an error or let the user switch connection.
                     }
                 },
-
-                // ChannelHeaderTooltip,
             );
         };
 
