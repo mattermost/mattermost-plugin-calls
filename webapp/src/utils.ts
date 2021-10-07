@@ -6,8 +6,15 @@ import {
     getTeamByName,
     getTeamMemberships,
 } from 'mattermost-redux/selectors/entities/teams';
+import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 
-import {id as pluginId} from 'manifest';
+import {Team} from 'mattermost-redux/types/teams';
+import {Channel} from 'mattermost-redux/types/channels';
+import {UserProfile} from 'mattermost-redux/types/users';
+
+import {GlobalState} from 'mattermost-redux/types/store';
+
+import {id as pluginId} from './manifest';
 
 export function getPluginPath() {
     return window.basename ? `${window.basename}/plugins/${pluginId}` :
@@ -20,7 +27,7 @@ export function getWSConnectionURL(channelID: string): string {
     return `${uri}//${loc.host}${getPluginPath()}/${channelID}/ws`;
 }
 
-export function getTeamRelativeUrl(team) {
+export function getTeamRelativeUrl(team: Team) {
     if (!team) {
         return '';
     }
@@ -28,7 +35,7 @@ export function getTeamRelativeUrl(team) {
     return '/' + team.name;
 }
 
-export function getChannelURL(state, channel, teamId) {
+export function getChannelURL(state: GlobalState, channel: Channel, teamId: string) {
     let notificationURL;
     if (channel && (channel.type === 'D' || channel.type === 'G')) {
         notificationURL = getCurrentRelativeTeamUrl(state) + '/channels/' + channel.name;
@@ -47,7 +54,7 @@ export function getChannelURL(state, channel, teamId) {
     return notificationURL;
 }
 
-export function getUserDisplayName(user) {
+export function getUserDisplayName(user: UserProfile) {
     if (user.first_name && user.last_name) {
         return user.first_name + ' ' + user.last_name;
     }
@@ -55,10 +62,14 @@ export function getUserDisplayName(user) {
     return user.username;
 }
 
-export function getPixelRatio() {
+export function getPixelRatio(): number {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
+    if (!ctx) {
+        canvas.remove();
+        return dpr;
+    }
     const bsr = ctx.webkitBackingStorePixelRatio ||
     ctx.mozBackingStorePixelRatio ||
     ctx.msBackingStorePixelRatio ||

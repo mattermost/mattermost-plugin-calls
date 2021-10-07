@@ -1,17 +1,23 @@
 import {connect} from 'react-redux';
+import {GlobalState} from 'mattermost-redux/types/store';
+import {Post} from 'mattermost-redux/types/posts';
 
 import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 
 import {Client4} from 'mattermost-redux/client';
 
-import {voiceConnectedChannels, voiceConnectedProfilesInChannel, connectedChannelID} from 'selectors';
+import {voiceConnectedChannels, voiceConnectedProfilesInChannel, connectedChannelID} from '../../selectors';
 
 import PostType from './component';
 
-const mapStateToProps = (state, ownProps) => {
+interface OwnProps {
+    post: Post,
+}
+
+const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
     let hasCall = false;
     const currentID = getCurrentChannelId(state);
-    const connectedID = connectedChannelID(state);
+    const connectedID = connectedChannelID(state) || '';
     const channels = voiceConnectedChannels(state);
 
     let profiles = [];

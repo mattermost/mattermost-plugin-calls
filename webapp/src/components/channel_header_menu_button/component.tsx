@@ -2,7 +2,11 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import {FormattedMessage} from 'react-intl';
 
-const ChannelHeaderMenuButton = (props) => {
+interface Props {
+    enabled: boolean,
+}
+
+const ChannelHeaderMenuButton = (props: Props) => {
     if (props.enabled) {
         return (
             <FormattedMessage
@@ -17,10 +21,6 @@ const ChannelHeaderMenuButton = (props) => {
             defaultMessage='Enable Voice'
         />
     );
-};
-
-ChannelHeaderMenuButton.propTypes = {
-    enabled: PropTypes.bool.isRequired,
 };
 
 export default ChannelHeaderMenuButton;

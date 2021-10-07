@@ -1,9 +1,14 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-import CallIcon from 'components/icons/call_icon';
+import CallIcon from '../../components/icons/call_icon';
 
-const ChannelHeaderButton = (props) => {
+interface Props {
+    show: boolean,
+    hasCall: boolean,
+}
+
+const ChannelHeaderButton = (props: Props) => {
     if (!props.show) {
         return null;
     }
@@ -18,11 +23,6 @@ const ChannelHeaderButton = (props) => {
             </span>
         </div>
     );
-};
-
-ChannelHeaderButton.propTypes = {
-    hasCall: PropTypes.bool.isRequired,
-    show: PropTypes.bool.isRequired,
 };
 
 export default ChannelHeaderButton;

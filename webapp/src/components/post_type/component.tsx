@@ -1,27 +1,29 @@
-import React from 'react';
+import React, {CSSProperties} from 'react';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 
 import {Channel} from 'mattermost-redux/types/channels';
+import {UserProfile} from 'mattermost-redux/types/users';
+import {Post} from 'mattermost-redux/types/posts';
 
 import moment from 'moment-timezone';
 
-import ActiveCallIcon from 'components/icons/active_call_icon';
-import CallIcon from 'components/icons/call_icon';
-import ConnectedProfiles from 'components/connected_profiles';
+import ActiveCallIcon from '../../components/icons/active_call_icon';
+import CallIcon from '../../components/icons/call_icon';
+import ConnectedProfiles from '../../components/connected_profiles';
 
 import {newClient} from '../../connection';
 
-export default class PostType extends React.PureComponent {
-    static propTypes = {
-        post: PropTypes.object,
-        currChannelID: PropTypes.string,
-        connectedID: PropTypes.string,
-        hasCall: PropTypes.bool.isRequired,
-        pictures: PropTypes.array,
-        profiles: PropTypes.array,
-    }
+interface Props {
+    post: Post,
+    currChannelID: string,
+    connectedID: string,
+    hasCall: boolean,
+    pictures: string[],
+    profiles: UserProfile[],
+}
 
+export default class PostType extends React.PureComponent<Props> {
     onJoinCallClick = async () => {
         if (this.props.connectedID) {
             return;
@@ -43,7 +45,7 @@ export default class PostType extends React.PureComponent {
                         style={{width: '100%', height: '100%'}}
                     />
                 </div>
-                <div style={style.messageWrapper}>
+                <div style={style.messageWrapper as CSSProperties}>
                     <span style={style.message}>{this.props.post.message}</span>
                     <span style={style.duration}>{moment(this.props.post.props.start_at).fromNow()}</span>
                 </div>
@@ -61,7 +63,7 @@ export default class PostType extends React.PureComponent {
                     onClick={this.onJoinCallClick}
                 >
                     <CallIcon fill='#FFFFFF'/>
-                    <span style={{fontWeight: '600', margin: '0 8px'}}>{'Join Call'}</span>
+                    <span style={{fontWeight: 600, margin: '0 8px'}}>{'Join Call'}</span>
                 </button>
             </div>
         );
@@ -93,7 +95,7 @@ const style = {
         margin: '0 8px',
     },
     message: {
-        fontWeight: '600',
+        fontWeight: 600,
     },
     duration: {
         color: 'rgba(0,0,0,0.5)',

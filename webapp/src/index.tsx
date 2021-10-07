@@ -11,7 +11,7 @@ import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_ut
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from 'selectors';
+import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from './selectors';
 
 import manifest from './manifest';
 
@@ -49,16 +49,14 @@ import {
 import {PluginRegistry} from './types/mattermost-webapp';
 
 export default class Plugin {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function
-    public async initialize(registry: PluginRegistry, store: Store<GlobalState, Action<Record<string, unknown>>>) {
+    public initialize(registry: PluginRegistry, store: Store<GlobalState>): void {
         registry.registerReducer(reducer);
         registry.registerGlobalComponent(CallWidget);
         registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
 
-        let actionID;
-
+        let actionID: string;
         const registerChannelHeaderButtonAction = ():string => {
             return registry.registerChannelHeaderButtonAction(
                 ChannelHeaderButton
@@ -96,7 +94,7 @@ export default class Plugin {
 
         let currChannelId = getCurrentChannelId(store.getState());
 
-        let hasRegisteredMenuAction;
+        let hasRegisteredMenuAction: boolean;
         const registerChannelHeaderMenuAction = () => {
             registry.registerChannelHeaderMenuAction(
                 ChannelHeaderMenuButton,
@@ -106,7 +104,7 @@ export default class Plugin {
                             {enabled: !isVoiceEnabled(store.getState())},
                             {headers: {'X-Requested-With': 'XMLHttpRequest'}});
                         store.dispatch({
-                            type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
+                            type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : typeof VOICE_CHANNEL_DISABLE,
                         });
                     } catch (err) {
                         console.log(err);
@@ -124,7 +122,7 @@ export default class Plugin {
                 try {
                     const resp = await axios.get(`${getPluginPath()}/${currChannelId}`);
                     store.dispatch({
-                        type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
+                        type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : typeof VOICE_CHANNEL_DISABLE,
                     });
                     store.dispatch({
                         type: VOICE_CHANNEL_USERS_CONNECTED,
@@ -325,7 +323,24 @@ export default class Plugin {
 
 declare global {
     interface Window {
-        registerPlugin(id: string, plugin: Plugin): void
+        registerPlugin(id: string, plugin: Plugin): void,
+        callsClient: any,
+        webkitAudioContext: AudioContext,
+        basename: string,
+    }
+
+    interface HTMLVideoElement {
+        webkitRequestFullscreen: () => void,
+        msRequestFullscreen: () => void,
+        mozRequestFullscreen: () => void,
+    }
+
+    interface CanvasRenderingContext2D {
+        webkitBackingStorePixelRatio: number,
+        mozBackingStorePixelRatio: number,
+        msBackingStorePixelRatio: number,
+        oBackingStorePixelRatio: number,
+        backingStorePixelRatio: number,
     }
 }
 

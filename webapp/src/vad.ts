@@ -1,7 +1,14 @@
 import {EventEmitter} from 'events';
 
 export default class VoiceActivityDetector extends EventEmitter {
-    constructor(audioContext, stream) {
+    private inputStream: MediaStream;
+    private sourceNode: MediaStreamAudioSourceNode;
+    private analyserNode: AnalyserNode;
+    private processNode: ScriptProcessorNode;
+    private startTime: number = Date.now();
+    private isActive = false;
+
+    constructor(audioContext: AudioContext, stream: MediaStream) {
         super();
 
         this.inputStream = stream;
@@ -32,7 +39,7 @@ export default class VoiceActivityDetector extends EventEmitter {
         }
 
         let noiseAvg = 0;
-        let noiseSamples = [];
+        let noiseSamples : number[] = [];
         let activityCounter = 0;
         const frequencies = new Uint8Array(indexes[indexes.length - 1] + 1);
 
@@ -42,10 +49,6 @@ export default class VoiceActivityDetector extends EventEmitter {
                 return acc + val;
             });
             const avg = sum / frequencies.length;
-
-            if (!this.startTime) {
-                this.startTime = Date.now();
-            }
 
             if (Date.now() < (this.startTime + config.noiseCaptureMs)) {
                 noiseSamples.push(avg);

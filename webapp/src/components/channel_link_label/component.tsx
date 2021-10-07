@@ -3,10 +3,14 @@ import PropTypes from 'prop-types';
 
 import {Channel} from 'mattermost-redux/types/channels';
 
-import ActiveCallIcon from 'components/icons/active_call_icon';
+import ActiveCallIcon from '../../components/icons/active_call_icon';
 
-const ChannelLinkLabel = () => {
-    if (this.props.hasCall) {
+interface Props {
+    hasCall: boolean,
+}
+
+const ChannelLinkLabel = (props: Props) => {
+    if (props.hasCall) {
         return (
             <ActiveCallIcon
                 fill='#FFFFFF'
@@ -16,10 +20,6 @@ const ChannelLinkLabel = () => {
     }
 
     return null;
-};
-
-ChannelLinkLabel.propTypes = {
-    hasCall: PropTypes.bool.isRequired,
 };
 
 export default ChannelLinkLabel;
