@@ -1,19 +1,18 @@
 import {connect} from 'react-redux';
+import {GlobalState} from 'mattermost-redux/types/store';
 
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {Client4} from 'mattermost-redux/client';
 
-import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelCallStartAt, voiceChannelScreenSharingID} from 'selectors';
+import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelCallStartAt, voiceChannelScreenSharingID} from '../../selectors';
 
-import {disconnectVoice} from 'actions';
-
-import {getChannelURL} from 'utils';
+import {getChannelURL} from '../../utils';
 
 import CallWidget from './component';
 
-const mapStateToProps = (state) => {
+const mapStateToProps = (state: GlobalState) => {
     const profiles = voiceConnectedProfiles(state);
     const pictures = [];
     for (let i = 0; i < profiles.length; i++) {
@@ -34,8 +33,8 @@ const mapStateToProps = (state) => {
         profiles,
         pictures,
         statuses: voiceUsersStatuses(state) || {},
-        callStartAt: voiceChannelCallStartAt(state, channel?.id),
-        screenSharingID: voiceChannelScreenSharingID(state, channel?.id),
+        callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
+        screenSharingID: voiceChannelScreenSharingID(state, channel?.id) || '',
     };
 };
 

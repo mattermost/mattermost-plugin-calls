@@ -1,4 +1,4 @@
-import Peer from 'simple-peer';
+import SimplePeer from 'simple-peer';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
@@ -6,20 +6,20 @@ import {getWSConnectionURL, getScreenResolution} from './utils';
 
 import VoiceActivityDetector from './vad';
 
-export async function newClient(channelID: string, closeCb) {
-    let peer;
-    let localScreenTrack;
-    let currentAudioDeviceID;
-    let voiceDetector;
-    let voiceTrackAdded;
-    const streams = [];
+export async function newClient(channelID: string) {
+    let peer: SimplePeer.Instance;
+    let localScreenTrack: any;
+    let currentAudioDeviceID: string;
+    let voiceDetector: any;
+    let voiceTrackAdded: boolean;
+    const streams: MediaStream[] = [];
 
     const stream = await navigator.mediaDevices.getUserMedia({
         video: false,
         audio: true,
     });
 
-    let audioDevices;
+    let audioDevices: { inputs: MediaDeviceInfo[]; outputs: MediaDeviceInfo[]; };
     const updateDevices = async () => {
         const devices = await navigator.mediaDevices.enumerateDevices();
         audioDevices = {
@@ -39,7 +39,7 @@ export async function newClient(channelID: string, closeCb) {
     }
     const audioCtx = new AudioContext();
 
-    const initVAD = (inputStream) => {
+    const initVAD = (inputStream: MediaStream) => {
         voiceDetector = new VoiceActivityDetector(audioCtx, inputStream.clone());
         voiceDetector.on('start', () => {
             if (ws && ws.readyState === WebSocket.OPEN && audioTrack.enabled) {
@@ -62,7 +62,7 @@ export async function newClient(channelID: string, closeCb) {
 
     const ws = new WebSocket(getWSConnectionURL(channelID));
 
-    const setAudioInputDevice = async (device) => {
+    const setAudioInputDevice = async (device: MediaDeviceInfo) => {
         const isEnabled = audioTrack.enabled;
         voiceDetector.stop();
         voiceDetector.destroy();
@@ -104,10 +104,6 @@ export async function newClient(channelID: string, closeCb) {
         if (voiceDetector) {
             voiceDetector.destroy();
         }
-
-        if (closeCb) {
-            closeCb();
-        }
     };
 
     const mute = () => {
@@ -115,6 +111,7 @@ export async function newClient(channelID: string, closeCb) {
             voiceDetector.stop();
         }
 
+        // @ts-ignore: we actually mean (and need) to pass null here
         peer.replaceTrack(audioTrack, null, stream);
         audioTrack.enabled = false;
 
@@ -145,9 +142,9 @@ export async function newClient(channelID: string, closeCb) {
     };
 
     const shareScreen = async () => {
-        let screenStream;
+        let screenStream: MediaStream;
         if (!ws || !peer) {
-            return screenStream;
+            return null;
         }
 
         try {
@@ -162,7 +159,7 @@ export async function newClient(channelID: string, closeCb) {
             });
         } catch (err) {
             console.log(err);
-            return screenStream;
+            return null;
         }
 
         streams.push(screenStream);
@@ -205,7 +202,7 @@ export async function newClient(channelID: string, closeCb) {
     ws.onerror = (err) => console.log(err);
 
     ws.onopen = () => {
-        peer = new Peer({initiator: true, trickle: true});
+        peer = new SimplePeer({initiator: true, trickle: true});
         peer.on('signal', (data) => {
             console.log('signal', data);
             if (data.type === 'offer' || data.type === 'answer') {
@@ -245,8 +242,10 @@ export async function newClient(channelID: string, closeCb) {
                 };
             } else if (remoteStream.getVideoTracks().length > 0) {
                 console.log('video track!');
-                const videoEl = document.getElementById('screen-player');
-                videoEl.srcObject = remoteStream;
+                const videoEl = document.getElementById('screen-player') as HTMLVideoElement || null;
+                if (videoEl) {
+                    videoEl.srcObject = remoteStream;
+                }
             }
         });
 

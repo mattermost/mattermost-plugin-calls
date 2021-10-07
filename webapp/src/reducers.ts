@@ -1,12 +1,13 @@
 import {combineReducers} from 'redux';
 
+import {UserProfile} from 'mattermost-redux/types/users';
+
 import {
     VOICE_CHANNEL_ENABLE,
     VOICE_CHANNEL_DISABLE,
     VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_DISCONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED,
-    VOICE_CHANNEL_CONNECTED_PROFILES,
     VOICE_CHANNEL_PROFILES_CONNECTED,
     VOICE_CHANNEL_PROFILE_CONNECTED,
     VOICE_CHANNEL_USER_MUTED,
@@ -18,7 +19,7 @@ import {
     VOICE_CHANNEL_USER_SCREEN_OFF,
 } from './action_types';
 
-const isVoiceEnabled = (state = false, action) => {
+const isVoiceEnabled = (state = false, action: {type: string}) => {
     switch (action.type) {
     case VOICE_CHANNEL_ENABLE:
         return true;
@@ -29,7 +30,21 @@ const isVoiceEnabled = (state = false, action) => {
     }
 };
 
-const voiceConnectedProfiles = (state = {}, action) => {
+interface connectedProfilesState {
+    [channelID: string]: UserProfile[],
+}
+
+interface connectedProfilesAction {
+    type: string,
+    data: {
+        channelID: string,
+        userID?: string,
+        profile?: UserProfile,
+        profiles?: UserProfile[]
+    },
+}
+
+const voiceConnectedProfiles = (state: connectedProfilesState = {}, action: connectedProfilesAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_PROFILES_CONNECTED:
         return {
@@ -60,7 +75,20 @@ const voiceConnectedProfiles = (state = {}, action) => {
     }
 };
 
-const voiceConnectedChannels = (state = {}, action) => {
+interface connectedChannelsState {
+    [channelID: string]: string[],
+}
+
+interface connectedChannelsAction {
+    type: string,
+    data: {
+        channelID: string,
+        userID?: string,
+        users?: string[],
+    },
+}
+
+const voiceConnectedChannels = (state: connectedChannelsState = {}, action: connectedChannelsAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_USER_CONNECTED:
         if (!state[action.data.channelID]) {
@@ -91,7 +119,7 @@ const voiceConnectedChannels = (state = {}, action) => {
     }
 };
 
-const connectedChannelID = (state = null, action) => {
+const connectedChannelID = (state: string | null = null, action: {type: string, data: {channelID: string, currentUserID: string, userID: string}}) => {
     switch (action.type) {
     case VOICE_CHANNEL_USER_CONNECTED:
         if (action.data.currentUserID === action.data.userID) {
@@ -108,7 +136,24 @@ const connectedChannelID = (state = null, action) => {
     }
 };
 
-const voiceUsersStatuses = (state = {}, action) => {
+interface usersStatusesState {
+    [channelID: string]: {
+        [userID: string]: {
+            unmuted: boolean,
+            voice: boolean,
+        }
+    },
+}
+
+interface usersStatusesAction {
+    type: string,
+    data: {
+        channelID: string,
+        userID: string,
+    },
+}
+
+const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatusesAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_USER_MUTED:
         if (!state[action.data.channelID]) {
@@ -203,7 +248,7 @@ const voiceUsersStatuses = (state = {}, action) => {
     }
 };
 
-const callStartAt = (state = {}, action) => {
+const callStartAt = (state: {[channelID: string]: number} = {}, action: {type: string, data: {channelID: string, startAt: number}}) => {
     switch (action.type) {
     case VOICE_CHANNEL_CALL_START:
         return {
@@ -215,7 +260,7 @@ const callStartAt = (state = {}, action) => {
     }
 };
 
-const voiceChannelScreenSharingID = (state = {}, action) => {
+const voiceChannelScreenSharingID = (state: {[channelID: string]: string} = {}, action: {type: string, data: {channelID: string, userID?: string}}) => {
     switch (action.type) {
     case VOICE_CHANNEL_USER_SCREEN_ON:
         return {

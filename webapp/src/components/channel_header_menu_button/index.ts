@@ -1,11 +1,11 @@
-
 import {connect} from 'react-redux';
+import {GlobalState} from 'mattermost-redux/types/store';
 
-import {isVoiceEnabled} from 'selectors';
+import {isVoiceEnabled} from '../../selectors';
 
 import ChannelHeaderMenuButton from './component';
 
-const mapStateToProps = (state) => ({
+const mapStateToProps = (state: GlobalState) => ({
     enabled: isVoiceEnabled(state),
 });
 

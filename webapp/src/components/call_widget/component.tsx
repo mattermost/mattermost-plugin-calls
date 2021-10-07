@@ -1,40 +1,61 @@
-import React from 'react';
+import React, {CSSProperties} from 'react';
 import PropTypes from 'prop-types';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import moment from 'moment-timezone';
 
-import Avatar, {TAvatarSizeToken} from '../avatar';
+import {UserProfile} from 'mattermost-redux/types/users';
+import {Channel} from 'mattermost-redux/types/channels';
 
-import MutedIcon from 'components/icons/muted_icon';
-import UnmutedIcon from 'components/icons/unmuted_icon';
-import LeaveCallIcon from 'components/icons/leave_call_icon';
-import HorizontalDotsIcon from 'components/icons/horizontal_dots';
-import ParticipantsIcon from 'components/icons/participants';
-import ShowMoreIcon from 'components/icons/show_more';
-import CompassIcon from 'components/icons/compassIcon';
-import ScreenIcon from 'components/icons/screen_icon';
+import Avatar from '../avatar/avatar';
 
-import {handleFormattedTextClick} from 'browser_routing';
-import {getUserDisplayName} from 'utils';
+import MutedIcon from '../../components/icons/muted_icon';
+import UnmutedIcon from '../../components/icons/unmuted_icon';
+import LeaveCallIcon from '../../components/icons/leave_call_icon';
+import HorizontalDotsIcon from '../../components/icons/horizontal_dots';
+import ParticipantsIcon from '../../components/icons/participants';
+import ShowMoreIcon from '../../components/icons/show_more';
+import CompassIcon from '../../components/icons/compassIcon';
+import ScreenIcon from '../../components/icons/screen_icon';
+
+import {handleFormattedTextClick} from '../../browser_routing';
+import {getUserDisplayName} from '../../utils';
 import './component.scss';
 
-export default class CallWidget extends React.PureComponent {
+interface Props {
+    currentUserID: string,
+    channel: Channel,
+    channelURL: string,
+    profiles: UserProfile[],
+    pictures: string[],
+    statuses: {
+        [key: string]: {
+            voice?: boolean,
+            unmuted?: boolean,
+        },
+    },
+    callStartAt: number,
+    screenSharingID: string,
+}
+
+interface State {
+    isMuted: boolean,
+    showMenu: boolean,
+    showParticipantsList: boolean,
+    screenSharingID?: string,
+    intervalID?: NodeJS.Timer,
+    screenStream?: any,
+    currentAudioInputDevice?: any,
+    devices?: any,
+    showAudioInputsMenu?: boolean,
+}
+
+export default class CallWidget extends React.PureComponent<Props, State> {
     private node: React.RefObject<HTMLDivElement>;
+    private screenPlayer = React.createRef<HTMLVideoElement>()
 
-    static propTypes = {
-        currentUserID: PropTypes.string,
-        channel: PropTypes.object,
-        channelURL: PropTypes.string,
-        profiles: PropTypes.array,
-        pictures: PropTypes.array,
-        statuses: PropTypes.object,
-        callStartAt: PropTypes.number,
-        screenSharingID: PropTypes.string,
-    }
-
-    constructor(props) {
+    constructor(props: Props) {
         super(props);
         this.state = {
             isMuted: true,
@@ -66,8 +87,8 @@ export default class CallWidget extends React.PureComponent {
         }
     }
 
-    public componentDidUpdate(prevProps) {
-        if (!prevProps.screenSharingID && this.props.screenSharingID === this.props.currentUserID) {
+    public componentDidUpdate(prevProps: Props) {
+        if (!prevProps.screenSharingID && this.props.screenSharingID === this.props.currentUserID && this.screenPlayer.current) {
             this.screenPlayer.current.srcObject = this.state.screenStream;
         }
     }
@@ -148,12 +169,12 @@ export default class CallWidget extends React.PureComponent {
             el.webkitRequestFullscreen();
         } else if (el.msRequestFullscreen) {
             el.msRequestFullscreen();
-        } else if (el.mozRequestFullscreen()) {
+        } else if (el.mozRequestFullscreen) {
             el.mozRequestFullscreen();
         }
     }
 
-    onAudioInputDeviceClick = (device) => {
+    onAudioInputDeviceClick = (device: any) => {
         window.callsClient.setAudioInputDevice(device);
         this.setState({showAudioInputsMenu: false, currentAudioInputDevice: device});
     }
@@ -178,7 +199,7 @@ export default class CallWidget extends React.PureComponent {
             }
         }
 
-        const msg = isSharing ? 'You are sharing your screen' : `Your are viewing ${getUserDisplayName(profile)}'s screen`;
+        const msg = isSharing ? 'You are sharing your screen' : `Your are viewing ${getUserDisplayName(profile as UserProfile)}'s screen`;
         return (
             <div
                 className='Menu'
@@ -186,7 +207,7 @@ export default class CallWidget extends React.PureComponent {
             >
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={style.screenSharingPanel}
+                    style={style.screenSharingPanel as CSSProperties}
                 >
                     <button
                         className='cursor--pointer style--none button-controls'
@@ -233,7 +254,7 @@ export default class CallWidget extends React.PureComponent {
             >
                 <button
                     className={`style--none ${!sharingID || isSharing ? 'button-controls' : 'button-controls-disabled'} button-controls--wide`}
-                    disabled={sharingID && !isSharing}
+                    disabled={sharingID !== '' && !isSharing}
                     style={{background: isSharing ? '#D24B4E' : ''}}
                     onClick={this.onShareScreenToggle}
                 >
@@ -259,7 +280,7 @@ export default class CallWidget extends React.PureComponent {
             return null;
         }
         return (
-            <div style={{fontSize: '12px'}}><span style={{fontWeight: '600'}}>{getUserDisplayName(speakingProfile)}</span> {'is talking...'}</div>
+            <div style={{fontSize: '12px'}}><span style={{fontWeight: 600}}>{getUserDisplayName(speakingProfile)}</span> {'is talking...'}</div>
         );
     }
 
@@ -275,7 +296,7 @@ export default class CallWidget extends React.PureComponent {
                 let isSpeaking = false;
                 if (status) {
                     isMuted = !status.unmuted;
-                    isSpeaking = status.voice;
+                    isSpeaking = Boolean(status.voice);
                 }
 
                 const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
@@ -295,7 +316,7 @@ export default class CallWidget extends React.PureComponent {
                         <span className='MenuItem__primary-text'>
                             {getUserDisplayName(profile)}
                             { profile.id === this.props.currentUserID &&
-                            <span style={{color: 'rgba(61, 60, 64, 0.56)'}}>{'&nbsp;(you)'}</span>
+                            <span style={{color: 'rgba(61, 60, 64, 0.56)', whiteSpace: 'pre-wrap'}}>{' (you)'}</span>
                             }
                         </span>
 
@@ -334,7 +355,7 @@ export default class CallWidget extends React.PureComponent {
                     style={style.audioInputsMenu}
                 >
                     {
-                        this.state.devices.inputs.map((device, idx) => {
+                        this.state.devices.inputs.map((device: any, idx: number) => {
                             return (
                                 <li
                                     className='MenuItem'
@@ -454,7 +475,6 @@ export default class CallWidget extends React.PureComponent {
         }
 
         const MuteIcon = this.state.isMuted ? MutedIcon : UnmutedIcon;
-        const muteIconStyle = this.state.isMuted ? style.MutedIcon : style.UnmutedIcon;
         const muteTooltipText = this.state.isMuted ? 'Unmute' : 'Mute';
 
         const mainWidth = document.querySelector('.team-sidebar') ? '280px' : '216px';
@@ -462,12 +482,12 @@ export default class CallWidget extends React.PureComponent {
         return (
             <div
                 style={{
-                    ...style.main,
+                    ...style.main as CSSProperties,
                     width: mainWidth,
                 }}
                 ref={this.node}
             >
-                <div style={style.status}>
+                <div style={style.status as CSSProperties}>
 
                     {this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
@@ -480,7 +500,7 @@ export default class CallWidget extends React.PureComponent {
                         <div>
                             {this.renderSpeaking()}
                             <div style={style.callInfo}>
-                                <div style={{fontWeight: '600'}}>{this.getCallDuration()}</div>
+                                <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
                                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
                                 {this.props.channel.type === 'O' ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
                                 {this.props.channel.display_name}
@@ -526,7 +546,7 @@ export default class CallWidget extends React.PureComponent {
 
                             <span
                                 className='MenuItem__primary-text'
-                                style={{fontWeight: '600'}}
+                                style={{fontWeight: 600}}
                             >{this.props.profiles.length}</span>
                         </button>
 

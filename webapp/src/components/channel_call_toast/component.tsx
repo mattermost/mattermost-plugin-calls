@@ -3,25 +3,32 @@ import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 
 import {Channel} from 'mattermost-redux/types/channels';
+import {UserProfile} from 'mattermost-redux/types/users';
 
 import moment from 'moment-timezone';
 
 import {newClient} from '../../connection';
 
-import ActiveCallIcon from 'components/icons/active_call_icon';
-import ConnectedProfiles from 'components/connected_profiles';
+import ActiveCallIcon from '../../components/icons/active_call_icon';
+import ConnectedProfiles from '../../components/connected_profiles';
 
-export default class ChannelCallToast extends React.PureComponent {
-    static propTypes = {
-        currChannelID: PropTypes.string,
-        connectedID: PropTypes.string,
-        hasCall: PropTypes.bool.isRequired,
-        startAt: PropTypes.number,
-        pictures: PropTypes.array,
-        profiles: PropTypes.array,
-    }
+interface Props {
+    currChannelID: string,
+    connectedID?: string,
+    hasCall: boolean,
+    startAt?: number,
+    pictures: string[],
+    profiles: UserProfile[],
+}
 
-    constructor(props) {
+interface State {
+    hidden: boolean,
+    connectedID?: string,
+    intervalID?: NodeJS.Timer,
+}
+
+export default class ChannelCallToast extends React.PureComponent<Props, State> {
+    constructor(props: Props) {
         super(props);
         this.state = {
             hidden: false,

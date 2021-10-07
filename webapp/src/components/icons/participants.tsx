@@ -1,9 +1,15 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {CSSProperties} from 'react';
 
-export default function ParticipantsIcon(props: React.HTMLAttributes<HTMLSpanElement>) {
+type Props = {
+    className?: string,
+    fill?: string,
+    style?: CSSProperties,
+}
+
+export default function ParticipantsIcon(props: Props) {
     return (
         <svg
             {...props}

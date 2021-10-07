@@ -4,16 +4,18 @@ import PropTypes from 'prop-types';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
-import Avatar, {TAvatarSizeToken} from './avatar';
+import {UserProfile} from 'mattermost-redux/types/users';
 
-export default class ConnectedProfiles extends React.PureComponent {
-    static propTypes = {
-        pictures: PropTypes.array,
-        profiles: PropTypes.array,
-        size: PropTypes.string,
-        maxShowedProfiles: PropTypes.number,
-    }
+import Avatar, {TAvatarSizeToken} from './avatar/avatar';
 
+interface Props {
+    pictures: string[],
+    profiles: UserProfile[],
+    size?: TAvatarSizeToken,
+    maxShowedProfiles: number,
+}
+
+export default class ConnectedProfiles extends React.PureComponent<Props> {
     render() {
         const maxShowedProfiles = this.props.maxShowedProfiles || 2;
         const diff = this.props.profiles.length - maxShowedProfiles;
