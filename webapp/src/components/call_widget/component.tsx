@@ -52,6 +52,7 @@ export default class CallWidget extends React.PureComponent {
         // This is needed to force a re-render to periodically update
         // the start time.
         const id = setInterval(() => this.forceUpdate(), 1000);
+        // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
             intervalID: id,
         });
@@ -258,7 +259,7 @@ export default class CallWidget extends React.PureComponent {
             return null;
         }
         return (
-            <div style={{fontSize: '12px'}}><span style={{fontWeight: '600'}}>{getUserDisplayName(speakingProfile)}</span> is talking...</div>
+            <div style={{fontSize: '12px'}}><span style={{fontWeight: '600'}}>{getUserDisplayName(speakingProfile)}</span> {'is talking...'}</div>
         );
     }
 
@@ -294,7 +295,7 @@ export default class CallWidget extends React.PureComponent {
                         <span className='MenuItem__primary-text'>
                             {getUserDisplayName(profile)}
                             { profile.id === this.props.currentUserID &&
-                            <span style={{color: 'rgba(61, 60, 64, 0.56)'}}>&nbsp;(you)</span>
+                            <span style={{color: 'rgba(61, 60, 64, 0.56)'}}>{'&nbsp;(you)'}</span>
                             }
                         </span>
 
@@ -379,7 +380,7 @@ export default class CallWidget extends React.PureComponent {
                             <span
                                 className='MenuItem__primary-text'
                                 style={{padding: '0'}}
-                            >Microphone</span>
+                            >{'Microphone'}</span>
                             <ShowMoreIcon
                                 style={{width: '11px', height: '11px', marginLeft: 'auto'}}
                                 fill='rgba(61, 60, 64, 0.56)'
@@ -480,7 +481,7 @@ export default class CallWidget extends React.PureComponent {
                             {this.renderSpeaking()}
                             <div style={style.callInfo}>
                                 <div style={{fontWeight: '600'}}>{this.getCallDuration()}</div>
-                                <div style={{margin: '0 2px 0 4px'}}>•</div>
+                                <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
                                 {this.props.channel.type === 'O' ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
                                 {this.props.channel.display_name}
                             </div>
@@ -500,7 +501,7 @@ export default class CallWidget extends React.PureComponent {
                             <span
                                 className='MenuItem__primary-text'
                                 style={{color: '#D24B4E', fontSize: '12px', fontWeight: 600, marginLeft: '8px'}}
-                            >Leave</span>
+                            >{'Leave'}</span>
                         </button>
 
                         <button

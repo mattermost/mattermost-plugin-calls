@@ -5,22 +5,21 @@ import {Channel} from 'mattermost-redux/types/channels';
 
 import ActiveCallIcon from 'components/icons/active_call_icon';
 
-export default class ChannelLinkLabel extends React.PureComponent {
-    static propTypes = {
-        hasCall: PropTypes.bool.isRequired,
+const ChannelLinkLabel = () => {
+    if (this.props.hasCall) {
+        return (
+            <ActiveCallIcon
+                fill='#FFFFFF'
+                style={{marginLeft: 'auto', height: 'auto'}}
+            />
+        );
     }
 
-    render() {
-        if (this.props.hasCall) {
-            return (
-                <ActiveCallIcon
-                    fill='#FFFFFF'
-                    style={{marginLeft: 'auto', height: 'auto'}}
-                />
-            );
-        }
+    return null;
+};
 
-        return null;
-    }
-}
+ChannelLinkLabel.propTypes = {
+    hasCall: PropTypes.bool.isRequired,
+};
 
+export default ChannelLinkLabel;

@@ -35,7 +35,10 @@
     "beforeEach": true
   },
   "settings": {
-    "import/resolver": "webpack"
+    "import/resolver": "webpack",
+    "react": {
+        "version": "detect"
+    }
   },
   "rules": {
     "array-bracket-spacing": [
@@ -225,7 +228,7 @@
       "except-parens"
     ],
     "no-confusing-arrow": 2,
-    "no-console": 2,
+    "no-console": 1,
     "no-const-assign": 2,
     "no-constant-condition": 2,
     "no-debugger": 2,
@@ -371,14 +374,7 @@
         "args": "after-used"
       }
     ],
-    "no-use-before-define": [
-      2,
-      {
-        "classes": false,
-        "functions": false,
-        "variables": false
-      }
-    ],
+    "no-use-before-define": 0,
     "no-useless-computed-key": 2,
     "no-useless-concat": 2,
     "no-useless-constructor": 2,

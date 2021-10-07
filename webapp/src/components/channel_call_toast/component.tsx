@@ -32,6 +32,7 @@ export default class ChannelCallToast extends React.PureComponent {
         // This is needed to force a re-render to periodically update
         // the start time.
         const id = setInterval(() => this.forceUpdate(), 60000);
+        // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
             intervalID: id,
         });
