@@ -37,7 +37,7 @@ linters:
   enable:
     - deadcode      # Finds unused code
     - gofmt         # Checks whether code was gofmt-ed
-    - golint        # Differs from gofmt. Gofmt reformats Go source code, whereas golint prints out style mistakes
+    - revive        # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint
     - gosimple      # Linter for Go source code that specializes in simplifying a code
     - govet         # Examines Go source code and reports suspicious constructs, such as Printf calls whose arguments do not align with the format string
     - ineffassign   # Detects when assignments to existing variables are not used
