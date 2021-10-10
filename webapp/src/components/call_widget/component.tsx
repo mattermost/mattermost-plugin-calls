@@ -39,6 +39,16 @@ interface Props {
     screenSharingID: string,
 }
 
+interface DraggingState {
+    dragging: boolean,
+    x: number,
+    y: number,
+    initX: number,
+    initY: number,
+    offX: number,
+    offY: number,
+}
+
 interface State {
     isMuted: boolean,
     showMenu: boolean,
@@ -49,6 +59,7 @@ interface State {
     currentAudioInputDevice?: any,
     devices?: any,
     showAudioInputsMenu?: boolean,
+    dragging: DraggingState,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -61,12 +72,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             isMuted: true,
             showMenu: false,
             showParticipantsList: false,
+            dragging: {
+                dragging: false,
+                x: 0,
+                y: 0,
+                initX: 0,
+                initY: 0,
+                offX: 0,
+                offY: 0,
+            },
         };
         this.node = React.createRef();
         this.screenPlayer = React.createRef();
     }
 
     public componentDidMount() {
+        document.addEventListener('mouseup', this.onMouseUp, false);
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
 
@@ -80,6 +101,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentWillUnmount() {
+        document.removeEventListener('mouseup', this.onMouseUp, false);
         document.removeEventListener('click', this.closeOnBlur, true);
         document.removeEventListener('keyup', this.keyboardClose, true);
         if (this.state.intervalID) {
@@ -142,6 +164,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showMenu: false,
             showParticipantsList: false,
             currentAudioInputDevice: null,
+            dragging: {
+                dragging: false,
+                x: 0,
+                y: 0,
+                initX: 0,
+                initY: 0,
+                offX: 0,
+                offY: 0,
+            },
         });
     }
 
@@ -469,6 +500,72 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
+    onMouseDown = (ev: React.MouseEvent<HTMLDivElement>) => {
+        document.addEventListener('mousemove', this.onMouseMove, false);
+        const target = ev.target as HTMLElement;
+        this.setState({
+            dragging: {
+                ...this.state.dragging,
+                dragging: true,
+                initX: ev.clientX - this.state.dragging.offX,
+                initY: ev.clientY - this.state.dragging.offY,
+            },
+        });
+    }
+
+    onMouseUp = (ev: MouseEvent) => {
+        document.removeEventListener('mousemove', this.onMouseMove, false);
+        const target = ev.target as HTMLElement;
+        this.setState({
+            dragging: {
+                ...this.state.dragging,
+                dragging: false,
+                initX: this.state.dragging.x,
+                initY: this.state.dragging.y,
+            },
+        });
+    }
+
+    onMouseMove = (ev: MouseEvent) => {
+        if (this.state.dragging.dragging && this.node && this.node.current) {
+            ev.preventDefault();
+
+            let x = ev.clientX - this.state.dragging.initX;
+            let y = ev.clientY - this.state.dragging.initY;
+
+            const rect = this.node.current.getBoundingClientRect();
+            const bodyWidth = document.body.clientWidth;
+            const bodyHeight = document.body.clientHeight;
+
+            const maxDiffY = bodyHeight - Math.abs(bodyHeight - rect.y);
+            const diffY = Math.abs(this.state.dragging.y - y);
+            if (diffY > maxDiffY && y < this.state.dragging.y) {
+                y = this.state.dragging.y - maxDiffY;
+            } else if (rect.bottom + diffY > bodyHeight && y > this.state.dragging.y) {
+                y = this.state.dragging.y + (bodyHeight - rect.bottom);
+            }
+
+            const maxDiffX = bodyWidth - Math.abs(bodyWidth - rect.x);
+            const diffX = Math.abs(this.state.dragging.x - x);
+            if (diffX > maxDiffX && x < this.state.dragging.x) {
+                x = this.state.dragging.x - maxDiffX;
+            } else if (rect.right + diffX > bodyWidth && x > this.state.dragging.x) {
+                x = this.state.dragging.x + (bodyWidth - rect.right);
+            }
+
+            this.setState({
+                dragging: {
+                    ...this.state.dragging,
+                    x,
+                    y,
+                    offX: x,
+                    offY: y,
+                },
+            });
+            this.node.current.style.transform = 'translate3d(' + x + 'px, ' + y + 'px, 0)';
+        }
+    }
+
     render() {
         if (!this.props.channel) {
             return null;
@@ -488,12 +585,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 ref={this.node}
             >
                 <div style={style.status as CSSProperties}>
-
                     {this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
                     {this.renderMenu()}
 
-                    <div style={style.topBar}>
+                    <div
+                        style={style.topBar}
+                        onMouseDown={this.onMouseDown}
+                    >
                         <div style={style.profiles}>
                             {this.renderProfiles()}
                         </div>
@@ -587,8 +686,9 @@ const style = {
         display: 'flex',
         bottom: '12px',
         left: '12px',
-        zIndex: '20',
+        zIndex: '1000',
         border: '1px solid rgba(63, 67, 80, 0.3)',
+        userSelect: 'none',
     },
     topBar: {
         background: 'rgba(63, 67, 80, 0.04)',
@@ -597,6 +697,7 @@ const style = {
         width: '100%',
         alignItems: 'center',
         height: '44px',
+        cursor: 'move',
     },
     bottomBar: {
         padding: '6px 8px',
