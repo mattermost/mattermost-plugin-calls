@@ -10,6 +10,7 @@ import (
 
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -218,10 +219,16 @@ func (p *Plugin) initRTCConn(userID string) {
 	peerConn.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		if state == webrtc.PeerConnectionStateConnected {
 			p.LogDebug("connected!")
+			p.metrics.RTCConnStateCounters.With(prometheus.Labels{"type": "connected"}).Inc()
 		} else if state == webrtc.PeerConnectionStateDisconnected {
 			p.LogDebug("peer connection disconnected")
+			p.metrics.RTCConnStateCounters.With(prometheus.Labels{"type": "disconnected"}).Inc()
+		} else if state == webrtc.PeerConnectionStateFailed {
+			p.LogDebug("peer connection failed")
+			p.metrics.RTCConnStateCounters.With(prometheus.Labels{"type": "failed"}).Inc()
 		} else if state == webrtc.PeerConnectionStateClosed {
 			p.LogDebug("peer connection closed")
+			p.metrics.RTCConnStateCounters.With(prometheus.Labels{"type": "closed"}).Inc()
 		}
 	})
 
@@ -245,10 +252,26 @@ func (p *Plugin) initRTCConn(userID string) {
 					p.LogError(readErr.Error())
 					return
 				}
+
+				p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "in", "type": "voice"}).Inc()
+				p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "in", "type": "voice"}).Add(float64(len(rtp.Payload)))
+
 				if err := outVoiceTrack.WriteRTP(rtp); err != nil && !errors.Is(err, io.ErrClosedPipe) {
 					p.LogError(err.Error())
 					return
 				}
+
+				// TODO: improve this.
+				p.mut.RLock()
+				for id, s := range p.sessions {
+					if id != userID && userSession.channelID == s.channelID {
+						p.mut.RUnlock()
+						p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "out", "type": "voice"}).Inc()
+						p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "out", "type": "voice"}).Add(float64(len(rtp.Payload)))
+						p.mut.RLock()
+					}
+				}
+				p.mut.RUnlock()
 			}
 		} else if remoteTrack.Codec().MimeType == rtpVideoCodec.MimeType {
 			// TODO: actually check if the userID matches the expected publisher.
@@ -289,10 +312,23 @@ func (p *Plugin) initRTCConn(userID string) {
 					p.LogError(readErr.Error())
 					return
 				}
+				p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "in", "type": "screen"}).Inc()
+				p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "in", "type": "screen"}).Add(float64(len(rtp.Payload)))
 				if err := outScreenTrack.WriteRTP(rtp); err != nil && !errors.Is(err, io.ErrClosedPipe) {
 					p.LogError(err.Error())
 					return
 				}
+				// TODO: improve this.
+				p.mut.RLock()
+				for id, s := range p.sessions {
+					if id != userID && userSession.channelID == s.channelID {
+						p.mut.RUnlock()
+						p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "out", "type": "screen"}).Inc()
+						p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "out", "type": "screen"}).Add(float64(len(rtp.Payload)))
+						p.mut.RLock()
+					}
+				}
+				p.mut.RUnlock()
 			}
 		}
 	})

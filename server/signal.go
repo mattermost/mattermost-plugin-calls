@@ -10,6 +10,7 @@ import (
 	"github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var upgrader = websocket.Upgrader{} // use default options
@@ -74,6 +75,7 @@ func (p *Plugin) wsWriter(us *session, doneCh chan struct{}) {
 	for {
 		select {
 		case msg := <-us.wsOutCh:
+			p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "out", "type": "signal"}).Inc()
 			err := us.wsConn.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				p.LogError(err.Error())
@@ -104,6 +106,8 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 			p.LogError(err.Error())
 			continue
 		}
+
+		p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "in", "type": msg.Type}).Inc()
 
 		switch msg.Type {
 		case clientMessageTypeSignal:
@@ -184,6 +188,8 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 	}
 
 	p.LogDebug("ws connected")
+	p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Inc()
+	defer p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Dec()
 
 	us := newUserSession(userID, channelID)
 	us.wsConn = conn
@@ -227,6 +233,8 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			p.metrics.RTCSessions.With(prometheus.Labels{"channelID": channelID}).Inc()
+			defer p.metrics.RTCSessions.With(prometheus.Labels{"channelID": channelID}).Dec()
 			p.initRTCConn(userID)
 			p.LogDebug("initRTCConn DONE")
 			p.handleTracks(us)
