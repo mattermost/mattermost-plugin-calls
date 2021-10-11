@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/mattermost/mattermost-server/v6/model"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type clusterMessage struct {
@@ -46,6 +48,7 @@ func (p *Plugin) sendClusterMessage(msg clusterMessage, msgType clusterMessageTy
 		TargetId: targetID,
 	}
 
+	p.metrics.ClusterEventCounters.With(prometheus.Labels{"type": string(msgType)}).Inc()
 	if appErr := p.API.PublishPluginClusterEvent(ev, opts); appErr != nil {
 		return fmt.Errorf("failed to publish cluster event: %w", appErr)
 	}

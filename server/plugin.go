@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/performance"
+
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
@@ -17,6 +21,8 @@ type Plugin struct {
 	// configuration is the active plugin configuration. Consult getConfiguration and
 	// setConfiguration for usage.
 	configuration *configuration
+
+	metrics *performance.Metrics
 
 	mut         sync.RWMutex
 	nodeID      string // the node cluster id
@@ -37,6 +43,8 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		p.metrics.RTCSessions.With(prometheus.Labels{"channelID": msg.ChannelID}).Inc()
+		defer p.metrics.RTCSessions.With(prometheus.Labels{"channelID": msg.ChannelID}).Dec()
 		p.initRTCConn(msg.UserID)
 		p.LogDebug("initRTCConn DONE")
 		p.handleTracks(us)

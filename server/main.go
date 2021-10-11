@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/mattermost/mattermost-plugin-calls/server/performance"
+
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 )
@@ -13,5 +15,6 @@ func main() {
 		clusterEvCh: make(chan model.PluginClusterEvent, 10),
 		sessions:    map[string]*session{},
 		calls:       map[string]*call{},
+		metrics:     performance.NewMetrics(),
 	})
 }

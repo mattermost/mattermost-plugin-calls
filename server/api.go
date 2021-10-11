@@ -193,6 +193,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	if strings.HasPrefix(r.URL.Path, "/metrics") && p.metrics != nil {
+		p.metrics.Handler().ServeHTTP(w, r)
+		return
+	}
+
 	if r.Header.Get("Mattermost-User-Id") == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

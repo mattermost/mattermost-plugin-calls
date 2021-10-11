@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type callState struct {
@@ -30,6 +32,7 @@ func (cs *callState) getUsers() []string {
 }
 
 func (p *Plugin) kvGetChannelState(channelID string) (*channelState, error) {
+	p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVGet"}).Inc()
 	data, appErr := p.API.KVGet(channelID)
 	if appErr != nil {
 		return nil, fmt.Errorf("KVGet failed: %w", appErr)
@@ -68,6 +71,7 @@ func (p *Plugin) cleanUpState() error {
 	var page int
 	perPage := 100
 	for {
+		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVList"}).Inc()
 		keys, appErr := p.API.KVList(page, perPage)
 		if appErr != nil {
 			return appErr
