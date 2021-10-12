@@ -6,8 +6,9 @@ import axios from 'axios';
 
 import {Client4} from 'mattermost-redux/client';
 
-import {canManageChannelMembers, getCurrentChannelId, getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentChannelId, getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
 import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
+import {getMyRoles} from 'mattermost-redux/selectors/entities/roles';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
@@ -94,9 +95,9 @@ export default class Plugin {
 
         let currChannelId = getCurrentChannelId(store.getState());
 
-        let hasRegisteredMenuAction: boolean;
+        let channelHeaderMenuID: string;
         const registerChannelHeaderMenuAction = () => {
-            registry.registerChannelHeaderMenuAction(
+            channelHeaderMenuID = registry.registerChannelHeaderMenuAction(
                 ChannelHeaderMenuButton,
                 async (channelID) => {
                     try {
@@ -116,8 +117,18 @@ export default class Plugin {
         store.subscribe(async () => {
             const currentChannelId = getCurrentChannelId(store.getState());
             const firstLoad = currChannelId.length === 0 && currentChannelId.length > 0;
+
             if (firstLoad || currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
+
+                const channel = getCurrentChannel(store.getState());
+                const roles = getMyRoles(store.getState());
+                registry.unregisterComponent(channelHeaderMenuID);
+                if ((isDirectChannel(channel) || isGroupChannel(channel)) ||
+                roles.channel[channel.id].has('channel_admin') || roles.system.has('system_admin')) {
+                    registerChannelHeaderMenuAction();
+                }
+
                 registry.unregisterComponent(actionID);
                 try {
                     const resp = await axios.get(`${getPluginPath()}/${currChannelId}`);
@@ -179,17 +190,6 @@ export default class Plugin {
                     }
                 } catch (err) {
                     console.log(err);
-                }
-
-                if (!hasRegisteredMenuAction) {
-                    const channel = getCurrentChannel(store.getState());
-                    if (!channel) {
-                        return;
-                    }
-                    if ((isDirectChannel(channel) || isGroupChannel(channel)) || canManageChannelMembers(store.getState())) {
-                        registerChannelHeaderMenuAction();
-                        hasRegisteredMenuAction = true;
-                    }
                 }
             }
         });
