@@ -30,7 +30,16 @@ const manifestStr = `
   "settings_schema": {
     "header": "",
     "footer": "",
-    "settings": []
+    "settings": [
+      {
+        "key": "ICEPortsRange",
+        "display_name": "ICE Ports Range",
+        "type": "text",
+        "help_text": "Range of UDP ports used for ICE connections.",
+        "placeholder": "E.g.: \"10000-11000\"",
+        "default": ""
+      }
+    ]
   }
 }
 `

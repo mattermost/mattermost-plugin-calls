@@ -181,8 +181,11 @@ func (p *Plugin) initRTCConn(userID string) {
 	}
 
 	s := webrtc.SettingEngine{}
-	if err := s.SetEphemeralUDPPortRange(10000, 11000); err != nil {
-		p.LogError(err.Error())
+	if pRange := p.getConfiguration().ICEPortsRange; pRange.IsValid() == nil {
+		p.LogDebug("Setting ICE ports range", "minPort", pRange.MinPort(), "maxPort", pRange.MaxPort())
+		if err := s.SetEphemeralUDPPortRange(pRange.MinPort(), pRange.MaxPort()); err != nil {
+			p.LogError(err.Error())
+		}
 	}
 
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m), webrtc.WithSettingEngine(s))

@@ -1,6 +1,8 @@
 package main
 
 func (p *Plugin) OnActivate() error {
+	p.setConfigDefaults()
+
 	status, appErr := p.API.GetPluginStatus(manifest.Id)
 	if appErr != nil {
 		p.LogError(appErr.Error())
