@@ -57,41 +57,38 @@ export default class Plugin {
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
 
-        let actionID: string;
-        const registerChannelHeaderButtonAction = ():string => {
-            return registry.registerChannelHeaderButtonAction(
-                ChannelHeaderButton
-                ,
-                async (channel) => {
+        registry.registerChannelHeaderButtonAction(
+            ChannelHeaderButton
+            ,
+            async (channel) => {
+                try {
+                    const users = voiceConnectedUsers(store.getState());
+                    if (users && users.length > 0) {
+                        const profiles = await Client4.getProfilesByIds(users);
+                        store.dispatch({
+                            type: VOICE_CHANNEL_PROFILES_CONNECTED,
+                            data: {
+                                profiles,
+                                channelID: channel.id,
+                            },
+                        });
+                    }
+                } catch (err) {
+                    console.log(err);
+                    return;
+                }
+
+                if (!connectedChannelID(store.getState())) {
                     try {
-                        const users = voiceConnectedUsers(store.getState());
-                        if (users && users.length > 0) {
-                            const profiles = await Client4.getProfilesByIds(users);
-                            store.dispatch({
-                                type: VOICE_CHANNEL_PROFILES_CONNECTED,
-                                data: {
-                                    profiles,
-                                    channelID: channel.id,
-                                },
-                            });
-                        }
+                        window.callsClient = await newClient(channel.id);
                     } catch (err) {
                         console.log(err);
-                        return;
                     }
-
-                    if (!connectedChannelID(store.getState())) {
-                        try {
-                            window.callsClient = await newClient(channel.id);
-                        } catch (err) {
-                            console.log(err);
-                        }
-                    } else if (connectedChannelID(store.getState()) === getCurrentChannelId(store.getState())) {
-                        // TODO: show an error or let the user switch connection.
-                    }
-                },
-            );
-        };
+                } else if (connectedChannelID(store.getState()) === getCurrentChannelId(store.getState())) {
+                    // TODO: show an error or let the user switch connection.
+                }
+            },
+        );
 
         let currChannelId = getCurrentChannelId(store.getState());
 
@@ -129,7 +126,6 @@ export default class Plugin {
                     registerChannelHeaderMenuAction();
                 }
 
-                registry.unregisterComponent(actionID);
                 try {
                     const resp = await axios.get(`${getPluginPath()}/${currChannelId}`);
                     store.dispatch({
@@ -142,10 +138,6 @@ export default class Plugin {
                             channelID: currChannelId,
                         },
                     });
-
-                    if (resp.data.enabled) {
-                        actionID = registerChannelHeaderButtonAction();
-                    }
                 } catch (err) {
                     console.log(err);
                     store.dispatch({
@@ -198,14 +190,12 @@ export default class Plugin {
             store.dispatch({
                 type: VOICE_CHANNEL_ENABLE,
             });
-            actionID = registerChannelHeaderButtonAction();
         });
 
         registry.registerWebSocketEventHandler(`custom_${manifest.id}_channel_disable_voice`, (data) => {
             store.dispatch({
                 type: VOICE_CHANNEL_DISABLE,
             });
-            registry.unregisterComponent(actionID);
         });
 
         registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_connected`, async (ev) => {
