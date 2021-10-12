@@ -11,14 +11,14 @@ const ChannelHeaderMenuButton = (props: Props) => {
         return (
             <FormattedMessage
                 id='button.channel.menu'
-                defaultMessage='Disable Voice'
+                defaultMessage='Disable Calls'
             />
         );
     }
     return (
         <FormattedMessage
             id='button.channel.menu'
-            defaultMessage='Enable Voice'
+            defaultMessage='Enable Calls'
         />
     );
 };
