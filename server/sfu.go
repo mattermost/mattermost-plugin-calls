@@ -193,28 +193,13 @@ func (p *Plugin) initRTCConn(userID string) {
 		return
 	}
 
-	outVoiceTrack, err := webrtc.NewTrackLocalStaticRTP(rtpAudioCodec, "voice", model.NewId())
-	if err != nil {
-		p.LogError(err.Error())
-		return
-	}
-
 	p.mut.RLock()
 	userSession := p.sessions[userID]
 	p.mut.RUnlock()
 
-	userSession.outVoiceTrack = outVoiceTrack
+	userSession.mut.Lock()
 	userSession.rtcConn = peerConn
-
-	p.mut.RLock()
-	for id, s := range p.sessions {
-		if id != userID && userSession.channelID == s.channelID {
-			p.mut.RUnlock()
-			s.tracksCh <- outVoiceTrack
-			p.mut.RLock()
-		}
-	}
-	p.mut.RUnlock()
+	userSession.mut.Unlock()
 
 	peerConn.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		if state == webrtc.PeerConnectionStateConnected {
@@ -246,6 +231,26 @@ func (p *Plugin) initRTCConn(userID string) {
 		p.LogDebug(fmt.Sprintf("Track has started, of type %d: %s", remoteTrack.PayloadType(), remoteTrack.Codec().MimeType))
 
 		if remoteTrack.Codec().MimeType == rtpAudioCodec.MimeType {
+			outVoiceTrack, err := webrtc.NewTrackLocalStaticRTP(rtpAudioCodec, "voice", model.NewId())
+			if err != nil {
+				p.LogError(err.Error())
+				return
+			}
+
+			userSession.mut.Lock()
+			userSession.outVoiceTrack = outVoiceTrack
+			userSession.mut.Unlock()
+
+			p.mut.RLock()
+			for id, s := range p.sessions {
+				if id != userID && userSession.channelID == s.channelID {
+					p.mut.RUnlock()
+					s.tracksCh <- outVoiceTrack
+					p.mut.RLock()
+				}
+			}
+			p.mut.RUnlock()
+
 			for {
 				rtp, _, readErr := remoteTrack.ReadRTP()
 				if readErr != nil {
@@ -379,6 +384,8 @@ func (p *Plugin) handleTracks(us *session) {
 			if err := p.handleSignaling(us, msg); err != nil {
 				p.LogError(err.Error())
 			}
+		case <-us.closeCh:
+			return
 		}
 	}
 }

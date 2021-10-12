@@ -36,6 +36,7 @@ type session struct {
 	remoteScreenTrack *webrtc.TrackRemote
 	rtcConn           *webrtc.PeerConnection
 	tracksCh          chan *webrtc.TrackLocalStaticRTP
+	closeCh           chan struct{}
 }
 
 func newUserSession(userID, channelID string) *session {
@@ -45,6 +46,7 @@ func newUserSession(userID, channelID string) *session {
 		wsInCh:    make(chan []byte, wsChSize),
 		wsOutCh:   make(chan []byte, wsChSize),
 		tracksCh:  make(chan *webrtc.TrackLocalStaticRTP, 5),
+		closeCh:   make(chan struct{}),
 	}
 }
 
