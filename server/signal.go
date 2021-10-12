@@ -284,8 +284,6 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		p.LogError(err.Error())
 	}
 
-	close(us.tracksCh)
-
 	if handlerID != nodeID {
 		if err := p.sendClusterMessage(clusterMessage{
 			UserID:    userID,
@@ -300,6 +298,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID})
 
+	close(us.closeCh)
 	close(us.wsInCh)
 	wg.Wait()
 	close(us.wsOutCh)

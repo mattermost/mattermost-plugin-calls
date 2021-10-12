@@ -51,14 +51,6 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 		p.LogDebug("handleTracks DONE")
 	}()
 
-	if msg.ClientMessage.Type == clientMessageTypeSignal {
-		select {
-		case us.wsInCh <- []byte(msg.ClientMessage.Data):
-		default:
-			p.LogError("channel is full, dropping msg")
-		}
-	}
-
 	for m := range us.wsOutCh {
 		clusterMsg := clusterMessage{
 			UserID:    msg.UserID,
@@ -107,14 +99,22 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		go p.startSession(&msg)
 	case clusterMessageTypeDisconnect:
 		if us == nil {
-			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", us.userID, us.channelID)
+			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", msg.UserID, msg.ChannelID)
 		}
 		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID)
-		close(us.wsOutCh)
 		p.mut.Lock()
 		delete(p.sessions, us.userID)
 		p.mut.Unlock()
+		close(us.wsInCh)
+		close(us.wsOutCh)
+		close(us.closeCh)
+		if us.rtcConn != nil {
+			us.rtcConn.Close()
+		}
 	case clusterMessageTypeSignaling:
+		if us == nil {
+			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", msg.UserID, msg.ChannelID)
+		}
 		if msg.ClientMessage.Type == clientMessageTypeSignal {
 			if us.wsConn != nil {
 				select {
