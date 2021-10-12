@@ -147,19 +147,40 @@ export async function newClient(channelID: string) {
             return null;
         }
 
+        const resolution = getScreenResolution();
+        console.log(resolution);
+
+        const maxFrameRate = 15;
+        const captureWidth = (resolution.width / 8) * 5;
+
         try {
-            const resolution = getScreenResolution();
-            console.log(resolution);
+            // browser
             screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: {
-                    frameRate: 15,
-                    width: (resolution.width / 8) * 5,
+                    frameRate: maxFrameRate,
+                    width: captureWidth,
                 },
                 audio: false,
             });
         } catch (err) {
             console.log(err);
-            return null;
+            try {
+                // electron
+                screenStream = await navigator.mediaDevices.getUserMedia({
+                    audio: false,
+                    video: {
+                        mandatory: {
+                            chromeMediaSource: 'desktop',
+                            minWidth: captureWidth,
+                            maxWidth: captureWidth,
+                            maxFrameRate,
+                        },
+                    } as any,
+                });
+            } catch (err2) {
+                console.log(err2);
+                return null;
+            }
         }
 
         streams.push(screenStream);
