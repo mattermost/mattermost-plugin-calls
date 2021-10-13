@@ -74,7 +74,10 @@ func (p *Plugin) wsWriter(us *session, doneCh chan struct{}) {
 	defer pingTicker.Stop()
 	for {
 		select {
-		case msg := <-us.wsOutCh:
+		case msg, ok := <-us.wsOutCh:
+			if !ok {
+				return
+			}
 			p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "out", "type": "signal"}).Inc()
 			err := us.wsConn.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
@@ -172,29 +175,38 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		return
 	}
 
-	p.mut.RLock()
+	us := newUserSession(userID, channelID)
+
+	p.mut.Lock()
 	_, exists := p.sessions[userID]
 	if exists {
+		p.mut.Unlock()
 		http.Error(w, "Session exists", http.StatusBadRequest)
-		p.mut.RUnlock()
 		return
 	}
-	p.mut.RUnlock()
+	p.LogDebug("adding session", "UserID", userID, "ChannelID", channelID)
+	p.sessions[userID] = us
+	defer func() {
+		p.mut.Lock()
+		p.LogDebug("removing session", "UserID", userID, "ChannelID", channelID)
+		delete(p.sessions, userID)
+		p.mut.Unlock()
+	}()
+	p.mut.Unlock()
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		p.LogError(err.Error())
 		return
 	}
+	us.mut.Lock()
+	us.wsConn = conn
+	us.mut.Unlock()
 
 	p.LogDebug("ws connected")
 	p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Inc()
 	defer p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Dec()
 
-	us := newUserSession(userID, channelID)
-	us.wsConn = conn
-
-	var handlerID string
 	state, err := p.addUserSession(userID, channelID, us)
 	if err != nil {
 		p.LogError(err.Error())
@@ -204,9 +216,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		p.LogError("state.Call should not be nil")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-	handlerID = state.NodeID
-	if len(state.Call.Users) == 1 {
+	} else if len(state.Call.Users) == 1 {
 		p.mut.Lock()
 		p.calls[channelID] = &call{
 			channelID: channelID,
@@ -225,6 +235,8 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 			"start_at":  state.Call.StartAt,
 		}, &model.WebsocketBroadcast{ChannelId: channelID})
 	}
+
+	handlerID := state.NodeID
 
 	var wg sync.WaitGroup
 	doneCh := make(chan struct{})
@@ -280,10 +292,6 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID})
 	}
 
-	if _, err := p.removeUserSession(userID, channelID); err != nil {
-		p.LogError(err.Error())
-	}
-
 	if handlerID != nodeID {
 		if err := p.sendClusterMessage(clusterMessage{
 			UserID:    userID,
@@ -294,14 +302,18 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		}
 	}
 
-	p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
-		"userID": userID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID})
-
 	close(us.closeCh)
 	close(us.wsInCh)
 	wg.Wait()
 	close(us.wsOutCh)
+
+	p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
+		"userID": userID,
+	}, &model.WebsocketBroadcast{ChannelId: channelID})
+
+	if _, err := p.removeUserSession(userID, channelID); err != nil {
+		p.LogError(err.Error())
+	}
 
 	if us.rtcConn != nil {
 		us.rtcConn.Close()
