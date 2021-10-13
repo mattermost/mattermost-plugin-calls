@@ -30,7 +30,13 @@ export default class PostType extends React.PureComponent<Props> {
         }
 
         try {
-            window.callsClient = await newClient(this.props.currChannelID);
+            window.callsClient = await newClient(this.props.currChannelID, () => {
+                console.log('calls client close');
+                if (window.callsClient) {
+                    window.callsClient.disconnect();
+                    delete window.callsClient;
+                }
+            });
         } catch (err) {
             console.log(err);
         }
