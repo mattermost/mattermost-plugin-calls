@@ -80,7 +80,13 @@ export default class Plugin {
 
                 if (!connectedChannelID(store.getState())) {
                     try {
-                        window.callsClient = await newClient(channel.id);
+                        window.callsClient = await newClient(channel.id, () => {
+                            console.log('calls client close');
+                            if (window.callsClient) {
+                                window.callsClient.disconnect();
+                                delete window.callsClient;
+                            }
+                        });
                     } catch (err) {
                         console.log(err);
                     }

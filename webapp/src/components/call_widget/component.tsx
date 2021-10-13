@@ -158,7 +158,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     onDisconnectClick = () => {
-        window.callsClient.disconnect();
+        if (window.callsClient) {
+            window.callsClient.disconnect();
+        }
         this.setState({
             isMuted: true,
             showMenu: false,
@@ -567,7 +569,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     render() {
-        if (!this.props.channel) {
+        if (!this.props.channel || !window.callsClient) {
             return null;
         }
 

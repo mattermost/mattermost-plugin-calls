@@ -6,7 +6,7 @@ import {getWSConnectionURL, getScreenResolution} from './utils';
 
 import VoiceActivityDetector from './vad';
 
-export async function newClient(channelID: string) {
+export async function newClient(channelID: string, closeCb: () => void) {
     let peer: SimplePeer.Instance;
     let localScreenTrack: any;
     let currentAudioDeviceID: string;
@@ -100,7 +100,10 @@ export async function newClient(channelID: string) {
             });
         });
 
-        ws.close();
+        if (ws) {
+            ws.close();
+        }
+
         if (peer) {
             peer.destroy();
         }
@@ -224,7 +227,16 @@ export async function newClient(channelID: string) {
         }));
     };
 
-    ws.onerror = (err) => console.log(err);
+    ws.onerror = (err) => {
+        console.log(err);
+        disconnect();
+    };
+
+    ws.onclose = () => {
+        if (closeCb) {
+            closeCb();
+        }
+    };
 
     ws.onopen = () => {
         peer = new SimplePeer({initiator: true, trickle: true});
@@ -242,7 +254,10 @@ export async function newClient(channelID: string) {
                 }));
             }
         });
-        peer.on('error', (err) => console.log(err));
+        peer.on('error', (err) => {
+            console.log(err);
+            disconnect();
+        });
         peer.on('stream', (remoteStream) => {
             console.log('new remote stream received');
             console.log(remoteStream);
