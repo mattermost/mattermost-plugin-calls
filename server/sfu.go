@@ -87,6 +87,7 @@ func (p *Plugin) handlePLI(sender *webrtc.RTPSender, channelID string) {
 }
 
 func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRTP) {
+	p.LogDebug("addTrack")
 	userSession.mut.RLock()
 	peerConn := userSession.rtcConn
 	userSession.mut.RUnlock()
@@ -206,25 +207,27 @@ func (p *Plugin) initRTCConn(userID string) {
 
 	peerConn.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		if state == webrtc.PeerConnectionStateConnected {
-			p.LogDebug("connected!")
+			p.LogDebug("connected!", "UserID", userID)
 			p.metrics.RTCConnStateCounters.With(prometheus.Labels{"type": "connected"}).Inc()
 		} else if state == webrtc.PeerConnectionStateDisconnected {
-			p.LogDebug("peer connection disconnected")
+			p.LogDebug("peer connection disconnected", "UserID", userID)
 			p.metrics.RTCConnStateCounters.With(prometheus.Labels{"type": "disconnected"}).Inc()
 		} else if state == webrtc.PeerConnectionStateFailed {
-			p.LogDebug("peer connection failed")
+			p.LogDebug("peer connection failed", "UserID", userID)
 			p.metrics.RTCConnStateCounters.With(prometheus.Labels{"type": "failed"}).Inc()
 		} else if state == webrtc.PeerConnectionStateClosed {
-			p.LogDebug("peer connection closed")
+			p.LogDebug("peer connection closed", "UserID", userID)
 			p.metrics.RTCConnStateCounters.With(prometheus.Labels{"type": "closed"}).Inc()
 		}
 	})
 
 	peerConn.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
 		if state == webrtc.ICEConnectionStateDisconnected {
-			p.LogDebug("ice disconnected")
+			p.LogDebug("ice disconnected", "UserID", userID)
+		} else if state == webrtc.ICEConnectionStateFailed {
+			p.LogDebug("ice failed", "UserID", userID)
 		} else if state == webrtc.ICEConnectionStateClosed {
-			p.LogDebug("ice closed")
+			p.LogDebug("ice closed", "UserID", userID)
 		}
 	})
 

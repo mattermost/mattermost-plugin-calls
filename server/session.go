@@ -51,11 +51,6 @@ func newUserSession(userID, channelID string) *session {
 }
 
 func (p *Plugin) addUserSession(userID, channelID string, userSession *session) (channelState, error) {
-	p.mut.Lock()
-	p.LogDebug("adding session", "UserID", userID, "ChannelID", channelID)
-	p.sessions[userID] = userSession
-	p.mut.Unlock()
-
 	var st channelState
 	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
 		if state == nil {
@@ -69,7 +64,12 @@ func (p *Plugin) addUserSession(userID, channelID string, userSession *session) 
 			}
 			state.NodeID = p.nodeID
 		}
+
+		if _, ok := state.Call.Users[userID]; ok {
+			return nil, fmt.Errorf("user is already connected")
+		}
 		state.Call.Users[userID] = struct{}{}
+
 		st = *state
 		return state, nil
 	})
@@ -78,11 +78,6 @@ func (p *Plugin) addUserSession(userID, channelID string, userSession *session) 
 }
 
 func (p *Plugin) removeUserSession(userID, channelID string) (channelState, error) {
-	p.mut.Lock()
-	p.LogDebug("removing session", "UserID", userID, "ChannelID", channelID)
-	delete(p.sessions, userID)
-	p.mut.Unlock()
-
 	var st channelState
 	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
 		if state == nil {
