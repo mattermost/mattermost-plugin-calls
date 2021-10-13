@@ -80,7 +80,11 @@ export async function newClient(channelID: string) {
             voiceDetector.on('ready', () => voiceDetector.start());
         }
         newTrack.enabled = isEnabled;
-        peer.replaceTrack(audioTrack, newTrack, stream);
+        if (voiceTrackAdded) {
+            peer.replaceTrack(audioTrack, newTrack, stream);
+        } else {
+            peer.addTrack(newTrack, stream);
+        }
         audioTrack = newTrack;
     };
 
@@ -271,8 +275,10 @@ export async function newClient(channelID: string) {
         });
 
         ws.onmessage = ({data}) => {
-            console.log('ws', data);
             const msg = JSON.parse(data);
+            if (msg.type !== 'ping') {
+                console.log('ws', data);
+            }
             if (msg.type === 'answer' || msg.type === 'offer') {
                 peer.signal(data);
             }
