@@ -12,7 +12,7 @@ var isDebug string
 func main() {
 	plugin.ClientMain(&Plugin{
 		stopCh:      make(chan struct{}),
-		clusterEvCh: make(chan model.PluginClusterEvent, 10),
+		clusterEvCh: make(chan model.PluginClusterEvent, 100),
 		sessions:    map[string]*session{},
 		calls:       map[string]*call{},
 		metrics:     performance.NewMetrics(),
