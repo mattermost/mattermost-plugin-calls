@@ -108,7 +108,7 @@ export default class Plugin {
                             {enabled: !isVoiceEnabled(store.getState())},
                             {headers: {'X-Requested-With': 'XMLHttpRequest'}});
                         store.dispatch({
-                            type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : typeof VOICE_CHANNEL_DISABLE,
+                            type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                         });
                     } catch (err) {
                         console.log(err);
@@ -135,7 +135,7 @@ export default class Plugin {
                 try {
                     const resp = await axios.get(`${getPluginPath()}/${currChannelId}`);
                     store.dispatch({
-                        type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : typeof VOICE_CHANNEL_DISABLE,
+                        type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                     });
                     store.dispatch({
                         type: VOICE_CHANNEL_USERS_CONNECTED,
