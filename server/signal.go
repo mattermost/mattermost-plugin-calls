@@ -140,6 +140,21 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 			us.mut.Lock()
 			us.isMuted = (msg.Type == clientMessageTypeMute)
 			us.mut.Unlock()
+
+			if handlerID != p.nodeID {
+				// need to relay track event.
+				if err := p.sendClusterMessage(clusterMessage{
+					UserID:        us.userID,
+					ChannelID:     us.channelID,
+					SenderID:      p.nodeID,
+					ClientMessage: msg,
+				}, clusterMessageTypeUserState, handlerID); err != nil {
+					p.LogError(err.Error())
+				}
+			} else {
+				us.trackEnableCh <- (msg.Type == clientMessageTypeMute)
+			}
+
 			evType := wsEventUserUnmuted
 			if msg.Type == clientMessageTypeMute {
 				evType = wsEventUserMuted

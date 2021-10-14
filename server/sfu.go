@@ -97,6 +97,10 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 		return
 	} else if track.Codec().MimeType == webrtc.MimeTypeVP8 {
 		go p.handlePLI(sender, userSession.channelID)
+	} else {
+		userSession.mut.Lock()
+		userSession.rtpSendersMap[track] = sender
+		userSession.mut.Unlock()
 	}
 
 	offer, err := peerConn.CreateOffer(nil)
@@ -390,6 +394,43 @@ func (p *Plugin) handleTracks(us *session) {
 			if err := p.handleSignaling(us, msg); err != nil {
 				p.LogError(err.Error())
 			}
+		case muted, ok := <-us.trackEnableCh:
+			if !ok {
+				return
+			}
+
+			us.mut.RLock()
+			track := us.outVoiceTrack
+			us.mut.RUnlock()
+
+			if track == nil {
+				break
+			}
+
+			p.mut.RLock()
+			for id, s := range p.sessions {
+				if id != us.userID && us.channelID == s.channelID {
+					p.mut.RUnlock()
+
+					s.mut.RLock()
+					sender := s.rtpSendersMap[track]
+					s.mut.RUnlock()
+
+					var t webrtc.TrackLocal
+					if !muted {
+						t = track
+					}
+					if sender != nil {
+						p.LogDebug("replacing track on sender")
+						if err := sender.ReplaceTrack(t); err != nil {
+							p.LogError(err.Error())
+						}
+					}
+
+					p.mut.RLock()
+				}
+			}
+			p.mut.RUnlock()
 		case <-us.closeCh:
 			return
 		}

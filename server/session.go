@@ -37,16 +37,21 @@ type session struct {
 	rtcConn           *webrtc.PeerConnection
 	tracksCh          chan *webrtc.TrackLocalStaticRTP
 	closeCh           chan struct{}
+
+	trackEnableCh chan bool
+	rtpSendersMap map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender
 }
 
 func newUserSession(userID, channelID string) *session {
 	return &session{
-		userID:    userID,
-		channelID: channelID,
-		wsInCh:    make(chan []byte, wsChSize),
-		wsOutCh:   make(chan []byte, wsChSize),
-		tracksCh:  make(chan *webrtc.TrackLocalStaticRTP, 5),
-		closeCh:   make(chan struct{}),
+		userID:        userID,
+		channelID:     channelID,
+		wsInCh:        make(chan []byte, wsChSize),
+		wsOutCh:       make(chan []byte, wsChSize),
+		tracksCh:      make(chan *webrtc.TrackLocalStaticRTP, 5),
+		closeCh:       make(chan struct{}),
+		trackEnableCh: make(chan bool, 5),
+		rtpSendersMap: map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender{},
 	}
 }
 
