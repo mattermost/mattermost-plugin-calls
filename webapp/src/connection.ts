@@ -80,10 +80,14 @@ export async function newClient(channelID: string, closeCb: () => void) {
             voiceDetector.on('ready', () => voiceDetector.start());
         }
         newTrack.enabled = isEnabled;
-        if (voiceTrackAdded) {
-            peer.replaceTrack(audioTrack, newTrack, stream);
+        if (isEnabled) {
+            if (voiceTrackAdded) {
+                peer.replaceTrack(audioTrack, newTrack, stream);
+            } else {
+                peer.addTrack(newTrack, stream);
+            }
         } else {
-            peer.addTrack(newTrack, stream);
+            voiceTrackAdded = false;
         }
         audioTrack = newTrack;
     };
