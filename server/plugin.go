@@ -132,6 +132,11 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		} else {
 			return fmt.Errorf("unexpected client message type %q", msg.ClientMessage.Type)
 		}
+	case clusterMessageTypeUserState:
+		if us == nil {
+			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", msg.UserID, msg.ChannelID)
+		}
+		us.trackEnableCh <- (msg.ClientMessage.Type == clientMessageTypeMute)
 	default:
 		return fmt.Errorf("unexpected event type %q", ev.Id)
 	}

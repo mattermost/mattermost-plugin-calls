@@ -22,6 +22,7 @@ const (
 	clusterMessageTypeConnect    clusterMessageType = "connect"
 	clusterMessageTypeDisconnect clusterMessageType = "disconnect"
 	clusterMessageTypeSignaling  clusterMessageType = "signaling"
+	clusterMessageTypeUserState  clusterMessageType = "user_state"
 )
 
 func (m *clusterMessage) ToJSON() ([]byte, error) {
