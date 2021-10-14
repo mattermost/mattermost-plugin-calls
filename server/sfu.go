@@ -8,6 +8,7 @@ import (
 
 	"github.com/mattermost/mattermost-server/v6/model"
 
+	"github.com/pion/ice/v2"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 	"github.com/prometheus/client_golang/prometheus"
@@ -192,6 +193,7 @@ func (p *Plugin) initRTCConn(userID string) {
 			p.LogError(err.Error())
 		}
 	}
+	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
 
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m), webrtc.WithSettingEngine(s))
 
