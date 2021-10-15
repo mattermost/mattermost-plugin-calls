@@ -59,44 +59,47 @@ export default class Plugin {
         registry.registerPostTypeComponent('custom_calls', PostType);
         registry.registerCustomRoute('/screen', ScreenWindow);
 
-        registry.registerChannelHeaderButtonAction(
-            ChannelHeaderButton
-            ,
-            async (channel) => {
-                try {
-                    const users = voiceConnectedUsers(store.getState());
-                    if (users && users.length > 0) {
-                        const profiles = await Client4.getProfilesByIds(users);
-                        store.dispatch({
-                            type: VOICE_CHANNEL_PROFILES_CONNECTED,
-                            data: {
-                                profiles,
-                                channelID: channel.id,
-                            },
-                        });
-                    }
-                } catch (err) {
-                    console.log(err);
-                    return;
-                }
-
-                if (!connectedChannelID(store.getState())) {
+        let channelHeaderMenuButtonID: string;
+        const registerChannelHeaderMenuButton = () => {
+            channelHeaderMenuButtonID = registry.registerChannelHeaderButtonAction(
+                ChannelHeaderButton
+                ,
+                async (channel) => {
                     try {
-                        window.callsClient = await newClient(channel.id, () => {
-                            console.log('calls client close');
-                            if (window.callsClient) {
-                                window.callsClient.disconnect();
-                                delete window.callsClient;
-                            }
-                        });
+                        const users = voiceConnectedUsers(store.getState());
+                        if (users && users.length > 0) {
+                            const profiles = await Client4.getProfilesByIds(users);
+                            store.dispatch({
+                                type: VOICE_CHANNEL_PROFILES_CONNECTED,
+                                data: {
+                                    profiles,
+                                    channelID: channel.id,
+                                },
+                            });
+                        }
                     } catch (err) {
                         console.log(err);
+                        return;
                     }
-                } else if (connectedChannelID(store.getState()) === getCurrentChannelId(store.getState())) {
+
+                    if (!connectedChannelID(store.getState())) {
+                        try {
+                            window.callsClient = await newClient(channel.id, () => {
+                                console.log('calls client close');
+                                if (window.callsClient) {
+                                    window.callsClient.disconnect();
+                                    delete window.callsClient;
+                                }
+                            });
+                        } catch (err) {
+                            console.log(err);
+                        }
+                    } else if (connectedChannelID(store.getState()) === getCurrentChannelId(store.getState())) {
                     // TODO: show an error or let the user switch connection.
-                }
-            },
-        );
+                    }
+                },
+            );
+        };
 
         let currChannelId = getCurrentChannelId(store.getState());
 
@@ -134,8 +137,13 @@ export default class Plugin {
                     registerChannelHeaderMenuAction();
                 }
 
+                registry.unregisterComponent(channelHeaderMenuButtonID);
+
                 try {
                     const resp = await axios.get(`${getPluginPath()}/${currChannelId}`);
+                    if (resp.data.enabled) {
+                        registerChannelHeaderMenuButton();
+                    }
                     store.dispatch({
                         type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                     });
