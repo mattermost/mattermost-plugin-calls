@@ -7,7 +7,8 @@ import {getWSConnectionURL, getScreenResolution} from './utils';
 import VoiceActivityDetector from './vad';
 
 export async function newClient(channelID: string, closeCb: () => void) {
-    let peer: SimplePeer.Instance;
+    let peer: SimplePeer.Instance | null;
+    let ws: WebSocket | null;
     let localScreenTrack: any;
     let currentAudioDeviceID: string;
     let voiceDetector: any;
@@ -60,9 +61,13 @@ export async function newClient(channelID: string, closeCb: () => void) {
     initVAD(stream);
     audioTrack.enabled = false;
 
-    const ws = new WebSocket(getWSConnectionURL(channelID));
+    ws = new WebSocket(getWSConnectionURL(channelID));
 
     const setAudioInputDevice = async (device: MediaDeviceInfo) => {
+        if (!peer) {
+            return;
+        }
+
         const isEnabled = audioTrack.enabled;
         voiceDetector.stop();
         voiceDetector.destroy();
@@ -97,6 +102,15 @@ export async function newClient(channelID: string, closeCb: () => void) {
     };
 
     const disconnect = () => {
+        if (peer) {
+            peer.destroy();
+            peer = null;
+        }
+
+        if (voiceDetector) {
+            voiceDetector.destroy();
+        }
+
         streams.forEach((s) => {
             s.getTracks().forEach((track) => {
                 track.stop();
@@ -106,14 +120,7 @@ export async function newClient(channelID: string, closeCb: () => void) {
 
         if (ws) {
             ws.close();
-        }
-
-        if (peer) {
-            peer.destroy();
-        }
-
-        if (voiceDetector) {
-            voiceDetector.destroy();
+            ws = null;
         }
     };
 
@@ -134,6 +141,10 @@ export async function newClient(channelID: string, closeCb: () => void) {
     };
 
     const unmute = () => {
+        if (!peer) {
+            return;
+        }
+
         if (voiceDetector) {
             voiceDetector.start();
         }
@@ -243,15 +254,21 @@ export async function newClient(channelID: string, closeCb: () => void) {
     };
 
     ws.onopen = () => {
-        peer = new SimplePeer({initiator: true, trickle: true});
+        peer = new SimplePeer({initiator: true, trickle: true}) as SimplePeer.Instance;
         peer.on('signal', (data) => {
             console.log('signal', data);
             if (data.type === 'offer' || data.type === 'answer') {
+                if (!ws) {
+                    return;
+                }
                 ws.send(JSON.stringify({
                     type: 'signal',
                     data,
                 }));
             } else if (data.type === 'candidate') {
+                if (!ws) {
+                    return;
+                }
                 ws.send(JSON.stringify({
                     type: 'ice',
                     data,
@@ -292,16 +309,18 @@ export async function newClient(channelID: string, closeCb: () => void) {
                 }
             }
         });
+    };
 
-        ws.onmessage = ({data}) => {
-            const msg = JSON.parse(data);
-            if (msg.type !== 'ping') {
-                console.log('ws', data);
-            }
-            if (msg.type === 'answer' || msg.type === 'offer') {
+    ws.onmessage = ({data}) => {
+        const msg = JSON.parse(data);
+        if (msg.type !== 'ping') {
+            console.log('ws', data);
+        }
+        if (msg.type === 'answer' || msg.type === 'offer') {
+            if (peer) {
                 peer.signal(data);
             }
-        };
+        }
     };
 
     return {
