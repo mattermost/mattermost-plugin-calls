@@ -1,5 +1,4 @@
 import React, {CSSProperties} from 'react';
-import PropTypes from 'prop-types';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
@@ -9,6 +8,7 @@ import {UserProfile} from 'mattermost-redux/types/users';
 import {Channel} from 'mattermost-redux/types/channels';
 
 import Avatar from '../avatar/avatar';
+import {id as pluginID} from '../../manifest';
 
 import MutedIcon from '../../components/icons/muted_icon';
 import UnmutedIcon from '../../components/icons/unmuted_icon';
@@ -18,6 +18,7 @@ import ParticipantsIcon from '../../components/icons/participants';
 import ShowMoreIcon from '../../components/icons/show_more';
 import CompassIcon from '../../components/icons/compassIcon';
 import ScreenIcon from '../../components/icons/screen_icon';
+import PopOutIcon from '../../components/icons/popout';
 
 import {handleFormattedTextClick} from '../../browser_routing';
 import {getUserDisplayName} from '../../utils';
@@ -60,6 +61,7 @@ interface State {
     devices?: any,
     showAudioInputsMenu?: boolean,
     dragging: DraggingState,
+    screenWindow: Window | null,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -81,6 +83,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offX: 0,
                 offY: 0,
             },
+            screenWindow: null,
         };
         this.node = React.createRef();
         this.screenPlayer = React.createRef();
@@ -112,6 +115,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     public componentDidUpdate(prevProps: Props) {
         if (!prevProps.screenSharingID && this.props.screenSharingID === this.props.currentUserID && this.screenPlayer.current) {
             this.screenPlayer.current.srcObject = this.state.screenStream;
+        }
+
+        if (this.state.screenWindow && prevProps.screenSharingID && !this.props.screenSharingID) {
+            this.state.screenWindow.close();
+            // eslint-disable-next-line react/no-did-update-set-state
+            this.setState({
+                screenWindow: null,
+            });
         }
     }
 
@@ -148,16 +159,26 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     onMuteToggle = () => {
+        let isMuted: boolean;
         if (this.state.isMuted) {
             window.callsClient.unmute();
-            this.setState({isMuted: false});
+            isMuted = false;
+            this.setState({isMuted});
         } else {
             window.callsClient.mute();
-            this.setState({isMuted: true});
+            isMuted = true;
+            this.setState({isMuted});
+        }
+
+        if (this.state.screenWindow) {
+            this.state.screenWindow.postMessage({isMuted}, window.location.origin);
         }
     }
 
     onDisconnectClick = () => {
+        if (this.state.screenWindow) {
+            this.state.screenWindow.close();
+        }
         if (window.callsClient) {
             window.callsClient.disconnect();
         }
@@ -175,6 +196,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offX: 0,
                 offY: 0,
             },
+            screenWindow: null,
         });
     }
 
@@ -191,25 +213,31 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
     }
 
-    onExpandScreenClick = () => {
-        const el = this.screenPlayer.current;
-        if (!el) {
-            return;
-        }
-        if (el.requestFullscreen) {
-            el.requestFullscreen();
-        } else if (el.webkitRequestFullscreen) {
-            el.webkitRequestFullscreen();
-        } else if (el.msRequestFullscreen) {
-            el.msRequestFullscreen();
-        } else if (el.mozRequestFullscreen) {
-            el.mozRequestFullscreen();
-        }
-    }
-
     onAudioInputDeviceClick = (device: any) => {
         window.callsClient.setAudioInputDevice(device);
         this.setState({showAudioInputsMenu: false, currentAudioInputDevice: device});
+    }
+
+    onScreenPopOutClick = () => {
+        const screenWindow = window.open(
+            `/plug/${pluginID}/screen`,
+            'Screen',
+            'resizable=yes',
+        );
+
+        if (!screenWindow) {
+            return;
+        }
+
+        this.setState({
+            screenWindow,
+        });
+
+        window.addEventListener('message', (ev) => {
+            if (ev.origin === window.location.origin) {
+                this.setState(ev.data);
+            }
+        }, false);
     }
 
     renderScreenSharingPanel = () => {
@@ -242,16 +270,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='Menu__content dropdown-menu'
                     style={style.screenSharingPanel as CSSProperties}
                 >
-                    <button
-                        className='cursor--pointer style--none button-controls'
-                        style={{display: isSharing ? 'none' : '', position: 'absolute', top: '0', right: '0'}}
-                        onClick={this.onExpandScreenClick}
-                    >
-                        <CompassIcon icon='arrow-expand'/>
-                    </button>
-
                     <div
-                        style={{width: '192px', height: '108px', background: '#C4C4C4'}}
+                        style={{position: 'relative', width: '192px', height: '108px', background: '#C4C4C4'}}
                     >
                         <video
                             id='screen-player'
@@ -260,6 +280,33 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             height='100%'
                             autoPlay={true}
                         />
+
+                        <button
+                            className='cursor--pointer style--none'
+                            style={{
+                                display: isSharing ? 'none' : 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                position: 'absolute',
+                                padding: '8px 16px',
+                                background: 'var(--button-bg)',
+                                color: 'white',
+                                borderRadius: '4px',
+                                fontWeight: 600,
+                                top: '50%',
+                                left: '50%',
+                                width: '112px',
+                                transform: 'translate(-50%, -50%)',
+                            }}
+                            onClick={this.onScreenPopOutClick}
+                        >
+
+                            <PopOutIcon
+                                style={{width: '16px', height: '16px', fill: 'white', marginRight: '8px'}}
+                            />
+                            <span>{'Pop out'}</span>
+                        </button>
+
                     </div>
                     <span style={{marginTop: '8px', color: 'rgba(63, 67, 80, 0.72)', fontSize: '12px'}}>{msg}</span>
                 </ul>
@@ -774,7 +821,6 @@ const style = {
         width: '100%',
         minWidth: 'revert',
         maxWidth: 'revert',
-        paddingTop: '28px',
     },
     leaveCallButton: {
         display: 'flex',
