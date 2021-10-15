@@ -7,5 +7,6 @@ export interface PluginRegistry {
     registerChannelHeaderButtonAction(component: React.ElementType, fn: (channel: Channel) => void)
     registerChannelHeaderMenuAction(component: React.ElementType, fn: (channelID: string) => void)
     registerWebSocketEventHandler(evType: string, fn: (event: WebSocketEvent) => void)
+    registerCustomRoute(route: string, component: React.ElementType)
     unregisterComponent(componentID: string)
 }
