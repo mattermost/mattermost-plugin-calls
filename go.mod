@@ -6,8 +6,9 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/mattermost/mattermost-server/v6 v6.0.0-20210906125346-b41b7eae1026
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/pion/ice/v2 v2.1.12
 	github.com/pion/rtcp v1.2.8
-	github.com/pion/webrtc/v3 v3.1.1
+	github.com/pion/webrtc/v3 v3.1.3
 	github.com/prometheus/client_golang v1.11.0
 	github.com/stretchr/testify v1.7.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
@@ -50,8 +51,7 @@ require (
 	github.com/pelletier/go-toml v1.9.3 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
 	github.com/pion/datachannel v1.4.21 // indirect
-	github.com/pion/dtls/v2 v2.0.9 // indirect
-	github.com/pion/ice/v2 v2.1.12 // indirect
+	github.com/pion/dtls/v2 v2.0.10 // indirect
 	github.com/pion/interceptor v0.1.0 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/mdns v0.0.5 // indirect
@@ -76,8 +76,8 @@ require (
 	github.com/wiggin77/srslog v1.0.1 // indirect
 	github.com/yuin/goldmark v1.3.8 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-	golang.org/x/net v0.0.0-20210929193557-e81a3d93ecf6 // indirect
-	golang.org/x/sys v0.0.0-20210930212924-f542c8878de8 // indirect
+	golang.org/x/net v0.0.0-20211014222326-fd004c51d1d6 // indirect
+	golang.org/x/sys v0.0.0-20211013075003-97ac67df715c // indirect
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20210624195500-8bfb893ecb84 // indirect
