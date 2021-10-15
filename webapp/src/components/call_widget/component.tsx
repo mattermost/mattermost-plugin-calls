@@ -112,8 +112,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
-    public componentDidUpdate(prevProps: Props) {
-        if (!prevProps.screenSharingID && this.props.screenSharingID === this.props.currentUserID && this.screenPlayer.current) {
+    public componentDidUpdate(prevProps: Props, prevState: State) {
+        if ((!prevProps.screenSharingID || prevState.showMenu || prevState.showParticipantsList) &&
+        this.props.screenSharingID === this.props.currentUserID && this.screenPlayer.current) {
             this.screenPlayer.current.srcObject = this.state.screenStream;
         }
 
@@ -148,14 +149,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     onShareScreenToggle = async () => {
+        const state = {} as State;
         if (this.props.screenSharingID === this.props.currentUserID) {
             window.callsClient.unshareScreen();
         } else if (!this.props.screenSharingID) {
             const stream = await window.callsClient.shareScreen();
-            this.setState({
-                screenStream: stream,
-            });
+            state.screenStream = stream;
         }
+
+        this.setState({
+            ...state,
+            showMenu: false,
+        });
     }
 
     onMuteToggle = () => {
@@ -204,12 +209,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({
             showMenu: !this.state.showMenu,
             devices: window.callsClient?.getAudioDevices(),
+            showParticipantsList: false,
         });
     }
 
     onParticipantsButtonClick = () => {
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
+            showMenu: false,
         });
     }
 
@@ -241,7 +248,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     renderScreenSharingPanel = () => {
-        if (!this.props.screenSharingID) {
+        if (!this.props.screenSharingID || this.state.showMenu || this.state.showParticipantsList) {
             return null;
         }
 
@@ -271,7 +278,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     style={style.screenSharingPanel as CSSProperties}
                 >
                     <div
-                        style={{position: 'relative', width: '192px', height: '108px', background: '#C4C4C4'}}
+                        style={{position: 'relative', width: '80%', background: '#C4C4C4'}}
                     >
                         <video
                             id='screen-player'
@@ -279,6 +286,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             width='100%'
                             height='100%'
                             autoPlay={true}
+                            muted={true}
                         />
 
                         <button
@@ -335,11 +343,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <button
                     className={`style--none ${!sharingID || isSharing ? 'button-controls' : 'button-controls-disabled'} button-controls--wide`}
                     disabled={sharingID !== '' && !isSharing}
-                    style={{background: isSharing ? '#D24B4E' : ''}}
+                    style={{background: isSharing ? 'rgba(210, 75, 78, 0.12)' : ''}}
                     onClick={this.onShareScreenToggle}
                 >
                     <ScreenIcon
-                        style={{width: '16px', height: '16px', fill: isSharing ? 'white' : ''}}
+                        style={{width: '16px', height: '16px', fill: isSharing ? 'rgba(210, 75, 78, 1)' : ''}}
                     />
                 </button>
             </OverlayTrigger>
@@ -505,7 +513,37 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
-    renderMenu = () => {
+    renderScreenSharingMenuItem = () => {
+        const sharingID = this.props.screenSharingID;
+        const currentID = this.props.currentUserID;
+        const isSharing = sharingID === currentID;
+
+        return (
+            <React.Fragment>
+                <li
+                    className='MenuItem'
+                >
+                    <button
+                        className='style--none'
+                        style={{
+                            display: 'flex',
+                            color: sharingID !== '' && !isSharing ? 'rgba(63, 67, 80, 0.34)' : '',
+                        }}
+                        disabled={Boolean(sharingID !== '' && !isSharing)}
+                        onClick={this.onShareScreenToggle}
+                    >
+                        <ScreenIcon
+                            style={{width: '16px', height: '16px', fill: isSharing ? 'rgba(210, 75, 78, 1)' : '', marginRight: '8px'}}
+                        />
+                        <span>{isSharing ? 'Stop sharing' : 'Share screen'}</span>
+                    </button>
+                </li>
+                <li className='MenuGroup menu-divider'/>
+            </React.Fragment>
+        );
+    }
+
+    renderMenu = (hasTeamSidebar: boolean) => {
         if (!this.state.showMenu) {
             return null;
         }
@@ -517,6 +555,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='Menu__content dropdown-menu'
                     style={style.dotsMenu}
                 >
+                    {!hasTeamSidebar && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices()}
                 </ul>
             </div>
@@ -621,9 +660,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         const MuteIcon = this.state.isMuted ? MutedIcon : UnmutedIcon;
-        const muteTooltipText = this.state.isMuted ? 'Unmute' : 'Mute';
+        const muteTooltipText = this.state.isMuted ? 'Click to unmute' : 'Click to mute';
 
-        const mainWidth = document.querySelector('.team-sidebar') ? '280px' : '216px';
+        const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar'));
+        const mainWidth = hasTeamSidebar ? '280px' : '216px';
 
         return (
             <div
@@ -636,7 +676,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <div style={style.status as CSSProperties}>
                     {this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
-                    {this.renderMenu()}
+                    {this.renderMenu(hasTeamSidebar)}
 
                     <div
                         style={style.topBar}
@@ -685,7 +725,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                         <button
                             className='style--none button-controls button-controls--wide'
-                            style={{display: 'flex', alignItems: 'center', color: this.state.showParticipantsList ? 'white' : '', background: this.state.showParticipantsList ? '#1C58D9' : ''}}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                color: this.state.showParticipantsList ? 'rgba(28, 88, 217, 1)' : '',
+                                background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.12)' : '',
+                            }}
                             onClick={this.onParticipantsButtonClick}
                         >
                             <ParticipantsIcon
@@ -698,7 +743,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             >{this.props.profiles.length}</span>
                         </button>
 
-                        {this.renderScreenShareButton()}
+                        {hasTeamSidebar && this.renderScreenShareButton()}
 
                         <OverlayTrigger
                             key='mute'
@@ -766,9 +811,9 @@ const style = {
         justifyContent: 'center',
         alignItems: 'center',
         width: '24px',
-        background: '#3DB887',
+        background: 'rgba(61, 184, 135, 0.16)',
         borderRadius: '4px',
-        color: 'white',
+        color: 'rgba(61, 184, 135, 1)',
     },
     disconnectButton: {
         display: 'flex',
