@@ -364,11 +364,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 break;
             }
         }
-        if (!speakingProfile) {
-            return null;
-        }
         return (
-            <div style={{fontSize: '12px'}}><span style={{fontWeight: 600}}>{getUserDisplayName(speakingProfile)}</span> {'is talking...'}</div>
+            <div style={{fontSize: '12px'}}>
+                <span style={{fontWeight: speakingProfile ? 600 : 400}}>
+                    {speakingProfile ? getUserDisplayName(speakingProfile) : 'No one'}
+                </span> {'is talking...'}
+            </div>
         );
     }
 
@@ -572,18 +573,30 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 break;
             }
         }
-        if (!speakingPictureURL) {
-            return null;
-        }
 
         return (
             <div
                 style={{position: 'relative', display: 'flex', height: 'auto', alignItems: 'center'}}
             >
-                <Avatar
-                    size='sm'
-                    url={speakingPictureURL}
-                />
+
+                {
+
+                    speakingPictureURL &&
+                    <Avatar
+                        size='sm'
+                        url={speakingPictureURL}
+                    />
+                }
+
+                {
+                    !speakingPictureURL &&
+                    <Avatar
+                        size='sm'
+                        icon='account-outline'
+                        style={{background: 'rgba(63, 67, 80, 0.16)', color: 'rgba(63, 67, 80, 0.48)', fontSize: '14px'}}
+                    />
+                }
+
             </div>
         );
     }

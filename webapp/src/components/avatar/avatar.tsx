@@ -4,6 +4,8 @@
 import React, {memo, HTMLAttributes} from 'react';
 import classNames from 'classnames';
 
+import CompassIcon from '../../components/icons/compassIcon';
+
 import './avatar.scss';
 
 export type TAvatarSizeToken = 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
@@ -13,6 +15,7 @@ type Props = {
     username?: string;
     size?: TAvatarSizeToken;
     text?: string;
+    icon?: string;
 };
 
 type Attrs = HTMLAttributes<HTMLElement>;
@@ -22,6 +25,7 @@ const Avatar = ({
     username,
     size = 'md',
     text,
+    icon,
     ...attrs
 }: Props & Attrs) => {
     const classes = classNames(`Avatar Avatar-${size}`, attrs.className);
@@ -33,6 +37,18 @@ const Avatar = ({
                 className={classes + ' Avatar-plain'}
                 data-content={text}
             />
+        );
+    }
+
+    if (icon) {
+        return (
+
+            <div
+                {...attrs}
+                className={classes + ' Avatar-plain'}
+            >
+                <CompassIcon icon={icon}/>
+            </div>
         );
     }
 
