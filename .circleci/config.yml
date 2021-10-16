@@ -16,8 +16,12 @@ commands:
       - run:
           name: "Install Node.js and npm"
           command: |
-            curl -sSL "https://nodejs.org/download/release/v16.9.1/node-v16.9.1-linux-x64.tar.gz" | sudo tar --strip-components=2 -xz -C /usr/local/bin/ node-v16.9.1-linux-x64/bin/node
-            curl https://www.npmjs.com/install.sh | sudo bash
+            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+            echo 'export NVM_DIR=$HOME/.nvm' >> $BASH_ENV
+            echo 'source $NVM_DIR/nvm.sh' >> $BASH_ENV
+            nvm install 16.9.1
       - run:
           name: Check current version of node
           command: node -v
@@ -83,7 +87,6 @@ jobs:
   lint:
     executor:
       name: default
-    resource_class: large
     steps:
       - checkout
       - install-golangci-lint
@@ -113,7 +116,6 @@ jobs:
   test:
     executor:
       name: default
-    resource_class: large
     steps:
       - checkout
       - *restore_cache
