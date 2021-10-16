@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 
@@ -205,6 +206,32 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64) err
 	})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (p *Plugin) updateCallThreadEnded(threadID string) error {
+	post, appErr := p.API.GetPost(threadID)
+	if appErr != nil {
+		return appErr
+	}
+
+	postMsg := "Call ended"
+	slackAttachment := model.SlackAttachment{
+		Fallback: postMsg,
+		Title:    postMsg,
+		Text:     postMsg,
+	}
+
+	post.Message = postMsg
+	post.DelProp("attachments")
+	post.AddProp("attachments", []*model.SlackAttachment{&slackAttachment})
+	post.AddProp("end_at", time.Now().UnixMilli())
+
+	_, appErr = p.API.UpdatePost(post)
+	if appErr != nil {
+		return appErr
 	}
 
 	return nil
