@@ -10,6 +10,7 @@ import moment from 'moment-timezone';
 
 import ActiveCallIcon from '../../components/icons/active_call_icon';
 import CallIcon from '../../components/icons/call_icon';
+import LeaveCallIcon from '../../components/icons/leave_call_icon';
 import ConnectedProfiles from '../../components/connected_profiles';
 
 import {newClient} from '../../connection';
@@ -43,34 +44,59 @@ export default class PostType extends React.PureComponent<Props> {
     }
 
     render() {
+        const subMessage = this.props.post.props.end_at ? (
+            <div>
+                <span style={style.duration}>{`Ended at ${moment(this.props.post.props.end_at).format('h:mm A')}`}</span>
+                <span style={{margin: '0 4px'}}>{'•'}</span>
+                <span style={style.duration}>{`Lasted ${moment.duration(this.props.post.props.end_at - this.props.post.props.start_at).humanize(false)}`}</span>
+            </div>
+        ) : (
+            <span style={style.duration}>{moment(this.props.post.props.start_at).fromNow()}</span>
+        );
+
         return (
             <div style={style.main}>
-                <div style={style.callIcon}>
+                <div style={this.props.post.props.end_at ? style.callEndedIcon : style.callIcon}>
+                    { !this.props.post.props.end_at &&
                     <ActiveCallIcon
                         fill='#FFFFFF'
                         style={{width: '100%', height: '100%'}}
                     />
+                    }
+                    { this.props.post.props.end_at &&
+                    <LeaveCallIcon
+                        fill='rgba(63, 67, 80, 0.56)'
+                        style={{width: '100%', height: '100%'}}
+                    />
+                    }
                 </div>
                 <div style={style.messageWrapper as CSSProperties}>
                     <span style={style.message}>{this.props.post.message}</span>
-                    <span style={style.duration}>{moment(this.props.post.props.start_at).fromNow()}</span>
+                    {subMessage}
                 </div>
-                <div style={style.profiles}>
-                    <ConnectedProfiles
-                        profiles={this.props.profiles}
-                        pictures={this.props.pictures}
-                        size='md'
-                        maxShowedProfiles={2}
-                    />
-                </div>
-                <button
-                    className='cursor--pointer style--none'
-                    style={style.joinButton}
-                    onClick={this.onJoinCallClick}
-                >
-                    <CallIcon fill='#FFFFFF'/>
-                    <span style={{fontWeight: 600, margin: '0 8px'}}>{'Join Call'}</span>
-                </button>
+                {
+                    !this.props.post.props.end_at &&
+
+                    <React.Fragment>
+                        <div style={style.profiles}>
+                            <ConnectedProfiles
+                                profiles={this.props.profiles}
+                                pictures={this.props.pictures}
+                                size='md'
+                                maxShowedProfiles={2}
+                            />
+                        </div>
+                        <button
+                            className='cursor--pointer style--none'
+                            style={style.joinButton}
+                            onClick={this.onJoinCallClick}
+                        >
+                            <CallIcon fill='#FFFFFF'/>
+                            <span style={{fontWeight: 600, margin: '0 8px'}}>{'Join Call'}</span>
+                        </button>
+                    </React.Fragment>
+                }
+
             </div>
         );
     }
@@ -90,6 +116,13 @@ const style = {
     },
     callIcon: {
         background: '#339970',
+        borderRadius: '4px',
+        padding: '10px',
+        width: '40px',
+        height: '40px',
+    },
+    callEndedIcon: {
+        background: 'rgba(63, 67, 80, 0.16)',
         borderRadius: '4px',
         padding: '10px',
         width: '40px',

@@ -326,8 +326,13 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID})
 
-	if _, err := p.removeUserSession(userID, channelID); err != nil {
+	if currState, prevState, err := p.removeUserSession(userID, channelID); err != nil {
 		p.LogError(err.Error())
+	} else if currState.Call == nil && prevState.Call != nil {
+		// call has ended
+		if err := p.updateCallThreadEnded(prevState.Call.ThreadID); err != nil {
+			p.LogError(err.Error())
+		}
 	}
 
 	if us.rtcConn != nil {

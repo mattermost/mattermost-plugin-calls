@@ -82,12 +82,14 @@ func (p *Plugin) addUserSession(userID, channelID string, userSession *session) 
 	return st, err
 }
 
-func (p *Plugin) removeUserSession(userID, channelID string) (channelState, error) {
-	var st channelState
+func (p *Plugin) removeUserSession(userID, channelID string) (channelState, channelState, error) {
+	var currState channelState
+	var prevState channelState
 	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
 		}
+		prevState = *state
 		if state.Call == nil {
 			return nil, fmt.Errorf("call state is missing from channel state")
 		}
@@ -106,9 +108,9 @@ func (p *Plugin) removeUserSession(userID, channelID string) (channelState, erro
 			state.NodeID = ""
 		}
 
-		st = *state
+		currState = *state
 		return state, nil
 	})
 
-	return st, err
+	return currState, prevState, err
 }
