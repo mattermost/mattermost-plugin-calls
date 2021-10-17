@@ -9,4 +9,5 @@ export interface PluginRegistry {
     registerWebSocketEventHandler(evType: string, fn: (event: WebSocketEvent) => void)
     registerCustomRoute(route: string, component: React.ElementType)
     unregisterComponent(componentID: string)
+    unregisterPostTypeComponent(componentID: string)
 }
