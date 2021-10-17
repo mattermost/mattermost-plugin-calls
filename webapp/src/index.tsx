@@ -51,6 +51,8 @@ import {
 import {PluginRegistry} from './types/mattermost-webapp';
 
 export default class Plugin {
+    private windowEventHandler: ((ev: MessageEvent) => void) | null = null;
+
     public initialize(registry: PluginRegistry, store: Store<GlobalState>): void {
         registry.registerReducer(reducer);
         registry.registerGlobalComponent(CallWidget);
@@ -60,7 +62,20 @@ export default class Plugin {
         registry.registerCustomRoute('/screen', ScreenWindow);
 
         let channelHeaderMenuButtonID: string;
+
+        const unregisterChannelHeaderMenuButton = () => {
+            console.log('unregister called');
+            if (channelHeaderMenuButtonID) {
+                console.log('unregistering');
+                registry.unregisterComponent(channelHeaderMenuButtonID);
+                channelHeaderMenuButtonID = '';
+            }
+        };
+
         const registerChannelHeaderMenuButton = () => {
+            if (channelHeaderMenuButtonID) {
+                return;
+            }
             channelHeaderMenuButtonID = registry.registerChannelHeaderButtonAction(
                 ChannelHeaderButton
                 ,
@@ -83,23 +98,40 @@ export default class Plugin {
                     }
 
                     if (!connectedChannelID(store.getState())) {
-                        try {
-                            window.callsClient = await newClient(channel.id, () => {
-                                console.log('calls client close');
-                                if (window.callsClient) {
-                                    window.callsClient.disconnect();
-                                    delete window.callsClient;
-                                }
-                            });
-                        } catch (err) {
-                            console.log(err);
-                        }
+                        connectCall(channel.id);
                     } else if (connectedChannelID(store.getState()) === getCurrentChannelId(store.getState())) {
                     // TODO: show an error or let the user switch connection.
                     }
                 },
             );
         };
+
+        const connectCall = async (channelID: string) => {
+            try {
+                window.callsClient = await newClient(channelID, () => {
+                    console.log('calls client close');
+                    registerChannelHeaderMenuButton();
+                    if (window.callsClient) {
+                        window.callsClient.disconnect();
+                        delete window.callsClient;
+                    }
+                });
+                unregisterChannelHeaderMenuButton();
+            } catch (err) {
+                console.log(err);
+            }
+        };
+
+        this.windowEventHandler = (ev) => {
+            if (ev.origin !== window.origin) {
+                return;
+            }
+            if (ev.data && ev.data.type === 'connectCall') {
+                connectCall(ev.data.channelID);
+            }
+        };
+
+        window.addEventListener('message', this.windowEventHandler);
 
         let currChannelId = getCurrentChannelId(store.getState());
 
@@ -137,11 +169,11 @@ export default class Plugin {
                     registerChannelHeaderMenuAction();
                 }
 
-                registry.unregisterComponent(channelHeaderMenuButtonID);
+                unregisterChannelHeaderMenuButton();
 
                 try {
                     const resp = await axios.get(`${getPluginPath()}/${currChannelId}`);
-                    if (resp.data.enabled) {
+                    if (resp.data.enabled && connectedChannelID(store.getState()) !== currChannelId) {
                         registerChannelHeaderMenuButton();
                     }
                     store.dispatch({
@@ -323,6 +355,10 @@ export default class Plugin {
         if (window.callsClient) {
             window.callsClient.disconnect();
             delete window.callsClient;
+        }
+
+        if (this.windowEventHandler) {
+            window.removeEventListener('message', this.windowEventHandler);
         }
     }
 }

@@ -6,13 +6,14 @@ import {getWSConnectionURL, getScreenResolution} from './utils';
 
 import VoiceActivityDetector from './vad';
 
-export async function newClient(channelID: string, closeCb: () => void) {
+export async function newClient(channelID: string, cb: () => void) {
     let peer: SimplePeer.Instance | null;
     let ws: WebSocket | null;
     let localScreenTrack: any;
     let currentAudioDeviceID: string;
     let voiceDetector: any;
     let voiceTrackAdded: boolean;
+    let closeCb: (() => void) | null = cb;
     const streams: MediaStream[] = [];
 
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -121,6 +122,12 @@ export async function newClient(channelID: string, closeCb: () => void) {
         if (ws) {
             ws.close();
             ws = null;
+        }
+
+        if (closeCb) {
+            const callback = closeCb;
+            closeCb = null;
+            callback();
         }
     };
 

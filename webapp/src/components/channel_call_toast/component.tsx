@@ -55,18 +55,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
         if (this.props.connectedID) {
             return;
         }
-
-        try {
-            window.callsClient = await newClient(this.props.currChannelID, () => {
-                console.log('calls client close');
-                if (window.callsClient) {
-                    window.callsClient.disconnect();
-                    delete window.callsClient;
-                }
-            });
-        } catch (err) {
-            console.log(err);
-        }
+        window.postMessage({type: 'connectCall', channelID: this.props.currChannelID}, window.origin);
     }
 
     onDismissClick = () => {

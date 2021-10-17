@@ -30,17 +30,7 @@ export default class PostType extends React.PureComponent<Props> {
             return;
         }
 
-        try {
-            window.callsClient = await newClient(this.props.currChannelID, () => {
-                console.log('calls client close');
-                if (window.callsClient) {
-                    window.callsClient.disconnect();
-                    delete window.callsClient;
-                }
-            });
-        } catch (err) {
-            console.log(err);
-        }
+        window.postMessage({type: 'connectCall', channelID: this.props.currChannelID}, window.origin);
     }
 
     render() {
@@ -58,16 +48,16 @@ export default class PostType extends React.PureComponent<Props> {
             <div style={style.main}>
                 <div style={this.props.post.props.end_at ? style.callEndedIcon : style.callIcon}>
                     { !this.props.post.props.end_at &&
-                    <ActiveCallIcon
-                        fill='#FFFFFF'
-                        style={{width: '100%', height: '100%'}}
-                    />
+                        <ActiveCallIcon
+                            fill='#FFFFFF'
+                            style={{width: '100%', height: '100%'}}
+                        />
                     }
                     { this.props.post.props.end_at &&
-                    <LeaveCallIcon
-                        fill='rgba(63, 67, 80, 0.56)'
-                        style={{width: '100%', height: '100%'}}
-                    />
+                        <LeaveCallIcon
+                            fill='rgba(63, 67, 80, 0.56)'
+                            style={{width: '100%', height: '100%'}}
+                        />
                     }
                 </div>
                 <div style={style.messageWrapper as CSSProperties}>
