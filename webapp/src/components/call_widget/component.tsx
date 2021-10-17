@@ -186,6 +186,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
         if (window.callsClient) {
             window.callsClient.disconnect();
+            delete window.callsClient;
         }
         this.setState({
             isMuted: true,
