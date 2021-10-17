@@ -81,7 +81,7 @@ aliases:
   save_cache:
     key: go-mod-v1-{{ checksum "go.sum" }}
     paths:
-    - "/go/pkg/mod"
+    - "/home/circleci/go/pkg/mod"
 
 jobs:
   lint:
@@ -120,6 +120,7 @@ jobs:
       - checkout
       - *restore_cache
       - install-node-npm
+      - npm-dependencies
       - run: make test
       - *save_cache
 
