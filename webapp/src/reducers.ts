@@ -8,6 +8,7 @@ import {
     VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_DISCONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED,
+    VOICE_CHANNEL_USERS_CONNECTED_STATES,
     VOICE_CHANNEL_PROFILES_CONNECTED,
     VOICE_CHANNEL_PROFILE_CONNECTED,
     VOICE_CHANNEL_USER_MUTED,
@@ -136,12 +137,14 @@ const connectedChannelID = (state: string | null = null, action: {type: string, 
     }
 };
 
+interface userState {
+    unmuted: boolean,
+    voice: boolean,
+}
+
 interface usersStatusesState {
     [channelID: string]: {
-        [userID: string]: {
-            unmuted: boolean,
-            voice: boolean,
-        }
+        [userID: string]: userState,
     },
 }
 
@@ -150,11 +153,17 @@ interface usersStatusesAction {
     data: {
         channelID: string,
         userID: string,
+        states: {[userID: string]: userState},
     },
 }
 
 const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatusesAction) => {
     switch (action.type) {
+    case VOICE_CHANNEL_USERS_CONNECTED_STATES:
+        return {
+            ...state,
+            [action.data.channelID]: action.data.states,
+        };
     case VOICE_CHANNEL_USER_MUTED:
         if (!state[action.data.channelID]) {
             return {

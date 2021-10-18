@@ -155,6 +155,22 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 				us.trackEnableCh <- (msg.Type == clientMessageTypeMute)
 			}
 
+			if err := p.kvSetAtomicChannelState(us.channelID, func(state *channelState) (*channelState, error) {
+				if state == nil {
+					return nil, fmt.Errorf("channel state is missing from store")
+				}
+				if state.Call == nil {
+					return nil, fmt.Errorf("call state is missing from channel state")
+				}
+				if uState := state.Call.Users[us.userID]; uState != nil {
+					uState.Unmuted = msg.Type == clientMessageTypeUnmute
+				}
+
+				return state, nil
+			}); err != nil {
+				p.LogError(err.Error())
+			}
+
 			evType := wsEventUserUnmuted
 			if msg.Type == clientMessageTypeMute {
 				evType = wsEventUserMuted
