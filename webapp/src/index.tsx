@@ -7,7 +7,6 @@ import axios from 'axios';
 import {Client4} from 'mattermost-redux/client';
 
 import {getCurrentChannelId, getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
-import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
 import {getMyRoles} from 'mattermost-redux/selectors/entities/roles';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
@@ -28,7 +27,7 @@ import ScreenWindow from './components/screen_window';
 
 import reducer from './reducers';
 
-import {getPluginPath} from './utils';
+import {getPluginPath, hasPermissionsToEnableCalls} from './utils';
 
 import {
     VOICE_CHANNEL_ENABLE,
@@ -163,9 +162,14 @@ export default class Plugin {
             const channel = getCurrentChannel(store.getState());
             const roles = getMyRoles(store.getState());
             registry.unregisterComponent(channelHeaderMenuID);
-            if ((isDirectChannel(channel) || isGroupChannel(channel)) ||
-                roles.channel[channel.id].has('channel_admin') || roles.system.has('system_admin')) {
-                registerChannelHeaderMenuAction();
+
+            try {
+                const resp = await axios.get(`${getPluginPath()}/config`);
+                if (hasPermissionsToEnableCalls(channel, roles, resp.data.AllowEnableCalls)) {
+                    registerChannelHeaderMenuAction();
+                }
+            } catch (err) {
+                console.log(err);
             }
 
             unregisterChannelHeaderMenuButton();
@@ -245,12 +249,15 @@ export default class Plugin {
         }));
 
         registry.registerWebSocketEventHandler(`custom_${manifest.id}_channel_enable_voice`, (data) => {
+            unregisterChannelHeaderMenuButton();
+            registerChannelHeaderMenuButton();
             store.dispatch({
                 type: VOICE_CHANNEL_ENABLE,
             });
         });
 
         registry.registerWebSocketEventHandler(`custom_${manifest.id}_channel_disable_voice`, (data) => {
+            unregisterChannelHeaderMenuButton();
             store.dispatch({
                 type: VOICE_CHANNEL_DISABLE,
             });

@@ -38,6 +38,14 @@ const manifestStr = `
         "help_text": "Range of UDP ports used for ICE connections.",
         "placeholder": "E.g.: \"10000-11000\"",
         "default": ""
+      },
+      {
+        "key": "AllowEnableCalls",
+        "display_name": "Allow Enable Calls",
+        "type": "bool",
+        "help_text": "When set to true, it allows channel admins to enable calls in their channels. It also allows participants of DMs/GMs to enable calls.",
+        "placeholder": "",
+        "default": false
       }
     ]
   }

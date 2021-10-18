@@ -7,10 +7,12 @@ import {
     getTeamMemberships,
 } from 'mattermost-redux/selectors/entities/teams';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
+import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
 
 import {Team} from 'mattermost-redux/types/teams';
 import {Channel} from 'mattermost-redux/types/channels';
 import {UserProfile} from 'mattermost-redux/types/users';
+import {Dictionary} from 'mattermost-redux/types/utilities';
 
 import {GlobalState} from 'mattermost-redux/types/store';
 
@@ -87,4 +89,21 @@ export function getScreenResolution() {
         width,
         height,
     };
+}
+
+type userRoles = {
+    system: Set<string>;
+    team: Dictionary<Set<string>>;
+    channel: Dictionary<Set<string>>;
+}
+
+export function hasPermissionsToEnableCalls(channel: Channel, roles: userRoles, allowEnable: boolean) {
+    if (!allowEnable) {
+        return roles.system.has('system_admin');
+    }
+
+    return (isDirectChannel(channel) ||
+    isGroupChannel(channel)) ||
+    roles.channel[channel.id].has('channel_admin') ||
+    roles.system.has('system_admin');
 }
