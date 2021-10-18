@@ -45,29 +45,32 @@ export default class PostType extends React.PureComponent<Props> {
         );
 
         return (
-            <div style={style.main}>
-                <div style={this.props.post.props.end_at ? style.callEndedIcon : style.callIcon}>
-                    { !this.props.post.props.end_at &&
+            <div
+                style={style.main as CSSProperties}
+            >
+                <div style={{display: 'flex', alignItems: 'center', marginRight: 'auto'}}>
+                    <div style={this.props.post.props.end_at ? style.callEndedIcon : style.callIcon}>
+                        { !this.props.post.props.end_at &&
                         <ActiveCallIcon
                             fill='#FFFFFF'
                             style={{width: '100%', height: '100%'}}
                         />
-                    }
-                    { this.props.post.props.end_at &&
+                        }
+                        { this.props.post.props.end_at &&
                         <LeaveCallIcon
                             fill='rgba(63, 67, 80, 0.56)'
                             style={{width: '100%', height: '100%'}}
                         />
-                    }
-                </div>
-                <div style={style.messageWrapper as CSSProperties}>
-                    <span style={style.message}>{this.props.post.message}</span>
-                    {subMessage}
-                </div>
-                {
-                    !this.props.post.props.end_at &&
+                        }
+                    </div>
+                    <div style={style.messageWrapper as CSSProperties}>
+                        <span style={style.message}>{this.props.post.message}</span>
+                        {subMessage}
+                    </div>
 
-                    <React.Fragment>
+                    {
+                        !this.props.post.props.end_at &&
+
                         <div style={style.profiles}>
                             <ConnectedProfiles
                                 profiles={this.props.profiles}
@@ -76,6 +79,11 @@ export default class PostType extends React.PureComponent<Props> {
                                 maxShowedProfiles={2}
                             />
                         </div>
+                    }
+
+                </div>
+                {
+                    !this.props.post.props.end_at &&
                         <button
                             className='cursor--pointer style--none'
                             style={style.joinButton}
@@ -84,7 +92,6 @@ export default class PostType extends React.PureComponent<Props> {
                             <CallIcon fill='#FFFFFF'/>
                             <span style={{fontWeight: 600, margin: '0 8px'}}>{'Join Call'}</span>
                         </button>
-                    </React.Fragment>
                 }
 
             </div>
@@ -103,6 +110,8 @@ const style = {
         boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.12)',
         borderRadius: '4px',
         margin: '4px 0',
+        flexWrap: 'wrap',
+        rowGap: '8px',
     },
     callIcon: {
         background: '#339970',
@@ -121,7 +130,7 @@ const style = {
     messageWrapper: {
         display: 'flex',
         flexDirection: 'column',
-        margin: '0 8px',
+        margin: '0 12px',
     },
     message: {
         fontWeight: 600,
@@ -136,7 +145,6 @@ const style = {
         background: '#339970',
         borderRadius: '4px',
         padding: '10px 16px',
-        marginLeft: 'auto',
     },
     profiles: {
         display: 'flex',
