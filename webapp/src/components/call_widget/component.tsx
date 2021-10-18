@@ -366,10 +366,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         }
         return (
-            <div style={{fontSize: '12px'}}>
-                <span style={{fontWeight: speakingProfile ? 600 : 400}}>
+            <div style={{fontSize: '12px', display: 'flex', whiteSpace: 'pre'}}>
+                <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
                     {speakingProfile ? getUserDisplayName(speakingProfile) : 'No one'}
-                </span> {'is talking...'}
+                </span><span>{' is talking...'}</span>
             </div>
         );
     }
@@ -699,7 +699,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={style.profiles}>
                             {this.renderProfiles()}
                         </div>
-                        <div>
+                        <div style={{width: '85%'}}>
                             {this.renderSpeaking()}
                             <div style={style.callInfo}>
                                 <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
