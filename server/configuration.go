@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 // configuration captures the plugin's external configuration as exposed in the Mattermost server
@@ -22,6 +24,13 @@ import (
 type configuration struct {
 	// Range of UDP ports used for ICE connections.
 	ICEPortsRange *PortsRange
+	clientConfig
+}
+
+type clientConfig struct {
+	// When set to true, it allows channel admins to enable calls in their channels.
+	// It also allows participants of DMs/GMs to enable calls.
+	AllowEnableCalls *bool
 }
 
 type PortsRange string
@@ -65,9 +74,18 @@ func (pr PortsRange) IsValid() error {
 	return nil
 }
 
+func (c *configuration) getClientConfig() clientConfig {
+	return clientConfig{
+		AllowEnableCalls: model.NewBool(*c.AllowEnableCalls),
+	}
+}
+
 func (c *configuration) SetDefaults() {
 	if c.ICEPortsRange == nil {
 		c.ICEPortsRange = new(PortsRange)
+	}
+	if c.AllowEnableCalls == nil {
+		c.AllowEnableCalls = new(bool)
 	}
 }
 
@@ -81,11 +99,20 @@ func (c *configuration) IsValid() error {
 	return nil
 }
 
-// Clone shallow copies the configuration. Your implementation may require a deep copy if
-// your configuration has reference types.
+// Clone copies the configuration.
 func (c *configuration) Clone() *configuration {
-	var clone = *c
-	return &clone
+	var cfg configuration
+
+	if c.ICEPortsRange != nil {
+		cfg.ICEPortsRange = new(PortsRange)
+		*cfg.ICEPortsRange = *c.ICEPortsRange
+	}
+
+	if c.AllowEnableCalls != nil {
+		cfg.AllowEnableCalls = model.NewBool(*c.AllowEnableCalls)
+	}
+
+	return &cfg
 }
 
 func (p *Plugin) setConfigDefaults() {

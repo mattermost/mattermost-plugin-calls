@@ -69,3 +69,13 @@ func TestPortsRangeIsValid(t *testing.T) {
 		})
 	}
 }
+
+func TestGetClientConfig(t *testing.T) {
+	cfg := &configuration{}
+	cfg.SetDefaults()
+	clientCfg := cfg.getClientConfig()
+	require.Equal(t, cfg.AllowEnableCalls, clientCfg.AllowEnableCalls)
+	*cfg.AllowEnableCalls = true
+	clientCfg = cfg.getClientConfig()
+	require.Equal(t, cfg.AllowEnableCalls, clientCfg.AllowEnableCalls)
+}

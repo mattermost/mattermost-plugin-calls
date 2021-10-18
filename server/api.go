@@ -113,6 +113,12 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	userID := r.Header.Get("Mattermost-User-Id")
 
+	cfg := p.getConfiguration()
+	if !*cfg.AllowEnableCalls && !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
 	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
 		p.LogError(appErr.Error())
@@ -210,6 +216,14 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	if r.Method == http.MethodGet {
+		if r.URL.Path == "/config" {
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(p.getConfiguration().getClientConfig()); err != nil {
+				p.LogError(err.Error())
+			}
+			return
+		}
+
 		if r.URL.Path == "/channels" {
 			p.handleGetAllChannels(w, r)
 			return
