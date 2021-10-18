@@ -35,6 +35,7 @@ import {
     VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_DISCONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED,
+    VOICE_CHANNEL_USERS_CONNECTED_STATES,
     VOICE_CHANNEL_PROFILES_CONNECTED,
     VOICE_CHANNEL_PROFILE_CONNECTED,
     VOICE_CHANNEL_USER_MUTED,
@@ -186,6 +187,20 @@ export default class Plugin {
                     type: VOICE_CHANNEL_USERS_CONNECTED,
                     data: {
                         users: resp.data.call?.users,
+                        channelID,
+                    },
+                });
+
+                const userStates = {} as any;
+                const users = resp.data.call?.users || [];
+                const states = resp.data.call?.states || [];
+                for (let i = 0; i < users.length; i++) {
+                    userStates[users[i]] = states[i];
+                }
+                store.dispatch({
+                    type: VOICE_CHANNEL_USERS_CONNECTED_STATES,
+                    data: {
+                        states: userStates,
                         channelID,
                     },
                 });

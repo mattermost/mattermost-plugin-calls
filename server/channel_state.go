@@ -7,18 +7,32 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+type userState struct {
+	Unmuted bool `json:"unmuted"`
+}
+
 type callState struct {
-	ID              string              `json:"id"`
-	StartAt         int64               `json:"create_at"`
-	Users           map[string]struct{} `json:"users,omitempty"`
-	ThreadID        string              `json:"thread_id"`
-	ScreenSharingID string              `json:"screen_sharing_id"`
+	ID              string                `json:"id"`
+	StartAt         int64                 `json:"create_at"`
+	Users           map[string]*userState `json:"users,omitempty"`
+	ThreadID        string                `json:"thread_id"`
+	ScreenSharingID string                `json:"screen_sharing_id"`
 }
 
 type channelState struct {
 	NodeID  string     `json:"node_id,omitempty"`
 	Enabled bool       `json:"enabled"`
 	Call    *callState `json:"call,omitempty"`
+}
+
+func (cs *callState) getStates() []userState {
+	var i int
+	states := make([]userState, len(cs.Users))
+	for _, state := range cs.Users {
+		states[i] = *state
+		i++
+	}
+	return states
 }
 
 func (cs *callState) getUsers() []string {

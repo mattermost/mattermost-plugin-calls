@@ -65,7 +65,7 @@ func (p *Plugin) addUserSession(userID, channelID string, userSession *session) 
 			state.Call = &callState{
 				ID:      model.NewId(),
 				StartAt: time.Now().UnixMilli(),
-				Users:   make(map[string]struct{}),
+				Users:   make(map[string]*userState),
 			}
 			state.NodeID = p.nodeID
 		}
@@ -73,7 +73,7 @@ func (p *Plugin) addUserSession(userID, channelID string, userSession *session) 
 		if _, ok := state.Call.Users[userID]; ok {
 			return nil, fmt.Errorf("user is already connected")
 		}
-		state.Call.Users[userID] = struct{}{}
+		state.Call.Users[userID] = &userState{}
 
 		st = *state
 		return state, nil

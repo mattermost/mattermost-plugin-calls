@@ -16,11 +16,12 @@ var wsRE = regexp.MustCompile(`^\/([a-z0-9]+)\/ws$`)
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
 
 type Call struct {
-	ID              string   `json:"id"`
-	StartAt         int64    `json:"start_at"`
-	Users           []string `json:"users"`
-	ThreadID        string   `json:"thread_id"`
-	ScreenSharingID string   `json:"screen_sharing_id"`
+	ID              string      `json:"id"`
+	StartAt         int64       `json:"start_at"`
+	Users           []string    `json:"users"`
+	States          []userState `json:"states,omitempty"`
+	ThreadID        string      `json:"thread_id"`
+	ScreenSharingID string      `json:"screen_sharing_id"`
 }
 
 type ChannelState struct {
@@ -54,6 +55,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 			ID:              state.Call.ID,
 			StartAt:         state.Call.StartAt,
 			Users:           state.Call.getUsers(),
+			States:          state.Call.getStates(),
 			ThreadID:        state.Call.ThreadID,
 			ScreenSharingID: state.Call.ScreenSharingID,
 		}
