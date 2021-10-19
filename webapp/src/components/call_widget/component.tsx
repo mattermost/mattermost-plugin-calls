@@ -166,11 +166,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     onMuteToggle = () => {
         let isMuted: boolean;
         if (this.state.isMuted) {
-            window.callsClient.unmute();
+            window.callsClient?.unmute();
             isMuted = false;
             this.setState({isMuted});
         } else {
-            window.callsClient.mute();
+            window.callsClient?.mute();
             isMuted = true;
             this.setState({isMuted});
         }
