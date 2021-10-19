@@ -235,18 +235,13 @@ export async function newClient(channelID: string, cb: () => void) {
     };
 
     const unshareScreen = () => {
-        if (!ws) {
+        if (!ws || !localScreenTrack) {
             return;
         }
 
-        if (localScreenTrack) {
-            localScreenTrack.stop();
-            localScreenTrack = null;
-        }
-
-        ws.send(JSON.stringify({
-            type: 'screen_off',
-        }));
+        localScreenTrack.stop();
+        localScreenTrack.dispatchEvent(new Event('ended'));
+        localScreenTrack = null;
     };
 
     ws.onerror = (err) => {

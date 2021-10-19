@@ -130,7 +130,7 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 				select {
 				case us.wsInCh <- []byte(msg.Data):
 				default:
-					p.LogError("channel is full, dropping msg")
+					p.LogError("wsInCh is full, dropping msg")
 				}
 			}
 		case clientMessageTypeICE:
@@ -152,7 +152,11 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 					p.LogError(err.Error())
 				}
 			} else {
-				us.trackEnableCh <- (msg.Type == clientMessageTypeMute)
+				select {
+				case us.trackEnableCh <- (msg.Type == clientMessageTypeMute):
+				default:
+					p.LogError("trackEnableCh channel is full, dropping msg")
+				}
 			}
 
 			if err := p.kvSetAtomicChannelState(us.channelID, func(state *channelState) (*channelState, error) {

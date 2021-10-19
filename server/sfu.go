@@ -93,15 +93,12 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 	peerConn := userSession.rtcConn
 	userSession.mut.RUnlock()
 
-	if sender, err := peerConn.AddTrack(track); err != nil {
+	sender, err := peerConn.AddTrack(track)
+	if err != nil {
 		p.LogError(err.Error())
 		return
 	} else if track.Codec().MimeType == webrtc.MimeTypeVP8 {
 		go p.handlePLI(sender, userSession.channelID)
-	} else {
-		userSession.mut.Lock()
-		userSession.rtpSendersMap[track] = sender
-		userSession.mut.Unlock()
 	}
 
 	offer, err := peerConn.CreateOffer(nil)
@@ -139,6 +136,10 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 		p.LogError(err.Error())
 		return
 	}
+
+	userSession.mut.Lock()
+	userSession.rtpSendersMap[track] = sender
+	userSession.mut.Unlock()
 }
 
 func (p *Plugin) initRTCConn(userID string) {

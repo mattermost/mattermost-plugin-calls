@@ -117,6 +117,7 @@ export default class VoiceActivityDetector extends EventEmitter {
         this.removeAllListeners('start');
         this.removeAllListeners('stop');
         this.removeAllListeners('ready');
+        this.stop();
         this.inputStream.getTracks().forEach((track) => {
             track.stop();
         });

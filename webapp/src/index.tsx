@@ -65,7 +65,6 @@ export default class Plugin {
 
     public initialize(registry: PluginRegistry, store: Store<GlobalState>): void {
         registry.registerReducer(reducer);
-        registry.registerGlobalComponent(CallWidget);
         registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
@@ -113,9 +112,12 @@ export default class Plugin {
             );
         };
 
+        let globalComponentID: string;
         const connectCall = async (channelID: string) => {
             try {
+                globalComponentID = registry.registerGlobalComponent(CallWidget);
                 window.callsClient = await newClient(channelID, () => {
+                    registry.unregisterComponent(globalComponentID);
                     registerChannelHeaderMenuButton();
                     if (window.callsClient) {
                         window.callsClient.disconnect();
