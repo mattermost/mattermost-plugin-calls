@@ -7,6 +7,7 @@ export default class VoiceActivityDetector extends EventEmitter {
     private processNode: ScriptProcessorNode;
     private startTime: number = Date.now();
     private isActive = false;
+    private isReady = false;
 
     constructor(audioContext: AudioContext, stream: MediaStream) {
         super();
@@ -53,16 +54,18 @@ export default class VoiceActivityDetector extends EventEmitter {
             if (Date.now() < (this.startTime + config.noiseCaptureMs)) {
                 noiseSamples.push(avg);
                 return;
-            }
-
-            if (noiseSamples.length > 0) {
+            } else if (noiseSamples.length > 0) {
                 noiseAvg = noiseSamples.reduce((acc, val) => acc + val) / noiseSamples.length;
                 noiseSamples = [];
 
                 console.log('vad: noise avg', noiseAvg);
 
-                this.stop();
+                this.isReady = true;
+                this.disconnect();
                 this.emit('ready');
+            } else if (!this.isReady) {
+                this.disconnect();
+                return;
             }
 
             if (avg > noiseAvg * config.noiseMultiplier) {
@@ -99,9 +102,7 @@ export default class VoiceActivityDetector extends EventEmitter {
         }
     }
 
-    stop() {
-        // console.log('vad stop');
-        this.emit('stop');
+    private disconnect() {
         if (this.processNode) {
             this.processNode.disconnect();
         }
@@ -111,6 +112,12 @@ export default class VoiceActivityDetector extends EventEmitter {
         if (this.sourceNode) {
             this.sourceNode.disconnect();
         }
+    }
+
+    stop() {
+        // console.log('vad stop');
+        this.disconnect();
+        this.emit('stop');
     }
 
     destroy() {
