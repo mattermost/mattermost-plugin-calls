@@ -45,6 +45,7 @@ import {
     VOICE_CHANNEL_CALL_START,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USER_SCREEN_OFF,
+    VOICE_CHANNEL_UNINIT,
 } from './action_types';
 
 // eslint-disable-next-line import/no-unresolved
@@ -383,12 +384,23 @@ export default class Plugin {
                 },
             });
         });
+
+        this.unsubscribers.push(() => {
+            store.dispatch({
+                type: VOICE_CHANNEL_UNINIT,
+            });
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${manifest.id}_deactivate`, (ev) => {
+            this.uninitialize();
+        });
     }
 
     uninitialize() {
         this.unsubscribers.forEach((unsubscribe) => {
             unsubscribe();
         });
+        this.unsubscribers = [];
     }
 }
 

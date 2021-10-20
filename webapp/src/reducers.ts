@@ -18,10 +18,13 @@ import {
     VOICE_CHANNEL_CALL_START,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USER_SCREEN_OFF,
+    VOICE_CHANNEL_UNINIT,
 } from './action_types';
 
 const isVoiceEnabled = (state = false, action: {type: string}) => {
     switch (action.type) {
+    case VOICE_CHANNEL_UNINIT:
+        return false;
     case VOICE_CHANNEL_ENABLE:
         return true;
     case VOICE_CHANNEL_DISABLE:
@@ -47,6 +50,8 @@ interface connectedProfilesAction {
 
 const voiceConnectedProfiles = (state: connectedProfilesState = {}, action: connectedProfilesAction) => {
     switch (action.type) {
+    case VOICE_CHANNEL_UNINIT:
+        return {};
     case VOICE_CHANNEL_PROFILES_CONNECTED:
         return {
             ...state,
@@ -91,6 +96,8 @@ interface connectedChannelsAction {
 
 const voiceConnectedChannels = (state: connectedChannelsState = {}, action: connectedChannelsAction) => {
     switch (action.type) {
+    case VOICE_CHANNEL_UNINIT:
+        return {};
     case VOICE_CHANNEL_USER_CONNECTED:
         if (!state[action.data.channelID]) {
             return {
@@ -122,6 +129,8 @@ const voiceConnectedChannels = (state: connectedChannelsState = {}, action: conn
 
 const connectedChannelID = (state: string | null = null, action: {type: string, data: {channelID: string, currentUserID: string, userID: string}}) => {
     switch (action.type) {
+    case VOICE_CHANNEL_UNINIT:
+        return null;
     case VOICE_CHANNEL_USER_CONNECTED:
         if (action.data.currentUserID === action.data.userID) {
             return action.data.channelID;
@@ -159,6 +168,8 @@ interface usersStatusesAction {
 
 const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatusesAction) => {
     switch (action.type) {
+    case VOICE_CHANNEL_UNINIT:
+        return {};
     case VOICE_CHANNEL_USERS_CONNECTED_STATES:
         return {
             ...state,
@@ -259,6 +270,8 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
 
 const callStartAt = (state: {[channelID: string]: number} = {}, action: {type: string, data: {channelID: string, startAt: number}}) => {
     switch (action.type) {
+    case VOICE_CHANNEL_UNINIT:
+        return {};
     case VOICE_CHANNEL_CALL_START:
         return {
             ...state,
@@ -271,6 +284,8 @@ const callStartAt = (state: {[channelID: string]: number} = {}, action: {type: s
 
 const voiceChannelScreenSharingID = (state: {[channelID: string]: string} = {}, action: {type: string, data: {channelID: string, userID?: string}}) => {
     switch (action.type) {
+    case VOICE_CHANNEL_UNINIT:
+        return {};
     case VOICE_CHANNEL_USER_SCREEN_ON:
         return {
             ...state,
