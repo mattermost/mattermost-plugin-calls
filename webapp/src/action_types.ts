@@ -15,3 +15,4 @@ export const VOICE_CHANNEL_PROFILE_CONNECTED = pluginId + '_voice_channel_profil
 export const VOICE_CHANNEL_CALL_START = pluginId + '_voice_channel_call_start';
 export const VOICE_CHANNEL_USER_SCREEN_ON = pluginId + '_voice_channel_screen_on';
 export const VOICE_CHANNEL_USER_SCREEN_OFF = pluginId + '_voice_channel_screen_off';
+export const VOICE_CHANNEL_UNINIT = pluginId + '_voice_channel_uninit';

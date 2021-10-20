@@ -25,6 +25,7 @@ const (
 	wsEventUserScreenOn     = "user_screen_on"
 	wsEventUserScreenOff    = "user_screen_off"
 	wsEventCallStart        = "call_start"
+	wsEventDeactivate       = "deactivate"
 
 	wsPingDuration = 10 * time.Second
 )
