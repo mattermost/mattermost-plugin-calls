@@ -2,6 +2,7 @@ export interface PluginRegistry {
     registerPostTypeComponent(typeName: string, component: React.ElementType)
     registerReducer(reducer: Reducer)
     registerGlobalComponent(component: React.ElementType)
+    registerRootComponent(component: React.ElementType)
     registerSidebarChannelLinkLabelComponent(component: React.ElementType)
     registerChannelToastComponent(component: React.ElementType)
     registerChannelHeaderButtonAction(component: React.ElementType, fn: (channel: Channel) => void)

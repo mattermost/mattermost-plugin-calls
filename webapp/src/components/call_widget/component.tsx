@@ -1,4 +1,6 @@
 import React, {CSSProperties} from 'react';
+import {Dispatch} from 'redux';
+import {GenericAction} from 'mattermost-redux/types/actions';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
@@ -19,6 +21,7 @@ import ShowMoreIcon from '../../components/icons/show_more';
 import CompassIcon from '../../components/icons/compassIcon';
 import ScreenIcon from '../../components/icons/screen_icon';
 import PopOutIcon from '../../components/icons/popout';
+import ExpandIcon from '../../components/icons/expand';
 
 import {handleFormattedTextClick} from '../../browser_routing';
 import {getUserDisplayName} from '../../utils';
@@ -38,6 +41,8 @@ interface Props {
     },
     callStartAt: number,
     screenSharingID: string,
+    show: boolean,
+    showExpandedView: () => void,
 }
 
 interface DraggingState {
@@ -668,8 +673,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
+    onExpandClick = () => {
+        this.props.showExpandedView();
+    }
+
     render() {
-        if (!this.props.channel || !window.callsClient) {
+        if (!this.props.channel || !window.callsClient || !this.props.show) {
             return null;
         }
 
@@ -696,6 +705,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={style.topBar}
                         onMouseDown={this.onMouseDown}
                     >
+                        <button
+                            className='style--none button-controls button-controls--wide'
+                            style={style.expandButton as CSSProperties}
+                            onClick={this.onExpandClick}
+                        >
+                            <ExpandIcon
+                                style={{width: '14px', height: '14px'}}
+                                fill='rgba(63, 67, 80, 0.64)'
+                            />
+                        </button>
+
                         <div style={style.profiles}>
                             {this.renderProfiles()}
                         </div>
@@ -901,5 +921,11 @@ const style = {
     audioInputsMenu: {
         left: 'calc(100% + 4px)',
         top: '0',
+    },
+    expandButton: {
+        position: 'absolute',
+        right: '8px',
+        top: '8px',
+        margin: 0,
     },
 };

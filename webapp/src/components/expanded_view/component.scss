@@ -1,0 +1,42 @@
+.button-center-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  color: white;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.16);
+  margin: 0 4px;
+  border: none;
+
+  &:hover {
+    color: rgba(28, 88, 217);
+    background: rgba(255, 255, 255, 0.32);
+  }
+}
+
+.button-close {
+  border: none;
+  color: white;
+  background: none;
+  padding: 4px;
+  &:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: white;
+  }
+}
+
+.button-leave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border-radius: 8px;
+  padding: 14px 20px;
+  background: rgba(210, 75, 78, 1);
+  border: none;
+
+  &:hover {
+    color: white;
+  }
+}

@@ -45,3 +45,7 @@ export const voiceChannelCallStartAt = (state: GlobalState, channelID: string) =
 export const voiceChannelScreenSharingID = (state: GlobalState, channelID: string) => {
     return getPluginState(state).voiceChannelScreenSharingID[channelID];
 };
+
+export const expandedView = (state: GlobalState) => {
+    return getPluginState(state).expandedView;
+};

@@ -7,13 +7,10 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {Client4} from 'mattermost-redux/client';
 
-import {showExpandedView} from '../../actions';
+import {hideExpandedView} from '../../actions';
+import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses} from '../../selectors';
 
-import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelCallStartAt, voiceChannelScreenSharingID, expandedView} from '../../selectors';
-
-import {getChannelURL} from '../../utils';
-
-import CallWidget from './component';
+import ExpandedView from './component';
 
 const mapStateToProps = (state: GlobalState) => {
     const profiles = voiceConnectedProfiles(state);
@@ -21,30 +18,20 @@ const mapStateToProps = (state: GlobalState) => {
     for (let i = 0; i < profiles.length; i++) {
         pictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
     }
-
     const channel = getChannel(state, connectedChannelID(state));
 
-    let channelURL = '';
-    if (channel) {
-        channelURL = getChannelURL(state, channel, channel.team_id);
-    }
-
     return {
+        show: expandedView(state),
         currentUserID: getCurrentUserId(state),
-        channel,
-        channelURL,
         profiles,
         pictures,
         statuses: voiceUsersStatuses(state) || {},
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
-        screenSharingID: voiceChannelScreenSharingID(state, channel?.id) || '',
-        show: !expandedView(state),
     };
 };
 
 const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
-    showExpandedView,
+    hideExpandedView,
 }, dispatch);
 
-export default connect(mapStateToProps, mapDispatchToProps)(CallWidget);
-
+export default connect(mapStateToProps, mapDispatchToProps)(ExpandedView);

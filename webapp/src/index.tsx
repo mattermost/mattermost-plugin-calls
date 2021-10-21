@@ -24,6 +24,7 @@ import ChannelLinkLabel from './components/channel_link_label';
 import ChannelCallToast from './components/channel_call_toast';
 import PostType from './components/post_type';
 import ScreenWindow from './components/screen_window';
+import ExpandedView from './components/expanded_view';
 
 import reducer from './reducers';
 
@@ -70,6 +71,7 @@ export default class Plugin {
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
         registry.registerCustomRoute('/screen', ScreenWindow);
+        registry.registerRootComponent(ExpandedView);
 
         let channelHeaderMenuButtonID: string;
         const unregisterChannelHeaderMenuButton = () => {
