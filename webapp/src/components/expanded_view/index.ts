@@ -8,7 +8,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {Client4} from 'mattermost-redux/client';
 
 import {hideExpandedView} from '../../actions';
-import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses} from '../../selectors';
+import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID} from '../../selectors';
 
 import ExpandedView from './component';
 
@@ -27,6 +27,7 @@ const mapStateToProps = (state: GlobalState) => {
         pictures,
         statuses: voiceUsersStatuses(state) || {},
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
+        screenSharingID: voiceChannelScreenSharingID(state, channel?.id) || '',
     };
 };
 

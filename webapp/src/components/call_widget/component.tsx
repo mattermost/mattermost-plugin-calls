@@ -124,9 +124,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient.on('remoteScreenStream', (stream: MediaStream) => {
-            if (this.props.screenSharingID && this.screenPlayer.current) {
-                this.screenPlayer.current.srcObject = stream;
-            }
+            this.setState({
+                screenStream: stream,
+            });
         });
     }
 
@@ -140,8 +140,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
-        if ((!prevProps.screenSharingID || prevState.showMenu || prevState.showParticipantsList) &&
-        this.props.screenSharingID === this.props.currentUserID && this.screenPlayer.current) {
+        if ((!prevProps.screenSharingID || prevState.showMenu || prevState.showParticipantsList || !prevProps.show ||
+        (prevState.screenStream !== this.state.screenStream && this.state.screenStream)) &&
+        this.props.screenSharingID && this.screenPlayer.current) {
+            console.log('setting remote stream');
             this.screenPlayer.current.srcObject = this.state.screenStream;
         }
 
