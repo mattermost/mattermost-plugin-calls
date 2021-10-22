@@ -249,11 +249,12 @@ export default class Plugin {
         const connectCall = async (channelID: string) => {
             try {
                 globalComponentID = registry.registerGlobalComponent(CallWidget);
-                window.callsClient = await new CallsClient().init(channelID, () => {
+                window.callsClient = await new CallsClient().init(channelID);
+                window.callsClient.on('close', () => {
                     registry.unregisterComponent(globalComponentID);
                     this.registerChannelHeaderMenuButton();
                     if (window.callsClient) {
-                        window.callsClient.disconnect();
+                        window.callsClient.destroy();
                         delete window.callsClient;
                     }
                 });
