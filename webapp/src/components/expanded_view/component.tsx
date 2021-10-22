@@ -36,7 +36,6 @@ interface Props {
 }
 
 interface State {
-    show: boolean,
     intervalID?: NodeJS.Timer,
     screenStream: MediaStream | null,
 }
@@ -48,7 +47,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         super(props);
         this.screenPlayer = React.createRef();
         this.state = {
-            show: false,
             screenStream: null,
         };
     }
@@ -62,6 +60,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onDisconnectClick = () => {
+        this.props.hideExpandedView();
         const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
         if (callsClient) {
             callsClient.disconnect();
@@ -70,9 +69,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 window.close();
             }
         }
-        this.setState({
-            show: false,
-        });
     }
 
     onMuteToggle = () => {
