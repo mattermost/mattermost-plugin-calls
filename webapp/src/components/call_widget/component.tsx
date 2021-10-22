@@ -108,6 +108,26 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({
             intervalID: id,
         });
+
+        window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
+            const voiceTrack = stream.getAudioTracks()[0];
+            const audioEl = document.createElement('audio');
+            audioEl.srcObject = stream;
+            audioEl.controls = false;
+            audioEl.autoplay = true;
+            audioEl.style.display = 'none';
+            audioEl.onerror = (err) => console.log(err);
+            document.body.appendChild(audioEl);
+            voiceTrack.onended = () => {
+                audioEl.remove();
+            };
+        });
+
+        window.callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+            if (this.props.screenSharingID && this.screenPlayer.current) {
+                this.screenPlayer.current.srcObject = stream;
+            }
+        });
     }
 
     public componentWillUnmount() {
@@ -680,17 +700,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
-        const expandedViewWindow = window.open(
-            `/${this.props.team.name}/${pluginID}/expanded/${this.props.channel.id}`,
-            'ExpandedView',
-            'resizable=yes',
-        );
+        // const expandedViewWindow = window.open(
+        //     `/${this.props.team.name}/${pluginID}/expanded/${this.props.channel.id}`,
+        //     'ExpandedView',
+        //     'resizable=yes',
+        // );
 
-        this.setState({
-            expandedViewWindow,
-        });
+        // this.setState({
+        //     expandedViewWindow,
+        // });
 
-        // this.props.showExpandedView();
+        this.props.showExpandedView();
     }
 
     render() {

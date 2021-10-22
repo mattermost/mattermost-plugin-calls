@@ -124,27 +124,9 @@ export default class CallsClient extends EventEmitter {
                 this.streams.push(remoteStream);
 
                 if (remoteStream.getAudioTracks().length > 0) {
-                    const voiceTrack = remoteStream.getAudioTracks()[0];
-                    console.log(voiceTrack);
-                    const audioEl = document.createElement('audio');
-                    audioEl.srcObject = remoteStream;
-                    audioEl.controls = false;
-                    audioEl.autoplay = true;
-                    audioEl.style.display = 'none';
-
-                    audioEl.onerror = (err) => console.log(err);
-
-                    document.body.appendChild(audioEl);
-
-                    voiceTrack.onended = () => {
-                        audioEl.remove();
-                    };
+                    this.emit('remoteVoiceStream', remoteStream);
                 } else if (remoteStream.getVideoTracks().length > 0) {
-                    console.log('video track!');
-                    const videoEl = document.getElementById('screen-player') as HTMLVideoElement || null;
-                    if (videoEl) {
-                        videoEl.srcObject = remoteStream;
-                    }
+                    this.emit('remoteScreenStream', remoteStream);
                 }
             });
         };
@@ -166,6 +148,8 @@ export default class CallsClient extends EventEmitter {
 
     public destroy() {
         this.removeAllListeners('close');
+        this.removeAllListeners('remoteVoiceStream');
+        this.removeAllListeners('remoteScreenStream');
     }
 
     public getAudioDevices() {

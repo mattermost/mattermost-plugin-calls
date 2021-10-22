@@ -199,8 +199,6 @@ export default class Plugin {
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
         registry.registerCustomRoute('/screen', ScreenWindow);
-
-        registry.registerRootComponent(ExpandedView);
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
 
         let channelHeaderMenuButtonID: string;
@@ -245,11 +243,11 @@ export default class Plugin {
             );
         };
 
-        let globalComponentID: string;
         const connectCall = async (channelID: string) => {
             try {
-                globalComponentID = registry.registerGlobalComponent(CallWidget);
                 window.callsClient = await new CallsClient().init(channelID);
+                const globalComponentID = registry.registerGlobalComponent(CallWidget);
+                const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', () => {
                     registry.unregisterComponent(globalComponentID);
                     this.registerChannelHeaderMenuButton();
