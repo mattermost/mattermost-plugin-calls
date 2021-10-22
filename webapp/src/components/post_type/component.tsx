@@ -13,8 +13,6 @@ import CallIcon from '../../components/icons/call_icon';
 import LeaveCallIcon from '../../components/icons/leave_call_icon';
 import ConnectedProfiles from '../../components/connected_profiles';
 
-import {newClient} from '../../connection';
-
 interface Props {
     post: Post,
     currChannelID: string,
