@@ -8,6 +8,7 @@ import moment from 'moment-timezone';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 import {Channel} from 'mattermost-redux/types/channels';
+import {Team} from 'mattermost-redux/types/teams';
 
 import Avatar from '../avatar/avatar';
 import {id as pluginID} from '../../manifest';
@@ -30,6 +31,7 @@ import './component.scss';
 interface Props {
     currentUserID: string,
     channel: Channel,
+    team: Team,
     channelURL: string,
     profiles: UserProfile[],
     pictures: string[],
@@ -56,7 +58,6 @@ interface DraggingState {
 }
 
 interface State {
-    isMuted: boolean,
     showMenu: boolean,
     showParticipantsList: boolean,
     screenSharingID?: string,
@@ -67,6 +68,7 @@ interface State {
     showAudioInputsMenu?: boolean,
     dragging: DraggingState,
     screenWindow: Window | null,
+    expandedViewWindow: Window | null,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -76,7 +78,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     constructor(props: Props) {
         super(props);
         this.state = {
-            isMuted: true,
             showMenu: false,
             showParticipantsList: false,
             dragging: {
@@ -89,6 +90,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offY: 0,
             },
             screenWindow: null,
+            expandedViewWindow: null,
         };
         this.node = React.createRef();
         this.screenPlayer = React.createRef();
@@ -169,19 +171,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     onMuteToggle = () => {
-        let isMuted: boolean;
-        if (this.state.isMuted) {
-            window.callsClient?.unmute();
-            isMuted = false;
-            this.setState({isMuted});
-        } else {
-            window.callsClient?.mute();
-            isMuted = true;
-            this.setState({isMuted});
+        if (!window.callsClient) {
+            return;
         }
 
-        if (this.state.screenWindow) {
-            this.state.screenWindow.postMessage({isMuted}, window.location.origin);
+        const isMuted = window.callsClient.isMuted();
+        if (isMuted) {
+            window.callsClient.unmute();
+        } else {
+            window.callsClient.mute();
         }
     }
 
@@ -189,12 +187,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (this.state.screenWindow) {
             this.state.screenWindow.close();
         }
+        if (this.state.expandedViewWindow) {
+            this.state.expandedViewWindow.close();
+        }
         if (window.callsClient) {
             window.callsClient.disconnect();
             delete window.callsClient;
         }
         this.setState({
-            isMuted: true,
             showMenu: false,
             showParticipantsList: false,
             currentAudioInputDevice: null,
@@ -208,6 +208,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offY: 0,
             },
             screenWindow: null,
+            expandedViewWindow: null,
         });
     }
 
@@ -674,7 +675,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     onExpandClick = () => {
-        this.props.showExpandedView();
+        if (this.state.expandedViewWindow && !this.state.expandedViewWindow.closed) {
+            this.state.expandedViewWindow.focus();
+            return;
+        }
+
+        const expandedViewWindow = window.open(
+            `/${this.props.team.name}/${pluginID}/expanded/${this.props.channel.id}`,
+            'ExpandedView',
+            'resizable=yes',
+        );
+
+        this.setState({
+            expandedViewWindow,
+        });
+
+        // this.props.showExpandedView();
     }
 
     render() {
@@ -682,8 +698,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const MuteIcon = this.state.isMuted ? MutedIcon : UnmutedIcon;
-        const muteTooltipText = this.state.isMuted ? 'Click to unmute' : 'Click to mute';
+        const MuteIcon = window.callsClient.isMuted() ? MutedIcon : UnmutedIcon;
+        const muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
 
         const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar'));
         const mainWidth = hasTeamSidebar ? '280px' : '216px';
@@ -791,7 +807,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             <button
                                 id='voice-mute-unmute'
                                 className='cursor--pointer style--none button-controls'
-                                style={this.state.isMuted ? style.mutedButton : style.unmutedButton}
+                                style={window.callsClient.isMuted() ? style.mutedButton : style.unmutedButton}
                                 onClick={this.onMuteToggle}
                             >
                                 <MuteIcon

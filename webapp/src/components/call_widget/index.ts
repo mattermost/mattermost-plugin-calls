@@ -4,6 +4,7 @@ import {GlobalState} from 'mattermost-redux/types/store';
 
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
 import {Client4} from 'mattermost-redux/client';
 
@@ -32,6 +33,7 @@ const mapStateToProps = (state: GlobalState) => {
     return {
         currentUserID: getCurrentUserId(state),
         channel,
+        team: getTeam(state, getCurrentTeamId(state)),
         channelURL,
         profiles,
         pictures,

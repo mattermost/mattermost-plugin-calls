@@ -107,3 +107,12 @@ export function hasPermissionsToEnableCalls(channel: Channel, roles: userRoles, 
     roles.channel[channel.id].has('channel_admin') ||
     roles.system.has('system_admin');
 }
+
+export function getExpandedChannelID() {
+    const pattern = `${pluginId}/expanded/`;
+    const idx = window.location.pathname.indexOf(pattern);
+    if (idx < 0) {
+        return '';
+    }
+    return window.location.pathname.substr(idx + pattern.length);
+}
