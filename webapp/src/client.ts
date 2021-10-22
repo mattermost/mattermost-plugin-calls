@@ -14,7 +14,6 @@ export default class CallsClient extends EventEmitter {
     private currentAudioDeviceID: string;
     private voiceDetector: any;
     private voiceTrackAdded: boolean;
-    private closeCb: (() => void) | null;
     private streams: MediaStream[];
     private stream: MediaStream | null;
     private audioDevices: { inputs: MediaDeviceInfo[]; outputs: MediaDeviceInfo[]; };
@@ -24,7 +23,6 @@ export default class CallsClient extends EventEmitter {
         super();
         this.ws = null;
         this.peer = null;
-        this.closeCb = null;
         this.audioTrack = null;
         this.currentAudioDeviceID = '';
         this.voiceTrackAdded = false;
@@ -63,9 +61,7 @@ export default class CallsClient extends EventEmitter {
         };
     }
 
-    public async init(channelID: string, cb: () => void) {
-        this.closeCb = cb;
-
+    public async init(channelID: string) {
         this.stream = await navigator.mediaDevices.getUserMedia({
             video: false,
             audio: true,
@@ -85,13 +81,13 @@ export default class CallsClient extends EventEmitter {
 
         ws.onerror = (err) => {
             console.log(err);
+            this.ws = null;
             this.disconnect();
         };
 
         ws.onclose = () => {
-            if (this.closeCb) {
-                this.closeCb();
-            }
+            this.ws = null;
+            this.disconnect();
         };
 
         ws.onopen = () => {
@@ -168,6 +164,10 @@ export default class CallsClient extends EventEmitter {
         return this;
     }
 
+    public destroy() {
+        this.removeAllListeners('close');
+    }
+
     public getAudioDevices() {
         return this.audioDevices;
     }
@@ -214,6 +214,7 @@ export default class CallsClient extends EventEmitter {
 
         if (this.voiceDetector) {
             this.voiceDetector.destroy();
+            this.voiceDetector = null;
         }
 
         this.streams.forEach((s) => {
@@ -228,11 +229,7 @@ export default class CallsClient extends EventEmitter {
             this.ws = null;
         }
 
-        if (this.closeCb) {
-            const callback = this.closeCb;
-            this.closeCb = null;
-            callback();
-        }
+        this.emit('close');
     }
 
     public isMuted() {
