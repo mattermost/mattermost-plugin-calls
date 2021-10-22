@@ -158,10 +158,10 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64) error {
+func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64) (string, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
-		return appErr
+		return "", appErr
 	}
 
 	var postMsg string
@@ -190,7 +190,7 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64) err
 
 	createdPost, appErr := p.API.CreatePost(post)
 	if appErr != nil {
-		return appErr
+		return "", appErr
 	}
 
 	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
@@ -205,10 +205,10 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64) err
 		return state, nil
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return createdPost.Id, nil
 }
 
 func (p *Plugin) updateCallThreadEnded(threadID string) error {
