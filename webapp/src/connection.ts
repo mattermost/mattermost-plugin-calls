@@ -131,6 +131,10 @@ export async function newClient(channelID: string, cb: () => void) {
         }
     };
 
+    const isMuted = () => {
+        return !audioTrack.enabled;
+    };
+
     const mute = () => {
         if (voiceDetector) {
             voiceDetector.stop();
@@ -333,5 +337,6 @@ export async function newClient(channelID: string, cb: () => void) {
         unshareScreen,
         getAudioDevices,
         setAudioInputDevice,
+        isMuted,
     };
 }

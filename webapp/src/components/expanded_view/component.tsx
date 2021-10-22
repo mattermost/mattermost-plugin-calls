@@ -37,14 +37,12 @@ interface Props {
 interface State {
     show: boolean,
     intervalID?: NodeJS.Timer,
-    isMuted: boolean,
 }
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
     constructor(props: Props) {
         super(props);
         this.state = {
-            isMuted: true,
             show: false,
         };
     }
@@ -61,23 +59,26 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         // if (this.state.screenWindow) {
         //     this.state.screenWindow.close();
         // }
-        if (window.callsClient) {
-            window.callsClient.disconnect();
+        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        if (callsClient) {
+            callsClient.disconnect();
             delete window.callsClient;
+            if (window.opener) {
+                window.close();
+            }
         }
         this.setState({
-            isMuted: true,
             show: false,
         });
     }
 
     onMuteToggle = () => {
-        if (this.state.isMuted) {
-            window.callsClient?.unmute();
+        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        if (callsClient.isMuted()) {
+            callsClient.unmute();
         } else {
-            window.callsClient?.mute();
+            callsClient.mute();
         }
-        this.setState({isMuted: !this.state.isMuted});
     }
 
     public componentDidMount() {
@@ -97,17 +98,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     renderParticipants = () => {
-        if (this.props.profiles.length === 0) {
-            return null;
-        }
-
-        const profiles = [];
-
-        for (let i = 0; i < 100; i++) {
-            profiles.push(this.props.profiles[0]);
-        }
-
-        return profiles.map((profile, idx) => {
+        return this.props.profiles.map((profile, idx) => {
             const status = this.props.statuses[profile.id];
             let isMuted = true;
             let isSpeaking = false;
@@ -163,12 +154,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     render() {
-        if (!this.props.show || !window.callsClient) {
+        if ((!this.props.show || !window.callsClient) && !window.opener) {
             return null;
         }
 
-        const MuteIcon = this.state.isMuted ? MutedIcon : UnmutedIcon;
-        const muteButtonText = this.state.isMuted ? 'Unmute' : 'Mute';
+        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const MuteIcon = callsClient.isMuted() ? MutedIcon : UnmutedIcon;
+        const muteButtonText = callsClient.isMuted() ? 'Unmute' : 'Mute';
 
         return (
             <div style={style.main as CSSProperties}>
@@ -178,13 +170,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
 
                 </div>
-                <button
-                    className='button-close'
-                    style={style.closeViewButton as CSSProperties}
-                    onClick={this.props.hideExpandedView}
-                >
-                    <CompassIcon icon='close'/>
-                </button>
+                {
+                    !window.opener &&
+                    <button
+                        className='button-close'
+                        style={style.closeViewButton as CSSProperties}
+                        onClick={this.props.hideExpandedView}
+                    >
+                        <CompassIcon icon='close'/>
+                    </button>
+                }
                 <ul style={style.participants as CSSProperties}>
                     { this.renderParticipants() }
                 </ul>
