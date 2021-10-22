@@ -260,7 +260,8 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		p.mut.Unlock()
 
 		// new call has started
-		if err := p.startNewCallThread(userID, channelID, state.Call.StartAt); err != nil {
+		threadID, err := p.startNewCallThread(userID, channelID, state.Call.StartAt)
+		if err != nil {
 			p.LogError(err.Error())
 		}
 
@@ -268,6 +269,7 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		p.API.PublishWebSocketEvent(wsEventCallStart, map[string]interface{}{
 			"channelID": channelID,
 			"start_at":  state.Call.StartAt,
+			"thread_id": threadID,
 		}, &model.WebsocketBroadcast{ChannelId: channelID})
 	}
 
