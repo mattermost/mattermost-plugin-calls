@@ -16,7 +16,7 @@ import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCal
 
 import manifest from './manifest';
 
-import {newClient} from './connection';
+import CallsClient from './client';
 
 import ChannelHeaderButton from './components/channel_header_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
@@ -249,7 +249,7 @@ export default class Plugin {
         const connectCall = async (channelID: string) => {
             try {
                 globalComponentID = registry.registerGlobalComponent(CallWidget);
-                window.callsClient = await newClient(channelID, () => {
+                window.callsClient = await new CallsClient().init(channelID, () => {
                     registry.unregisterComponent(globalComponentID);
                     this.registerChannelHeaderMenuButton();
                     if (window.callsClient) {

@@ -7,8 +7,6 @@ import {UserProfile} from 'mattermost-redux/types/users';
 
 import moment from 'moment-timezone';
 
-import {newClient} from '../../connection';
-
 import ActiveCallIcon from '../../components/icons/active_call_icon';
 import ConnectedProfiles from '../../components/connected_profiles';
 
