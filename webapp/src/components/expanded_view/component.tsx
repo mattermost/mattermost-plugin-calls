@@ -32,18 +32,24 @@ interface Props {
     },
     callStartAt: number,
     hideExpandedView: () => void,
+    screenSharingID: string,
 }
 
 interface State {
     show: boolean,
     intervalID?: NodeJS.Timer,
+    screenStream: MediaStream | null,
 }
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
+    private screenPlayer = React.createRef<HTMLVideoElement>()
+
     constructor(props: Props) {
         super(props);
+        this.screenPlayer = React.createRef();
         this.state = {
             show: false,
+            screenStream: null,
         };
     }
 
@@ -56,9 +62,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onDisconnectClick = () => {
-        // if (this.state.screenWindow) {
-        //     this.state.screenWindow.close();
-        // }
         const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
         if (callsClient) {
             callsClient.disconnect();
@@ -81,6 +84,27 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
+    onShareScreenToggle = async () => {
+        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        if (this.props.screenSharingID === this.props.currentUserID) {
+            callsClient.unshareScreen();
+        } else if (!this.props.screenSharingID) {
+            const stream = await callsClient.shareScreen();
+            this.setState({
+                screenStream: stream,
+            });
+        }
+    }
+
+    public componentDidUpdate(prevProps: Props, prevState: State) {
+        if (((!prevProps.screenSharingID && this.props.screenSharingID) ||
+        (prevState.screenStream !== this.state.screenStream && this.state.screenStream) ||
+        (!prevProps.show && this.props.show)) &&
+        this.screenPlayer.current) {
+            this.screenPlayer.current.srcObject = this.state.screenStream;
+        }
+    }
+
     public componentDidMount() {
         // This is needed to force a re-render to periodically update
         // the start time.
@@ -89,12 +113,61 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.setState({
             intervalID: id,
         });
+
+        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+            this.setState({
+                screenStream: stream,
+            });
+        });
     }
 
     public componentWillUnmount() {
         if (this.state.intervalID) {
             clearInterval(this.state.intervalID);
         }
+    }
+
+    renderScreenSharingPlayer = () => {
+        const isSharing = this.props.screenSharingID === this.props.currentUserID;
+
+        let profile;
+        if (!isSharing) {
+            for (let i = 0; i < this.props.profiles.length; i++) {
+                if (this.props.profiles[i].id === this.props.screenSharingID) {
+                    profile = this.props.profiles[i];
+                    break;
+                }
+            }
+            if (!profile) {
+                return null;
+            }
+        }
+
+        const msg = isSharing ? 'You are sharing your screen' : `Your are viewing ${getUserDisplayName(profile as UserProfile)}'s screen`;
+
+        return (
+            <div style={style.screenContainer as CSSProperties}>
+                <video
+                    id='screen-player'
+                    ref={this.screenPlayer}
+                    width='100%'
+                    muted={true}
+                    autoPlay={true}
+                />
+                <span
+                    style={{
+                        background: 'black',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        color: 'white',
+                        marginTop: '8px',
+                    }}
+                >
+                    {msg}
+                </span>
+            </div>
+        );
     }
 
     renderParticipants = () => {
@@ -159,8 +232,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
-        const MuteIcon = callsClient.isMuted() ? MutedIcon : UnmutedIcon;
-        const muteButtonText = callsClient.isMuted() ? 'Unmute' : 'Mute';
+        const isMuted = callsClient.isMuted();
+        const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
+        const muteButtonText = isMuted ? 'Unmute' : 'Mute';
+
+        const sharingID = this.props.screenSharingID;
+        const currentID = this.props.currentUserID;
+        const isSharing = sharingID === currentID;
 
         return (
             <div style={style.main as CSSProperties}>
@@ -180,16 +258,23 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <CompassIcon icon='close'/>
                     </button>
                 }
+                { !this.props.screenSharingID &&
+
                 <ul style={style.participants as CSSProperties}>
                     { this.renderParticipants() }
                 </ul>
+                }
+                { this.props.screenSharingID && this.renderScreenSharingPlayer() }
                 <div style={style.controls}>
                     <div style={{flex: '1'}}/>
                     <div style={style.centerControls}>
 
+                        { (isSharing || !sharingID) &&
                         <div style={style.buttonContainer as CSSProperties}>
                             <button
                                 className='button-center-controls'
+                                onClick={this.onShareScreenToggle}
+                                style={{background: isSharing ? 'rgba(210, 75, 78, 1)' : ''}}
                             >
                                 <ScreenIcon
                                     style={{width: '28px', height: '28px'}}
@@ -199,13 +284,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </button>
                             <span
                                 style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                            >{'Share screen'}</span>
+                            >{isSharing ? 'Stop sharing' : 'Share screen'}</span>
                         </div>
+                        }
 
                         <div style={style.buttonContainer as CSSProperties}>
                             <button
                                 className='button-center-controls'
                                 onClick={this.onMuteToggle}
+                                style={{background: isMuted ? '' : '#3DB887'}}
                             >
                                 <MuteIcon
                                     style={{width: '28px', height: '28px'}}
@@ -317,5 +404,13 @@ const style = {
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: '16px',
+    },
+    screenContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        flex: '1',
+        width: '50%',
     },
 };
