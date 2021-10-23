@@ -326,6 +326,16 @@ export default class Plugin {
                     },
                 });
 
+                if (resp.data.screen_sharing_id) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_USER_SCREEN_ON,
+                        data: {
+                            channelID,
+                            userID: resp.data.screen_sharing_id,
+                        },
+                    });
+                }
+
                 const userStates = {} as any;
                 const users = resp.data.call?.users || [];
                 const states = resp.data.call?.states || [];
