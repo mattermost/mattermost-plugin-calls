@@ -6,7 +6,7 @@
   width: 24px;
   height: 24px;
   border-radius: 4px;
-  color: rgba(63, 67, 80, 0.64);
+  color: rgba(var(--center-channel-color-rgb), 0.64);
   margin: 0 4px;
 
   &.button-controls--wide {
@@ -19,12 +19,11 @@
   @extend %button-controls;
 
   &:hover {
-    color: rgba(28, 88, 217);
-    background: rgba(28, 88, 217, 0.12);
+    background: rgba(var(--center-channel-color-rgb), 0.12);
   }
 
   svg {
-    fill: currentColor;
+    fill: var(--center-channel-color);
   }
 }
 
@@ -32,6 +31,6 @@
   @extend %button-controls;
 
   svg {
-    fill: rgba(63, 67, 80, 0.34);
+    color: rgba(var(--center-channel-color-rgb), 0.34);
   }
 }

@@ -10,6 +10,8 @@ import {UserProfile} from 'mattermost-redux/types/users';
 import {Channel} from 'mattermost-redux/types/channels';
 import {Team} from 'mattermost-redux/types/teams';
 
+import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
+
 import Avatar from '../avatar/avatar';
 import {id as pluginID} from '../../manifest';
 
@@ -29,6 +31,7 @@ import {getUserDisplayName} from '../../utils';
 import './component.scss';
 
 interface Props {
+    theme: any,
     currentUserID: string,
     channel: Channel,
     team: Team,
@@ -74,6 +77,131 @@ interface State {
 export default class CallWidget extends React.PureComponent<Props, State> {
     private node: React.RefObject<HTMLDivElement>;
     private screenPlayer = React.createRef<HTMLVideoElement>()
+
+    private style = {
+        main: {
+            position: 'fixed',
+            background: this.props.theme.centerChannelBg,
+            borderRadius: '8px',
+            display: 'flex',
+            bottom: '12px',
+            left: '12px',
+            zIndex: '1000',
+            border: '1px solid rgba(63, 67, 80, 0.3)',
+            userSelect: 'none',
+            color: this.props.theme.centerChannelColor,
+        },
+        topBar: {
+            background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
+            padding: '0 12px',
+            display: 'flex',
+            width: '100%',
+            alignItems: 'center',
+            height: '44px',
+            cursor: 'move',
+        },
+        bottomBar: {
+            padding: '6px 8px',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            width: '100%',
+            alignItems: 'center',
+        },
+        mutedButton: {
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: '24px',
+        },
+        unmutedButton: {
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: '24px',
+            background: 'rgba(61, 184, 135, 0.16)',
+            borderRadius: '4px',
+            color: 'rgba(61, 184, 135, 1)',
+        },
+        disconnectButton: {
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            color: 'color: rgba(255, 255, 255, 0.8)',
+            fontSize: '14px',
+            margin: '0 8px',
+            width: '24px',
+            height: '24px',
+            borderRadius: '4px',
+            backgroundColor: '#D24B4E',
+        },
+        status: {
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+        },
+        callInfo: {
+            display: 'flex',
+            fontSize: '11px',
+            opacity: '0.64',
+        },
+        profiles: {
+            display: 'flex',
+            marginRight: '8px',
+        },
+        menuButton: {
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            color: changeOpacity(this.props.theme.centerChannelColor, 0.8),
+            fontSize: '14px',
+            width: '24px',
+            height: '24px',
+        },
+        menu: {
+            position: 'absolute',
+            background: 'white',
+            color: this.props.theme.centerChannelColor,
+        },
+        screenSharingPanel: {
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            bottom: 'calc(100% + 4px)',
+            top: 'auto',
+            width: '100%',
+            minWidth: 'revert',
+            maxWidth: 'revert',
+        },
+        leaveCallButton: {
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 8px',
+            height: '28px',
+            borderRadius: '4px',
+            color: '#D24B4E',
+            background: 'rgba(210, 75, 78, 0.04)',
+            marginRight: 'auto',
+        },
+        dotsMenu: {
+            bottom: 'calc(100% + 4px)',
+            top: 'auto',
+            width: '100%',
+            minWidth: 'revert',
+            maxWidth: 'revert',
+        },
+        audioInputsMenu: {
+            left: 'calc(100% + 4px)',
+            top: '0',
+        },
+        expandButton: {
+            position: 'absolute',
+            right: '8px',
+            top: '8px',
+            margin: 0,
+        },
+    };
 
     constructor(props: Props) {
         super(props);
@@ -304,7 +432,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             >
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={style.screenSharingPanel as CSSProperties}
+                    style={this.style.screenSharingPanel as CSSProperties}
                 >
                     <div
                         style={{position: 'relative', width: '80%', background: '#C4C4C4'}}
@@ -434,7 +562,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <span className='MenuItem__primary-text'>
                             {getUserDisplayName(profile)}
                             { profile.id === this.props.currentUserID &&
-                            <span style={{color: 'rgba(61, 60, 64, 0.56)', whiteSpace: 'pre-wrap'}}>{' (you)'}</span>
+                            <span style={{color: changeOpacity(this.props.theme.centerChannelColor, 0.56), whiteSpace: 'pre-wrap'}}>{' (you)'}</span>
                             }
                         </span>
 
@@ -470,7 +598,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <div className='Menu'>
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={style.audioInputsMenu}
+                    style={this.style.audioInputsMenu}
                 >
                     {
                         this.state.devices.inputs.map((device: any, idx: number) => {
@@ -484,7 +612,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                         style={{background: device.deviceId === this.state.currentAudioInputDevice?.deviceId ? 'rgba(28, 88, 217, 0.12)' : ''}}
                                         onClick={() => this.onAudioInputDeviceClick(device)}
                                     >
-                                        <span style={{color: 'rgba(61, 60, 64, 0.56)', fontSize: '12px', width: '100%'}}>{device.label}</span>
+                                        <span style={{color: changeOpacity(this.props.theme.centerChannelColor, 0.56), fontSize: '12px', width: '100%'}}>{device.label}</span>
                                     </button>
                                 </li>
                             );
@@ -513,21 +641,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%'}}>
                             <UnmutedIcon
-                                style={{width: '14px', height: '14px', marginRight: '8px'}}
-                                fill='rgba(61, 60, 64, 0.56)'
+                                style={{width: '14px', height: '14px', marginRight: '8px', fill: changeOpacity(this.props.theme.centerChannelColor, 0.56)}}
                             />
                             <span
                                 className='MenuItem__primary-text'
                                 style={{padding: '0'}}
                             >{'Microphone'}</span>
                             <ShowMoreIcon
-                                style={{width: '11px', height: '11px', marginLeft: 'auto'}}
-                                fill='rgba(61, 60, 64, 0.56)'
+                                style={{width: '11px', height: '11px', marginLeft: 'auto', fill: changeOpacity(this.props.theme.centerChannelColor, 0.56)}}
                             />
                         </div>
                         <span
                             style={{
-                                color: 'rgba(61, 60, 64, 0.56)',
+                                color: changeOpacity(this.props.theme.centerChannelColor, 0.56),
                                 fontSize: '12px',
                                 width: '100%',
                                 textOverflow: 'ellipsis',
@@ -583,7 +709,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <div className='Menu'>
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={style.dotsMenu}
+                    style={this.style.dotsMenu}
                 >
                     {!hasTeamSidebar && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices()}
@@ -622,7 +748,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <Avatar
                         size='sm'
                         icon='account-outline'
-                        style={{background: 'rgba(63, 67, 80, 0.16)', color: 'rgba(63, 67, 80, 0.48)', fontSize: '14px'}}
+                        style={{
+                            background: changeOpacity(this.props.theme.centerChannelColor, 0.16),
+                            color: changeOpacity(this.props.theme.centerChannelColor, 0.48),
+                            fontSize: '14px',
+                        }}
                     />
                 }
 
@@ -729,37 +859,37 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <div
                 style={{
-                    ...style.main as CSSProperties,
+                    ...this.style.main as CSSProperties,
                     width: mainWidth,
                 }}
                 ref={this.node}
             >
-                <div style={style.status as CSSProperties}>
+                <div style={this.style.status as CSSProperties}>
                     {this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
                     {this.renderMenu(hasTeamSidebar)}
 
                     <div
-                        style={style.topBar}
+                        style={this.style.topBar}
                         onMouseDown={this.onMouseDown}
                     >
                         <button
                             className='style--none button-controls button-controls--wide'
-                            style={style.expandButton as CSSProperties}
+                            style={this.style.expandButton as CSSProperties}
                             onClick={this.onExpandClick}
                         >
                             <ExpandIcon
                                 style={{width: '14px', height: '14px'}}
-                                fill='rgba(63, 67, 80, 0.64)'
+                                fill={changeOpacity(this.props.theme.centerChannelColor, 0.64)}
                             />
                         </button>
 
-                        <div style={style.profiles}>
+                        <div style={this.style.profiles}>
                             {this.renderProfiles()}
                         </div>
                         <div style={{width: '85%'}}>
                             {this.renderSpeaking()}
-                            <div style={style.callInfo}>
+                            <div style={this.style.callInfo}>
                                 <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
                                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
                                 {this.props.channel.type === 'O' ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
@@ -768,15 +898,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </div>
                     </div>
 
-                    <div style={style.bottomBar}>
+                    <div style={this.style.bottomBar}>
                         <button
                             className='style--none button-controls button-controls--wide'
-                            style={style.leaveCallButton}
+                            style={this.style.leaveCallButton}
                             onClick={this.onDisconnectClick}
                         >
                             <LeaveCallIcon
-                                style={{width: '16px', height: '16px'}}
-                                fill='#D24B4E'
+                                style={{width: '16px', height: '16px', fill: '#D24B4E'}}
                             />
                             <span
                                 className='MenuItem__primary-text'
@@ -787,7 +916,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <button
                             id='voice-menu'
                             className='cursor--pointer style--none button-controls'
-                            style={style.menuButton}
+                            style={this.style.menuButton}
                             onClick={this.onMenuClick}
                         >
                             <HorizontalDotsIcon
@@ -810,8 +939,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             />
 
                             <span
-                                className='MenuItem__primary-text'
-                                style={{fontWeight: 600}}
+                                style={{fontWeight: 600, color: changeOpacity(this.props.theme.centerChannelColor, 0.64)}}
                             >{this.props.profiles.length}</span>
                         </button>
 
@@ -829,11 +957,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             <button
                                 id='voice-mute-unmute'
                                 className='cursor--pointer style--none button-controls'
-                                style={window.callsClient.isMuted() ? style.mutedButton : style.unmutedButton}
+                                style={window.callsClient.isMuted() ? this.style.mutedButton : this.style.unmutedButton}
                                 onClick={this.onMuteToggle}
                             >
                                 <MuteIcon
-                                    style={{width: '16px', height: '16px'}}
+                                    style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)'}}
                                 />
                             </button>
                         </OverlayTrigger>
@@ -844,126 +972,3 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 }
 
-const style = {
-    main: {
-        position: 'fixed',
-        background: 'rgba(255, 255, 255, 1)',
-        borderRadius: '8px',
-        display: 'flex',
-        bottom: '12px',
-        left: '12px',
-        zIndex: '1000',
-        border: '1px solid rgba(63, 67, 80, 0.3)',
-        userSelect: 'none',
-    },
-    topBar: {
-        background: 'rgba(63, 67, 80, 0.04)',
-        padding: '0 12px',
-        display: 'flex',
-        width: '100%',
-        alignItems: 'center',
-        height: '44px',
-        cursor: 'move',
-    },
-    bottomBar: {
-        padding: '6px 8px',
-        display: 'flex',
-        justifyContent: 'flex-end',
-        width: '100%',
-        alignItems: 'center',
-    },
-    mutedButton: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '24px',
-    },
-    unmutedButton: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '24px',
-        background: 'rgba(61, 184, 135, 0.16)',
-        borderRadius: '4px',
-        color: 'rgba(61, 184, 135, 1)',
-    },
-    disconnectButton: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        color: 'color: rgba(255, 255, 255, 0.8)',
-        fontSize: '14px',
-        margin: '0 8px',
-        width: '24px',
-        height: '24px',
-        borderRadius: '4px',
-        backgroundColor: '#D24B4E',
-    },
-    status: {
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        width: '100%',
-    },
-    callInfo: {
-        display: 'flex',
-        fontSize: '11px',
-        opacity: '0.64',
-    },
-    profiles: {
-        display: 'flex',
-        marginRight: '8px',
-    },
-    menuButton: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        color: 'color: rgba(255, 255, 255, 0.8)',
-        fontSize: '14px',
-        width: '24px',
-        height: '24px',
-    },
-    menu: {
-        position: 'absolute',
-        background: 'white',
-        color: 'black',
-    },
-    screenSharingPanel: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        bottom: 'calc(100% + 4px)',
-        top: 'auto',
-        width: '100%',
-        minWidth: 'revert',
-        maxWidth: 'revert',
-    },
-    leaveCallButton: {
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 8px',
-        height: '28px',
-        borderRadius: '4px',
-        color: '#D24B4E',
-        background: 'rgba(210, 75, 78, 0.04)',
-        marginRight: 'auto',
-    },
-    dotsMenu: {
-        bottom: 'calc(100% + 4px)',
-        top: 'auto',
-        width: '100%',
-        minWidth: 'revert',
-        maxWidth: 'revert',
-    },
-    audioInputsMenu: {
-        left: 'calc(100% + 4px)',
-        top: '0',
-    },
-    expandButton: {
-        position: 'absolute',
-        right: '8px',
-        top: '8px',
-        margin: 0,
-    },
-};
