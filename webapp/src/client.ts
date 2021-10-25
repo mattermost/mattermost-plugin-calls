@@ -315,7 +315,9 @@ export default class CallsClient extends EventEmitter {
             if (!this.ws || !this.peer) {
                 return;
             }
-            this.peer.removeStream(screenStream);
+
+            // @ts-ignore: we actually mean to pass null here
+            this.peer.replaceTrack(screenTrack, null, screenStream);
             this.ws.send(JSON.stringify({
                 type: 'screen_off',
             }));
