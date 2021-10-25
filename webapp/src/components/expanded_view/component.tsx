@@ -266,7 +266,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         const isHandRaised = callsClient.isHandRaised;
         const HandIcon = isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
-        const raiseHandText = isHandRaised ? 'Unraise hand' : 'Raise hand';
+        const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
 
         const sharingID = this.props.screenSharingID;
         const currentID = this.props.currentUserID;
@@ -287,7 +287,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         style={style.closeViewButton as CSSProperties}
                         onClick={this.props.hideExpandedView}
                     >
-                        <CompassIcon icon='close'/>
+                        <CompassIcon icon='arrow-collapse'/>
                     </button>
                 }
                 { !this.props.screenSharingID &&
@@ -306,17 +306,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <button
                                 className='button-center-controls'
                                 onClick={this.onShareScreenToggle}
-                                style={{background: isSharing ? 'rgba(210, 75, 78, 1)' : ''}}
+                                style={{background: isSharing ? 'rgba(210, 75, 78, 0.12)' : ''}}
                             >
                                 <ScreenIcon
                                     style={{width: '28px', height: '28px'}}
-                                    fill='white'
+                                    fill={isSharing ? 'rgba(210, 75, 78, 1)' : 'white'}
                                 />
 
                             </button>
                             <span
                                 style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                            >{isSharing ? 'Stop sharing' : 'Share screen'}</span>
+                            >{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
                         </div>
                         }
 
@@ -324,11 +324,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <button
                                 className='button-center-controls'
                                 onClick={this.onMuteToggle}
-                                style={{background: isMuted ? '' : '#3DB887'}}
+                                style={{background: isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}}
                             >
                                 <MuteIcon
                                     style={{width: '28px', height: '28px'}}
-                                    fill='white'
+                                    fill={isMuted ? 'white' : 'rgba(61, 184, 135, 1)'}
                                 />
 
                             </button>
@@ -341,11 +341,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <button
                                 className='button-center-controls'
                                 onClick={this.onRaiseHandToggle}
-                                style={{background: isHandRaised ? 'rgba(93, 137, 234, 1)' : ''}}
+                                style={{background: isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
                             >
                                 <HandIcon
                                     style={{width: '28px', height: '28px'}}
-                                    fill='white'
+                                    fill={isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}
                                 />
 
                             </button>
@@ -426,7 +426,7 @@ const style = {
         alignItems: 'center',
         justifyContent: 'center',
         margin: '0 8px',
-        width: '96px',
+        width: '112px',
     },
     topLeftContainer: {
         position: 'absolute',
