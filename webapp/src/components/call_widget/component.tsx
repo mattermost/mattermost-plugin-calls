@@ -493,7 +493,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         id='tooltip-mute'
                         style={{display: sharingID && !isSharing ? 'none' : ''}}
                     >
-                        {isSharing ? 'Stop sharing' : 'Share screen'}
+                        {isSharing ? 'Stop presenting' : 'Start presenting'}
                     </Tooltip>
                 }
             >
@@ -691,7 +691,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <ScreenIcon
                             style={{width: '16px', height: '16px', fill: isSharing ? 'rgba(210, 75, 78, 1)' : '', marginRight: '8px'}}
                         />
-                        <span>{isSharing ? 'Stop sharing' : 'Share screen'}</span>
+                        <span>{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
                     </button>
                 </li>
                 <li className='MenuGroup menu-divider'/>
@@ -924,24 +924,34 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             />
                         </button>
 
-                        <button
-                            className='style--none button-controls button-controls--wide'
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                color: this.state.showParticipantsList ? 'rgba(28, 88, 217, 1)' : '',
-                                background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.12)' : '',
-                            }}
-                            onClick={this.onParticipantsButtonClick}
+                        <OverlayTrigger
+                            key='participants'
+                            placement='top'
+                            overlay={
+                                <Tooltip id='tooltip-mute'>
+                                    {this.state.showParticipantsList ? 'Hide participants' : 'Show participants'}
+                                </Tooltip>
+                            }
                         >
-                            <ParticipantsIcon
-                                style={{width: '16px', height: '16px', marginRight: '4px'}}
-                            />
+                            <button
+                                className='style--none button-controls button-controls--wide'
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    color: this.state.showParticipantsList ? 'rgba(28, 88, 217, 1)' : '',
+                                    background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.12)' : '',
+                                }}
+                                onClick={this.onParticipantsButtonClick}
+                            >
+                                <ParticipantsIcon
+                                    style={{width: '16px', height: '16px', marginRight: '4px'}}
+                                />
 
-                            <span
-                                style={{fontWeight: 600, color: changeOpacity(this.props.theme.centerChannelColor, 0.64)}}
-                            >{this.props.profiles.length}</span>
-                        </button>
+                                <span
+                                    style={{fontWeight: 600, color: changeOpacity(this.props.theme.centerChannelColor, 0.64)}}
+                                >{this.props.profiles.length}</span>
+                            </button>
+                        </OverlayTrigger>
 
                         {hasTeamSidebar && this.renderScreenShareButton()}
 
