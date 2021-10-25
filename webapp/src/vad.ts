@@ -5,7 +5,7 @@ export default class VoiceActivityDetector extends EventEmitter {
     private sourceNode: MediaStreamAudioSourceNode;
     private analyserNode: AnalyserNode;
     private processNode: ScriptProcessorNode;
-    private startTime: number = Date.now();
+    private startTime = 0;
     private isActive = false;
     private isReady = false;
 
@@ -50,6 +50,10 @@ export default class VoiceActivityDetector extends EventEmitter {
                 return acc + val;
             });
             const avg = sum / frequencies.length;
+
+            if (!this.startTime) {
+                this.startTime = Date.now();
+            }
 
             if (Date.now() < (this.startTime + config.noiseCaptureMs)) {
                 noiseSamples.push(avg);
