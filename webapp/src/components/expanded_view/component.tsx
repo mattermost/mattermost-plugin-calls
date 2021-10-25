@@ -147,7 +147,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <video
                     id='screen-player'
                     ref={this.screenPlayer}
-                    width='100%'
+                    height='100%'
                     muted={true}
                     autoPlay={true}
                 />
@@ -187,7 +187,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <div style={{position: 'relative'}}>
                         <Avatar
                             size='xl'
-                            url={this.props.pictures[0]}
+                            url={this.props.pictures[idx]}
                             style={{
                                 boxShadow: isSpeaking ? '0px 0px 4px 4px rgba(61, 184, 135, 0.8)' : '',
                             }}
@@ -366,17 +366,14 @@ const style = {
         alignItems: 'center',
         flexWrap: 'wrap',
         overflow: 'auto',
-        maxHeight: '80%',
-        flex: '1',
+        margin: 'auto',
         padding: '0',
-        margin: '40px 0',
         width: '50%',
     },
     controls: {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 'auto',
         padding: '0 16px 16px 16px',
         width: '100%',
     },
@@ -406,7 +403,7 @@ const style = {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        flex: '1',
-        width: '50%',
+        height: '60%',
+        margin: 'auto',
     },
 };
