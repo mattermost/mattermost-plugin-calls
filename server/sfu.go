@@ -15,7 +15,26 @@ import (
 )
 
 var (
-	stunServers = []string{"stun:stun.l.google.com:19302", "stun:global.stun.twilio.com:3478"}
+	stunServers   = []string{"stun:stun.l.google.com:19302", "stun:global.stun.twilio.com:3478"}
+	rtpAudioCodec = webrtc.RTPCodecCapability{
+		MimeType:     "audio/opus",
+		ClockRate:    48000,
+		Channels:     2,
+		SDPFmtpLine:  "minptime=10;useinbandfec=1",
+		RTCPFeedback: nil,
+	}
+	rtpVideoCodec = webrtc.RTPCodecCapability{
+		MimeType:    "video/VP8",
+		ClockRate:   90000,
+		Channels:    0,
+		SDPFmtpLine: "",
+		RTCPFeedback: []webrtc.RTCPFeedback{
+			{Type: "goog-remb", Parameter: ""},
+			{Type: "ccm", Parameter: "fir"},
+			{Type: "nack", Parameter: ""},
+			{Type: "nack", Parameter: "pli"},
+		},
+	}
 )
 
 func (p *Plugin) handleSignaling(us *session, msg []byte) error {
@@ -88,7 +107,7 @@ func (p *Plugin) handlePLI(sender *webrtc.RTPSender, channelID string) {
 }
 
 func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRTP) {
-	p.LogDebug("addTrack")
+	p.LogDebug("addTrack", "userID", userSession.userID)
 	userSession.mut.RLock()
 	peerConn := userSession.rtcConn
 	userSession.mut.RUnlock()
@@ -153,31 +172,12 @@ func (p *Plugin) initRTCConn(userID string) {
 	}
 
 	var m webrtc.MediaEngine
-	rtpAudioCodec := webrtc.RTPCodecCapability{
-		MimeType:     "audio/opus",
-		ClockRate:    48000,
-		Channels:     2,
-		SDPFmtpLine:  "minptime=10;useinbandfec=1",
-		RTCPFeedback: nil,
-	}
 	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
 		RTPCodecCapability: rtpAudioCodec,
 		PayloadType:        111,
 	}, webrtc.RTPCodecTypeAudio); err != nil {
 		p.LogError(err.Error())
 		return
-	}
-	rtpVideoCodec := webrtc.RTPCodecCapability{
-		MimeType:    "video/VP8",
-		ClockRate:   90000,
-		Channels:    0,
-		SDPFmtpLine: "",
-		RTCPFeedback: []webrtc.RTCPFeedback{
-			{Type: "goog-remb", Parameter: ""},
-			{Type: "ccm", Parameter: "fir"},
-			{Type: "nack", Parameter: ""},
-			{Type: "nack", Parameter: "pli"},
-		},
 	}
 	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
 		RTPCodecCapability: rtpVideoCodec,
@@ -407,7 +407,13 @@ func (p *Plugin) handleTracks(us *session) {
 			us.mut.RUnlock()
 
 			if track == nil {
-				break
+				continue
+			}
+
+			dummyTrack, err := webrtc.NewTrackLocalStaticRTP(rtpAudioCodec, "voice", model.NewId())
+			if err != nil {
+				p.LogError(err.Error())
+				continue
 			}
 
 			p.mut.RLock()
@@ -419,13 +425,16 @@ func (p *Plugin) handleTracks(us *session) {
 					sender := s.rtpSendersMap[track]
 					s.mut.RUnlock()
 
-					var t webrtc.TrackLocal
-					if !muted {
-						t = track
+					var replacingTrack *webrtc.TrackLocalStaticRTP
+					if muted {
+						replacingTrack = dummyTrack
+					} else {
+						replacingTrack = track
 					}
+
 					if sender != nil {
 						p.LogDebug("replacing track on sender")
-						if err := sender.ReplaceTrack(t); err != nil {
+						if err := sender.ReplaceTrack(replacingTrack); err != nil {
 							p.LogError(err.Error())
 						}
 					}
