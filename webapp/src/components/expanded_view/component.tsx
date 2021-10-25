@@ -16,6 +16,7 @@ import MutedIcon from '../../components/icons/muted_icon';
 import UnmutedIcon from '../../components/icons/unmuted_icon';
 import ScreenIcon from '../../components/icons/screen_icon';
 import RaisedHandIcon from '../../components/icons/raised_hand';
+import UnraisedHandIcon from '../../components/icons/unraised_hand';
 
 import './component.scss';
 
@@ -23,11 +24,14 @@ interface Props {
     show: boolean,
     currentUserID: string,
     profiles: UserProfile[],
-    pictures: string[],
+    pictures: {
+        [key: string]: string,
+    },
     statuses: {
         [key: string]: {
             voice?: boolean,
             unmuted?: boolean,
+            raised_hand?: boolean,
         },
     },
     callStartAt: number,
@@ -89,6 +93,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.setState({
                 screenStream: stream,
             });
+        }
+    }
+
+    onRaiseHandToggle = () => {
+        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        if (callsClient.isHandRaised) {
+            callsClient.unraiseHand();
+        } else {
+            callsClient.raiseHand();
         }
     }
 
@@ -171,9 +184,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             const status = this.props.statuses[profile.id];
             let isMuted = true;
             let isSpeaking = false;
+            let isHandRaised = false;
             if (status) {
                 isMuted = !status.unmuted;
                 isSpeaking = Boolean(status.voice);
+                isHandRaised = Boolean(status.raised_hand);
             }
 
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
@@ -187,7 +202,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <div style={{position: 'relative'}}>
                         <Avatar
                             size='xl'
-                            url={this.props.pictures[idx]}
+                            url={this.props.pictures[profile.id]}
                             style={{
                                 boxShadow: isSpeaking ? '0px 0px 4px 4px rgba(61, 184, 135, 0.8)' : '',
                             }}
@@ -200,7 +215,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 alignItems: 'center',
                                 bottom: 0,
                                 right: 0,
-                                background: 'rgba(37, 38, 42, 1)',
+                                background: 'rgba(50, 50, 50, 1)',
                                 borderRadius: '30px',
                                 width: '20px',
                                 height: '20px',
@@ -210,6 +225,23 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 fill={isMuted ? '#C4C4C4' : '#3DB887'}
                                 style={{width: '14px', height: '14px'}}
                             />
+                        </div>
+                        <div
+                            style={{
+                                position: 'absolute',
+                                display: isHandRaised ? 'flex' : 'none',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                top: 0,
+                                right: 0,
+                                background: 'rgba(50, 50, 50, 1)',
+                                borderRadius: '30px',
+                                width: '20px',
+                                height: '20px',
+                                fontSize: '12px',
+                            }}
+                        >
+                            {'✋'}
                         </div>
                     </div>
 
@@ -231,6 +263,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isMuted = callsClient.isMuted();
         const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
         const muteButtonText = isMuted ? 'Unmute' : 'Mute';
+
+        const isHandRaised = callsClient.isHandRaised;
+        const HandIcon = isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
+        const raiseHandText = isHandRaised ? 'Unraise hand' : 'Raise hand';
 
         const sharingID = this.props.screenSharingID;
         const currentID = this.props.currentUserID;
@@ -304,8 +340,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <div style={style.buttonContainer as CSSProperties}>
                             <button
                                 className='button-center-controls'
+                                onClick={this.onRaiseHandToggle}
+                                style={{background: isHandRaised ? 'rgba(93, 137, 234, 1)' : ''}}
                             >
-                                <RaisedHandIcon
+                                <HandIcon
                                     style={{width: '28px', height: '28px'}}
                                     fill='white'
                                 />
@@ -313,7 +351,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </button>
                             <span
                                 style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                            >{'Raise hand'}</span>
+                            >{raiseHandText}</span>
                         </div>
 
                     </div>
@@ -387,7 +425,8 @@ const style = {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        margin: '0 16px',
+        margin: '0 8px',
+        width: '96px',
     },
     topLeftContainer: {
         position: 'absolute',

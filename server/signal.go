@@ -26,6 +26,8 @@ const (
 	wsEventUserScreenOff    = "user_screen_off"
 	wsEventCallStart        = "call_start"
 	wsEventDeactivate       = "deactivate"
+	wsEventUserRaiseHand    = "user_raise_hand"
+	wsEventUserUnraiseHand  = "user_unraise_hand"
 
 	wsPingDuration = 10 * time.Second
 )
@@ -198,6 +200,31 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 			if err := p.handleClientMessageTypeScreen(msg, us.channelID, us.userID); err != nil {
 				p.LogError(err.Error())
 			}
+		case clientMessageTypeRaiseHand, clientMessageTypeUnraiseHand:
+			evType := wsEventUserUnraiseHand
+			if msg.Type == clientMessageTypeRaiseHand {
+				evType = wsEventUserRaiseHand
+			}
+
+			if err := p.kvSetAtomicChannelState(us.channelID, func(state *channelState) (*channelState, error) {
+				if state == nil {
+					return nil, fmt.Errorf("channel state is missing from store")
+				}
+				if state.Call == nil {
+					return nil, fmt.Errorf("call state is missing from channel state")
+				}
+				if uState := state.Call.Users[us.userID]; uState != nil {
+					uState.RaisedHand = msg.Type == clientMessageTypeRaiseHand
+				}
+
+				return state, nil
+			}); err != nil {
+				p.LogError(err.Error())
+			}
+
+			p.API.PublishWebSocketEvent(evType, map[string]interface{}{
+				"userID": us.userID,
+			}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 		}
 	}
 }

@@ -18,6 +18,8 @@ import {
     VOICE_CHANNEL_CALL_START,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USER_SCREEN_OFF,
+    VOICE_CHANNEL_USER_RAISE_HAND,
+    VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_UNINIT,
     SHOW_EXPANDED_VIEW,
     HIDE_EXPANDED_VIEW,
@@ -151,6 +153,7 @@ const connectedChannelID = (state: string | null = null, action: {type: string, 
 interface userState {
     unmuted: boolean,
     voice: boolean,
+    raised_hand: boolean,
 }
 
 interface usersStatusesState {
@@ -185,6 +188,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                     [action.data.userID]: {
                         unmuted: false,
                         voice: false,
+                        raised_hand: false,
                     },
                 },
             };
@@ -207,6 +211,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                     [action.data.userID]: {
                         unmuted: true,
                         voice: false,
+                        raised_hand: false,
                     },
                 },
             };
@@ -229,6 +234,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                     [action.data.userID]: {
                         unmuted: false,
                         voice: true,
+                        raised_hand: false,
                     },
                 },
             };
@@ -251,6 +257,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                     [action.data.userID]: {
                         unmuted: false,
                         voice: false,
+                        raised_hand: false,
                     },
                 },
             };
@@ -262,6 +269,52 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                 [action.data.userID]: {
                     ...state[action.data.channelID][action.data.userID],
                     voice: false,
+                },
+            },
+        };
+    case VOICE_CHANNEL_USER_RAISE_HAND:
+        if (!state[action.data.channelID]) {
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    [action.data.userID]: {
+                        unmuted: false,
+                        voice: false,
+                        raised_hand: true,
+                    },
+                },
+            };
+        }
+        return {
+            ...state,
+            [action.data.channelID]: {
+                ...state[action.data.channelID],
+                [action.data.userID]: {
+                    ...state[action.data.channelID][action.data.userID],
+                    raised_hand: true,
+                },
+            },
+        };
+    case VOICE_CHANNEL_USER_UNRAISE_HAND:
+        if (!state[action.data.channelID]) {
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    [action.data.userID]: {
+                        voice: false,
+                        unmuted: false,
+                        raised_hand: false,
+                    },
+                },
+            };
+        }
+        return {
+            ...state,
+            [action.data.channelID]: {
+                ...state[action.data.channelID],
+                [action.data.userID]: {
+                    ...state[action.data.channelID][action.data.userID],
+                    raised_hand: false,
                 },
             },
         };
