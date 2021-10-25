@@ -18,6 +18,7 @@ export default class CallsClient extends EventEmitter {
     private stream: MediaStream | null;
     private audioDevices: { inputs: MediaDeviceInfo[]; outputs: MediaDeviceInfo[]; };
     private audioTrack: MediaStreamTrack | null;
+    public isHandRaised: boolean;
 
     constructor() {
         super();
@@ -29,6 +30,7 @@ export default class CallsClient extends EventEmitter {
         this.streams = [];
         this.stream = null;
         this.audioDevices = {inputs: [], outputs: []};
+        this.isHandRaised = false;
     }
 
     private initVAD(inputStream: MediaStream) {
@@ -340,5 +342,23 @@ export default class CallsClient extends EventEmitter {
         this.localScreenTrack.stop();
         this.localScreenTrack.dispatchEvent(new Event('ended'));
         this.localScreenTrack = null;
+    }
+
+    public raiseHand() {
+        if (this.ws) {
+            this.ws.send(JSON.stringify({
+                type: 'raise_hand',
+            }));
+        }
+        this.isHandRaised = true;
+    }
+
+    public unraiseHand() {
+        if (this.ws) {
+            this.ws.send(JSON.stringify({
+                type: 'unraise_hand',
+            }));
+        }
+        this.isHandRaised = false;
     }
 }

@@ -47,6 +47,8 @@ import {
     VOICE_CHANNEL_CALL_START,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USER_SCREEN_OFF,
+    VOICE_CHANNEL_USER_RAISE_HAND,
+    VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_UNINIT,
 } from './action_types';
 
@@ -190,6 +192,26 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${manifest.id}_deactivate`, (ev) => {
             this.uninitialize();
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_raise_hand`, (ev) => {
+            store.dispatch({
+                type: VOICE_CHANNEL_USER_RAISE_HAND,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                    userID: ev.data.userID,
+                },
+            });
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_unraise_hand`, (ev) => {
+            store.dispatch({
+                type: VOICE_CHANNEL_USER_UNRAISE_HAND,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                    userID: ev.data.userID,
+                },
+            });
         });
     }
 

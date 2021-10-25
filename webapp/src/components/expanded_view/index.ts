@@ -14,9 +14,9 @@ import ExpandedView from './component';
 
 const mapStateToProps = (state: GlobalState) => {
     const profiles = voiceConnectedProfiles(state);
-    const pictures = [];
+    const pictures: {[key: string]: string} = {};
     for (let i = 0; i < profiles.length; i++) {
-        pictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
+        pictures[String(profiles[i].id)] = Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
     }
     const channel = getChannel(state, connectedChannelID(state));
 
