@@ -160,7 +160,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <video
                     id='screen-player'
                     ref={this.screenPlayer}
-                    height='100%'
+                    width='100%'
+                    height='80%'
                     muted={true}
                     autoPlay={true}
                 />
@@ -254,6 +255,71 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         });
     }
 
+    renderParticipantsRHSList = () => {
+        return this.props.profiles.map((profile, idx) => {
+            const status = this.props.statuses[profile.id];
+            let isMuted = true;
+            let isSpeaking = false;
+            let isHandRaised = false;
+            if (status) {
+                isMuted = !status.unmuted;
+                isSpeaking = Boolean(status.voice);
+                isHandRaised = Boolean(status.raised_hand);
+            }
+
+            const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
+
+            return (
+                <li
+                    key={'participants_rhs_profile_' + idx}
+                    style={{display: 'flex', alignItems: 'center', padding: '4px 8px'}}
+                >
+                    <Avatar
+                        size='sm'
+                        url={this.props.pictures[profile.id]}
+                        style={{
+                            boxShadow: isSpeaking ? '0px 0px 4px 4px rgba(61, 184, 135, 0.8)' : '',
+                            marginRight: '8px',
+                        }}
+                    />
+                    <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
+                        {getUserDisplayName(profile)}{profile.id === this.props.currentUserID && ' (you)'}
+                    </span>
+
+                    <div
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            marginLeft: 'auto',
+                            gap: '4px',
+                        }}
+                    >
+                        { isHandRaised &&
+                            <RaisedHandIcon
+                                fill={'rgba(255, 188, 66, 1)'}
+                                style={{width: '14px', height: '14px'}}
+                            />
+                        }
+
+                        { this.props.screenSharingID === profile.id &&
+                        <ScreenIcon
+                            fill={'rgba(210, 75, 78, 1)'}
+                            style={{width: '14px', height: '14px'}}
+                        />
+                        }
+
+                        <MuteIcon
+                            fill={isMuted ? '#C4C4C4' : '#3DB887'}
+                            style={{width: '14px', height: '14px'}}
+                        />
+
+                    </div>
+                </li>
+            );
+        });
+    }
+
     render() {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
             return null;
@@ -273,124 +339,136 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isSharing = sharingID === currentID;
 
         return (
-            <div style={style.main as CSSProperties}>
-                <div style={style.topLeftContainer as CSSProperties}>
-                    <span style={{margin: '4px', fontWeight: 600}}>{this.getCallDuration()}</span>
-                    <span style={{margin: '4px'}}>{'•'}</span>
-                    <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
-
-                </div>
-                {
-                    !window.opener &&
-                    <button
-                        className='button-close'
-                        style={style.closeViewButton as CSSProperties}
-                        onClick={this.props.hideExpandedView}
-                    >
-                        <CompassIcon icon='arrow-collapse'/>
-                    </button>
-                }
-                { !this.props.screenSharingID &&
-
-                <ul style={style.participants as CSSProperties}>
-                    { this.renderParticipants() }
-                </ul>
-                }
-                { this.props.screenSharingID && this.renderScreenSharingPlayer() }
-                <div style={style.controls}>
-                    <div style={{flex: '1'}}/>
-                    <div style={style.centerControls}>
-
-                        { (isSharing || !sharingID) &&
-                        <div style={style.buttonContainer as CSSProperties}>
-                            <button
-                                className='button-center-controls'
-                                onClick={this.onShareScreenToggle}
-                                style={{background: isSharing ? 'rgba(210, 75, 78, 0.12)' : ''}}
-                            >
-                                <ScreenIcon
-                                    style={{width: '28px', height: '28px'}}
-                                    fill={isSharing ? 'rgba(210, 75, 78, 1)' : 'white'}
-                                />
-
-                            </button>
-                            <span
-                                style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                            >{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
-                        </div>
-                        }
-
-                        <div style={style.buttonContainer as CSSProperties}>
-                            <button
-                                className='button-center-controls'
-                                onClick={this.onMuteToggle}
-                                style={{background: isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}}
-                            >
-                                <MuteIcon
-                                    style={{width: '28px', height: '28px'}}
-                                    fill={isMuted ? 'white' : 'rgba(61, 184, 135, 1)'}
-                                />
-
-                            </button>
-                            <span
-                                style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                            >{muteButtonText}</span>
-                        </div>
-
-                        <div style={style.buttonContainer as CSSProperties}>
-                            <button
-                                className='button-center-controls'
-                                onClick={this.onRaiseHandToggle}
-                                style={{background: isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
-                            >
-                                <HandIcon
-                                    style={{width: '28px', height: '28px'}}
-                                    fill={isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}
-                                />
-
-                            </button>
-                            <span
-                                style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                            >{raiseHandText}</span>
-                        </div>
+            <div style={style.root as CSSProperties}>
+                <div style={style.main as CSSProperties}>
+                    <div style={style.topLeftContainer as CSSProperties}>
+                        <span style={{margin: '4px', fontWeight: 600}}>{this.getCallDuration()}</span>
+                        <span style={{margin: '4px'}}>{'•'}</span>
+                        <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
 
                     </div>
-
-                    <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
+                    {
+                        !window.opener &&
                         <button
-                            className='button-leave'
-                            onClick={this.onDisconnectClick}
+                            className='button-close'
+                            style={style.closeViewButton as CSSProperties}
+                            onClick={this.props.hideExpandedView}
                         >
-
-                            <LeaveCallIcon
-                                style={{width: '24px', height: '24px'}}
-                                fill='white'
-                            />
-                            <span
-                                style={{fontSize: '18px', fontWeight: 600, marginLeft: '8px'}}
-                            >{'Leave'}</span>
-
+                            <CompassIcon icon='arrow-collapse'/>
                         </button>
+                    }
+                    { !this.props.screenSharingID &&
+
+                    <ul style={style.participants as CSSProperties}>
+                        { this.renderParticipants() }
+                    </ul>
+                    }
+                    { this.props.screenSharingID && this.renderScreenSharingPlayer() }
+                    <div style={style.controls}>
+                        <div style={{flex: '1'}}/>
+                        <div style={style.centerControls}>
+
+                            { (isSharing || !sharingID) &&
+                            <div style={style.buttonContainer as CSSProperties}>
+                                <button
+                                    className='button-center-controls'
+                                    onClick={this.onShareScreenToggle}
+                                    style={{background: isSharing ? 'rgba(210, 75, 78, 0.12)' : ''}}
+                                >
+                                    <ScreenIcon
+                                        style={{width: '28px', height: '28px'}}
+                                        fill={isSharing ? 'rgba(210, 75, 78, 1)' : 'white'}
+                                    />
+
+                                </button>
+                                <span
+                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                                >{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
+                            </div>
+                            }
+
+                            <div style={style.buttonContainer as CSSProperties}>
+                                <button
+                                    className='button-center-controls'
+                                    onClick={this.onMuteToggle}
+                                    style={{background: isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}}
+                                >
+                                    <MuteIcon
+                                        style={{width: '28px', height: '28px'}}
+                                        fill={isMuted ? 'white' : 'rgba(61, 184, 135, 1)'}
+                                    />
+
+                                </button>
+                                <span
+                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                                >{muteButtonText}</span>
+                            </div>
+
+                            <div style={style.buttonContainer as CSSProperties}>
+                                <button
+                                    className='button-center-controls'
+                                    onClick={this.onRaiseHandToggle}
+                                    style={{background: isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
+                                >
+                                    <HandIcon
+                                        style={{width: '28px', height: '28px'}}
+                                        fill={isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}
+                                    />
+
+                                </button>
+                                <span
+                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                                >{raiseHandText}</span>
+                            </div>
+
+                        </div>
+
+                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
+                            <button
+                                className='button-leave'
+                                onClick={this.onDisconnectClick}
+                            >
+
+                                <LeaveCallIcon
+                                    style={{width: '24px', height: '24px'}}
+                                    fill='white'
+                                />
+                                <span
+                                    style={{fontSize: '18px', fontWeight: 600, marginLeft: '8px'}}
+                                >{'Leave'}</span>
+
+                            </button>
+                        </div>
                     </div>
                 </div>
+                {/* { this.props.screenSharingID && */}
+                <ul style={style.rhs as CSSProperties}>
+                    <span style={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Participants list'}</span>
+                    { this.renderParticipantsRHSList() }
+                </ul>
+                {/* } */}
             </div>
         );
     }
 }
 
 const style = {
-    main: {
+    root: {
         position: 'absolute',
+        display: 'flex',
         top: 0,
         left: 0,
         width: '100%',
         height: '100%',
+        zIndex: 100,
         background: 'rgba(37, 38, 42, 1)',
         color: 'white',
-        zIndex: 100,
+    },
+    main: {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        flex: '1',
     },
     closeViewButton: {
         position: 'absolute',
@@ -442,7 +520,15 @@ const style = {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '60%',
         margin: 'auto',
+    },
+    rhs: {
+        display: 'flex',
+        flexDirection: 'column',
+        width: '300px',
+        background: 'rgba(9, 10, 11, 1)',
+        margin: 0,
+        padding: 0,
+        overflow: 'auto',
     },
 };
