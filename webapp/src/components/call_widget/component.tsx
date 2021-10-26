@@ -69,7 +69,6 @@ interface State {
     devices?: any,
     showAudioInputsMenu?: boolean,
     dragging: DraggingState,
-    screenWindow: Window | null,
     expandedViewWindow: Window | null,
 }
 
@@ -216,7 +215,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offX: 0,
                 offY: 0,
             },
-            screenWindow: null,
             expandedViewWindow: null,
         };
         this.node = React.createRef();
@@ -273,14 +271,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             console.log('setting remote stream');
             this.screenPlayer.current.srcObject = this.state.screenStream;
         }
-
-        if (this.state.screenWindow && prevProps.screenSharingID && !this.props.screenSharingID) {
-            this.state.screenWindow.close();
-            // eslint-disable-next-line react/no-did-update-set-state
-            this.setState({
-                screenWindow: null,
-            });
-        }
     }
 
     private keyboardClose = (e: KeyboardEvent) => {
@@ -333,9 +323,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     onDisconnectClick = () => {
-        if (this.state.screenWindow) {
-            this.state.screenWindow.close();
-        }
         if (this.state.expandedViewWindow) {
             this.state.expandedViewWindow.close();
         }
@@ -356,7 +343,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offX: 0,
                 offY: 0,
             },
-            screenWindow: null,
             expandedViewWindow: null,
         });
     }
@@ -379,28 +365,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     onAudioInputDeviceClick = (device: any) => {
         window.callsClient.setAudioInputDevice(device);
         this.setState({showAudioInputsMenu: false, currentAudioInputDevice: device});
-    }
-
-    onScreenPopOutClick = () => {
-        const screenWindow = window.open(
-            `/plug/${pluginID}/screen`,
-            'Screen',
-            'resizable=yes',
-        );
-
-        if (!screenWindow) {
-            return;
-        }
-
-        this.setState({
-            screenWindow,
-        });
-
-        window.addEventListener('message', (ev) => {
-            if (ev.origin === window.location.origin) {
-                this.setState(ev.data);
-            }
-        }, false);
     }
 
     renderScreenSharingPanel = () => {
@@ -462,7 +426,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 width: '112px',
                                 transform: 'translate(-50%, -50%)',
                             }}
-                            onClick={this.onScreenPopOutClick}
+                            onClick={this.onExpandClick}
                         >
 
                             <PopOutIcon
