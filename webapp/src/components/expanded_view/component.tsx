@@ -8,6 +8,8 @@ import {UserProfile} from 'mattermost-redux/types/users';
 
 import {getUserDisplayName} from '../../utils';
 
+import {UserState} from '../../types/types';
+
 import Avatar from '../avatar/avatar';
 
 import CompassIcon from '../../components/icons/compassIcon';
@@ -28,11 +30,7 @@ interface Props {
         [key: string]: string,
     },
     statuses: {
-        [key: string]: {
-            voice?: boolean,
-            unmuted?: boolean,
-            raised_hand?: boolean,
-        },
+        [key: string]: UserState,
     },
     callStartAt: number,
     hideExpandedView: () => void,

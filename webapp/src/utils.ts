@@ -16,6 +16,8 @@ import {Dictionary} from 'mattermost-redux/types/utilities';
 
 import {GlobalState} from 'mattermost-redux/types/store';
 
+import {UserState} from './types/types';
+
 import {id as pluginId} from './manifest';
 
 export function getPluginPath() {
@@ -115,4 +117,48 @@ export function getExpandedChannelID() {
         return '';
     }
     return window.location.pathname.substr(idx + pattern.length);
+}
+
+export function alphaSortProfiles(profiles: UserProfile[]) {
+    return (elA: UserProfile, elB: UserProfile) => {
+        const nameA = getUserDisplayName(elA);
+        const nameB = getUserDisplayName(elB);
+        return nameA.localeCompare(nameB);
+    };
+}
+
+export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: string]: UserState}) {
+    return (elA: UserProfile, elB: UserProfile) => {
+        let stateA = statuses[elA.id];
+        let stateB = statuses[elB.id];
+
+        if (!stateA) {
+            stateA = {
+                voice: false,
+                unmuted: false,
+                raised_hand: false,
+            };
+        }
+        if (!stateB) {
+            stateB = {
+                voice: false,
+                unmuted: false,
+                raised_hand: false,
+            };
+        }
+
+        if (stateA.unmuted && !stateB.unmuted) {
+            return -1;
+        } else if (stateB.unmuted && !stateA.unmuted) {
+            return 1;
+        }
+
+        if (stateA.raised_hand && !stateB.raised_hand) {
+            return -1;
+        } else if (stateB.raised_hand && !stateA.raised_hand) {
+            return 1;
+        }
+
+        return 0;
+    };
 }
