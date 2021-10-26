@@ -161,9 +161,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     id='screen-player'
                     ref={this.screenPlayer}
                     width='100%'
-                    height='80%'
+                    height='100%'
                     muted={true}
                     autoPlay={true}
+                    controls={true}
                 />
                 <span
                     style={{
@@ -341,22 +342,25 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return (
             <div style={style.root as CSSProperties}>
                 <div style={style.main as CSSProperties}>
-                    <div style={style.topLeftContainer as CSSProperties}>
-                        <span style={{margin: '4px', fontWeight: 600}}>{this.getCallDuration()}</span>
-                        <span style={{margin: '4px'}}>{'•'}</span>
-                        <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
+                    <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
+                        <div style={style.topLeftContainer as CSSProperties}>
+                            <span style={{margin: '4px', fontWeight: 600}}>{this.getCallDuration()}</span>
+                            <span style={{margin: '4px'}}>{'•'}</span>
+                            <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
 
+                        </div>
+                        {
+                            !window.opener &&
+                            <button
+                                className='button-close'
+                                style={style.closeViewButton as CSSProperties}
+                                onClick={this.props.hideExpandedView}
+                            >
+                                <CompassIcon icon='arrow-collapse'/>
+                            </button>
+                        }
                     </div>
-                    {
-                        !window.opener &&
-                        <button
-                            className='button-close'
-                            style={style.closeViewButton as CSSProperties}
-                            onClick={this.props.hideExpandedView}
-                        >
-                            <CompassIcon icon='arrow-collapse'/>
-                        </button>
-                    }
+
                     { !this.props.screenSharingID &&
 
                     <ul style={style.participants as CSSProperties}>
@@ -471,10 +475,8 @@ const style = {
         flex: '1',
     },
     closeViewButton: {
-        position: 'absolute',
-        top: '16px',
-        right: '16px',
         fontSize: '24px',
+        marginLeft: 'auto',
     },
     participants: {
         display: 'flex',
@@ -490,7 +492,7 @@ const style = {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '0 16px 16px 16px',
+        padding: '8px',
         width: '100%',
     },
     centerControls: {
@@ -507,13 +509,12 @@ const style = {
         width: '112px',
     },
     topLeftContainer: {
-        position: 'absolute',
-        top: '16px',
-        left: '16px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: '16px',
+        marginRight: 'auto',
+        padding: '4px',
     },
     screenContainer: {
         display: 'flex',
@@ -521,6 +522,8 @@ const style = {
         justifyContent: 'center',
         alignItems: 'center',
         margin: 'auto',
+        maxWidth: 'calc(100% - 16px)',
+        maxHeight: 'calc(100% - 200px)',
     },
     rhs: {
         display: 'flex',
