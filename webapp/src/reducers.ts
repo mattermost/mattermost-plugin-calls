@@ -2,6 +2,8 @@ import {combineReducers} from 'redux';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 
+import {UserState} from './types/types';
+
 import {
     VOICE_CHANNEL_ENABLE,
     VOICE_CHANNEL_DISABLE,
@@ -150,15 +152,9 @@ const connectedChannelID = (state: string | null = null, action: {type: string, 
     }
 };
 
-interface userState {
-    unmuted: boolean,
-    voice: boolean,
-    raised_hand: boolean,
-}
-
 interface usersStatusesState {
     [channelID: string]: {
-        [userID: string]: userState,
+        [userID: string]: UserState,
     },
 }
 
@@ -167,7 +163,7 @@ interface usersStatusesAction {
     data: {
         channelID: string,
         userID: string,
-        states: {[userID: string]: userState},
+        states: {[userID: string]: UserState},
     },
 }
 

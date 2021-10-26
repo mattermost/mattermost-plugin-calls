@@ -12,6 +12,8 @@ import {Team} from 'mattermost-redux/types/teams';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
+import {UserState} from '../../types/types';
+
 import Avatar from '../avatar/avatar';
 import {id as pluginID} from '../../manifest';
 
@@ -39,10 +41,7 @@ interface Props {
     profiles: UserProfile[],
     pictures: string[],
     statuses: {
-        [key: string]: {
-            voice?: boolean,
-            unmuted?: boolean,
-        },
+        [key: string]: UserState,
     },
     callStartAt: number,
     screenSharingID: string,
