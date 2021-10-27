@@ -17,8 +17,11 @@ import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnecte
 import ExpandedView from './component';
 
 const mapStateToProps = (state: GlobalState) => {
+    const channel = getChannel(state, connectedChannelID(state));
+    const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
+
     const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
-        return [...profiles].sort(alphaSortProfiles(profiles)).sort(stateSortProfiles(profiles, statuses));
+        return [...profiles].sort(alphaSortProfiles(profiles)).sort(stateSortProfiles(profiles, statuses, screenSharingID));
     };
 
     const statuses = voiceUsersStatuses(state);
@@ -28,7 +31,6 @@ const mapStateToProps = (state: GlobalState) => {
     for (let i = 0; i < profiles.length; i++) {
         pictures[String(profiles[i].id)] = Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
     }
-    const channel = getChannel(state, connectedChannelID(state));
 
     return {
         show: expandedView(state),
@@ -37,7 +39,7 @@ const mapStateToProps = (state: GlobalState) => {
         pictures,
         statuses,
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
-        screenSharingID: voiceChannelScreenSharingID(state, channel?.id) || '',
+        screenSharingID,
     };
 };
 
