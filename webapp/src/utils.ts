@@ -127,10 +127,16 @@ export function alphaSortProfiles(profiles: UserProfile[]) {
     };
 }
 
-export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: string]: UserState}) {
+export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: string]: UserState}, presenterID: string) {
     return (elA: UserProfile, elB: UserProfile) => {
         let stateA = statuses[elA.id];
         let stateB = statuses[elB.id];
+
+        if (elA.id === presenterID) {
+            return -1;
+        } else if (elB.id === presenterID) {
+            return 1;
+        }
 
         if (!stateA) {
             stateA = {
