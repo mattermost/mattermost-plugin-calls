@@ -168,3 +168,44 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
         return 0;
     };
 }
+
+export async function getScreenStream(): Promise<MediaStream|null> {
+    let screenStream: MediaStream;
+    const resolution = getScreenResolution();
+    console.log(resolution);
+
+    const maxFrameRate = 15;
+    const captureWidth = (resolution.width / 8) * 5;
+
+    try {
+        // browser
+        screenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+                frameRate: maxFrameRate,
+                width: captureWidth,
+            },
+            audio: false,
+        });
+    } catch (err) {
+        console.log(err);
+        try {
+            // electron
+            screenStream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                    mandatory: {
+                        chromeMediaSource: 'desktop',
+                        minWidth: captureWidth,
+                        maxWidth: captureWidth,
+                        maxFrameRate,
+                    },
+                } as any,
+            });
+        } catch (err2) {
+            console.log(err2);
+            return null;
+        }
+    }
+
+    return screenStream;
+}

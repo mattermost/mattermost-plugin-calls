@@ -6,7 +6,7 @@ import moment from 'moment-timezone';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 
-import {getUserDisplayName} from '../../utils';
+import {getUserDisplayName, getScreenStream} from '../../utils';
 
 import {UserState} from '../../types/types';
 
@@ -87,7 +87,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (this.props.screenSharingID === this.props.currentUserID) {
             callsClient.unshareScreen();
         } else if (!this.props.screenSharingID) {
-            const stream = await callsClient.shareScreen();
+            const stream = await getScreenStream();
+            callsClient.setScreenStream(stream);
             this.setState({
                 screenStream: stream,
             });
