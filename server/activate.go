@@ -32,5 +32,11 @@ func (p *Plugin) OnDeactivate() error {
 	p.LogDebug("deactivate")
 	p.API.PublishWebSocketEvent(wsEventDeactivate, nil, &model.WebsocketBroadcast{})
 	close(p.stopCh)
+
+	if err := p.cleanUpState(); err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+
 	return nil
 }

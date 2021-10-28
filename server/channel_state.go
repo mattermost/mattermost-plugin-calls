@@ -102,6 +102,12 @@ func (p *Plugin) cleanUpState() error {
 					return nil, nil
 				}
 				state.NodeID = ""
+
+				if state.Call != nil {
+					if err := p.updateCallThreadEnded(state.Call.ThreadID); err != nil {
+						p.LogError(err.Error())
+					}
+				}
 				state.Call = nil
 				return state, nil
 			}); err != nil {
