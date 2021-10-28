@@ -26,14 +26,16 @@ type channelState struct {
 	Call    *callState `json:"call,omitempty"`
 }
 
-func (cs *callState) getStates() []userState {
+func (cs *callState) getUsersAndStates() ([]string, []userState) {
 	var i int
+	users := make([]string, len(cs.Users))
 	states := make([]userState, len(cs.Users))
-	for _, state := range cs.Users {
+	for id, state := range cs.Users {
+		users[i] = id
 		states[i] = *state
 		i++
 	}
-	return states
+	return users, states
 }
 
 func (cs *callState) getUsers() []string {
