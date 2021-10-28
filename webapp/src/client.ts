@@ -111,7 +111,7 @@ export default class CallsClient extends EventEmitter {
                     }
                     ws.send(JSON.stringify({
                         type: 'ice',
-                        data,
+                        data: data.candidate,
                     }));
                 }
             });
@@ -138,7 +138,7 @@ export default class CallsClient extends EventEmitter {
             if (msg.type !== 'ping') {
                 console.log('ws', data);
             }
-            if (msg.type === 'answer' || msg.type === 'offer') {
+            if (msg.type === 'answer' || msg.type === 'offer' || msg.type === 'candidate') {
                 if (this.peer) {
                     this.peer.signal(data);
                 }
