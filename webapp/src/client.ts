@@ -3,7 +3,7 @@ import SimplePeer from 'simple-peer';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {getWSConnectionURL, getScreenResolution} from './utils';
+import {getWSConnectionURL, getScreenStream} from './utils';
 
 import VoiceActivityDetector from './vad';
 
@@ -268,52 +268,17 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
-    public async shareScreen() {
-        let screenStream: MediaStream;
-        if (!this.ws || !this.peer) {
-            return null;
-        }
-
-        const resolution = getScreenResolution();
-        console.log(resolution);
-
-        const maxFrameRate = 15;
-        const captureWidth = (resolution.width / 8) * 5;
-
-        try {
-            // browser
-            screenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: {
-                    frameRate: maxFrameRate,
-                    width: captureWidth,
-                },
-                audio: false,
-            });
-        } catch (err) {
-            console.log(err);
-            try {
-                // electron
-                screenStream = await navigator.mediaDevices.getUserMedia({
-                    audio: false,
-                    video: {
-                        mandatory: {
-                            chromeMediaSource: 'desktop',
-                            minWidth: captureWidth,
-                            maxWidth: captureWidth,
-                            maxFrameRate,
-                        },
-                    } as any,
-                });
-            } catch (err2) {
-                console.log(err2);
-                return null;
-            }
+    public setScreenStream(screenStream: MediaStream) {
+        if (!this.ws || !this.peer || this.localScreenTrack) {
+            return;
         }
 
         this.streams.push(screenStream);
         const screenTrack = screenStream.getVideoTracks()[0];
         this.localScreenTrack = screenTrack;
         screenTrack.onended = () => {
+            this.localScreenTrack = null;
+
             if (!this.ws || !this.peer) {
                 return;
             }
@@ -330,6 +295,19 @@ export default class CallsClient extends EventEmitter {
         this.ws.send(JSON.stringify({
             type: 'screen_on',
         }));
+    }
+
+    public async shareScreen() {
+        if (!this.ws || !this.peer) {
+            return null;
+        }
+
+        const screenStream = await getScreenStream();
+        if (screenStream === null) {
+            return null;
+        }
+
+        this.setScreenStream(screenStream);
 
         return screenStream;
     }
