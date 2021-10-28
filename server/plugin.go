@@ -116,7 +116,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", msg.UserID, msg.ChannelID)
 		}
-		if msg.ClientMessage.Type == clientMessageTypeSignal {
+		if msg.ClientMessage.Type == clientMessageTypeSignal || msg.ClientMessage.Type == clientMessageTypeICE {
 			if us.wsConn != nil {
 				select {
 				case us.wsOutCh <- []byte(msg.ClientMessage.Data):

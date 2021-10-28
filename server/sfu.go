@@ -62,11 +62,6 @@ func (p *Plugin) handleSignaling(us *session, msg []byte) error {
 		return err
 	}
 
-	// FIXME: handle ICE trickle properly.
-	<-webrtc.GatheringCompletePromise(peerConn)
-
-	p.LogDebug("gather complete!")
-
 	sdp, err := json.Marshal(peerConn.LocalDescription())
 	if err != nil {
 		return err
@@ -211,6 +206,27 @@ func (p *Plugin) initRTCConn(userID string) {
 	userSession.mut.Lock()
 	userSession.rtcConn = peerConn
 	userSession.mut.Unlock()
+
+	peerConn.OnICECandidate(func(candidate *webrtc.ICECandidate) {
+		if candidate != nil {
+			p.LogDebug(fmt.Sprintf("ice candidate: %+v", candidate))
+			data := make(map[string]interface{})
+			data["type"] = "candidate"
+			data["candidate"] = candidate.ToJSON()
+			msg, err := json.Marshal(data)
+			if err != nil {
+				p.LogError(err.Error())
+				return
+			}
+			userSession.wsOutCh <- msg
+		}
+	})
+
+	peerConn.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
+		if state == webrtc.ICEGathererStateComplete {
+			p.LogDebug("ice gathering complete")
+		}
+	})
 
 	peerConn.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		if state == webrtc.PeerConnectionStateConnected {

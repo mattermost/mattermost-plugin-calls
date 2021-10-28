@@ -10,6 +10,7 @@ import (
 	"github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/gorilla/websocket"
+	"github.com/pion/webrtc/v3"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -137,8 +138,29 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 				}
 			}
 		case clientMessageTypeICE:
-			// TODO: handle ICE properly.
 			p.LogDebug("candidate!")
+			if handlerID == p.nodeID {
+				var candidate webrtc.ICECandidateInit
+				if err := json.Unmarshal(msg.Data, &candidate); err != nil {
+					p.LogError(err.Error())
+					continue
+				}
+
+				if err := us.rtcConn.AddICECandidate(candidate); err != nil {
+					p.LogError(err.Error())
+					continue
+				}
+			} else {
+				// need to relay signaling.
+				if err := p.sendClusterMessage(clusterMessage{
+					UserID:        us.userID,
+					ChannelID:     us.channelID,
+					SenderID:      p.nodeID,
+					ClientMessage: msg,
+				}, clusterMessageTypeSignaling, handlerID); err != nil {
+					p.LogError(err.Error())
+				}
+			}
 		case clientMessageTypeMute, clientMessageTypeUnmute:
 			us.mut.Lock()
 			us.isMuted = (msg.Type == clientMessageTypeMute)
@@ -367,6 +389,10 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		}
 	}
 
+	if us.rtcConn != nil {
+		us.rtcConn.Close()
+	}
+
 	close(us.closeCh)
 	close(us.wsInCh)
 	wg.Wait()
@@ -383,9 +409,5 @@ func (p *Plugin) handleWebSocket(w http.ResponseWriter, r *http.Request, channel
 		if err := p.updateCallThreadEnded(prevState.Call.ThreadID); err != nil {
 			p.LogError(err.Error())
 		}
-	}
-
-	if us.rtcConn != nil {
-		us.rtcConn.Close()
 	}
 }
