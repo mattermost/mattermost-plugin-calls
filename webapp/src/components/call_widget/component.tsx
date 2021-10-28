@@ -265,11 +265,16 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
-        if ((!prevProps.screenSharingID || prevState.showMenu || prevState.showParticipantsList || !prevProps.show ||
-        (prevState.screenStream !== this.state.screenStream && this.state.screenStream)) &&
-        this.props.screenSharingID && this.screenPlayer.current) {
-            console.log('setting remote stream');
-            this.screenPlayer.current.srcObject = this.state.screenStream;
+        let screenStream = this.state.screenStream;
+        if (this.props.screenSharingID === this.props.currentUserID) {
+            screenStream = window.callsClient.getLocalScreenStream();
+        }
+
+        const wasRendering = Boolean(prevProps.screenSharingID && !prevState.showMenu && !prevState.showParticipantsList && prevState.screenStream);
+        const shouldRender = Boolean(this.props.screenSharingID && !this.state.showMenu && !this.state.showParticipantsList && screenStream);
+
+        if (!wasRendering && shouldRender && this.screenPlayer.current) {
+            this.screenPlayer.current.srcObject = screenStream;
         }
     }
 
@@ -298,6 +303,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const state = {} as State;
         if (this.props.screenSharingID === this.props.currentUserID) {
             window.callsClient.unshareScreen();
+            state.screenStream = null;
         } else if (!this.props.screenSharingID) {
             const stream = await window.callsClient.shareScreen();
             state.screenStream = stream;

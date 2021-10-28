@@ -347,12 +347,12 @@ export default class Plugin {
                     },
                 });
 
-                if (resp.data.screen_sharing_id) {
+                if (resp.data.call?.screen_sharing_id) {
                     store.dispatch({
                         type: VOICE_CHANNEL_USER_SCREEN_ON,
                         data: {
                             channelID,
-                            userID: resp.data.screen_sharing_id,
+                            userID: resp.data.call?.screen_sharing_id,
                         },
                     });
                 }

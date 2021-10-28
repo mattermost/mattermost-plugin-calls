@@ -11,6 +11,7 @@ export default class CallsClient extends EventEmitter {
     private peer: SimplePeer.Instance | null;
     private ws: WebSocket | null;
     private localScreenTrack: any;
+    private remoteScreenTrack: any;
     private currentAudioDeviceID: string;
     private voiceDetector: any;
     private voiceTrackAdded: boolean;
@@ -129,6 +130,7 @@ export default class CallsClient extends EventEmitter {
                     this.emit('remoteVoiceStream', remoteStream);
                 } else if (remoteStream.getVideoTracks().length > 0) {
                     this.emit('remoteScreenStream', remoteStream);
+                    this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
                 }
             });
         };
@@ -266,6 +268,20 @@ export default class CallsClient extends EventEmitter {
                 type: 'unmute',
             }));
         }
+    }
+
+    public getLocalScreenStream(): MediaStream|null {
+        if (!this.localScreenTrack) {
+            return null;
+        }
+        return new MediaStream([this.localScreenTrack]);
+    }
+
+    public getRemoteScreenStream(): MediaStream|null {
+        if (!this.remoteScreenTrack) {
+            return null;
+        }
+        return new MediaStream([this.remoteScreenTrack]);
     }
 
     public setScreenStream(screenStream: MediaStream) {

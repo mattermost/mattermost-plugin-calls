@@ -86,6 +86,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
         if (this.props.screenSharingID === this.props.currentUserID) {
             callsClient.unshareScreen();
+            this.setState({
+                screenStream: null,
+            });
         } else if (!this.props.screenSharingID) {
             const stream = await getScreenStream();
             callsClient.setScreenStream(stream);
@@ -105,28 +108,30 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
-        if (((!prevProps.screenSharingID && this.props.screenSharingID) ||
-        (prevState.screenStream !== this.state.screenStream && this.state.screenStream) ||
-        (!prevProps.show && this.props.show)) &&
-        this.screenPlayer.current) {
+        if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer.current.srcObject !== this.state.screenStream) {
             this.screenPlayer.current.srcObject = this.state.screenStream;
         }
     }
 
     public componentDidMount() {
+        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+            this.setState({
+                screenStream: stream,
+            });
+        });
+
+        console.log(callsClient.getLocalScreenStream(), callsClient.getRemoteScreenStream());
+        const screenStream = callsClient.getLocalScreenStream() || callsClient.getRemoteScreenStream();
+        console.log(screenStream);
+
         // This is needed to force a re-render to periodically update
         // the start time.
         const id = setInterval(() => this.forceUpdate(), 1000);
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
             intervalID: id,
-        });
-
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
-        callsClient.on('remoteScreenStream', (stream: MediaStream) => {
-            this.setState({
-                screenStream: stream,
-            });
+            screenStream,
         });
     }
 
