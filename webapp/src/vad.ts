@@ -16,7 +16,7 @@ export default class VoiceActivityDetector extends EventEmitter {
 
         const config = {
             freqRange: [80, 400],
-            noiseCaptureMs: 500,
+            noiseCaptureMs: 1000,
             noiseMultiplier: 1.5,
             activityThreshold: 4,
             activityCounterMax: 10,
@@ -56,13 +56,14 @@ export default class VoiceActivityDetector extends EventEmitter {
             }
 
             if (Date.now() < (this.startTime + config.noiseCaptureMs)) {
-                noiseSamples.push(avg);
+                if (avg > 0) {
+                    noiseSamples.push(avg);
+                }
                 return;
             } else if (noiseSamples.length > 0) {
                 noiseAvg = noiseSamples.reduce((acc, val) => acc + val) / noiseSamples.length;
+                console.log('vad: noise avg', noiseSamples.length, noiseAvg);
                 noiseSamples = [];
-
-                console.log('vad: noise avg', noiseAvg);
 
                 this.isReady = true;
                 this.disconnect();
