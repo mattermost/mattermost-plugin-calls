@@ -116,22 +116,22 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", msg.UserID, msg.ChannelID)
 		}
-		if msg.ClientMessage.Type == clientMessageTypeSignal || msg.ClientMessage.Type == clientMessageTypeICE {
-			if us.wsConn != nil {
-				select {
-				case us.wsOutCh <- []byte(msg.ClientMessage.Data):
-				default:
-					return fmt.Errorf("out chan is full, dropping msg")
-				}
-			} else {
-				select {
-				case us.wsInCh <- []byte(msg.ClientMessage.Data):
-				default:
-					return fmt.Errorf("in chan is full, dropping msg")
-				}
-			}
-		} else {
+		if msg.ClientMessage.Type != clientMessageTypeSignal && msg.ClientMessage.Type != clientMessageTypeICE {
 			return fmt.Errorf("unexpected client message type %q", msg.ClientMessage.Type)
+		}
+
+		signalCh := us.wsInCh
+		if msg.ClientMessage.Type == clientMessageTypeICE {
+			signalCh = us.iceCh
+		}
+		if us.wsConn != nil {
+			signalCh = us.wsOutCh
+		}
+
+		select {
+		case signalCh <- []byte(msg.ClientMessage.Data):
+		default:
+			return fmt.Errorf("chan is full, dropping msg")
 		}
 	case clusterMessageTypeUserState:
 		if us == nil {

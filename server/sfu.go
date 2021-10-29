@@ -203,6 +203,35 @@ func (p *Plugin) initRTCConn(userID string) {
 	userSession := p.sessions[userID]
 	p.mut.RUnlock()
 
+	go func() {
+		for {
+			select {
+			case data, ok := <-userSession.iceCh:
+				if !ok {
+					return
+				}
+
+				var candidate webrtc.ICECandidateInit
+				if err := json.Unmarshal(data, &candidate); err != nil {
+					p.LogError(err.Error())
+					continue
+				}
+
+				if candidate.Candidate == "" {
+					p.LogDebug("received empty candidate")
+					continue
+				}
+
+				if err := peerConn.AddICECandidate(candidate); err != nil {
+					p.LogError(err.Error())
+					continue
+				}
+			case <-userSession.closeCh:
+				return
+			}
+		}
+	}()
+
 	userSession.mut.Lock()
 	userSession.rtcConn = peerConn
 	userSession.mut.Unlock()
