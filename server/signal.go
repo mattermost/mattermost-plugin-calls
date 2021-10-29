@@ -10,7 +10,6 @@ import (
 	"github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/gorilla/websocket"
-	"github.com/pion/webrtc/v3"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -140,15 +139,10 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 		case clientMessageTypeICE:
 			p.LogDebug("candidate!")
 			if handlerID == p.nodeID {
-				var candidate webrtc.ICECandidateInit
-				if err := json.Unmarshal(msg.Data, &candidate); err != nil {
-					p.LogError(err.Error())
-					continue
-				}
-
-				if err := us.rtcConn.AddICECandidate(candidate); err != nil {
-					p.LogError(err.Error())
-					continue
+				select {
+				case us.iceCh <- msg.Data:
+				default:
+					p.LogError("iceCh channel is full, dropping msg")
 				}
 			} else {
 				// need to relay signaling.
