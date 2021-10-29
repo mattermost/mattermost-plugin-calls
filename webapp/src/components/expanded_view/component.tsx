@@ -366,8 +366,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     </div>
 
                     { !this.props.screenSharingID &&
-
-                    <ul style={style.participants as CSSProperties}>
+                    <ul
+                        style={{
+                            ...style.participants,
+                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                        }}
+                    >
                         { this.renderParticipants() }
                     </ul>
                     }
@@ -483,14 +487,10 @@ const style = {
         marginLeft: 'auto',
     },
     participants: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        flexWrap: 'wrap',
+        display: 'grid',
         overflow: 'auto',
         margin: 'auto',
         padding: '0',
-        width: '50%',
     },
     controls: {
         display: 'flex',
