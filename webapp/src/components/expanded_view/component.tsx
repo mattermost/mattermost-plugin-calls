@@ -194,7 +194,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             if (status) {
                 isMuted = !status.unmuted;
                 isSpeaking = Boolean(status.voice);
-                isHandRaised = Boolean(status.raised_hand);
+                isHandRaised = Boolean(status.raised_hand > 0);
             }
 
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
@@ -269,7 +269,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             if (status) {
                 isMuted = !status.unmuted;
                 isSpeaking = Boolean(status.voice);
-                isHandRaised = Boolean(status.raised_hand);
+                isHandRaised = Boolean(status.raised_hand > 0);
             }
 
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
