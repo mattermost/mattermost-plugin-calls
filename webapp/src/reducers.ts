@@ -163,6 +163,7 @@ interface usersStatusesAction {
     data: {
         channelID: string,
         userID: string,
+        raised_hand?: number,
         states: {[userID: string]: UserState},
     },
 }
@@ -171,6 +172,22 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
+    case VOICE_CHANNEL_USER_CONNECTED:
+    case VOICE_CHANNEL_USER_DISCONNECTED:
+        if (state[action.data.channelID]) {
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    ...state[action.data.channelID],
+                    [action.data.userID]: {
+                        unmuted: false,
+                        voice: false,
+                        raised_hand: 0,
+                    },
+                },
+            };
+        }
+        return state;
     case VOICE_CHANNEL_USERS_CONNECTED_STATES:
         return {
             ...state,
@@ -184,7 +201,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                     [action.data.userID]: {
                         unmuted: false,
                         voice: false,
-                        raised_hand: false,
+                        raised_hand: 0,
                     },
                 },
             };
@@ -207,7 +224,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                     [action.data.userID]: {
                         unmuted: true,
                         voice: false,
-                        raised_hand: false,
+                        raised_hand: 0,
                     },
                 },
             };
@@ -230,7 +247,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                     [action.data.userID]: {
                         unmuted: false,
                         voice: true,
-                        raised_hand: false,
+                        raised_hand: 0,
                     },
                 },
             };
@@ -253,7 +270,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                     [action.data.userID]: {
                         unmuted: false,
                         voice: false,
-                        raised_hand: false,
+                        raised_hand: 0,
                     },
                 },
             };
@@ -276,7 +293,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                     [action.data.userID]: {
                         unmuted: false,
                         voice: false,
-                        raised_hand: true,
+                        raised_hand: action.data.raised_hand,
                     },
                 },
             };
@@ -287,7 +304,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                 ...state[action.data.channelID],
                 [action.data.userID]: {
                     ...state[action.data.channelID][action.data.userID],
-                    raised_hand: true,
+                    raised_hand: action.data.raised_hand,
                 },
             },
         };
@@ -299,7 +316,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                     [action.data.userID]: {
                         voice: false,
                         unmuted: false,
-                        raised_hand: false,
+                        raised_hand: action.data.raised_hand,
                     },
                 },
             };
@@ -310,7 +327,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                 ...state[action.data.channelID],
                 [action.data.userID]: {
                     ...state[action.data.channelID][action.data.userID],
-                    raised_hand: false,
+                    raised_hand: action.data.raised_hand,
                 },
             },
         };

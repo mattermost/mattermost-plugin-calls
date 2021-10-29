@@ -199,6 +199,7 @@ export default class Plugin {
                 data: {
                     channelID: ev.broadcast.channel_id,
                     userID: ev.data.userID,
+                    raised_hand: ev.data.raised_hand,
                 },
             });
         });
@@ -209,6 +210,7 @@ export default class Plugin {
                 data: {
                     channelID: ev.broadcast.channel_id,
                     userID: ev.data.userID,
+                    raised_hand: ev.data.raised_hand,
                 },
             });
         });

@@ -228,6 +228,11 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 				evType = wsEventUserRaiseHand
 			}
 
+			var ts int64
+			if msg.Type == clientMessageTypeRaiseHand {
+				ts = time.Now().UnixMilli()
+			}
+
 			if err := p.kvSetAtomicChannelState(us.channelID, func(state *channelState) (*channelState, error) {
 				if state == nil {
 					return nil, fmt.Errorf("channel state is missing from store")
@@ -236,7 +241,7 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 					return nil, fmt.Errorf("call state is missing from channel state")
 				}
 				if uState := state.Call.Users[us.userID]; uState != nil {
-					uState.RaisedHand = msg.Type == clientMessageTypeRaiseHand
+					uState.RaisedHand = ts
 				}
 
 				return state, nil
@@ -245,7 +250,8 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 			}
 
 			p.API.PublishWebSocketEvent(evType, map[string]interface{}{
-				"userID": us.userID,
+				"userID":      us.userID,
+				"raised_hand": ts,
 			}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 		}
 	}

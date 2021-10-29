@@ -8,8 +8,8 @@ import (
 )
 
 type userState struct {
-	Unmuted    bool `json:"unmuted"`
-	RaisedHand bool `json:"raised_hand"`
+	Unmuted    bool  `json:"unmuted"`
+	RaisedHand int64 `json:"raised_hand"`
 }
 
 type callState struct {

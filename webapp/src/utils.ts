@@ -142,14 +142,14 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
             stateA = {
                 voice: false,
                 unmuted: false,
-                raised_hand: false,
+                raised_hand: 0,
             };
         }
         if (!stateB) {
             stateB = {
                 voice: false,
                 unmuted: false,
-                raised_hand: false,
+                raised_hand: 0,
             };
         }
 
@@ -163,6 +163,8 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
             return -1;
         } else if (stateB.raised_hand && !stateA.raised_hand) {
             return 1;
+        } else if (stateA.raised_hand && stateB.raised_hand) {
+            return stateA.raised_hand - stateB.raised_hand;
         }
 
         return 0;
