@@ -21,23 +21,20 @@ type session struct {
 	userID    string
 	channelID string
 
-	// User state
-	isMuted    bool
-	isSpeaking bool
-
 	// WebSocket
 	wsInCh  chan []byte
 	wsOutCh chan []byte
 	wsConn  *websocket.Conn
 
 	// WebRTC
-	outVoiceTrack     *webrtc.TrackLocalStaticRTP
-	outScreenTrack    *webrtc.TrackLocalStaticRTP
-	remoteScreenTrack *webrtc.TrackRemote
-	rtcConn           *webrtc.PeerConnection
-	tracksCh          chan *webrtc.TrackLocalStaticRTP
-	iceCh             chan []byte
-	closeCh           chan struct{}
+	outVoiceTrack        *webrtc.TrackLocalStaticRTP
+	outVoiceTrackEnabled bool
+	outScreenTrack       *webrtc.TrackLocalStaticRTP
+	remoteScreenTrack    *webrtc.TrackRemote
+	rtcConn              *webrtc.PeerConnection
+	tracksCh             chan *webrtc.TrackLocalStaticRTP
+	iceCh                chan []byte
+	closeCh              chan struct{}
 
 	trackEnableCh chan bool
 	rtpSendersMap map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender
