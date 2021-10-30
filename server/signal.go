@@ -156,10 +156,6 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 				}
 			}
 		case clientMessageTypeMute, clientMessageTypeUnmute:
-			us.mut.Lock()
-			us.isMuted = (msg.Type == clientMessageTypeMute)
-			us.mut.Unlock()
-
 			if handlerID != p.nodeID {
 				// need to relay track event.
 				if err := p.sendClusterMessage(clusterMessage{
@@ -202,9 +198,6 @@ func (p *Plugin) wsReader(us *session, handlerID string, doneCh chan struct{}) {
 				"userID": us.userID,
 			}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 		case clientMessageTypeVoiceOn, clientMessageTypeVoiceOff:
-			us.mut.Lock()
-			us.isSpeaking = (msg.Type == clientMessageTypeVoiceOn)
-			us.mut.Unlock()
 			evType := wsEventUserVoiceOff
 			if msg.Type == clientMessageTypeVoiceOn {
 				evType = wsEventUserVoiceOn

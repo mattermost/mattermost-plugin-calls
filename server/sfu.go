@@ -101,17 +101,27 @@ func (p *Plugin) handlePLI(sender *webrtc.RTPSender, channelID string) {
 	}
 }
 
-func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRTP) {
+func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRTP, enabled bool) {
 	p.LogDebug("addTrack", "userID", userSession.userID)
 	userSession.mut.RLock()
 	peerConn := userSession.rtcConn
 	userSession.mut.RUnlock()
 
-	sender, err := peerConn.AddTrack(track)
+	t := track
+	if !enabled {
+		dummyTrack, err := webrtc.NewTrackLocalStaticRTP(rtpAudioCodec, "voice", model.NewId())
+		if err != nil {
+			p.LogError(err.Error())
+			return
+		}
+		t = dummyTrack
+	}
+
+	sender, err := peerConn.AddTrack(t)
 	if err != nil {
 		p.LogError(err.Error())
 		return
-	} else if track.Codec().MimeType == webrtc.MimeTypeVP8 {
+	} else if t.Codec().MimeType == webrtc.MimeTypeVP8 {
 		go p.handlePLI(sender, userSession.channelID)
 	}
 
@@ -297,6 +307,7 @@ func (p *Plugin) initRTCConn(userID string) {
 
 			userSession.mut.Lock()
 			userSession.outVoiceTrack = outVoiceTrack
+			userSession.outVoiceTrackEnabled = true
 			userSession.mut.Unlock()
 
 			p.mut.RLock()
@@ -318,6 +329,14 @@ func (p *Plugin) initRTCConn(userID string) {
 
 				p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "in", "type": "voice"}).Inc()
 				p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "in", "type": "voice"}).Add(float64(len(rtp.Payload)))
+
+				userSession.mut.RLock()
+				isEnabled := userSession.outVoiceTrackEnabled
+				userSession.mut.RUnlock()
+
+				if !isEnabled {
+					continue
+				}
 
 				if err := outVoiceTrack.WriteRTP(rtp); err != nil && !errors.Is(err, io.ErrClosedPipe) {
 					p.LogError(err.Error())
@@ -412,16 +431,17 @@ func (p *Plugin) handleTracks(us *session) {
 		if id != us.userID && session.channelID == us.channelID {
 			session.mut.RLock()
 			outVoiceTrack := session.outVoiceTrack
+			isEnabled := session.outVoiceTrackEnabled
 			outScreenTrack := session.outScreenTrack
 			session.mut.RUnlock()
 			if outVoiceTrack != nil {
 				p.mut.RUnlock()
-				p.addTrack(us, outVoiceTrack)
+				p.addTrack(us, outVoiceTrack, isEnabled)
 				p.mut.RLock()
 			}
 			if outScreenTrack != nil {
 				p.mut.RUnlock()
-				p.addTrack(us, outScreenTrack)
+				p.addTrack(us, outScreenTrack, true)
 				p.mut.RLock()
 			}
 		}
@@ -434,7 +454,7 @@ func (p *Plugin) handleTracks(us *session) {
 			if !ok {
 				return
 			}
-			p.addTrack(us, track)
+			p.addTrack(us, track, true)
 		case msg, ok := <-us.wsInCh:
 			if !ok {
 				return
@@ -454,6 +474,10 @@ func (p *Plugin) handleTracks(us *session) {
 			if track == nil {
 				continue
 			}
+
+			us.mut.Lock()
+			us.outVoiceTrackEnabled = !muted
+			us.mut.Unlock()
 
 			dummyTrack, err := webrtc.NewTrackLocalStaticRTP(rtpAudioCodec, "voice", model.NewId())
 			if err != nil {
