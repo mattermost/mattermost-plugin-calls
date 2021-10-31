@@ -310,15 +310,12 @@ func (p *Plugin) initRTCConn(userID string) {
 			userSession.outVoiceTrackEnabled = true
 			userSession.mut.Unlock()
 
-			p.mut.RLock()
-			for id, s := range p.sessions {
-				if id != userID && userSession.channelID == s.channelID {
-					p.mut.RUnlock()
-					s.tracksCh <- outVoiceTrack
-					p.mut.RLock()
+			p.iterSessions(userSession.channelID, func(s *session) {
+				if s.userID == userSession.userID {
+					return
 				}
-			}
-			p.mut.RUnlock()
+				s.tracksCh <- outVoiceTrack
+			})
 
 			for {
 				rtp, _, readErr := remoteTrack.ReadRTP()
@@ -344,16 +341,14 @@ func (p *Plugin) initRTCConn(userID string) {
 				}
 
 				// TODO: improve this.
-				p.mut.RLock()
-				for id, s := range p.sessions {
-					if id != userID && userSession.channelID == s.channelID {
-						p.mut.RUnlock()
-						p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "out", "type": "voice"}).Inc()
-						p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "out", "type": "voice"}).Add(float64(len(rtp.Payload)))
-						p.mut.RLock()
+				p.iterSessions(userSession.channelID, func(s *session) {
+					if s.userID == userSession.userID {
+						return
 					}
-				}
-				p.mut.RUnlock()
+					p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "out", "type": "voice"}).Inc()
+					p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "out", "type": "voice"}).Add(float64(len(rtp.Payload)))
+				})
+
 			}
 		} else if remoteTrack.Codec().MimeType == rtpVideoCodec.MimeType {
 			// TODO: actually check if the userID matches the expected publisher.
@@ -378,15 +373,12 @@ func (p *Plugin) initRTCConn(userID string) {
 			userSession.remoteScreenTrack = remoteTrack
 			userSession.mut.Unlock()
 
-			p.mut.RLock()
-			for id, s := range p.sessions {
-				if id != userID && userSession.channelID == s.channelID {
-					p.mut.RUnlock()
-					s.tracksCh <- outScreenTrack
-					p.mut.RLock()
+			p.iterSessions(userSession.channelID, func(s *session) {
+				if s.userID == userSession.userID {
+					return
 				}
-			}
-			p.mut.RUnlock()
+				s.tracksCh <- outScreenTrack
+			})
 
 			for {
 				rtp, _, readErr := remoteTrack.ReadRTP()
@@ -400,17 +392,15 @@ func (p *Plugin) initRTCConn(userID string) {
 					p.LogError(err.Error())
 					return
 				}
+
 				// TODO: improve this.
-				p.mut.RLock()
-				for id, s := range p.sessions {
-					if id != userID && userSession.channelID == s.channelID {
-						p.mut.RUnlock()
-						p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "out", "type": "screen"}).Inc()
-						p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "out", "type": "screen"}).Add(float64(len(rtp.Payload)))
-						p.mut.RLock()
+				p.iterSessions(userSession.channelID, func(s *session) {
+					if s.userID == userSession.userID {
+						return
 					}
-				}
-				p.mut.RUnlock()
+					p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "out", "type": "screen"}).Inc()
+					p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "out", "type": "screen"}).Add(float64(len(rtp.Payload)))
+				})
 			}
 		}
 	})
@@ -426,27 +416,23 @@ func (p *Plugin) initRTCConn(userID string) {
 }
 
 func (p *Plugin) handleTracks(us *session) {
-	p.mut.RLock()
-	for id, session := range p.sessions {
-		if id != us.userID && session.channelID == us.channelID {
-			session.mut.RLock()
-			outVoiceTrack := session.outVoiceTrack
-			isEnabled := session.outVoiceTrackEnabled
-			outScreenTrack := session.outScreenTrack
-			session.mut.RUnlock()
-			if outVoiceTrack != nil {
-				p.mut.RUnlock()
-				p.addTrack(us, outVoiceTrack, isEnabled)
-				p.mut.RLock()
-			}
-			if outScreenTrack != nil {
-				p.mut.RUnlock()
-				p.addTrack(us, outScreenTrack, true)
-				p.mut.RLock()
-			}
+	p.iterSessions(us.channelID, func(s *session) {
+		if s.userID == us.userID {
+			return
 		}
-	}
-	p.mut.RUnlock()
+
+		s.mut.RLock()
+		outVoiceTrack := s.outVoiceTrack
+		isEnabled := s.outVoiceTrackEnabled
+		outScreenTrack := s.outScreenTrack
+		s.mut.RUnlock()
+		if outVoiceTrack != nil {
+			p.addTrack(us, outVoiceTrack, isEnabled)
+		}
+		if outScreenTrack != nil {
+			p.addTrack(us, outScreenTrack, true)
+		}
+	})
 
 	for {
 		select {
@@ -485,33 +471,29 @@ func (p *Plugin) handleTracks(us *session) {
 				continue
 			}
 
-			p.mut.RLock()
-			for id, s := range p.sessions {
-				if id != us.userID && us.channelID == s.channelID {
-					p.mut.RUnlock()
-
-					s.mut.RLock()
-					sender := s.rtpSendersMap[track]
-					s.mut.RUnlock()
-
-					var replacingTrack *webrtc.TrackLocalStaticRTP
-					if muted {
-						replacingTrack = dummyTrack
-					} else {
-						replacingTrack = track
-					}
-
-					if sender != nil {
-						p.LogDebug("replacing track on sender")
-						if err := sender.ReplaceTrack(replacingTrack); err != nil {
-							p.LogError(err.Error())
-						}
-					}
-
-					p.mut.RLock()
+			p.iterSessions(us.channelID, func(s *session) {
+				if s.userID == us.userID {
+					return
 				}
-			}
-			p.mut.RUnlock()
+
+				s.mut.RLock()
+				sender := s.rtpSendersMap[track]
+				s.mut.RUnlock()
+
+				var replacingTrack *webrtc.TrackLocalStaticRTP
+				if muted {
+					replacingTrack = dummyTrack
+				} else {
+					replacingTrack = track
+				}
+
+				if sender != nil {
+					p.LogDebug("replacing track on sender")
+					if err := sender.ReplaceTrack(replacingTrack); err != nil {
+						p.LogError(err.Error())
+					}
+				}
+			})
 		case <-us.closeCh:
 			return
 		}
