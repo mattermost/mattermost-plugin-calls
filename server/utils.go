@@ -34,3 +34,15 @@ func (p *Plugin) kvSetAtomic(key string, cb func(data []byte) ([]byte, error)) e
 		return nil
 	}
 }
+
+func (p *Plugin) iterSessions(channelID string, cb func(us *session)) {
+	p.mut.RLock()
+	for _, session := range p.sessions {
+		if session.channelID == channelID {
+			p.mut.RUnlock()
+			cb(session)
+			p.mut.RLock()
+		}
+	}
+	p.mut.RUnlock()
+}
