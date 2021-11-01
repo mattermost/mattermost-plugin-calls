@@ -8,7 +8,6 @@ import (
 
 	"github.com/mattermost/mattermost-server/v6/model"
 
-	"github.com/pion/ice/v2"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 	"github.com/prometheus/client_golang/prometheus"
@@ -192,17 +191,7 @@ func (p *Plugin) initRTCConn(userID string) {
 		return
 	}
 
-	s := webrtc.SettingEngine{}
-	if pRange := p.getConfiguration().ICEPortsRange; pRange.IsValid() == nil {
-		p.LogDebug("Setting ICE ports range", "minPort", pRange.MinPort(), "maxPort", pRange.MaxPort())
-		if err := s.SetEphemeralUDPPortRange(pRange.MinPort(), pRange.MaxPort()); err != nil {
-			p.LogError(err.Error())
-		}
-	}
-	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
-
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m), webrtc.WithSettingEngine(s))
-
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m), webrtc.WithSettingEngine(p.rtcSettingsEngine))
 	peerConn, err := api.NewPeerConnection(peerConnConfig)
 	if err != nil {
 		p.LogError(err.Error())
@@ -269,7 +258,7 @@ func (p *Plugin) initRTCConn(userID string) {
 
 	peerConn.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		if state == webrtc.PeerConnectionStateConnected {
-			p.LogDebug("connected!", "UserID", userID)
+			p.LogDebug("rtc connected!", "UserID", userID)
 			p.metrics.RTCConnStateCounters.With(prometheus.Labels{"type": "connected"}).Inc()
 		} else if state == webrtc.PeerConnectionStateDisconnected {
 			p.LogDebug("peer connection disconnected", "UserID", userID)

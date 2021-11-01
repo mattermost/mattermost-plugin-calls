@@ -32,12 +32,12 @@ const manifestStr = `
     "footer": "",
     "settings": [
       {
-        "key": "ICEPortsRange",
-        "display_name": "ICE Ports Range",
-        "type": "text",
-        "help_text": "Range of UDP ports used for ICE connections.",
-        "placeholder": "E.g.: \"10000-11000\"",
-        "default": ""
+        "key": "UDPServerPort",
+        "display_name": "RTC Server Port",
+        "type": "number",
+        "help_text": "The UDP port the RTC server will listen on.",
+        "placeholder": "",
+        "default": "8443"
       },
       {
         "key": "AllowEnableCalls",
