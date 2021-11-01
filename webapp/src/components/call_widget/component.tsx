@@ -442,7 +442,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </button>
 
                     </div>
-                    <span style={{marginTop: '8px', color: 'rgba(63, 67, 80, 0.72)', fontSize: '12px'}}>{msg}</span>
+                    <span style={{marginTop: '8px', color: 'rgba(63, 67, 80, 0.72)', fontSize: '12px', padding: '0 8px', textAlign: 'center'}}>{msg}</span>
                 </ul>
             </div>
         );
@@ -801,17 +801,20 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
-        // const expandedViewWindow = window.open(
-        //     `/${this.props.team.name}/${pluginID}/expanded/${this.props.channel.id}`,
-        //     'ExpandedView',
-        //     'resizable=yes',
-        // );
-
-        // this.setState({
-        //     expandedViewWindow,
-        // });
-
-        this.props.showExpandedView();
+        // TODO: remove this as soon as we support opening a window from desktop app.
+        const isDesktop = navigator && navigator.userAgent.includes('Electron');
+        if (isDesktop) {
+            this.props.showExpandedView();
+        } else {
+            const expandedViewWindow = window.open(
+                `/${this.props.team.name}/${pluginID}/expanded/${this.props.channel.id}`,
+                'ExpandedView',
+                'resizable=yes',
+            );
+            this.setState({
+                expandedViewWindow,
+            });
+        }
     }
 
     render() {
@@ -824,6 +827,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar'));
         const mainWidth = hasTeamSidebar ? '280px' : '216px';
+
+        const isDesktop = navigator && navigator.userAgent.includes('Electron');
+        const ShowIcon = isDesktop ? ExpandIcon : PopOutIcon;
 
         return (
             <div
@@ -847,7 +853,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             style={this.style.expandButton as CSSProperties}
                             onClick={this.onExpandClick}
                         >
-                            <ExpandIcon
+                            <ShowIcon
                                 style={{width: '14px', height: '14px'}}
                                 fill={changeOpacity(this.props.theme.centerChannelColor, 0.64)}
                             />
