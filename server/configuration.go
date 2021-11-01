@@ -22,8 +22,8 @@ import (
 // If you add non-reference types to your configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
 type configuration struct {
-	// Range of UDP ports used for ICE connections.
-	ICEPortsRange *PortsRange
+	// UDP port used by the RTC server to listen to.
+	UDPServerPort *int
 	clientConfig
 }
 
@@ -81,8 +81,8 @@ func (c *configuration) getClientConfig() clientConfig {
 }
 
 func (c *configuration) SetDefaults() {
-	if c.ICEPortsRange == nil {
-		c.ICEPortsRange = new(PortsRange)
+	if c.UDPServerPort == nil {
+		c.UDPServerPort = model.NewInt(8443)
 	}
 	if c.AllowEnableCalls == nil {
 		c.AllowEnableCalls = new(bool)
@@ -90,10 +90,12 @@ func (c *configuration) SetDefaults() {
 }
 
 func (c *configuration) IsValid() error {
-	if c.ICEPortsRange != nil && *c.ICEPortsRange != "" {
-		if err := c.ICEPortsRange.IsValid(); err != nil {
-			return fmt.Errorf("ICEPortsRange is not valid: %w", err)
-		}
+	if c.UDPServerPort == nil {
+		return fmt.Errorf("UDPServerPort should not be nil")
+	}
+
+	if *c.UDPServerPort < 1024 || *c.UDPServerPort > 49151 {
+		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [1024, 49151]", *c.UDPServerPort)
 	}
 
 	return nil
@@ -103,9 +105,9 @@ func (c *configuration) IsValid() error {
 func (c *configuration) Clone() *configuration {
 	var cfg configuration
 
-	if c.ICEPortsRange != nil {
-		cfg.ICEPortsRange = new(PortsRange)
-		*cfg.ICEPortsRange = *c.ICEPortsRange
+	if c.UDPServerPort != nil {
+		cfg.UDPServerPort = new(int)
+		*cfg.UDPServerPort = *c.UDPServerPort
 	}
 
 	if c.AllowEnableCalls != nil {

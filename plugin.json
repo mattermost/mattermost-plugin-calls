@@ -17,12 +17,11 @@
         "header": "",
         "footer": "",
         "settings": [{
-          "key": "ICEPortsRange",
-          "display_name": "ICE Ports Range",
-          "type": "text",
-          "help_text": "Range of UDP ports used for ICE connections.",
-          "default": "",
-          "placeholder": "E.g.: \"10000-11000\""
+          "key": "UDPServerPort",
+          "display_name": "RTC Server Port",
+          "type": "number",
+          "help_text": "The UDP port the RTC server will listen on.",
+          "default": "8443"
         },
         {
           "key": "AllowEnableCalls",
