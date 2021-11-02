@@ -377,7 +377,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     }
                     { this.props.screenSharingID && this.renderScreenSharingPlayer() }
                     <div style={style.controls}>
-                        <div style={{flex: '1'}}/>
+                        { !window.opener && <div style={{flex: '1'}}/>}
                         <div style={style.centerControls}>
 
                             { (isSharing || !sharingID) &&
@@ -435,6 +435,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                         </div>
 
+                        { !window.opener &&
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
                             <button
                                 className='button-leave'
@@ -451,6 +452,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                             </button>
                         </div>
+                        }
                     </div>
                 </div>
                 {/* { this.props.screenSharingID && */}
