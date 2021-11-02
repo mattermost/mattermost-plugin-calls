@@ -511,9 +511,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 const status = this.props.statuses[profile.id];
                 let isMuted = true;
                 let isSpeaking = false;
+                let isHandRaised = false;
                 if (status) {
                     isMuted = !status.unmuted;
                     isSpeaking = Boolean(status.voice);
+                    isHandRaised = Boolean(status.raised_hand > 0);
                 }
 
                 const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
@@ -537,10 +539,35 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             }
                         </span>
 
-                        <MuteIcon
-                            fill={isMuted ? '#C4C4C4' : '#3DB887'}
-                            style={{width: '14px', height: '14px', marginLeft: 'auto'}}
-                        />
+                        <span
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                marginLeft: 'auto',
+                                gap: '4px',
+                            }}
+                        >
+                            { isHandRaised &&
+                            <RaisedHandIcon
+                                fill={'rgba(255, 188, 66, 1)'}
+                                style={{width: '14px', height: '14px'}}
+                            />
+                            }
+
+                            { this.props.screenSharingID === profile.id &&
+                            <ScreenIcon
+                                fill={'rgba(210, 75, 78, 1)'}
+                                style={{width: '14px', height: '14px'}}
+                            />
+                            }
+
+                            <MuteIcon
+                                fill={isMuted ? '#C4C4C4' : '#3DB887'}
+                                style={{width: '14px', height: '14px'}}
+                            />
+
+                        </span>
                     </li>
                 );
             });
