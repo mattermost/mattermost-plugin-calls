@@ -285,7 +285,7 @@ export default class CallsClient extends EventEmitter {
     }
 
     public setScreenStream(screenStream: MediaStream) {
-        if (!this.ws || !this.peer || this.localScreenTrack) {
+        if (!this.ws || !this.peer || this.localScreenTrack || !screenStream) {
             return;
         }
 
