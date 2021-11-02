@@ -6,6 +6,8 @@ import moment from 'moment-timezone';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+
 import {getUserDisplayName, getScreenStream} from '../../utils';
 
 import {UserState} from '../../types/types';
@@ -19,6 +21,7 @@ import UnmutedIcon from '../../components/icons/unmuted_icon';
 import ScreenIcon from '../../components/icons/screen_icon';
 import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
+import ParticipantsIcon from '../../components/icons/participants';
 
 import './component.scss';
 
@@ -40,6 +43,7 @@ interface Props {
 interface State {
     intervalID?: NodeJS.Timer,
     screenStream: MediaStream | null,
+    showParticipantsList: boolean,
 }
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
@@ -50,6 +54,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.screenPlayer = React.createRef();
         this.state = {
             screenStream: null,
+            showParticipantsList: false,
         };
     }
 
@@ -105,6 +110,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         } else {
             callsClient.raiseHand();
         }
+    }
+
+    onParticipantsListToggle = () => {
+        this.setState({
+            showParticipantsList: !this.state.showParticipantsList,
+        });
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
@@ -338,6 +349,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isHandRaised = callsClient.isHandRaised;
         const HandIcon = isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
         const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
+        const participantsText = 'Show participants list';
 
         const sharingID = this.props.screenSharingID;
         const currentID = this.props.currentUserID;
@@ -377,8 +389,50 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     }
                     { this.props.screenSharingID && this.renderScreenSharingPlayer() }
                     <div style={style.controls}>
-                        { !window.opener && <div style={{flex: '1'}}/>}
+                        <div style={style.leftControls}>
+                            <OverlayTrigger
+                                key='show_participants_list'
+                                placement='top'
+                                overlay={
+                                    <Tooltip
+                                        id='show-participants-list'
+                                    >
+                                        {this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list'}
+                                    </Tooltip>
+                                }
+                            >
+
+                                <button
+                                    className='button-center-controls'
+                                    onClick={this.onParticipantsListToggle}
+                                    style={{background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}}
+                                >
+                                    <ParticipantsIcon
+                                        style={{width: '24px', height: '24px'}}
+                                        fill={this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white'}
+                                    />
+                                </button>
+                            </OverlayTrigger>
+                        </div>
+
                         <div style={style.centerControls}>
+
+                            <div style={style.buttonContainer as CSSProperties}>
+                                <button
+                                    className='button-center-controls'
+                                    onClick={this.onRaiseHandToggle}
+                                    style={{background: isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
+                                >
+                                    <HandIcon
+                                        style={{width: '28px', height: '28px'}}
+                                        fill={isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}
+                                    />
+
+                                </button>
+                                <span
+                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                                >{raiseHandText}</span>
+                            </div>
 
                             { (isSharing || !sharingID) &&
                             <div style={style.buttonContainer as CSSProperties}>
@@ -416,27 +470,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 >{muteButtonText}</span>
                             </div>
 
-                            <div style={style.buttonContainer as CSSProperties}>
-                                <button
-                                    className='button-center-controls'
-                                    onClick={this.onRaiseHandToggle}
-                                    style={{background: isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
-                                >
-                                    <HandIcon
-                                        style={{width: '28px', height: '28px'}}
-                                        fill={isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}
-                                    />
-
-                                </button>
-                                <span
-                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                                >{raiseHandText}</span>
-                            </div>
-
                         </div>
 
                         { !window.opener &&
-                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
+                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
                             <button
                                 className='button-leave'
                                 onClick={this.onDisconnectClick}
@@ -453,14 +490,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </button>
                         </div>
                         }
+                        { window.opener && <div style={{flex: '1'}}/>}
                     </div>
                 </div>
-                {/* { this.props.screenSharingID && */}
+                { this.state.showParticipantsList &&
                 <ul style={style.rhs as CSSProperties}>
                     <span style={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Participants list'}</span>
                     { this.renderParticipantsRHSList() }
                 </ul>
-                {/* } */}
+                }
             </div>
         );
     }
@@ -500,6 +538,10 @@ const style = {
         justifyContent: 'center',
         padding: '8px',
         width: '100%',
+    },
+    leftControls: {
+        flex: '1',
+        marginLeft: '16px',
     },
     centerControls: {
         display: 'flex',
