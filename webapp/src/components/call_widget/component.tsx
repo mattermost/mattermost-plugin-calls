@@ -917,19 +917,26 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     </div>
 
                     <div style={this.style.bottomBar}>
-                        <button
-                            className='style--none button-controls button-controls--wide'
-                            style={this.style.leaveCallButton}
-                            onClick={this.onDisconnectClick}
+                        <OverlayTrigger
+                            key='leave'
+                            placement='top'
+                            overlay={
+                                <Tooltip id='tooltip-leave'>
+                                    {'Click to leave call'}
+                                </Tooltip>
+                            }
                         >
-                            <LeaveCallIcon
-                                style={{width: '16px', height: '16px', fill: '#D24B4E'}}
-                            />
-                            <span
-                                className='MenuItem__primary-text'
-                                style={{color: '#D24B4E', fontSize: '12px', fontWeight: 600, marginLeft: '8px'}}
-                            >{'Leave'}</span>
-                        </button>
+
+                            <button
+                                className='style--none button-controls button-controls--wide'
+                                style={this.style.leaveCallButton}
+                                onClick={this.onDisconnectClick}
+                            >
+                                <LeaveCallIcon
+                                    style={{width: '16px', height: '16px', fill: '#D24B4E'}}
+                                />
+                            </button>
+                        </OverlayTrigger>
 
                         <button
                             id='voice-menu'
@@ -971,7 +978,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             </button>
                         </OverlayTrigger>
 
-                        { hasTeamSidebar &&
                         <OverlayTrigger
                             key='hand'
                             placement='top'
@@ -987,12 +993,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 style={{background: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
                             >
                                 <HandIcon
-                                    style={{width: '16px', height: '16', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}
+                                    style={{width: '16px', height: '16px', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}
                                 />
                             </button>
 
                         </OverlayTrigger>
-                        }
 
                         {hasTeamSidebar && this.renderScreenShareButton()}
 
