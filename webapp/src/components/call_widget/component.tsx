@@ -27,6 +27,8 @@ import CompassIcon from '../../components/icons/compassIcon';
 import ScreenIcon from '../../components/icons/screen_icon';
 import PopOutIcon from '../../components/icons/popout';
 import ExpandIcon from '../../components/icons/expand';
+import RaisedHandIcon from '../../components/icons/raised_hand';
+import UnraisedHandIcon from '../../components/icons/unraised_hand';
 
 import {handleFormattedTextClick} from '../../browser_routing';
 import {getUserDisplayName} from '../../utils';
@@ -817,6 +819,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
+    onRaiseHandToggle = () => {
+        if (!window.callsClient) {
+            return;
+        }
+        if (window.callsClient.isHandRaised) {
+            window.callsClient.unraiseHand();
+        } else {
+            window.callsClient.raiseHand();
+        }
+    }
+
     render() {
         if (!this.props.channel || !window.callsClient || !this.props.show) {
             return null;
@@ -830,6 +843,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const isDesktop = navigator && navigator.userAgent.includes('Electron');
         const ShowIcon = isDesktop ? ExpandIcon : PopOutIcon;
+
+        const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
+        const handTooltipText = window.callsClient.isHandRaised ? 'Click to lower hand' : 'Click to raise hand';
 
         return (
             <div
@@ -927,6 +943,29 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 >{this.props.profiles.length}</span>
                             </button>
                         </OverlayTrigger>
+
+                        { hasTeamSidebar &&
+                        <OverlayTrigger
+                            key='hand'
+                            placement='top'
+                            overlay={
+                                <Tooltip id='tooltip-hand'>
+                                    {handTooltipText}
+                                </Tooltip>
+                            }
+                        >
+                            <button
+                                className='cursor--pointer style--none button-controls'
+                                onClick={this.onRaiseHandToggle}
+                                style={{background: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
+                            >
+                                <HandIcon
+                                    style={{width: '16px', height: '16', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}
+                                />
+                            </button>
+
+                        </OverlayTrigger>
+                        }
 
                         {hasTeamSidebar && this.renderScreenShareButton()}
 
