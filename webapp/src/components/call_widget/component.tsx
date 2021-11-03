@@ -565,6 +565,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             <MuteIcon
                                 fill={isMuted ? '#C4C4C4' : '#3DB887'}
                                 style={{width: '14px', height: '14px'}}
+                                stroke='#C4C4C4'
                             />
 
                         </span>
@@ -1018,6 +1019,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             >
                                 <MuteIcon
                                     style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)'}}
+                                    stroke={window.callsClient.isMuted() ? 'rgba(210, 75, 78, 1)' : ''}
                                 />
                             </button>
                         </OverlayTrigger>

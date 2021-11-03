@@ -241,6 +241,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <MuteIcon
                                 fill={isMuted ? '#C4C4C4' : '#3DB887'}
                                 style={{width: '14px', height: '14px'}}
+                                stroke='#C4C4C4'
                             />
                         </div>
                         <div
@@ -328,6 +329,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <MuteIcon
                             fill={isMuted ? '#C4C4C4' : '#3DB887'}
                             style={{width: '14px', height: '14px'}}
+                            stroke='#C4C4C4'
                         />
 
                     </div>
@@ -462,6 +464,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     <MuteIcon
                                         style={{width: '28px', height: '28px'}}
                                         fill={isMuted ? 'white' : 'rgba(61, 184, 135, 1)'}
+                                        stroke={isMuted ? 'rgba(210, 75, 78, 1)' : ''}
                                     />
 
                                 </button>
