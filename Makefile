@@ -37,9 +37,15 @@ all: check-style test dist
 apply:
 	./build/bin/manifest apply
 
+## Check go mod files consistency
+.PHONY: gomod-check
+gomod-check:
+	@echo Checking go mod files consistency
+	go mod tidy -v && git --no-pager diff --exit-code go.mod go.sum || (echo "Please run \"go mod tidy\" and commit the changes in go.mod and go.sum." && exit 1)
+
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: golangci-lint webapp/node_modules
+check-style: gomod-check golangci-lint webapp/node_modules
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
