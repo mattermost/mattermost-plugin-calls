@@ -565,7 +565,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             <MuteIcon
                                 fill={isMuted ? '#C4C4C4' : '#3DB887'}
                                 style={{width: '14px', height: '14px'}}
-                                stroke='#C4C4C4'
+                                stroke={isMuted ? '#C4C4C4' : '#3DB887'}
                             />
 
                         </span>
