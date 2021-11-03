@@ -117,27 +117,19 @@ func (c *configuration) Clone() *configuration {
 	return &cfg
 }
 
-func (p *Plugin) setConfigDefaults() {
-	p.configurationLock.Lock()
-	defer p.configurationLock.Unlock()
-	if p.configuration == nil {
-		p.configuration = new(configuration)
-	}
-	p.configuration.SetDefaults()
-}
-
 // getConfiguration retrieves the active configuration under lock, making it safe to use
 // concurrently. The active configuration may change underneath the client of this method, but
 // the struct returned by this API call is considered immutable.
 func (p *Plugin) getConfiguration() *configuration {
-	p.configurationLock.RLock()
-	defer p.configurationLock.RUnlock()
+	p.configurationLock.Lock()
+	defer p.configurationLock.Unlock()
 
 	if p.configuration == nil {
-		return &configuration{}
+		p.configuration = new(configuration)
+		p.configuration.SetDefaults()
 	}
 
-	return p.configuration
+	return p.configuration.Clone()
 }
 
 // setConfiguration replaces the active configuration under lock.
@@ -175,12 +167,12 @@ func (p *Plugin) setConfiguration(configuration *configuration) error {
 
 // OnConfigurationChange is invoked when configuration changes may have been made.
 func (p *Plugin) OnConfigurationChange() error {
-	var configuration = new(configuration)
+	var cfg = new(configuration)
 
 	// Load the public configuration fields from the Mattermost server configuration.
-	if err := p.API.LoadPluginConfiguration(configuration); err != nil {
+	if err := p.API.LoadPluginConfiguration(cfg); err != nil {
 		return fmt.Errorf("OnConfigurationChange: failed to load plugin configuration: %w", err)
 	}
 
-	return p.setConfiguration(configuration)
+	return p.setConfiguration(cfg)
 }

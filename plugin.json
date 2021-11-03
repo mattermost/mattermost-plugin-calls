@@ -21,7 +21,7 @@
           "display_name": "RTC Server Port",
           "type": "number",
           "help_text": "The UDP port the RTC server will listen on.",
-          "default": "8443"
+          "default": 8443
         },
         {
           "key": "AllowEnableCalls",

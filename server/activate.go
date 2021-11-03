@@ -10,7 +10,10 @@ import (
 )
 
 func (p *Plugin) OnActivate() error {
-	p.setConfigDefaults()
+	if err := p.OnConfigurationChange(); err != nil {
+		p.LogError(err.Error())
+		return err
+	}
 
 	if err := p.cleanUpState(); err != nil {
 		p.LogError(err.Error())
