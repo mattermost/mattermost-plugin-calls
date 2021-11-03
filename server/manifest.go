@@ -37,7 +37,7 @@ const manifestStr = `
         "type": "number",
         "help_text": "The UDP port the RTC server will listen on.",
         "placeholder": "",
-        "default": "8443"
+        "default": 8443
       },
       {
         "key": "AllowEnableCalls",
