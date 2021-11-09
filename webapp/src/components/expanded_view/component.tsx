@@ -56,6 +56,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             screenStream: null,
             showParticipantsList: false,
         };
+
+        if (window.opener) {
+            const callsClient = window.opener.callsClient;
+            callsClient.on('close', () => window.close());
+            window.addEventListener('unload', () => {
+                if (this.state.screenStream && this.state.screenStream === callsClient.getLocalScreenStream()) {
+                    callsClient.unshareScreen();
+                }
+            });
+        }
     }
 
     getCallDuration = () => {
@@ -344,6 +354,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        if (!callsClient) {
+            return null;
+        }
+
         const isMuted = callsClient.isMuted();
         const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
         const muteButtonText = isMuted ? 'Unmute' : 'Mute';
