@@ -33,6 +33,14 @@ const manifestStr = `
     "footer": "",
     "settings": [
       {
+        "key": "PublicIPOverride",
+        "display_name": "Public IP Override",
+        "type": "text",
+        "help_text": "The public IP to be used by clients when opening a WebRTC/UDP connection. Defaults to resolving via STUN.",
+        "placeholder": "",
+        "default": ""
+      },
+      {
         "key": "UDPServerPort",
         "display_name": "RTC Server Port",
         "type": "number",
