@@ -36,8 +36,16 @@ const manifestStr = `
         "display_name": "RTC Server Port",
         "type": "number",
         "help_text": "The UDP port the RTC server will listen on.",
-        "placeholder": "",
+        "placeholder": "8443",
         "default": 8443
+      },
+      {
+        "key": "ICEServers",
+        "display_name": "ICE Servers",
+        "type": "text",
+        "help_text": "A comma separated list of ICE servers URLs (STUN/TURN) to use.",
+        "placeholder": "stun:example.com:3478",
+        "default": "stun:stun.l.google.com:19302,stun:global.stun.twilio.com:3478"
       },
       {
         "key": "AllowEnableCalls",

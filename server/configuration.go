@@ -28,9 +28,26 @@ type configuration struct {
 }
 
 type clientConfig struct {
+	// A comma separated list of ICE servers URLs (STUN/TURN) to use.
+	ICEServers ICEServers
 	// When set to true, it allows channel admins to enable calls in their channels.
 	// It also allows participants of DMs/GMs to enable calls.
 	AllowEnableCalls *bool
+}
+
+type ICEServers []string
+
+func (is *ICEServers) UnmarshalJSON(data []byte) error {
+	*is = []string{}
+	if len(data) == 0 {
+		return nil
+	}
+	unquoted, err := strconv.Unquote(string(data))
+	if err != nil {
+		return err
+	}
+	*is = strings.Split(strings.TrimSpace(unquoted), ",")
+	return nil
 }
 
 type PortsRange string
@@ -76,7 +93,8 @@ func (pr PortsRange) IsValid() error {
 
 func (c *configuration) getClientConfig() clientConfig {
 	return clientConfig{
-		AllowEnableCalls: model.NewBool(*c.AllowEnableCalls),
+		AllowEnableCalls: c.AllowEnableCalls,
+		ICEServers:       c.ICEServers,
 	}
 }
 
@@ -98,6 +116,10 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [1024, 49151]", *c.UDPServerPort)
 	}
 
+	if len(c.ICEServers) == 0 {
+		return fmt.Errorf("ICEServers cannot be empty")
+	}
+
 	return nil
 }
 
@@ -112,6 +134,13 @@ func (c *configuration) Clone() *configuration {
 
 	if c.AllowEnableCalls != nil {
 		cfg.AllowEnableCalls = model.NewBool(*c.AllowEnableCalls)
+	}
+
+	if c.ICEServers != nil {
+		cfg.ICEServers = make(ICEServers, len(c.ICEServers))
+		for i, u := range c.ICEServers {
+			cfg.ICEServers[i] = u
+		}
 	}
 
 	return &cfg

@@ -1,9 +1,10 @@
 import {EventEmitter} from 'events';
 import SimplePeer from 'simple-peer';
+import axios from 'axios';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {getWSConnectionURL, getScreenStream} from './utils';
+import {getWSConnectionURL, getScreenStream, getPluginPath} from './utils';
 
 import VoiceActivityDetector from './vad';
 
@@ -93,8 +94,21 @@ export default class CallsClient extends EventEmitter {
             this.disconnect();
         };
 
-        ws.onopen = () => {
-            const peer = new SimplePeer({initiator: true, trickle: true}) as SimplePeer.Instance;
+        ws.onopen = async () => {
+            let config;
+            try {
+                const resp = await axios.get(`${getPluginPath()}/config`);
+                config = resp.data;
+            } catch (err) {
+                console.log(err);
+                return;
+            }
+            const peer = new SimplePeer({
+                initiator: true,
+                trickle: true,
+                config: {iceServers: [{urls: config.ICEServers}]},
+            }) as SimplePeer.Instance;
+
             this.peer = peer;
             peer.on('signal', (data) => {
                 console.log('signal', data);

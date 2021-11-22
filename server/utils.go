@@ -51,8 +51,17 @@ func (p *Plugin) iterSessions(channelID string, cb func(us *session)) {
 	p.mut.RUnlock()
 }
 
-func getPublicIP(conn net.PacketConn) (string, error) {
-	serverURL := stunServers[0][strings.Index(stunServers[0], ":")+1:]
+func getPublicIP(conn net.PacketConn, iceServers []string) (string, error) {
+	var stunURL string
+	for _, u := range iceServers {
+		if strings.HasPrefix(u, "stun:") {
+			stunURL = u
+		}
+	}
+	if stunURL == "" {
+		return "", fmt.Errorf("No STUN server URL was found")
+	}
+	serverURL := stunURL[strings.Index(stunURL, ":")+1:]
 	serverAddr, err := net.ResolveUDPAddr("udp", serverURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve stun host: %w", err)

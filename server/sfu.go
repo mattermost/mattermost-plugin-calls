@@ -14,7 +14,6 @@ import (
 )
 
 var (
-	stunServers   = []string{"stun:stun.l.google.com:19302", "stun:global.stun.twilio.com:3478"}
 	rtpAudioCodec = webrtc.RTPCodecCapability{
 		MimeType:     "audio/opus",
 		ClockRate:    48000,
@@ -169,7 +168,7 @@ func (p *Plugin) initRTCConn(userID string) {
 	peerConnConfig := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
-				URLs: stunServers,
+				URLs: p.getConfiguration().ICEServers,
 			},
 		},
 		SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,

@@ -26,8 +26,10 @@ func (p *Plugin) OnActivate() error {
 		return appErr
 	}
 
+	cfg := p.getConfiguration()
+
 	udpServerConn, err := net.ListenUDP("udp4", &net.UDPAddr{
-		Port: *p.getConfiguration().UDPServerPort,
+		Port: *cfg.UDPServerPort,
 	})
 	if err != nil {
 		p.LogError(err.Error())
@@ -44,7 +46,7 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
-	publicIP, err := getPublicIP(udpServerConn)
+	publicIP, err := getPublicIP(udpServerConn, cfg.ICEServers)
 	if err != nil {
 		p.LogError(err.Error())
 		return err
