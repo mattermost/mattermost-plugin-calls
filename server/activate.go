@@ -51,10 +51,13 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
-	publicIP, err := getPublicIP(udpServerConn, cfg.ICEServers)
-	if err != nil {
-		p.LogError(err.Error())
-		return err
+	publicIP := p.getConfiguration().PublicIPOverride
+	if publicIP == "" {
+		publicIP, err = getPublicIP(udpServerConn, cfg.ICEServers)
+		if err != nil {
+			p.LogError(err.Error())
+			return err
+		}
 	}
 
 	udpServerMux := webrtc.NewICEUDPMux(nil, udpServerConn)

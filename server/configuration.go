@@ -23,7 +23,8 @@ import (
 // copy appropriate for your types.
 type configuration struct {
 	// UDP port used by the RTC server to listen to.
-	UDPServerPort *int
+	PublicIPOverride string
+	UDPServerPort    *int
 	clientConfig
 }
 
@@ -126,6 +127,8 @@ func (c *configuration) IsValid() error {
 // Clone copies the configuration.
 func (c *configuration) Clone() *configuration {
 	var cfg configuration
+
+	cfg.PublicIPOverride = c.PublicIPOverride
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)
