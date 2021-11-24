@@ -68,7 +68,11 @@ export default class CallsClient extends EventEmitter {
     public async init(channelID: string) {
         this.stream = await navigator.mediaDevices.getUserMedia({
             video: false,
-            audio: true,
+            audio: {
+                autoGainControl: true,
+                echoCancellation: true,
+                noiseSuppression: true,
+            } as any,
         });
 
         this.updateDevices();
@@ -185,7 +189,14 @@ export default class CallsClient extends EventEmitter {
         this.audioTrack.stop();
         const newStream = await navigator.mediaDevices.getUserMedia({
             video: false,
-            audio: {deviceId: {exact: device.deviceId}},
+            audio: {
+                deviceId: {
+                    exact: device.deviceId,
+                },
+                autoGainControl: true,
+                echoCancellation: true,
+                noiseSuppression: true,
+            } as any,
         });
         this.streams.push(newStream);
         const newTrack = newStream.getAudioTracks()[0];
