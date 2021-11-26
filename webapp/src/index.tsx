@@ -223,6 +223,40 @@ export default class Plugin {
         registry.registerPostTypeComponent('custom_calls', PostType);
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
 
+        registry.registerSlashCommandWillBePostedHook((message, args) => {
+            const fullCmd = message.trim();
+            const fields = fullCmd.split(/\s+/);
+            if (fields.length !== 2) {
+                return {message, args};
+            }
+
+            const rootCmd = fields[0];
+            const subCmd = fields[1];
+
+            if (rootCmd !== '/call') {
+                return {message, args};
+            }
+
+            const connectedID = connectedChannelID(store.getState());
+
+            if (subCmd === 'join') {
+                if (!connectedID) {
+                    connectCall(args.channel_id);
+                    return {};
+                }
+                return {error: {message: 'You are already connected to a call in the current channel.'}};
+            } else if (subCmd === 'leave') {
+                if (connectedID && args.channel_id === connectedID && window.callsClient) {
+                    window.callsClient.disconnect();
+                    delete window.callsClient;
+                    return {};
+                }
+                return {error: {message: 'You are not connected to a call in the current channel.'}};
+            }
+
+            return {message, args};
+        });
+
         let channelHeaderMenuButtonID: string;
         this.unregisterChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {

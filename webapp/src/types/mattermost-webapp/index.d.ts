@@ -10,6 +10,7 @@ export interface PluginRegistry {
     registerWebSocketEventHandler(evType: string, fn: (event: WebSocketEvent) => void)
     registerCustomRoute(route: string, component: React.ElementType)
     registerNeedsTeamRoute(route: string, component: React.ElementType)
+    registerSlashCommandWillBePostedHook(hook: (message: string, args: CommandArgs) => any)
     unregisterComponent(componentID: string)
     unregisterPostTypeComponent(componentID: string)
 }

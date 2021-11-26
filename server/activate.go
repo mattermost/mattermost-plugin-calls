@@ -20,6 +20,11 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
+	if err := p.registerCommands(); err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+
 	status, appErr := p.API.GetPluginStatus(manifest.Id)
 	if appErr != nil {
 		p.LogError(appErr.Error())
@@ -86,6 +91,11 @@ func (p *Plugin) OnDeactivate() error {
 	}
 
 	if err := p.cleanUpState(); err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+
+	if err := p.unregisterCommands(); err != nil {
 		p.LogError(err.Error())
 		return err
 	}
