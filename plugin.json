@@ -1,0 +1,20 @@
+{
+    "id": "com.mattermost.talk",
+    "name": "Talk",
+    "description": "Integrates real-time voice communication in Mattermost",
+    "version": "0.1.0",
+    "min_server_version": "5.26.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64"
+        }
+    },
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    },
+    "settings_schema": {
+        "header": "",
+        "footer": "",
+        "settings": []
+    }
+}
