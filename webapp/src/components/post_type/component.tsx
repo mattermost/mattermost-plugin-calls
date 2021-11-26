@@ -74,6 +74,14 @@ export default class PostType extends React.PureComponent<Props> {
             borderRadius: '4px',
             padding: '10px 16px',
         },
+        leaveButton: {
+            display: 'flex',
+            alignItems: 'center',
+            color: 'rgba(210, 75, 78, 1)',
+            background: 'rgba(210, 75, 78, 0.1)',
+            borderRadius: '4px',
+            padding: '10px 16px',
+        },
         profiles: {
             display: 'flex',
             alignItems: 'center',
@@ -85,9 +93,14 @@ export default class PostType extends React.PureComponent<Props> {
         if (this.props.connectedID) {
             return;
         }
-        console.log(this.props.theme);
-
         window.postMessage({type: 'connectCall', channelID: this.props.currChannelID}, window.origin);
+    }
+
+    onLeaveButtonClick = () => {
+        if (window.callsClient) {
+            window.callsClient.disconnect();
+            delete window.callsClient;
+        }
     }
 
     render() {
@@ -140,14 +153,26 @@ export default class PostType extends React.PureComponent<Props> {
 
                 </div>
                 {
-                    !this.props.post.props.end_at &&
+                    !this.props.post.props.end_at && (!this.props.connectedID || this.props.connectedID !== this.props.currChannelID) &&
                         <button
                             className='cursor--pointer style--none'
                             style={this.style.joinButton}
                             onClick={this.onJoinCallClick}
                         >
                             <CallIcon fill='#FFFFFF'/>
-                            <span style={{fontWeight: 600, margin: '0 8px'}}>{'Join Call'}</span>
+                            <span style={{fontWeight: 600, margin: '0 8px'}}>{'Join call'}</span>
+                        </button>
+                }
+                {
+                    !this.props.post.props.end_at && this.props.connectedID && this.props.connectedID === this.props.currChannelID &&
+
+                        <button
+                            className='cursor--pointer style--none'
+                            style={this.style.leaveButton}
+                            onClick={this.onLeaveButtonClick}
+                        >
+                            <LeaveCallIcon fill='rgba(210, 75, 78, 1)'/>
+                            <span style={{fontWeight: 600, margin: '0 8px'}}>{'Leave call'}</span>
                         </button>
                 }
 
