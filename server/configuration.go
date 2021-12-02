@@ -22,9 +22,10 @@ import (
 // If you add non-reference types to your configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
 type configuration struct {
+	// The IP (or hostname) to be used as the host ICE candidate.
+	ICEHostOverride string
 	// UDP port used by the RTC server to listen to.
-	PublicIPOverride string
-	UDPServerPort    *int
+	UDPServerPort *int
 	clientConfig
 }
 
@@ -128,7 +129,7 @@ func (c *configuration) IsValid() error {
 func (c *configuration) Clone() *configuration {
 	var cfg configuration
 
-	cfg.PublicIPOverride = c.PublicIPOverride
+	cfg.ICEHostOverride = c.ICEHostOverride
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)

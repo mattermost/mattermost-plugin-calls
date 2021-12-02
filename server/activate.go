@@ -5,7 +5,6 @@ import (
 
 	"github.com/mattermost/mattermost-server/v6/model"
 
-	"github.com/pion/ice/v2"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -51,29 +50,22 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
-	publicIP := p.getConfiguration().PublicIPOverride
-	if publicIP == "" {
-		publicIP, err = getPublicIP(udpServerConn, cfg.ICEServers)
-		if err != nil {
-			p.LogError(err.Error())
-			return err
-		}
+	hostIP, err := getPublicIP(udpServerConn, cfg.ICEServers)
+	if err != nil {
+		p.LogError(err.Error())
+		return err
 	}
 
 	udpServerMux := webrtc.NewICEUDPMux(nil, udpServerConn)
-	sEngine := webrtc.SettingEngine{}
-	sEngine.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
-	sEngine.SetNAT1To1IPs([]string{publicIP}, webrtc.ICECandidateTypeHost)
-	sEngine.SetICEUDPMux(udpServerMux)
 
 	p.mut.Lock()
 	p.nodeID = status.ClusterId
-	p.rtcSettingsEngine = sEngine
 	p.udpServerMux = udpServerMux
 	p.udpServerConn = udpServerConn
+	p.hostIP = hostIP
 	p.mut.Unlock()
 
-	p.LogDebug("activate", "ClusterID", status.ClusterId, "PublicIP", publicIP)
+	p.LogDebug("activate", "ClusterID", status.ClusterId, "HostIP", hostIP)
 
 	go p.clusterEventsHandler()
 

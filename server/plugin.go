@@ -12,7 +12,6 @@ import (
 	"github.com/mattermost/mattermost-server/v6/plugin"
 
 	"github.com/pion/ice/v2"
-	"github.com/pion/webrtc/v3"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -28,15 +27,15 @@ type Plugin struct {
 
 	metrics *performance.Metrics
 
-	mut               sync.RWMutex
-	nodeID            string // the node cluster id
-	stopCh            chan struct{}
-	clusterEvCh       chan model.PluginClusterEvent
-	sessions          map[string]*session
-	calls             map[string]*call
-	rtcSettingsEngine webrtc.SettingEngine
-	udpServerConn     *net.UDPConn
-	udpServerMux      ice.UDPMux
+	mut           sync.RWMutex
+	nodeID        string // the node cluster id
+	stopCh        chan struct{}
+	clusterEvCh   chan model.PluginClusterEvent
+	sessions      map[string]*session
+	calls         map[string]*call
+	udpServerConn *net.UDPConn
+	udpServerMux  ice.UDPMux
+	hostIP        string
 }
 
 func (p *Plugin) startSession(msg *clusterMessage) {

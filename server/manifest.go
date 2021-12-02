@@ -32,10 +32,10 @@ const manifestStr = `
     "footer": "",
     "settings": [
       {
-        "key": "PublicIPOverride",
-        "display_name": "Public IP Override",
+        "key": "ICEHostOverride",
+        "display_name": "ICE Host Override",
         "type": "text",
-        "help_text": "The public IP to be used by clients when opening a WebRTC/UDP connection. Defaults to resolving via STUN.",
+        "help_text": "The IP (or hostname) to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.",
         "placeholder": "",
         "default": ""
       },

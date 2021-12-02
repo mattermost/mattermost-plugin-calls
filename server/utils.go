@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -124,4 +125,19 @@ func stunRequest(read func([]byte) (int, error), write func([]byte) (int, error)
 		return nil, err
 	}
 	return res, nil
+}
+
+func resolveHost(host string, timeout time.Duration) (string, error) {
+	var ip string
+	r := net.Resolver{}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	addrs, err := r.LookupIP(ctx, "ip4", host)
+	if err != nil {
+		return ip, fmt.Errorf("failed to resolve host %q: %w", host, err)
+	}
+	if len(addrs) > 0 {
+		ip = addrs[0].String()
+	}
+	return ip, err
 }

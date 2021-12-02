@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 
+	"github.com/pion/ice/v2"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 	"github.com/prometheus/client_golang/prometheus"
@@ -190,7 +192,21 @@ func (p *Plugin) initRTCConn(userID string) {
 		return
 	}
 
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m), webrtc.WithSettingEngine(p.rtcSettingsEngine))
+	var err error
+	sEngine := webrtc.SettingEngine{}
+	sEngine.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
+	sEngine.SetICEUDPMux(p.udpServerMux)
+	hostIP := p.hostIP
+	if hostOverride := p.getConfiguration().ICEHostOverride; hostOverride != "" {
+		hostIP, err = resolveHost(hostOverride, time.Second)
+		if err != nil {
+			p.LogError(err.Error())
+			return
+		}
+	}
+	sEngine.SetNAT1To1IPs([]string{hostIP}, webrtc.ICECandidateTypeHost)
+
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m), webrtc.WithSettingEngine(sEngine))
 	peerConn, err := api.NewPeerConnection(peerConnConfig)
 	if err != nil {
 		p.LogError(err.Error())
