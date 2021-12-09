@@ -39,7 +39,7 @@ type Plugin struct {
 }
 
 func (p *Plugin) startSession(msg *clusterMessage) {
-	us := newUserSession(msg.UserID, msg.ChannelID)
+	us := newUserSession(msg.UserID, msg.ChannelID, "")
 
 	p.mut.Lock()
 	p.sessions[msg.UserID] = us
@@ -57,13 +57,13 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 		p.LogDebug("handleTracks DONE")
 	}()
 
-	for m := range us.wsOutCh {
+	for m := range us.signalOutCh {
 		clusterMsg := clusterMessage{
 			UserID:    msg.UserID,
 			ChannelID: msg.ChannelID,
 			SenderID:  p.nodeID,
 			ClientMessage: clientMessage{
-				Type: clientMessageTypeSignal,
+				Type: clientMessageTypeSDP,
 				Data: m,
 			},
 		}
@@ -111,8 +111,8 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		p.mut.Lock()
 		delete(p.sessions, us.userID)
 		p.mut.Unlock()
-		close(us.wsInCh)
-		close(us.wsOutCh)
+		close(us.signalInCh)
+		close(us.signalOutCh)
 		close(us.closeCh)
 		if us.rtcConn != nil {
 			us.rtcConn.Close()
@@ -121,16 +121,16 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", msg.UserID, msg.ChannelID)
 		}
-		if msg.ClientMessage.Type != clientMessageTypeSignal && msg.ClientMessage.Type != clientMessageTypeICE {
+		if msg.ClientMessage.Type != clientMessageTypeSDP && msg.ClientMessage.Type != clientMessageTypeICE {
 			return fmt.Errorf("unexpected client message type %q", msg.ClientMessage.Type)
 		}
 
-		signalCh := us.wsInCh
+		signalCh := us.signalInCh
 		if msg.ClientMessage.Type == clientMessageTypeICE {
 			signalCh = us.iceCh
 		}
-		if us.wsConn != nil {
-			signalCh = us.wsOutCh
+		if us.wsConn != nil || us.connID != "" {
+			signalCh = us.signalOutCh
 		}
 
 		select {

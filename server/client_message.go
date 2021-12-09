@@ -10,7 +10,8 @@ type clientMessage struct {
 }
 
 const (
-	clientMessageTypeSignal      = "signal"
+	clientMessageTypeJoin        = "join"
+	clientMessageTypeSDP         = "sdp"
 	clientMessageTypeICE         = "ice"
 	clientMessageTypeMute        = "mute"
 	clientMessageTypeUnmute      = "unmute"

@@ -37,6 +37,36 @@ var (
 	}
 )
 
+func (p *Plugin) handleICE(us *session) {
+	for {
+		select {
+		case data, ok := <-us.iceCh:
+			if !ok {
+				return
+			}
+
+			var candidate webrtc.ICECandidateInit
+			if err := json.Unmarshal(data, &candidate); err != nil {
+				p.LogError(err.Error())
+				continue
+			}
+
+			if candidate.Candidate == "" {
+				continue
+			}
+
+			p.LogDebug("setting ICE candidate for remote")
+
+			if err := us.rtcConn.AddICECandidate(candidate); err != nil {
+				p.LogError(err.Error())
+				continue
+			}
+		case <-us.closeCh:
+			return
+		}
+	}
+}
+
 func (p *Plugin) handleSignaling(us *session, msg []byte) error {
 	us.mut.RLock()
 	peerConn := us.rtcConn
@@ -69,7 +99,7 @@ func (p *Plugin) handleSignaling(us *session, msg []byte) error {
 
 	p.LogDebug(string(sdp))
 
-	us.wsOutCh <- sdp
+	us.signalOutCh <- sdp
 
 	return nil
 }
@@ -143,10 +173,10 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 		return
 	}
 
-	userSession.wsOutCh <- sdp
+	userSession.signalOutCh <- sdp
 
 	var answer webrtc.SessionDescription
-	msg, ok := <-userSession.wsInCh
+	msg, ok := <-userSession.signalInCh
 	if !ok {
 		return
 	}
@@ -217,35 +247,6 @@ func (p *Plugin) initRTCConn(userID string) {
 	userSession := p.sessions[userID]
 	p.mut.RUnlock()
 
-	go func() {
-		for {
-			select {
-			case data, ok := <-userSession.iceCh:
-				if !ok {
-					return
-				}
-
-				var candidate webrtc.ICECandidateInit
-				if err := json.Unmarshal(data, &candidate); err != nil {
-					p.LogError(err.Error())
-					continue
-				}
-
-				if candidate.Candidate == "" {
-					p.LogDebug("received empty candidate")
-					continue
-				}
-
-				if err := peerConn.AddICECandidate(candidate); err != nil {
-					p.LogError(err.Error())
-					continue
-				}
-			case <-userSession.closeCh:
-				return
-			}
-		}
-	}()
-
 	userSession.mut.Lock()
 	userSession.rtcConn = peerConn
 	userSession.mut.Unlock()
@@ -261,7 +262,7 @@ func (p *Plugin) initRTCConn(userID string) {
 				p.LogError(err.Error())
 				return
 			}
-			userSession.wsOutCh <- msg
+			userSession.signalOutCh <- msg
 		}
 	})
 
@@ -409,7 +410,7 @@ func (p *Plugin) initRTCConn(userID string) {
 		}
 	})
 
-	msg, ok := <-userSession.wsInCh
+	msg, ok := <-userSession.signalInCh
 	if !ok {
 		return
 	}
@@ -417,6 +418,8 @@ func (p *Plugin) initRTCConn(userID string) {
 	if err := p.handleSignaling(userSession, msg); err != nil {
 		p.LogError(err.Error())
 	}
+
+	go p.handleICE(userSession)
 }
 
 func (p *Plugin) handleTracks(us *session) {
@@ -445,7 +448,7 @@ func (p *Plugin) handleTracks(us *session) {
 				return
 			}
 			p.addTrack(us, track, true)
-		case msg, ok := <-us.wsInCh:
+		case msg, ok := <-us.signalInCh:
 			if !ok {
 				return
 			}

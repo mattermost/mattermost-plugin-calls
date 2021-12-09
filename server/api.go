@@ -12,7 +12,6 @@ import (
 	"github.com/mattermost/mattermost-server/v6/plugin"
 )
 
-var wsRE = regexp.MustCompile(`^\/([a-z0-9]+)\/ws$`)
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
 
 type Call struct {
@@ -209,12 +208,6 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	if r.Header.Get("Mattermost-User-Id") == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	if matches := wsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-		p.handleWebSocket(w, r, matches[1])
-		p.LogDebug("ws handler done")
 		return
 	}
 

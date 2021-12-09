@@ -6,6 +6,9 @@ import {
     getTeamByName,
     getTeamMemberships,
 } from 'mattermost-redux/selectors/entities/teams';
+
+import {Client4} from 'mattermost-redux/client';
+
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
 
@@ -25,7 +28,13 @@ export function getPluginPath() {
         `/plugins/${pluginId}`;
 }
 
-export function getWSConnectionURL(channelID: string): string {
+export function getWSConnectionURL(): string {
+    const loc = window.location;
+    const uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${uri}//${loc.host}${Client4.getUrlVersion()}/websocket`;
+}
+
+export function getPluginWSConnectionURL(channelID: string): string {
     const loc = window.location;
     const uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${uri}//${loc.host}${getPluginPath()}/${channelID}/ws`;

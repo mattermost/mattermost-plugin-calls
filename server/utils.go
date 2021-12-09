@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"compress/zlib"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"time"
@@ -140,4 +143,17 @@ func resolveHost(host string, timeout time.Duration) (string, error) {
 		ip = addrs[0].String()
 	}
 	return ip, err
+}
+
+func unpackSDPData(data []byte) ([]byte, error) {
+	buf := bytes.NewBuffer(data)
+	rd, err := zlib.NewReader(buf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create reader: %w", err)
+	}
+	unpacked, err := io.ReadAll(rd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read data: %w", err)
+	}
+	return unpacked, nil
 }

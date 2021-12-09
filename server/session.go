@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	wsChSize = 10
+	msgChSize = 20
 )
 
 type session struct {
@@ -20,11 +20,14 @@ type session struct {
 
 	userID    string
 	channelID string
+	connID    string
 
 	// WebSocket
-	wsInCh  chan []byte
-	wsOutCh chan []byte
-	wsConn  *websocket.Conn
+	signalInCh  chan []byte
+	signalOutCh chan []byte
+	wsConn      *websocket.Conn
+	wsMsgCh     chan clientMessage
+	wsCloseCh   chan struct{}
 
 	// WebRTC
 	outVoiceTrack        *webrtc.TrackLocalStaticRTP
@@ -40,14 +43,17 @@ type session struct {
 	rtpSendersMap map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender
 }
 
-func newUserSession(userID, channelID string) *session {
+func newUserSession(userID, channelID, connID string) *session {
 	return &session{
 		userID:        userID,
 		channelID:     channelID,
-		wsInCh:        make(chan []byte, wsChSize),
-		wsOutCh:       make(chan []byte, wsChSize),
+		connID:        connID,
+		signalInCh:    make(chan []byte, msgChSize),
+		signalOutCh:   make(chan []byte, msgChSize),
+		wsMsgCh:       make(chan clientMessage, msgChSize),
+		wsCloseCh:     make(chan struct{}),
 		tracksCh:      make(chan *webrtc.TrackLocalStaticRTP, 5),
-		iceCh:         make(chan []byte, wsChSize),
+		iceCh:         make(chan []byte, msgChSize),
 		closeCh:       make(chan struct{}),
 		trackEnableCh: make(chan bool, 5),
 		rtpSendersMap: map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender{},

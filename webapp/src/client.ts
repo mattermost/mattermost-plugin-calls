@@ -2,15 +2,19 @@ import {EventEmitter} from 'events';
 import SimplePeer from 'simple-peer';
 import axios from 'axios';
 
+// @ts-ignore
+import {deflate} from 'pako/lib/deflate.js';
+
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {getWSConnectionURL, getScreenStream, getPluginPath} from './utils';
+import {getPluginWSConnectionURL, getScreenStream, getPluginPath} from './utils';
 
+import WebSocketClient from './websocket';
 import VoiceActivityDetector from './vad';
 
 export default class CallsClient extends EventEmitter {
     private peer: SimplePeer.Instance | null;
-    private ws: WebSocket | null;
+    private ws: WebSocketClient | null;
     private localScreenTrack: any;
     private remoteScreenTrack: any;
     private currentAudioDeviceID: string;
@@ -42,17 +46,13 @@ export default class CallsClient extends EventEmitter {
         }
         this.voiceDetector = new VoiceActivityDetector(new AudioContext(), inputStream.clone());
         this.voiceDetector.on('start', () => {
-            if (this.ws?.readyState === WebSocket.OPEN && this.audioTrack?.enabled) {
-                this.ws.send(JSON.stringify({
-                    type: 'voice_on',
-                }));
+            if (this.ws && this.audioTrack?.enabled) {
+                this.ws.send('voice_on');
             }
         });
         this.voiceDetector.on('stop', () => {
-            if (this.ws?.readyState === WebSocket.OPEN) {
-                this.ws.send(JSON.stringify({
-                    type: 'voice_off',
-                }));
+            if (this.ws) {
+                this.ws.send('voice_off');
             }
         });
     }
@@ -84,22 +84,27 @@ export default class CallsClient extends EventEmitter {
         this.initVAD(this.stream);
         this.audioTrack.enabled = false;
 
-        const ws = new WebSocket(getWSConnectionURL(channelID));
+        const ws = new WebSocketClient();
         this.ws = ws;
 
-        ws.onerror = (err) => {
+        ws.on('error', (err) => {
             console.log(err);
             this.ws = null;
             this.disconnect();
-        };
+        });
 
-        ws.onclose = () => {
+        ws.on('close', () => {
             this.ws = null;
             this.disconnect();
-        };
+        });
 
-        ws.onopen = async () => {
+        ws.on('open', async (connID: string) => {
             let config;
+
+            ws.send('join', {
+                channelID,
+            });
+
             try {
                 const resp = await axios.get(`${getPluginPath()}/config`);
                 config = resp.data;
@@ -120,18 +125,16 @@ export default class CallsClient extends EventEmitter {
                     if (!ws) {
                         return;
                     }
-                    ws.send(JSON.stringify({
-                        type: 'signal',
-                        data,
-                    }));
+                    ws.send('sdp', {
+                        data: deflate(JSON.stringify(data)),
+                    }, true);
                 } else if (data.type === 'candidate') {
                     if (!ws) {
                         return;
                     }
-                    ws.send(JSON.stringify({
-                        type: 'ice',
-                        data: data.candidate,
-                    }));
+                    ws.send('ice', {
+                        data: JSON.stringify(data.candidate),
+                    });
                 }
             });
             peer.on('error', (err) => {
@@ -151,10 +154,13 @@ export default class CallsClient extends EventEmitter {
                     this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
                 }
             });
-        };
+        });
 
-        ws.onmessage = ({data}) => {
+        ws.on('message', ({data}) => {
             const msg = JSON.parse(data);
+            if (!msg) {
+                return;
+            }
             if (msg.type !== 'ping') {
                 console.log('ws', data);
             }
@@ -163,7 +169,7 @@ export default class CallsClient extends EventEmitter {
                     this.peer.signal(data);
                 }
             }
-        };
+        });
 
         return this;
     }
@@ -266,9 +272,7 @@ export default class CallsClient extends EventEmitter {
         this.audioTrack.enabled = false;
 
         if (this.ws) {
-            this.ws.send(JSON.stringify({
-                type: 'mute',
-            }));
+            this.ws.send('mute');
         }
     }
 
@@ -289,9 +293,7 @@ export default class CallsClient extends EventEmitter {
         }
         this.audioTrack.enabled = true;
         if (this.ws) {
-            this.ws.send(JSON.stringify({
-                type: 'unmute',
-            }));
+            this.ws.send('unmute');
         }
     }
 
@@ -326,16 +328,12 @@ export default class CallsClient extends EventEmitter {
 
             // @ts-ignore: we actually mean to pass null here
             this.peer.replaceTrack(screenTrack, null, screenStream);
-            this.ws.send(JSON.stringify({
-                type: 'screen_off',
-            }));
+            this.ws.send('screen_off');
         };
 
         this.peer.addStream(screenStream);
 
-        this.ws.send(JSON.stringify({
-            type: 'screen_on',
-        }));
+        this.ws.send('screen_on');
     }
 
     public async shareScreen() {
@@ -365,18 +363,14 @@ export default class CallsClient extends EventEmitter {
 
     public raiseHand() {
         if (this.ws) {
-            this.ws.send(JSON.stringify({
-                type: 'raise_hand',
-            }));
+            this.ws.send('raise_hand');
         }
         this.isHandRaised = true;
     }
 
     public unraiseHand() {
         if (this.ws) {
-            this.ws.send(JSON.stringify({
-                type: 'unraise_hand',
-            }));
+            this.ws.send('unraise_hand');
         }
         this.isHandRaised = false;
     }

@@ -21,6 +21,7 @@ import (
 )
 
 var manifest model.Manifest
+var wsActionPrefix string
 
 const manifestStr = ` + "`" + `
 %s
@@ -30,6 +31,7 @@ func init() {
 	if err := json.Unmarshal([]byte(manifestStr), &manifest); err != nil {
 		panic(err.Error())
 	}
+	wsActionPrefix = "custom_" + manifest.Id + "_"
 }
 `
 

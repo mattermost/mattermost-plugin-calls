@@ -9,14 +9,15 @@ import (
 )
 
 var manifest model.Manifest
+var wsActionPrefix string
 
 const manifestStr = `
 {
   "id": "com.mattermost.calls",
   "name": "Calls",
   "description": "Integrates real-time voice communication in Mattermost",
-  "version": "0.1.0",
-  "min_server_version": "6.0.0",
+  "version": "0.2.0",
+  "min_server_version": "6.3.0",
   "server": {
     "executables": {
       "darwin-amd64": "server/dist/plugin-darwin-amd64",
@@ -72,4 +73,5 @@ func init() {
 	if err := json.Unmarshal([]byte(manifestStr), &manifest); err != nil {
 		panic(err.Error())
 	}
+	wsActionPrefix = "custom_" + manifest.Id + "_"
 }
