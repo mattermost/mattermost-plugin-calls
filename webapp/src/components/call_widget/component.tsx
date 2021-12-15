@@ -165,11 +165,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             color: this.props.theme.centerChannelColor,
         },
         screenSharingPanel: {
+            position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            bottom: 'calc(100% + 4px)',
-            top: 'auto',
             width: '100%',
             minWidth: 'revert',
             maxWidth: 'revert',
@@ -185,8 +184,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             marginRight: 'auto',
         },
         dotsMenu: {
-            bottom: 'calc(100% + 4px)',
-            top: 'auto',
+            position: 'relative',
             width: '100%',
             minWidth: 'revert',
             maxWidth: 'revert',
@@ -272,8 +270,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             screenStream = window.callsClient.getLocalScreenStream();
         }
 
-        const wasRendering = Boolean(prevProps.screenSharingID && !prevState.showMenu && !prevState.showParticipantsList && prevState.screenStream);
-        const shouldRender = Boolean(this.props.screenSharingID && !this.state.showMenu && !this.state.showParticipantsList && screenStream);
+        const wasRendering = Boolean(prevProps.screenSharingID && prevState.screenStream);
+        const shouldRender = Boolean(this.props.screenSharingID && screenStream);
 
         if (!wasRendering && shouldRender && this.screenPlayer.current) {
             this.screenPlayer.current.srcObject = screenStream;
@@ -376,7 +374,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     renderScreenSharingPanel = () => {
-        if (!this.props.screenSharingID || this.state.showMenu || this.state.showParticipantsList) {
+        if (!this.props.screenSharingID) {
             return null;
         }
 
@@ -581,7 +579,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             >
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={{bottom: 'calc(100% + 4px)', top: 'auto', width: '100%', minWidth: 'revert', maxWidth: 'revert', maxHeight: '188px', overflow: 'auto'}}
+                    style={{width: '100%', minWidth: 'revert', maxWidth: 'revert', maxHeight: '188px', overflow: 'auto', position: 'relative'}}
                 >
                     { renderParticipants() }
                 </ul>
@@ -708,7 +706,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <div className='Menu'>
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={this.style.dotsMenu}
+                    style={this.style.dotsMenu as CSSProperties}
                 >
                     {!hasTeamSidebar && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices()}
@@ -884,9 +882,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 ref={this.node}
             >
                 <div style={this.style.status as CSSProperties}>
-                    {this.renderScreenSharingPanel()}
-                    {this.renderParticipantsList()}
-                    {this.renderMenu(hasTeamSidebar)}
+                    <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%'}}>
+                        {this.renderScreenSharingPanel()}
+                        {this.renderParticipantsList()}
+                        {this.renderMenu(hasTeamSidebar)}
+                    </div>
 
                     <div
                         style={this.style.topBar}
