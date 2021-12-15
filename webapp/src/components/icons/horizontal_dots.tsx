@@ -12,7 +12,9 @@ type Props = {
 export default function HorizontalDotsIcon(props: Props) {
     return (
         <svg
-            {...props}
+            style={props.style}
+            className={props.className}
+            fill={props.fill}
             width='12px'
             height='4px'
             viewBox='0 0 12 4'

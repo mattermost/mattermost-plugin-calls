@@ -12,7 +12,9 @@ type Props = {
 export default function ScreenIcon(props: Props) {
     return (
         <svg
-            {...props}
+            style={props.style}
+            className={props.className}
+            fill={props.fill}
             width='18px'
             height='16px'
             viewBox='0 0 18 16'

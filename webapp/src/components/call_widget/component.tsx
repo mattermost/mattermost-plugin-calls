@@ -87,7 +87,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             bottom: '12px',
             left: '12px',
             zIndex: '1000',
-            border: '1px solid rgba(63, 67, 80, 0.3)',
+            border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
             userSelect: 'none',
             color: this.props.theme.centerChannelColor,
         },
@@ -442,7 +442,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </button>
 
                     </div>
-                    <span style={{marginTop: '8px', color: 'rgba(63, 67, 80, 0.72)', fontSize: '12px', padding: '0 8px', textAlign: 'center'}}>{msg}</span>
+                    <span style={{marginTop: '8px', color: changeOpacity(this.props.theme.centerChannelColor, 0.72), fontSize: '12px', padding: '0 8px', textAlign: 'center'}}>{msg}</span>
                 </ul>
             </div>
         );
@@ -474,6 +474,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     <ScreenIcon
                         style={{width: '16px', height: '16px', fill: isSharing ? 'rgba(210, 75, 78, 1)' : ''}}
+                        fill={isSharing ? 'rgba(210, 75, 78, 1)' : ''}
                     />
                 </button>
             </OverlayTrigger>
@@ -686,13 +687,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         className='style--none'
                         style={{
                             display: 'flex',
-                            color: sharingID !== '' && !isSharing ? 'rgba(63, 67, 80, 0.34)' : '',
+                            color: sharingID !== '' && !isSharing ? changeOpacity(this.props.theme.centerChannelColor, 0.34) : '',
                         }}
                         disabled={Boolean(sharingID !== '' && !isSharing)}
                         onClick={this.onShareScreenToggle}
                     >
                         <ScreenIcon
-                            style={{width: '16px', height: '16px', fill: isSharing ? 'rgba(210, 75, 78, 1)' : '', marginRight: '8px'}}
+                            style={{width: '16px', height: '16px', marginRight: '8px'}}
+                            fill={isSharing ? 'rgba(210, 75, 78, 1)' : changeOpacity(this.props.theme.centerChannelColor, 0.64)}
                         />
                         <span>{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
                     </button>
@@ -1024,7 +1026,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 onClick={this.onMuteToggle}
                             >
                                 <MuteIcon
-                                    style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)'}}
+                                    style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : 'rgba(61, 184, 135, 1)'}}
                                     stroke={window.callsClient.isMuted() ? 'rgba(210, 75, 78, 1)' : ''}
                                 />
                             </button>

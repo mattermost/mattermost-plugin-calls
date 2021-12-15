@@ -12,7 +12,9 @@ type Props = {
 export default function ParticipantsIcon(props: Props) {
     return (
         <svg
-            {...props}
+            style={props.style}
+            className={props.className}
+            fill={props.fill}
             width='16px'
             height='16px'
             viewBox='0 0 16 16'
