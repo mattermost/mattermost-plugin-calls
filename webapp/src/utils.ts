@@ -23,6 +23,11 @@ import {UserState} from './types/types';
 
 import {id as pluginId} from './manifest';
 
+export function getPluginStaticPath() {
+    return window.basename ? `${window.basename}/static/plugins/${pluginId}` :
+        `/static/plugins/${pluginId}`;
+}
+
 export function getPluginPath() {
     return window.basename ? `${window.basename}/plugins/${pluginId}` :
         `/plugins/${pluginId}`;

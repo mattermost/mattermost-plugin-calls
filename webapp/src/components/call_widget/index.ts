@@ -2,7 +2,9 @@ import {bindActionCreators, Dispatch} from 'redux';
 import {connect} from 'react-redux';
 import {GlobalState} from 'mattermost-redux/types/store';
 import {UserProfile} from 'mattermost-redux/types/users';
+import {IDMappedObjects} from 'mattermost-redux/types/utilities';
 
+import {getUsers} from 'mattermost-redux/selectors/entities/common';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
@@ -31,9 +33,14 @@ const mapStateToProps = (state: GlobalState) => {
     const statuses = voiceUsersStatuses(state);
     const profiles = sortedProfiles(voiceConnectedProfiles(state), statuses);
 
-    const pictures = [];
+    const profilesMap: IDMappedObjects<UserProfile> = {};
+    const picturesMap: {
+        [key: string]: string,
+    } = {};
     for (let i = 0; i < profiles.length; i++) {
-        pictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
+        const pic = Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
+        picturesMap[profiles[i].id] = pic;
+        profilesMap[profiles[i].id] = profiles[i];
     }
 
     let channelURL = '';
@@ -47,7 +54,8 @@ const mapStateToProps = (state: GlobalState) => {
         team: getTeam(state, getCurrentTeamId(state)),
         channelURL,
         profiles,
-        pictures,
+        profilesMap,
+        picturesMap,
         statuses: voiceUsersStatuses(state) || {},
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         screenSharingID,

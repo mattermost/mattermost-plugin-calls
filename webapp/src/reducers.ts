@@ -173,7 +173,6 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
     case VOICE_CHANNEL_UNINIT:
         return {};
     case VOICE_CHANNEL_USER_CONNECTED:
-    case VOICE_CHANNEL_USER_DISCONNECTED:
         if (state[action.data.channelID]) {
             return {
                 ...state,
@@ -185,6 +184,15 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                         raised_hand: 0,
                     },
                 },
+            };
+        }
+        return state;
+    case VOICE_CHANNEL_USER_DISCONNECTED:
+        if (state[action.data.channelID]) {
+            const {[action.data.userID]: omit, ...res} = state[action.data.channelID];
+            return {
+                ...state,
+                [action.data.channelID]: res,
             };
         }
         return state;

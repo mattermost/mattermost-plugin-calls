@@ -9,6 +9,7 @@ import moment from 'moment-timezone';
 import {UserProfile} from 'mattermost-redux/types/users';
 import {Channel} from 'mattermost-redux/types/channels';
 import {Team} from 'mattermost-redux/types/teams';
+import {IDMappedObjects} from 'mattermost-redux/types/utilities';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
@@ -41,7 +42,10 @@ interface Props {
     team: Team,
     channelURL: string,
     profiles: UserProfile[],
-    pictures: string[],
+    profilesMap: IDMappedObjects<UserProfile>,
+    picturesMap: {
+        [key: string]: string,
+    },
     statuses: {
         [key: string]: UserState,
     },
@@ -72,6 +76,7 @@ interface State {
     showAudioInputsMenu?: boolean,
     dragging: DraggingState,
     expandedViewWindow: Window | null,
+    showUsersJoined: string[],
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -216,6 +221,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offY: 0,
             },
             expandedViewWindow: null,
+            showUsersJoined: [],
         };
         this.node = React.createRef();
         this.screenPlayer = React.createRef();
@@ -232,7 +238,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
             intervalID: id,
+            showUsersJoined: [this.props.currentUserID],
         });
+
+        setTimeout(() => {
+            this.setState({
+                showUsersJoined: this.state.showUsersJoined.filter((userID) => userID !== this.props.currentUserID),
+            });
+        }, 5000);
 
         window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
             const voiceTrack = stream.getAudioTracks()[0];
@@ -275,6 +288,45 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (!wasRendering && shouldRender && this.screenPlayer.current) {
             this.screenPlayer.current.srcObject = screenStream;
+        }
+
+        let profiles;
+        if (this.props.profiles.length > prevProps.profiles.length) {
+            profiles = this.props.profiles;
+        } else if (this.props.profiles.length < prevProps.profiles.length) {
+            profiles = prevProps.profiles.length;
+        }
+        let ids: string[] = [];
+        const currIDs = Object.keys(this.props.statuses);
+        const prevIDs = Object.keys(prevProps.statuses);
+        if (currIDs.length > prevIDs.length) {
+            ids = currIDs;
+            if (prevIDs.length === 0) {
+                return;
+            }
+        } else if (currIDs.length < prevIDs.length) {
+            ids = prevIDs;
+        }
+        if (ids.length > 0) {
+            const statuses = this.props.statuses;
+            const prevStatuses = prevProps.statuses;
+            for (let i = 0; i < ids.length; i++) {
+                const userID = ids[i];
+                if (statuses[userID] && !prevStatuses[userID]) {
+                    // eslint-disable-next-line react/no-did-update-set-state
+                    this.setState({
+                        showUsersJoined: [
+                            ...this.state.showUsersJoined,
+                            userID,
+                        ],
+                    });
+                    setTimeout(() => {
+                        this.setState({
+                            showUsersJoined: this.state.showUsersJoined.filter((id) => id !== userID),
+                        });
+                    }, 5000);
+                }
+            }
         }
     }
 
@@ -382,12 +434,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         let profile;
         if (!isSharing) {
-            for (let i = 0; i < this.props.profiles.length; i++) {
-                if (this.props.profiles[i].id === this.props.screenSharingID) {
-                    profile = this.props.profiles[i];
-                    break;
-                }
-            }
+            profile = this.props.profilesMap[this.props.screenSharingID];
             if (!profile) {
                 return null;
             }
@@ -527,7 +574,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         <Avatar
                             size='sm'
-                            url={this.props.pictures[idx]}
+                            url={this.props.picturesMap[profile.id]}
                             style={{marginRight: '8px'}}
                         />
 
@@ -729,7 +776,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             const profile = this.props.profiles[i];
             const status = this.props.statuses[profile.id];
             if (status?.voice) {
-                speakingPictureURL = this.props.pictures[i];
+                speakingPictureURL = this.props.picturesMap[profile.id];
                 break;
             }
         }
@@ -762,6 +809,65 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }
 
             </div>
+        );
+    }
+
+    renderNotificationBar = () => {
+        if (!this.props.currentUserID) {
+            return null;
+        }
+
+        const onJoinSelf = (
+            <React.Fragment>
+                <span>{'You are muted. Click '}</span>
+                <MutedIcon
+                    style={{width: '11px', height: '11px', fill: changeOpacity(this.props.theme.centerChannelColor, 1.0)}}
+                    stroke={'rgba(210, 75, 78, 1)'}
+                />
+                <span>{' to unmute.'}</span>
+            </React.Fragment>
+        );
+
+        const notificationContent = onJoinSelf;
+
+        const joinedUsers = this.state.showUsersJoined.map((userID, idx) => {
+            if (userID === this.props.currentUserID) {
+                return null;
+            }
+
+            const profile = this.props.profilesMap[userID];
+            const picture = this.props.picturesMap[userID];
+            if (!profile) {
+                return null;
+            }
+
+            return (
+                <div
+                    className='calls-notification-bar calls-slide-top'
+                    style={{justifyContent: 'flex-start'}}
+                    key={profile.id}
+                >
+                    <Avatar
+                        size='xxs'
+                        url={picture}
+                        style={{margin: '0 8px'}}
+                    />
+                    {`${getUserDisplayName(profile)} has joined the call.`}
+                </div>
+            );
+        });
+
+        return (
+            <React.Fragment>
+                <div style={{display: 'flex', flexDirection: 'column-reverse'}}>
+                    { joinedUsers }
+                </div>
+                { this.state.showUsersJoined.includes(this.props.currentUserID) &&
+                <div className='calls-notification-bar calls-slide-top'>
+                    {notificationContent}
+                </div>
+                }
+            </React.Fragment>
         );
     }
 
@@ -891,6 +997,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             >
                 <div style={this.style.status as CSSProperties}>
                     <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%'}}>
+                        {this.renderNotificationBar()}
                         {this.renderScreenSharingPanel()}
                         {this.renderParticipantsList()}
                         {this.renderMenu(hasTeamSidebar)}

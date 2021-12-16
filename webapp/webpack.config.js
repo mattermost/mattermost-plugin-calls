@@ -77,6 +77,17 @@ module.exports = {
                     },
                 ],
             },
+            {
+                test: /\.(png|eot|tiff|svg|woff2|woff|ttf|gif|mp3|wav|jpg)$/,
+                use: [
+                    {
+                        loader: 'file-loader',
+                        options: {
+                            name: 'files/[contenthash].[ext]',
+                        },
+                    },
+                ],
+            },
         ],
     },
     externals: {

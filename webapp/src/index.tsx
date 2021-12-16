@@ -26,9 +26,13 @@ import ChannelCallToast from './components/channel_call_toast';
 import PostType from './components/post_type';
 import ExpandedView from './components/expanded_view';
 
+import JoinUserSound from './sounds/join_user.mp3';
+import JoinSelfSound from './sounds/join_self.mp3';
+import LeaveSelfSound from './sounds/leave_self.mp3';
+
 import reducer from './reducers';
 
-import {getPluginPath, hasPermissionsToEnableCalls, getExpandedChannelID} from './utils';
+import {getPluginPath, getPluginStaticPath, hasPermissionsToEnableCalls, getExpandedChannelID} from './utils';
 
 import {
     VOICE_CHANNEL_ENABLE,
@@ -86,12 +90,23 @@ export default class Plugin {
         });
 
         registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_connected`, async (ev) => {
+            const userID = ev.data.userID;
+            const channelID = ev.broadcast.channel_id;
+            const currentUserID = getCurrentUserId(store.getState());
+            if (userID === currentUserID) {
+                const audio = new Audio(getPluginStaticPath() + JoinSelfSound);
+                audio.play();
+            } else if (channelID === connectedChannelID(store.getState())) {
+                const audio = new Audio(getPluginStaticPath() + JoinUserSound);
+                audio.play();
+            }
+
             store.dispatch({
                 type: VOICE_CHANNEL_USER_CONNECTED,
                 data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                    currentUserID: getCurrentUserId(store.getState()),
+                    channelID,
+                    userID,
+                    currentUserID,
                 },
             });
 
@@ -305,6 +320,10 @@ export default class Plugin {
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', () => {
+                    const sound = getPluginStaticPath() + LeaveSelfSound;
+                    const audio = new Audio(sound);
+                    audio.play();
+
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);
                     this.registerChannelHeaderMenuButton();
