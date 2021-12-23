@@ -1004,6 +1004,16 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
+    renderChannelName = () => {
+        return (
+            <React.Fragment>
+                <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
+                {this.props.channel.type === 'O' ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
+                {this.props.channel.display_name}
+            </React.Fragment>
+        );
+    }
+
     render() {
         if (!this.props.channel || !window.callsClient || !this.props.show) {
             return null;
@@ -1059,9 +1069,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
-                                <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
-                                {this.props.channel.type === 'O' ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
-                                {this.props.channel.display_name}
+                                {(this.props.channel.type === 'O' || this.props.channel.type === 'P') && this.renderChannelName()}
                             </div>
                         </div>
                     </div>
