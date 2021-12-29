@@ -496,6 +496,9 @@ export default class Plugin {
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
                 fetchChannelData(currChannelId);
+                if (currChannelId && Boolean(new URLSearchParams(window.location.search).get('join_call')) && !connectedChannelID(store.getState())) {
+                    connectCall(currChannelId);
+                }
             }
         }));
 
