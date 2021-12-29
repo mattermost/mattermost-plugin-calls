@@ -444,8 +444,42 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <div
                 className='Menu'
-                style={{}}
+                style={{
+                    display: 'flex',
+                    position: 'relative',
+                }}
             >
+                { isSharing &&
+                <div
+                    style={{
+                        position: 'absolute',
+                        display: 'flex',
+                        width: '100%',
+                        height: '100%',
+                        background: 'rgba(210, 75, 78, 0.4)',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 1001,
+                    }}
+                >
+                    <button
+                        className='cursor--pointer style--none'
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            padding: '8px 16px',
+                            background: 'rgba(210, 75, 78, 1)',
+                            color: 'white',
+                            borderRadius: '4px',
+                            fontWeight: 600,
+                        }}
+                        onClick={this.onShareScreenToggle}
+                    >
+                        {'Stop sharing'}
+                    </button>
+                </div>
+                }
                 <ul
                     className='Menu__content dropdown-menu'
                     style={this.style.screenSharingPanel as CSSProperties}
