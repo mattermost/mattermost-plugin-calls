@@ -1,0 +1,106 @@
+import {request, FullConfig} from '@playwright/test';
+
+import plugin from '../plugin.json';
+
+import {userState, baseURL, defaultTeam} from './constants';
+
+async function globalSetup(config: FullConfig) {
+    const headers = {'X-Requested-With': 'XMLHttpRequest'};
+
+    const adminContext = await request.newContext();
+    await adminContext.post(`${baseURL}/api/v4/users/login`, {
+        data: {
+            login_id: userState.admin.username,
+            password: userState.admin.password,
+        },
+        headers,
+    });
+    await adminContext.storageState({path: userState.admin.storageStatePath});
+
+    // create and log users in.
+    for (const user of userState.users) {
+        await adminContext.post(`${baseURL}/api/v4/users`, {
+            data: {
+                email: `${user.username}@example.com`,
+                username: user.username,
+                password: user.password,
+            },
+            headers,
+        });
+        const requestContext = await request.newContext();
+        await requestContext.post(`${baseURL}/api/v4/users/login`, {
+            data: {
+                login_id: user.username,
+                password: user.password,
+            },
+            headers,
+        });
+        await requestContext.storageState({path: user.storageStatePath});
+        await requestContext.dispose();
+    }
+
+    let resp = await adminContext.get(`${baseURL}/api/v4/teams/name/${defaultTeam}`);
+    if (resp.status() >= 400) {
+        // create team if missing.
+        resp = await adminContext.post(`${baseURL}/api/v4/teams`, {
+            data: {
+                name: defaultTeam,
+                display_name: defaultTeam,
+                type: 'O',
+            },
+            headers,
+        });
+    }
+
+    const team = await resp.json();
+
+    // add users to team.
+    for (const userInfo of userState.users) {
+        resp = await adminContext.get(`${baseURL}/api/v4/users/username/${userInfo.username}`);
+        const user = await resp.json();
+        await adminContext.post(`${baseURL}/api/v4/teams/${team.id}/members`, {
+            data: {
+                team_id: team.id,
+                user_id: user.id,
+            },
+            headers,
+        });
+        await adminContext.put(`${baseURL}/api/v4/users/${user.id}/preferences`, {
+            data: [{user_id: user.id, category: 'recommended_next_steps', name: 'skip', value: 'true'}],
+            headers,
+        });
+    }
+
+    const channels = [];
+
+    // create some channels.
+    for (let i = 0; i < 4; i++) {
+        const name = `calls${i}`;
+        channels.push(name);
+        await adminContext.post(`${baseURL}/api/v4/channels`, {
+            data: {
+                team_id: team.id,
+                name,
+                display_name: name,
+                type: 'O',
+            },
+            headers,
+        });
+    }
+
+    // enable calls.
+    for (const channelName of channels) {
+        resp = await adminContext.get(`${baseURL}/api/v4/teams/${team.id}/channels/name/${channelName}`);
+        const channel = await resp.json();
+        await adminContext.post(`${baseURL}/plugins/${plugin.id}/${channel.id}`, {
+            data: {
+                enabled: true,
+            },
+            headers,
+        });
+    }
+
+    await adminContext.dispose();
+}
+
+export default globalSetup;

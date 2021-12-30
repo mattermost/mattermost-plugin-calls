@@ -66,6 +66,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
         }
         return (
             <div
+                id='calls-channel-toast'
                 className='toast toast__visible'
                 style={{backgroundColor: '#339970'}}
             >

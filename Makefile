@@ -218,6 +218,11 @@ ifneq ($(HAS_SERVER),)
 	$(GO) tool cover -html=server/coverage.txt
 endif
 
+## Runs e2e tests.
+.PHONY: test-e2e
+test-e2e: e2e/node_modules
+	cd e2e && npm i && npx playwright test
+
 ## Extract strings for translation from the source code.
 .PHONY: i18n-extract
 i18n-extract:

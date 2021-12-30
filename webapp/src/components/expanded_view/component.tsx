@@ -371,7 +371,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isSharing = sharingID === currentID;
 
         return (
-            <div style={style.root as CSSProperties}>
+            <div
+                id='calls-expanded-view'
+                style={style.root as CSSProperties}
+            >
                 <div style={style.main as CSSProperties}>
                     <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
                         <div style={style.topLeftContainer as CSSProperties}>
@@ -468,7 +471,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </div>
                             }
 
-                            <div style={style.buttonContainer as CSSProperties}>
+                            <div
+                                id='calls-popout-mute-button'
+                                style={style.buttonContainer as CSSProperties}
+                            >
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onMuteToggle}

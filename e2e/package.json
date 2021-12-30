@@ -1,0 +1,15 @@
+{
+  "private": true,
+  "scripts": {
+    "lint": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js --ext .jsx --ext tsx --ext ts . --quiet --cache",
+    "fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js --ext .jsx --ext tsx --ext ts . --quiet --fix --cache",
+    "check-types": "tsc"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.17.1",
+    "@typescript-eslint/eslint-plugin": "^5.8.0",
+    "babel-eslint": "^10.1.0",
+    "eslint": "^8.5.0",
+    "eslint-plugin-import": "^2.25.3"
+  }
+}

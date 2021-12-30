@@ -1032,6 +1032,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         return (
             <div
+                id='calls-widget'
                 style={{
                     ...this.style.main as CSSProperties,
                     width: mainWidth,
@@ -1051,6 +1052,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         onMouseDown={this.onMouseDown}
                     >
                         <button
+                            id='calls-widget-expand-button'
                             className='style--none button-controls button-controls--wide'
                             style={this.style.expandButton as CSSProperties}
                             onClick={this.onExpandClick}
@@ -1085,6 +1087,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         >
 
                             <button
+                                id='calls-widget-leave-button'
                                 className='style--none button-controls button-controls--wide'
                                 style={this.style.leaveCallButton}
                                 onClick={this.onDisconnectClick}

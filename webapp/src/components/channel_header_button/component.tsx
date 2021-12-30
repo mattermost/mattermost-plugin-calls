@@ -13,7 +13,10 @@ const ChannelHeaderButton = (props: Props) => {
         return null;
     }
     return (
-        <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+        <div
+            id='calls-join-button'
+            style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}
+        >
             <CallIcon style={{margin: '0 4px'}}/>
             <span
                 className='icon__text'
