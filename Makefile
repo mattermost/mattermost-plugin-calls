@@ -77,17 +77,24 @@ ifneq ($(HAS_SERVER),)
 	mkdir -p server/dist;
 ifeq ($(MM_DEBUG),)
 	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -trimpath -o dist/plugin-linux-amd64;
+	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) -trimpath -o dist/plugin-linux-arm64;
 	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -trimpath -o dist/plugin-darwin-amd64;
+	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) -trimpath -o dist/plugin-darwin-arm64;
+	cd server && env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -trimpath -o dist/plugin-windows-amd64.exe;
 else
 	$(info DEBUG mode is on; to disable, unset MM_DEBUG)
 	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags="-X main.isDebug=true" -gcflags "all=-N -l" -trimpath -o dist/plugin-linux-amd64;
+	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) -ldflags="-X main.isDebug=true" -gcflags "all=-N -l" -trimpath -o dist/plugin-linux-arm64;
 	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags="-X main.isDebug=true" -gcflags "all=-N -l" -trimpath -o dist/plugin-darwin-amd64;
+	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) -ldflags="-X main.isDebug=true" -gcflags "all=-N -l" -trimpath -o dist/plugin-darwin-arm64;
+	cd server && env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags="-X main.isDebug=true" -gcflags "all=-N -l" -trimpath -o dist/plugin-windows-amd64.exe;
 endif
 endif
 
 ## Ensures NPM dependencies are installed without having to run this all the time.
 webapp/node_modules: $(wildcard webapp/package.json)
 ifneq ($(HAS_WEBAPP),)
+	cd webapp && node skip_integrity_check.js
 	cd webapp && $(NPM) install
 	touch $@
 endif
