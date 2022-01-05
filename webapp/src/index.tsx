@@ -68,7 +68,6 @@ export default class Plugin {
         this.unsubscribers.push(() => {
             if (window.callsClient) {
                 window.callsClient.disconnect();
-                delete window.callsClient;
             }
         });
     }
@@ -263,7 +262,6 @@ export default class Plugin {
             } else if (subCmd === 'leave') {
                 if (connectedID && args.channel_id === connectedID && window.callsClient) {
                     window.callsClient.disconnect();
-                    delete window.callsClient;
                     return {};
                 }
                 return {error: {message: 'You are not connected to a call in the current channel.'}};
@@ -320,16 +318,15 @@ export default class Plugin {
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', () => {
-                    const sound = getPluginStaticPath() + LeaveSelfSound;
-                    const audio = new Audio(sound);
-                    audio.play();
-
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);
                     this.registerChannelHeaderMenuButton();
                     if (window.callsClient) {
                         window.callsClient.destroy();
                         delete window.callsClient;
+                        const sound = getPluginStaticPath() + LeaveSelfSound;
+                        const audio = new Audio(sound);
+                        audio.play();
                     }
                 });
                 this.unregisterChannelHeaderMenuButton();

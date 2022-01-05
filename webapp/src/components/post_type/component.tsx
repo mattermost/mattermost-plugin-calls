@@ -99,7 +99,6 @@ export default class PostType extends React.PureComponent<Props> {
     onLeaveButtonClick = () => {
         if (window.callsClient) {
             window.callsClient.disconnect();
-            delete window.callsClient;
         }
     }
 
