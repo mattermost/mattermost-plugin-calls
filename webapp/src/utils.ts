@@ -225,3 +225,15 @@ export async function getScreenStream(): Promise<MediaStream|null> {
 
     return screenStream;
 }
+
+export function isDMChannel(channel: Channel) {
+    return channel.type === 'D';
+}
+
+export function isPublicChannel(channel: Channel) {
+    return channel.type === 'O';
+}
+
+export function isPrivateChannel(channel: Channel) {
+    return channel.type === 'P';
+}

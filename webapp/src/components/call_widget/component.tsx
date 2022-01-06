@@ -32,7 +32,7 @@ import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 
 import {handleFormattedTextClick} from '../../browser_routing';
-import {getUserDisplayName} from '../../utils';
+import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel} from '../../utils';
 import './component.scss';
 
 interface Props {
@@ -1007,7 +1007,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
-                {this.props.channel.type === 'O' ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
+                {isPublicChannel(this.props.channel) ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
                 {this.props.channel.display_name}
             </React.Fragment>
         );
@@ -1070,7 +1070,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
-                                {(this.props.channel.type === 'O' || this.props.channel.type === 'P') && this.renderChannelName()}
+                                {(isPublicChannel(this.props.channel) || isPrivateChannel(this.props.channel)) && this.renderChannelName()}
                             </div>
                         </div>
                     </div>
@@ -1138,6 +1138,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             </button>
                         </OverlayTrigger>
 
+                        { !isDMChannel(this.props.channel) &&
                         <OverlayTrigger
                             key='hand'
                             placement='top'
@@ -1158,8 +1159,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             </button>
 
                         </OverlayTrigger>
+                        }
 
-                        {hasTeamSidebar && this.renderScreenShareButton()}
+                        {(hasTeamSidebar || isDMChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <OverlayTrigger
                             key='mute'
