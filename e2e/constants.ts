@@ -6,7 +6,7 @@ export const userState = {
         password: 'Sys@dmin-sample1',
         storageStatePath: 'adminStorageState.json',
     },
-    users: ['calls-user1', 'calls-user2', 'calls-user3', 'calls-user4'].map((name) => {
+    users: ['calls-user1', 'calls-user2', 'calls-user3', 'calls-user4', 'calls-user5', 'calls-user6', 'calls-user7', 'calls-user8'].map((name) => {
         return {
             username: name,
             password: 'U$er-sample1',

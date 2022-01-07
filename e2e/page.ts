@@ -9,8 +9,9 @@ export default class PlaywrightDevPage {
         this.page = page;
     }
 
-    async goto(channel?: string) {
-        await this.page.goto(`${baseURL}/${defaultTeam}/channels/${channel || 'town-square'}`);
+    async goto() {
+        const channel = `calls${process.env.TEST_PARALLEL_INDEX}`;
+        await this.page.goto(`${baseURL}/${defaultTeam}/channels/${channel}`);
     }
 
     async leaveCall() {

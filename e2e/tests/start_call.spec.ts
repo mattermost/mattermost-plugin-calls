@@ -5,7 +5,7 @@ import {userState} from '../constants';
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
-    await devPage.goto(`calls${process.env.TEST_PARALLEL_INDEX}`);
+    await devPage.goto();
 });
 
 test.describe('start new call', () => {

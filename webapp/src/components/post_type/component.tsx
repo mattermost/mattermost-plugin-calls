@@ -115,6 +115,7 @@ export default class PostType extends React.PureComponent<Props> {
 
         return (
             <div
+                className='call-thread'
                 style={this.style.main as CSSProperties}
             >
                 <div style={{display: 'flex', alignItems: 'center', marginRight: 'auto'}}>

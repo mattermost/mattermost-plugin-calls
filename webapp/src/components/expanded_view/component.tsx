@@ -397,6 +397,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                     { !this.props.screenSharingID &&
                     <ul
+                        id='calls-expanded-view-participants-grid'
                         style={{
                             ...style.participants,
                             gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
@@ -406,7 +407,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     </ul>
                     }
                     { this.props.screenSharingID && this.renderScreenSharingPlayer() }
-                    <div style={style.controls}>
+                    <div
+                        id='calls-expanded-view-controls'
+                        style={style.controls}
+                    >
                         <div style={style.leftControls}>
                             <OverlayTrigger
                                 key='show_participants_list'

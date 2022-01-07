@@ -1075,7 +1075,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </div>
                     </div>
 
-                    <div style={this.style.bottomBar}>
+                    <div
+                        className='calls-widget-bottom-bar'
+                        style={this.style.bottomBar}
+                    >
                         <OverlayTrigger
                             key='leave'
                             placement='top'

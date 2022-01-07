@@ -233,6 +233,11 @@ endif
 test-e2e: e2e/node_modules
 	cd e2e && npm i && npx playwright test
 
+## Runs e2e tests and updates snapshots.
+.PHONY: test-e2e-update-snapshots
+test-e2e-update-snapshots:
+	cd e2e && npm i && npx playwright test --update-snapshots
+
 ## Extract strings for translation from the source code.
 .PHONY: i18n-extract
 i18n-extract:
