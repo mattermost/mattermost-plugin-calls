@@ -4,7 +4,7 @@ import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
 
 test.describe('popout window', () => {
-    test.use({storageState: userState.users[3].storageStatePath});
+    test.use({storageState: userState.users[4].storageStatePath});
 
     test('popout opens unmuted', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);

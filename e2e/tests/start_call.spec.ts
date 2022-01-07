@@ -14,6 +14,8 @@ test.describe('start new call', () => {
     test('channel header button', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
+        await devPage.wait(1000);
+        expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('calls-widget-bottom-bar.png');
         await devPage.leaveCall();
     });
 
@@ -26,5 +28,14 @@ test.describe('start new call', () => {
         await page.locator('#post_textbox').press('Enter');
         await page.locator('#post_textbox').press('Enter');
         await expect(page.locator('#calls-widget')).toBeHidden();
+    });
+
+    test('dm channel', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.gotoDM(userState.users[1].username);
+        await devPage.startCall();
+        await devPage.wait(1000);
+        expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('calls-widget-bottom-bar-dm.png');
+        await devPage.leaveCall();
     });
 });

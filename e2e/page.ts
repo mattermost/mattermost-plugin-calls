@@ -14,6 +14,10 @@ export default class PlaywrightDevPage {
         await this.page.goto(`${baseURL}/${defaultTeam}/channels/${channel}`);
     }
 
+    async gotoDM(username: string) {
+        await this.page.goto(`${baseURL}/${defaultTeam}/messages/@${username}`);
+    }
+
     async leaveCall() {
         await expect(this.page.locator('#calls-widget-leave-button')).toBeVisible();
         await this.page.locator('#calls-widget-leave-button').click();
@@ -32,5 +36,29 @@ export default class PlaywrightDevPage {
         await expect(joinCallButton).toBeVisible();
         await joinCallButton.click();
         await expect(this.page.locator('#calls-widget')).toBeVisible();
+    }
+
+    async enableCalls() {
+        const channelHeaderButton = this.page.locator('#channelHeaderDropdownButton');
+        await expect(channelHeaderButton).toBeVisible();
+        await channelHeaderButton.click();
+        const enableCallsButton = this.page.locator('#channelHeaderDropdownMenu button:has-text("Enable Calls")');
+        await expect(enableCallsButton).toBeVisible();
+        await enableCallsButton.click();
+    }
+
+    async disableCalls() {
+        const channelHeaderButton = this.page.locator('#channelHeaderDropdownButton');
+        await expect(channelHeaderButton).toBeVisible();
+        await channelHeaderButton.click();
+        const disableCallsButton = this.page.locator('#channelHeaderDropdownMenu button:has-text("Disable Calls")');
+        await expect(disableCallsButton).toBeVisible();
+        await disableCallsButton.click();
+    }
+
+    wait(ms: number) {
+        return new Promise((res) => {
+            setTimeout(() => res(true), ms);
+        });
     }
 }

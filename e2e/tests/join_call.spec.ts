@@ -9,11 +9,11 @@ test.beforeEach(async ({page, context}) => {
 });
 
 test.describe('join call', () => {
-    test.use({storageState: userState.users[1].storageStatePath});
+    test.use({storageState: userState.users[2].storageStatePath});
 
     const startCall = async () => {
         const browser = await chromium.launch();
-        const context = await browser.newContext({storageState: userState.users[2].storageStatePath});
+        const context = await browser.newContext({storageState: userState.users[3].storageStatePath});
         const userPage = new PlaywrightDevPage(await context.newPage());
         await userPage.goto();
         await userPage.startCall();

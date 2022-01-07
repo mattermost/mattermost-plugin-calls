@@ -154,6 +154,9 @@ export default class CallsClient extends EventEmitter {
                     this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
                 }
             });
+            peer.on('connect', () => {
+                this.emit('connect');
+            });
         });
 
         ws.on('message', ({data}) => {
@@ -176,6 +179,7 @@ export default class CallsClient extends EventEmitter {
 
     public destroy() {
         this.removeAllListeners('close');
+        this.removeAllListeners('connect');
         this.removeAllListeners('remoteVoiceStream');
         this.removeAllListeners('remoteScreenStream');
     }

@@ -100,6 +100,28 @@ async function globalSetup(config: FullConfig) {
         });
     }
 
+    // enable calls in DMs.
+    const userContext = await request.newContext();
+    await userContext.post(`${baseURL}/api/v4/users/login`, {
+        data: {
+            login_id: userState.users[0].username,
+            password: userState.users[0].password,
+        },
+        headers,
+    });
+    for (const userInfo of userState.users.slice(1)) {
+        resp = await userContext.post(`${baseURL}/api/v4/users/usernames`, {data: [userState.users[0].username, userInfo.username], headers});
+        const users = await resp.json();
+        resp = await userContext.post(`${baseURL}/api/v4/channels/direct`, {data: [users[0].id, users[1].id], headers});
+        const channel = await resp.json();
+        await userContext.post(`${baseURL}/plugins/${plugin.id}/${channel.id}`, {
+            data: {
+                enabled: true,
+            },
+            headers,
+        });
+    }
+
     await adminContext.dispose();
 }
 

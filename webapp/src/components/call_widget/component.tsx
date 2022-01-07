@@ -32,7 +32,7 @@ import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 
 import {handleFormattedTextClick} from '../../browser_routing';
-import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel} from '../../utils';
+import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel, isGMChannel} from '../../utils';
 import './component.scss';
 
 interface Props {
@@ -265,6 +265,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.setState({
                 screenStream: stream,
             });
+        });
+
+        window.callsClient.on('connect', () => {
+            if (isDMChannel(this.props.channel) || isGMChannel(this.props.channel)) {
+                window.callsClient.unmute();
+            }
         });
     }
 
@@ -850,14 +856,16 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const isMuted = window.callsClient.isMuted();
+        const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
         const onJoinSelf = (
             <React.Fragment>
-                <span>{'You are muted. Click '}</span>
-                <MutedIcon
-                    style={{width: '11px', height: '11px', fill: changeOpacity(this.props.theme.centerChannelColor, 1.0)}}
-                    stroke={'rgba(210, 75, 78, 1)'}
+                <span>{`You are ${isMuted ? 'muted' : 'unmuted'}. Click `}</span>
+                <MuteIcon
+                    style={{width: '11px', height: '11px', fill: isMuted ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : '#3DB887'}}
+                    stroke={isMuted ? 'rgba(210, 75, 78, 1)' : '#3DB887'}
                 />
-                <span>{' to unmute.'}</span>
+                <span>{` to ${isMuted ? 'unmute' : 'mute'}.`}</span>
             </React.Fragment>
         );
 

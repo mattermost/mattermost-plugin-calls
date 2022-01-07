@@ -230,6 +230,10 @@ export function isDMChannel(channel: Channel) {
     return channel.type === 'D';
 }
 
+export function isGMChannel(channel: Channel) {
+    return channel.type === 'G';
+}
+
 export function isPublicChannel(channel: Channel) {
     return channel.type === 'O';
 }
