@@ -78,6 +78,10 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 
 	var channels []ChannelState
 	for _, channelID := range channelIDs {
+		if len(channelID) != 26 {
+			continue
+		}
+
 		if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
 			continue
 		}

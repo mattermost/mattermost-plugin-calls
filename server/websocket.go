@@ -300,7 +300,14 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		}, &model.WebsocketBroadcast{ChannelId: channelID})
 	}
 
-	handlerID := state.NodeID
+	data, appErr := p.API.KVGet("handler")
+	if appErr != nil {
+		p.LogError(appErr.Error())
+	}
+	handlerID := string(data)
+	if handlerID == "" {
+		handlerID = state.NodeID
+	}
 
 	var wg sync.WaitGroup
 	if handlerID == nodeID {

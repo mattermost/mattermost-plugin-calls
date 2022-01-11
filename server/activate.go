@@ -2,6 +2,7 @@ package main
 
 import (
 	"net"
+	"os"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 
@@ -28,6 +29,16 @@ func (p *Plugin) OnActivate() error {
 	if appErr != nil {
 		p.LogError(appErr.Error())
 		return appErr
+	}
+
+	if os.Getenv("CALLS_IS_HANDLER") != "" {
+		p.LogInfo("calls handler, setting state", "clusterID", status.ClusterId)
+		if err := p.kvSetAtomic("handler", func(data []byte) ([]byte, error) {
+			return []byte(status.ClusterId), nil
+		}); err != nil {
+			p.LogError(err.Error())
+			return err
+		}
 	}
 
 	cfg := p.getConfiguration()
