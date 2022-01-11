@@ -40,24 +40,22 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 	if err != nil {
 		p.LogError(err.Error())
 	}
-	if state == nil {
-		http.NotFound(w, r)
-		return
-	}
 
 	info := ChannelState{
 		ChannelID: channelID,
-		Enabled:   state.Enabled,
 	}
-	if state.Call != nil {
-		users, states := state.Call.getUsersAndStates()
-		info.Call = &Call{
-			ID:              state.Call.ID,
-			StartAt:         state.Call.StartAt,
-			Users:           users,
-			States:          states,
-			ThreadID:        state.Call.ThreadID,
-			ScreenSharingID: state.Call.ScreenSharingID,
+	if state != nil {
+		info.Enabled = state.Enabled
+		if state.Call != nil {
+			users, states := state.Call.getUsersAndStates()
+			info.Call = &Call{
+				ID:              state.Call.ID,
+				StartAt:         state.Call.StartAt,
+				Users:           users,
+				States:          states,
+				ThreadID:        state.Call.ThreadID,
+				ScreenSharingID: state.Call.ScreenSharingID,
+			}
 		}
 	}
 
