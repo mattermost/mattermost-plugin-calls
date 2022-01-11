@@ -49,3 +49,7 @@ export const voiceChannelScreenSharingID = (state: GlobalState, channelID: strin
 export const expandedView = (state: GlobalState) => {
     return getPluginState(state).expandedView;
 };
+
+export const switchCallModal = (state: GlobalState) => {
+    return getPluginState(state).switchCallModal;
+};

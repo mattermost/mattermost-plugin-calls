@@ -74,7 +74,7 @@ async function globalSetup(config: FullConfig) {
     const channels = [];
 
     // create some channels.
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < config.workers * 2; i++) {
         const name = `calls${i}`;
         channels.push(name);
         await adminContext.post(`${baseURL}/api/v4/channels`, {
@@ -86,6 +86,22 @@ async function globalSetup(config: FullConfig) {
             },
             headers,
         });
+    }
+
+    // add users to channels.
+    for (const channelName of channels) {
+        resp = await adminContext.get(`${baseURL}/api/v4/teams/${team.id}/channels/name/${channelName}`);
+        const channel = await resp.json();
+        for (const userInfo of userState.users) {
+            resp = await adminContext.post(`${baseURL}/api/v4/users/usernames`, {data: [userInfo.username], headers});
+            const users = await resp.json();
+            await adminContext.post(`${baseURL}/api/v4/channels/${channel.id}/members`, {
+                data: {
+                    user_id: users[0].id,
+                },
+                headers,
+            });
+        }
     }
 
     // enable calls.

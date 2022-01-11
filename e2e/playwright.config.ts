@@ -5,12 +5,13 @@ const config: PlaywrightTestConfig = {
     globalTeardown: require.resolve('./global-teardown'),
     forbidOnly: Boolean(process.env.CI),
     retries: process.env.CI ? 2 : 0,
+    workers: 4,
     expect: {
-        timeout: 20 * 1000,
+        timeout: 30 * 1000,
     },
     reportSlowTests: {
         max: 5,
-        threshold: 60 * 1000,
+        threshold: 120 * 1000,
     },
     use: {
         viewport: {width: 1280, height: 720},

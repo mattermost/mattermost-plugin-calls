@@ -25,6 +25,8 @@ import {
     VOICE_CHANNEL_UNINIT,
     SHOW_EXPANDED_VIEW,
     HIDE_EXPANDED_VIEW,
+    SHOW_SWITCH_CALL_MODAL,
+    HIDE_SWITCH_CALL_MODAL,
 } from './action_types';
 
 const isVoiceEnabled = (state = false, action: {type: string}) => {
@@ -390,6 +392,19 @@ const expandedView = (state = false, action: {type: string}) => {
     }
 };
 
+const switchCallModal = (state = false, action: {type: string}) => {
+    switch (action.type) {
+    case VOICE_CHANNEL_UNINIT:
+        return false;
+    case SHOW_SWITCH_CALL_MODAL:
+        return true;
+    case HIDE_SWITCH_CALL_MODAL:
+        return false;
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     isVoiceEnabled,
     voiceConnectedChannels,
@@ -399,4 +414,5 @@ export default combineReducers({
     callStartAt,
     voiceChannelScreenSharingID,
     expandedView,
+    switchCallModal,
 });

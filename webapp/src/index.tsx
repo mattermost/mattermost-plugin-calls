@@ -25,6 +25,7 @@ import ChannelLinkLabel from './components/channel_link_label';
 import ChannelCallToast from './components/channel_call_toast';
 import PostType from './components/post_type';
 import ExpandedView from './components/expanded_view';
+import SwitchCallModal from './components/switch_call_modal';
 
 import JoinUserSound from './sounds/join_user.mp3';
 import JoinSelfSound from './sounds/join_self.mp3';
@@ -53,6 +54,7 @@ import {
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_UNINIT,
+    SHOW_SWITCH_CALL_MODAL,
 } from './action_types';
 
 // eslint-disable-next-line import/no-unresolved
@@ -236,6 +238,7 @@ export default class Plugin {
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
+        registry.registerGlobalComponent(SwitchCallModal);
 
         registry.registerSlashCommandWillBePostedHook((message, args) => {
             const fullCmd = message.trim();
@@ -305,8 +308,10 @@ export default class Plugin {
 
                     if (!connectedChannelID(store.getState())) {
                         connectCall(channel.id);
-                    } else if (connectedChannelID(store.getState()) === getCurrentChannelId(store.getState())) {
-                    // TODO: show an error or let the user switch connection.
+                    } else if (connectedChannelID(store.getState()) !== channel.id) {
+                        store.dispatch({
+                            type: SHOW_SWITCH_CALL_MODAL,
+                        });
                     }
                 },
             );
