@@ -198,11 +198,11 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 
 func (p *Plugin) initRTCConn(userID string) {
 	peerConnConfig := webrtc.Configuration{
-		ICEServers: []webrtc.ICEServer{
-			{
-				URLs: p.getConfiguration().ICEServers,
-			},
-		},
+		// ICEServers: []webrtc.ICEServer{
+		// 	{
+		// 		URLs: p.getConfiguration().ICEServers,
+		// 	},
+		// },
 		SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 	}
 
