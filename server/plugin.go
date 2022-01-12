@@ -42,6 +42,12 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 	us := newUserSession(msg.UserID, msg.ChannelID, "")
 
 	p.mut.Lock()
+	if len(p.sessions) == 0 {
+		p.calls[msg.ChannelID] = &call{
+			channelID: msg.ChannelID,
+			sessions:  map[string]*session{},
+		}
+	}
 	p.sessions[msg.UserID] = us
 	p.mut.Unlock()
 
