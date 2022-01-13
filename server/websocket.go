@@ -25,6 +25,8 @@ const (
 	wsEventDeactivate       = "deactivate"
 	wsEventUserRaiseHand    = "user_raise_hand"
 	wsEventUserUnraiseHand  = "user_unraise_hand"
+	wsEventJoin             = "join"
+	wsEventError            = "error"
 )
 
 func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, userID string) error {
@@ -199,17 +201,33 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 	}
 }
 
-func (p *Plugin) OnWebSocketConnect(webConnID, userID string) {
-	p.LogDebug("ws connect", "connID", webConnID, "userID", userID)
+func (p *Plugin) OnWebSocketConnect(connID, userID string) {
+	if userID == "" {
+		return
+	}
+	p.LogDebug("ws connect", "connID", connID, "userID", userID)
 }
 
-func (p *Plugin) OnWebSocketDisconnect(webConnID, userID string) {
-	p.LogDebug("ws disconnect", "connID", webConnID, "userID", userID)
+func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
+	if userID == "" {
+		return
+	}
+	p.LogDebug("ws disconnect", "connID", connID, "userID", userID)
+
 	p.mut.RLock()
-	defer p.mut.RUnlock()
 	us := p.sessions[userID]
-	if us != nil && us.connID == webConnID {
-		close(us.wsCloseCh)
+	p.mut.RUnlock()
+
+	if us != nil && us.connID == connID {
+		go func() {
+			p.LogDebug("closing channel for session", "userID", userID, "connID", connID)
+			close(us.wsCloseCh)
+			<-us.doneCh
+			p.LogDebug("done, removing session")
+			p.mut.Lock()
+			delete(p.sessions, userID)
+			p.mut.Unlock()
+		}()
 	}
 }
 
@@ -236,7 +254,8 @@ func (p *Plugin) wsWriter(us *session) {
 			}
 			p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "out", "type": "signal"}).Inc()
 			p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
-				"data": string(msg),
+				"data":   string(msg),
+				"connID": us.connID,
 			}, &model.WebsocketBroadcast{UserId: us.userID})
 		case <-us.wsCloseCh:
 			return
@@ -245,33 +264,27 @@ func (p *Plugin) wsWriter(us *session) {
 }
 
 func (p *Plugin) handleJoin(userID, connID, channelID string) error {
-	p.LogDebug("handleJoin")
-	nodeID := p.nodeID
+	p.LogDebug("handleJoin", "userID", userID, "connID", connID)
 
 	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
 		return fmt.Errorf("forbidden")
 	}
-
-	us := newUserSession(userID, channelID, connID)
+	if _, appErr := p.API.GetChannel(channelID); appErr != nil {
+		return appErr
+	}
 
 	p.mut.Lock()
-	_, exists := p.sessions[userID]
-	if exists {
+	if _, exists := p.sessions[userID]; exists {
 		p.mut.Unlock()
-		return fmt.Errorf("session exists")
+		p.LogDebug("session already exists", "userID", userID, "connID", connID)
+		return fmt.Errorf("session already exists")
 	}
-	p.LogDebug("adding session", "UserID", userID, "ChannelID", channelID)
+	us := newUserSession(userID, channelID, connID)
 	p.sessions[userID] = us
-	defer func() {
-		p.mut.Lock()
-		p.LogDebug("removing session", "UserID", userID, "ChannelID", channelID)
-		delete(p.sessions, userID)
-		p.mut.Unlock()
-	}()
 	p.mut.Unlock()
-
-	p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Inc()
-	defer p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Dec()
+	defer func() {
+		close(us.doneCh)
+	}()
 
 	state, err := p.addUserSession(userID, channelID, us)
 	if err != nil {
@@ -300,6 +313,18 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		}, &model.WebsocketBroadcast{ChannelId: channelID})
 	}
 
+	// send successful join response
+	p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "out", "type": "join"}).Inc()
+	p.API.PublishWebSocketEvent(wsEventJoin, map[string]interface{}{
+		"connID": connID,
+	}, &model.WebsocketBroadcast{UserId: userID})
+	p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "out", "type": "user_connected"}).Inc()
+	p.API.PublishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
+		"userID": userID,
+	}, &model.WebsocketBroadcast{ChannelId: channelID})
+	p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Inc()
+	defer p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Dec()
+
 	data, appErr := p.API.KVGet("handler")
 	if appErr != nil {
 		p.LogError(appErr.Error())
@@ -310,7 +335,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	}
 
 	var wg sync.WaitGroup
-	if handlerID == nodeID {
+	if handlerID == p.nodeID {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -330,10 +355,6 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 			p.LogError(err.Error())
 		}
 	}
-
-	p.API.PublishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
-		"userID": userID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID})
 
 	wg.Add(1)
 	go func() {
@@ -360,7 +381,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID})
 	}
 
-	if handlerID != nodeID {
+	if handlerID != p.nodeID {
 		if err := p.sendClusterMessage(clusterMessage{
 			UserID:    userID,
 			ChannelID: channelID,
@@ -383,6 +404,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID})
 
+	p.LogDebug("removing session from state", "userID", userID)
 	if currState, prevState, err := p.removeUserSession(userID, channelID); err != nil {
 		p.LogError(err.Error())
 	} else if currState.Call == nil && prevState.Call != nil {
@@ -395,7 +417,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	return nil
 }
 
-func (p *Plugin) WebSocketMessageHasBeenPosted(webConnID, userID string, req *model.WebSocketRequest) {
+func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model.WebSocketRequest) {
 	var msg clientMessage
 	msg.Type = strings.TrimPrefix(req.Action, wsActionPrefix)
 
@@ -407,8 +429,13 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(webConnID, userID string, req *mo
 			return
 		}
 		go func() {
-			if err := p.handleJoin(userID, webConnID, channelID); err != nil {
+			if err := p.handleJoin(userID, connID, channelID); err != nil {
 				p.LogError(err.Error())
+				p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "out", "type": "error"}).Inc()
+				p.API.PublishWebSocketEvent(wsEventError, map[string]interface{}{
+					"data":   err.Error(),
+					"connID": connID,
+				}, &model.WebsocketBroadcast{UserId: userID})
 				return
 			}
 		}()
@@ -437,7 +464,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(webConnID, userID string, req *mo
 	p.mut.RLock()
 	us := p.sessions[userID]
 	p.mut.RUnlock()
-	if us == nil || us.connID != webConnID {
+	if us == nil || us.connID != connID {
 		return
 	}
 	select {
