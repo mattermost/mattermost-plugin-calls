@@ -246,6 +246,10 @@ func (p *Plugin) initRTCConn(userID string) {
 	p.mut.RLock()
 	userSession := p.sessions[userID]
 	p.mut.RUnlock()
+	if userSession == nil {
+		p.LogError("userSession should not be nil")
+		return
+	}
 
 	userSession.mut.Lock()
 	userSession.rtcConn = peerConn

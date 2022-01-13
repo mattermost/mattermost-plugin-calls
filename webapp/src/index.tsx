@@ -4,8 +4,6 @@ import {GlobalState} from 'mattermost-redux/types/store';
 
 import axios from 'axios';
 
-import {Client4} from 'mattermost-redux/client';
-
 import {getCurrentChannelId, getCurrentChannel, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getMyRoles} from 'mattermost-redux/selectors/entities/roles';
@@ -112,11 +110,10 @@ export default class Plugin {
             });
 
             try {
-                const profiles = await Client4.getProfilesByIds([ev.data.userID]);
                 store.dispatch({
                     type: VOICE_CHANNEL_PROFILE_CONNECTED,
                     data: {
-                        profile: profiles[0],
+                        profile: store.getState().entities.users.profiles[ev.data.userID],
                         channelID: ev.broadcast.channel_id,
                     },
                 });
@@ -292,7 +289,10 @@ export default class Plugin {
                     try {
                         const users = voiceConnectedUsers(store.getState());
                         if (users && users.length > 0) {
-                            const profiles = await Client4.getProfilesByIds(users);
+                            const profiles = [];
+                            for (const id of users) {
+                                profiles.push(store.getState().entities.users.profiles[id]);
+                            }
                             store.dispatch({
                                 type: VOICE_CHANNEL_PROFILES_CONNECTED,
                                 data: {
@@ -461,10 +461,14 @@ export default class Plugin {
                 }
 
                 if (currentChannelData && currentChannelData.call?.users.length > 0) {
+                    const profiles = [];
+                    for (const id of currentChannelData.call?.users) {
+                        profiles.push(store.getState().entities.users.profiles[id]);
+                    }
                     store.dispatch({
                         type: VOICE_CHANNEL_PROFILES_CONNECTED,
                         data: {
-                            profiles: await Client4.getProfilesByIds(currentChannelData.call?.users),
+                            profiles,
                             channelID: currentChannelData.channel_id,
                         },
                     });

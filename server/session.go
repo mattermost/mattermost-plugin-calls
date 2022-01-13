@@ -28,6 +28,7 @@ type session struct {
 	wsConn      *websocket.Conn
 	wsMsgCh     chan clientMessage
 	wsCloseCh   chan struct{}
+	doneCh      chan struct{}
 
 	// WebRTC
 	outVoiceTrack        *webrtc.TrackLocalStaticRTP
@@ -55,6 +56,7 @@ func newUserSession(userID, channelID, connID string) *session {
 		tracksCh:      make(chan *webrtc.TrackLocalStaticRTP, 5),
 		iceCh:         make(chan []byte, msgChSize),
 		closeCh:       make(chan struct{}),
+		doneCh:        make(chan struct{}),
 		trackEnableCh: make(chan bool, 5),
 		rtpSendersMap: map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender{},
 	}

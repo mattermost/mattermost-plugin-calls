@@ -89,7 +89,6 @@ export default class CallsClient extends EventEmitter {
 
         ws.on('error', (err) => {
             console.log(err);
-            this.ws = null;
             this.disconnect();
         });
 
@@ -98,20 +97,25 @@ export default class CallsClient extends EventEmitter {
             this.disconnect();
         });
 
-        ws.on('open', async (connID: string) => {
-            let config;
-
+        ws.on('open', (connID: string) => {
+            console.log('ws open, sending join msg');
             ws.send('join', {
                 channelID,
             });
+        });
 
+        ws.on('join', async () => {
+            console.log('join ack received, initializing connection');
+            let config;
             try {
                 const resp = await axios.get(`${getPluginPath()}/config`);
                 config = resp.data;
             } catch (err) {
                 console.log(err);
+                this.ws?.close();
                 return;
             }
+
             const peer = new SimplePeer({
                 initiator: true,
                 trickle: true,
@@ -155,6 +159,7 @@ export default class CallsClient extends EventEmitter {
                 }
             });
             peer.on('connect', () => {
+                console.log('rtc connected');
                 this.emit('connect');
             });
         });
