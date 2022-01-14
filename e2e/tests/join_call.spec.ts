@@ -37,6 +37,8 @@ test.describe('join call', () => {
         // start a call
         const leaveCall = await startCall();
 
+        await page.locator('.post__body').last().scrollIntoViewIfNeeded();
+
         const joinCallToast = page.locator('#calls-channel-toast');
         await expect(joinCallToast).toBeVisible();
         expect(await joinCallToast.screenshot()).toMatchSnapshot('channel-toast.png');

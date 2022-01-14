@@ -288,6 +288,7 @@ ifneq ($(HAS_WEBAPP),)
 	rm -fr webapp/node_modules
 endif
 	rm -fr build/bin/
+	rm -fr e2e/tests-results/
 
 ## Sync directory with a starter template
 sync:
