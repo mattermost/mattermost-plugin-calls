@@ -31,7 +31,7 @@ import LeaveSelfSound from './sounds/leave_self.mp3';
 
 import reducer from './reducers';
 
-import {getPluginPath, getPluginStaticPath, hasPermissionsToEnableCalls, getExpandedChannelID} from './utils';
+import {getPluginPath, getPluginStaticPath, hasPermissionsToEnableCalls, getExpandedChannelID, getProfilesByIds} from './utils';
 
 import {
     VOICE_CHANNEL_ENABLE,
@@ -113,7 +113,7 @@ export default class Plugin {
                 store.dispatch({
                     type: VOICE_CHANNEL_PROFILE_CONNECTED,
                     data: {
-                        profile: store.getState().entities.users.profiles[ev.data.userID],
+                        profile: (await getProfilesByIds(store.getState(), [ev.data.userID]))[0],
                         channelID: ev.broadcast.channel_id,
                     },
                 });
@@ -289,14 +289,10 @@ export default class Plugin {
                     try {
                         const users = voiceConnectedUsers(store.getState());
                         if (users && users.length > 0) {
-                            const profiles = [];
-                            for (const id of users) {
-                                profiles.push(store.getState().entities.users.profiles[id]);
-                            }
                             store.dispatch({
                                 type: VOICE_CHANNEL_PROFILES_CONNECTED,
                                 data: {
-                                    profiles,
+                                    profiles: await getProfilesByIds(store.getState(), users),
                                     channelID: channel.id,
                                 },
                             });
@@ -461,14 +457,10 @@ export default class Plugin {
                 }
 
                 if (currentChannelData && currentChannelData.call?.users.length > 0) {
-                    const profiles = [];
-                    for (const id of currentChannelData.call?.users) {
-                        profiles.push(store.getState().entities.users.profiles[id]);
-                    }
                     store.dispatch({
                         type: VOICE_CHANNEL_PROFILES_CONNECTED,
                         data: {
-                            profiles,
+                            profiles: await getProfilesByIds(store.getState(), currentChannelData.call?.users),
                             channelID: currentChannelData.channel_id,
                         },
                     });
