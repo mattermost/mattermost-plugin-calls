@@ -241,3 +241,20 @@ export function isPublicChannel(channel: Channel) {
 export function isPrivateChannel(channel: Channel) {
     return channel.type === 'P';
 }
+
+export async function getProfilesByIds(state: GlobalState, ids: string[]): Promise<UserProfile[]> {
+    const profiles = [];
+    const missingIds = [];
+    for (const id of ids) {
+        const profile = state.entities.users.profiles[id];
+        if (profile) {
+            profiles.push(profile);
+        } else {
+            missingIds.push(id);
+        }
+    }
+    if (missingIds.length > 0) {
+        profiles.push(...(await Client4.getProfilesByIds(missingIds)));
+    }
+    return profiles;
+}
