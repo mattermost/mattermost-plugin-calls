@@ -10,7 +10,8 @@ export default class PlaywrightDevPage {
     }
 
     async goto() {
-        const channel = `calls${parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2}`;
+        const idx = parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2;
+        const channel = `calls${idx}`;
         await this.page.goto(`${baseURL}/${defaultTeam}/channels/${channel}`);
     }
 

@@ -1,3 +1,5 @@
+import {readFile} from 'fs/promises';
+
 import {request, FullConfig} from '@playwright/test';
 
 import plugin from '../plugin.json';
@@ -67,6 +69,17 @@ async function globalSetup(config: FullConfig) {
         });
         await adminContext.put(`${baseURL}/api/v4/users/${user.id}/preferences`, {
             data: [{user_id: user.id, category: 'recommended_next_steps', name: 'skip', value: 'true'}],
+            headers,
+        });
+
+        await adminContext.post(`${baseURL}/api/v4/users/${user.id}/image`, {
+            multipart: {
+                image: {
+                    name: 'profile.png',
+                    mimeType: 'image/png',
+                    buffer: await readFile('./assets/profile.png'),
+                },
+            },
             headers,
         });
     }
