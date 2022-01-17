@@ -23,4 +23,6 @@ export const SHOW_EXPANDED_VIEW = pluginId + '_show_expanded_view';
 export const HIDE_EXPANDED_VIEW = pluginId + '_hide_expanded_view';
 export const SHOW_SWITCH_CALL_MODAL = pluginId + '_show_switch_call_modal';
 export const HIDE_SWITCH_CALL_MODAL = pluginId + '_hide_switch_call_modal';
+export const SHOW_SCREEN_SOURCE_MODAL = pluginId + '_show_screen_source_modal';
+export const HIDE_SCREEN_SOURCE_MODAL = pluginId + '_hide_screen_source_modal';
 

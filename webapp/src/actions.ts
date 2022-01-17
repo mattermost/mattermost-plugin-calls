@@ -6,6 +6,8 @@ import {
     HIDE_EXPANDED_VIEW,
     SHOW_SWITCH_CALL_MODAL,
     HIDE_SWITCH_CALL_MODAL,
+    SHOW_SCREEN_SOURCE_MODAL,
+    HIDE_SCREEN_SOURCE_MODAL,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -29,5 +31,17 @@ export const showSwitchCallModal = () => (dispatch: Dispatch<GenericAction>) => 
 export const hideSwitchCallModal = () => (dispatch: Dispatch<GenericAction>) => {
     dispatch({
         type: HIDE_SWITCH_CALL_MODAL,
+    });
+};
+
+export const showScreenSourceModal = () => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: SHOW_SCREEN_SOURCE_MODAL,
+    });
+};
+
+export const hideScreenSourceModal = () => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: HIDE_SCREEN_SOURCE_MODAL,
     });
 };

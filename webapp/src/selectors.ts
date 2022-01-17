@@ -53,3 +53,8 @@ export const expandedView = (state: GlobalState) => {
 export const switchCallModal = (state: GlobalState) => {
     return getPluginState(state).switchCallModal;
 };
+
+export const screenSourceModal = (state: GlobalState) => {
+    return getPluginState(state).screenSourceModal;
+};
+

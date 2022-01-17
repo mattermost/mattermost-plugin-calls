@@ -345,12 +345,12 @@ export default class CallsClient extends EventEmitter {
         this.ws.send('screen_on');
     }
 
-    public async shareScreen() {
+    public async shareScreen(sourceID?: string) {
         if (!this.ws || !this.peer) {
             return null;
         }
 
-        const screenStream = await getScreenStream();
+        const screenStream = await getScreenStream(sourceID);
         if (screenStream === null) {
             return null;
         }

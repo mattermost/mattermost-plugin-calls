@@ -185,41 +185,47 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
     };
 }
 
-export async function getScreenStream(): Promise<MediaStream|null> {
-    let screenStream: MediaStream;
+export async function getScreenStream(sourceID?: string): Promise<MediaStream|null> {
+    let screenStream: MediaStream|null = null;
     const resolution = getScreenResolution();
     console.log(resolution);
 
     const maxFrameRate = 15;
     const captureWidth = (resolution.width / 8) * 5;
-
-    try {
-        // browser
-        screenStream = await navigator.mediaDevices.getDisplayMedia({
-            video: {
-                frameRate: maxFrameRate,
-                width: captureWidth,
-            },
-            audio: false,
-        });
-    } catch (err) {
-        console.log(err);
+    if (window.desktop) {
         try {
             // electron
+            const options = {
+                chromeMediaSource: 'desktop',
+                minWidth: captureWidth,
+                maxWidth: captureWidth,
+                maxFrameRate,
+            } as any;
+            if (sourceID) {
+                options.chromeMediaSourceId = sourceID;
+            }
             screenStream = await navigator.mediaDevices.getUserMedia({
                 audio: false,
                 video: {
-                    mandatory: {
-                        chromeMediaSource: 'desktop',
-                        minWidth: captureWidth,
-                        maxWidth: captureWidth,
-                        maxFrameRate,
-                    },
+                    mandatory: options,
                 } as any,
             });
-        } catch (err2) {
-            console.log(err2);
+        } catch (err) {
+            console.log(err);
             return null;
+        }
+    } else {
+        // browser
+        try {
+            screenStream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    frameRate: maxFrameRate,
+                    width: captureWidth,
+                },
+                audio: false,
+            });
+        } catch (err) {
+            console.log(err);
         }
     }
 

@@ -13,7 +13,7 @@ import {Client4} from 'mattermost-redux/client';
 
 import {UserState} from '../../types/types';
 
-import {showExpandedView} from '../../actions';
+import {showExpandedView, showScreenSourceModal} from '../../actions';
 
 import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelCallStartAt, voiceChannelScreenSharingID, expandedView} from '../../selectors';
 
@@ -65,6 +65,7 @@ const mapStateToProps = (state: GlobalState) => {
 
 const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     showExpandedView,
+    showScreenSourceModal,
 }, dispatch);
 
 export default connect(mapStateToProps, mapDispatchToProps)(CallWidget);

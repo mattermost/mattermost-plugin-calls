@@ -24,6 +24,7 @@ import ChannelCallToast from './components/channel_call_toast';
 import PostType from './components/post_type';
 import ExpandedView from './components/expanded_view';
 import SwitchCallModal from './components/switch_call_modal';
+import ScreenSourceModal from './components/screen_source_modal';
 
 import JoinUserSound from './sounds/join_user.mp3';
 import JoinSelfSound from './sounds/join_self.mp3';
@@ -236,6 +237,7 @@ export default class Plugin {
         registry.registerPostTypeComponent('custom_calls', PostType);
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
         registry.registerGlobalComponent(SwitchCallModal);
+        registry.registerGlobalComponent(ScreenSourceModal);
 
         registry.registerSlashCommandWillBePostedHook((message, args) => {
             const fullCmd = message.trim();
@@ -521,6 +523,8 @@ declare global {
         callsClient: any,
         webkitAudioContext: AudioContext,
         basename: string,
+        desktop: any,
+        desktopCapturer: any,
     }
 
     interface HTMLVideoElement {
