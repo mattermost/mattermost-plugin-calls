@@ -45,34 +45,45 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             flexDirection: 'column',
             background: this.props.theme.centerChannelBg,
             color: this.props.theme.centerChannelColor,
-            borderRadius: '12px',
+            borderRadius: '8px',
             border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.16)}`,
             boxShadow: `0px 20px 32px ${changeOpacity(this.props.theme.centerChannelColor, 0.12)}`,
-            padding: '40px',
-            maxWidth: '80%',
+            maxWidth: '832px',
+            maxHeight: '614px',
         },
         header: {
             fontWeight: 600,
-            fontSize: '18px',
-            marginBottom: '8px',
+            fontFamily: 'Metropolis',
+            fontSize: '22px',
+            lineHeight: '28px',
+            textAlign: 'left',
+            width: '100%',
+            padding: '26px 32px',
         },
         body: {
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
+            overflow: 'auto',
+            padding: '28px 32px',
         },
         footer: {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            marginTop: '32px',
             alignSelf: 'flex-end',
+            padding: '24px 32px',
         },
         source: {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
-            margin: '4px',
+            margin: '8px 4px',
+        },
+        divider: {
+            border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.08)}`,
+            width: '100%',
+            margin: 0,
         },
     };
 
@@ -109,11 +120,13 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                 >
                     <div className={`screen-source-thumbnail ${source.id === this.state.selected ? 'selected' : ''}`}>
                         <img
-                            style={{maxHeight: '225px'}}
+                            style={{
+                                height: '100%',
+                            }}
                             src={source.thumbnailURL}
                         />
                     </div>
-                    <span>{source.name}</span>
+                    <span style={{whiteSpace: 'nowrap', textOverflow: 'ellipsis'}}>{source.name}</span>
                 </button>
             );
         });
@@ -152,7 +165,10 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                 },
             });
             // eslint-disable-next-line react/no-did-update-set-state
-            this.setState({sources});
+            this.setState({
+                sources,
+                selected: sources[0]?.id || '',
+            });
         }
     }
 
@@ -173,12 +189,14 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                     >
                         <CompassIcon icon='close'/>
                     </button>
-                    <div style={this.style.header}>
+                    <div style={this.style.header as CSSProperties}>
                         {'Choose what to share'}
                     </div>
+                    <hr style={this.style.divider}/>
                     <div style={this.style.body as CSSProperties}>
                         { this.renderSources() }
                     </div>
+                    <hr style={this.style.divider}/>
                     <div style={this.style.footer}>
                         <button
                             className='style--none screen-source-modal-cancel'

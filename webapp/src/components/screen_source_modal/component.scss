@@ -9,8 +9,8 @@
 
 button.screen-source-modal-close {
   position: absolute;
-  font-size: 20px;
-  color: rgba(var(--center-channel-color-rgb), 0.64);
+  font-size: 24px;
+  color: rgba(var(--center-channel-color-rgb), 0.56);
   right: 12px;
   top: 12px;
 
@@ -45,6 +45,13 @@ button.screen-source-modal-join {
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
+  margin-bottom: 8px;
+
+  width: 224px;
+  height: 126px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 
   &:hover {
     border: 2px solid rgba(var(--button-bg-rgb), 0.64);
