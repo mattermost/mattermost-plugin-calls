@@ -5,10 +5,10 @@ import {GlobalState} from 'mattermost-redux/types/store';
 import axios from 'axios';
 
 import {getCurrentChannelId, getCurrentChannel, getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
-import {getMyRoles} from 'mattermost-redux/selectors/entities/roles';
-
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getMyRoles} from 'mattermost-redux/selectors/entities/roles';
+import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
+import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 
 import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from './selectors';
 
@@ -372,11 +372,13 @@ export default class Plugin {
         const fetchChannelData = async (channelID: string) => {
             const channel = getChannel(store.getState(), channelID);
             const roles = getMyRoles(store.getState());
+            const cms = getMyChannelMemberships(store.getState());
+
             registry.unregisterComponent(channelHeaderMenuID);
 
             try {
                 const resp = await axios.get(`${getPluginPath()}/config`);
-                if (hasPermissionsToEnableCalls(channel, roles, resp.data.AllowEnableCalls)) {
+                if (hasPermissionsToEnableCalls(channel, cms[channelID], roles, resp.data.AllowEnableCalls)) {
                     registerChannelHeaderMenuAction();
                 }
             } catch (err) {

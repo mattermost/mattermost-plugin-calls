@@ -13,7 +13,7 @@ import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities
 import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
 
 import {Team} from 'mattermost-redux/types/teams';
-import {Channel} from 'mattermost-redux/types/channels';
+import {Channel, ChannelMembership} from 'mattermost-redux/types/channels';
 import {UserProfile} from 'mattermost-redux/types/users';
 import {Dictionary} from 'mattermost-redux/types/utilities';
 
@@ -113,14 +113,15 @@ type userRoles = {
     channel: Dictionary<Set<string>>;
 }
 
-export function hasPermissionsToEnableCalls(channel: Channel, roles: userRoles, allowEnable: boolean) {
+export function hasPermissionsToEnableCalls(channel: Channel, cm: ChannelMembership | null | undefined, roles: userRoles, allowEnable: boolean) {
     if (!allowEnable) {
         return roles.system.has('system_admin');
     }
 
     return (isDirectChannel(channel) ||
     isGroupChannel(channel)) ||
-    roles.channel[channel.id].has('channel_admin') ||
+    cm?.scheme_admin === true ||
+    roles.channel[channel.id]?.has('channel_admin') ||
     roles.system.has('system_admin');
 }
 
