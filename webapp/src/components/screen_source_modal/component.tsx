@@ -52,13 +52,15 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             maxHeight: '614px',
         },
         header: {
+            position: 'relative',
+            width: '100%',
+            padding: '26px 32px',
+        },
+        title: {
             fontWeight: 600,
             fontFamily: 'Metropolis',
             fontSize: '22px',
             lineHeight: '28px',
-            textAlign: 'left',
-            width: '100%',
-            padding: '26px 32px',
         },
         body: {
             display: 'grid',
@@ -79,6 +81,12 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             justifyContent: 'center',
             alignItems: 'center',
             margin: '8px 4px',
+        },
+        sourceLabel: {
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
+            overflow: 'hidden',
+            width: '224px',
         },
         divider: {
             border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.08)}`,
@@ -126,7 +134,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                             src={source.thumbnailURL}
                         />
                     </div>
-                    <span style={{whiteSpace: 'nowrap', textOverflow: 'ellipsis'}}>{source.name}</span>
+                    <span style={this.style.sourceLabel as CSSProperties}>{source.name}</span>
                 </button>
             );
         });
@@ -183,14 +191,16 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                     style={this.style.modal as CSSProperties}
                     ref={this.node}
                 >
-                    <button
-                        className='style--none screen-source-modal-close'
-                        onClick={this.hide}
-                    >
-                        <CompassIcon icon='close'/>
-                    </button>
                     <div style={this.style.header as CSSProperties}>
-                        {'Choose what to share'}
+                        <span style={this.style.title}>
+                            {'Choose what to share'}
+                        </span>
+                        <button
+                            className='style--none screen-source-modal-close'
+                            onClick={this.hide}
+                        >
+                            <CompassIcon icon='close'/>
+                        </button>
                     </div>
                     <hr style={this.style.divider}/>
                     <div style={this.style.body as CSSProperties}>

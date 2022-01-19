@@ -11,11 +11,13 @@ button.screen-source-modal-close {
   position: absolute;
   font-size: 24px;
   color: rgba(var(--center-channel-color-rgb), 0.56);
-  right: 12px;
-  top: 12px;
+  right: 18px;
+  top: 18px;
+  width: 40px;
+  height: 40px;
 
   &:hover {
-    background: rgba(var(--button-bg-rgb), 0.12);
+    background: rgba(var(--center-channel-color-rgb), 0.08);
   }
 }
 
