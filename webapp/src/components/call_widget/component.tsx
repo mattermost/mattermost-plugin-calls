@@ -5,6 +5,7 @@ import {GenericAction} from 'mattermost-redux/types/actions';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import moment from 'moment-timezone';
+import {compareSemVer} from 'semver-parser';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 import {Channel} from 'mattermost-redux/types/channels';
@@ -53,6 +54,7 @@ interface Props {
     screenSharingID: string,
     show: boolean,
     showExpandedView: () => void,
+    showScreenSourceModal: () => void,
 }
 
 interface DraggingState {
@@ -289,10 +291,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             screenStream = window.callsClient.getLocalScreenStream();
         }
 
-        const wasRendering = Boolean(prevProps.screenSharingID && prevState.screenStream);
+        const wasRendering = Boolean(prevProps.screenSharingID && prevState.screenStream && prevProps.show);
         const shouldRender = Boolean(this.props.screenSharingID && screenStream);
 
-        if (!wasRendering && shouldRender && this.screenPlayer.current) {
+        if (!this.state.screenStream && screenStream) {
+            // eslint-disable-next-line react/no-did-update-set-state
+            this.setState({screenStream});
+        } else if (!wasRendering && shouldRender && this.screenPlayer.current) {
             this.screenPlayer.current.srcObject = screenStream;
         }
 
@@ -363,8 +368,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             window.callsClient.unshareScreen();
             state.screenStream = null;
         } else if (!this.props.screenSharingID) {
-            const stream = await window.callsClient.shareScreen();
-            state.screenStream = stream;
+            if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
+                this.props.showScreenSourceModal();
+            } else {
+                const stream = await window.callsClient.shareScreen();
+                state.screenStream = stream;
+            }
         }
 
         this.setState({
@@ -770,6 +779,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='MenuItem'
                 >
                     <button
+                        id='calls-widget-menu-screenshare'
                         className='style--none'
                         style={{
                             display: 'flex',
@@ -985,8 +995,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         // TODO: remove this as soon as we support opening a window from desktop app.
-        const isDesktop = navigator && navigator.userAgent.includes('Electron');
-        if (isDesktop) {
+        if (window.desktop) {
             this.props.showExpandedView();
         } else {
             const expandedViewWindow = window.open(
@@ -1032,8 +1041,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar'));
         const mainWidth = hasTeamSidebar ? '280px' : '216px';
 
-        const isDesktop = navigator && navigator.userAgent.includes('Electron');
-        const ShowIcon = isDesktop ? ExpandIcon : PopOutIcon;
+        const ShowIcon = window.desktop ? ExpandIcon : PopOutIcon;
 
         const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
         const handTooltipText = window.callsClient.isHandRaised ? 'Click to lower hand' : 'Click to raise hand';
@@ -1110,7 +1118,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </OverlayTrigger>
 
                         <button
-                            id='voice-menu'
+                            id='calls-widget-toggle-menu-button'
                             className='cursor--pointer style--none button-controls'
                             style={this.style.menuButton}
                             onClick={this.onMenuClick}

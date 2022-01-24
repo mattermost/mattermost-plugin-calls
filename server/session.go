@@ -7,7 +7,6 @@ import (
 
 	"github.com/mattermost/mattermost-server/v6/model"
 
-	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -25,7 +24,6 @@ type session struct {
 	// WebSocket
 	signalInCh  chan []byte
 	signalOutCh chan []byte
-	wsConn      *websocket.Conn
 	wsMsgCh     chan clientMessage
 	wsCloseCh   chan struct{}
 	doneCh      chan struct{}

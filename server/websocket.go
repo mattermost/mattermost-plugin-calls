@@ -398,7 +398,6 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	close(us.closeCh)
 	close(us.signalInCh)
 	wg.Wait()
-	close(us.signalOutCh)
 
 	p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
 		"userID": userID,

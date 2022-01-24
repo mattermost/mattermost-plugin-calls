@@ -11,7 +11,7 @@ import {Client4} from 'mattermost-redux/client';
 import {UserState} from '../../types/types';
 
 import {alphaSortProfiles, stateSortProfiles} from '../../utils';
-import {hideExpandedView} from '../../actions';
+import {hideExpandedView, showScreenSourceModal} from '../../actions';
 import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID} from '../../selectors';
 
 import ExpandedView from './component';
@@ -45,6 +45,7 @@ const mapStateToProps = (state: GlobalState) => {
 
 const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     hideExpandedView,
+    showScreenSourceModal,
 }, dispatch);
 
 export default connect(mapStateToProps, mapDispatchToProps)(ExpandedView);
