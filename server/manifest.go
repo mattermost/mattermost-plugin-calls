@@ -16,7 +16,7 @@ const manifestStr = `
   "id": "com.mattermost.calls",
   "name": "Calls",
   "description": "Integrates real-time voice communication in Mattermost",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "min_server_version": "6.3.0",
   "server": {
     "executables": {

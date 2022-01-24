@@ -47,6 +47,11 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
+	defer func() {
+		wg.Wait()
+		p.LogDebug("exiting session handler")
+	}()
+
 	go func() {
 		defer wg.Done()
 		p.metrics.RTCSessions.With(prometheus.Labels{"channelID": msg.ChannelID}).Inc()
@@ -57,24 +62,28 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 		p.LogDebug("handleTracks DONE")
 	}()
 
-	for m := range us.signalOutCh {
-		clusterMsg := clusterMessage{
-			UserID:    msg.UserID,
-			ChannelID: msg.ChannelID,
-			SenderID:  p.nodeID,
-			ClientMessage: clientMessage{
-				Type: clientMessageTypeSDP,
-				Data: m,
-			},
-		}
-		if err := p.sendClusterMessage(clusterMsg, clusterMessageTypeSignaling, msg.SenderID); err != nil {
-			p.LogError(err.Error())
+	for {
+		select {
+		case m, ok := <-us.signalOutCh:
+			if !ok {
+				return
+			}
+			clusterMsg := clusterMessage{
+				UserID:    msg.UserID,
+				ChannelID: msg.ChannelID,
+				SenderID:  p.nodeID,
+				ClientMessage: clientMessage{
+					Type: clientMessageTypeSDP,
+					Data: m,
+				},
+			}
+			if err := p.sendClusterMessage(clusterMsg, clusterMessageTypeSignaling, msg.SenderID); err != nil {
+				p.LogError(err.Error())
+			}
+		case <-us.closeCh:
+			return
 		}
 	}
-
-	wg.Wait()
-
-	p.LogDebug("exiting session handler")
 }
 
 func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterEvent) {
@@ -112,7 +121,6 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		delete(p.sessions, us.userID)
 		p.mut.Unlock()
 		close(us.signalInCh)
-		close(us.signalOutCh)
 		close(us.closeCh)
 		if us.rtcConn != nil {
 			us.rtcConn.Close()
@@ -129,7 +137,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		if msg.ClientMessage.Type == clientMessageTypeICE {
 			signalCh = us.iceCh
 		}
-		if us.wsConn != nil || us.connID != "" {
+		if us.connID != "" {
 			signalCh = us.signalOutCh
 		}
 

@@ -3,7 +3,7 @@ module github.com/mattermost/mattermost-plugin-calls
 go 1.17
 
 require (
-	github.com/gorilla/websocket v1.4.2
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/mattermost/mattermost-server/v6 v6.0.0-20210906125346-b41b7eae1026
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pion/ice/v2 v2.1.12
