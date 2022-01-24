@@ -93,12 +93,15 @@ export default class Plugin {
             const userID = ev.data.userID;
             const channelID = ev.broadcast.channel_id;
             const currentUserID = getCurrentUserId(store.getState());
-            if (userID === currentUserID) {
-                const audio = new Audio(getPluginStaticPath() + JoinSelfSound);
-                audio.play();
-            } else if (channelID === connectedChannelID(store.getState())) {
-                const audio = new Audio(getPluginStaticPath() + JoinUserSound);
-                audio.play();
+
+            if (window.callsClient) {
+                if (userID === currentUserID) {
+                    const audio = new Audio(getPluginStaticPath() + JoinSelfSound);
+                    audio.play();
+                } else if (channelID === connectedChannelID(store.getState())) {
+                    const audio = new Audio(getPluginStaticPath() + JoinUserSound);
+                    audio.play();
+                }
             }
 
             store.dispatch({
