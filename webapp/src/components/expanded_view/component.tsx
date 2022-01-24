@@ -3,6 +3,7 @@ import {Dispatch} from 'redux';
 import {GenericAction} from 'mattermost-redux/types/actions';
 
 import moment from 'moment-timezone';
+import {compareSemVer} from 'semver-parser';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 
@@ -37,6 +38,7 @@ interface Props {
     },
     callStartAt: number,
     hideExpandedView: () => void,
+    showScreenSourceModal: () => void,
     screenSharingID: string,
 }
 
@@ -104,11 +106,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 screenStream: null,
             });
         } else if (!this.props.screenSharingID) {
-            const stream = await getScreenStream();
-            callsClient.setScreenStream(stream);
-            this.setState({
-                screenStream: stream,
-            });
+            if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
+                this.props.showScreenSourceModal();
+            } else {
+                const stream = await getScreenStream();
+                callsClient.setScreenStream(stream);
+                this.setState({
+                    screenStream: stream,
+                });
+            }
         }
     }
 
@@ -128,8 +134,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
-        if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer.current.srcObject !== this.state.screenStream) {
+        if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer?.current.srcObject !== this.state.screenStream) {
             this.screenPlayer.current.srcObject = this.state.screenStream;
+        }
+
+        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        if (!this.state.screenStream && callsClient?.getLocalScreenStream()) {
+            // eslint-disable-next-line react/no-did-update-set-state
+            this.setState({screenStream: callsClient.getLocalScreenStream()});
         }
     }
 
@@ -141,9 +153,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         });
 
-        console.log(callsClient.getLocalScreenStream(), callsClient.getRemoteScreenStream());
         const screenStream = callsClient.getLocalScreenStream() || callsClient.getRemoteScreenStream();
-        console.log(screenStream);
 
         // This is needed to force a re-render to periodically update
         // the start time.
