@@ -29,6 +29,17 @@ type ChannelState struct {
 	Call      *Call  `json:"call,omitempty"`
 }
 
+func (p *Plugin) handleGetVersion(w http.ResponseWriter, r *http.Request) {
+	info := map[string]interface{}{
+		"version": manifest.Version,
+		"build":   buildHash,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(info); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
 func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	userID := r.Header.Get("Mattermost-User-Id")
 	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
@@ -196,6 +207,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	} else if strings.HasPrefix(r.URL.Path, "/debug/pprof") {
 		pprof.Index(w, r)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/version") {
+		p.handleGetVersion(w, r)
 		return
 	}
 
