@@ -8,6 +8,7 @@ import (
 )
 
 var isDebug string
+var buildHash string
 
 func main() {
 	plugin.ClientMain(&Plugin{
