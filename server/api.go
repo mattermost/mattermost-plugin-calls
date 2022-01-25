@@ -79,40 +79,49 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
 
-	// TODO: implement proper paging
-	channelIDs, appErr := p.API.KVList(0, 30)
-	if appErr != nil {
-		p.LogError(appErr.Error())
-		http.Error(w, appErr.Error(), http.StatusInternalServerError)
-		return
-	}
-
+	var page int
 	var channels []ChannelState
-	for _, channelID := range channelIDs {
-		if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
-			continue
-		}
-
-		state, err := p.kvGetChannelState(channelID)
-		if err != nil {
-			p.LogError(err.Error())
+	perPage := 200
+	for {
+		channelIDs, appErr := p.API.KVList(page, perPage)
+		if appErr != nil {
+			p.LogError(appErr.Error())
 			http.Error(w, appErr.Error(), http.StatusInternalServerError)
+			return
 		}
 
-		info := ChannelState{
-			ChannelID: channelID,
-			Enabled:   state.Enabled,
-		}
-		if state.Call != nil {
-			info.Call = &Call{
-				ID:              state.Call.ID,
-				StartAt:         state.Call.StartAt,
-				Users:           state.Call.getUsers(),
-				ThreadID:        state.Call.ThreadID,
-				ScreenSharingID: state.Call.ScreenSharingID,
+		for _, channelID := range channelIDs {
+			if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+				continue
 			}
+
+			state, err := p.kvGetChannelState(channelID)
+			if err != nil {
+				p.LogError(err.Error())
+				http.Error(w, appErr.Error(), http.StatusInternalServerError)
+			}
+
+			info := ChannelState{
+				ChannelID: channelID,
+				Enabled:   state.Enabled,
+			}
+			if state.Call != nil {
+				info.Call = &Call{
+					ID:              state.Call.ID,
+					StartAt:         state.Call.StartAt,
+					Users:           state.Call.getUsers(),
+					ThreadID:        state.Call.ThreadID,
+					ScreenSharingID: state.Call.ScreenSharingID,
+				}
+			}
+			channels = append(channels, info)
 		}
-		channels = append(channels, info)
+
+		if len(channelIDs) < perPage {
+			break
+		}
+
+		page++
 	}
 
 	w.Header().Set("Content-Type", "application/json")
