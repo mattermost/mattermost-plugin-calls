@@ -124,7 +124,7 @@ func (p *Plugin) handlePLI(sender *webrtc.RTPSender, channelID string) {
 					return
 				}
 				if err := screenSession.rtcConn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(screenSession.remoteScreenTrack.SSRC())}}); err != nil {
-					p.LogError(err.Error())
+					p.LogDebug(err.Error())
 				}
 			}
 		}

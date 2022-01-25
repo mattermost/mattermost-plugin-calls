@@ -29,7 +29,7 @@ const (
 	wsEventError            = "error"
 )
 
-func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, userID string) error {
+func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, handlerID, channelID, userID string) error {
 	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
@@ -64,6 +64,16 @@ func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, use
 		}, &model.WebsocketBroadcast{ChannelId: channelID})
 	} else {
 		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID})
+		if handlerID != p.nodeID {
+			if err := p.sendClusterMessage(clusterMessage{
+				UserID:        userID,
+				ChannelID:     channelID,
+				SenderID:      p.nodeID,
+				ClientMessage: msg,
+			}, clusterMessageTypeUserState, handlerID); err != nil {
+				p.LogError(err.Error())
+			}
+		}
 	}
 
 	return nil
@@ -161,7 +171,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"userID": us.userID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
-		if err := p.handleClientMessageTypeScreen(msg, us.channelID, us.userID); err != nil {
+		if err := p.handleClientMessageTypeScreen(msg, handlerID, us.channelID, us.userID); err != nil {
 			p.LogError(err.Error())
 		}
 	case clientMessageTypeRaiseHand, clientMessageTypeUnraiseHand:
