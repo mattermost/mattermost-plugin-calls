@@ -318,9 +318,19 @@ export default class Plugin {
             );
         };
 
+        let initializing = false;
         const connectCall = async (channelID: string) => {
+            if (initializing) {
+                console.log('client is already initializing');
+                return;
+            } else if (window.callsClient) {
+                console.log('client is already initialized');
+                return;
+            }
             try {
+                initializing = true;
                 window.callsClient = await new CallsClient().init(channelID);
+                initializing = false;
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', () => {
