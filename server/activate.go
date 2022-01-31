@@ -2,6 +2,7 @@ package main
 
 import (
 	"net"
+	"syscall"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 
@@ -40,6 +41,7 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
+	// Set size of UDP buffers.
 	if err := udpServerConn.SetWriteBuffer(4194304); err != nil {
 		p.LogError(err.Error())
 		return err
@@ -49,6 +51,23 @@ func (p *Plugin) OnActivate() error {
 		p.LogError(err.Error())
 		return err
 	}
+	connFile, err := udpServerConn.File()
+	if err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+	defer connFile.Close()
+	writeBufSize, err := syscall.GetsockoptInt(int(connFile.Fd()), syscall.SOL_SOCKET, syscall.SO_SNDBUF)
+	if err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+	readBufSize, err := syscall.GetsockoptInt(int(connFile.Fd()), syscall.SOL_SOCKET, syscall.SO_RCVBUF)
+	if err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+	p.LogInfo("UDP buffers", "writeBufSize", writeBufSize, "readBufSize", readBufSize)
 
 	hostIP, err := getPublicIP(udpServerConn, cfg.ICEServers)
 	if err != nil {
@@ -81,9 +100,9 @@ func (p *Plugin) OnDeactivate() error {
 		p.udpServerMux.Close()
 	}
 
-	if p.udpServerConn != nil {
-		p.udpServerConn.Close()
-	}
+	// Purpusely not closing the UDP server connection here as it will cause
+	// a deadlock (see https://go.dev/play/p/ywju17IO9ZZ).
+	// The plugin's process will exit anyway so no need to explicitly do it here.
 
 	if err := p.cleanUpState(); err != nil {
 		p.LogError(err.Error())
