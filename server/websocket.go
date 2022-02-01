@@ -421,6 +421,17 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		if err := p.updateCallThreadEnded(prevState.Call.ThreadID); err != nil {
 			p.LogError(err.Error())
 		}
+		p.mut.Lock()
+		delete(p.calls, channelID)
+		p.mut.Unlock()
+		if handlerID != p.nodeID {
+			if err := p.sendClusterMessage(clusterMessage{
+				ChannelID: channelID,
+				SenderID:  p.nodeID,
+			}, clusterMessageTypeCallEnded, handlerID); err != nil {
+				p.LogError(err.Error())
+			}
+		}
 	}
 
 	return nil

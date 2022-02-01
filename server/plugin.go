@@ -42,7 +42,8 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 	us := newUserSession(msg.UserID, msg.ChannelID, "")
 
 	p.mut.Lock()
-	if len(p.sessions) == 0 {
+	if _, ok := p.calls[msg.ChannelID]; !ok {
+		p.LogDebug("new call, setting state")
 		p.calls[msg.ChannelID] = &call{
 			channelID: msg.ChannelID,
 			sessions:  map[string]*session{},
@@ -166,6 +167,10 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		} else {
 			us.trackEnableCh <- (msg.ClientMessage.Type == clientMessageTypeMute)
 		}
+	case clusterMessageTypeCallEnded:
+		p.mut.Lock()
+		delete(p.calls, msg.ChannelID)
+		p.mut.Unlock()
 	default:
 		return fmt.Errorf("unexpected event type %q", ev.Id)
 	}
