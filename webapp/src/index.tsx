@@ -506,14 +506,17 @@ export default class Plugin {
                 fetchChannelData(expandedID);
             }
         }
+
+        let joinCall = new URLSearchParams(window.location.search).get('join_call');
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
                 fetchChannelData(currChannelId);
-                if (currChannelId && Boolean(new URLSearchParams(window.location.search).get('join_call')) && !connectedChannelID(store.getState())) {
+                if (currChannelId && Boolean(joinCall) && !connectedChannelID(store.getState())) {
                     connectCall(currChannelId);
                 }
+                joinCall = false;
             }
         }));
 
