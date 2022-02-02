@@ -270,6 +270,8 @@ export default class Plugin {
                     return {};
                 }
                 return {error: {message: 'You are not connected to a call in the current channel.'}};
+            } else if (subCmd === 'link') {
+                return {message, args};
             }
 
             return {message, args};

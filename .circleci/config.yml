@@ -7,7 +7,7 @@ orbs:
 executors:
   default:
     docker:
-      - image: cimg/go:1.17.1
+      - image: cimg/go:1.17.6
 
 commands:
   install-node-npm:

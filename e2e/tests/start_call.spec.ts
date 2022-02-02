@@ -96,3 +96,51 @@ test.describe('desktop', () => {
     });
 });
 
+test.describe('auto join link', () => {
+    test.use({storageState: userState.users[0].storageStatePath});
+
+    test('public channel', async ({page, context}) => {
+        await page.locator('#post_textbox').fill('/call link');
+        await page.locator('#post_textbox').press('Enter');
+        await page.locator('#post_textbox').press('Enter');
+
+        const post = page.locator('.post-message__text').last();
+        await expect(post).toBeVisible();
+
+        const content = await post.textContent();
+        if (!content) {
+            test.fail();
+            return;
+        }
+        const link = content.replace('Call link: ', '');
+        page.goto(link);
+
+        expect(page.locator('#calls-widget .calls-widget-bottom-bar'));
+        await page.locator('#calls-widget-leave-button').click();
+        await expect(page.locator('#calls-widget')).toBeHidden();
+    });
+
+    test('dm channel', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.gotoDM(userState.users[1].username);
+
+        await page.locator('#post_textbox').fill('/call link');
+        await page.locator('#post_textbox').press('Enter');
+        await page.locator('#post_textbox').press('Enter');
+
+        const post = page.locator('.post-message__text').last();
+        await expect(post).toBeVisible();
+
+        const content = await post.textContent();
+        if (!content) {
+            test.fail();
+            return;
+        }
+        const link = content.replace('Call link: ', '');
+        page.goto(link);
+
+        expect(page.locator('#calls-widget .calls-widget-bottom-bar'));
+        await page.locator('#calls-widget-leave-button').click();
+        await expect(page.locator('#calls-widget')).toBeHidden();
+    });
+});
