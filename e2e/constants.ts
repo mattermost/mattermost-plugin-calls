@@ -1,4 +1,4 @@
-export const baseURL = 'http://localhost:8065';
+export const baseURL = process.env.MM_SITE_URL || 'http://localhost:8065';
 export const defaultTeam = 'calls';
 export const userState = {
     admin: {
