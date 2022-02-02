@@ -382,6 +382,32 @@ export default class Plugin {
             );
         };
 
+        const fetchChannels = async () => {
+            try {
+                const resp = await axios.get(`${getPluginPath()}/channels`);
+                for (let i = 0; i < resp.data.length; i++) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_USERS_CONNECTED,
+                        data: {
+                            users: resp.data[i].call?.users,
+                            channelID: resp.data[i].channel_id,
+                        },
+                    });
+                    if (!voiceChannelCallStartAt(store.getState(), resp.data[i].channel_id)) {
+                        store.dispatch({
+                            type: VOICE_CHANNEL_CALL_START,
+                            data: {
+                                channelID: resp.data[i].channel_id,
+                                startAt: resp.data[i].call?.start_at,
+                            },
+                        });
+                    }
+                }
+            } catch (err) {
+                console.log(err);
+            }
+        };
+
         const fetchChannelData = async (channelID: string) => {
             const channel = getChannel(store.getState(), channelID);
             const roles = getMyRoles(store.getState());
@@ -417,6 +443,16 @@ export default class Plugin {
                     },
                 });
 
+                if (resp.data.call?.users && resp.data.call?.users.length > 0) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_PROFILES_CONNECTED,
+                        data: {
+                            profiles: await getProfilesByIds(store.getState(), resp.data.call?.users),
+                            channelID,
+                        },
+                    });
+                }
+
                 if (resp.data.call?.screen_sharing_id) {
                     store.dispatch({
                         type: VOICE_CHANNEL_USER_SCREEN_ON,
@@ -446,48 +482,10 @@ export default class Plugin {
                     type: VOICE_CHANNEL_DISABLE,
                 });
             }
-
-            try {
-                const resp = await axios.get(`${getPluginPath()}/channels`);
-                let currentChannelData;
-                for (let i = 0; i < resp.data.length; i++) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_USERS_CONNECTED,
-                        data: {
-                            users: resp.data[i].call?.users,
-                            channelID: resp.data[i].channel_id,
-                        },
-                    });
-                    if (resp.data[i].channel_id === channelID) {
-                        currentChannelData = resp.data[i];
-                    }
-
-                    if (!voiceChannelCallStartAt(store.getState(), resp.data[i].channel_id)) {
-                        store.dispatch({
-                            type: VOICE_CHANNEL_CALL_START,
-                            data: {
-                                channelID: resp.data[i].channel_id,
-                                startAt: resp.data[i].call?.start_at,
-                            },
-                        });
-                    }
-                }
-
-                if (currentChannelData && currentChannelData.call?.users.length > 0) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_PROFILES_CONNECTED,
-                        data: {
-                            profiles: await getProfilesByIds(store.getState(), currentChannelData.call?.users),
-                            channelID: currentChannelData.channel_id,
-                        },
-                    });
-                }
-            } catch (err) {
-                console.log(err);
-            }
         };
 
         this.registerWebSocketEvents(registry, store);
+        fetchChannels();
 
         let currChannelId = getCurrentChannelId(store.getState());
         if (currChannelId) {
@@ -507,16 +505,16 @@ export default class Plugin {
             }
         }
 
-        let joinCall = new URLSearchParams(window.location.search).get('join_call');
+        let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
                 fetchChannelData(currChannelId);
-                if (currChannelId && Boolean(joinCall) && !connectedChannelID(store.getState())) {
+                if (currChannelId && Boolean(joinCallParam) && !connectedChannelID(store.getState())) {
                     connectCall(currChannelId);
                 }
-                joinCall = false;
+                joinCallParam = '';
             }
         }));
 
