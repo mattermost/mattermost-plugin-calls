@@ -78,12 +78,51 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 	}
 }
 
+func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Permission) bool {
+	if cm == nil {
+		return false
+	}
+
+	if p.API.RolesGrantPermission(cm.GetRoles(), perm.Id) {
+		return true
+	}
+
+	channel, appErr := p.API.GetChannel(cm.ChannelId)
+	if appErr == nil {
+		return p.API.HasPermissionToTeam(cm.UserId, channel.TeamId, perm)
+	}
+
+	return p.API.HasPermissionTo(cm.UserId, perm)
+
+}
+
 func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
 
 	var page int
 	var channels []ChannelState
+	channelMembers := map[string]*model.ChannelMember{}
 	perPage := 200
+
+	// getting all channel members for the asking user.
+	for {
+		cms, appErr := p.API.GetChannelMembersForUser("", userID, page, perPage)
+		if appErr != nil {
+			p.LogError(appErr.Error())
+			http.Error(w, appErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		for i := range cms {
+			channelMembers[cms[i].ChannelId] = cms[i]
+		}
+		if len(cms) < perPage {
+			break
+		}
+		page++
+	}
+
+	// loop on channels to check membership/permissions
+	page = 0
 	for {
 		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVList"}).Inc()
 		channelIDs, appErr := p.API.KVList(page, perPage)
@@ -94,7 +133,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, channelID := range channelIDs {
-			if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+			if !p.hasPermissionToChannel(channelMembers[channelID], model.PermissionReadChannel) {
 				continue
 			}
 
