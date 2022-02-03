@@ -72,7 +72,11 @@ export function getChannelURL(state: GlobalState, channel: Channel, teamId: stri
     return notificationURL;
 }
 
-export function getUserDisplayName(user: UserProfile) {
+export function getUserDisplayName(user: UserProfile | undefined) {
+    if (!user) {
+        return '';
+    }
+
     if (user.first_name && user.last_name) {
         return user.first_name + ' ' + user.last_name;
     }
@@ -264,4 +268,15 @@ export async function getProfilesByIds(state: GlobalState, ids: string[]): Promi
         profiles.push(...(await Client4.getProfilesByIds(missingIds)));
     }
     return profiles;
+}
+
+export function getUserIdFromDM(dmName: string, currentUserId: string) {
+    const ids = dmName.split('__');
+    let otherUserId = '';
+    if (ids[0] === currentUserId) {
+        otherUserId = ids[1];
+    } else {
+        otherUserId = ids[0];
+    }
+    return otherUserId;
 }
