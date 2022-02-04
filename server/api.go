@@ -93,7 +93,6 @@ func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Per
 	}
 
 	return p.API.HasPermissionTo(cm.UserId, perm)
-
 }
 
 func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
