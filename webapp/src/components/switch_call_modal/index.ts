@@ -28,7 +28,7 @@ const mapStateToProps = (state: GlobalState) => {
     }
 
     return {
-        show: switchCallModal(state),
+        show: switchCallModal(state).show,
         connectedChannel,
         currentChannel,
         connectedDMUser,
