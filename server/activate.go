@@ -10,11 +10,6 @@ import (
 )
 
 func (p *Plugin) OnActivate() error {
-	if err := p.OnConfigurationChange(); err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-
 	if err := p.cleanUpState(); err != nil {
 		p.LogError(err.Error())
 		return err
@@ -106,12 +101,14 @@ func (p *Plugin) OnDeactivate() error {
 
 	if err := p.cleanUpState(); err != nil {
 		p.LogError(err.Error())
-		return err
 	}
 
 	if err := p.unregisterCommands(); err != nil {
 		p.LogError(err.Error())
-		return err
+	}
+
+	if err := p.uninitTelemetry(); err != nil {
+		p.LogError(err.Error())
 	}
 
 	return nil

@@ -12,7 +12,10 @@ require (
 	github.com/stretchr/testify v1.7.0
 )
 
-require github.com/pion/stun v0.3.5
+require (
+	github.com/pion/stun v0.3.5
+	github.com/rudderlabs/analytics-go v3.3.2+incompatible
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -70,12 +73,17 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rs/xid v1.3.0 // indirect
+	github.com/segmentio/backo-go v0.0.0-20200129164019-23eae7c10bd3 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/tidwall/gjson v1.11.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tinylib/msgp v1.1.6 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/wiggin77/merror v1.0.3 // indirect
 	github.com/wiggin77/srslog v1.0.1 // indirect
+	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	github.com/yuin/goldmark v1.4.4 // indirect
 	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871 // indirect
 	golang.org/x/net v0.0.0-20211123203042-d83791d6bcd9 // indirect
