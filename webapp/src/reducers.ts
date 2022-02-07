@@ -394,14 +394,14 @@ const expandedView = (state = false, action: {type: string}) => {
     }
 };
 
-const switchCallModal = (state = false, action: {type: string}) => {
+const switchCallModal = (state = {show: false, targetID: ''}, action: {type: string, data?: {targetID: string}}) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
-        return false;
+        return {show: false, targetID: ''};
     case SHOW_SWITCH_CALL_MODAL:
-        return true;
+        return {show: true, targetID: action.data?.targetID};
     case HIDE_SWITCH_CALL_MODAL:
-        return false;
+        return {show: false, targetID: ''};
     default:
         return state;
     }

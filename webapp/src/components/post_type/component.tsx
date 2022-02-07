@@ -18,11 +18,11 @@ import ConnectedProfiles from '../../components/connected_profiles';
 interface Props {
     theme: any,
     post: Post,
-    currChannelID: string,
     connectedID: string,
     hasCall: boolean,
     pictures: string[],
     profiles: UserProfile[],
+    showSwitchCallModal: (targetID: string) => void,
 }
 
 export default class PostType extends React.PureComponent<Props> {
@@ -91,9 +91,10 @@ export default class PostType extends React.PureComponent<Props> {
 
     onJoinCallClick = async () => {
         if (this.props.connectedID) {
+            this.props.showSwitchCallModal(this.props.post.channel_id);
             return;
         }
-        window.postMessage({type: 'connectCall', channelID: this.props.currChannelID}, window.origin);
+        window.postMessage({type: 'connectCall', channelID: this.props.post.channel_id}, window.origin);
     }
 
     onLeaveButtonClick = () => {
@@ -153,7 +154,7 @@ export default class PostType extends React.PureComponent<Props> {
 
                 </div>
                 {
-                    !this.props.post.props.end_at && (!this.props.connectedID || this.props.connectedID !== this.props.currChannelID) &&
+                    !this.props.post.props.end_at && (!this.props.connectedID || this.props.connectedID !== this.props.post.channel_id) &&
                         <button
                             className='cursor--pointer style--none'
                             style={this.style.joinButton}
@@ -164,7 +165,7 @@ export default class PostType extends React.PureComponent<Props> {
                         </button>
                 }
                 {
-                    !this.props.post.props.end_at && this.props.connectedID && this.props.connectedID === this.props.currChannelID &&
+                    !this.props.post.props.end_at && this.props.connectedID && this.props.connectedID === this.props.post.channel_id &&
 
                         <button
                             className='cursor--pointer style--none'

@@ -22,9 +22,12 @@ export const hideExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
     });
 };
 
-export const showSwitchCallModal = () => (dispatch: Dispatch<GenericAction>) => {
+export const showSwitchCallModal = (targetID?: string) => (dispatch: Dispatch<GenericAction>) => {
     dispatch({
         type: SHOW_SWITCH_CALL_MODAL,
+        data: {
+            targetID,
+        },
     });
 };
 

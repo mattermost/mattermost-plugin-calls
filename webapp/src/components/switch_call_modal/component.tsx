@@ -3,8 +3,11 @@ import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 
 import {Channel} from 'mattermost-redux/types/channels';
+import {UserProfile} from 'mattermost-redux/types/users';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
+
+import {isDMChannel, isGMChannel, getUserDisplayName} from '../../utils';
 
 import CompassIcon from '../../components/icons/compassIcon';
 
@@ -14,6 +17,8 @@ interface Props {
     theme: any,
     currentChannel: Channel,
     connectedChannel: Channel,
+    currentDMUser: UserProfile | undefined,
+    connectedDMUser: UserProfile | undefined,
     show: boolean,
     hideSwitchCallModal: () => void,
 }
@@ -41,24 +46,33 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
             flexDirection: 'column',
             background: this.props.theme.centerChannelBg,
             color: this.props.theme.centerChannelColor,
-            borderRadius: '12px',
+            borderRadius: '8px',
             border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.16)}`,
             boxShadow: `0px 20px 32px ${changeOpacity(this.props.theme.centerChannelColor, 0.12)}`,
-            padding: '40px',
+            width: '512px',
+            padding: '48px 32px',
         },
         header: {
+            position: 'relative',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingBottom: '8px',
+        },
+        title: {
             fontWeight: 600,
-            fontSize: '18px',
-            marginBottom: '8px',
+            fontFamily: 'Metropolis',
+            fontSize: '22px',
+            lineHeight: '28px',
         },
         body: {
-            whiteSpace: 'pre',
+            textAlign: 'center',
         },
         footer: {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            marginTop: '32px',
+            paddingTop: '32px',
         },
     };
 
@@ -100,6 +114,46 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
         if (!this.props.show) {
             return null;
         }
+
+        let message1;
+        if (isDMChannel(this.props.connectedChannel)) {
+            message1 = (<React.Fragment>
+                {'You\'re already in a call with '}
+                <span style={{fontWeight: 600}}>{getUserDisplayName(this.props.connectedDMUser)}</span>
+            </React.Fragment>);
+        } else if (isGMChannel(this.props.connectedChannel)) {
+            message1 = (<React.Fragment>
+                {'You\'re already in a call with '}
+                <span style={{fontWeight: 600}}>{this.props.connectedChannel.display_name}</span>
+            </React.Fragment>);
+        } else {
+            message1 = (<React.Fragment>
+                {'You\'re already in a call in '}
+                <span style={{fontWeight: 600}}>{this.props.connectedChannel.display_name}</span>
+            </React.Fragment>);
+        }
+
+        let message2;
+        if (isDMChannel(this.props.currentChannel)) {
+            message2 = (<React.Fragment>
+                {'. Do you want to leave and join a call with '}
+                <span style={{fontWeight: 600}}>{getUserDisplayName(this.props.currentDMUser)}</span>
+                {'?'}
+            </React.Fragment>);
+        } else if (isGMChannel(this.props.currentChannel)) {
+            message2 = (<React.Fragment>
+                {'. Do you want to leave and join a call with '}
+                <span style={{fontWeight: 600}}>{this.props.currentChannel.display_name}</span>
+                {'?'}
+            </React.Fragment>);
+        } else {
+            message2 = (<React.Fragment>
+                {'. Do you want to leave and join a call in '}
+                <span style={{fontWeight: 600}}>{this.props.currentChannel.display_name}</span>
+                {'?'}
+            </React.Fragment>);
+        }
+
         return (
             <div style={this.style.main as CSSProperties}>
                 <div
@@ -113,15 +167,14 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
                     >
                         <CompassIcon icon='close'/>
                     </button>
-                    <div style={this.style.header}>
-                        {'You\'re already in a call'}
+                    <div style={this.style.header as CSSProperties}>
+                        <span style={this.style.title}>
+                            {'You\'re already in a call'}
+                        </span>
                     </div>
                     <div style={this.style.body as CSSProperties}>
-                        {'You\'re already in a call in '}
-                        <span style={{fontWeight: 600}}>{this.props.connectedChannel.display_name}</span>
-                        {'. Do you want to leave and join a call in '}
-                        <span style={{fontWeight: 600}}>{this.props.currentChannel.display_name}</span>
-                        {'?'}
+                        { message1 }
+                        { message2 }
                     </div>
                     <div style={this.style.footer}>
                         <button
