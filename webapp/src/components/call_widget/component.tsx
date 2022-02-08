@@ -273,6 +273,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             if (isDMChannel(this.props.channel) || isGMChannel(this.props.channel)) {
                 window.callsClient.unmute();
             }
+            this.setState({currentAudioInputDevice: window.callsClient.currentAudioDevice});
         });
     }
 
@@ -434,8 +435,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
     }
 
-    onAudioInputDeviceClick = (device: any) => {
-        window.callsClient.setAudioInputDevice(device);
+    onAudioInputDeviceClick = (device: MediaDeviceInfo) => {
+        if (device.deviceId !== this.state.currentAudioInputDevice?.deviceId) {
+            window.callsClient.setAudioInputDevice(device);
+        }
         this.setState({showAudioInputsMenu: false, currentAudioInputDevice: device});
     }
 
@@ -696,6 +699,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <div className='Menu'>
                 <ul
+                    id='calls-widget-audio-inputs-menu'
                     className='Menu__content dropdown-menu'
                     style={this.style.audioInputsMenu}
                 >
@@ -734,6 +738,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='MenuItem'
                 >
                     <button
+                        id='calls-widget-audio-input-button'
                         className='style--none'
                         style={{display: 'flex', flexDirection: 'column'}}
                         onClick={() => this.setState({showAudioInputsMenu: !this.state.showAudioInputsMenu, devices: window.callsClient?.getAudioDevices()})}

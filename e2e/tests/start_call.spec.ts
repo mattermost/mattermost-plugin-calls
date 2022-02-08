@@ -54,7 +54,7 @@ test.describe('desktop', () => {
     test.use({storageState: userState.users[0].storageStatePath});
 
     test('screen sharing < 5.1.0', async ({page}) => {
-        await page.evaluateHandle(() => {
+        await page.evaluate(() => {
             window.desktop = {version: '5.0.0'};
         });
         const devPage = new PlaywrightDevPage(page);
@@ -144,3 +144,77 @@ test.describe('auto join link', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 });
+
+test.describe('setting audio input device', () => {
+    test.use({storageState: userState.users[0].storageStatePath});
+
+    test('no default', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        const currentAudioDevice = await page.evaluate(() => {
+            return window.callsClient.currentAudioDevice?.deviceId;
+        });
+        if (currentAudioDevice) {
+            test.fail();
+            return;
+        }
+
+        await devPage.leaveCall();
+    });
+
+    test('setting default', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        await page.locator('#calls-widget-toggle-menu-button').click();
+        await expect(page.locator('#calls-widget-audio-input-button')).toBeVisible();
+        await page.locator('#calls-widget-audio-input-button').click();
+        await expect(page.locator('#calls-widget-audio-inputs-menu')).toBeVisible();
+
+        let currentAudioDevice = await page.evaluate(() => {
+            return window.callsClient.currentAudioDevice?.deviceId;
+        });
+        if (currentAudioDevice) {
+            test.fail();
+            return;
+        }
+
+        await page.locator('#calls-widget-audio-inputs-menu button:has-text("Fake Audio Input 1")').click();
+        await expect(page.locator('#calls-widget-audio-inputs-menu')).toBeHidden();
+
+        currentAudioDevice = await page.evaluate(() => {
+            return window.callsClient.currentAudioDevice?.deviceId;
+        });
+        if (!currentAudioDevice) {
+            test.fail();
+            return;
+        }
+
+        await devPage.leaveCall();
+
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        const currentAudioDevice2 = await page.evaluate(() => {
+            return window.callsClient.currentAudioDevice?.deviceId;
+        });
+        if (currentAudioDevice2 !== currentAudioDevice) {
+            test.fail();
+            return;
+        }
+
+        await devPage.leaveCall();
+
+        await page.reload();
+        const deviceID = await page.evaluate(() => {
+            return window.localStorage.getItem('calls_default_audio_input');
+        });
+        if (!deviceID) {
+            test.fail();
+        }
+    });
+});
+
