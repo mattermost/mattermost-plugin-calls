@@ -82,12 +82,15 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
     }
 
     private keyboardClose = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
+        if (this.props.show && e.key === 'Escape') {
             this.props.hideSwitchCallModal();
         }
     }
 
     private closeOnBlur = (e: Event) => {
+        if (!this.props.show) {
+            return;
+        }
         if (this.node?.current && e.target && this.node.current.contains(e.target as Node)) {
             return;
         }
