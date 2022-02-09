@@ -211,18 +211,10 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 	}
 }
 
-func (p *Plugin) OnWebSocketConnect(connID, userID string) {
-	if userID == "" {
-		return
-	}
-	p.LogDebug("ws connect", "connID", connID, "userID", userID)
-}
-
 func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 	if userID == "" {
 		return
 	}
-	p.LogDebug("ws disconnect", "connID", connID, "userID", userID)
 
 	p.mut.RLock()
 	us := p.sessions[userID]

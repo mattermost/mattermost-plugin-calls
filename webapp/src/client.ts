@@ -17,7 +17,7 @@ export default class CallsClient extends EventEmitter {
     private ws: WebSocketClient | null;
     private localScreenTrack: any;
     private remoteScreenTrack: any;
-    private currentAudioDeviceID: string;
+    public currentAudioDevice: MediaDeviceInfo | null = null;
     private voiceDetector: any;
     private voiceTrackAdded: boolean;
     private streams: MediaStream[];
@@ -31,7 +31,7 @@ export default class CallsClient extends EventEmitter {
         this.ws = null;
         this.peer = null;
         this.audioTrack = null;
-        this.currentAudioDeviceID = '';
+        this.currentAudioDevice = null;
         this.voiceTrackAdded = false;
         this.streams = [];
         this.stream = null;
@@ -66,17 +66,37 @@ export default class CallsClient extends EventEmitter {
     }
 
     public async init(channelID: string) {
+        await this.updateDevices();
+        navigator.mediaDevices.ondevicechange = this.updateDevices;
+
+        const audioOptions = {
+            autoGainControl: true,
+            echoCancellation: true,
+            noiseSuppression: true,
+        } as any;
+
+        const defaultID = window.localStorage.getItem('calls_default_audio_input');
+        if (defaultID) {
+            const devices = this.audioDevices.inputs.filter((dev) => {
+                return dev.deviceId === defaultID;
+            });
+            console.log(devices);
+            if (devices && devices.length === 1) {
+                console.log(`found default audio input device to use: ${devices[0].label}`);
+                audioOptions.deviceId = {
+                    exact: defaultID,
+                };
+                this.currentAudioDevice = devices[0];
+            } else {
+                console.log('audio input device not found');
+                window.localStorage.removeItem('calls_default_audio_input');
+            }
+        }
+
         this.stream = await navigator.mediaDevices.getUserMedia({
             video: false,
-            audio: {
-                autoGainControl: true,
-                echoCancellation: true,
-                noiseSuppression: true,
-            } as any,
+            audio: audioOptions,
         });
-
-        this.updateDevices();
-        navigator.mediaDevices.ondevicechange = this.updateDevices;
 
         this.audioTrack = this.stream.getAudioTracks()[0];
         this.streams.push(this.stream);
@@ -197,6 +217,9 @@ export default class CallsClient extends EventEmitter {
         if (!this.peer || !this.audioTrack || !this.stream) {
             return;
         }
+
+        window.localStorage.setItem('calls_default_audio_input', device.deviceId);
+        this.currentAudioDevice = device;
 
         const isEnabled = this.audioTrack.enabled;
         this.voiceDetector.stop();

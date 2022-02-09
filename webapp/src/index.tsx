@@ -349,6 +349,7 @@ export default class Plugin {
                 });
                 this.unregisterChannelHeaderMenuButton();
             } catch (err) {
+                initializing = false;
                 console.log(err);
             }
         };
