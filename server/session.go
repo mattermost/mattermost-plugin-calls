@@ -79,6 +79,9 @@ func (p *Plugin) addUserSession(userID, channelID string, userSession *session) 
 			return nil, fmt.Errorf("user is already connected")
 		}
 		state.Call.Users[userID] = &userState{}
+		if len(state.Call.Users) > state.Call.Stats.Participants {
+			state.Call.Stats.Participants = len(state.Call.Users)
+		}
 
 		st = *state
 		return state, nil

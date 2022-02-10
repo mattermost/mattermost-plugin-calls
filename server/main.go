@@ -9,6 +9,8 @@ import (
 
 var isDebug string
 var buildHash string
+var rudderWriteKey string
+var rudderDataplaneURL string
 
 func main() {
 	plugin.ClientMain(&Plugin{

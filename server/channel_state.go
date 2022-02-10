@@ -12,12 +12,17 @@ type userState struct {
 	RaisedHand int64 `json:"raised_hand"`
 }
 
+type callStats struct {
+	Participants int `json:"participants"`
+}
+
 type callState struct {
 	ID              string                `json:"id"`
 	StartAt         int64                 `json:"create_at"`
 	Users           map[string]*userState `json:"users,omitempty"`
 	ThreadID        string                `json:"thread_id"`
 	ScreenSharingID string                `json:"screen_sharing_id"`
+	Stats           callStats             `json:"stats"`
 }
 
 type channelState struct {
@@ -108,7 +113,7 @@ func (p *Plugin) cleanUpState() error {
 				state.NodeID = ""
 
 				if state.Call != nil {
-					if err := p.updateCallThreadEnded(state.Call.ThreadID); err != nil {
+					if _, err := p.updateCallThreadEnded(state.Call.ThreadID); err != nil {
 						p.LogError(err.Error())
 					}
 				}

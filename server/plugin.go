@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
+	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
@@ -25,7 +26,8 @@ type Plugin struct {
 	// setConfiguration for usage.
 	configuration *configuration
 
-	metrics *performance.Metrics
+	metrics   *performance.Metrics
+	telemetry *telemetry.Client
 
 	mut           sync.RWMutex
 	nodeID        string // the node cluster id
@@ -244,10 +246,10 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64) (st
 	return createdPost.Id, nil
 }
 
-func (p *Plugin) updateCallThreadEnded(threadID string) error {
+func (p *Plugin) updateCallThreadEnded(threadID string) (float64, error) {
 	post, appErr := p.API.GetPost(threadID)
 	if appErr != nil {
-		return appErr
+		return 0, appErr
 	}
 
 	postMsg := "Call ended"
@@ -264,8 +266,15 @@ func (p *Plugin) updateCallThreadEnded(threadID string) error {
 
 	_, appErr = p.API.UpdatePost(post)
 	if appErr != nil {
-		return appErr
+		return 0, appErr
 	}
 
-	return nil
+	var dur float64
+	if prop := post.GetProp("start_at"); prop != nil {
+		if startAt, ok := prop.(float64); ok {
+			dur = time.Since(time.UnixMilli(int64(startAt))).Seconds()
+		}
+	}
+
+	return dur, nil
 }

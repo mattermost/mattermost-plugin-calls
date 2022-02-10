@@ -202,6 +202,11 @@ func (p *Plugin) setConfiguration(configuration *configuration) error {
 func (p *Plugin) OnConfigurationChange() error {
 	var cfg = new(configuration)
 
+	serverConfig := p.API.GetConfig()
+	if err := p.initTelemetry(serverConfig.LogSettings.EnableDiagnostics); err != nil {
+		p.LogError(err.Error())
+	}
+
 	// Load the public configuration fields from the Mattermost server configuration.
 	if err := p.API.LoadPluginConfiguration(cfg); err != nil {
 		return fmt.Errorf("OnConfigurationChange: failed to load plugin configuration: %w", err)

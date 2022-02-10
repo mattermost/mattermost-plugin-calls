@@ -271,7 +271,8 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
 		return fmt.Errorf("forbidden")
 	}
-	if _, appErr := p.API.GetChannel(channelID); appErr != nil {
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
 		return appErr
 	}
 
@@ -301,6 +302,12 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		}
 		p.mut.Unlock()
 
+		p.track(evCallStarted, map[string]interface{}{
+			"CallID":      state.Call.ID,
+			"ChannelID":   channelID,
+			"ChannelType": channel.Type,
+		})
+
 		// new call has started
 		threadID, err := p.startNewCallThread(userID, channelID, state.Call.StartAt)
 		if err != nil {
@@ -326,6 +333,11 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	}, &model.WebsocketBroadcast{ChannelId: channelID})
 	p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Inc()
 	defer p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Dec()
+	p.track(evCallUserJoined, map[string]interface{}{
+		"UserID":    userID,
+		"ChannelID": channelID,
+		"CallID":    state.Call.ID,
+	})
 
 	data, appErr := p.API.KVGet("handler")
 	if appErr != nil {
@@ -404,14 +416,26 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID})
+	p.track(evCallUserLeft, map[string]interface{}{
+		"UserID":    userID,
+		"ChannelID": channelID,
+		"CallID":    state.Call.ID,
+	})
 
 	p.LogDebug("removing session from state", "userID", userID)
 	if currState, prevState, err := p.removeUserSession(userID, channelID); err != nil {
 		p.LogError(err.Error())
 	} else if currState.Call == nil && prevState.Call != nil {
 		// call has ended
-		if err := p.updateCallThreadEnded(prevState.Call.ThreadID); err != nil {
+		if dur, err := p.updateCallThreadEnded(prevState.Call.ThreadID); err != nil {
 			p.LogError(err.Error())
+		} else {
+			p.track(evCallEnded, map[string]interface{}{
+				"ChannelID":    channelID,
+				"CallID":       prevState.Call.ID,
+				"Duration":     dur,
+				"Participants": prevState.Call.Stats.Participants,
+			})
 		}
 		p.mut.Lock()
 		delete(p.calls, channelID)
