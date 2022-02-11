@@ -97,6 +97,9 @@ export default class CallsClient extends EventEmitter {
             video: false,
             audio: audioOptions,
         });
+        // updating the devices again cause some browsers (e.g Firefox) will
+        // return empty labels unless permissions were previously granted.
+        await this.updateDevices();
 
         this.audioTrack = this.stream.getAudioTracks()[0];
         this.streams.push(this.stream);
