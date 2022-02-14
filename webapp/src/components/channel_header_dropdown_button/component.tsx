@@ -20,7 +20,7 @@ const ChannelHeaderDropdownButton = (props: Props) => {
             disabled={Boolean(props.inCall)}
         >
             <CompassIcon icon='phone-outline'/>
-            <div style={{display: 'flex', flexDirection: 'column'}}>
+            <div>
                 <span >
                     {props.hasCall ? 'Join Call' : 'Start Call'}
                 </span>
