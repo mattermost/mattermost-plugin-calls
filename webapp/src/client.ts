@@ -7,7 +7,7 @@ import {deflate} from 'pako/lib/deflate.js';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {getPluginWSConnectionURL, getScreenStream, getPluginPath} from './utils';
+import {getPluginWSConnectionURL, getScreenStream, getPluginPath, setSDPMaxVideoBW} from './utils';
 
 import WebSocketClient from './websocket';
 import VoiceActivityDetector from './vad';
@@ -197,6 +197,14 @@ export default class CallsClient extends EventEmitter {
                 console.log('ws', data);
             }
             if (msg.type === 'answer' || msg.type === 'offer' || msg.type === 'candidate') {
+                if (msg.type === 'answer') {
+                    const sdp = setSDPMaxVideoBW(msg.sdp, 1000);
+                    if (sdp !== msg.sdp) {
+                        msg.sdp = sdp;
+                        data = JSON.stringify(msg);
+                        console.log(data);
+                    }
+                }
                 if (this.peer) {
                     this.peer.signal(data);
                 }

@@ -10,6 +10,7 @@ import (
 	"github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/pion/ice/v2"
+	"github.com/pion/interceptor"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 	"github.com/prometheus/client_golang/prometheus"
@@ -23,7 +24,7 @@ var (
 		SDPFmtpLine:  "minptime=10;useinbandfec=1",
 		RTCPFeedback: nil,
 	}
-	rtpVideoCodec = webrtc.RTPCodecCapability{
+	rtpVideoCodecVP8 = webrtc.RTPCodecCapability{
 		MimeType:    "video/VP8",
 		ClockRate:   90000,
 		Channels:    0,
@@ -151,7 +152,7 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 	if err != nil {
 		p.LogError(err.Error())
 		return
-	} else if t.Codec().MimeType == webrtc.MimeTypeVP8 {
+	} else if t.Kind() == webrtc.RTPCodecTypeVideo {
 		go p.handlePLI(sender, userSession.channelID)
 	}
 
@@ -207,6 +208,12 @@ func (p *Plugin) initRTCConn(userID string) {
 	}
 
 	var m webrtc.MediaEngine
+	var i interceptor.Registry
+	if err := webrtc.RegisterDefaultInterceptors(&m, &i); err != nil {
+		p.LogError(err.Error())
+		return
+	}
+
 	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
 		RTPCodecCapability: rtpAudioCodec,
 		PayloadType:        111,
@@ -215,7 +222,7 @@ func (p *Plugin) initRTCConn(userID string) {
 		return
 	}
 	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: rtpVideoCodec,
+		RTPCodecCapability: rtpVideoCodecVP8,
 		PayloadType:        96,
 	}, webrtc.RTPCodecTypeVideo); err != nil {
 		p.LogError(err.Error())
@@ -236,7 +243,7 @@ func (p *Plugin) initRTCConn(userID string) {
 	}
 	sEngine.SetNAT1To1IPs([]string{hostIP}, webrtc.ICECandidateTypeHost)
 
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m), webrtc.WithSettingEngine(sEngine))
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m), webrtc.WithSettingEngine(sEngine), webrtc.WithInterceptorRegistry(&i))
 	peerConn, err := api.NewPeerConnection(peerConnConfig)
 	if err != nil {
 		p.LogError(err.Error())
@@ -359,7 +366,7 @@ func (p *Plugin) initRTCConn(userID string) {
 				})
 
 			}
-		} else if remoteTrack.Codec().MimeType == rtpVideoCodec.MimeType {
+		} else if remoteTrack.Codec().MimeType == rtpVideoCodecVP8.MimeType {
 			// TODO: actually check if the userID matches the expected publisher.
 			call := p.getCall(userSession.channelID)
 			if call == nil {
@@ -372,7 +379,7 @@ func (p *Plugin) initRTCConn(userID string) {
 			}
 			call.setScreenSession(userSession)
 
-			outScreenTrack, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodec, "screen", model.NewId())
+			outScreenTrack, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "screen", model.NewId())
 			if err != nil {
 				p.LogError(err.Error())
 				return

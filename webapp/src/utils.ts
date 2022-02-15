@@ -192,19 +192,12 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
 
 export async function getScreenStream(sourceID?: string): Promise<MediaStream|null> {
     let screenStream: MediaStream|null = null;
-    const resolution = getScreenResolution();
-    console.log(resolution);
 
-    const maxFrameRate = 15;
-    const captureWidth = (resolution.width / 8) * 5;
     if (window.desktop) {
         try {
             // electron
             const options = {
                 chromeMediaSource: 'desktop',
-                minWidth: captureWidth,
-                maxWidth: captureWidth,
-                maxFrameRate,
             } as any;
             if (sourceID) {
                 options.chromeMediaSourceId = sourceID;
@@ -223,10 +216,7 @@ export async function getScreenStream(sourceID?: string): Promise<MediaStream|nu
         // browser
         try {
             screenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: {
-                    frameRate: maxFrameRate,
-                    width: captureWidth,
-                },
+                video: true,
                 audio: false,
             });
         } catch (err) {
@@ -279,4 +269,18 @@ export function getUserIdFromDM(dmName: string, currentUserId: string) {
         otherUserId = ids[0];
     }
     return otherUserId;
+}
+
+export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
+    let modifier = 'AS';
+    if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
+        bandwidth = (bandwidth >>> 0) * 1000;
+        modifier = 'TIAS';
+    }
+    if (sdp.indexOf('b=' + modifier + ':') === -1) {
+        sdp = sdp.replaceAll(/m=video (.*)\r\n/gm, 'm=video $1\r\nb=' + modifier + ':' + bandwidth + '\r\n');
+    } else {
+        sdp = sdp.replace(new RegExp('b=' + modifier + ':.*\r\n'), 'b=' + modifier + ':' + bandwidth + '\r\n');
+    }
+    return sdp;
 }
