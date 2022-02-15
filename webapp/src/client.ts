@@ -197,12 +197,11 @@ export default class CallsClient extends EventEmitter {
                 console.log('ws', data);
             }
             if (msg.type === 'answer' || msg.type === 'offer' || msg.type === 'candidate') {
-                if (msg.type === 'answer') {
+                if (msg.type === 'answer' || msg.type === 'offer') {
                     const sdp = setSDPMaxVideoBW(msg.sdp, 1000);
                     if (sdp !== msg.sdp) {
                         msg.sdp = sdp;
                         data = JSON.stringify(msg);
-                        console.log(data);
                     }
                 }
                 if (this.peer) {
