@@ -203,8 +203,12 @@ func (p *Plugin) OnConfigurationChange() error {
 	var cfg = new(configuration)
 
 	serverConfig := p.API.GetConfig()
-	if err := p.initTelemetry(serverConfig.LogSettings.EnableDiagnostics); err != nil {
-		p.LogError(err.Error())
+	if serverConfig != nil {
+		if err := p.initTelemetry(serverConfig.LogSettings.EnableDiagnostics); err != nil {
+			p.LogError(err.Error())
+		}
+	} else {
+		p.LogError("OnConfigurationChange: failed to get server config")
 	}
 
 	// Load the public configuration fields from the Mattermost server configuration.
