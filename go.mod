@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/pion/interceptor v0.1.0
 	github.com/pion/stun v0.3.5
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
 )
@@ -56,7 +57,6 @@ require (
 	github.com/philhofer/fwd v1.1.1 // indirect
 	github.com/pion/datachannel v1.4.21 // indirect
 	github.com/pion/dtls/v2 v2.0.10 // indirect
-	github.com/pion/interceptor v0.1.0 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/mdns v0.0.5 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
