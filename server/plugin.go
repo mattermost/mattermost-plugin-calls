@@ -127,7 +127,9 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID)
 		if call := p.getCall(us.channelID); call != nil {
-			call.setScreenSession(nil)
+			if userID := call.getScreenSessionID(); userID == msg.UserID {
+				call.setScreenSession(nil)
+			}
 		}
 		p.mut.Lock()
 		delete(p.sessions, us.userID)
@@ -164,7 +166,9 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 		if msg.ClientMessage.Type == clientMessageTypeScreenOff {
 			if call := p.getCall(us.channelID); call != nil {
-				call.setScreenSession(nil)
+				if userID := call.getScreenSessionID(); userID == msg.UserID {
+					call.setScreenSession(nil)
+				}
 			}
 		} else {
 			us.trackEnableCh <- (msg.ClientMessage.Type == clientMessageTypeMute)

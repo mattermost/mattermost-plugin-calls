@@ -23,6 +23,15 @@ func (c *call) getScreenSession() *session {
 	return c.screenSession
 }
 
+func (c *call) getScreenSessionID() string {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+	if c.screenSession == nil {
+		return ""
+	}
+	return c.screenSession.userID
+}
+
 func (c *call) setScreenSession(s *session) {
 	c.mut.Lock()
 	defer c.mut.Unlock()
