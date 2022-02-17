@@ -379,6 +379,10 @@ func (p *Plugin) initRTCConn(userID string) {
 			}
 			call.setScreenSession(userSession)
 
+			p.API.PublishWebSocketEvent(wsEventUserScreenOn, map[string]interface{}{
+				"userID": userID,
+			}, &model.WebsocketBroadcast{ChannelId: userSession.channelID})
+
 			outScreenTrack, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "screen", model.NewId())
 			if err != nil {
 				p.LogError(err.Error())

@@ -58,11 +58,7 @@ func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, use
 		return err
 	}
 
-	if msg.Type == clientMessageTypeScreenOn {
-		p.API.PublishWebSocketEvent(wsEventUserScreenOn, map[string]interface{}{
-			"userID": userID,
-		}, &model.WebsocketBroadcast{ChannelId: channelID})
-	} else {
+	if msg.Type == clientMessageTypeScreenOff {
 		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID})
 	}
 

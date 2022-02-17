@@ -40,13 +40,7 @@ type Plugin struct {
 	hostIP        string
 }
 
-func (p *Plugin) startSession(msg *clusterMessage) {
-	us := newUserSession(msg.UserID, msg.ChannelID, "")
-
-	p.mut.Lock()
-	p.sessions[msg.UserID] = us
-	p.mut.Unlock()
-
+func (p *Plugin) startSession(us *session, senderID string) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	defer func() {
@@ -56,9 +50,9 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 
 	go func() {
 		defer wg.Done()
-		p.metrics.RTCSessions.With(prometheus.Labels{"channelID": msg.ChannelID}).Inc()
-		defer p.metrics.RTCSessions.With(prometheus.Labels{"channelID": msg.ChannelID}).Dec()
-		p.initRTCConn(msg.UserID)
+		p.metrics.RTCSessions.With(prometheus.Labels{"channelID": us.channelID}).Inc()
+		defer p.metrics.RTCSessions.With(prometheus.Labels{"channelID": us.channelID}).Dec()
+		p.initRTCConn(us.userID)
 		p.LogDebug("initRTCConn DONE")
 		p.handleTracks(us)
 		p.LogDebug("handleTracks DONE")
@@ -71,15 +65,15 @@ func (p *Plugin) startSession(msg *clusterMessage) {
 				return
 			}
 			clusterMsg := clusterMessage{
-				UserID:    msg.UserID,
-				ChannelID: msg.ChannelID,
+				UserID:    us.userID,
+				ChannelID: us.channelID,
 				SenderID:  p.nodeID,
 				ClientMessage: clientMessage{
 					Type: clientMessageTypeSDP,
 					Data: m,
 				},
 			}
-			if err := p.sendClusterMessage(clusterMsg, clusterMessageTypeSignaling, msg.SenderID); err != nil {
+			if err := p.sendClusterMessage(clusterMsg, clusterMessageTypeSignaling, senderID); err != nil {
 				p.LogError(err.Error())
 			}
 		case <-us.closeCh:
@@ -113,7 +107,11 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		if us != nil {
 			return fmt.Errorf("session already exists, userID=%q, channelID=%q", us.userID, us.channelID)
 		}
-		go p.startSession(&msg)
+		us := newUserSession(msg.UserID, msg.ChannelID, "")
+		p.mut.Lock()
+		p.sessions[msg.UserID] = us
+		p.mut.Unlock()
+		go p.startSession(us, msg.SenderID)
 	case clusterMessageTypeDisconnect:
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", msg.UserID, msg.ChannelID)
