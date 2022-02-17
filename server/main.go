@@ -12,10 +12,15 @@ var buildHash string
 var rudderWriteKey string
 var rudderDataplaneURL string
 
+// This value should be high enough to handle up to N events where N is the maximum
+// expected number of concurrent user sessions in calls handled by a single
+// instance.
+const clusterEventQueueSize = 1024
+
 func main() {
 	plugin.ClientMain(&Plugin{
 		stopCh:      make(chan struct{}),
-		clusterEvCh: make(chan model.PluginClusterEvent, 100),
+		clusterEvCh: make(chan model.PluginClusterEvent, clusterEventQueueSize),
 		sessions:    map[string]*session{},
 		calls:       map[string]*call{},
 		metrics:     performance.NewMetrics(),
