@@ -11,6 +11,7 @@ import (
 
 	"github.com/pion/ice/v2"
 	"github.com/pion/interceptor"
+	"github.com/pion/interceptor/pkg/nack"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,6 +37,10 @@ var (
 			{Type: "nack", Parameter: "pli"},
 		},
 	}
+)
+
+const (
+	nackResponderBufferSize = 256
 )
 
 func (p *Plugin) handleICE(us *session) {
@@ -197,6 +202,48 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 	userSession.mut.Unlock()
 }
 
+func initMediaEngine() (*webrtc.MediaEngine, error) {
+	var m webrtc.MediaEngine
+	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
+		RTPCodecCapability: rtpAudioCodec,
+		PayloadType:        111,
+	}, webrtc.RTPCodecTypeAudio); err != nil {
+		return nil, err
+	}
+	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
+		RTPCodecCapability: rtpVideoCodecVP8,
+		PayloadType:        96,
+	}, webrtc.RTPCodecTypeVideo); err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+func initInterceptors(m *webrtc.MediaEngine) (*interceptor.Registry, error) {
+	var i interceptor.Registry
+	generator, err := nack.NewGeneratorInterceptor()
+	if err != nil {
+		return nil, err
+	}
+
+	// NACK
+	responder, err := nack.NewResponderInterceptor(nack.ResponderSize(nackResponderBufferSize))
+	if err != nil {
+		return nil, err
+	}
+	m.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack"}, webrtc.RTPCodecTypeVideo)
+	m.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack", Parameter: "pli"}, webrtc.RTPCodecTypeVideo)
+	i.Add(responder)
+	i.Add(generator)
+
+	// RTCP Reports
+	if err := webrtc.ConfigureRTCPReports(&i); err != nil {
+		return nil, err
+	}
+
+	return &i, nil
+}
+
 func (p *Plugin) initRTCConn(userID string) {
 	peerConnConfig := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -207,29 +254,18 @@ func (p *Plugin) initRTCConn(userID string) {
 		SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 	}
 
-	var m webrtc.MediaEngine
-	var i interceptor.Registry
-	if err := webrtc.RegisterDefaultInterceptors(&m, &i); err != nil {
+	m, err := initMediaEngine()
+	if err != nil {
 		p.LogError(err.Error())
 		return
 	}
 
-	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: rtpAudioCodec,
-		PayloadType:        111,
-	}, webrtc.RTPCodecTypeAudio); err != nil {
-		p.LogError(err.Error())
-		return
-	}
-	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: rtpVideoCodecVP8,
-		PayloadType:        96,
-	}, webrtc.RTPCodecTypeVideo); err != nil {
+	i, err := initInterceptors(m)
+	if err != nil {
 		p.LogError(err.Error())
 		return
 	}
 
-	var err error
 	sEngine := webrtc.SettingEngine{}
 	sEngine.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
 	sEngine.SetICEUDPMux(p.udpServerMux)
@@ -243,7 +279,7 @@ func (p *Plugin) initRTCConn(userID string) {
 	}
 	sEngine.SetNAT1To1IPs([]string{hostIP}, webrtc.ICECandidateTypeHost)
 
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m), webrtc.WithSettingEngine(sEngine), webrtc.WithInterceptorRegistry(&i))
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithSettingEngine(sEngine), webrtc.WithInterceptorRegistry(i))
 	peerConn, err := api.NewPeerConnection(peerConnConfig)
 	if err != nil {
 		p.LogError(err.Error())
