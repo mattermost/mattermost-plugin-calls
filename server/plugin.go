@@ -122,7 +122,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		go p.startSession(us, msg.SenderID)
 	case clusterMessageTypeDisconnect:
 		if us == nil {
-			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", msg.UserID, msg.ChannelID)
+			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
 		}
 		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID)
 		if call := p.getCall(us.channelID); call != nil {
@@ -140,7 +140,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 	case clusterMessageTypeSignaling:
 		if us == nil {
-			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", msg.UserID, msg.ChannelID)
+			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
 		}
 		if msg.ClientMessage.Type != clientMessageTypeSDP && msg.ClientMessage.Type != clientMessageTypeICE {
 			return fmt.Errorf("unexpected client message type %q", msg.ClientMessage.Type)
@@ -161,7 +161,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 	case clusterMessageTypeUserState:
 		if us == nil {
-			return fmt.Errorf("session doesn't exist, userID=%q, channelID=%q", msg.UserID, msg.ChannelID)
+			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
 		}
 		if msg.ClientMessage.Type == clientMessageTypeScreenOff {
 			if call := p.getCall(us.channelID); call != nil {
