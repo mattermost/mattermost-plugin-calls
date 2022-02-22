@@ -21,9 +21,9 @@ export default class WebSocketClient extends EventEmitter {
             this.close();
         };
 
-        this.ws.onclose = () => {
+        this.ws.onclose = ({code}) => {
             this.ws = null;
-            this.close();
+            this.close(code);
         };
 
         this.ws.onmessage = ({data}) => {
@@ -83,13 +83,14 @@ export default class WebSocketClient extends EventEmitter {
         }
     }
 
-    close() {
+    close(code?: number) {
         if (this.ws) {
             this.ws.close();
             this.ws = null;
+        } else {
+            this.emit('close', code);
         }
         this.seqNo = 0;
         this.connID = '';
-        this.emit('close');
     }
 }
