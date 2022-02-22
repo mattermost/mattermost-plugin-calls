@@ -112,11 +112,13 @@ export default class CallsClient extends EventEmitter {
         this.ws = ws;
 
         ws.on('error', (err) => {
-            console.log(err);
+            console.log(`ws error: ${err}`);
+            this.ws = null;
             this.disconnect();
         });
 
-        ws.on('close', () => {
+        ws.on('close', (code?: number) => {
+            console.log(`ws close: ${code}`);
             this.ws = null;
             this.disconnect();
         });
@@ -166,7 +168,7 @@ export default class CallsClient extends EventEmitter {
                 }
             });
             peer.on('error', (err) => {
-                console.log(err);
+                console.log(`peer error: ${err}`);
                 this.disconnect();
             });
             peer.on('stream', (remoteStream) => {
@@ -287,6 +289,7 @@ export default class CallsClient extends EventEmitter {
         });
 
         if (this.ws) {
+            console.log('disconnect');
             this.ws.close();
             this.ws = null;
         }
