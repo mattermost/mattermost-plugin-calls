@@ -299,6 +299,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		p.mut.Unlock()
 
 		p.track(evCallStarted, map[string]interface{}{
+			"UserID":      userID,
 			"CallID":      state.Call.ID,
 			"ChannelID":   channelID,
 			"ChannelType": channel.Type,
