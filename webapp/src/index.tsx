@@ -235,7 +235,8 @@ export default class Plugin {
 
     public async initialize(registry: PluginRegistry, store: Store<GlobalState>): Promise<void> {
         registry.registerReducer(reducer);
-        registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
+        const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
+        this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
@@ -416,14 +417,14 @@ export default class Plugin {
             const roles = getMyRoles(store.getState());
             const cms = getMyChannelMemberships(store.getState());
 
-            registry.unregisterComponent(channelHeaderMenuID);
-
             try {
                 const resp = await axios.get(`${getPluginPath()}/config`);
+                registry.unregisterComponent(channelHeaderMenuID);
                 if (hasPermissionsToEnableCalls(channel, cms[channelID], roles, resp.data.AllowEnableCalls)) {
                     registerChannelHeaderMenuAction();
                 }
             } catch (err) {
+                registry.unregisterComponent(channelHeaderMenuID);
                 console.log(err);
             }
 
