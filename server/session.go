@@ -11,7 +11,9 @@ import (
 )
 
 const (
-	msgChSize = 20
+	msgChSize        = 20
+	tracksChSize     = 10
+	signalingTimeout = 10 * time.Second
 )
 
 type session struct {
@@ -51,11 +53,11 @@ func newUserSession(userID, channelID, connID string) *session {
 		signalOutCh:   make(chan []byte, msgChSize),
 		wsMsgCh:       make(chan clientMessage, msgChSize*2),
 		wsCloseCh:     make(chan struct{}),
-		tracksCh:      make(chan *webrtc.TrackLocalStaticRTP, 5),
+		tracksCh:      make(chan *webrtc.TrackLocalStaticRTP, tracksChSize),
 		iceCh:         make(chan []byte, msgChSize*2),
 		closeCh:       make(chan struct{}),
 		doneCh:        make(chan struct{}),
-		trackEnableCh: make(chan bool, 5),
+		trackEnableCh: make(chan bool, tracksChSize),
 		rtpSendersMap: map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender{},
 	}
 }
