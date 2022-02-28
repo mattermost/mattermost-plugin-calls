@@ -133,7 +133,7 @@
     "global-require": 2,
     "guard-for-in": 2,
     "id-blacklist": 0,
-    "import/no-unresolved": 2,
+    "import/no-unresolved": 0, // ts handles this better
     "import/order": [
       "error",
       {

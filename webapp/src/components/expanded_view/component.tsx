@@ -1,17 +1,12 @@
 import React, {CSSProperties} from 'react';
-import {Dispatch} from 'redux';
-import {GenericAction} from 'mattermost-redux/types/actions';
-
 import moment from 'moment-timezone';
 import {compareSemVer} from 'semver-parser';
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-
-import {getUserDisplayName, getScreenStream} from '../../utils';
-
-import {UserState} from '../../types/types';
+import {getUserDisplayName, getScreenStream} from 'src/utils';
+import {UserState} from 'src/types/types';
 
 import Avatar from '../avatar/avatar';
 
@@ -237,7 +232,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                     <div style={{position: 'relative'}}>
                         <Avatar
-                            size='xl'
+                            size={50}
+                            fontSize={18}
                             url={this.props.pictures[profile.id]}
                             style={{
                                 boxShadow: isSpeaking ? '0px 0px 4px 4px rgba(61, 184, 135, 0.8)' : '',
@@ -311,7 +307,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     style={{display: 'flex', alignItems: 'center', padding: '4px 8px'}}
                 >
                     <Avatar
-                        size='sm'
+                        size={24}
+                        fontSize={10}
                         url={this.props.pictures[profile.id]}
                         style={{
                             boxShadow: isSpeaking ? '0px 0px 4px 4px rgba(61, 184, 135, 0.8)' : '',
