@@ -182,14 +182,18 @@ func (p *Plugin) addTrack(userSession *session, track *webrtc.TrackLocalStaticRT
 	userSession.signalOutCh <- sdp
 
 	var answer webrtc.SessionDescription
-	msg, ok := <-userSession.signalInCh
-	if !ok {
-		return
-	}
-	p.LogDebug(string(msg))
-	if err := json.Unmarshal(msg, &answer); err != nil {
-		p.LogError(err.Error())
-		return
+	select {
+	case msg, ok := <-userSession.signalInCh:
+		if !ok {
+			return
+		}
+		p.LogDebug(string(msg))
+		if err := json.Unmarshal(msg, &answer); err != nil {
+			p.LogError(err.Error())
+			return
+		}
+	case <-time.After(signalingTimeout):
+		p.LogError("timed out waiting for signaling message", "userID", userSession.userID)
 	}
 
 	if err := peerConn.SetRemoteDescription(answer); err != nil {
@@ -366,7 +370,11 @@ func (p *Plugin) initRTCConn(userID string) {
 				if s.userID == userSession.userID {
 					return
 				}
-				s.tracksCh <- outVoiceTrack
+				select {
+				case s.tracksCh <- outVoiceTrack:
+				default:
+					p.LogError("failed to send voice track, channel is full", "userID", userID, "trackUserID", s.userID)
+				}
 			})
 
 			for {
@@ -433,7 +441,11 @@ func (p *Plugin) initRTCConn(userID string) {
 				if s.userID == userSession.userID {
 					return
 				}
-				s.tracksCh <- outScreenTrack
+				select {
+				case s.tracksCh <- outScreenTrack:
+				default:
+					p.LogError("failed to send screen track, channel is full", "userID", userID, "trackUserID", s.userID)
+				}
 			})
 
 			for {
@@ -461,13 +473,16 @@ func (p *Plugin) initRTCConn(userID string) {
 		}
 	})
 
-	msg, ok := <-userSession.signalInCh
-	if !ok {
-		return
-	}
-
-	if err := p.handleSignaling(userSession, msg); err != nil {
-		p.LogError(err.Error())
+	select {
+	case msg, ok := <-userSession.signalInCh:
+		if !ok {
+			return
+		}
+		if err := p.handleSignaling(userSession, msg); err != nil {
+			p.LogError(err.Error())
+		}
+	case <-time.After(signalingTimeout):
+		p.LogError("timed out waiting for signaling message", "userID", userID)
 	}
 
 	go p.handleICE(userSession)
