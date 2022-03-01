@@ -82,7 +82,6 @@ export default class PostType extends React.PureComponent<Props> {
             display: 'flex',
             alignItems: 'center',
             marginLeft: 'auto',
-            marginRight: '8px',
         },
     };
 
