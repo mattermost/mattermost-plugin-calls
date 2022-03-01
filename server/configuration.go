@@ -32,9 +32,11 @@ type configuration struct {
 type clientConfig struct {
 	// A comma separated list of ICE servers URLs (STUN/TURN) to use.
 	ICEServers ICEServers
-	// When set to true, it allows channel admins to enable calls in their channels.
-	// It also allows participants of DMs/GMs to enable calls.
+	// When set to true, it allows channel admins to enable or disable calls in their channels.
+	// It also allows participants of DMs/GMs to enable or disable calls.
 	AllowEnableCalls *bool
+	// When set to true, calls will be possible in all channels where they are not explicitly disabled.
+	DefaultEnabled *bool
 }
 
 type ICEServers []string
@@ -96,6 +98,7 @@ func (pr PortsRange) IsValid() error {
 func (c *configuration) getClientConfig() clientConfig {
 	return clientConfig{
 		AllowEnableCalls: c.AllowEnableCalls,
+		DefaultEnabled:   c.DefaultEnabled,
 		ICEServers:       c.ICEServers,
 	}
 }
@@ -106,6 +109,10 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.AllowEnableCalls == nil {
 		c.AllowEnableCalls = new(bool)
+	}
+	if c.DefaultEnabled == nil {
+		c.DefaultEnabled = new(bool)
+		*c.DefaultEnabled = true
 	}
 }
 
@@ -138,6 +145,10 @@ func (c *configuration) Clone() *configuration {
 
 	if c.AllowEnableCalls != nil {
 		cfg.AllowEnableCalls = model.NewBool(*c.AllowEnableCalls)
+	}
+
+	if c.DefaultEnabled != nil {
+		cfg.DefaultEnabled = model.NewBool(*c.DefaultEnabled)
 	}
 
 	if c.ICEServers != nil {

@@ -57,6 +57,14 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 	info := ChannelState{
 		ChannelID: channelID,
 	}
+
+	cfg := p.getConfiguration()
+	if state == nil && cfg.DefaultEnabled != nil && *cfg.DefaultEnabled {
+		state = &channelState{
+			Enabled: true,
+		}
+	}
+
 	if state != nil {
 		info.Enabled = state.Enabled
 		if state.Call != nil {

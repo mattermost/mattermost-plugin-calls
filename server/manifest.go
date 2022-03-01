@@ -62,9 +62,17 @@ const manifestStr = `
         "key": "AllowEnableCalls",
         "display_name": "Allow Enable Calls",
         "type": "bool",
-        "help_text": "When set to true, it allows channel admins to enable calls in their channels. It also allows participants of DMs/GMs to enable calls.",
+        "help_text": "When set to true, it allows channel admins to enable or disable calls in their channels. It also allows participants of DMs/GMs to enable or disable calls.",
         "placeholder": "",
         "default": false
+      },
+      {
+        "key": "DefaultEnabled",
+        "display_name": "Default Enabled Calls",
+        "type": "bool",
+        "help_text": "When set to true, calls will be possible in all channels where they are not explicitly disabled.",
+        "placeholder": "",
+        "default": true
       }
     ]
   }

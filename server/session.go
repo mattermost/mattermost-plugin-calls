@@ -64,10 +64,24 @@ func newUserSession(userID, channelID, connID string) *session {
 
 func (p *Plugin) addUserSession(userID, channelID string, userSession *session) (channelState, error) {
 	var st channelState
+
+	cfg := p.getConfiguration()
+
 	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
 		if state == nil {
-			return nil, fmt.Errorf("channel state is missing from store")
+			if cfg.DefaultEnabled != nil && *cfg.DefaultEnabled {
+				state = &channelState{
+					Enabled: true,
+				}
+			} else {
+				return nil, fmt.Errorf("channel state is missing from store")
+			}
 		}
+
+		if !state.Enabled {
+			return nil, fmt.Errorf("calls are not enabled")
+		}
+
 		if state.Call == nil {
 			state.Call = &callState{
 				ID:      model.NewId(),
