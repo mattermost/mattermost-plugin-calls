@@ -1030,7 +1030,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
                 {isPublicChannel(this.props.channel) ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
-                {this.props.channel.display_name}
+                <span
+                    style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    {this.props.channel.display_name}
+                </span>
             </React.Fragment>
         );
     }
