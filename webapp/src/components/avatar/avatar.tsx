@@ -2,63 +2,122 @@
 // See LICENSE.txt for license information.
 
 import React, {memo, HTMLAttributes} from 'react';
-import classNames from 'classnames';
+import styled, {css} from 'styled-components';
 
-import CompassIcon from '../../components/icons/compassIcon';
-
-import './avatar.scss';
-
-export type TAvatarSizeToken = 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
+import CompassIcon from 'src/components/icons/compassIcon';
 
 type Props = {
+    size?: number;
+    fontSize?: number;
     url?: string;
     username?: string;
-    size?: TAvatarSizeToken;
     text?: string;
     icon?: string;
+    border?: boolean;
 };
 
 type Attrs = HTMLAttributes<HTMLElement>;
 
+// Avatar's old size name: size (in px), font-size (in px)
+// xxs: 16, 8; xs: 20, 9.5; sm: 24, 10; md: 32, 12; lg: 36, 14; xl: 50, 18; xxl: 128, 44
 const Avatar = ({
+    size = 32,
+    fontSize = 12,
     url,
     username,
-    size = 'md',
     text,
     icon,
+    border = true,
     ...attrs
 }: Props & Attrs) => {
-    const classes = classNames(`Avatar Avatar-${size}`, attrs.className);
-
     if (text) {
         return (
-            <div
+            <ProfilePlain
                 {...attrs}
-                className={classes + ' Avatar-plain'}
                 data-content={text}
+                size={size}
+                fontSize={fontSize}
+                border={border}
             />
         );
     }
 
     if (icon) {
         return (
-
-            <div
+            <ProfilePlain
                 {...attrs}
-                className={classes + ' Avatar-plain'}
+                size={size}
+                fontSize={fontSize}
+                border={border}
             >
                 <CompassIcon icon={icon}/>
-            </div>
+            </ProfilePlain>
         );
     }
 
     return (
-        <img
+        <Img
             {...attrs}
-            className={classes}
             alt={`${username || 'user'} profile image`}
             src={url}
+            size={size}
+            fontSize={fontSize}
+            border={border}
         />
     );
 };
+
+interface ProfileProps {
+    size: number;
+    fontSize: number;
+    border?: boolean;
+}
+
+const Profile = styled.div<ProfileProps>`
+    &,
+    &:focus,
+    &.a11y--focused {
+        border-radius: 50%;
+    }
+
+    -webkit-user-select: none; /* Chrome all / Safari all */
+    -moz-user-select: none; /* Firefox all */
+    -ms-user-select: none; /* IE 10+ */
+    user-select: none;
+    vertical-align: sub;
+    background: var(--center-channel-bg);
+
+    ${(props) => (props.border && css`
+        border: 1px solid var(--center-channel-bg);
+    `)}
+
+    width: ${(props) => (props.size)}px;
+    min-width: ${(props) => (props.size)}px;
+    height: ${(props) => (props.size)}px;
+    font-size: ${(props) => (props.fontSize)}px;
+`;
+
+const ProfilePlain = styled(Profile)`
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+
+    &::before {
+        position: absolute;
+        display: inline-flex;
+        width: 100%;
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        content: attr(data-content);
+    }
+`;
+
+const Img = Profile.withComponent('img');
+
 export default memo(Avatar);

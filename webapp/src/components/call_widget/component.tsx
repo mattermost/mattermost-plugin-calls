@@ -1,9 +1,5 @@
 import React, {CSSProperties} from 'react';
-import {Dispatch} from 'redux';
-import {GenericAction} from 'mattermost-redux/types/actions';
-
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-
 import moment from 'moment-timezone';
 import {compareSemVer} from 'semver-parser';
 
@@ -11,14 +7,13 @@ import {UserProfile} from 'mattermost-redux/types/users';
 import {Channel} from 'mattermost-redux/types/channels';
 import {Team} from 'mattermost-redux/types/teams';
 import {IDMappedObjects} from 'mattermost-redux/types/utilities';
-
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
-import {UserState} from '../../types/types';
+import {UserState} from 'src/types/types';
+import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel, isGMChannel} from 'src/utils';
 
 import Avatar from '../avatar/avatar';
 import {id as pluginID} from '../../manifest';
-
 import MutedIcon from '../../components/icons/muted_icon';
 import UnmutedIcon from '../../components/icons/unmuted_icon';
 import LeaveCallIcon from '../../components/icons/leave_call_icon';
@@ -32,8 +27,6 @@ import ExpandIcon from '../../components/icons/expand';
 import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 
-import {handleFormattedTextClick} from '../../browser_routing';
-import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel, isGMChannel} from '../../utils';
 import './component.scss';
 
 interface Props {
@@ -624,7 +617,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={{display: 'flex', padding: '1px 16px'}}
                     >
                         <Avatar
-                            size='sm'
+                            size={24}
+                            fontSize={10}
                             url={this.props.picturesMap[profile.id]}
                             style={{marginRight: '8px'}}
                         />
@@ -844,7 +838,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                     speakingPictureURL &&
                     <Avatar
-                        size='sm'
+                        size={24}
+                        fontSize={10}
                         url={speakingPictureURL}
                     />
                 }
@@ -852,7 +847,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 {
                     !speakingPictureURL &&
                     <Avatar
-                        size='sm'
+                        size={24}
+                        fontSize={10}
                         icon='account-outline'
                         style={{
                             background: changeOpacity(this.props.theme.centerChannelColor, 0.16),
@@ -904,7 +900,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     key={profile.id}
                 >
                     <Avatar
-                        size='xxs'
+                        size={16}
+                        fontSize={8}
                         url={picture}
                         style={{margin: '0 8px'}}
                     />
