@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {memo, HTMLAttributes} from 'react';
-import styled from 'styled-components';
+import styled, {css} from 'styled-components';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 
@@ -13,6 +13,7 @@ type Props = {
     username?: string;
     text?: string;
     icon?: string;
+    border?: boolean;
 };
 
 type Attrs = HTMLAttributes<HTMLElement>;
@@ -26,6 +27,7 @@ const Avatar = ({
     username,
     text,
     icon,
+    border = true,
     ...attrs
 }: Props & Attrs) => {
     if (text) {
@@ -35,6 +37,7 @@ const Avatar = ({
                 data-content={text}
                 size={size}
                 fontSize={fontSize}
+                border={border}
             />
         );
     }
@@ -45,6 +48,7 @@ const Avatar = ({
                 {...attrs}
                 size={size}
                 fontSize={fontSize}
+                border={border}
             >
                 <CompassIcon icon={icon}/>
             </ProfilePlain>
@@ -58,6 +62,7 @@ const Avatar = ({
             src={url}
             size={size}
             fontSize={fontSize}
+            border={border}
         />
     );
 };
@@ -65,6 +70,7 @@ const Avatar = ({
 interface ProfileProps {
     size: number;
     fontSize: number;
+    border?: boolean;
 }
 
 const Profile = styled.div<ProfileProps>`
@@ -80,7 +86,10 @@ const Profile = styled.div<ProfileProps>`
     user-select: none;
     vertical-align: sub;
     background: var(--center-channel-bg);
-    border: 1px solid var(--center-channel-bg);
+
+    ${(props) => (props.border && css`
+        border: 1px solid var(--center-channel-bg);
+    `)}
 
     width: ${(props) => (props.size)}px;
     min-width: ${(props) => (props.size)}px;
