@@ -457,7 +457,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         }
 
-        const msg = isSharing ? 'You are sharing your screen' : `Your are viewing ${getUserDisplayName(profile as UserProfile)}'s screen`;
+        const msg = isSharing ? 'You are sharing your screen' : `You are viewing ${getUserDisplayName(profile as UserProfile)}'s screen`;
         return (
             <div
                 className='Menu'
