@@ -18,10 +18,9 @@ const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSiz
     const diff = profiles.length - maxShowedProfiles;
     profiles = diff > 0 ? profiles.slice(0, maxShowedProfiles) : profiles;
 
-    let off = 0;
-
+    const margin = -8;
     const els = profiles.map((profile, idx) => {
-        off += 8;
+        const off = diff > 0 ? (profiles.length - idx) * 8 : (profiles.length - 1 - idx) * 8;
         return (
             <OverlayTrigger
                 placement='bottom'
@@ -36,19 +35,18 @@ const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSiz
                     size={size}
                     fontSize={fontSize}
                     url={pictures[idx]}
-                    style={{position: 'relative', left: `-${off}px`}}
+                    style={{position: 'relative', left: `${margin + off}px`}}
                 />
             </OverlayTrigger>
         );
     });
 
     if (diff > 0) {
-        off += 8;
         els.push(
             <Avatar
                 size={size}
                 text={`+${diff}`}
-                style={{position: 'relative', left: `-${off}px`}}
+                style={{position: 'relative', left: `${margin}px`}}
                 key='call_thread_more_profiles'
             />,
         );
