@@ -12,7 +12,7 @@ import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels'
 
 import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from './selectors';
 
-import manifest from './manifest';
+import {pluginId} from './manifest';
 
 import CallsClient from './client';
 
@@ -74,7 +74,7 @@ export default class Plugin {
     }
 
     private registerWebSocketEvents(registry: PluginRegistry, store: Store<GlobalState>) {
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_channel_enable_voice`, (data) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
             this.unregisterChannelHeaderMenuButton();
             this.registerChannelHeaderMenuButton();
             store.dispatch({
@@ -82,14 +82,14 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_channel_disable_voice`, (data) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_disable_voice`, (data) => {
             this.unregisterChannelHeaderMenuButton();
             store.dispatch({
                 type: VOICE_CHANNEL_DISABLE,
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_connected`, async (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_connected`, async (ev) => {
             const userID = ev.data.userID;
             const channelID = ev.broadcast.channel_id;
             const currentUserID = getCurrentUserId(store.getState());
@@ -126,7 +126,7 @@ export default class Plugin {
             }
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_disconnected`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_disconnected`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_DISCONNECTED,
                 data: {
@@ -137,7 +137,7 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_muted`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_muted`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_MUTED,
                 data: {
@@ -147,7 +147,7 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_unmuted`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unmuted`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_UNMUTED,
                 data: {
@@ -157,7 +157,7 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_voice_on`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_voice_on`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_VOICE_ON,
                 data: {
@@ -167,7 +167,7 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_voice_off`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_voice_off`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_VOICE_OFF,
                 data: {
@@ -177,7 +177,7 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_call_start`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_start`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_CALL_START,
                 data: {
@@ -187,7 +187,7 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_screen_on`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_on`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_SCREEN_ON,
                 data: {
@@ -197,7 +197,7 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_screen_off`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_off`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_SCREEN_OFF,
                 data: {
@@ -206,11 +206,11 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_deactivate`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_deactivate`, (ev) => {
             this.uninitialize();
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_raise_hand`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_raise_hand`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_RAISE_HAND,
                 data: {
@@ -221,7 +221,7 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${manifest.id}_user_unraise_hand`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unraise_hand`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_UNRAISE_HAND,
                 data: {
@@ -562,4 +562,4 @@ declare global {
     }
 }
 
-window.registerPlugin(manifest.id, new Plugin());
+window.registerPlugin(pluginId, new Plugin());

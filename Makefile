@@ -18,6 +18,10 @@ LDFLAGS += -X "main.rudderDataplaneURL=$(RUDDER_DATAPLANE_URL)"
 
 export GO111MODULE=on
 
+# We need to export GOBIN to allow it to be set
+# for processes spawned from the Makefile
+export GOBIN ?= $(PWD)/bin
+
 # You can include assets this directory into the bundle. This can be e.g. used to include profile pictures.
 ASSETS_DIR ?= assets
 
@@ -52,7 +56,7 @@ gomod-check:
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: gomod-check golangci-lint webapp/node_modules
+check-style: apply gomod-check golangci-lint webapp/node_modules
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
@@ -128,7 +132,7 @@ endif
 bundle:
 	rm -rf dist/
 	mkdir -p dist/$(PLUGIN_ID)
-	cp $(MANIFEST_FILE) dist/$(PLUGIN_ID)/
+	./build/bin/manifest dist
 ifneq ($(wildcard $(ASSETS_DIR)/.),)
 	cp -r $(ASSETS_DIR) dist/$(PLUGIN_ID)/
 endif
@@ -210,22 +214,37 @@ detach: setup-attach
 		kill -9 $$DELVE_PID ; \
 	fi
 
+## Ensure gotestsum is installed and available as a tool for testing.
+gotestsum:
+	$(GO) install gotest.tools/gotestsum@v1.7.0
+
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
-test: webapp/node_modules
+test: apply webapp/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
-	$(GO) test -v $(GO_TEST_FLAGS) ./server/...
+	$(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/...
 endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;
 endif
 ifneq ($(wildcard ./build/sync/plan/.),)
-	cd ./build/sync && $(GO) test -v $(GO_TEST_FLAGS) ./...
+	cd ./build/sync && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
+endif
+
+## Runs any lints and unit tests defined for the server and webapp, if they exist, optimized
+## for a CI environment.
+.PHONY: test-ci
+test-ci: apply webapp/node_modules gotestsum
+ifneq ($(HAS_SERVER),)
+	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./...
+endif
+ifneq ($(HAS_WEBAPP),)
+	cd webapp && $(NPM) run test;
 endif
 
 ## Creates a coverage report for the server code.
 .PHONY: coverage
-coverage: webapp/node_modules
+coverage: apply webapp/node_modules
 ifneq ($(HAS_SERVER),)
 	$(GO) test $(GO_TEST_FLAGS) -coverprofile=server/coverage.txt ./server/...
 	$(GO) tool cover -html=server/coverage.txt

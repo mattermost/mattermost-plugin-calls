@@ -21,7 +21,7 @@ import {GlobalState} from 'mattermost-redux/types/store';
 
 import {UserState} from './types/types';
 
-import {id as pluginId} from './manifest';
+import {pluginId} from './manifest';
 
 export function getPluginStaticPath() {
     return window.basename ? `${window.basename}/static/plugins/${pluginId}` :

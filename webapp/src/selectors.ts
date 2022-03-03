@@ -2,7 +2,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {GlobalState} from 'mattermost-redux/types/store';
 
-import {id as pluginId} from './manifest';
+import {pluginId} from './manifest';
 
 //@ts-ignore GlobalState is not complete
 const getPluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
