@@ -1025,7 +1025,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
-    renderChannelName = () => {
+    renderChannelName = (hasTeamSidebar: boolean) => {
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
@@ -1035,6 +1035,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
+                        maxWidth: hasTeamSidebar ? '24ch' : '14ch',
                     }}
                 >
                     {this.props.channel.display_name}
@@ -1099,7 +1100,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
-                                {(isPublicChannel(this.props.channel) || isPrivateChannel(this.props.channel)) && this.renderChannelName()}
+                                {(isPublicChannel(this.props.channel) || isPrivateChannel(this.props.channel)) && this.renderChannelName(hasTeamSidebar)}
                             </div>
                         </div>
                     </div>
