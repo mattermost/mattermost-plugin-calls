@@ -159,8 +159,7 @@ jobs:
     steps:
       - attach_workspace:
           at: dist
-      - run: 'mv dist/*.tar.gz dist/$CIRCLE_PROJECT_REPONAME-latest.tar.gz'
-      - run: 'cp dist/$CIRCLE_PROJECT_REPONAME-latest.tar.gz dist/$CIRCLE_PROJECT_REPONAME-$CIRCLE_TAG.tar.gz'
+      - run: 'cp dist/*.tar.gz dist/$CIRCLE_PROJECT_REPONAME-$CIRCLE_TAG.tar.gz'
       - run:
           name: "Publish Release on Github"
           command: |
@@ -180,10 +179,12 @@ workflows:
       - deploy-release-github:
           context: matterbuild-github-token
           filters:
+            # ignore any commit on any branch by default
+            branches:
+              ignore: /.*/
+            # only act on version tags
             tags:
               only: /^v.*/
-#            branches:
-#              ignore: /.*/
           requires:
             - lint
             - test
