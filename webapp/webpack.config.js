@@ -45,6 +45,9 @@ module.exports = {
         './src/index.tsx',
     ],
     resolve: {
+        alias: {
+            src: path.resolve(__dirname, './src/'),
+        },
         modules: [
             'src',
             'node_modules',

@@ -1,12 +1,8 @@
 import React, {CSSProperties} from 'react';
-import ReactDOM from 'react-dom';
-import PropTypes from 'prop-types';
+import moment from 'moment-timezone';
 
-import {Channel} from 'mattermost-redux/types/channels';
 import {UserProfile} from 'mattermost-redux/types/users';
 import {Post} from 'mattermost-redux/types/posts';
-
-import moment from 'moment-timezone';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
@@ -85,7 +81,7 @@ export default class PostType extends React.PureComponent<Props> {
         profiles: {
             display: 'flex',
             alignItems: 'center',
-            marginLeft: '12px',
+            marginLeft: 'auto',
         },
     };
 
@@ -106,9 +102,13 @@ export default class PostType extends React.PureComponent<Props> {
     render() {
         const subMessage = this.props.post.props.end_at ? (
             <div>
-                <span style={this.style.duration}>{`Ended at ${moment(this.props.post.props.end_at).format('h:mm A')}`}</span>
+                <span style={this.style.duration}>
+                    {`Ended at ${moment(this.props.post.props.end_at).format('h:mm A')}`}
+                </span>
                 <span style={{margin: '0 4px'}}>{'•'}</span>
-                <span style={this.style.duration}>{`Lasted ${moment.duration(this.props.post.props.end_at - this.props.post.props.start_at).humanize(false)}`}</span>
+                <span style={this.style.duration}>
+                    {`Lasted ${moment.duration(this.props.post.props.end_at - this.props.post.props.start_at).humanize(false)}`}
+                </span>
             </div>
         ) : (
             <span style={this.style.duration}>{moment(this.props.post.props.start_at).fromNow()}</span>
@@ -119,19 +119,19 @@ export default class PostType extends React.PureComponent<Props> {
                 className='call-thread'
                 style={this.style.main as CSSProperties}
             >
-                <div style={{display: 'flex', alignItems: 'center', marginRight: 'auto'}}>
+                <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
                     <div style={this.props.post.props.end_at ? this.style.callEndedIcon : this.style.callIcon}>
-                        { !this.props.post.props.end_at &&
-                        <ActiveCallIcon
-                            fill='#FFFFFF'
-                            style={{width: '100%', height: '100%'}}
-                        />
+                        {!this.props.post.props.end_at &&
+                            <ActiveCallIcon
+                                fill='#FFFFFF'
+                                style={{width: '100%', height: '100%'}}
+                            />
                         }
-                        { this.props.post.props.end_at &&
-                        <LeaveCallIcon
-                            fill={changeOpacity(this.props.theme.centerChannelColor, 0.56)}
-                            style={{width: '100%', height: '100%'}}
-                        />
+                        {this.props.post.props.end_at &&
+                            <LeaveCallIcon
+                                fill={changeOpacity(this.props.theme.centerChannelColor, 0.56)}
+                                style={{width: '100%', height: '100%'}}
+                            />
                         }
                     </div>
                     <div style={this.style.messageWrapper as CSSProperties}>
@@ -146,15 +146,14 @@ export default class PostType extends React.PureComponent<Props> {
                             <ConnectedProfiles
                                 profiles={this.props.profiles}
                                 pictures={this.props.pictures}
-                                size='md'
+                                size={32}
+                                fontSize={12}
                                 maxShowedProfiles={2}
                             />
                         </div>
                     }
-
-                </div>
-                {
-                    !this.props.post.props.end_at && (!this.props.connectedID || this.props.connectedID !== this.props.post.channel_id) &&
+                    {
+                        !this.props.post.props.end_at && (!this.props.connectedID || this.props.connectedID !== this.props.post.channel_id) &&
                         <button
                             className='cursor--pointer style--none'
                             style={this.style.joinButton}
@@ -163,9 +162,9 @@ export default class PostType extends React.PureComponent<Props> {
                             <CallIcon fill='#FFFFFF'/>
                             <span style={{fontWeight: 600, margin: '0 8px'}}>{'Join call'}</span>
                         </button>
-                }
-                {
-                    !this.props.post.props.end_at && this.props.connectedID && this.props.connectedID === this.props.post.channel_id &&
+                    }
+                    {
+                        !this.props.post.props.end_at && this.props.connectedID && this.props.connectedID === this.props.post.channel_id &&
 
                         <button
                             className='cursor--pointer style--none'
@@ -175,8 +174,8 @@ export default class PostType extends React.PureComponent<Props> {
                             <LeaveCallIcon fill='rgba(210, 75, 78, 1)'/>
                             <span style={{fontWeight: 600, margin: '0 8px'}}>{'Leave call'}</span>
                         </button>
-                }
-
+                    }
+                </div>
             </div>
         );
     }
