@@ -2,14 +2,14 @@ import {EventEmitter} from 'events';
 
 import {encode} from '@msgpack/msgpack/dist';
 
-import {id as pluginID} from './manifest';
+import {pluginId} from './manifest';
 import {getWSConnectionURL} from './utils';
 
 export default class WebSocketClient extends EventEmitter {
     private ws: WebSocket | null;
     private seqNo = 0;
     private connID = '';
-    private eventPrefix: string = 'custom_' + pluginID;
+    private eventPrefix: string = 'custom_' + pluginId;
 
     constructor() {
         super();

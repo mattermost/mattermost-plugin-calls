@@ -1,4 +1,4 @@
-import {id as pluginId} from './manifest';
+import {pluginId} from './manifest';
 
 export const VOICE_CHANNEL_ENABLE = pluginId + '_voice_channel_enable';
 export const VOICE_CHANNEL_DISABLE = pluginId + '_voice_channel_disable';

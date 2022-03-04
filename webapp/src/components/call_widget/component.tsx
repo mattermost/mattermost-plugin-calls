@@ -13,7 +13,7 @@ import {UserState} from 'src/types/types';
 import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel, isGMChannel} from 'src/utils';
 
 import Avatar from '../avatar/avatar';
-import {id as pluginID} from '../../manifest';
+import {pluginId} from '../../manifest';
 import MutedIcon from '../../components/icons/muted_icon';
 import UnmutedIcon from '../../components/icons/unmuted_icon';
 import LeaveCallIcon from '../../components/icons/leave_call_icon';
@@ -1001,7 +1001,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.props.showExpandedView();
         } else {
             const expandedViewWindow = window.open(
-                `/${this.props.team.name}/${pluginID}/expanded/${this.props.channel.id}`,
+                `/${this.props.team.name}/${pluginId}/expanded/${this.props.channel.id}`,
                 'ExpandedView',
                 'resizable=yes',
             );
@@ -1220,4 +1220,3 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 }
-
