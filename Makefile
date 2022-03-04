@@ -56,7 +56,7 @@ gomod-check:
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: apply gomod-check golangci-lint webapp/node_modules
+check-style: apply golangci-lint webapp/node_modules gomod-check
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
@@ -108,6 +108,19 @@ endif
 endif
 endif
 
+## Builds the server on ci -- only build for linux-amd64 (for now)
+.PHONY: server-ci
+server-ci:
+ifneq ($(HAS_SERVER),)
+	mkdir -p server/dist;
+ifeq ($(MM_DEBUG),)
+	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-linux-amd64;
+else
+	$(info DEBUG mode is on; to disable, unset MM_DEBUG)
+	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -gcflags "all=-N -l" -trimpath -o dist/plugin-linux-amd64;
+endif
+endif
+
 ## Ensures NPM dependencies are installed without having to run this all the time.
 webapp/node_modules: $(wildcard webapp/package.json)
 ifneq ($(HAS_WEBAPP),)
@@ -154,6 +167,10 @@ endif
 ## Builds and bundles the plugin.
 .PHONY: dist
 dist:	apply server webapp bundle
+
+## Builds and bundles the plugin on ci.
+.PHONY: dist-ci
+dist-ci:	apply server-ci webapp bundle
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy

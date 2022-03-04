@@ -135,11 +135,11 @@ jobs:
       - npm-dependencies
       - run:
           name: Building Plugin Bundle
-          command: make dist
+          command: make dist-ci
       - run:
           name: Generating Release Notes
           command: |
-            printf "Supported Mattermost Server Versions: **$(cat plugin.json | jq .min_server_version -r)+** \n## Enhancements\n\n## Fixes\n"  >> dist/release-notes.md
+            printf "Supported Mattermost Server Versions: **$(cat plugin.json | jq .min_server_version -r)+** \n## Commits\n"  >> dist/release-notes.md
             if [[ $(git tag -l | wc -l) -eq 1 ]]; then
               git log --pretty='format:- %h %s' --abbrev-commit --no-decorate --no-color $(git rev-list --max-parents=0 HEAD) HEAD >> dist/release-notes.md
             else
