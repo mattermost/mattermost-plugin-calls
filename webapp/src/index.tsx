@@ -544,7 +544,6 @@ declare global {
         webkitAudioContext: AudioContext,
         basename: string,
         desktop: any,
-        desktopCapturer: any,
     }
 
     interface HTMLVideoElement {

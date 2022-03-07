@@ -9,7 +9,6 @@ declare global {
     interface Window {
         callsClient: any,
         desktop: any,
-        desktopCapturer: any,
     }
 }
 
@@ -70,16 +69,21 @@ test.describe('desktop', () => {
         const sourceURI = `data:image/png;base64,${data}`;
         await page.evaluate((thumbnailURL) => {
             window.desktop = {version: '5.1.0'};
-            const desktopCapturer = {
-                getSources: async () => {
-                    return [
+            window.addEventListener('message', (event) => {
+                if (event.data.type !== 'get-desktop-sources') {
+                    return;
+                }
+
+                window.postMessage({
+                    type: 'desktop-sources-result',
+                    data: [
                         {id: '1', name: 'source_1', thumbnailURL},
                         {id: '2', name: 'source_2', thumbnailURL},
                         {id: '3', name: 'source_3', thumbnailURL},
-                    ];
+                    ],
                 },
-            };
-            window.desktopCapturer = desktopCapturer;
+                window.location.origin);
+            });
         }, sourceURI);
 
         const devPage = new PlaywrightDevPage(page);

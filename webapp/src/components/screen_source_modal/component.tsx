@@ -159,28 +159,47 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
     componentDidMount() {
         document.addEventListener('keyup', this.keyboardClose, true);
         document.addEventListener('click', this.closeOnBlur, true);
+
+        window.addEventListener('message', this.handleDesktopCapturerMessage);
     }
 
     componentWillUnmount() {
         document.removeEventListener('keyup', this.keyboardClose, true);
         document.removeEventListener('click', this.closeOnBlur, true);
+
+        window.removeEventListener('message', this.handleDesktopCapturerMessage);
     }
 
     async componentDidUpdate(prevProps: Props) {
         if (!prevProps.show && this.props.show) {
-            const sources = await window.desktopCapturer.getSources({
-                types: ['window', 'screen'],
-                thumbnailSize: {
-                    width: 400,
-                    height: 400,
+            // Send a message to the desktop app to get the sources needed
+            window.postMessage(
+                {
+                    type: 'get-desktop-sources',
+                    data: {
+                        types: ['window', 'screen'],
+                        thumbnailSize: {
+                            width: 400,
+                            height: 400,
+                        },
+                    },
                 },
-            });
-            // eslint-disable-next-line react/no-did-update-set-state
-            this.setState({
-                sources,
-                selected: sources[0]?.id || '',
-            });
+                window.location.origin,
+            );
         }
+    }
+
+    handleDesktopCapturerMessage = (event) => {
+        if (event.data.type !== 'desktop-sources-result') {
+            return;
+        }
+
+        const sources = event.data.data;
+        // eslint-disable-next-line react/no-did-update-set-state
+        this.setState({
+            sources,
+            selected: sources[0]?.id || '',
+        });
     }
 
     render() {
