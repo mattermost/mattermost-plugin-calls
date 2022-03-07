@@ -176,7 +176,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             window.postMessage(
                 {
                     type: 'get-desktop-sources',
-                    data: {
+                    message: {
                         types: ['window', 'screen'],
                         thumbnailSize: {
                             width: 400,
@@ -194,7 +194,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             return;
         }
 
-        const sources = event.data.data;
+        const sources = event.data.message;
         // eslint-disable-next-line react/no-did-update-set-state
         this.setState({
             sources,
