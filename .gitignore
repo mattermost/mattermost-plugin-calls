@@ -11,3 +11,17 @@ dist/
 
 # Vim
 *.vim
+
+# generated files
+bin
+dist
+tests-e2e/node_modules
+tests-e2e/cypress/screenshots
+tests-e2e/cypress/videos
+.eslintcache
+report.xml
+
+webapp/src/manifest.js
+webapp/src/manifest.ts
+server/manifest.go
+server/data/

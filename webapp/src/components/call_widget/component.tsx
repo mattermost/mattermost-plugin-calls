@@ -13,7 +13,7 @@ import {UserState} from 'src/types/types';
 import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel, isGMChannel} from 'src/utils';
 
 import Avatar from '../avatar/avatar';
-import {id as pluginID} from '../../manifest';
+import {pluginId} from '../../manifest';
 import MutedIcon from '../../components/icons/muted_icon';
 import UnmutedIcon from '../../components/icons/unmuted_icon';
 import LeaveCallIcon from '../../components/icons/leave_call_icon';
@@ -1001,7 +1001,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.props.showExpandedView();
         } else {
             const expandedViewWindow = window.open(
-                `/${this.props.team.name}/${pluginID}/expanded/${this.props.channel.id}`,
+                `/${this.props.team.name}/${pluginId}/expanded/${this.props.channel.id}`,
                 'ExpandedView',
                 'resizable=yes',
             );
@@ -1022,12 +1022,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
-    renderChannelName = () => {
+    renderChannelName = (hasTeamSidebar: boolean) => {
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
                 {isPublicChannel(this.props.channel) ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
-                {this.props.channel.display_name}
+                <span
+                    style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: hasTeamSidebar ? '24ch' : '14ch',
+                    }}
+                >
+                    {this.props.channel.display_name}
+                </span>
             </React.Fragment>
         );
     }
@@ -1088,7 +1097,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
-                                {(isPublicChannel(this.props.channel) || isPrivateChannel(this.props.channel)) && this.renderChannelName()}
+                                {(isPublicChannel(this.props.channel) || isPrivateChannel(this.props.channel)) && this.renderChannelName(hasTeamSidebar)}
                             </div>
                         </div>
                     </div>
@@ -1211,4 +1220,3 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 }
-
