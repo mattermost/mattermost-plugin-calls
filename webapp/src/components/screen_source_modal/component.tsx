@@ -189,7 +189,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
         }
     }
 
-    handleDesktopCapturerMessage = (event) => {
+    handleDesktopCapturerMessage = (event: MessageEvent) => {
         if (event.data.type !== 'desktop-sources-result') {
             return;
         }
