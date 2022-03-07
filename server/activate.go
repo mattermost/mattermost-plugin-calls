@@ -109,9 +109,9 @@ func (p *Plugin) OnDeactivate() error {
 		p.udpServerMux.Close()
 	}
 
-	// Purpusely not closing the UDP server connection here as it will cause
-	// a deadlock (see https://go.dev/play/p/ywju17IO9ZZ).
-	// The plugin's process will exit anyway so no need to explicitly do it here.
+	if p.udpServerConn != nil {
+		p.udpServerConn.Close()
+	}
 
 	if err := p.cleanUpState(); err != nil {
 		p.LogError(err.Error())
