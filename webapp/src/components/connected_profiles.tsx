@@ -11,7 +11,7 @@ interface Props {
     maxShowedProfiles: number,
     size: number;
     fontSize: number;
-    border: boolean;
+    border?: boolean;
 }
 
 const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSize, border}: Props) => {
@@ -36,7 +36,7 @@ const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSiz
                     size={size}
                     fontSize={fontSize}
                     url={pictures[idx]}
-                    border={border}
+                    border={Boolean(border)}
                     style={{position: 'relative', left: `${margin + off}px`}}
                 />
             </OverlayTrigger>
@@ -49,7 +49,7 @@ const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSiz
                 size={size}
                 text={`+${diff}`}
                 style={{position: 'relative', left: `${margin}px`}}
-                border={border}
+                border={Boolean(border)}
                 key='call_thread_more_profiles'
             />,
         );
