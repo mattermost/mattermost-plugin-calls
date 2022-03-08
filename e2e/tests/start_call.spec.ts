@@ -76,7 +76,7 @@ test.describe('desktop', () => {
 
                 window.postMessage({
                     type: 'desktop-sources-result',
-                    data: [
+                    message: [
                         {id: '1', name: 'source_1', thumbnailURL},
                         {id: '2', name: 'source_2', thumbnailURL},
                         {id: '3', name: 'source_3', thumbnailURL},

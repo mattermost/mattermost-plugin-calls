@@ -170,7 +170,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
         window.removeEventListener('message', this.handleDesktopCapturerMessage);
     }
 
-    async componentDidUpdate(prevProps: Props) {
+    componentDidUpdate(prevProps: Props) {
         if (!prevProps.show && this.props.show) {
             // Send a message to the desktop app to get the sources needed
             window.postMessage(
@@ -195,7 +195,6 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
         }
 
         const sources = event.data.message;
-        // eslint-disable-next-line react/no-did-update-set-state
         this.setState({
             sources,
             selected: sources[0]?.id || '',
