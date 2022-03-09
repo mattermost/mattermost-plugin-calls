@@ -5,10 +5,11 @@ import {GlobalState} from 'mattermost-redux/types/store';
 import axios from 'axios';
 
 import {getCurrentChannelId, getCurrentChannel, getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {getMyRoles} from 'mattermost-redux/selectors/entities/roles';
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
+import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 
 import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from './selectors';
 
@@ -32,7 +33,15 @@ import LeaveSelfSound from './sounds/leave_self.mp3';
 
 import reducer from './reducers';
 
-import {getPluginPath, getPluginStaticPath, hasPermissionsToEnableCalls, getExpandedChannelID, getProfilesByIds} from './utils';
+import {
+    getPluginPath,
+    getPluginStaticPath,
+    hasPermissionsToEnableCalls,
+    getExpandedChannelID,
+    getProfilesByIds,
+    isDMChannel,
+    getUserIdFromDM,
+} from './utils';
 
 import {
     VOICE_CHANNEL_ENABLE,
@@ -413,9 +422,22 @@ export default class Plugin {
         };
 
         const fetchChannelData = async (channelID: string) => {
-            const channel = getChannel(store.getState(), channelID);
+            let channel = getChannel(store.getState(), channelID);
+            if (!channel) {
+                await getChannelAction(channelID)(store.dispatch as any, store.getState);
+                channel = getChannel(store.getState(), channelID);
+            }
+
             const roles = getMyRoles(store.getState());
             const cms = getMyChannelMemberships(store.getState());
+
+            if (isDMChannel(channel)) {
+                const otherID = getUserIdFromDM(channel.name, getCurrentUserId(store.getState()));
+                const dmUser = getUser(store.getState(), otherID);
+                if (!dmUser) {
+                    await getProfilesByIdsAction([otherID])(store.dispatch as any, store.getState);
+                }
+            }
 
             try {
                 const resp = await axios.get(`${getPluginPath()}/config`);
