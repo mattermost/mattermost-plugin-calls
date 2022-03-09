@@ -1,3 +1,7 @@
+import {Store as BaseStore} from 'redux';
+import {ThunkDispatch} from 'redux-thunk';
+import {GlobalState} from 'mattermost-redux/types/store';
+
 export interface PluginRegistry {
     registerPostTypeComponent(typeName: string, component: React.ElementType)
     registerReducer(reducer: Reducer)
@@ -14,3 +18,10 @@ export interface PluginRegistry {
     unregisterComponent(componentID: string)
     unregisterPostTypeComponent(componentID: string)
 }
+
+/**
+ * Emulated Store type used in mattermost-webapp/mattermost-redux
+ */
+export type Store = BaseStore<GlobalState> & {dispatch: Dispatch}
+
+export type Dispatch = ThunkDispatch<GlobalState, any, any>

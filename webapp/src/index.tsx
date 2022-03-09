@@ -1,5 +1,3 @@
-import {Store, Action} from 'redux';
-
 import {GlobalState} from 'mattermost-redux/types/store';
 
 import axios from 'axios';
@@ -66,7 +64,7 @@ import {
 } from './action_types';
 
 // eslint-disable-next-line import/no-unresolved
-import {PluginRegistry} from './types/mattermost-webapp';
+import {PluginRegistry, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
@@ -82,7 +80,7 @@ export default class Plugin {
         });
     }
 
-    private registerWebSocketEvents(registry: PluginRegistry, store: Store<GlobalState>) {
+    private registerWebSocketEvents(registry: PluginRegistry, store: Store) {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
             this.unregisterChannelHeaderMenuButton();
             this.registerChannelHeaderMenuButton();
@@ -242,7 +240,7 @@ export default class Plugin {
         });
     }
 
-    public async initialize(registry: PluginRegistry, store: Store<GlobalState>): Promise<void> {
+    public async initialize(registry: PluginRegistry, store: Store): Promise<void> {
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
@@ -435,7 +433,7 @@ export default class Plugin {
                 const otherID = getUserIdFromDM(channel.name, getCurrentUserId(store.getState()));
                 const dmUser = getUser(store.getState(), otherID);
                 if (!dmUser) {
-                    await getProfilesByIdsAction([otherID])(store.dispatch as any, store.getState);
+                    store.dispatch(getProfilesByIdsAction([otherID]));
                 }
             }
 
