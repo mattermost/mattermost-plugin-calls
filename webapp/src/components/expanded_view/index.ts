@@ -4,13 +4,13 @@ import {GlobalState} from 'mattermost-redux/types/store';
 import {UserProfile} from 'mattermost-redux/types/users';
 
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 
 import {Client4} from 'mattermost-redux/client';
 
 import {UserState} from '../../types/types';
 
-import {alphaSortProfiles, stateSortProfiles} from '../../utils';
+import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from '../../utils';
 import {hideExpandedView, showScreenSourceModal} from '../../actions';
 import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID} from '../../selectors';
 
@@ -32,6 +32,12 @@ const mapStateToProps = (state: GlobalState) => {
         pictures[String(profiles[i].id)] = Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
     }
 
+    let connectedDMUser;
+    if (channel && isDMChannel(channel)) {
+        const otherID = getUserIdFromDM(channel.name, getCurrentUserId(state));
+        connectedDMUser = getUser(state, otherID);
+    }
+
     return {
         show: expandedView(state),
         currentUserID: getCurrentUserId(state),
@@ -40,6 +46,8 @@ const mapStateToProps = (state: GlobalState) => {
         statuses,
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         screenSharingID,
+        channel,
+        connectedDMUser,
     };
 };
 
