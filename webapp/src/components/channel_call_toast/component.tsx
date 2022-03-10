@@ -97,6 +97,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
                         pictures={this.props.pictures}
                         size={24}
                         fontSize={10}
+                        border={false}
                         maxShowedProfiles={2}
                     />
                 </div>

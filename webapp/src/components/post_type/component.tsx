@@ -148,6 +148,7 @@ export default class PostType extends React.PureComponent<Props> {
                                 pictures={this.props.pictures}
                                 size={32}
                                 fontSize={12}
+                                border={true}
                                 maxShowedProfiles={2}
                             />
                         </div>

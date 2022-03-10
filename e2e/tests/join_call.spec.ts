@@ -58,6 +58,8 @@ test.describe('join call', () => {
         const joinCallButton = page.locator('.post__body').last().locator('button:has-text("Join call")');
         await expect(joinCallButton).toBeVisible();
 
+        await expect(page.locator('.call-thread').last()).toBeVisible();
+
         expect(await page.locator('.call-thread').last().screenshot()).toMatchSnapshot('call-thread-join.png');
 
         await joinCallButton.click();
