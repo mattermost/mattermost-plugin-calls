@@ -2,6 +2,8 @@
     "id": "com.mattermost.calls",
     "name": "Calls",
     "description": "Integrates real-time voice communication in Mattermost",
+    "homepage_url": "https://github.com/mattermost/mattermost-plugin-calls/",
+    "support_url": "https://github.com/mattermost/mattermost-plugin-calls/issues",
     "min_server_version": "6.3.0",
     "server": {
         "executables": {
