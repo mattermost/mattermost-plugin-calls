@@ -39,7 +39,7 @@
           "display_name": "ICE Servers",
           "type": "text",
           "help_text": "A comma separated list of ICE servers URLs (STUN/TURN) to use.",
-          "default": "stun:stun.l.google.com:19302,stun:global.stun.twilio.com:3478",
+          "default": "stun:stun.global.calls.mattermost.com:3478",
           "placeholder": "stun:example.com:3478"
         },
         {
