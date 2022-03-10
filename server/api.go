@@ -31,6 +31,17 @@ type ChannelState struct {
 	Call      *Call  `json:"call,omitempty"`
 }
 
+// FilterOptions filter the returned channels. Zero values for the options (an empty struct) will
+// return all channels.
+type FilterOptions struct {
+	// When OnlyActiveCalls = true, return only channels that have active calls.
+	OnlyActiveCalls bool
+
+	// When ChannelMembers is not nil, filter the channels by read permission for the channels
+	// in ChannelMemberships
+	ChannelMembers map[string]*model.ChannelMember
+}
+
 func (p *Plugin) handleGetVersion(w http.ResponseWriter, r *http.Request) {
 	info := map[string]interface{}{
 		"version": manifest.Version,
@@ -103,51 +114,35 @@ func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Per
 	return p.API.HasPermissionTo(cm.UserId, perm)
 }
 
-func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("Mattermost-User-Id")
-
-	var page int
-	var channels []ChannelState
-	channelMembers := map[string]*model.ChannelMember{}
+// getAllCallChannels returns all channels with calls, filtered by options.
+func (p *Plugin) getAllCallChannels(options FilterOptions) ([]ChannelState, error) {
 	perPage := 200
 
-	// getting all channel members for the asking user.
-	for {
-		cms, appErr := p.API.GetChannelMembersForUser("", userID, page, perPage)
-		if appErr != nil {
-			p.LogError(appErr.Error())
-			http.Error(w, appErr.Error(), http.StatusInternalServerError)
-			return
-		}
-		for i := range cms {
-			channelMembers[cms[i].ChannelId] = cms[i]
-		}
-		if len(cms) < perPage {
-			break
-		}
-		page++
-	}
-
-	// loop on channels to check membership/permissions
-	page = 0
+	var channels []ChannelState
+	page := 0
 	for {
 		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVList"}).Inc()
 		channelIDs, appErr := p.API.KVList(page, perPage)
 		if appErr != nil {
 			p.LogError(appErr.Error())
-			http.Error(w, appErr.Error(), http.StatusInternalServerError)
-			return
+			return nil, error(appErr)
 		}
 
 		for _, channelID := range channelIDs {
-			if !p.hasPermissionToChannel(channelMembers[channelID], model.PermissionReadChannel) {
-				continue
+			if options.ChannelMembers != nil {
+				if !p.hasPermissionToChannel(options.ChannelMembers[channelID], model.PermissionReadChannel) {
+					continue
+				}
 			}
 
 			state, err := p.kvGetChannelState(channelID)
 			if err != nil {
 				p.LogError(err.Error())
-				http.Error(w, appErr.Error(), http.StatusInternalServerError)
+				return nil, error(appErr)
+			}
+
+			if options.OnlyActiveCalls && state.Call == nil {
+				continue
 			}
 
 			info := ChannelState{
@@ -171,6 +166,39 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 		}
 
 		page++
+	}
+
+	return channels, nil
+}
+
+func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	var page int
+	channelMembers := map[string]*model.ChannelMember{}
+	perPage := 200
+
+	// getting all channel members for the asking user.
+	for {
+		cms, appErr := p.API.GetChannelMembersForUser("", userID, page, perPage)
+		if appErr != nil {
+			p.LogError(appErr.Error())
+			http.Error(w, appErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		for i := range cms {
+			channelMembers[cms[i].ChannelId] = cms[i]
+		}
+		if len(cms) < perPage {
+			break
+		}
+		page++
+	}
+
+	channels, err := p.getAllCallChannels(FilterOptions{ChannelMembers: channelMembers})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
