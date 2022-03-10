@@ -159,7 +159,6 @@ jobs:
     steps:
       - attach_workspace:
           at: dist
-      - run: 'mv dist/*.tar.gz dist/$CIRCLE_PROJECT_REPONAME-$CIRCLE_TAG.tar.gz'
       - run:
           name: "Publish Release on Github"
           command: |
