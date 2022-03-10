@@ -10,8 +10,6 @@ import (
 
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
@@ -116,56 +114,45 @@ func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Per
 
 // getAllCallChannels returns all channels with calls, filtered by options.
 func (p *Plugin) getAllCallChannels(options FilterOptions) ([]ChannelState, error) {
-	perPage := 200
-
 	var channels []ChannelState
-	page := 0
-	for {
-		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVList"}).Inc()
-		channelIDs, appErr := p.API.KVList(page, perPage)
-		if appErr != nil {
-			p.LogError(appErr.Error())
-			return nil, error(appErr)
-		}
 
-		for _, channelID := range channelIDs {
-			if options.ChannelMembers != nil {
-				if !p.hasPermissionToChannel(options.ChannelMembers[channelID], model.PermissionReadChannel) {
-					continue
-				}
-			}
+	channelIDs, err := p.getAllChannelKeys()
+	if err != nil {
+		p.LogError(err.Error())
+		return nil, err
+	}
 
-			state, err := p.kvGetChannelState(channelID)
-			if err != nil {
-				p.LogError(err.Error())
-				return nil, error(appErr)
-			}
-
-			if options.OnlyActiveCalls && state.Call == nil {
+	for _, channelID := range channelIDs {
+		if options.ChannelMembers != nil {
+			if !p.hasPermissionToChannel(options.ChannelMembers[channelID], model.PermissionReadChannel) {
 				continue
 			}
-
-			info := ChannelState{
-				ChannelID: channelID,
-				Enabled:   state.Enabled,
-			}
-			if state.Call != nil {
-				info.Call = &Call{
-					ID:              state.Call.ID,
-					StartAt:         state.Call.StartAt,
-					Users:           state.Call.getUsers(),
-					ThreadID:        state.Call.ThreadID,
-					ScreenSharingID: state.Call.ScreenSharingID,
-				}
-			}
-			channels = append(channels, info)
 		}
 
-		if len(channelIDs) < perPage {
-			break
+		state, err := p.kvGetChannelState(channelID)
+		if err != nil {
+			p.LogError(err.Error())
+			return nil, err
 		}
 
-		page++
+		if options.OnlyActiveCalls && state.Call == nil {
+			continue
+		}
+
+		info := ChannelState{
+			ChannelID: channelID,
+			Enabled:   state.Enabled,
+		}
+		if state.Call != nil {
+			info.Call = &Call{
+				ID:              state.Call.ID,
+				StartAt:         state.Call.StartAt,
+				Users:           state.Call.getUsers(),
+				ThreadID:        state.Call.ThreadID,
+				ScreenSharingID: state.Call.ScreenSharingID,
+			}
+		}
+		channels = append(channels, info)
 	}
 
 	return channels, nil

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"strings"
 
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -75,8 +76,32 @@ func (p *Plugin) handleLinkCommand(args *model.CommandArgs) (*model.CommandRespo
 }
 
 func (p *Plugin) handleAnnounceCommand(parameters []string) (*model.CommandResponse, error) {
+	channels, err := p.getAllCallChannels(FilterOptions{OnlyActiveCalls: true})
+	if err != nil {
+		return nil, err
+	}
+
 	text := strings.Join(parameters, " ")
-	return &model.CommandResponse{Text: fmt.Sprintf("Broadcast: %v", text)}, nil
+	var collectedErrors []string
+	for _, channel := range channels {
+		_, appErr := p.API.CreatePost(&model.Post{
+			Message:   text,
+			ChannelId: channel.ChannelID,
+			UserId:    p.botUserID,
+		})
+		if appErr != nil {
+			err := errors.Wrapf(appErr, "error posting call announcement to channelID: %s", channel.ChannelID)
+			collectedErrors = append(collectedErrors, err.Error())
+			p.LogError(err.Error())
+		}
+	}
+
+	resp := &model.CommandResponse{}
+	if len(collectedErrors) > 0 {
+		resp = &model.CommandResponse{Text: fmt.Sprintf("Errors posting announcements: %s",
+			strings.Join(collectedErrors, "\n"))}
+	}
+	return resp, nil
 }
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {

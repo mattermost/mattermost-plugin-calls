@@ -90,36 +90,31 @@ func (p *Plugin) kvSetAtomicChannelState(channelID string, cb func(state *channe
 }
 
 func (p *Plugin) cleanUpState() error {
-	var page int
-	perPage := 100
-	for {
-		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVList"}).Inc()
-		keys, appErr := p.API.KVList(page, perPage)
-		if appErr != nil {
-			return appErr
-		}
-		if len(keys) == 0 {
-			break
-		}
-		for _, k := range keys {
-			if err := p.kvSetAtomicChannelState(k, func(state *channelState) (*channelState, error) {
-				if state == nil {
-					return nil, nil
-				}
-				state.NodeID = ""
-
-				if state.Call != nil {
-					if _, err := p.updateCallThreadEnded(state.Call.ThreadID); err != nil {
-						p.LogError(err.Error())
-					}
-				}
-				state.Call = nil
-				return state, nil
-			}); err != nil {
-				return fmt.Errorf("failed to clean up state: %w", err)
-			}
-		}
-		page++
+	keys, err := p.getAllChannelKeys()
+	if err != nil {
+		return err
 	}
+
+	for _, k := range keys {
+		err = p.kvSetAtomicChannelState(k, func(state *channelState) (*channelState, error) {
+			if state == nil {
+				return nil, nil
+			}
+			state.NodeID = ""
+
+			if state.Call != nil {
+				if _, err := p.updateCallThreadEnded(state.Call.ThreadID); err != nil {
+					p.LogError(err.Error())
+				}
+			}
+			state.Call = nil
+			return state, nil
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to clean up state: %w", err)
+		}
+	}
+
 	return nil
 }

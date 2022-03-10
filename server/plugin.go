@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"net"
 	"sync"
 	"time"
@@ -38,6 +39,9 @@ type Plugin struct {
 	udpServerConn *net.UDPConn
 	udpServerMux  ice.UDPMux
 	hostIP        string
+
+	pluginAPI *pluginapi.Client
+	botUserID string
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {

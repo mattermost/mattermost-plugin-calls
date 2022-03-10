@@ -1,6 +1,8 @@
 package main
 
 import (
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/pkg/errors"
 	"net"
 	"syscall"
 
@@ -10,6 +12,21 @@ import (
 )
 
 func (p *Plugin) OnActivate() error {
+	pluginAPIClient := pluginapi.NewClient(p.API, p.Driver)
+	p.pluginAPI = pluginAPIClient
+
+	botID, err := pluginAPIClient.Bot.EnsureBot(&model.Bot{
+		Username:    "calls",
+		DisplayName: "Calls",
+		Description: "Calls bot.",
+	},
+		pluginapi.ProfileImagePath("assets/phone-in-talk-outline.png"),
+	)
+	if err != nil {
+		return errors.Wrapf(err, "failed to ensure bot")
+	}
+	p.botUserID = botID
+
 	if err := p.cleanUpState(); err != nil {
 		p.LogError(err.Error())
 		return err

@@ -13,14 +13,17 @@ require (
 )
 
 require (
+	github.com/mattermost/mattermost-plugin-api v0.0.26
 	github.com/pion/interceptor v0.1.4
 	github.com/pion/stun v0.3.5
+	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
 )
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
+	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
@@ -67,7 +70,6 @@ require (
 	github.com/pion/transport v0.13.0 // indirect
 	github.com/pion/turn/v2 v2.0.7 // indirect
 	github.com/pion/udp v0.1.1 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
