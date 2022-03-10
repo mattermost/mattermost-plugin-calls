@@ -76,7 +76,7 @@ func (p *Plugin) handleLinkCommand(args *model.CommandArgs) (*model.CommandRespo
 }
 
 func (p *Plugin) handleAnnounceCommand(parameters []string) (*model.CommandResponse, error) {
-	channels, err := p.getAllCallChannels(FilterOptions{OnlyActiveCalls: true})
+	channels, err := p.getCallChannels(FilterOptions{OnlyActiveCalls: true})
 	if err != nil {
 		return nil, err
 	}

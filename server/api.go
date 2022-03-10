@@ -112,8 +112,8 @@ func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Per
 	return p.API.HasPermissionTo(cm.UserId, perm)
 }
 
-// getAllCallChannels returns all channels with calls, filtered by options.
-func (p *Plugin) getAllCallChannels(options FilterOptions) ([]ChannelState, error) {
+// getCallChannels returns all channels with calls, filtered by options.
+func (p *Plugin) getCallChannels(options FilterOptions) ([]ChannelState, error) {
 	var channels []ChannelState
 
 	channelIDs, err := p.getAllChannelKeys()
@@ -182,7 +182,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 		page++
 	}
 
-	channels, err := p.getAllCallChannels(FilterOptions{ChannelMembers: channelMembers})
+	channels, err := p.getCallChannels(FilterOptions{ChannelMembers: channelMembers})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
