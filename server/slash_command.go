@@ -9,13 +9,14 @@ import (
 )
 
 const (
-	rootCommandTrigger  = "call"
-	joinCommandTrigger  = "join"
-	leaveCommandTrigger = "leave"
-	linkCommandTrigger  = "link"
+	rootCommandTrigger     = "call"
+	joinCommandTrigger     = "join"
+	leaveCommandTrigger    = "leave"
+	linkCommandTrigger     = "link"
+	announceCommandTrigger = "announce"
 )
 
-var subCommands = []string{joinCommandTrigger, leaveCommandTrigger, linkCommandTrigger}
+var subCommands = []string{joinCommandTrigger, leaveCommandTrigger, linkCommandTrigger, announceCommandTrigger}
 
 func getAutocompleteData() *model.AutocompleteData {
 	data := model.NewAutocompleteData(rootCommandTrigger, "[command]",
@@ -23,6 +24,12 @@ func getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(joinCommandTrigger, "", "Joins or starts a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(leaveCommandTrigger, "", "Leaves a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(linkCommandTrigger, "", "Generates a link to join a call in the current channel"))
+
+	announce := model.NewAutocompleteData(announceCommandTrigger, "[text]",
+		"Make an announcement to all channels with currently active calls")
+	announce.AddTextArgument("The announcement text.", "[text]", "")
+	data.AddCommand(announce)
+
 	return data
 }
 
@@ -67,6 +74,11 @@ func (p *Plugin) handleLinkCommand(args *model.CommandArgs) (*model.CommandRespo
 	}, nil
 }
 
+func (p *Plugin) handleAnnounceCommand(parameters []string) (*model.CommandResponse, error) {
+	text := strings.Join(parameters, " ")
+	return &model.CommandResponse{Text: fmt.Sprintf("Broadcast: %v", text)}, nil
+}
+
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
@@ -78,34 +90,37 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		}, nil
 	}
 
-	if len(fields) != 2 {
+	var parameters []string
+	subCmd := ""
+	if len(fields) > 1 {
+		subCmd = fields[1]
+	}
+	if len(fields) > 2 {
+		parameters = fields[2:]
+	}
+
+	var err error
+	var resp *model.CommandResponse
+	switch subCmd {
+	case joinCommandTrigger, leaveCommandTrigger:
+		// these are handled by the frontend code
+		resp = &model.CommandResponse{}
+	case linkCommandTrigger:
+		resp, err = p.handleLinkCommand(args)
+	case announceCommandTrigger:
+		resp, err = p.handleAnnounceCommand(parameters)
+	default:
+		resp = &model.CommandResponse{
+			ResponseType: model.CommandResponseTypeEphemeral,
+			Text:         "Invalid command",
+		}
+	}
+
+	if err != nil {
 		return &model.CommandResponse{
 			ResponseType: model.CommandResponseTypeEphemeral,
-			Text:         "Invalid number of arguments provided",
+			Text:         fmt.Sprintf("Error: %s", err.Error()),
 		}, nil
 	}
-
-	subCmd := fields[1]
-
-	if subCmd == linkCommandTrigger {
-		resp, err := p.handleLinkCommand(args)
-		if err != nil {
-			return &model.CommandResponse{
-				ResponseType: model.CommandResponseTypeEphemeral,
-				Text:         fmt.Sprintf("Error: %s", err.Error()),
-			}, nil
-		}
-		return resp, nil
-	}
-
-	for _, cmd := range subCommands {
-		if cmd == subCmd {
-			return &model.CommandResponse{}, nil
-		}
-	}
-
-	return &model.CommandResponse{
-		ResponseType: model.CommandResponseTypeEphemeral,
-		Text:         fmt.Sprintf("Invalid subcommand: " + subCmd),
-	}, nil
+	return resp, nil
 }
