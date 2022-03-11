@@ -38,6 +38,10 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	cfg := p.getConfiguration()
+	if err := cfg.IsValid(); err != nil {
+		p.LogError(err.Error())
+		return err
+	}
 
 	udpServerConn, err := net.ListenUDP("udp4", &net.UDPAddr{
 		Port: *cfg.UDPServerPort,
@@ -63,17 +67,27 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 	defer connFile.Close()
-	writeBufSize, err := syscall.GetsockoptInt(int(connFile.Fd()), syscall.SOL_SOCKET, syscall.SO_SNDBUF)
+
+	sysConn, err := connFile.SyscallConn()
 	if err != nil {
 		p.LogError(err.Error())
 		return err
 	}
-	readBufSize, err := syscall.GetsockoptInt(int(connFile.Fd()), syscall.SOL_SOCKET, syscall.SO_RCVBUF)
+	err = sysConn.Control(func(fd uintptr) {
+		writeBufSize, err := syscall.GetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_SNDBUF)
+		if err != nil {
+			p.LogError(err.Error())
+		}
+		readBufSize, err := syscall.GetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_RCVBUF)
+		if err != nil {
+			p.LogError(err.Error())
+		}
+		p.LogInfo("UDP buffers", "writeBufSize", writeBufSize, "readBufSize", readBufSize)
+	})
 	if err != nil {
 		p.LogError(err.Error())
 		return err
 	}
-	p.LogInfo("UDP buffers", "writeBufSize", writeBufSize, "readBufSize", readBufSize)
 
 	hostIP, err := getPublicIP(udpServerConn, cfg.ICEServers)
 	if err != nil {
@@ -106,9 +120,9 @@ func (p *Plugin) OnDeactivate() error {
 		p.udpServerMux.Close()
 	}
 
-	// Purpusely not closing the UDP server connection here as it will cause
-	// a deadlock (see https://go.dev/play/p/ywju17IO9ZZ).
-	// The plugin's process will exit anyway so no need to explicitly do it here.
+	if p.udpServerConn != nil {
+		p.udpServerConn.Close()
+	}
 
 	if err := p.cleanUpState(); err != nil {
 		p.LogError(err.Error())

@@ -24,5 +24,21 @@ test.describe('popout window', () => {
 
         await devPage.leaveCall();
     });
+
+    test('window title matches', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.goto();
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+        const idx = parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2;
+        await expect(popOut).toHaveTitle(`Call - calls${idx}`);
+
+        await devPage.leaveCall();
+    });
 });
 
