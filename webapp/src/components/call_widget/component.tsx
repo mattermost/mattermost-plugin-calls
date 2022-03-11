@@ -1005,8 +1005,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 'ExpandedView',
                 'resizable=yes',
             );
+
             this.setState({
                 expandedViewWindow,
+            });
+
+            expandedViewWindow?.addEventListener('beforeunload', () => {
+                if (!window.callsClient) {
+                    return;
+                }
+                const localScreenStream = window.callsClient.getLocalScreenStream();
+                if (localScreenStream && localScreenStream.getVideoTracks()[0].id === expandedViewWindow.screenSharingTrackId) {
+                    window.callsClient.unshareScreen();
+                }
             });
         }
     }

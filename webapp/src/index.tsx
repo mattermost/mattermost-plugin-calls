@@ -565,6 +565,7 @@ declare global {
         basename: string,
         desktop: any,
         desktopCapturer: any,
+        screenSharingTrackId: string,
     }
 
     interface HTMLVideoElement {
