@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/mattermost/mattermost-server/v6 v6.3.3-0.20220202173418-a141e82d9345
+	github.com/mattermost/mattermost-server/v6 v6.4.0
 	github.com/pion/ice/v2 v2.1.20
 	github.com/pion/rtcp v1.2.9
 	github.com/pion/webrtc/v3 v3.1.16
@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/mattermost/mattermost-load-test-ng v1.4.1-0.20220222081115-d53465499b65
 	github.com/pion/interceptor v0.1.4
 	github.com/pion/stun v0.3.5
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
@@ -27,7 +28,6 @@ require (
 	github.com/dyatlov/go-opengraph v0.0.0-20210112100619-dae8665a5b09 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
-	github.com/go-asn1-ber/asn1-ber v1.5.3 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -39,7 +39,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/lib/pq v1.10.4 // indirect
 	github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 // indirect
-	github.com/mattermost/ldap v0.0.0-20201202150706-ee0e6284187d // indirect
+	github.com/mattermost/ldap v3.0.4+incompatible // indirect
 	github.com/mattermost/logr/v2 v2.0.15 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
@@ -93,6 +93,7 @@ require (
 	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
 	google.golang.org/grpc v1.42.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
+	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/ini.v1 v1.64.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
