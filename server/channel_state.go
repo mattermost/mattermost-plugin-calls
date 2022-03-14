@@ -43,16 +43,6 @@ func (cs *callState) getUsersAndStates() ([]string, []userState) {
 	return users, states
 }
 
-func (cs *callState) getUsers() []string {
-	var i int
-	users := make([]string, len(cs.Users))
-	for id := range cs.Users {
-		users[i] = id
-		i++
-	}
-	return users
-}
-
 func (p *Plugin) kvGetChannelState(channelID string) (*channelState, error) {
 	p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVGet"}).Inc()
 	data, appErr := p.API.KVGet(channelID)

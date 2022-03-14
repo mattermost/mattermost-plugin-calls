@@ -60,11 +60,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (window.opener) {
             const callsClient = window.opener.callsClient;
             callsClient.on('close', () => window.close());
-            window.addEventListener('unload', () => {
-                if (this.state.screenStream && this.state.screenStream === callsClient.getLocalScreenStream()) {
-                    callsClient.unshareScreen();
-                }
-            });
         }
     }
 
@@ -108,6 +103,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 this.props.showScreenSourceModal();
             } else {
                 const stream = await getScreenStream();
+                if (window.opener && stream) {
+                    window.screenSharingTrackId = stream.getVideoTracks()[0].id;
+                }
                 callsClient.setScreenStream(stream);
                 this.setState({
                     screenStream: stream,

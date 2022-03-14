@@ -361,9 +361,11 @@ export default class CallsClient extends EventEmitter {
             return;
         }
 
-        this.streams.push(screenStream);
         const screenTrack = screenStream.getVideoTracks()[0];
         this.localScreenTrack = screenTrack;
+        screenStream = new MediaStream([screenTrack]);
+        this.streams.push(screenStream);
+
         screenTrack.onended = () => {
             this.localScreenTrack = null;
 
