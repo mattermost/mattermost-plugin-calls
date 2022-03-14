@@ -455,7 +455,6 @@ export default class Plugin {
                 if (resp.data.enabled && connectedChannelID(store.getState()) !== channelID) {
                     this.registerChannelHeaderMenuButton();
                 }
-                console.log(resp.data);
                 store.dispatch({
                     type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                 });
