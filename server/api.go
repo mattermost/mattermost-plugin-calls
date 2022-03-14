@@ -155,10 +155,12 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 				Enabled:   state.Enabled,
 			}
 			if state.Call != nil {
+				users, states := state.Call.getUsersAndStates()
 				info.Call = &Call{
 					ID:              state.Call.ID,
 					StartAt:         state.Call.StartAt,
-					Users:           state.Call.getUsers(),
+					Users:           users,
+					States:          states,
 					ThreadID:        state.Call.ThreadID,
 					ScreenSharingID: state.Call.ScreenSharingID,
 				}
