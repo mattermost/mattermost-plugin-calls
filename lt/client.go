@@ -72,9 +72,13 @@ func transmitAudio(ws *websocket.Client, track *webrtc.TrackLocalStaticSample, r
 		// Wait for connection established
 		<-connectedCh
 
-		if err := ws.SendMessage("custom_com.mattermost.calls_unmute", nil); err != nil {
-			log.Fatalf(oggErr.Error())
-		}
+		go func() {
+			time.Sleep(2 * time.Second)
+			if err := ws.SendMessage("custom_com.mattermost.calls_unmute", nil); err != nil {
+				log.Fatalf(oggErr.Error())
+			}
+		}()
+
 		defer func() {
 			if err := ws.SendMessage("custom_com.mattermost.calls_mute", nil); err != nil {
 				log.Fatalf(oggErr.Error())
