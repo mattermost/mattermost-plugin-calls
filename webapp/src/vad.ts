@@ -18,8 +18,8 @@ export default class VoiceActivityDetector extends EventEmitter {
             freqRange: [80, 400],
             noiseCaptureMs: 1000,
             noiseMultiplier: 1.5,
-            activityThreshold: 4,
-            activityCounterMax: 10,
+            activityThreshold: 5,
+            activityCounterMax: 30,
         };
 
         this.sourceNode = audioContext.createMediaStreamSource(stream);
@@ -81,6 +81,7 @@ export default class VoiceActivityDetector extends EventEmitter {
 
             if (!this.isActive && activityCounter >= config.activityThreshold) {
                 this.isActive = true;
+                activityCounter = (config.activityCounterMax * 3) / 4;
                 this.emit('start');
             }
 
