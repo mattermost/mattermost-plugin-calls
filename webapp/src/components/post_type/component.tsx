@@ -100,18 +100,19 @@ export default class PostType extends React.PureComponent<Props> {
     }
 
     render() {
-        const subMessage = this.props.post.props.end_at ? (
+        const post = this.props.post;
+        const subMessage = post.props.end_at ? (
             <div>
                 <span style={this.style.duration}>
-                    {`Ended at ${moment(this.props.post.props.end_at).format('h:mm A')}`}
+                    {`Ended at ${moment(post.props.end_at).format('h:mm A')}`}
                 </span>
                 <span style={{margin: '0 4px'}}>{'•'}</span>
                 <span style={this.style.duration}>
-                    {`Lasted ${moment.duration(this.props.post.props.end_at - this.props.post.props.start_at).humanize(false)}`}
+                    {`Lasted ${moment.duration(post.props.end_at - post.props.start_at).humanize(false)}`}
                 </span>
             </div>
         ) : (
-            <span style={this.style.duration}>{moment(this.props.post.props.start_at).fromNow()}</span>
+            <span style={this.style.duration}>{moment(post.props.start_at).fromNow()}</span>
         );
 
         return (
@@ -119,15 +120,21 @@ export default class PostType extends React.PureComponent<Props> {
                 className='call-thread'
                 style={this.style.main as CSSProperties}
             >
-                <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
-                    <div style={this.props.post.props.end_at ? this.style.callEndedIcon : this.style.callIcon}>
-                        {!this.props.post.props.end_at &&
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                    flexWrap: post.props.end_at ? 'nowrap' : 'wrap',
+                    rowGap: '8px',
+                }}>
+                    <div style={post.props.end_at ? this.style.callEndedIcon : this.style.callIcon}>
+                        {!post.props.end_at &&
                             <ActiveCallIcon
                                 fill='#FFFFFF'
                                 style={{width: '100%', height: '100%'}}
                             />
                         }
-                        {this.props.post.props.end_at &&
+                        {post.props.end_at &&
                             <LeaveCallIcon
                                 fill={changeOpacity(this.props.theme.centerChannelColor, 0.56)}
                                 style={{width: '100%', height: '100%'}}
@@ -135,12 +142,12 @@ export default class PostType extends React.PureComponent<Props> {
                         }
                     </div>
                     <div style={this.style.messageWrapper as CSSProperties}>
-                        <span style={this.style.message}>{this.props.post.message}</span>
+                        <span style={this.style.message}>{post.message}</span>
                         {subMessage}
                     </div>
 
                     {
-                        !this.props.post.props.end_at &&
+                        !post.props.end_at &&
 
                         <div style={this.style.profiles}>
                             <ConnectedProfiles
@@ -154,7 +161,7 @@ export default class PostType extends React.PureComponent<Props> {
                         </div>
                     }
                     {
-                        !this.props.post.props.end_at && (!this.props.connectedID || this.props.connectedID !== this.props.post.channel_id) &&
+                        !post.props.end_at && (!this.props.connectedID || this.props.connectedID !== post.channel_id) &&
                         <button
                             className='cursor--pointer style--none'
                             style={this.style.joinButton}
@@ -165,7 +172,7 @@ export default class PostType extends React.PureComponent<Props> {
                         </button>
                     }
                     {
-                        !this.props.post.props.end_at && this.props.connectedID && this.props.connectedID === this.props.post.channel_id &&
+                        !post.props.end_at && this.props.connectedID && this.props.connectedID === post.channel_id &&
 
                         <button
                             className='cursor--pointer style--none'
