@@ -120,13 +120,15 @@ export default class PostType extends React.PureComponent<Props> {
                 className='call-thread'
                 style={this.style.main as CSSProperties}
             >
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    width: '100%',
-                    flexWrap: post.props.end_at ? 'nowrap' : 'wrap',
-                    rowGap: '8px',
-                }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        width: '100%',
+                        flexWrap: post.props.end_at ? 'nowrap' : 'wrap',
+                        rowGap: '8px',
+                    }}
+                >
                     <div style={post.props.end_at ? this.style.callEndedIcon : this.style.callIcon}>
                         {!post.props.end_at &&
                             <ActiveCallIcon
