@@ -49,7 +49,7 @@ const PostType = ({post, connectedID, hasCall, pictures, profiles, showSwitchCal
     );
 
     return (
-        <Main>
+        <Main data-testid={'call-thread'}>
             <SubMain ended={Boolean(post.props.end_at)}>
                 <Left>
                     <CallIndicator ended={Boolean(post.props.end_at)}>
