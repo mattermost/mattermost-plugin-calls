@@ -289,10 +289,10 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		p.mut.Unlock()
 
 		p.track(evCallStarted, map[string]interface{}{
-			"UserID":      userID,
-			"CallID":      state.Call.ID,
-			"ChannelID":   channelID,
-			"ChannelType": channel.Type,
+			"ParticipantID": userID,
+			"CallID":        state.Call.ID,
+			"ChannelID":     channelID,
+			"ChannelType":   channel.Type,
 		})
 
 		// new call has started
@@ -321,9 +321,9 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Inc()
 	defer p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Dec()
 	p.track(evCallUserJoined, map[string]interface{}{
-		"UserID":    userID,
-		"ChannelID": channelID,
-		"CallID":    state.Call.ID,
+		"ParticipantID": userID,
+		"ChannelID":     channelID,
+		"CallID":        state.Call.ID,
 	})
 
 	handlerID := state.NodeID
@@ -397,9 +397,9 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID})
 	p.track(evCallUserLeft, map[string]interface{}{
-		"UserID":    userID,
-		"ChannelID": channelID,
-		"CallID":    state.Call.ID,
+		"ParticipantID": userID,
+		"ChannelID":     channelID,
+		"CallID":        state.Call.ID,
 	})
 
 	p.LogDebug("removing session from state", "userID", userID)

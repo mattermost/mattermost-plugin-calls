@@ -4,8 +4,9 @@ import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import {UserProfile} from 'mattermost-redux/types/users';
+import {Channel} from 'mattermost-redux/types/channels';
 
-import {getUserDisplayName, getScreenStream} from 'src/utils';
+import {getUserDisplayName, getScreenStream, isDMChannel} from 'src/utils';
 import {UserState} from 'src/types/types';
 
 import Avatar from '../avatar/avatar';
@@ -35,6 +36,8 @@ interface Props {
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
     screenSharingID: string,
+    channel: Channel,
+    connectedDMUser: UserProfile | undefined,
 }
 
 interface State {
@@ -57,11 +60,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (window.opener) {
             const callsClient = window.opener.callsClient;
             callsClient.on('close', () => window.close());
-            window.addEventListener('unload', () => {
-                if (this.state.screenStream && this.state.screenStream === callsClient.getLocalScreenStream()) {
-                    callsClient.unshareScreen();
-                }
-            });
         }
     }
 
@@ -105,6 +103,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 this.props.showScreenSourceModal();
             } else {
                 const stream = await getScreenStream();
+                if (window.opener && stream) {
+                    window.screenSharingTrackId = stream.getVideoTracks()[0].id;
+                }
                 callsClient.setScreenStream(stream);
                 this.setState({
                     screenStream: stream,
@@ -129,6 +130,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
+        if (document.title.indexOf('Call') === -1 && this.props.channel) {
+            console.log('missing title');
+            if (isDMChannel(this.props.channel) && this.props.connectedDMUser) {
+                document.title = `Call - ${getUserDisplayName(this.props.connectedDMUser)}`;
+            } else if (!isDMChannel(this.props.channel)) {
+                document.title = `Call - ${this.props.channel.display_name}`;
+            }
+        }
+
         if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer?.current.srcObject !== this.state.screenStream) {
             this.screenPlayer.current.srcObject = this.state.screenStream;
         }
@@ -506,7 +516,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                         </div>
 
-                        { !window.opener &&
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
                             <button
                                 className='button-leave'
@@ -523,8 +532,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                             </button>
                         </div>
-                        }
-                        { window.opener && <div style={{flex: '1'}}/>}
                     </div>
                 </div>
                 { this.state.showParticipantsList &&

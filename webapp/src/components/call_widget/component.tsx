@@ -86,6 +86,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             display: 'flex',
             bottom: '12px',
             left: '12px',
+            lineHeight: '16px',
             zIndex: '1000',
             border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
             userSelect: 'none',
@@ -144,7 +145,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         callInfo: {
             display: 'flex',
             fontSize: '11px',
-            opacity: '0.64',
+            color: changeOpacity(this.props.theme.centerChannelColor, 0.64),
         },
         profiles: {
             display: 'flex',
@@ -1005,8 +1006,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 'ExpandedView',
                 'resizable=yes',
             );
+
             this.setState({
                 expandedViewWindow,
+            });
+
+            expandedViewWindow?.addEventListener('beforeunload', () => {
+                if (!window.callsClient) {
+                    return;
+                }
+                const localScreenStream = window.callsClient.getLocalScreenStream();
+                if (localScreenStream && localScreenStream.getVideoTracks()[0].id === expandedViewWindow.screenSharingTrackId) {
+                    window.callsClient.unshareScreen();
+                }
             });
         }
     }
@@ -1022,21 +1034,33 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
+    onChannelLinkClick = (ev: React.MouseEvent<HTMLElement>) => {
+        ev.preventDefault();
+        window.postMessage({type: 'browser-history-push-return', message: {pathName: this.props.channelURL}}, window.origin);
+    }
+
     renderChannelName = (hasTeamSidebar: boolean) => {
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
-                {isPublicChannel(this.props.channel) ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
-                <span
-                    style={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: hasTeamSidebar ? '24ch' : '14ch',
-                    }}
+
+                <a
+                    href={this.props.channelURL}
+                    onClick={this.onChannelLinkClick}
+                    className='calls-channel-link'
                 >
-                    {this.props.channel.display_name}
-                </span>
+                    {isPublicChannel(this.props.channel) ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
+                    <span
+                        style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: hasTeamSidebar ? '24ch' : '14ch',
+                        }}
+                    >
+                        {this.props.channel.display_name}
+                    </span>
+                </a>
             </React.Fragment>
         );
     }

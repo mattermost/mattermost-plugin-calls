@@ -1,14 +1,13 @@
-import {Store, Action} from 'redux';
-
 import {GlobalState} from 'mattermost-redux/types/store';
 
 import axios from 'axios';
 
 import {getCurrentChannelId, getCurrentChannel, getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {getMyRoles} from 'mattermost-redux/selectors/entities/roles';
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
+import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 
 import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from './selectors';
 
@@ -32,7 +31,15 @@ import LeaveSelfSound from './sounds/leave_self.mp3';
 
 import reducer from './reducers';
 
-import {getPluginPath, getPluginStaticPath, hasPermissionsToEnableCalls, getExpandedChannelID, getProfilesByIds} from './utils';
+import {
+    getPluginPath,
+    getPluginStaticPath,
+    hasPermissionsToEnableCalls,
+    getExpandedChannelID,
+    getProfilesByIds,
+    isDMChannel,
+    getUserIdFromDM,
+} from './utils';
 
 import {
     VOICE_CHANNEL_ENABLE,
@@ -57,7 +64,7 @@ import {
 } from './action_types';
 
 // eslint-disable-next-line import/no-unresolved
-import {PluginRegistry} from './types/mattermost-webapp';
+import {PluginRegistry, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
@@ -73,7 +80,7 @@ export default class Plugin {
         });
     }
 
-    private registerWebSocketEvents(registry: PluginRegistry, store: Store<GlobalState>) {
+    private registerWebSocketEvents(registry: PluginRegistry, store: Store) {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
             this.unregisterChannelHeaderMenuButton();
             this.registerChannelHeaderMenuButton();
@@ -233,7 +240,7 @@ export default class Plugin {
         });
     }
 
-    public async initialize(registry: PluginRegistry, store: Store<GlobalState>): Promise<void> {
+    public async initialize(registry: PluginRegistry, store: Store): Promise<void> {
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
@@ -413,9 +420,22 @@ export default class Plugin {
         };
 
         const fetchChannelData = async (channelID: string) => {
-            const channel = getChannel(store.getState(), channelID);
+            let channel = getChannel(store.getState(), channelID);
+            if (!channel) {
+                await getChannelAction(channelID)(store.dispatch as any, store.getState);
+                channel = getChannel(store.getState(), channelID);
+            }
+
             const roles = getMyRoles(store.getState());
             const cms = getMyChannelMemberships(store.getState());
+
+            if (isDMChannel(channel)) {
+                const otherID = getUserIdFromDM(channel.name, getCurrentUserId(store.getState()));
+                const dmUser = getUser(store.getState(), otherID);
+                if (!dmUser) {
+                    store.dispatch(getProfilesByIdsAction([otherID]));
+                }
+            }
 
             try {
                 const resp = await axios.get(`${getPluginPath()}/config`);
@@ -435,7 +455,6 @@ export default class Plugin {
                 if (resp.data.enabled && connectedChannelID(store.getState()) !== channelID) {
                     this.registerChannelHeaderMenuButton();
                 }
-                console.log(resp.data);
                 store.dispatch({
                     type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                 });
@@ -544,6 +563,7 @@ declare global {
         webkitAudioContext: AudioContext,
         basename: string,
         desktop: any,
+        screenSharingTrackId: string,
     }
 
     interface HTMLVideoElement {
