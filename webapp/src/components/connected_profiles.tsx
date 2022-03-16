@@ -17,11 +17,11 @@ interface Props {
 const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSize, border}: Props) => {
     maxShowedProfiles = maxShowedProfiles || 2;
     const diff = profiles.length - maxShowedProfiles;
+    const maxRightShift = 8 * maxShowedProfiles;
     profiles = diff > 0 ? profiles.slice(0, maxShowedProfiles) : profiles;
 
-    const margin = -8;
     const els = profiles.map((profile, idx) => {
-        const off = diff > 0 ? (profiles.length - idx) * 8 : (profiles.length - 1 - idx) * 8;
+        const rightShift = 8 * idx;
         return (
             <OverlayTrigger
                 placement='bottom'
@@ -37,7 +37,7 @@ const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSiz
                     fontSize={fontSize}
                     url={pictures[idx]}
                     border={Boolean(border)}
-                    style={{position: 'relative', left: `${margin + off}px`}}
+                    style={{position: 'relative', right: `${rightShift}px`}}
                 />
             </OverlayTrigger>
         );
@@ -48,7 +48,7 @@ const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSiz
             <Avatar
                 size={size}
                 text={`+${diff}`}
-                style={{position: 'relative', left: `${margin}px`}}
+                style={{position: 'relative', right: `${maxRightShift}px`}}
                 border={Boolean(border)}
                 key='call_thread_more_profiles'
             />,
