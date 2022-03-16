@@ -26,16 +26,16 @@ const PostType = ({post, connectedID, hasCall, pictures, profiles, showSwitchCal
             return;
         }
         window.postMessage({type: 'connectCall', channelID: post.channel_id}, window.origin);
-    }
+    };
 
     const onLeaveButtonClick = () => {
         if (window.callsClient) {
             window.callsClient.disconnect();
         }
-    }
+    };
 
     const subMessage = post.props.end_at ? (
-        <div>
+        <>
             <Duration>
                 {`Ended at ${moment(post.props.end_at).format('h:mm A')}`}
             </Duration>
@@ -43,7 +43,7 @@ const PostType = ({post, connectedID, hasCall, pictures, profiles, showSwitchCal
             <Duration>
                 {`Lasted ${moment.duration(post.props.end_at - post.props.start_at).humanize(false)}`}
             </Duration>
-        </div>
+        </>
     ) : (
         <Duration>{moment(post.props.start_at).fromNow()}</Duration>
     );
@@ -51,52 +51,55 @@ const PostType = ({post, connectedID, hasCall, pictures, profiles, showSwitchCal
     return (
         <Main>
             <SubMain ended={Boolean(post.props.end_at)}>
-                <CallIndicator ended={Boolean(post.props.end_at)}>
-                    {!post.props.end_at &&
-                        <ActiveCallIcon
-                            fill='var(--center-channel-bg)'
-                            style={{width: '100%', height: '100%'}}
-                        />
+                <Left>
+                    <CallIndicator ended={Boolean(post.props.end_at)}>
+                        {!post.props.end_at &&
+                            <ActiveCallIcon
+                                fill='var(--center-channel-bg)'
+                                style={{width: '100%', height: '100%'}}
+                            />
+                        }
+                        {post.props.end_at &&
+                            <LeaveCallIcon
+                                fill={'rgba(var(--center-channel-color-rgb), 0.56)'}
+                                style={{width: '100%', height: '100%'}}
+                            />
+                        }
+                    </CallIndicator>
+                    <MessageWrapper>
+                        <Message>{post.message}</Message>
+                        <SubMessage>{subMessage}</SubMessage>
+                    </MessageWrapper>
+                </Left>
+                <Right>
+                    {
+                        !post.props.end_at &&
+                        <Profiles>
+                            <ConnectedProfiles
+                                profiles={profiles}
+                                pictures={pictures}
+                                size={32}
+                                fontSize={12}
+                                border={true}
+                                maxShowedProfiles={2}
+                            />
+                        </Profiles>
                     }
-                    {post.props.end_at &&
-                        <LeaveCallIcon
-                            fill={'rgba(var(--center-channel-color-rgb), 0.56)'}
-                            style={{width: '100%', height: '100%'}}
-                        />
+                    {
+                        !post.props.end_at && (!connectedID || connectedID !== post.channel_id) &&
+                        <JoinButton onClick={onJoinCallClick}>
+                            <CallIcon fill='var(--center-channel-bg)'/>
+                            <ButtonText>{'Join call'}</ButtonText>
+                        </JoinButton>
                     }
-                </CallIndicator>
-                <MessageWrapper>
-                    <Message>{post.message}</Message>
-                    {subMessage}
-                </MessageWrapper>
-
-                {
-                    !post.props.end_at &&
-                    <Profiles>
-                        <ConnectedProfiles
-                            profiles={profiles}
-                            pictures={pictures}
-                            size={32}
-                            fontSize={12}
-                            border={true}
-                            maxShowedProfiles={2}
-                        />
-                    </Profiles>
-                }
-                {
-                    !post.props.end_at && (!connectedID || connectedID !== post.channel_id) &&
-                    <JoinButton onClick={onJoinCallClick}>
-                        <CallIcon fill='var(--center-channel-bg)'/>
-                        <ButtonText>{'Join call'}</ButtonText>
-                    </JoinButton>
-                }
-                {
-                    !post.props.end_at && connectedID && connectedID === post.channel_id &&
-                    <LeaveButton onClick={onLeaveButtonClick}>
-                        <LeaveCallIcon fill='var(--error-text)'/>
-                        <ButtonText>{'Leave call'}</ButtonText>
-                    </LeaveButton>
-                }
+                    {
+                        !post.props.end_at && connectedID && connectedID === post.channel_id &&
+                        <LeaveButton onClick={onLeaveButtonClick}>
+                            <LeaveCallIcon fill='var(--error-text)'/>
+                            <ButtonText>{'Leave call'}</ButtonText>
+                        </LeaveButton>
+                    }
+                </Right>
             </SubMain>
         </Main>
     );
@@ -106,15 +109,13 @@ const Main = styled.div`
     display: flex;
     align-items: center;
     width: min(600px, 100%);
+    margin: 4px 0;
     padding: 16px;
     background: var(--center-channel-bg);
     border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
     box-shadow: 0px 4px 6px rgba(var(--center-channel-color-rgb), 0.12);
     color: var(--center-channel-color);
     border-radius: 4px;
-    margin: 4px 0;
-    flex-wrap: wrap;
-    row-gap: 8px;
 `;
 
 const SubMain = styled.div<{ ended: Boolean }>`
@@ -123,6 +124,18 @@ const SubMain = styled.div<{ ended: Boolean }>`
     width: 100%;
     flex-wrap: ${props => props.ended ? 'nowrap' : 'wrap'};
     row-gap: 8px;
+`;
+
+const Left = styled.div`
+    display: flex;
+    flex-grow: 10;
+    overflow: hidden;
+    white-space: nowrap;
+`;
+
+const Right = styled.div`
+    display: flex;
+    flex-grow: 1;
 `;
 
 const CallIndicator = styled.div<{ ended: Boolean }>`
@@ -137,16 +150,23 @@ const MessageWrapper = styled.div`
     display: flex;
     flex-direction: column;
     margin: 0 12px;
+    overflow: hidden;
 `;
 
 const Message = styled.span`
     font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+`;
+
+const SubMessage = styled.div`
+    white-space: normal;
 `;
 
 const Profiles = styled.div`
     display: flex;
     align-items: center;
-    margin-left: auto;
+    margin-right: auto;
 `;
 
 const Duration = styled.span`
@@ -160,7 +180,7 @@ const Button = styled.button`
     border-radius: 4px;
     padding: 10px 16px;
     cursor: pointer;
-`
+`;
 
 const JoinButton = styled(Button)`
     color: var(--center-channel-bg);
