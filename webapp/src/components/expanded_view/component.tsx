@@ -516,7 +516,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                         </div>
 
-                        { !window.opener &&
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
                             <button
                                 className='button-leave'
@@ -533,8 +532,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                             </button>
                         </div>
-                        }
-                        { window.opener && <div style={{flex: '1'}}/>}
                     </div>
                 </div>
                 { this.state.showParticipantsList &&
