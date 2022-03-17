@@ -26,6 +26,7 @@ import PopOutIcon from '../../components/icons/popout';
 import ExpandIcon from '../../components/icons/expand';
 import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
+import SpeakerIcon from '../../components/icons/speaker_icon';
 
 import './component.scss';
 
@@ -67,11 +68,14 @@ interface State {
     intervalID?: NodeJS.Timer,
     screenStream?: any,
     currentAudioInputDevice?: any,
+    currentAudioOutputDevice?: any,
     devices?: any,
-    showAudioInputsMenu?: boolean,
+    showAudioInputDevicesMenu?: boolean,
+    showAudioOutputDevicesMenu?: boolean,
     dragging: DraggingState,
     expandedViewWindow: Window | null,
     showUsersJoined: string[],
+    audioEls: HTMLAudioElement[],
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -190,9 +194,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             minWidth: 'revert',
             maxWidth: 'revert',
         },
-        audioInputsMenu: {
+        audioInputsOutputsMenu: {
             left: 'calc(100% + 4px)',
-            top: '0',
+            top: 'auto',
         },
         expandButton: {
             position: 'absolute',
@@ -218,6 +222,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             expandedViewWindow: null,
             showUsersJoined: [],
+            audioEls: [],
         };
         this.node = React.createRef();
         this.screenPlayer = React.createRef();
@@ -251,6 +256,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEl.autoplay = true;
             audioEl.style.display = 'none';
             audioEl.onerror = (err) => console.log(err);
+
+            const deviceID = window.callsClient.currentAudioOutputDevice?.deviceId;
+            if (deviceID) {
+                // @ts-ignore - setSinkId is an experimental feature
+                audioEl.setSinkId(deviceID);
+            }
+
+            this.setState({
+                audioEls: [...this.state.audioEls, audioEl],
+            });
+
             document.body.appendChild(audioEl);
             voiceTrack.onended = () => {
                 audioEl.remove();
@@ -267,7 +283,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             if (isDMChannel(this.props.channel) || isGMChannel(this.props.channel)) {
                 window.callsClient.unmute();
             }
-            this.setState({currentAudioInputDevice: window.callsClient.currentAudioDevice});
+            this.setState({currentAudioInputDevice: window.callsClient.currentAudioInputDevice});
+            this.setState({currentAudioOutputDevice: window.callsClient.currentAudioOutputDevice});
         });
     }
 
@@ -433,7 +450,24 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (device.deviceId !== this.state.currentAudioInputDevice?.deviceId) {
             window.callsClient.setAudioInputDevice(device);
         }
-        this.setState({showAudioInputsMenu: false, currentAudioInputDevice: device});
+        this.setState({showAudioInputDevicesMenu: false, currentAudioInputDevice: device});
+    }
+
+    onAudioOutputDeviceClick = (device: MediaDeviceInfo) => {
+        if (device.deviceId !== this.state.currentAudioOutputDevice?.deviceId) {
+            window.callsClient.setAudioOutputDevice(device);
+            const ps = [];
+            for (const audioEl of this.state.audioEls) {
+                // @ts-ignore - setSinkId is an experimental feature
+                ps.push(audioEl.setSinkId(device.deviceId));
+            }
+            Promise.all(ps).then(() => {
+                console.log('audio output has changed');
+            }).catch((err) => {
+                console.log(err);
+            });
+        }
+        this.setState({showAudioOutputDevicesMenu: false, currentAudioOutputDevice: device});
     }
 
     renderScreenSharingPanel = () => {
@@ -687,28 +721,36 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
-    renderAudioInputsMenu = () => {
-        if (!this.state.showAudioInputsMenu) {
+    renderAudioDevicesMenu = (deviceType: string) => {
+        if (deviceType === 'input' && !this.state.showAudioInputDevicesMenu) {
             return null;
         }
+
+        if (deviceType === 'output' && !this.state.showAudioOutputDevicesMenu) {
+            return null;
+        }
+
+        const devices = deviceType === 'input' ? this.state.devices.inputs : this.state.devices.outputs;
+        const currentDevice = deviceType === 'input' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
+
         return (
             <div className='Menu'>
                 <ul
-                    id='calls-widget-audio-inputs-menu'
+                    id={`calls-widget-audio-${deviceType}s-menu`}
                     className='Menu__content dropdown-menu'
-                    style={this.style.audioInputsMenu}
+                    style={this.style.audioInputsOutputsMenu}
                 >
                     {
-                        this.state.devices.inputs.map((device: any, idx: number) => {
+                        devices.map((device: any, idx: number) => {
                             return (
                                 <li
                                     className='MenuItem'
-                                    key={'audio-input-device-' + idx}
+                                    key={`audio-${deviceType}-device-${idx}`}
                                 >
                                     <button
                                         className='style--none'
-                                        style={{background: device.deviceId === this.state.currentAudioInputDevice?.deviceId ? 'rgba(28, 88, 217, 0.12)' : ''}}
-                                        onClick={() => this.onAudioInputDeviceClick(device)}
+                                        style={{background: device.deviceId === currentDevice?.deviceId ? 'rgba(28, 88, 217, 0.12)' : ''}}
+                                        onClick={() => (deviceType === 'input' ? this.onAudioInputDeviceClick(device) : this.onAudioOutputDeviceClick(device))}
                                     >
                                         <span style={{color: changeOpacity(this.props.theme.centerChannelColor, 0.56), fontSize: '12px', width: '100%'}}>{device.label}</span>
                                     </button>
@@ -721,31 +763,46 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
-    renderAudioDevices = () => {
+    renderAudioDevices = (deviceType: string) => {
         if (!window.callsClient || !this.state.devices) {
             return null;
         }
+        if (deviceType === 'output' && this.state.devices.outputs.length === 0) {
+            return null;
+        }
+
+        const currentDevice = deviceType === 'input' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
+        const DeviceIcon = deviceType === 'input' ? UnmutedIcon : SpeakerIcon;
+
+        const onClickHandler = () => {
+            const devices = window.callsClient?.getAudioDevices();
+            if (deviceType === 'input') {
+                this.setState({showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu, showAudioOutputDevicesMenu: false, devices});
+            } else {
+                this.setState({showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu, showAudioInputDevicesMenu: false, devices});
+            }
+        };
 
         return (
             <React.Fragment>
-                {this.renderAudioInputsMenu()}
+                {this.renderAudioDevicesMenu(deviceType)}
                 <li
                     className='MenuItem'
                 >
                     <button
-                        id='calls-widget-audio-input-button'
+                        id={`calls-widget-audio-${deviceType}-button`}
                         className='style--none'
                         style={{display: 'flex', flexDirection: 'column'}}
-                        onClick={() => this.setState({showAudioInputsMenu: !this.state.showAudioInputsMenu, devices: window.callsClient?.getAudioDevices()})}
+                        onClick={onClickHandler}
                     >
                         <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%'}}>
-                            <UnmutedIcon
+                            <DeviceIcon
                                 style={{width: '14px', height: '14px', marginRight: '8px', fill: changeOpacity(this.props.theme.centerChannelColor, 0.56)}}
                             />
                             <span
                                 className='MenuItem__primary-text'
                                 style={{padding: '0'}}
-                            >{'Microphone'}</span>
+                            >{deviceType === 'input' ? 'Microphone' : 'Audio Output'}</span>
                             <ShowMoreIcon
                                 style={{width: '11px', height: '11px', marginLeft: 'auto', fill: changeOpacity(this.props.theme.centerChannelColor, 0.56)}}
                             />
@@ -760,7 +817,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 overflow: 'hidden',
                             }}
                         >
-                            {this.state.currentAudioInputDevice?.label || 'Default'}
+                            {currentDevice?.label || 'Default'}
                         </span>
                     </button>
                 </li>
@@ -813,7 +870,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     style={this.style.dotsMenu as CSSProperties}
                 >
                     {!hasTeamSidebar && this.renderScreenSharingMenuItem()}
-                    {this.renderAudioDevices()}
+                    {this.renderAudioDevices('output')}
+                    {this.renderAudioDevices('input')}
                 </ul>
             </div>
         );
