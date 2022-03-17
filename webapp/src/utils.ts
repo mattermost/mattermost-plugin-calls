@@ -284,3 +284,7 @@ export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
     }
     return sdp;
 }
+
+export function hasExperimentalFlag() {
+    return window.localStorage.getItem('calls_experimental_features') === 'on';
+}

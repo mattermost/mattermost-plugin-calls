@@ -253,7 +253,7 @@ export default class Plugin {
         registry.registerSlashCommandWillBePostedHook((message, args) => {
             const fullCmd = message.trim();
             const fields = fullCmd.split(/\s+/);
-            if (fields.length !== 2) {
+            if (fields.length < 2) {
                 return {message, args};
             }
 
@@ -266,20 +266,32 @@ export default class Plugin {
 
             const connectedID = connectedChannelID(store.getState());
 
-            if (subCmd === 'join') {
+            switch (subCmd) {
+            case 'join':
                 if (!connectedID) {
                     connectCall(args.channel_id);
                     return {};
                 }
                 return {error: {message: 'You are already connected to a call in the current channel.'}};
-            } else if (subCmd === 'leave') {
+            case 'leave':
                 if (connectedID && args.channel_id === connectedID && window.callsClient) {
                     window.callsClient.disconnect();
                     return {};
                 }
                 return {error: {message: 'You are not connected to a call in the current channel.'}};
-            } else if (subCmd === 'link') {
-                return {message, args};
+            case 'link':
+                break;
+            case 'experimental':
+                if (fields.length < 3) {
+                    break;
+                }
+                if (fields[2] === 'on') {
+                    window.localStorage.setItem('calls_experimental_features', 'on');
+                    console.log('experimental features enabled');
+                } else if (fields[2] === 'off') {
+                    console.log('experimental features disabled');
+                    window.localStorage.removeItem('calls_experimental_features');
+                }
             }
 
             return {message, args};
