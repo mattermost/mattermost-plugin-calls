@@ -189,7 +189,7 @@ const JoinButton = styled(Button)`
 
 const LeaveButton = styled(Button)`
     color: var(--error-text);
-    background: rgba(var(--error-text-color-rgb), 0.1);
+    background: rgba(var(--error-text-color-rgb), 0.16);
 `;
 
 const ButtonText = styled.span`

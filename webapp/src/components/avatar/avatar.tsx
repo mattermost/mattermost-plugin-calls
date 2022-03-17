@@ -87,14 +87,18 @@ const Profile = styled.div<ProfileProps>`
     vertical-align: sub;
     background: var(--center-channel-bg);
 
-    ${(props) => (props.border && css`
+    ${props => props.border && css`
         border: 1px solid var(--center-channel-bg);
-    `)}
+    `}
 
-    width: ${(props) => (props.size)}px;
-    min-width: ${(props) => (props.size)}px;
-    height: ${(props) => (props.size)}px;
-    font-size: ${(props) => (props.fontSize)}px;
+    width: ${({size}) => size}px;
+    min-width: ${({size}) => size}px;
+    height: ${({size}) => size}px;
+    font-size: ${({fontSize}) => fontSize}px;
+
+    :not(:first-child) {
+        margin-left: -${({size}) => size * 0.25}px;
+    }
 `;
 
 const ProfilePlain = styled(Profile)`
