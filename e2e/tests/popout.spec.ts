@@ -25,7 +25,7 @@ test.describe('popout window', () => {
         await devPage.leaveCall();
     });
 
-    test.only('window title matches', async ({page, context}) => {
+    test('window title matches', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
         await devPage.startCall();
