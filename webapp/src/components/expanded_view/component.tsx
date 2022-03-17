@@ -130,12 +130,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
-        if (document.title.indexOf('Call') === -1 && this.props.channel) {
-            console.log('missing title');
-            if (isDMChannel(this.props.channel) && this.props.connectedDMUser) {
-                document.title = `Call - ${getUserDisplayName(this.props.connectedDMUser)}`;
-            } else if (!isDMChannel(this.props.channel)) {
-                document.title = `Call - ${this.props.channel.display_name}`;
+        if (window.opener) {
+            if (document.title.indexOf('Call') === -1 && this.props.channel) {
+                if (isDMChannel(this.props.channel) && this.props.connectedDMUser) {
+                    document.title = `Call - ${getUserDisplayName(this.props.connectedDMUser)}`;
+                } else if (!isDMChannel(this.props.channel)) {
+                    document.title = `Call - ${this.props.channel.display_name}`;
+                }
             }
         }
 
