@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -30,6 +31,13 @@ const (
 )
 
 func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, userID string) error {
+	data := map[string]string{}
+	if msg.Type == clientMessageTypeScreenOn {
+		if err := json.Unmarshal(msg.Data, &data); err != nil {
+			p.LogError(err.Error())
+		}
+	}
+
 	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
@@ -43,11 +51,15 @@ func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, use
 				return nil, fmt.Errorf("cannot start screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
 			}
 			state.Call.ScreenSharingID = userID
+			state.Call.ScreenTrackID = data["screenTrackID"]
+			state.Call.ScreenAudioTrackID = data["screenAudioTrackID"]
 		} else {
 			if state.Call.ScreenSharingID != userID {
 				return nil, fmt.Errorf("cannot stop screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
 			}
 			state.Call.ScreenSharingID = ""
+			state.Call.ScreenTrackID = ""
+			state.Call.ScreenAudioTrackID = ""
 			if call := p.getCall(channelID); call != nil {
 				call.setScreenSession(nil)
 			}
@@ -457,10 +469,10 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 		msg.Data = data
-	case clientMessageTypeICE:
+	case clientMessageTypeICE, clientMessageTypeScreenOn:
 		msgData, ok := req.Data["data"].(string)
 		if !ok {
-			p.LogError("invalid or missing ice data")
+			p.LogError("invalid or missing data")
 			return
 		}
 		msg.Data = []byte(msgData)

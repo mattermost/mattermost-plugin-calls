@@ -24,7 +24,10 @@ func getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(joinCommandTrigger, "", "Joins or starts a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(leaveCommandTrigger, "", "Leaves a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(linkCommandTrigger, "", "Generates a link to join a call in the current channel"))
-	data.AddCommand(model.NewAutocompleteData(experimentalCommandTrigger, "", "Turns on/off experimental features"))
+
+	experimentalCmdData := model.NewAutocompleteData(experimentalCommandTrigger, "", "Turns on/off experimental features")
+	experimentalCmdData.AddTextArgument("Available options: on, off", "", "on|off")
+	data.AddCommand(experimentalCmdData)
 	return data
 }
 

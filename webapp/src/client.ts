@@ -179,6 +179,7 @@ export default class CallsClient extends EventEmitter {
                 if (remoteStream.getAudioTracks().length > 0) {
                     this.emit('remoteVoiceStream', remoteStream);
                 } else if (remoteStream.getVideoTracks().length > 0) {
+                    console.log(remoteStream.getTracks());
                     this.emit('remoteScreenStream', remoteStream);
                     this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
                 }
@@ -363,10 +364,21 @@ export default class CallsClient extends EventEmitter {
 
         const screenTrack = screenStream.getVideoTracks()[0];
         this.localScreenTrack = screenTrack;
-        screenStream = new MediaStream([screenTrack]);
+
+        const screenAudioTrack = screenStream.getAudioTracks()[0];
+        if (screenAudioTrack) {
+            screenStream = new MediaStream([screenTrack, screenAudioTrack]);
+        } else {
+            screenStream = new MediaStream([screenTrack]);
+        }
+
         this.streams.push(screenStream);
 
         screenTrack.onended = () => {
+            if (screenAudioTrack) {
+                screenAudioTrack.stop();
+            }
+
             this.localScreenTrack = null;
 
             if (!this.ws || !this.peer) {
@@ -380,15 +392,20 @@ export default class CallsClient extends EventEmitter {
 
         this.peer.addStream(screenStream);
 
-        this.ws.send('screen_on');
+        this.ws.send('screen_on', {
+            data: JSON.stringify({
+                screenTrackID: screenTrack.id,
+                screenAudioTrackID: screenAudioTrack?.id,
+            }),
+        });
     }
 
-    public async shareScreen(sourceID?: string) {
+    public async shareScreen(sourceID?: string, withAudio?: boolean) {
         if (!this.ws || !this.peer) {
             return null;
         }
 
-        const screenStream = await getScreenStream(sourceID);
+        const screenStream = await getScreenStream(sourceID, withAudio);
         if (screenStream === null) {
             return null;
         }

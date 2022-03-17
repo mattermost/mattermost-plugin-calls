@@ -6,7 +6,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {UserProfile} from 'mattermost-redux/types/users';
 import {Channel} from 'mattermost-redux/types/channels';
 
-import {getUserDisplayName, getScreenStream, isDMChannel} from 'src/utils';
+import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
 import {UserState} from 'src/types/types';
 
 import Avatar from '../avatar/avatar';
@@ -102,7 +102,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 this.props.showScreenSourceModal();
             } else {
-                const stream = await getScreenStream();
+                const stream = await getScreenStream('', hasExperimentalFlag());
                 if (window.opener && stream) {
                     window.screenSharingTrackId = stream.getVideoTracks()[0].id;
                 }
