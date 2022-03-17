@@ -563,7 +563,6 @@ declare global {
         webkitAudioContext: AudioContext,
         basename: string,
         desktop: any,
-        desktopCapturer: any,
         screenSharingTrackId: string,
     }
 
