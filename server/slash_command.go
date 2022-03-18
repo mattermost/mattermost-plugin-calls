@@ -9,13 +9,14 @@ import (
 )
 
 const (
-	rootCommandTrigger  = "call"
-	joinCommandTrigger  = "join"
-	leaveCommandTrigger = "leave"
-	linkCommandTrigger  = "link"
+	rootCommandTrigger         = "call"
+	joinCommandTrigger         = "join"
+	leaveCommandTrigger        = "leave"
+	linkCommandTrigger         = "link"
+	experimentalCommandTrigger = "experimental"
 )
 
-var subCommands = []string{joinCommandTrigger, leaveCommandTrigger, linkCommandTrigger}
+var subCommands = []string{joinCommandTrigger, leaveCommandTrigger, linkCommandTrigger, experimentalCommandTrigger}
 
 func getAutocompleteData() *model.AutocompleteData {
 	data := model.NewAutocompleteData(rootCommandTrigger, "[command]",
@@ -23,6 +24,7 @@ func getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(joinCommandTrigger, "", "Joins or starts a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(leaveCommandTrigger, "", "Leaves a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(linkCommandTrigger, "", "Generates a link to join a call in the current channel"))
+	data.AddCommand(model.NewAutocompleteData(experimentalCommandTrigger, "", "Turns on/off experimental features"))
 	return data
 }
 
@@ -67,6 +69,25 @@ func (p *Plugin) handleLinkCommand(args *model.CommandArgs) (*model.CommandRespo
 	}, nil
 }
 
+func handleExperimentalCommand(fields []string) (*model.CommandResponse, error) {
+	var msg string
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("Invalid number of arguments provided")
+	}
+	if fields[2] == "on" {
+		msg = "Experimental features were turned on"
+	} else if fields[2] == "off" {
+		msg = "Experimental features were turned off"
+	}
+	if msg == "" {
+		return nil, fmt.Errorf("Invalid arguments provided")
+	}
+	return &model.CommandResponse{
+		ResponseType: model.CommandResponseTypeEphemeral,
+		Text:         msg,
+	}, nil
+}
+
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
@@ -78,7 +99,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		}, nil
 	}
 
-	if len(fields) != 2 {
+	if len(fields) < 2 {
 		return &model.CommandResponse{
 			ResponseType: model.CommandResponseTypeEphemeral,
 			Text:         "Invalid number of arguments provided",
@@ -89,6 +110,17 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == linkCommandTrigger {
 		resp, err := p.handleLinkCommand(args)
+		if err != nil {
+			return &model.CommandResponse{
+				ResponseType: model.CommandResponseTypeEphemeral,
+				Text:         fmt.Sprintf("Error: %s", err.Error()),
+			}, nil
+		}
+		return resp, nil
+	}
+
+	if subCmd == experimentalCommandTrigger {
+		resp, err := handleExperimentalCommand(fields)
 		if err != nil {
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,

@@ -37,6 +37,7 @@ test.describe('popout window', () => {
         await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
         const idx = parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2;
         await expect(popOut).toHaveTitle(`Call - calls${idx}`);
+        await expect(page).not.toHaveTitle(`Call - calls${idx}`);
 
         await devPage.leaveCall();
     });

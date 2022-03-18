@@ -48,7 +48,7 @@
     "array-callback-return": 2,
     "arrow-body-style": 0,
     "arrow-parens": [
-      2,
+      1,
       "always"
     ],
     "arrow-spacing": [
@@ -227,7 +227,7 @@
       2,
       "except-parens"
     ],
-    "no-confusing-arrow": 2,
+    "no-confusing-arrow": 1,
     "no-console": 1,
     "no-const-assign": 2,
     "no-constant-condition": 2,
