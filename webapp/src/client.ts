@@ -17,7 +17,8 @@ export default class CallsClient extends EventEmitter {
     private ws: WebSocketClient | null;
     private localScreenTrack: any;
     private remoteScreenTrack: any;
-    public currentAudioDevice: MediaDeviceInfo | null = null;
+    public currentAudioInputDevice: MediaDeviceInfo | null = null;
+    public currentAudioOutputDevice: MediaDeviceInfo | null = null;
     private voiceDetector: any;
     private voiceTrackAdded: boolean;
     private streams: MediaStream[];
@@ -31,7 +32,8 @@ export default class CallsClient extends EventEmitter {
         this.ws = null;
         this.peer = null;
         this.audioTrack = null;
-        this.currentAudioDevice = null;
+        this.currentAudioInputDevice = null;
+        this.currentAudioInputDevice = null;
         this.voiceTrackAdded = false;
         this.streams = [];
         this.stream = null;
@@ -75,21 +77,36 @@ export default class CallsClient extends EventEmitter {
             noiseSuppression: true,
         } as any;
 
-        const defaultID = window.localStorage.getItem('calls_default_audio_input');
-        if (defaultID) {
+        const defaultInputID = window.localStorage.getItem('calls_default_audio_input');
+        const defaultOutputID = window.localStorage.getItem('calls_default_audio_output');
+        if (defaultInputID) {
             const devices = this.audioDevices.inputs.filter((dev) => {
-                return dev.deviceId === defaultID;
+                return dev.deviceId === defaultInputID;
             });
-            console.log(devices);
+
             if (devices && devices.length === 1) {
                 console.log(`found default audio input device to use: ${devices[0].label}`);
                 audioOptions.deviceId = {
-                    exact: defaultID,
+                    exact: defaultInputID,
                 };
-                this.currentAudioDevice = devices[0];
+                this.currentAudioInputDevice = devices[0];
             } else {
                 console.log('audio input device not found');
                 window.localStorage.removeItem('calls_default_audio_input');
+            }
+        }
+
+        if (defaultOutputID) {
+            const devices = this.audioDevices.outputs.filter((dev) => {
+                return dev.deviceId === defaultOutputID;
+            });
+
+            if (devices && devices.length === 1) {
+                console.log(`found default audio output device to use: ${devices[0].label}`);
+                this.currentAudioOutputDevice = devices[0];
+            } else {
+                console.log('audio output device not found');
+                window.localStorage.removeItem('calls_default_audio_output');
             }
         }
 
@@ -231,7 +248,7 @@ export default class CallsClient extends EventEmitter {
         }
 
         window.localStorage.setItem('calls_default_audio_input', device.deviceId);
-        this.currentAudioDevice = device;
+        this.currentAudioInputDevice = device;
 
         const isEnabled = this.audioTrack.enabled;
         this.voiceDetector.stop();
@@ -267,6 +284,14 @@ export default class CallsClient extends EventEmitter {
             this.voiceTrackAdded = false;
         }
         this.audioTrack = newTrack;
+    }
+
+    public async setAudioOutputDevice(device: MediaDeviceInfo) {
+        if (!this.peer) {
+            return;
+        }
+        window.localStorage.setItem('calls_default_audio_output', device.deviceId);
+        this.currentAudioOutputDevice = device;
     }
 
     public disconnect() {
