@@ -34,6 +34,7 @@ type session struct {
 	outVoiceTrack        *webrtc.TrackLocalStaticRTP
 	outVoiceTrackEnabled bool
 	outScreenTrack       *webrtc.TrackLocalStaticRTP
+	outScreenAudioTrack  *webrtc.TrackLocalStaticRTP
 	remoteScreenTrack    *webrtc.TrackRemote
 	rtcConn              *webrtc.PeerConnection
 	tracksCh             chan *webrtc.TrackLocalStaticRTP
@@ -120,6 +121,8 @@ func (p *Plugin) removeUserSession(userID, channelID string) (channelState, chan
 
 		if state.Call.ScreenSharingID == userID {
 			state.Call.ScreenSharingID = ""
+			state.Call.ScreenTrackID = ""
+			state.Call.ScreenAudioTrackID = ""
 			if call := p.getCall(channelID); call != nil {
 				call.setScreenSession(nil)
 			}

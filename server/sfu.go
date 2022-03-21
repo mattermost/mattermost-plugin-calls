@@ -354,16 +354,36 @@ func (p *Plugin) initRTCConn(userID string) {
 		p.LogDebug(fmt.Sprintf("%+v", remoteTrack.Codec().RTPCodecCapability))
 		p.LogDebug(fmt.Sprintf("Track has started, of type %d: %s", remoteTrack.PayloadType(), remoteTrack.Codec().MimeType))
 
+		trackID := remoteTrack.ID()
+		state, err := p.kvGetChannelState(userSession.channelID)
+		if err != nil {
+			p.LogError(err.Error())
+			return
+		}
+		if state.Call == nil {
+			p.LogError("call state should not be nil")
+			return
+		}
+
 		if remoteTrack.Codec().MimeType == rtpAudioCodec.MimeType {
-			outVoiceTrack, err := webrtc.NewTrackLocalStaticRTP(rtpAudioCodec, "voice", model.NewId())
+			trackType := "voice"
+			if trackID != "" && trackID == state.Call.ScreenAudioTrackID {
+				p.LogDebug("received screen sharing audio track")
+				trackType = "screen-audio"
+			}
+			outAudioTrack, err := webrtc.NewTrackLocalStaticRTP(rtpAudioCodec, trackType, model.NewId())
 			if err != nil {
 				p.LogError(err.Error())
 				return
 			}
 
 			userSession.mut.Lock()
-			userSession.outVoiceTrack = outVoiceTrack
-			userSession.outVoiceTrackEnabled = true
+			if trackType == "voice" {
+				userSession.outVoiceTrack = outAudioTrack
+				userSession.outVoiceTrackEnabled = true
+			} else {
+				userSession.outScreenAudioTrack = outAudioTrack
+			}
 			userSession.mut.Unlock()
 
 			p.iterSessions(userSession.channelID, func(s *session) {
@@ -371,9 +391,9 @@ func (p *Plugin) initRTCConn(userID string) {
 					return
 				}
 				select {
-				case s.tracksCh <- outVoiceTrack:
+				case s.tracksCh <- outAudioTrack:
 				default:
-					p.LogError("failed to send voice track, channel is full", "userID", userID, "trackUserID", s.userID)
+					p.LogError("failed to send audio track, channel is full", "userID", userID, "trackUserID", s.userID)
 				}
 			})
 
@@ -384,18 +404,19 @@ func (p *Plugin) initRTCConn(userID string) {
 					return
 				}
 
-				p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "in", "type": "voice"}).Inc()
-				p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "in", "type": "voice"}).Add(float64(len(rtp.Payload)))
+				p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "in", "type": trackType}).Inc()
+				p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "in", "type": trackType}).Add(float64(len(rtp.Payload)))
 
-				userSession.mut.RLock()
-				isEnabled := userSession.outVoiceTrackEnabled
-				userSession.mut.RUnlock()
-
-				if !isEnabled {
-					continue
+				if trackType == "voice" {
+					userSession.mut.RLock()
+					isEnabled := userSession.outVoiceTrackEnabled
+					userSession.mut.RUnlock()
+					if !isEnabled {
+						continue
+					}
 				}
 
-				if err := outVoiceTrack.WriteRTP(rtp); err != nil && !errors.Is(err, io.ErrClosedPipe) {
+				if err := outAudioTrack.WriteRTP(rtp); err != nil && !errors.Is(err, io.ErrClosedPipe) {
 					p.LogError(err.Error())
 					return
 				}
@@ -405,13 +426,18 @@ func (p *Plugin) initRTCConn(userID string) {
 					if s.userID == userSession.userID {
 						return
 					}
-					p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "out", "type": "voice"}).Inc()
-					p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "out", "type": "voice"}).Add(float64(len(rtp.Payload)))
+					p.metrics.RTPPacketCounters.With(prometheus.Labels{"direction": "out", "type": trackType}).Inc()
+					p.metrics.RTPPacketBytesCounters.With(prometheus.Labels{"direction": "out", "type": trackType}).Add(float64(len(rtp.Payload)))
 				})
 
 			}
 		} else if remoteTrack.Codec().MimeType == rtpVideoCodecVP8.MimeType {
-			// TODO: actually check if the userID matches the expected publisher.
+			if trackID == "" || trackID != state.Call.ScreenTrackID {
+				p.LogError("received unexpected video track", "trackID", trackID)
+				return
+			}
+
+			p.LogDebug("received screen sharing track")
 			call := p.getCall(userSession.channelID)
 			if call == nil {
 				p.LogError("call should not be nil")
@@ -422,7 +448,6 @@ func (p *Plugin) initRTCConn(userID string) {
 				return
 			}
 			call.setScreenSession(userSession)
-
 			p.API.PublishWebSocketEvent(wsEventUserScreenOn, map[string]interface{}{
 				"userID": userID,
 			}, &model.WebsocketBroadcast{ChannelId: userSession.channelID})
@@ -498,12 +523,16 @@ func (p *Plugin) handleTracks(us *session) {
 		outVoiceTrack := s.outVoiceTrack
 		isEnabled := s.outVoiceTrackEnabled
 		outScreenTrack := s.outScreenTrack
+		outScreenAudioTrack := s.outScreenAudioTrack
 		s.mut.RUnlock()
 		if outVoiceTrack != nil {
 			p.addTrack(us, outVoiceTrack, isEnabled)
 		}
 		if outScreenTrack != nil {
 			p.addTrack(us, outScreenTrack, true)
+		}
+		if outScreenAudioTrack != nil {
+			p.addTrack(us, outScreenAudioTrack, true)
 		}
 	})
 

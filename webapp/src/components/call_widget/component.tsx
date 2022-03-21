@@ -10,7 +10,7 @@ import {IDMappedObjects} from 'mattermost-redux/types/utilities';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 import {UserState} from 'src/types/types';
-import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel, isGMChannel} from 'src/utils';
+import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel, isGMChannel, hasExperimentalFlag} from 'src/utils';
 
 import Avatar from '../avatar/avatar';
 import {pluginId} from '../../manifest';
@@ -383,7 +383,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 this.props.showScreenSourceModal();
             } else {
-                const stream = await window.callsClient.shareScreen();
+                const stream = await window.callsClient.shareScreen('', hasExperimentalFlag());
                 state.screenStream = stream;
             }
         }
