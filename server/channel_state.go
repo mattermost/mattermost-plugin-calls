@@ -17,12 +17,14 @@ type callStats struct {
 }
 
 type callState struct {
-	ID              string                `json:"id"`
-	StartAt         int64                 `json:"create_at"`
-	Users           map[string]*userState `json:"users,omitempty"`
-	ThreadID        string                `json:"thread_id"`
-	ScreenSharingID string                `json:"screen_sharing_id"`
-	Stats           callStats             `json:"stats"`
+	ID                 string                `json:"id"`
+	StartAt            int64                 `json:"create_at"`
+	Users              map[string]*userState `json:"users,omitempty"`
+	ThreadID           string                `json:"thread_id"`
+	ScreenSharingID    string                `json:"screen_sharing_id"`
+	ScreenTrackID      string                `json:"screen_track_id"`
+	ScreenAudioTrackID string                `json:"screen_audio_track_id"`
+	Stats              callStats             `json:"stats"`
 }
 
 type channelState struct {

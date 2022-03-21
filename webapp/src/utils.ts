@@ -190,7 +190,7 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
     };
 }
 
-export async function getScreenStream(sourceID?: string): Promise<MediaStream|null> {
+export async function getScreenStream(sourceID?: string, withAudio?: boolean): Promise<MediaStream|null> {
     let screenStream: MediaStream|null = null;
 
     if (window.desktop) {
@@ -203,10 +203,10 @@ export async function getScreenStream(sourceID?: string): Promise<MediaStream|nu
                 options.chromeMediaSourceId = sourceID;
             }
             screenStream = await navigator.mediaDevices.getUserMedia({
-                audio: false,
                 video: {
                     mandatory: options,
                 } as any,
+                audio: withAudio ? {mandatory: options} as any : false,
             });
         } catch (err) {
             console.log(err);
@@ -217,7 +217,7 @@ export async function getScreenStream(sourceID?: string): Promise<MediaStream|nu
         try {
             screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: true,
-                audio: false,
+                audio: Boolean(withAudio),
             });
         } catch (err) {
             console.log(err);

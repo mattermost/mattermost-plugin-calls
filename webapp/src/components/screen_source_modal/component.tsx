@@ -6,6 +6,8 @@ import {Channel} from 'mattermost-redux/types/channels';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
+import {hasExperimentalFlag} from '../../utils';
+
 import CompassIcon from '../../components/icons/compassIcon';
 
 import './component.scss';
@@ -152,7 +154,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
     }
 
     private shareScreen = () => {
-        window.callsClient.shareScreen(this.state.selected);
+        window.callsClient.shareScreen(this.state.selected, hasExperimentalFlag());
         this.hide();
     }
 
