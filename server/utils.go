@@ -63,7 +63,7 @@ func getPublicIP(conn net.PacketConn, iceServers []string) (string, error) {
 		}
 	}
 	if stunURL == "" {
-		return "", fmt.Errorf("No STUN server URL was found")
+		return "", fmt.Errorf("no STUN server URL was found")
 	}
 	serverURL := stunURL[strings.Index(stunURL, ":")+1:]
 	serverAddr, err := net.ResolveUDPAddr("udp", serverURL)
