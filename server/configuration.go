@@ -125,10 +125,6 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [1024, 49151]", *c.UDPServerPort)
 	}
 
-	if len(c.ICEServers) == 0 {
-		return fmt.Errorf("ICEServers cannot be empty")
-	}
-
 	return nil
 }
 

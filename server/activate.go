@@ -78,10 +78,13 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
-	hostIP, err := getPublicIP(udpServerConn, cfg.ICEServers)
-	if err != nil {
-		p.LogError(err.Error())
-		return err
+	publicHost := cfg.ICEHostOverride
+	if publicHost == "" {
+		publicHost, err = getPublicIP(udpServerConn, cfg.ICEServers)
+		if err != nil {
+			p.LogError(err.Error())
+			return err
+		}
 	}
 
 	udpServerMux := webrtc.NewICEUDPMux(nil, udpServerConn)
@@ -90,10 +93,10 @@ func (p *Plugin) OnActivate() error {
 	p.nodeID = status.ClusterId
 	p.udpServerMux = udpServerMux
 	p.udpServerConn = udpServerConn
-	p.hostIP = hostIP
+	p.hostIP = publicHost
 	p.mut.Unlock()
 
-	p.LogDebug("activate", "ClusterID", status.ClusterId, "HostIP", hostIP)
+	p.LogDebug("activate", "ClusterID", status.ClusterId, "PublicHost", publicHost)
 
 	go p.clusterEventsHandler()
 
