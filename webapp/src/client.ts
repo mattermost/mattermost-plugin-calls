@@ -7,7 +7,7 @@ import {deflate} from 'pako/lib/deflate.js';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {getPluginWSConnectionURL, getScreenStream, getPluginPath, setSDPMaxVideoBW} from './utils';
+import {getPluginWSConnectionURL, getScreenStream, getPluginPath, setSDPMaxVideoBW, isFirefox} from './utils';
 
 import WebSocketClient from './websocket';
 import VoiceActivityDetector from './vad';
@@ -416,10 +416,9 @@ export default class CallsClient extends EventEmitter {
         };
 
         this.peer.addStream(screenStream);
-
         this.ws.send('screen_on', {
             data: JSON.stringify({
-                screenTrackID: screenTrack.id,
+                screenTrackID: isFirefox() ? screenStream.id : screenTrack.id,
                 screenAudioTrackID: screenAudioTrack?.id,
             }),
         });

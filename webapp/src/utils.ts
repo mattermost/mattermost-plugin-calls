@@ -288,3 +288,7 @@ export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
 export function hasExperimentalFlag() {
     return window.localStorage.getItem('calls_experimental_features') === 'on';
 }
+
+export function isFirefox() {
+    return navigator.userAgent.indexOf('Firefox') >= 0;
+}

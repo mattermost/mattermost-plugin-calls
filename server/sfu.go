@@ -355,6 +355,7 @@ func (p *Plugin) initRTCConn(userID string) {
 		p.LogDebug(fmt.Sprintf("Track has started, of type %d: %s", remoteTrack.PayloadType(), remoteTrack.Codec().MimeType))
 
 		trackID := remoteTrack.ID()
+		streamID := remoteTrack.StreamID()
 		state, err := p.kvGetChannelState(userSession.channelID)
 		if err != nil {
 			p.LogError(err.Error())
@@ -432,12 +433,12 @@ func (p *Plugin) initRTCConn(userID string) {
 
 			}
 		} else if remoteTrack.Codec().MimeType == rtpVideoCodecVP8.MimeType {
-			if trackID == "" || trackID != state.Call.ScreenTrackID {
-				p.LogError("received unexpected video track", "trackID", trackID)
+			if trackID != state.Call.ScreenTrackID && streamID != state.Call.ScreenTrackID {
+				p.LogError("received unexpected video track", "trackID", trackID, "streamID", streamID)
 				return
 			}
 
-			p.LogDebug("received screen sharing track")
+			p.LogDebug("received screen sharing track", "trackID", trackID, "streamID", streamID)
 			call := p.getCall(userSession.channelID)
 			if call == nil {
 				p.LogError("call should not be nil")
