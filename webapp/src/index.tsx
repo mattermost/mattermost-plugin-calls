@@ -22,6 +22,7 @@ import ChannelLinkLabel from './components/channel_link_label';
 import ChannelCallToast from './components/channel_call_toast';
 import PostType from './components/post_type';
 import ExpandedView from './components/expanded_view';
+import RecordingView from './components/recording_view';
 import SwitchCallModal from './components/switch_call_modal';
 import ScreenSourceModal from './components/screen_source_modal';
 
@@ -36,6 +37,7 @@ import {
     getPluginStaticPath,
     hasPermissionsToEnableCalls,
     getExpandedChannelID,
+    getRecordingChannelID,
     getProfilesByIds,
     isDMChannel,
     getUserIdFromDM,
@@ -340,21 +342,17 @@ export default class Plugin {
             );
         };
 
-        let initializing = false;
         const connectCall = async (channelID: string) => {
-            if (initializing) {
-                console.log('client is already initializing');
-                return;
-            } else if (window.callsClient) {
-                console.log('client is already initialized');
-                return;
-            }
             try {
-                initializing = true;
-                window.callsClient = await new CallsClient().init(channelID);
-                initializing = false;
-                const globalComponentID = registry.registerGlobalComponent(CallWidget);
-                const rootComponentID = registry.registerRootComponent(ExpandedView);
+                window.callsClient = new CallsClient();
+
+                let globalComponentID: string;
+                let rootComponentID: string;
+                if (!getRecordingChannelID()) {
+                    globalComponentID = registry.registerGlobalComponent(CallWidget);
+                    rootComponentID = registry.registerRootComponent(ExpandedView);
+                }
+
                 window.callsClient.on('close', () => {
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);
@@ -367,9 +365,11 @@ export default class Plugin {
                         audio.play();
                     }
                 });
+
+                window.callsClient.init(channelID);
+
                 this.unregisterChannelHeaderMenuButton();
             } catch (err) {
-                initializing = false;
                 console.log(err);
             }
         };
@@ -527,6 +527,7 @@ export default class Plugin {
             fetchChannelData(currChannelId);
         } else {
             const expandedID = getExpandedChannelID();
+            const recordingID = getRecordingChannelID();
             if (expandedID.length > 0) {
                 await store.dispatch({
                     type: VOICE_CHANNEL_USER_CONNECTED,
@@ -537,6 +538,9 @@ export default class Plugin {
                     },
                 });
                 fetchChannelData(expandedID);
+            } else if (recordingID.length > 0) {
+                registry.registerNeedsTeamRoute('/recording', RecordingView);
+                fetchChannelData(recordingID).then(() => connectCall(recordingID));
             }
         }
 

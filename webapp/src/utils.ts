@@ -138,6 +138,15 @@ export function getExpandedChannelID() {
     return window.location.pathname.substr(idx + pattern.length);
 }
 
+export function getRecordingChannelID() {
+    const pattern = `${pluginId}/recording/`;
+    const idx = window.location.pathname.indexOf(pattern);
+    if (idx < 0) {
+        return '';
+    }
+    return window.location.pathname.substr(idx + pattern.length);
+}
+
 export function alphaSortProfiles(profiles: UserProfile[]) {
     return (elA: UserProfile, elB: UserProfile) => {
         const nameA = getUserDisplayName(elA);
