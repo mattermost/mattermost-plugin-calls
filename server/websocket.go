@@ -51,15 +51,13 @@ func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, use
 				return nil, fmt.Errorf("cannot start screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
 			}
 			state.Call.ScreenSharingID = userID
-			state.Call.ScreenTrackID = data["screenTrackID"]
-			state.Call.ScreenAudioTrackID = data["screenAudioTrackID"]
+			state.Call.ScreenStreamID = data["screenStreamID"]
 		} else {
 			if state.Call.ScreenSharingID != userID {
 				return nil, fmt.Errorf("cannot stop screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
 			}
 			state.Call.ScreenSharingID = ""
-			state.Call.ScreenTrackID = ""
-			state.Call.ScreenAudioTrackID = ""
+			state.Call.ScreenStreamID = ""
 			if call := p.getCall(channelID); call != nil {
 				call.setScreenSession(nil)
 			}

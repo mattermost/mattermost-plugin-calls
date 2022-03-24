@@ -419,8 +419,7 @@ export default class CallsClient extends EventEmitter {
 
         this.ws.send('screen_on', {
             data: JSON.stringify({
-                screenTrackID: screenTrack.id,
-                screenAudioTrackID: screenAudioTrack?.id,
+                screenStreamID: screenStream.id,
             }),
         });
     }
