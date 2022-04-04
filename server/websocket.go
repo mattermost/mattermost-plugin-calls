@@ -30,7 +30,7 @@ const (
 	wsEventError            = "error"
 )
 
-func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, userID string) error {
+func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, userID, handlerID string) error {
 	data := map[string]string{}
 	if msg.Type == clientMessageTypeScreenOn {
 		if err := json.Unmarshal(msg.Data, &data); err != nil {
@@ -69,6 +69,16 @@ func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, use
 	}
 
 	if msg.Type == clientMessageTypeScreenOff {
+		if handlerID != p.nodeID {
+			if err := p.sendClusterMessage(clusterMessage{
+				UserID:        userID,
+				ChannelID:     channelID,
+				SenderID:      p.nodeID,
+				ClientMessage: msg,
+			}, clusterMessageTypeUserState, handlerID); err != nil {
+				p.LogError(err.Error())
+			}
+		}
 		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID})
 	}
 
@@ -167,7 +177,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"userID": us.userID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
-		if err := p.handleClientMessageTypeScreen(msg, us.channelID, us.userID); err != nil {
+		if err := p.handleClientMessageTypeScreen(msg, us.channelID, us.userID, handlerID); err != nil {
 			p.LogError(err.Error())
 		}
 	case clientMessageTypeRaiseHand, clientMessageTypeUnraiseHand:
@@ -336,7 +346,14 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		"CallID":        state.Call.ID,
 	})
 
-	handlerID := state.NodeID
+	handlerID, err := p.getHandlerID()
+	p.LogDebug("got handlerID", "handlerID", handlerID)
+	if err != nil {
+		p.LogError(err.Error())
+	}
+	if handlerID == "" {
+		handlerID = state.NodeID
+	}
 
 	var wg sync.WaitGroup
 	if handlerID == p.nodeID {
@@ -426,6 +443,18 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 				"Duration":     dur,
 				"Participants": prevState.Call.Stats.Participants,
 			})
+
+			p.mut.Lock()
+			delete(p.calls, channelID)
+			p.mut.Unlock()
+			if handlerID != p.nodeID {
+				if err := p.sendClusterMessage(clusterMessage{
+					ChannelID: channelID,
+					SenderID:  p.nodeID,
+				}, clusterMessageTypeCallEnded, handlerID); err != nil {
+					p.LogError(err.Error())
+				}
+			}
 		}
 	}
 

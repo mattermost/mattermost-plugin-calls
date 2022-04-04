@@ -158,10 +158,11 @@ export default class CallsClient extends EventEmitter {
                 return;
             }
 
+            const iceServers = config.ICEServers?.length > 0 ? [{urls: config.ICEServers}] : [];
             const peer = new SimplePeer({
                 initiator: true,
                 trickle: true,
-                config: {iceServers: [{urls: config.ICEServers}]},
+                config: {iceServers},
             }) as SimplePeer.Instance;
 
             this.peer = peer;

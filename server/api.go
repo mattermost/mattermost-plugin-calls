@@ -140,7 +140,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, channelID := range channelIDs {
-			if !p.hasPermissionToChannel(channelMembers[channelID], model.PermissionReadChannel) {
+			if len(channelID) != 26 || !p.hasPermissionToChannel(channelMembers[channelID], model.PermissionReadChannel) {
 				continue
 			}
 

@@ -2,7 +2,9 @@ package main
 
 import (
 	"net"
+	"os"
 	"syscall"
+	"time"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 
@@ -24,6 +26,29 @@ func (p *Plugin) OnActivate() error {
 	if appErr != nil {
 		p.LogError(appErr.Error())
 		return appErr
+	}
+
+	if os.Getenv("CALLS_IS_HANDLER") != "" {
+		go func() {
+			p.LogInfo("calls handler, setting state", "clusterID", status.ClusterId)
+			if err := p.setHandlerID(status.ClusterId); err != nil {
+				p.LogError(err.Error())
+				return
+			}
+			ticker := time.NewTicker(handlerKeyCheckInterval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					if err := p.setHandlerID(status.ClusterId); err != nil {
+						p.LogError(err.Error())
+						return
+					}
+				case <-p.stopCh:
+					return
+				}
+			}
+		}()
 	}
 
 	cfg := p.getConfiguration()
