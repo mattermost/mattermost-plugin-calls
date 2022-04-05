@@ -14,6 +14,26 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	handlerKey              = "handler"
+	handlerKeyCheckInterval = 5 * time.Second
+)
+
+func (p *Plugin) getHandlerID() (string, error) {
+	data, appErr := p.API.KVGet(handlerKey)
+	if appErr != nil {
+		return "", fmt.Errorf("failed to get handler id: %w", appErr)
+	}
+	return string(data), nil
+}
+
+func (p *Plugin) setHandlerID(nodeID string) error {
+	if appErr := p.API.KVSetWithExpiry(handlerKey, []byte(nodeID), int64(handlerKeyCheckInterval.Seconds()*2)); appErr != nil {
+		return fmt.Errorf("failed to set handler id: %w", appErr)
+	}
+	return nil
+}
+
 func (p *Plugin) kvSetAtomic(key string, cb func(data []byte) ([]byte, error)) error {
 	for {
 		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVGet"}).Inc()

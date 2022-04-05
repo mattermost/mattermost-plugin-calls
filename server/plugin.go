@@ -109,6 +109,13 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 		us := newUserSession(msg.UserID, msg.ChannelID, "")
 		p.mut.Lock()
+		if _, ok := p.calls[msg.ChannelID]; !ok {
+			p.LogDebug("new call, setting state")
+			p.calls[msg.ChannelID] = &call{
+				channelID: msg.ChannelID,
+				sessions:  map[string]*session{},
+			}
+		}
 		p.sessions[msg.UserID] = us
 		p.mut.Unlock()
 		go p.startSession(us, msg.SenderID)
@@ -117,6 +124,11 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
 		}
 		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID)
+		if call := p.getCall(us.channelID); call != nil {
+			if userID := call.getScreenSessionID(); userID == msg.UserID {
+				call.setScreenSession(nil)
+			}
+		}
 		p.mut.Lock()
 		delete(p.sessions, us.userID)
 		p.mut.Unlock()
@@ -150,7 +162,19 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
 		}
-		us.trackEnableCh <- (msg.ClientMessage.Type == clientMessageTypeMute)
+		if msg.ClientMessage.Type == clientMessageTypeScreenOff {
+			if call := p.getCall(us.channelID); call != nil {
+				if userID := call.getScreenSessionID(); userID == msg.UserID {
+					call.setScreenSession(nil)
+				}
+			}
+		} else {
+			us.trackEnableCh <- (msg.ClientMessage.Type == clientMessageTypeMute)
+		}
+	case clusterMessageTypeCallEnded:
+		p.mut.Lock()
+		delete(p.calls, msg.ChannelID)
+		p.mut.Unlock()
 	default:
 		return fmt.Errorf("unexpected event type %q", ev.Id)
 	}

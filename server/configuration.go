@@ -50,6 +50,9 @@ func (is *ICEServers) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	if unquoted == "" {
+		return nil
+	}
 	*is = strings.Split(strings.TrimSpace(unquoted), ",")
 	return nil
 }

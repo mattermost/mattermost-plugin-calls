@@ -93,6 +93,21 @@ func (p *Plugin) cleanUpState() error {
 			break
 		}
 		for _, k := range keys {
+			if k == handlerKey {
+				handlerID, err := p.getHandlerID()
+				if err != nil {
+					p.LogError(err.Error())
+					continue
+				}
+
+				if p.nodeID == handlerID {
+					if appErr = p.API.KVDelete(k); appErr != nil {
+						p.LogError(err.Error())
+					}
+				}
+				continue
+			}
+
 			if err := p.kvSetAtomicChannelState(k, func(state *channelState) (*channelState, error) {
 				if state == nil {
 					return nil, nil
