@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"compress/zlib"
-	"context"
 	"fmt"
 	"io"
 	"net"
@@ -63,19 +62,15 @@ func (p *Plugin) kvSetAtomic(key string, cb func(data []byte) ([]byte, error)) e
 	}
 }
 
-func (p *Plugin) iterSessions(channelID string, cb func(us *session)) {
-	p.mut.RLock()
-	for _, session := range p.sessions {
-		if session.channelID == channelID {
-			p.mut.RUnlock()
-			cb(session)
-			p.mut.RLock()
-		}
+func getPublicIP(port int, iceServers []string) (string, error) {
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
+		Port: port,
+	})
+	if err != nil {
+		return "", err
 	}
-	p.mut.RUnlock()
-}
+	defer conn.Close()
 
-func getPublicIP(conn net.PacketConn, iceServers []string) (string, error) {
 	var stunURL string
 	for _, u := range iceServers {
 		if strings.HasPrefix(u, "stun:") {
@@ -148,21 +143,6 @@ func stunRequest(read func([]byte) (int, error), write func([]byte) (int, error)
 		return nil, err
 	}
 	return res, nil
-}
-
-func resolveHost(host string, timeout time.Duration) (string, error) {
-	var ip string
-	r := net.Resolver{}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	addrs, err := r.LookupIP(ctx, "ip4", host)
-	if err != nil {
-		return ip, fmt.Errorf("failed to resolve host %q: %w", host, err)
-	}
-	if len(addrs) > 0 {
-		ip = addrs[0].String()
-	}
-	return ip, err
 }
 
 func unpackSDPData(data []byte) ([]byte, error) {

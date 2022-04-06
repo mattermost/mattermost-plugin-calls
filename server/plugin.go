@@ -2,17 +2,18 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"sync"
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
 
+	"github.com/mattermost/rtcd/service/rtc"
+
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
+	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 
-	"github.com/pion/ice/v2"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -29,15 +30,15 @@ type Plugin struct {
 	metrics   *performance.Metrics
 	telemetry *telemetry.Client
 
-	mut           sync.RWMutex
-	nodeID        string // the node cluster id
-	stopCh        chan struct{}
-	clusterEvCh   chan model.PluginClusterEvent
-	sessions      map[string]*session
-	calls         map[string]*call
-	udpServerConn *net.UDPConn
-	udpServerMux  ice.UDPMux
-	hostIP        string
+	mut         sync.RWMutex
+	nodeID      string // the node cluster id
+	stopCh      chan struct{}
+	clusterEvCh chan model.PluginClusterEvent
+	sessions    map[string]*session
+	hostIP      string
+
+	rtcServer *rtc.Server
+	log       *mlog.Logger
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
@@ -52,10 +53,9 @@ func (p *Plugin) startSession(us *session, senderID string) {
 		defer wg.Done()
 		p.metrics.RTCSessions.With(prometheus.Labels{"channelID": us.channelID}).Inc()
 		defer p.metrics.RTCSessions.With(prometheus.Labels{"channelID": us.channelID}).Dec()
-		p.initRTCConn(us.userID)
-		p.LogDebug("initRTCConn DONE")
-		p.handleTracks(us)
-		p.LogDebug("handleTracks DONE")
+		if err := p.rtcServer.InitSession(us.cfg); err != nil {
+			p.LogError(err.Error(), "connID", us.connID)
+		}
 	}()
 
 	for {
@@ -65,6 +65,7 @@ func (p *Plugin) startSession(us *session, senderID string) {
 				return
 			}
 			clusterMsg := clusterMessage{
+				ConnID:    us.connID,
 				UserID:    us.userID,
 				ChannelID: us.channelID,
 				SenderID:  p.nodeID,
@@ -107,15 +108,8 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		if us != nil {
 			return fmt.Errorf("session already exists, userID=%q, channelID=%q", us.userID, us.channelID)
 		}
-		us := newUserSession(msg.UserID, msg.ChannelID, "")
+		us := newUserSession(msg.UserID, msg.ChannelID, msg.ConnID)
 		p.mut.Lock()
-		if _, ok := p.calls[msg.ChannelID]; !ok {
-			p.LogDebug("new call, setting state")
-			p.calls[msg.ChannelID] = &call{
-				channelID: msg.ChannelID,
-				sessions:  map[string]*session{},
-			}
-		}
 		p.sessions[msg.UserID] = us
 		p.mut.Unlock()
 		go p.startSession(us, msg.SenderID)
@@ -124,18 +118,13 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
 		}
 		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID)
-		if call := p.getCall(us.channelID); call != nil {
-			if userID := call.getScreenSessionID(); userID == msg.UserID {
-				call.setScreenSession(nil)
-			}
-		}
 		p.mut.Lock()
 		delete(p.sessions, us.userID)
 		p.mut.Unlock()
 		close(us.signalInCh)
 		close(us.closeCh)
-		if us.rtcConn != nil {
-			us.rtcConn.Close()
+		if err := p.rtcServer.CloseSession(us.cfg); err != nil {
+			return fmt.Errorf("failed to close session: %w", err)
 		}
 	case clusterMessageTypeSignaling:
 		if us == nil {
@@ -145,36 +134,51 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			return fmt.Errorf("unexpected client message type %q", msg.ClientMessage.Type)
 		}
 
-		signalCh := us.signalInCh
+		msgType := rtc.SDPMessage
 		if msg.ClientMessage.Type == clientMessageTypeICE {
-			signalCh = us.iceCh
+			msgType = rtc.ICEMessage
 		}
-		if us.connID != "" {
-			signalCh = us.signalOutCh
+		rtcMsg := rtc.Message{
+			Session: us.cfg,
+			Type:    msgType,
+			Data:    msg.ClientMessage.Data,
 		}
 
 		select {
-		case signalCh <- []byte(msg.ClientMessage.Data):
+		case p.rtcServer.SendCh() <- rtcMsg:
 		default:
-			return fmt.Errorf("chan is full, dropping msg")
+			return fmt.Errorf("sendCh is full, dropping signaling msg")
 		}
 	case clusterMessageTypeUserState:
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
 		}
-		if msg.ClientMessage.Type == clientMessageTypeScreenOff {
-			if call := p.getCall(us.channelID); call != nil {
-				if userID := call.getScreenSessionID(); userID == msg.UserID {
-					call.setScreenSession(nil)
-				}
-			}
-		} else {
-			us.trackEnableCh <- (msg.ClientMessage.Type == clientMessageTypeMute)
+
+		var msgType rtc.MessageType
+		switch msg.ClientMessage.Type {
+		case clientMessageTypeMute:
+			msgType = rtc.MuteMessage
+		case clientMessageTypeUnmute:
+			msgType = rtc.UnmuteMessage
+		case clientMessageTypeScreenOn:
+			msgType = rtc.ScreenOnMessage
+		case clientMessageTypeScreenOff:
+			msgType = rtc.ScreenOffMessage
+		default:
+			return fmt.Errorf("unexpected client message type %q", msg.ClientMessage.Type)
 		}
-	case clusterMessageTypeCallEnded:
-		p.mut.Lock()
-		delete(p.calls, msg.ChannelID)
-		p.mut.Unlock()
+
+		rtcMsg := rtc.Message{
+			Session: us.cfg,
+			Type:    msgType,
+			Data:    msg.ClientMessage.Data,
+		}
+
+		select {
+		case p.rtcServer.SendCh() <- rtcMsg:
+		default:
+			return fmt.Errorf("sendCh is full, dropping State msg")
+		}
 	default:
 		return fmt.Errorf("unexpected event type %q", ev.Id)
 	}

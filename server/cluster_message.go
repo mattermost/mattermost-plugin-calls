@@ -10,6 +10,7 @@ import (
 )
 
 type clusterMessage struct {
+	ConnID        string        `json:"conn_id"`
 	UserID        string        `json:"user_id"`
 	ChannelID     string        `json:"channel_id"`
 	SenderID      string        `json:"sender_id"`

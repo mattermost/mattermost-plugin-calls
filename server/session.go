@@ -2,68 +2,54 @@ package main
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/rtcd/service/rtc"
 
-	"github.com/pion/webrtc/v3"
+	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 const (
-	msgChSize        = 20
-	tracksChSize     = 10
-	signalingTimeout = 10 * time.Second
+	msgChSize = 20
 )
 
 type session struct {
-	mut sync.RWMutex
-
 	userID    string
 	channelID string
 	connID    string
+	cfg       rtc.SessionConfig
 
 	// WebSocket
 	signalInCh  chan []byte
 	signalOutCh chan []byte
 	wsMsgCh     chan clientMessage
 	wsCloseCh   chan struct{}
-	doneCh      chan struct{}
 
-	// WebRTC
-	outVoiceTrack        *webrtc.TrackLocalStaticRTP
-	outVoiceTrackEnabled bool
-	outScreenTrack       *webrtc.TrackLocalStaticRTP
-	outScreenAudioTrack  *webrtc.TrackLocalStaticRTP
-	remoteScreenTrack    *webrtc.TrackRemote
-	rtcConn              *webrtc.PeerConnection
-	tracksCh             chan *webrtc.TrackLocalStaticRTP
-	iceCh                chan []byte
-	closeCh              chan struct{}
-
-	trackEnableCh chan bool
-	rtpSendersMap map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender
+	doneCh  chan struct{}
+	closeCh chan struct{}
 }
 
 func newUserSession(userID, channelID, connID string) *session {
 	return &session{
-		userID:        userID,
-		channelID:     channelID,
-		connID:        connID,
-		signalInCh:    make(chan []byte, msgChSize),
-		signalOutCh:   make(chan []byte, msgChSize),
-		wsMsgCh:       make(chan clientMessage, msgChSize*2),
-		wsCloseCh:     make(chan struct{}),
-		tracksCh:      make(chan *webrtc.TrackLocalStaticRTP, tracksChSize),
-		iceCh:         make(chan []byte, msgChSize*2),
-		closeCh:       make(chan struct{}),
-		doneCh:        make(chan struct{}),
-		trackEnableCh: make(chan bool, tracksChSize),
-		rtpSendersMap: map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender{},
+		userID:    userID,
+		channelID: channelID,
+		connID:    connID,
+		cfg: rtc.SessionConfig{
+			GroupID:   "default",
+			UserID:    userID,
+			CallID:    channelID,
+			SessionID: connID,
+		},
+		signalInCh:  make(chan []byte, msgChSize),
+		signalOutCh: make(chan []byte, msgChSize),
+		wsMsgCh:     make(chan clientMessage, msgChSize*2),
+		wsCloseCh:   make(chan struct{}),
+		closeCh:     make(chan struct{}),
+		doneCh:      make(chan struct{}),
 	}
 }
 
-func (p *Plugin) addUserSession(userID, channelID string, userSession *session) (channelState, error) {
+func (p *Plugin) addUserSession(userID, channelID string) (channelState, error) {
 	var st channelState
 
 	cfg := p.getConfiguration()
@@ -122,9 +108,6 @@ func (p *Plugin) removeUserSession(userID, channelID string) (channelState, chan
 		if state.Call.ScreenSharingID == userID {
 			state.Call.ScreenSharingID = ""
 			state.Call.ScreenStreamID = ""
-			if call := p.getCall(channelID); call != nil {
-				call.setScreenSession(nil)
-			}
 		}
 
 		delete(state.Call.Users, userID)

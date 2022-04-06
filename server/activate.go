@@ -1,14 +1,13 @@
 package main
 
 import (
-	"net"
 	"os"
-	"syscall"
 	"time"
 
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/rtcd/logger"
+	"github.com/mattermost/rtcd/service/rtc"
 
-	"github.com/pion/webrtc/v3"
+	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 func (p *Plugin) OnActivate() error {
@@ -57,73 +56,50 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
-	udpServerConn, err := net.ListenUDP("udp4", &net.UDPAddr{
-		Port: *cfg.UDPServerPort,
-	})
-	if err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-
-	// Set size of UDP buffers.
-	if err := udpServerConn.SetWriteBuffer(4194304); err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-
-	if err := udpServerConn.SetReadBuffer(4194304); err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-	connFile, err := udpServerConn.File()
-	if err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-	defer connFile.Close()
-
-	sysConn, err := connFile.SyscallConn()
-	if err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-	err = sysConn.Control(func(fd uintptr) {
-		writeBufSize, err := syscall.GetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_SNDBUF)
-		if err != nil {
-			p.LogError(err.Error())
-		}
-		readBufSize, err := syscall.GetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_RCVBUF)
-		if err != nil {
-			p.LogError(err.Error())
-		}
-		p.LogInfo("UDP buffers", "writeBufSize", writeBufSize, "readBufSize", readBufSize)
-	})
-	if err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-
+	var err error
 	publicHost := cfg.ICEHostOverride
 	if publicHost == "" {
-		publicHost, err = getPublicIP(udpServerConn, cfg.ICEServers)
+		publicHost, err = getPublicIP(*cfg.UDPServerPort, cfg.ICEServers)
 		if err != nil {
 			p.LogError(err.Error())
 			return err
 		}
 	}
 
-	udpServerMux := webrtc.NewICEUDPMux(nil, udpServerConn)
+	log, err := logger.New(logger.Config{
+		EnableConsole: true,
+		ConsoleLevel:  "DEBUG",
+	})
+	if err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+
+	rtcServer, err := rtc.NewServer(rtc.ServerConfig{
+		ICEPortUDP:      *cfg.UDPServerPort,
+		ICEHostOverride: publicHost,
+	}, log)
+	if err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+
+	if err := rtcServer.Start(); err != nil {
+		p.LogError(err.Error())
+		return err
+	}
 
 	p.mut.Lock()
 	p.nodeID = status.ClusterId
-	p.udpServerMux = udpServerMux
-	p.udpServerConn = udpServerConn
+	p.rtcServer = rtcServer
 	p.hostIP = publicHost
+	p.log = log
 	p.mut.Unlock()
 
-	p.LogDebug("activate", "ClusterID", status.ClusterId, "PublicHost", publicHost)
+	p.LogDebug("activate", "ClusterID", status.ClusterId, "publicHost", publicHost)
 
 	go p.clusterEventsHandler()
+	go p.wsWriter()
 
 	return nil
 }
@@ -133,12 +109,16 @@ func (p *Plugin) OnDeactivate() error {
 	p.API.PublishWebSocketEvent(wsEventDeactivate, nil, &model.WebsocketBroadcast{})
 	close(p.stopCh)
 
-	if p.udpServerMux != nil {
-		p.udpServerMux.Close()
+	if p.rtcServer != nil {
+		if err := p.rtcServer.Stop(); err != nil {
+			p.LogError(err.Error())
+		}
 	}
 
-	if p.udpServerConn != nil {
-		p.udpServerConn.Close()
+	if p.log != nil {
+		if err := p.log.Shutdown(); err != nil {
+			p.LogError(err.Error())
+		}
 	}
 
 	if err := p.cleanUpState(); err != nil {
