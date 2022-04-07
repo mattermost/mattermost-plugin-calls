@@ -13,8 +13,6 @@ import (
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
@@ -51,8 +49,6 @@ func (p *Plugin) startSession(us *session, senderID string) {
 
 	go func() {
 		defer wg.Done()
-		p.metrics.RTCSessions.With(prometheus.Labels{"channelID": us.channelID}).Inc()
-		defer p.metrics.RTCSessions.With(prometheus.Labels{"channelID": us.channelID}).Dec()
 		if err := p.rtcServer.InitSession(us.cfg); err != nil {
 			p.LogError(err.Error(), "connID", us.connID)
 		}

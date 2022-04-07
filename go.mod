@@ -13,7 +13,7 @@ require (
 )
 
 require (
-	github.com/mattermost/rtcd v0.1.0
+	github.com/mattermost/rtcd v0.1.1
 	github.com/pion/stun v0.3.5
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
 )

@@ -10,8 +10,6 @@ import (
 	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost-server/v6/model"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -106,7 +104,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 }
 
 func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID string) {
-	p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "in", "type": msg.Type}).Inc()
+	p.metrics.IncWebSocketEvent("in", msg.Type)
 	switch msg.Type {
 	case clientMessageTypeSDP:
 		// if I am not the handler for this we relay the signaling message.
@@ -308,7 +306,7 @@ func (p *Plugin) wsWriter() {
 			if !ok {
 				return
 			}
-			p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "out", "type": "signal"}).Inc()
+			p.metrics.IncWebSocketEvent("out", "signal")
 			p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
 				"data":   string(msg.Data),
 				"connID": msg.Session.SessionID,
@@ -371,16 +369,16 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	}
 
 	// send successful join response
-	p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "out", "type": "join"}).Inc()
+	p.metrics.IncWebSocketEvent("out", "join")
 	p.API.PublishWebSocketEvent(wsEventJoin, map[string]interface{}{
 		"connID": connID,
 	}, &model.WebsocketBroadcast{UserId: userID})
-	p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "out", "type": "user_connected"}).Inc()
+	p.metrics.IncWebSocketEvent("out", "user_connected")
 	p.API.PublishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID})
-	p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Inc()
-	defer p.metrics.WebSocketConnections.With(prometheus.Labels{"channelID": channelID}).Dec()
+	p.metrics.IncWebSocketConn(channelID)
+	defer p.metrics.DecWebSocketConn(channelID)
 	p.track(evCallUserJoined, map[string]interface{}{
 		"ParticipantID": userID,
 		"ChannelID":     channelID,
@@ -401,8 +399,6 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			p.metrics.RTCSessions.With(prometheus.Labels{"channelID": channelID}).Inc()
-			defer p.metrics.RTCSessions.With(prometheus.Labels{"channelID": channelID}).Dec()
 			if err = p.rtcServer.InitSession(us.cfg); err != nil {
 				p.LogError(err.Error(), "connID", connID)
 			}
@@ -506,7 +502,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		go func() {
 			if err := p.handleJoin(userID, connID, channelID); err != nil {
 				p.LogError(err.Error())
-				p.metrics.WebSocketEventCounters.With(prometheus.Labels{"direction": "out", "type": "error"}).Inc()
+				p.metrics.IncWebSocketEvent("out", "error")
 				p.API.PublishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
 					"connID": connID,

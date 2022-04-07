@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/pion/stun"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -19,6 +18,7 @@ const (
 )
 
 func (p *Plugin) getHandlerID() (string, error) {
+	p.metrics.IncStoreOp("KVGet")
 	data, appErr := p.API.KVGet(handlerKey)
 	if appErr != nil {
 		return "", fmt.Errorf("failed to get handler id: %w", appErr)
@@ -27,6 +27,7 @@ func (p *Plugin) getHandlerID() (string, error) {
 }
 
 func (p *Plugin) setHandlerID(nodeID string) error {
+	p.metrics.IncStoreOp("KVSetWithExpiry")
 	if appErr := p.API.KVSetWithExpiry(handlerKey, []byte(nodeID), int64(handlerKeyCheckInterval.Seconds()*2)); appErr != nil {
 		return fmt.Errorf("failed to set handler id: %w", appErr)
 	}
@@ -35,7 +36,7 @@ func (p *Plugin) setHandlerID(nodeID string) error {
 
 func (p *Plugin) kvSetAtomic(key string, cb func(data []byte) ([]byte, error)) error {
 	for {
-		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVGet"}).Inc()
+		p.metrics.IncStoreOp("KVGet")
 		storedData, appErr := p.API.KVGet(key)
 		if appErr != nil {
 			return fmt.Errorf("KVGet failed: %w", appErr)
@@ -48,7 +49,7 @@ func (p *Plugin) kvSetAtomic(key string, cb func(data []byte) ([]byte, error)) e
 			return nil
 		}
 
-		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVCompareAndSet"}).Inc()
+		p.metrics.IncStoreOp("KVCompareAndSet")
 		ok, appErr := p.API.KVCompareAndSet(key, storedData, toStoreData)
 		if appErr != nil {
 			return fmt.Errorf("KVCompareAndSet failed: %w", appErr)
