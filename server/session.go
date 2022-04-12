@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mattermost/rtcd/service/rtc"
-
 	"github.com/mattermost/mattermost-server/v6/model"
 )
 
@@ -17,7 +15,6 @@ type session struct {
 	userID    string
 	channelID string
 	connID    string
-	cfg       rtc.SessionConfig
 
 	// WebSocket
 	signalInCh  chan []byte
@@ -31,15 +28,9 @@ type session struct {
 
 func newUserSession(userID, channelID, connID string) *session {
 	return &session{
-		userID:    userID,
-		channelID: channelID,
-		connID:    connID,
-		cfg: rtc.SessionConfig{
-			GroupID:   "default",
-			UserID:    userID,
-			CallID:    channelID,
-			SessionID: connID,
-		},
+		userID:      userID,
+		channelID:   channelID,
+		connID:      connID,
 		signalInCh:  make(chan []byte, msgChSize),
 		signalOutCh: make(chan []byte, msgChSize),
 		wsMsgCh:     make(chan clientMessage, msgChSize*2),

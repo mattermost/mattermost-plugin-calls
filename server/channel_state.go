@@ -107,6 +107,10 @@ func (p *Plugin) cleanUpState() error {
 				continue
 			}
 
+			if len(k) < 26 {
+				continue
+			}
+
 			if err := p.kvSetAtomicChannelState(k, func(state *channelState) (*channelState, error) {
 				if state == nil {
 					return nil, nil

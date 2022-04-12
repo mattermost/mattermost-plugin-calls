@@ -35,6 +35,13 @@
           "placeholder": "8443"
         },
         {
+          "key": "RTCDServiceURL",
+          "display_name": "RTCD Service URL",
+          "type": "text",
+          "help_text": "The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
+          "placeholder": "https://clientID:authKey@rtcd.example.com"
+        },
+        {
           "key": "ICEServers",
           "display_name": "ICE Servers",
           "type": "text",

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -26,6 +27,10 @@ type configuration struct {
 	ICEHostOverride string
 	// UDP port used by the RTC server to listen to.
 	UDPServerPort *int
+	// The URL to a running RTCD service instance that should host the calls.
+	// When set (non empty) all calls will be handled by the external service.
+	RTCDServiceURL string
+
 	clientConfig
 }
 
@@ -128,6 +133,22 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [1024, 49151]", *c.UDPServerPort)
 	}
 
+	if c.RTCDServiceURL != "" {
+		u, err := url.Parse(c.RTCDServiceURL)
+		if err != nil {
+			return fmt.Errorf("RTCDServiceURL is not valid: %w", err)
+		}
+		if u.User == nil {
+			return fmt.Errorf("RTCDServiceURL is not valid: missing credentials")
+		}
+		if u.User.Username() == "" {
+			return fmt.Errorf("RTCDServiceURL is not valid: missing clientID in credentials")
+		}
+		if authKey, ok := u.User.Password(); !ok || authKey == "" {
+			return fmt.Errorf("RTCDServiceURL is not valid: missing authKey in credentials")
+		}
+	}
+
 	return nil
 }
 
@@ -136,6 +157,7 @@ func (c *configuration) Clone() *configuration {
 	var cfg configuration
 
 	cfg.ICEHostOverride = c.ICEHostOverride
+	cfg.RTCDServiceURL = c.RTCDServiceURL
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)
