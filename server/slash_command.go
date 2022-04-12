@@ -13,10 +13,11 @@ const (
 	joinCommandTrigger         = "join"
 	leaveCommandTrigger        = "leave"
 	linkCommandTrigger         = "link"
+	recordingCommandTrigger    = "recording"
 	experimentalCommandTrigger = "experimental"
 )
 
-var subCommands = []string{joinCommandTrigger, leaveCommandTrigger, linkCommandTrigger, experimentalCommandTrigger}
+var subCommands = []string{joinCommandTrigger, leaveCommandTrigger, linkCommandTrigger, experimentalCommandTrigger, recordingCommandTrigger}
 
 func getAutocompleteData() *model.AutocompleteData {
 	data := model.NewAutocompleteData(rootCommandTrigger, "[command]",
@@ -28,6 +29,11 @@ func getAutocompleteData() *model.AutocompleteData {
 	experimentalCmdData := model.NewAutocompleteData(experimentalCommandTrigger, "", "Turns on/off experimental features")
 	experimentalCmdData.AddTextArgument("Available options: on, off", "", "on|off")
 	data.AddCommand(experimentalCmdData)
+
+	recordingCmdData := model.NewAutocompleteData(recordingCommandTrigger, "", "Manage calls recordings")
+	recordingCmdData.AddTextArgument("Available options: start, stop", "", "start|stop")
+	data.AddCommand(recordingCmdData)
+
 	return data
 }
 
@@ -91,6 +97,56 @@ func handleExperimentalCommand(fields []string) (*model.CommandResponse, error) 
 	}, nil
 }
 
+func (p *Plugin) handleRecordingCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("Invalid number of arguments provided")
+	}
+
+	cfg := p.getConfiguration()
+	if !strings.Contains(cfg.AllowedRecordingUsers, args.UserId) ||
+		!p.API.HasPermissionToChannel(args.UserId, args.ChannelId, model.PermissionReadChannel) {
+		return nil, fmt.Errorf("You don't have permissions to use this command")
+	}
+
+	recorderUsername := "calls-recorder"
+	recorder, appErr := p.API.GetUserByUsername(recorderUsername)
+	if appErr != nil {
+		return nil, fmt.Errorf("failed to get recording user: %w", appErr)
+	}
+
+	if subCmd := fields[2]; subCmd == "start" {
+		if _, appErr := p.API.CreateTeamMember(args.TeamId, recorder.Id); appErr != nil {
+			return nil, fmt.Errorf("failed to add recording user to team: %w", appErr)
+		}
+
+		if _, appErr := p.API.AddUserToChannel(args.ChannelId, recorder.Id, ""); appErr != nil {
+			return nil, fmt.Errorf("failed to add recording user to channel: %w", appErr)
+		}
+
+		p.API.PublishWebSocketEvent(wsEventRecordingStart, map[string]interface{}{
+			"teamID":    args.TeamId,
+			"channelID": args.ChannelId,
+		}, &model.WebsocketBroadcast{UserId: recorder.Id})
+
+		return &model.CommandResponse{
+			ResponseType: model.CommandResponseTypeEphemeral,
+			Text:         "Start request has been sent. Recording should begin shortly.",
+		}, nil
+	} else if subCmd == "stop" {
+		p.API.PublishWebSocketEvent(wsEventRecordingStop, map[string]interface{}{
+			"teamID":    args.TeamId,
+			"channelID": args.ChannelId,
+		}, &model.WebsocketBroadcast{UserId: recorder.Id})
+
+		return &model.CommandResponse{
+			ResponseType: model.CommandResponseTypeEphemeral,
+			Text:         "Stop request has been sent. Recording should end shortly.",
+		}, nil
+	}
+
+	return nil, nil
+}
+
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
@@ -124,6 +180,15 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == experimentalCommandTrigger {
 		resp, err := handleExperimentalCommand(fields)
+		if err != nil {
+			return &model.CommandResponse{
+				ResponseType: model.CommandResponseTypeEphemeral,
+				Text:         fmt.Sprintf("Error: %s", err.Error()),
+			}, nil
+		}
+		return resp, nil
+	} else if subCmd == recordingCommandTrigger {
+		resp, err := p.handleRecordingCommand(args, fields)
 		if err != nil {
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,

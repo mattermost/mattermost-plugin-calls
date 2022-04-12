@@ -28,6 +28,8 @@ const (
 	wsEventUserUnraiseHand  = "user_unraise_hand"
 	wsEventJoin             = "join"
 	wsEventError            = "error"
+	wsEventRecordingStart   = "recording_start"
+	wsEventRecordingStop    = "recording_stop"
 )
 
 func (p *Plugin) handleClientMessageTypeScreen(msg clientMessage, channelID, userID, handlerID string) error {

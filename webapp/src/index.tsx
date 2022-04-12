@@ -294,6 +294,15 @@ export default class Plugin {
                     console.log('experimental features disabled');
                     window.localStorage.removeItem('calls_experimental_features');
                 }
+                break;
+            case 'recording':
+                if (fields.length !== 3) {
+                    return {error: {message: 'Invalid number of arguments'}};
+                }
+
+                if (fields[2] !== 'start' && fields[2] !== 'stop') {
+                    return {error: {message: `${fields[2]} is not a valid sub-command`}};
+                }
             }
 
             return {message, args};
