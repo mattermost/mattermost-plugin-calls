@@ -26,6 +26,10 @@ type configuration struct {
 	ICEHostOverride string
 	// UDP port used by the RTC server to listen to.
 	UDPServerPort *int
+	// A comma separated list of user IDs that should be allowed to run the
+	// "/call recording" command.
+	AllowedRecordingUsers string
+
 	clientConfig
 }
 
@@ -156,6 +160,8 @@ func (c *configuration) Clone() *configuration {
 			cfg.ICEServers[i] = u
 		}
 	}
+
+	cfg.AllowedRecordingUsers = c.AllowedRecordingUsers
 
 	return &cfg
 }

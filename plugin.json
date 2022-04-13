@@ -55,6 +55,14 @@
           "type": "bool",
           "help_text": "When set to true, calls will be possible in all channels where they are not explicitly disabled.",
           "default": true
+        },
+        {
+          "key": "AllowedRecordingUsers",
+          "display_name": "Allowed Recording Users",
+          "type": "longtext",
+          "help_text": "A comma separated list of user IDs that should be allowed to run the '/call recording' command",
+          "default": "",
+          "placeholder": ""
         }
         ]
     }
