@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -84,15 +85,13 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 	} else {
 		rtcMsg := rtc.Message{
-			Session: us.cfg,
-			Type:    msgType,
-			Data:    msg.Data,
+			SessionID: us.connID,
+			Type:      msgType,
+			Data:      msg.Data,
 		}
 
-		select {
-		case p.rtcServer.SendCh() <- rtcMsg:
-		default:
-			return fmt.Errorf("channel is full, dropping screen msg")
+		if err := p.sendRTCMessage(rtcMsg); err != nil {
+			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	}
 
@@ -120,34 +119,28 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				p.LogError(err.Error())
 			}
 		} else {
-
 			rtcMsg := rtc.Message{
-				Session: us.cfg,
-				Type:    rtc.SDPMessage,
-				Data:    []byte(msg.Data),
+				SessionID: us.connID,
+				Type:      rtc.SDPMessage,
+				Data:      msg.Data,
 			}
 
-			select {
-			case p.rtcServer.SendCh() <- rtcMsg:
-			default:
-				p.LogError("sendCh is full, dropping SDP msg")
+			if err := p.sendRTCMessage(rtcMsg); err != nil {
+				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
 			}
 		}
 	case clientMessageTypeICE:
 		p.LogDebug("candidate!")
 		if handlerID == p.nodeID {
 			rtcMsg := rtc.Message{
-				Session: us.cfg,
-				Type:    rtc.ICEMessage,
-				Data:    msg.Data,
+				SessionID: us.connID,
+				Type:      rtc.ICEMessage,
+				Data:      msg.Data,
 			}
 
-			select {
-			case p.rtcServer.SendCh() <- rtcMsg:
-			default:
-				p.LogError("sendCh is full, dropping ICE msg")
+			if err := p.sendRTCMessage(rtcMsg); err != nil {
+				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
 			}
-
 		} else {
 			// need to relay signaling.
 			if err := p.sendClusterMessage(clusterMessage{
@@ -179,15 +172,13 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 
 			rtcMsg := rtc.Message{
-				Session: us.cfg,
-				Type:    msgType,
-				Data:    msg.Data,
+				SessionID: us.connID,
+				Type:      msgType,
+				Data:      msg.Data,
 			}
 
-			select {
-			case p.rtcServer.SendCh() <- rtcMsg:
-			default:
-				p.LogError("sendCh is full, dropping State msg")
+			if err := p.sendRTCMessage(rtcMsg); err != nil {
+				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
 			}
 		}
 
@@ -269,17 +260,17 @@ func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 	}
 
 	p.mut.RLock()
-	us := p.sessions[userID]
+	us := p.sessions[connID]
 	p.mut.RUnlock()
 
-	if us != nil && us.connID == connID {
+	if us != nil {
 		go func() {
 			p.LogDebug("closing channel for session", "userID", userID, "connID", connID)
 			close(us.wsCloseCh)
 			<-us.doneCh
 			p.LogDebug("done, removing session")
 			p.mut.Lock()
-			delete(p.sessions, userID)
+			delete(p.sessions, connID)
 			p.mut.Unlock()
 		}()
 	}
@@ -299,18 +290,68 @@ func (p *Plugin) wsReader(us *session, handlerID string) {
 	}
 }
 
+func (p *Plugin) sendRTCMessage(msg rtc.Message) error {
+	if p.rtcdClient != nil {
+		cm := rtcd.ClientMessage{
+			Type: rtcd.ClientMessageRTC,
+			Data: msg,
+		}
+		return p.rtcdClient.Send(cm)
+	}
+
+	return p.rtcServer.Send(msg)
+}
+
 func (p *Plugin) wsWriter() {
+	if p.rtcdClient != nil {
+		for {
+			select {
+			case msg, ok := <-p.rtcdClient.ReceiveCh():
+				if !ok {
+					return
+				}
+				rtcMsg, ok := msg.Data.(rtc.Message)
+				if !ok {
+					p.LogError(fmt.Sprintf("unexpected data type %T", msg.Data))
+					continue
+				}
+
+				p.mut.RLock()
+				us := p.sessions[rtcMsg.SessionID]
+				p.mut.RUnlock()
+				if us == nil {
+					p.LogError("session should not be nil")
+					continue
+				}
+				p.metrics.IncWebSocketEvent("out", "signal")
+				p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
+					"data":   string(rtcMsg.Data),
+					"connID": us.connID,
+				}, &model.WebsocketBroadcast{UserId: us.userID})
+			case <-p.stopCh:
+				return
+			}
+		}
+	}
+
 	for {
 		select {
 		case msg, ok := <-p.rtcServer.ReceiveCh():
 			if !ok {
 				return
 			}
+			p.mut.RLock()
+			us := p.sessions[msg.SessionID]
+			p.mut.RUnlock()
+			if us == nil {
+				p.LogError("session should not be nil")
+				continue
+			}
 			p.metrics.IncWebSocketEvent("out", "signal")
 			p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
 				"data":   string(msg.Data),
-				"connID": msg.Session.SessionID,
-			}, &model.WebsocketBroadcast{UserId: msg.Session.UserID})
+				"connID": msg.SessionID,
+			}, &model.WebsocketBroadcast{UserId: us.userID})
 		case <-p.stopCh:
 			return
 		}
@@ -329,13 +370,13 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	}
 
 	p.mut.Lock()
-	if _, exists := p.sessions[userID]; exists {
+	if _, exists := p.sessions[connID]; exists {
 		p.mut.Unlock()
 		p.LogDebug("session already exists", "userID", userID, "connID", connID)
 		return fmt.Errorf("session already exists")
 	}
 	us := newUserSession(userID, channelID, connID)
-	p.sessions[userID] = us
+	p.sessions[connID] = us
 	p.mut.Unlock()
 	defer func() {
 		close(us.doneCh)
@@ -395,22 +436,42 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	}
 
 	var wg sync.WaitGroup
-	if handlerID == p.nodeID {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err = p.rtcServer.InitSession(us.cfg); err != nil {
-				p.LogError(err.Error(), "connID", connID)
-			}
-		}()
+	if p.rtcdClient != nil {
+		msg := rtcd.ClientMessage{
+			Type: rtcd.ClientMessageJoin,
+			Data: map[string]string{
+				"callID":    channelID,
+				"userID":    userID,
+				"sessionID": connID,
+			},
+		}
+		if err := p.rtcdClient.Send(msg); err != nil {
+			p.LogError(fmt.Errorf("failed to send client message: %w", err).Error())
+		}
 	} else {
-		if err := p.sendClusterMessage(clusterMessage{
-			ConnID:    connID,
-			UserID:    userID,
-			ChannelID: channelID,
-			SenderID:  p.nodeID,
-		}, clusterMessageTypeConnect, handlerID); err != nil {
-			p.LogError(err.Error())
+		if handlerID == p.nodeID {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				cfg := rtc.SessionConfig{
+					GroupID:   "default",
+					CallID:    channelID,
+					UserID:    userID,
+					SessionID: connID,
+				}
+				if err = p.rtcServer.InitSession(cfg); err != nil {
+					p.LogError(err.Error(), "connID", connID)
+				}
+			}()
+		} else {
+			if err := p.sendClusterMessage(clusterMessage{
+				ConnID:    connID,
+				UserID:    userID,
+				ChannelID: channelID,
+				SenderID:  p.nodeID,
+			}, clusterMessageTypeConnect, handlerID); err != nil {
+				p.LogError(err.Error())
+			}
 		}
 	}
 
@@ -433,23 +494,36 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID})
 	}
 
-	if handlerID == p.nodeID {
-		if err := p.rtcServer.CloseSession(us.cfg); err != nil {
-			p.LogError(err.Error())
-		}
-	} else {
-		if err := p.sendClusterMessage(clusterMessage{
-			ConnID:    connID,
-			UserID:    userID,
-			ChannelID: channelID,
-			SenderID:  p.nodeID,
-		}, clusterMessageTypeDisconnect, handlerID); err != nil {
-			p.LogError(err.Error())
+	if p.rtcServer != nil {
+		if handlerID == p.nodeID {
+			if err := p.rtcServer.CloseSession(us.connID); err != nil {
+				p.LogError(err.Error())
+			}
+		} else {
+			if err := p.sendClusterMessage(clusterMessage{
+				ConnID:    connID,
+				UserID:    userID,
+				ChannelID: channelID,
+				SenderID:  p.nodeID,
+			}, clusterMessageTypeDisconnect, handlerID); err != nil {
+				p.LogError(err.Error())
+			}
 		}
 	}
 
 	wg.Wait()
 
+	if p.rtcdClient != nil {
+		msg := rtcd.ClientMessage{
+			Type: rtcd.ClientMessageLeave,
+			Data: map[string]string{
+				"sessionID": connID,
+			},
+		}
+		if err := p.rtcdClient.Send(msg); err != nil {
+			p.LogError(fmt.Errorf("failed to send client message: %w", err).Error())
+		}
+	}
 	p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID})
@@ -474,7 +548,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 				"Participants": prevState.Call.Stats.Participants,
 			})
 
-			if handlerID != p.nodeID {
+			if handlerID != p.nodeID && p.rtcdClient == nil {
 				if err := p.sendClusterMessage(clusterMessage{
 					ChannelID: channelID,
 					SenderID:  p.nodeID,
@@ -533,7 +607,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	}
 
 	p.mut.RLock()
-	us := p.sessions[userID]
+	us := p.sessions[connID]
 	p.mut.RUnlock()
 	if us == nil || us.connID != connID {
 		return

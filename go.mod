@@ -13,12 +13,14 @@ require (
 )
 
 require (
-	github.com/mattermost/rtcd v0.1.1
+	github.com/mattermost/rtcd v0.2.0
 	github.com/pion/stun v0.3.5
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
 )
 
 require (
+	git.mills.io/prologic/bitcask v1.0.2 // indirect
+	github.com/abcum/lcp v0.0.0-20201209214815-7a3f3840be81 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -29,6 +31,7 @@ require (
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.3 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
+	github.com/gofrs/flock v0.8.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/go-hclog v1.0.0 // indirect
@@ -69,6 +72,7 @@ require (
 	github.com/pion/turn/v2 v2.0.8 // indirect
 	github.com/pion/udp v0.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/plar/go-adaptive-radix-tree v1.0.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
@@ -87,6 +91,7 @@ require (
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	github.com/yuin/goldmark v1.4.4 // indirect
 	golang.org/x/crypto v0.0.0-20220314234724-5d542ad81a58 // indirect
+	golang.org/x/exp v0.0.0-20200908183739-ae8ad444f925 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/text v0.3.7 // indirect

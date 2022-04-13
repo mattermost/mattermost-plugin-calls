@@ -8,6 +8,7 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
 
+	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -35,8 +36,9 @@ type Plugin struct {
 	sessions    map[string]*session
 	hostIP      string
 
-	rtcServer *rtc.Server
-	log       *mlog.Logger
+	rtcServer  *rtc.Server
+	rtcdClient *rtcd.Client
+	log        *mlog.Logger
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
@@ -49,7 +51,13 @@ func (p *Plugin) startSession(us *session, senderID string) {
 
 	go func() {
 		defer wg.Done()
-		if err := p.rtcServer.InitSession(us.cfg); err != nil {
+		cfg := rtc.SessionConfig{
+			GroupID:   "default",
+			CallID:    us.channelID,
+			UserID:    us.userID,
+			SessionID: us.connID,
+		}
+		if err := p.rtcServer.InitSession(cfg); err != nil {
 			p.LogError(err.Error(), "connID", us.connID)
 		}
 	}()
@@ -96,7 +104,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 	}
 
 	p.mut.RLock()
-	us := p.sessions[msg.UserID]
+	us := p.sessions[msg.ConnID]
 	p.mut.RUnlock()
 
 	switch clusterMessageType(ev.Id) {
@@ -106,7 +114,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 		us := newUserSession(msg.UserID, msg.ChannelID, msg.ConnID)
 		p.mut.Lock()
-		p.sessions[msg.UserID] = us
+		p.sessions[msg.ConnID] = us
 		p.mut.Unlock()
 		go p.startSession(us, msg.SenderID)
 	case clusterMessageTypeDisconnect:
@@ -115,11 +123,11 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID)
 		p.mut.Lock()
-		delete(p.sessions, us.userID)
+		delete(p.sessions, us.connID)
 		p.mut.Unlock()
 		close(us.signalInCh)
 		close(us.closeCh)
-		if err := p.rtcServer.CloseSession(us.cfg); err != nil {
+		if err := p.rtcServer.CloseSession(us.connID); err != nil {
 			return fmt.Errorf("failed to close session: %w", err)
 		}
 	case clusterMessageTypeSignaling:
@@ -135,15 +143,13 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			msgType = rtc.ICEMessage
 		}
 		rtcMsg := rtc.Message{
-			Session: us.cfg,
-			Type:    msgType,
-			Data:    msg.ClientMessage.Data,
+			SessionID: us.connID,
+			Type:      msgType,
+			Data:      msg.ClientMessage.Data,
 		}
 
-		select {
-		case p.rtcServer.SendCh() <- rtcMsg:
-		default:
-			return fmt.Errorf("sendCh is full, dropping signaling msg")
+		if err := p.sendRTCMessage(rtcMsg); err != nil {
+			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	case clusterMessageTypeUserState:
 		if us == nil {
@@ -165,15 +171,13 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 
 		rtcMsg := rtc.Message{
-			Session: us.cfg,
-			Type:    msgType,
-			Data:    msg.ClientMessage.Data,
+			SessionID: us.connID,
+			Type:      msgType,
+			Data:      msg.ClientMessage.Data,
 		}
 
-		select {
-		case p.rtcServer.SendCh() <- rtcMsg:
-		default:
-			return fmt.Errorf("sendCh is full, dropping State msg")
+		if err := p.sendRTCMessage(rtcMsg); err != nil {
+			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	default:
 		return fmt.Errorf("unexpected event type %q", ev.Id)
