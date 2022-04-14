@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -131,22 +130,6 @@ func (c *configuration) IsValid() error {
 
 	if *c.UDPServerPort < 1024 || *c.UDPServerPort > 49151 {
 		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [1024, 49151]", *c.UDPServerPort)
-	}
-
-	if c.RTCDServiceURL != "" {
-		u, err := url.Parse(c.RTCDServiceURL)
-		if err != nil {
-			return fmt.Errorf("RTCDServiceURL is not valid: %w", err)
-		}
-		if u.User == nil {
-			return fmt.Errorf("RTCDServiceURL is not valid: missing credentials")
-		}
-		if u.User.Username() == "" {
-			return fmt.Errorf("RTCDServiceURL is not valid: missing clientID in credentials")
-		}
-		if authKey, ok := u.User.Password(); !ok || authKey == "" {
-			return fmt.Errorf("RTCDServiceURL is not valid: missing authKey in credentials")
-		}
 	}
 
 	return nil

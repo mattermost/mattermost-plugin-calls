@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"strings"
 	"time"
 
@@ -157,4 +158,17 @@ func unpackSDPData(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read data: %w", err)
 	}
 	return unpacked, nil
+}
+
+func parseURL(u string) (string, string, string, error) {
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	clientID := parsed.User.Username()
+	authKey, _ := parsed.User.Password()
+	parsed.User = nil
+
+	return parsed.String(), clientID, authKey, nil
 }

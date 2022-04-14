@@ -13,7 +13,8 @@ require (
 )
 
 require (
-	github.com/mattermost/rtcd v0.2.0
+	github.com/mattermost/mattermost-plugin-api v0.0.27
+	github.com/mattermost/rtcd v0.2.1-0.20220414104319-1ebec658523f
 	github.com/pion/stun v0.3.5
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
 )
@@ -23,6 +24,7 @@ require (
 	github.com/abcum/lcp v0.0.0-20201209214815-7a3f3840be81 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
+	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect

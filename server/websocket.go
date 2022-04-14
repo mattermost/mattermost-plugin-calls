@@ -315,19 +315,11 @@ func (p *Plugin) wsWriter() {
 					p.LogError(fmt.Sprintf("unexpected data type %T", msg.Data))
 					continue
 				}
-
-				p.mut.RLock()
-				us := p.sessions[rtcMsg.SessionID]
-				p.mut.RUnlock()
-				if us == nil {
-					p.LogError("session should not be nil")
-					continue
-				}
 				p.metrics.IncWebSocketEvent("out", "signal")
 				p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
 					"data":   string(rtcMsg.Data),
-					"connID": us.connID,
-				}, &model.WebsocketBroadcast{UserId: us.userID})
+					"connID": rtcMsg.SessionID,
+				}, &model.WebsocketBroadcast{UserId: rtcMsg.UserID})
 			case <-p.stopCh:
 				return
 			}
