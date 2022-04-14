@@ -52,6 +52,11 @@ func (p *Plugin) getRTCDClientConfig(rtcdURL string) (rtcd.ClientConfig, error) 
 		cfg.URL = u
 	}
 
+	// if no URL has been provided until now we fail with error.
+	if cfg.URL == "" {
+		return cfg, fmt.Errorf("rtcd URL is missing")
+	}
+
 	// If no client id has been provided until now we fail with error.
 	if cfg.ClientID == "" {
 		return cfg, fmt.Errorf("client id is missing")
