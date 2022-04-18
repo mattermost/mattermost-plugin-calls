@@ -119,8 +119,8 @@ func transmitAudio(ws *websocket.Client, track *webrtc.TrackLocalStaticSample, r
 	}()
 }
 
-func initRTC(ws *websocket.Client, channelID string, unmuted bool) (*webrtc.PeerConnection, error) {
-	log.Printf("setting up RTC connection")
+func initRTC(ws *websocket.Client, channelID, username string, unmuted bool) (*webrtc.PeerConnection, error) {
+	log.Printf("%s: setting up RTC connection", username)
 
 	peerConnConfig := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -146,6 +146,11 @@ func initRTC(ws *websocket.Client, channelID string, unmuted bool) (*webrtc.Peer
 	pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		if connectionState == webrtc.ICEConnectionStateConnected {
 			close(connectedCh)
+		}
+
+		if connectionState == webrtc.ICEConnectionStateDisconnected || connectionState == webrtc.ICEConnectionStateFailed {
+			log.Printf("ice disconnect")
+			ws.Close()
 		}
 	})
 
@@ -208,7 +213,7 @@ func initRTC(ws *websocket.Client, channelID string, unmuted bool) (*webrtc.Peer
 	return pc, nil
 }
 
-func handleSignal(ws *websocket.Client, pc *webrtc.PeerConnection, ev *model.WebSocketEvent, iceCh chan webrtc.ICECandidateInit) {
+func handleSignal(ws *websocket.Client, pc *webrtc.PeerConnection, ev *model.WebSocketEvent, iceCh chan webrtc.ICECandidateInit, username string) {
 	evData := ev.GetData()
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(evData["data"].(string)), &data); err != nil {
@@ -218,10 +223,10 @@ func handleSignal(ws *websocket.Client, pc *webrtc.PeerConnection, ev *model.Web
 	t, _ := data["type"].(string)
 
 	if t == "candidate" {
-		log.Printf("ice!")
+		log.Printf("%s: ice!", username)
 		iceCh <- webrtc.ICECandidateInit{Candidate: data["candidate"].(map[string]interface{})["candidate"].(string)}
 	} else if t == "answer" {
-		log.Printf("sdp answer!")
+		log.Printf("%s: sdp answer!", username)
 		if err := pc.SetRemoteDescription(webrtc.SessionDescription{
 			Type: webrtc.SDPTypeAnswer,
 			SDP:  data["sdp"].(string),
@@ -238,7 +243,7 @@ func handleSignal(ws *websocket.Client, pc *webrtc.PeerConnection, ev *model.Web
 		}()
 
 	} else if t == "offer" {
-		log.Printf("sdp offer!")
+		log.Printf("%s: sdp offer!", username)
 		if err := pc.SetRemoteDescription(webrtc.SessionDescription{
 			Type: webrtc.SDPTypeOffer,
 			SDP:  data["sdp"].(string),
@@ -271,7 +276,7 @@ func handleSignal(ws *websocket.Client, pc *webrtc.PeerConnection, ev *model.Web
 	}
 }
 
-func eventHandler(ws *websocket.Client, channelID string, unmuted bool, doneCh chan struct{}) {
+func eventHandler(ws *websocket.Client, channelID, username string, unmuted bool, doneCh chan struct{}) {
 	var err error
 	var pc *webrtc.PeerConnection
 	iceCh := make(chan webrtc.ICECandidateInit, 10)
@@ -285,7 +290,7 @@ func eventHandler(ws *websocket.Client, channelID string, unmuted bool, doneCh c
 			}
 			switch ev.EventType() {
 			case "hello":
-				log.Printf("joining call")
+				log.Printf("%s: joining call", username)
 				data := map[string]interface{}{
 					"channelID": channelID,
 				}
@@ -293,14 +298,15 @@ func eventHandler(ws *websocket.Client, channelID string, unmuted bool, doneCh c
 					log.Fatalf(err.Error())
 				}
 			case "custom_com.mattermost.calls_join":
-				log.Printf("joined call")
-				pc, err = initRTC(ws, channelID, unmuted)
+				log.Printf("%s: joined call", username)
+				pc, err = initRTC(ws, channelID, username, unmuted)
 				if err != nil {
 					log.Fatalf(err.Error())
 				}
 				defer pc.Close()
 			case "custom_com.mattermost.calls_signal":
-				handleSignal(ws, pc, ev, iceCh)
+				log.Printf("%s: received signal", username)
+				handleSignal(ws, pc, ev, iceCh, username)
 			default:
 			}
 		case <-doneCh:
@@ -369,7 +375,7 @@ func connectUser(c config) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		eventHandler(ws, c.channelID, c.unmuted, doneCh)
+		eventHandler(ws, c.channelID, c.username, c.unmuted, doneCh)
 	}()
 
 	ticker := time.NewTicker(c.duration)
