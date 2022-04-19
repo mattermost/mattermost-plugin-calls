@@ -92,7 +92,6 @@ func transmitScreen(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh
 			log.Fatalf(ivfErr.Error())
 		}
 
-		<-time.After(2 * time.Second)
 		// Wait for connection established
 		<-connectedCh
 
@@ -182,7 +181,6 @@ func transmitAudio(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh 
 			log.Fatalf(oggErr.Error())
 		}
 
-		<-time.After(2 * time.Second)
 		// Wait for connection established
 		<-connectedCh
 
