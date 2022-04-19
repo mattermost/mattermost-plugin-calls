@@ -3,7 +3,7 @@
 ## Sample usage
 
 ```sh
-go run ./lt/client.go -team 11o73u33upfuprysuifa17dn5e -url http://localhost:8065/ -calls 2 -users-per-call 5 -join-duration 10s -duration 60s -unmuted 1
+go run ./lt/client.go -team 11o73u33upfuprysuifa17dn5e -url http://localhost:8065/ -calls 2 -users-per-call 5 -join-duration 10s -duration 60s -unmuted 1 -screen-sharing 1
 ```
 
 ## Options
@@ -21,6 +21,8 @@ go run ./lt/client.go -team 11o73u33upfuprysuifa17dn5e -url http://localhost:806
     	join duration (default "30s")
   -offset int
     	users offset
+  -screen-sharing int
+    	number of users screen-sharing
   -team string
     	team ID
   -unmuted int

@@ -21,6 +21,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
+	"github.com/pion/webrtc/v3/pkg/media/ivfreader"
 	"github.com/pion/webrtc/v3/pkg/media/oggreader"
 )
 
@@ -32,20 +33,132 @@ var (
 		SDPFmtpLine:  "minptime=10;useinbandfec=1",
 		RTCPFeedback: nil,
 	}
+	rtpVideoCodecVP8 = webrtc.RTPCodecCapability{
+		MimeType:    "video/VP8",
+		ClockRate:   90000,
+		Channels:    0,
+		SDPFmtpLine: "",
+		RTCPFeedback: []webrtc.RTCPFeedback{
+			{Type: "goog-remb", Parameter: ""},
+			{Type: "ccm", Parameter: "fir"},
+			{Type: "nack", Parameter: ""},
+			{Type: "nack", Parameter: "pli"},
+		},
+	}
 )
 
 type config struct {
-	username  string
-	password  string
-	teamID    string
-	channelID string
-	siteURL   string
-	wsURL     string
-	duration  time.Duration
-	unmuted   bool
+	username      string
+	password      string
+	teamID        string
+	channelID     string
+	siteURL       string
+	wsURL         string
+	duration      time.Duration
+	unmuted       bool
+	screenSharing bool
 }
 
-func transmitAudio(ws *websocket.Client, track *webrtc.TrackLocalStaticSample, rtpSender *webrtc.RTPSender, connectedCh <-chan struct{}) {
+func transmitScreen(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh <-chan struct{}) {
+	track, err := webrtc.NewTrackLocalStaticSample(rtpVideoCodecVP8, "video", "screen-"+model.NewId())
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	rtpSender, err := pc.AddTrack(track)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	go func() {
+		rtcpBuf := make([]byte, 1500)
+		for {
+			if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
+				return
+			}
+		}
+	}()
+
+	go func() {
+		// Open a IVF file and start reading using our IVFReader
+		file, ivfErr := os.Open("./lt/samples/video.ivf")
+		if ivfErr != nil {
+			log.Fatalf(ivfErr.Error())
+		}
+		defer file.Close()
+
+		ivf, header, ivfErr := ivfreader.NewWith(file)
+		if ivfErr != nil {
+			log.Fatalf(ivfErr.Error())
+		}
+
+		<-time.After(2 * time.Second)
+		// Wait for connection established
+		<-connectedCh
+
+		info := map[string]string{
+			"screenStreamID": track.StreamID(),
+		}
+		data, err := json.Marshal(&info)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+
+		if err := ws.SendMessage("custom_com.mattermost.calls_screen_on", map[string]interface{}{
+			"data": string(data),
+		}); err != nil {
+			log.Fatalf(err.Error())
+		}
+		defer func() {
+			if err := ws.SendMessage("custom_com.mattermost.calls_screen_off", nil); err != nil {
+				log.Fatalf(err.Error())
+			}
+		}()
+
+		// Send our video file frame at a time. Pace our sending so we send it at the same speed it should be played back as.
+		// This isn't required since the video is timestamped, but we will such much higher loss if we send all at once.
+		//
+		// It is important to use a time.Ticker instead of time.Sleep because
+		// * avoids accumulating skew, just calling time.Sleep didn't compensate for the time spent parsing the data
+		// * works around latency issues with Sleep (see https://github.com/golang/go/issues/44343)
+		ticker := time.NewTicker(time.Millisecond * time.Duration((float32(header.TimebaseNumerator)/float32(header.TimebaseDenominator))*1000))
+		for ; true; <-ticker.C {
+			var frame []byte
+			var ivfErr error
+			frame, _, ivfErr = ivf.ParseNextFrame()
+			if ivfErr == io.EOF || (ivfErr != nil && ivfErr.Error() == "incomplete frame data") {
+				ivf.ResetReader(func(_ int64) io.Reader {
+					_, _ = file.Seek(0, 0)
+					ivf, header, ivfErr = ivfreader.NewWith(file)
+					if ivfErr != nil {
+						log.Fatalf(ivfErr.Error())
+					}
+					return file
+				})
+				frame, _, ivfErr = ivf.ParseNextFrame()
+			}
+			if ivfErr != nil {
+				log.Fatalf(ivfErr.Error())
+			}
+
+			if err := track.WriteSample(media.Sample{Data: frame, Duration: time.Second}); err != nil {
+				log.Printf("failed to write video sample: %s", err.Error())
+			}
+		}
+	}()
+}
+
+func transmitAudio(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh <-chan struct{}) {
+	track, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	rtpSender, err := pc.AddTrack(track)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
 	go func() {
 		rtcpBuf := make([]byte, 1500)
 		for {
@@ -69,19 +182,16 @@ func transmitAudio(ws *websocket.Client, track *webrtc.TrackLocalStaticSample, r
 			log.Fatalf(oggErr.Error())
 		}
 
+		<-time.After(2 * time.Second)
 		// Wait for connection established
 		<-connectedCh
 
-		go func() {
-			time.Sleep(2 * time.Second)
-			if err := ws.SendMessage("custom_com.mattermost.calls_unmute", nil); err != nil {
-				log.Fatalf(oggErr.Error())
-			}
-		}()
-
+		if err := ws.SendMessage("custom_com.mattermost.calls_unmute", nil); err != nil {
+			log.Fatalf(err.Error())
+		}
 		defer func() {
 			if err := ws.SendMessage("custom_com.mattermost.calls_mute", nil); err != nil {
-				log.Fatalf(oggErr.Error())
+				log.Fatalf(err.Error())
 			}
 		}()
 
@@ -94,15 +204,17 @@ func transmitAudio(ws *websocket.Client, track *webrtc.TrackLocalStaticSample, r
 		oggPageDuration := time.Millisecond * 20
 		ticker := time.NewTicker(oggPageDuration)
 		for ; true; <-ticker.C {
-			pageData, pageHeader, oggErr := ogg.ParseNextPage()
+			var oggErr error
+			var pageData []byte
+			var pageHeader *oggreader.OggPageHeader
+			pageData, pageHeader, oggErr = ogg.ParseNextPage()
 			if oggErr == io.EOF {
 				ogg.ResetReader(func(_ int64) io.Reader {
 					_, _ = file.Seek(0, 0)
 					return file
 				})
-				continue
+				pageData, pageHeader, oggErr = ogg.ParseNextPage()
 			}
-
 			if oggErr != nil {
 				log.Fatalf(oggErr.Error())
 			}
@@ -112,14 +224,14 @@ func transmitAudio(ws *websocket.Client, track *webrtc.TrackLocalStaticSample, r
 			lastGranule = pageHeader.GranulePosition
 			sampleDuration := time.Duration((sampleCount/48000)*1000) * time.Millisecond
 
-			if err := track.WriteSample(media.Sample{Data: pageData, Duration: sampleDuration}); oggErr != nil {
+			if err := track.WriteSample(media.Sample{Data: pageData, Duration: sampleDuration}); err != nil {
 				log.Printf("failed to write audio sample: %s", err.Error())
 			}
 		}
 	}()
 }
 
-func initRTC(ws *websocket.Client, channelID, username string, unmuted bool) (*webrtc.PeerConnection, error) {
+func initRTC(ws *websocket.Client, channelID, username string, unmuted, screenSharing bool) (*webrtc.PeerConnection, error) {
 	log.Printf("%s: setting up RTC connection", username)
 
 	peerConnConfig := webrtc.Configuration{
@@ -173,18 +285,12 @@ func initRTC(ws *websocket.Client, channelID, username string, unmuted bool) (*w
 		}
 	})
 
-	track, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "pion")
-	if err != nil {
-		return nil, err
-	}
-
-	rtpSender, err := pc.AddTrack(track)
-	if err != nil {
-		return nil, err
-	}
-
 	if unmuted {
-		transmitAudio(ws, track, rtpSender, connectedCh)
+		transmitAudio(ws, pc, connectedCh)
+	}
+
+	if screenSharing {
+		transmitScreen(ws, pc, connectedCh)
 	}
 
 	sdp, err := pc.CreateOffer(nil)
@@ -276,7 +382,7 @@ func handleSignal(ws *websocket.Client, pc *webrtc.PeerConnection, ev *model.Web
 	}
 }
 
-func eventHandler(ws *websocket.Client, channelID, username string, unmuted bool, doneCh chan struct{}) {
+func eventHandler(ws *websocket.Client, channelID, username string, unmuted, screenSharing bool, doneCh chan struct{}) {
 	var err error
 	var pc *webrtc.PeerConnection
 	iceCh := make(chan webrtc.ICECandidateInit, 10)
@@ -299,7 +405,7 @@ func eventHandler(ws *websocket.Client, channelID, username string, unmuted bool
 				}
 			case "custom_com.mattermost.calls_join":
 				log.Printf("%s: joined call", username)
-				pc, err = initRTC(ws, channelID, username, unmuted)
+				pc, err = initRTC(ws, channelID, username, unmuted, screenSharing)
 				if err != nil {
 					log.Fatalf(err.Error())
 				}
@@ -375,7 +481,7 @@ func connectUser(c config) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		eventHandler(ws, c.channelID, c.username, c.unmuted, doneCh)
+		eventHandler(ws, c.channelID, c.username, c.unmuted, c.screenSharing, doneCh)
 	}()
 
 	ticker := time.NewTicker(c.duration)
@@ -404,6 +510,7 @@ func main() {
 	var adminPassword string
 	var offset int
 	var numUnmuted int
+	var numScreenSharing int
 	var numCalls int
 	var numUsersPerCall int
 
@@ -412,6 +519,7 @@ func main() {
 	flag.StringVar(&userPrefix, "user-prefix", "testuser-", "user prefix")
 	flag.StringVar(&userPassword, "user-password", "testPass123$", "user password")
 	flag.IntVar(&numUnmuted, "unmuted", 0, "number of unmuted users per call")
+	flag.IntVar(&numScreenSharing, "screen-sharing", 0, "number of users screen-sharing")
 	flag.IntVar(&offset, "offset", 0, "users offset")
 	flag.IntVar(&numCalls, "calls", 1, "number of calls")
 	flag.IntVar(&numUsersPerCall, "users-per-call", 1, "number of users per call")
@@ -463,6 +571,10 @@ func main() {
 		log.Fatalf("unmuted cannot be greater than the number of users per call")
 	}
 
+	if numScreenSharing > numCalls {
+		log.Fatalf("screen-sharing cannot be greater than the number of calls")
+	}
+
 	adminClient := model.NewAPIv4Client(siteURL)
 	_, _, err = adminClient.Login(adminUsername, adminPassword)
 	if err != nil {
@@ -499,24 +611,25 @@ func main() {
 	for j := 0; j < numCalls; j++ {
 		log.Printf("starting call in %s", channels[j].DisplayName)
 		for i := 0; i < numUsersPerCall; i++ {
-			go func(idx int, channelID string, unmuted bool) {
+			go func(idx int, channelID string, unmuted, screenSharing bool) {
 				defer wg.Done()
 				time.Sleep(time.Duration(rand.Intn(int(joinDur.Seconds()))) * time.Second)
 				username := fmt.Sprintf("%s%d", userPrefix, idx)
 				cfg := config{
-					username:  username,
-					password:  userPassword,
-					teamID:    teamID,
-					channelID: channelID,
-					siteURL:   siteURL,
-					wsURL:     wsURL,
-					duration:  dur,
-					unmuted:   unmuted,
+					username:      username,
+					password:      userPassword,
+					teamID:        teamID,
+					channelID:     channelID,
+					siteURL:       siteURL,
+					wsURL:         wsURL,
+					duration:      dur,
+					unmuted:       unmuted,
+					screenSharing: screenSharing,
 				}
 				if err := connectUser(cfg); err != nil {
 					log.Printf("connectUser failed: %s", err.Error())
 				}
-			}((numUsersPerCall*j)+i+offset, channels[j].Id, i < numUnmuted)
+			}((numUsersPerCall*j)+i+offset, channels[j].Id, i < numUnmuted, i == 0 && j < numScreenSharing)
 		}
 	}
 
