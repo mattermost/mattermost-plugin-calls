@@ -147,17 +147,7 @@ func transmitScreen(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh
 	}()
 }
 
-func transmitAudio(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh <-chan struct{}) {
-	track, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	rtpSender, err := pc.AddTrack(track)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
+func transmitAudio(ws *websocket.Client, track *webrtc.TrackLocalStaticSample, rtpSender *webrtc.RTPSender, connectedCh <-chan struct{}) {
 	go func() {
 		rtcpBuf := make([]byte, 1500)
 		for {
@@ -283,8 +273,16 @@ func initRTC(ws *websocket.Client, channelID, username string, unmuted, screenSh
 		}
 	})
 
+	audioTrack, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	audioRTPSender, err := pc.AddTrack(audioTrack)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 	if unmuted {
-		transmitAudio(ws, pc, connectedCh)
+		transmitAudio(ws, audioTrack, audioRTPSender, connectedCh)
 	}
 
 	if screenSharing {
