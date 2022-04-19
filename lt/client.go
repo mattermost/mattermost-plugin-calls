@@ -393,34 +393,45 @@ func connectUser(c config) error {
 }
 
 func main() {
+	// TODO: consider using a config file instead.
 	var teamID string
-	var channelID string
 	var siteURL string
-	var password string
+	var userPassword string
 	var userPrefix string
 	var duration string
 	var joinDuration string
-	var numUsers int
+	var adminUsername string
+	var adminPassword string
 	var offset int
 	var numUnmuted int
+	var numCalls int
+	var numUsersPerCall int
+
 	flag.StringVar(&teamID, "team", "", "team ID")
-	flag.StringVar(&channelID, "channel", "", "channel ID")
 	flag.StringVar(&siteURL, "url", "http://localhost:8065", "MM SiteURL")
 	flag.StringVar(&userPrefix, "user-prefix", "testuser-", "user prefix")
-	flag.StringVar(&password, "password", "testPass123$", "user password")
-	flag.IntVar(&numUsers, "users", 1, "number of users to connect")
-	flag.IntVar(&numUnmuted, "unmuted", 0, "number of unmuted users")
+	flag.StringVar(&userPassword, "user-password", "testPass123$", "user password")
+	flag.IntVar(&numUnmuted, "unmuted", 0, "number of unmuted users per call")
 	flag.IntVar(&offset, "offset", 0, "users offset")
+	flag.IntVar(&numCalls, "calls", 1, "number of calls")
+	flag.IntVar(&numUsersPerCall, "users-per-call", 1, "number of users per call")
 	flag.StringVar(&duration, "duration", "1m", "duration")
 	flag.StringVar(&joinDuration, "join-duration", "30s", "join duration")
+	flag.StringVar(&adminUsername, "admin-username", "sysadmin", "admin username")
+	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "admin password")
+
 	flag.Parse()
 
 	if teamID == "" {
 		log.Fatalf("team must be set")
 	}
 
-	if channelID == "" {
-		log.Fatalf("channel must be set")
+	if numCalls == 0 {
+		log.Fatalf("calls should be > 0")
+	}
+
+	if numUsersPerCall == 0 {
+		log.Fatalf("users-per-call should be > 0")
 	}
 
 	if siteURL == "" {
@@ -448,31 +459,65 @@ func main() {
 		wsURL = "ws://" + u.Host
 	}
 
-	if numUnmuted > numUsers {
-		log.Fatalf("unmuted cannot be greater than the number of users")
+	if numUnmuted > numUsersPerCall {
+		log.Fatalf("unmuted cannot be greater than the number of users per call")
+	}
+
+	adminClient := model.NewAPIv4Client(siteURL)
+	_, _, err = adminClient.Login(adminUsername, adminPassword)
+	if err != nil {
+		log.Fatalf("failed to login as admin: %s", err.Error())
+	}
+
+	channels, _, err := adminClient.SearchChannels(teamID, &model.ChannelSearch{
+		Public:  true,
+		PerPage: &numCalls,
+	})
+	if err != nil {
+		log.Fatalf("failed to search channels: %s", err.Error())
+	}
+
+	if len(channels) < numCalls {
+		channels = make([]*model.Channel, numCalls)
+		for i := 0; i < numCalls; i++ {
+			name := model.NewId()
+			channel, _, err := adminClient.CreateChannel(&model.Channel{
+				TeamId:      teamID,
+				Name:        name,
+				DisplayName: "test-" + name,
+				Type:        model.ChannelTypeOpen,
+			})
+			if err != nil {
+				log.Fatalf("failed to create channel: %s", err.Error())
+			}
+			channels[i] = channel
+		}
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(numUsers)
-	for i := offset; i < numUsers+offset; i++ {
-		go func(i int) {
-			defer wg.Done()
-			time.Sleep(time.Duration(rand.Intn(int(joinDur.Seconds()))) * time.Second)
-			username := fmt.Sprintf("%s%d", userPrefix, i)
-			cfg := config{
-				username:  username,
-				password:  password,
-				teamID:    teamID,
-				channelID: channelID,
-				siteURL:   siteURL,
-				wsURL:     wsURL,
-				duration:  dur,
-				unmuted:   (i - offset) < numUnmuted,
-			}
-			if err := connectUser(cfg); err != nil {
-				log.Printf("connectUser failed: %s", err.Error())
-			}
-		}(i)
+	wg.Add(numUsersPerCall * numCalls)
+	for j := 0; j < numCalls; j++ {
+		log.Printf("starting call in %s", channels[j].DisplayName)
+		for i := 0; i < numUsersPerCall; i++ {
+			go func(idx int, channelID string, unmuted bool) {
+				defer wg.Done()
+				time.Sleep(time.Duration(rand.Intn(int(joinDur.Seconds()))) * time.Second)
+				username := fmt.Sprintf("%s%d", userPrefix, idx)
+				cfg := config{
+					username:  username,
+					password:  userPassword,
+					teamID:    teamID,
+					channelID: channelID,
+					siteURL:   siteURL,
+					wsURL:     wsURL,
+					duration:  dur,
+					unmuted:   unmuted,
+				}
+				if err := connectUser(cfg); err != nil {
+					log.Printf("connectUser failed: %s", err.Error())
+				}
+			}((numUsersPerCall*j)+i+offset, channels[j].Id, i < numUnmuted)
+		}
 	}
 
 	wg.Wait()
