@@ -65,6 +65,20 @@ func transmitScreen(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh
 		log.Fatalf(err.Error())
 	}
 
+	info := map[string]string{
+		"screenStreamID": track.StreamID(),
+	}
+	data, err := json.Marshal(&info)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	if err := ws.SendMessage("custom_com.mattermost.calls_screen_on", map[string]interface{}{
+		"data": string(data),
+	}); err != nil {
+		log.Fatalf(err.Error())
+	}
+
 	rtpSender, err := pc.AddTrack(track)
 	if err != nil {
 		log.Fatalf(err.Error())
@@ -80,6 +94,12 @@ func transmitScreen(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh
 	}()
 
 	go func() {
+		defer func() {
+			if err := ws.SendMessage("custom_com.mattermost.calls_screen_off", nil); err != nil {
+				log.Fatalf(err.Error())
+			}
+		}()
+
 		// Open a IVF file and start reading using our IVFReader
 		file, ivfErr := os.Open("./lt/samples/video.ivf")
 		if ivfErr != nil {
@@ -94,25 +114,6 @@ func transmitScreen(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh
 
 		// Wait for connection established
 		<-connectedCh
-
-		info := map[string]string{
-			"screenStreamID": track.StreamID(),
-		}
-		data, err := json.Marshal(&info)
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-
-		if err := ws.SendMessage("custom_com.mattermost.calls_screen_on", map[string]interface{}{
-			"data": string(data),
-		}); err != nil {
-			log.Fatalf(err.Error())
-		}
-		defer func() {
-			if err := ws.SendMessage("custom_com.mattermost.calls_screen_off", nil); err != nil {
-				log.Fatalf(err.Error())
-			}
-		}()
 
 		// Send our video file frame at a time. Pace our sending so we send it at the same speed it should be played back as.
 		// This isn't required since the video is timestamped, but we will such much higher loss if we send all at once.
