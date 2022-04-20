@@ -97,7 +97,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 
 	p.API.PublishWebSocketEvent(wsMsgType, map[string]interface{}{
 		"userID": us.userID,
-	}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 
 	return nil
 }
@@ -204,7 +204,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		}
 		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
 			"userID": us.userID,
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeVoiceOn, clientMessageTypeVoiceOff:
 		evType := wsEventUserVoiceOff
 		if msg.Type == clientMessageTypeVoiceOn {
@@ -212,7 +212,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		}
 		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
 			"userID": us.userID,
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
 		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
 			p.LogError(err.Error())
@@ -247,7 +247,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
 			"userID":      us.userID,
 			"raised_hand": ts,
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	default:
 		p.LogError("invalid client message", "type", msg.Type)
 		return
@@ -320,7 +320,7 @@ func (p *Plugin) wsWriter() {
 				p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
 					"data":   string(rtcMsg.Data),
 					"connID": rtcMsg.SessionID,
-				}, &model.WebsocketBroadcast{UserId: rtcMsg.UserID})
+				}, &model.WebsocketBroadcast{UserId: rtcMsg.UserID, ReliableClusterSend: true})
 			case <-p.stopCh:
 				return
 			}
@@ -344,7 +344,7 @@ func (p *Plugin) wsWriter() {
 			p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
 				"data":   string(msg.Data),
 				"connID": msg.SessionID,
-			}, &model.WebsocketBroadcast{UserId: us.userID})
+			}, &model.WebsocketBroadcast{UserId: us.userID, ReliableClusterSend: true})
 		case <-p.stopCh:
 			return
 		}
@@ -399,18 +399,18 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 			"channelID": channelID,
 			"start_at":  state.Call.StartAt,
 			"thread_id": threadID,
-		}, &model.WebsocketBroadcast{ChannelId: channelID})
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
 	// send successful join response
 	p.metrics.IncWebSocketEvent("out", "join")
 	p.API.PublishWebSocketEvent(wsEventJoin, map[string]interface{}{
 		"connID": connID,
-	}, &model.WebsocketBroadcast{UserId: userID})
+	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 	p.metrics.IncWebSocketEvent("out", "user_connected")
 	p.API.PublishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
 		"userID": userID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID})
+	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	p.metrics.IncWebSocketConn(channelID)
 	defer p.metrics.DecWebSocketConn(channelID)
 	p.track(evCallUserJoined, map[string]interface{}{
@@ -485,7 +485,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	if state, err := p.kvGetChannelState(channelID); err != nil {
 		p.LogError(err.Error())
 	} else if state.Call != nil && state.Call.ScreenSharingID == userID {
-		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID})
+		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
 	if p.rtcServer != nil {
@@ -520,7 +520,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	}
 	p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
 		"userID": userID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID})
+	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	p.track(evCallUserLeft, map[string]interface{}{
 		"ParticipantID": userID,
 		"ChannelID":     channelID,
@@ -574,7 +574,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 				p.API.PublishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
 					"connID": connID,
-				}, &model.WebsocketBroadcast{UserId: userID})
+				}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 				return
 			}
 		}()
