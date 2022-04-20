@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -87,7 +88,9 @@ func (p *Plugin) addUserSession(userID, channelID string) (channelState, error) 
 func (p *Plugin) removeUserSession(userID, channelID string) (channelState, channelState, error) {
 	var currState channelState
 	var prevState channelState
-	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+	errNotFound := errors.New("not found")
+
+	setChannelState := func(state *channelState) (*channelState, error) {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
 		}
@@ -101,6 +104,11 @@ func (p *Plugin) removeUserSession(userID, channelID string) (channelState, chan
 			state.Call.ScreenStreamID = ""
 		}
 
+		if _, ok := state.Call.Users[userID]; !ok {
+			p.LogDebug("user not found in state", "userID", userID)
+			return nil, errNotFound
+		}
+
 		delete(state.Call.Users, userID)
 
 		if len(state.Call.Users) == 0 {
@@ -110,7 +118,20 @@ func (p *Plugin) removeUserSession(userID, channelID string) (channelState, chan
 
 		currState = *state
 		return state, nil
-	})
+	}
+
+	var err error
+	maxTries := 5
+	for i := 0; i < maxTries; i++ {
+		err = p.kvSetAtomicChannelState(channelID, setChannelState)
+		if errors.Is(err, errNotFound) {
+			// pausing in the edge case that the db state has not been fully
+			// replicated yet fixing possible read-after-write issues.
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+		break
+	}
 
 	return currState, prevState, err
 }

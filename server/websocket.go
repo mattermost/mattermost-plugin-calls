@@ -268,7 +268,7 @@ func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 			p.LogDebug("closing channel for session", "userID", userID, "connID", connID)
 			close(us.wsCloseCh)
 			<-us.doneCh
-			p.LogDebug("done, removing session")
+			p.LogDebug("done, removing session", "userID", userID, "connID", connID)
 			p.mut.Lock()
 			delete(p.sessions, connID)
 			p.mut.Unlock()
@@ -315,6 +315,7 @@ func (p *Plugin) wsWriter() {
 					p.LogError(fmt.Sprintf("unexpected data type %T", msg.Data))
 					continue
 				}
+				p.LogDebug("relaying ws message", "sessionID", rtcMsg.SessionID, "userID", rtcMsg.UserID)
 				p.metrics.IncWebSocketEvent("out", "signal")
 				p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
 					"data":   string(rtcMsg.Data),
@@ -451,6 +452,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 					UserID:    userID,
 					SessionID: connID,
 				}
+				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID)
 				if err = p.rtcServer.InitSession(cfg); err != nil {
 					p.LogError(err.Error(), "connID", connID)
 				}
@@ -477,7 +479,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	case <-p.stopCh:
 		p.LogDebug("stop received, exiting")
 	case <-us.wsCloseCh:
-		p.LogDebug("done")
+		p.LogDebug("done", "userID", userID, "connID", connID)
 	}
 
 	if state, err := p.kvGetChannelState(channelID); err != nil {
