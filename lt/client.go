@@ -578,12 +578,23 @@ func main() {
 		log.Fatalf("failed to login as admin: %s", err.Error())
 	}
 
-	channels, _, err := adminClient.SearchChannels(teamID, &model.ChannelSearch{
-		Public:  true,
-		PerPage: &numCalls,
-	})
-	if err != nil {
-		log.Fatalf("failed to search channels: %s", err.Error())
+	var channels []*model.Channel
+	page := 0
+	perPage := 100
+	for {
+		chs, _, err := adminClient.SearchChannels(teamID, &model.ChannelSearch{
+			Public:  true,
+			PerPage: &perPage,
+			Page:    &page,
+		})
+		if err != nil {
+			log.Fatalf("failed to search channels: %s", err.Error())
+		}
+		channels = append(channels, chs...)
+		if len(channels) >= numCalls || len(chs) < perPage {
+			break
+		}
+		page++
 	}
 
 	if len(channels) < numCalls {
