@@ -620,9 +620,15 @@ func main() {
 		log.Printf("starting call in %s", channels[j].DisplayName)
 		for i := 0; i < numUsersPerCall; i++ {
 			go func(idx int, channelID string, unmuted, screenSharing bool) {
+				username := fmt.Sprintf("%s%d", userPrefix, idx)
+				if unmuted {
+					log.Printf("%s: going to transmit screen", username)
+				}
+				if screenSharing {
+					log.Printf("%s: going to transmit screen", username)
+				}
 				defer wg.Done()
 				time.Sleep(time.Duration(rand.Intn(int(joinDur.Seconds()))) * time.Second)
-				username := fmt.Sprintf("%s%d", userPrefix, idx)
 				cfg := config{
 					username:      username,
 					password:      userPassword,
