@@ -363,7 +363,7 @@ const callStartAt = (state: {[channelID: string]: number} = {}, action: {type: s
     }
 };
 
-const voiceChannelRootPost = (state: {[channelID: string]: string} = {}, action: {type:string, data: {channelID: string, rootPost: string}} ) => {
+const voiceChannelRootPost = (state: {[channelID: string]: string} = {}, action: {type:string, data: {channelID: string, rootPost: string}}) => {
     switch (action.type) {
     case VOICE_CHANNEL_ROOT_POST:
         return {
@@ -373,7 +373,7 @@ const voiceChannelRootPost = (state: {[channelID: string]: string} = {}, action:
     default:
         return state;
     }
-}
+};
 
 const voiceChannelScreenSharingID = (state: {[channelID: string]: string} = {}, action: {type: string, data: {channelID: string, userID?: string}}) => {
     switch (action.type) {

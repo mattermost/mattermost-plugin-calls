@@ -200,8 +200,8 @@ export default class Plugin {
                 data: {
                     channelID: ev.broadcast.channel_id,
                     rootPost: ev.data.thread_id,
-                }
-                })    
+                },
+            });
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_on`, (ev) => {
@@ -280,7 +280,7 @@ export default class Plugin {
             case 'join':
                 if (!connectedID) {
                     connectCall(args.channel_id);
-                    followThread(store, args.channel_id, args.team_id);
+                    followThread(args.channel_id, args.team_id);
                     return {};
                 }
                 return {error: {message: 'You are already connected to a call in the current channel.'}};
@@ -342,7 +342,7 @@ export default class Plugin {
 
                     if (!connectedChannelID(store.getState())) {
                         connectCall(channel.id);
-                        followThread(store, channel.id, channel.teamID);
+                        followThread(channel.id, channel.teamID);
                     } else if (connectedChannelID(store.getState()) !== channel.id) {
                         store.dispatch({
                             type: SHOW_SWITCH_CALL_MODAL,
@@ -352,14 +352,14 @@ export default class Plugin {
             );
         };
 
-        const followThread = async (store: Store, channelID: string, teamID: string) => {
+        const followThread = async (channelID: string, teamID: string) => {
             const threadID = voiceChannelRootPost(store.getState(), channelID);
             if (threadID) {
                 setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true)(store.dispatch, store.getState);
             } else {
                 console.error('Unable to follow call\'s thread, not registered in store');
             }
-        }
+        };
 
         let initializing = false;
         const connectCall = async (channelID: string) => {
@@ -400,7 +400,7 @@ export default class Plugin {
             }
             if (ev.data && ev.data.type === 'connectCall') {
                 connectCall(ev.data.channelID);
-                followThread(store, ev.data.channelID, getCurrentTeamId(store.getState()));
+                followThread(ev.data.channelID, getCurrentTeamId(store.getState()));
             }
         };
         window.addEventListener('message', windowEventHandler);
@@ -505,8 +505,8 @@ export default class Plugin {
                         data: {
                             channelID,
                             rootPost: resp.data.call?.thread_id,
-                        }
-                    })
+                        },
+                    });
                 }
                 if (resp.data.call?.users && resp.data.call?.users.length > 0) {
                     store.dispatch({
@@ -576,8 +576,8 @@ export default class Plugin {
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
                 fetchChannelData(currChannelId).then(() => {
-                    followThread(store, currChannelId, getCurrentTeamId(store.getState()));
-                })
+                    followThread(currChannelId, getCurrentTeamId(store.getState()));
+                });
                 if (currChannelId && Boolean(joinCallParam) && !connectedChannelID(store.getState())) {
                     connectCall(currChannelId);
                 }
