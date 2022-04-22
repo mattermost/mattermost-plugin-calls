@@ -58,3 +58,7 @@ export const screenSourceModal = (state: GlobalState) => {
     return getPluginState(state).screenSourceModal;
 };
 
+export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
+    return getPluginState(state).voiceChannelRootPost[channelID];
+}
+

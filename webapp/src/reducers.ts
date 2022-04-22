@@ -23,6 +23,7 @@ import {
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_UNINIT,
+    VOICE_CHANNEL_ROOT_POST,
     SHOW_EXPANDED_VIEW,
     HIDE_EXPANDED_VIEW,
     SHOW_SWITCH_CALL_MODAL,
@@ -362,6 +363,18 @@ const callStartAt = (state: {[channelID: string]: number} = {}, action: {type: s
     }
 };
 
+const voiceChannelRootPost = (state: {[channelID: string]: string} = {}, action: {type:string, data: {channelID: string, rootPost: string}} ) => {
+    switch (action.type) {
+    case VOICE_CHANNEL_ROOT_POST:
+        return {
+            ...state,
+            [action.data.channelID]: action.data.rootPost,
+        };
+    default:
+        return state;
+    }
+}
+
 const voiceChannelScreenSharingID = (state: {[channelID: string]: string} = {}, action: {type: string, data: {channelID: string, userID?: string}}) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
@@ -431,4 +444,5 @@ export default combineReducers({
     expandedView,
     switchCallModal,
     screenSourceModal,
+    voiceChannelRootPost,
 });

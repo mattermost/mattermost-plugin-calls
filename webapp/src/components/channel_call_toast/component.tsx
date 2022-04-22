@@ -8,6 +8,7 @@ import ConnectedProfiles from '../../components/connected_profiles';
 
 interface Props {
     currChannelID: string,
+    currTeamId: string,
     connectedID?: string,
     hasCall: boolean,
     startAt?: number,
@@ -49,7 +50,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
         if (this.props.connectedID) {
             return;
         }
-        window.postMessage({type: 'connectCall', channelID: this.props.currChannelID}, window.origin);
+        window.postMessage({type: 'connectCall', channelID: this.props.currChannelID, teamID: this.props.currTeamId}, window.origin);
     }
 
     onDismissClick = () => {
