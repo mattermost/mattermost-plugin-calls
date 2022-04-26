@@ -97,7 +97,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 
 	p.API.PublishWebSocketEvent(wsMsgType, map[string]interface{}{
 		"userID": us.userID,
-	}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 
 	return nil
 }
@@ -204,7 +204,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		}
 		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
 			"userID": us.userID,
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeVoiceOn, clientMessageTypeVoiceOff:
 		evType := wsEventUserVoiceOff
 		if msg.Type == clientMessageTypeVoiceOn {
@@ -212,7 +212,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		}
 		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
 			"userID": us.userID,
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
 		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
 			p.LogError(err.Error())
@@ -247,7 +247,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
 			"userID":      us.userID,
 			"raised_hand": ts,
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	default:
 		p.LogError("invalid client message", "type", msg.Type)
 		return
@@ -268,7 +268,7 @@ func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 			p.LogDebug("closing channel for session", "userID", userID, "connID", connID)
 			close(us.wsCloseCh)
 			<-us.doneCh
-			p.LogDebug("done, removing session")
+			p.LogDebug("done, removing session", "userID", userID, "connID", connID)
 			p.mut.Lock()
 			delete(p.sessions, connID)
 			p.mut.Unlock()
@@ -315,19 +315,12 @@ func (p *Plugin) wsWriter() {
 					p.LogError(fmt.Sprintf("unexpected data type %T", msg.Data))
 					continue
 				}
-
-				p.mut.RLock()
-				us := p.sessions[rtcMsg.SessionID]
-				p.mut.RUnlock()
-				if us == nil {
-					p.LogError("session should not be nil")
-					continue
-				}
+				p.LogDebug("relaying ws message", "sessionID", rtcMsg.SessionID, "userID", rtcMsg.UserID)
 				p.metrics.IncWebSocketEvent("out", "signal")
 				p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
 					"data":   string(rtcMsg.Data),
-					"connID": us.connID,
-				}, &model.WebsocketBroadcast{UserId: us.userID})
+					"connID": rtcMsg.SessionID,
+				}, &model.WebsocketBroadcast{UserId: rtcMsg.UserID, ReliableClusterSend: true})
 			case <-p.stopCh:
 				return
 			}
@@ -351,7 +344,7 @@ func (p *Plugin) wsWriter() {
 			p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
 				"data":   string(msg.Data),
 				"connID": msg.SessionID,
-			}, &model.WebsocketBroadcast{UserId: us.userID})
+			}, &model.WebsocketBroadcast{UserId: us.userID, ReliableClusterSend: true})
 		case <-p.stopCh:
 			return
 		}
@@ -406,18 +399,18 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 			"channelID": channelID,
 			"start_at":  state.Call.StartAt,
 			"thread_id": threadID,
-		}, &model.WebsocketBroadcast{ChannelId: channelID})
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
 	// send successful join response
 	p.metrics.IncWebSocketEvent("out", "join")
 	p.API.PublishWebSocketEvent(wsEventJoin, map[string]interface{}{
 		"connID": connID,
-	}, &model.WebsocketBroadcast{UserId: userID})
+	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 	p.metrics.IncWebSocketEvent("out", "user_connected")
 	p.API.PublishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
 		"userID": userID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID})
+	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	p.metrics.IncWebSocketConn(channelID)
 	defer p.metrics.DecWebSocketConn(channelID)
 	p.track(evCallUserJoined, map[string]interface{}{
@@ -459,6 +452,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 					UserID:    userID,
 					SessionID: connID,
 				}
+				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID)
 				if err = p.rtcServer.InitSession(cfg); err != nil {
 					p.LogError(err.Error(), "connID", connID)
 				}
@@ -485,13 +479,13 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	case <-p.stopCh:
 		p.LogDebug("stop received, exiting")
 	case <-us.wsCloseCh:
-		p.LogDebug("done")
+		p.LogDebug("done", "userID", userID, "connID", connID)
 	}
 
 	if state, err := p.kvGetChannelState(channelID); err != nil {
 		p.LogError(err.Error())
 	} else if state.Call != nil && state.Call.ScreenSharingID == userID {
-		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID})
+		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
 	if p.rtcServer != nil {
@@ -526,7 +520,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 	}
 	p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
 		"userID": userID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID})
+	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	p.track(evCallUserLeft, map[string]interface{}{
 		"ParticipantID": userID,
 		"ChannelID":     channelID,
@@ -580,7 +574,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 				p.API.PublishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
 					"connID": connID,
-				}, &model.WebsocketBroadcast{UserId: userID})
+				}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 				return
 			}
 		}()
