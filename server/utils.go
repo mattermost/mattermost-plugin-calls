@@ -57,6 +57,8 @@ func (p *Plugin) kvSetAtomic(key string, cb func(data []byte) ([]byte, error)) e
 		}
 
 		if !ok {
+			// pausing a little to avoid excessive lock contention
+			time.Sleep(5 * time.Millisecond)
 			continue
 		}
 

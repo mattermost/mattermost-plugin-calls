@@ -249,7 +249,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		evType = "channel_disable_voice"
 	}
 
-	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID})
+	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	if _, err := w.Write(data); err != nil {
 		p.LogError(err.Error())
