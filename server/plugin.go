@@ -59,7 +59,7 @@ func (p *Plugin) startSession(us *session, senderID string) {
 			UserID:    us.userID,
 			SessionID: us.connID,
 		}
-		if err := p.rtcServer.InitSession(cfg); err != nil {
+		if err := p.rtcServer.InitSession(cfg, nil); err != nil {
 			p.LogError(err.Error(), "connID", us.connID)
 		}
 	}()

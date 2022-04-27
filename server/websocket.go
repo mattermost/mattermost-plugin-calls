@@ -453,7 +453,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 					SessionID: connID,
 				}
 				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID)
-				if err = p.rtcServer.InitSession(cfg); err != nil {
+				if err = p.rtcServer.InitSession(cfg, nil); err != nil {
 					p.LogError(err.Error(), "connID", connID)
 				}
 			}()

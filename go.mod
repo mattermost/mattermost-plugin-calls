@@ -14,7 +14,7 @@ require (
 
 require (
 	github.com/mattermost/mattermost-plugin-api v0.0.27
-	github.com/mattermost/rtcd v0.2.1-0.20220414104319-1ebec658523f
+	github.com/mattermost/rtcd v0.3.0
 	github.com/pion/stun v0.3.5
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
 )
