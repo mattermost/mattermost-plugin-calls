@@ -560,6 +560,18 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	var msg clientMessage
 	msg.Type = strings.TrimPrefix(req.Action, wsActionPrefix)
 
+	p.mut.RLock()
+	us := p.sessions[connID]
+	p.mut.RUnlock()
+
+	if msg.Type != clientMessageTypeJoin && us == nil {
+		return
+	}
+
+	if us != nil && !us.limiter.Allow() {
+		p.LogError("message was dropped by rate limiter", "msgType", msg.Type, "userID", us.userID, "connID", us.connID)
+	}
+
 	switch msg.Type {
 	case clientMessageTypeJoin:
 		channelID, ok := req.Data["channelID"].(string)
@@ -600,12 +612,6 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		msg.Data = []byte(msgData)
 	}
 
-	p.mut.RLock()
-	us := p.sessions[connID]
-	p.mut.RUnlock()
-	if us == nil || us.connID != connID {
-		return
-	}
 	select {
 	case us.wsMsgCh <- msg:
 	default:
