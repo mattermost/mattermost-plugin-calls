@@ -258,7 +258,12 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 	}
 }
 
-func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-Id")
+	if !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
 	if strings.HasPrefix(r.URL.Path, "/debug/pprof/profile") {
 		pprof.Profile(w, r)
 		return
@@ -269,7 +274,10 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		pprof.Index(w, r)
 		return
 	}
+	http.NotFound(w, r)
+}
 
+func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/version") {
 		p.handleGetVersion(w, r)
 		return
@@ -282,6 +290,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	if r.Header.Get("Mattermost-User-Id") == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/debug/pprof") {
+		p.handleDebug(w, r)
 		return
 	}
 
