@@ -22,7 +22,6 @@ func main() {
 		stopCh:      make(chan struct{}),
 		clusterEvCh: make(chan model.PluginClusterEvent, clusterEventQueueSize),
 		sessions:    map[string]*session{},
-		calls:       map[string]*call{},
 		metrics:     performance.NewMetrics(),
 	})
 }

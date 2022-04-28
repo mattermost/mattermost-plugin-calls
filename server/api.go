@@ -10,8 +10,6 @@ import (
 
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
@@ -131,7 +129,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	// loop on channels to check membership/permissions
 	page = 0
 	for {
-		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVList"}).Inc()
+		p.metrics.IncStoreOp("KVList")
 		channelIDs, appErr := p.API.KVList(page, perPage)
 		if appErr != nil {
 			p.LogError(appErr.Error())
@@ -251,7 +249,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		evType = "channel_disable_voice"
 	}
 
-	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID})
+	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	if _, err := w.Write(data); err != nil {
 		p.LogError(err.Error())
