@@ -575,9 +575,7 @@ export default class Plugin {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
-                fetchChannelData(currChannelId).then(() => {
-                    followThread(currChannelId, getCurrentTeamId(store.getState()));
-                });
+                fetchChannelData(currChannelId);
                 if (currChannelId && Boolean(joinCallParam) && !connectedChannelID(store.getState())) {
                     connectCall(currChannelId);
                 }

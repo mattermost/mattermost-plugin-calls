@@ -50,7 +50,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
         if (this.props.connectedID) {
             return;
         }
-        window.postMessage({type: 'connectCall', channelID: this.props.currChannelID, teamID: this.props.currTeamId}, window.origin);
+        window.postMessage({type: 'connectCall', channelID: this.props.currChannelID}, window.origin);
     }
 
     onDismissClick = () => {
