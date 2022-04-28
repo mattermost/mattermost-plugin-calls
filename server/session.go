@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/time/rate"
+
 	"github.com/mattermost/mattermost-server/v6/model"
 )
 
@@ -25,6 +27,8 @@ type session struct {
 
 	doneCh  chan struct{}
 	closeCh chan struct{}
+
+	limiter *rate.Limiter
 }
 
 func newUserSession(userID, channelID, connID string) *session {
@@ -38,6 +42,7 @@ func newUserSession(userID, channelID, connID string) *session {
 		wsCloseCh:   make(chan struct{}),
 		closeCh:     make(chan struct{}),
 		doneCh:      make(chan struct{}),
+		limiter:     rate.NewLimiter(2, 20),
 	}
 }
 
