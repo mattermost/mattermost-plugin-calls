@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/mattermost/rtcd/logger"
 	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 
@@ -101,19 +100,10 @@ func (p *Plugin) OnActivate() error {
 			}
 		}
 
-		log, err := logger.New(logger.Config{
-			EnableConsole: true,
-			ConsoleLevel:  "DEBUG",
-		})
-		if err != nil {
-			p.LogError(err.Error())
-			return err
-		}
-
 		rtcServer, err := rtc.NewServer(rtc.ServerConfig{
 			ICEPortUDP:      *cfg.UDPServerPort,
 			ICEHostOverride: publicHost,
-		}, log, p.metrics.RTCMetrics())
+		}, newLogger(p), p.metrics.RTCMetrics())
 		if err != nil {
 			p.LogError(err.Error())
 			return err
@@ -128,7 +118,6 @@ func (p *Plugin) OnActivate() error {
 		p.nodeID = status.ClusterId
 		p.rtcServer = rtcServer
 		p.hostIP = publicHost
-		p.log = log
 		p.mut.Unlock()
 
 		go p.clusterEventsHandler()
@@ -156,12 +145,6 @@ func (p *Plugin) OnDeactivate() error {
 
 	if p.rtcServer != nil {
 		if err := p.rtcServer.Stop(); err != nil {
-			p.LogError(err.Error())
-		}
-	}
-
-	if p.log != nil {
-		if err := p.log.Shutdown(); err != nil {
 			p.LogError(err.Error())
 		}
 	}

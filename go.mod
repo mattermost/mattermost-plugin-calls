@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.0.27
 	github.com/mattermost/rtcd v0.3.1-0.20220427165117-035048fda047
 	github.com/pion/stun v0.3.5
@@ -47,7 +48,6 @@ require (
 	github.com/lib/pq v1.10.4 // indirect
 	github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 // indirect
 	github.com/mattermost/ldap v0.0.0-20201202150706-ee0e6284187d // indirect
-	github.com/mattermost/logr/v2 v2.0.15 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
