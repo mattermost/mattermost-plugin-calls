@@ -268,8 +268,13 @@ export default class Plugin {
 
             switch (subCmd) {
             case 'join':
+            case 'start':
                 if (!connectedID) {
-                    connectCall(args.channel_id);
+                    let title = '';
+                    if (fields.length > 2) {
+                        title = fields.slice(2).join(' ');
+                    }
+                    connectCall(args.channel_id, title);
                     return {};
                 }
                 return {error: {message: 'You are already connected to a call in the current channel.'}};
@@ -330,7 +335,7 @@ export default class Plugin {
                     }
 
                     if (!connectedChannelID(store.getState())) {
-                        connectCall(channel.id);
+                        connectCall(channel.id, '');
                     } else if (connectedChannelID(store.getState()) !== channel.id) {
                         store.dispatch({
                             type: SHOW_SWITCH_CALL_MODAL,
@@ -341,7 +346,7 @@ export default class Plugin {
         };
 
         let initializing = false;
-        const connectCall = async (channelID: string) => {
+        const connectCall = async (channelID: string, title: string) => {
             if (initializing) {
                 console.log('client is already initializing');
                 return;
@@ -351,7 +356,7 @@ export default class Plugin {
             }
             try {
                 initializing = true;
-                window.callsClient = await new CallsClient().init(channelID);
+                window.callsClient = await new CallsClient().init(channelID, title);
                 initializing = false;
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
@@ -378,7 +383,7 @@ export default class Plugin {
                 return;
             }
             if (ev.data && ev.data.type === 'connectCall') {
-                connectCall(ev.data.channelID);
+                connectCall(ev.data.channelID, '');
             }
         };
         window.addEventListener('message', windowEventHandler);
@@ -547,7 +552,7 @@ export default class Plugin {
                 currChannelId = currentChannelId;
                 fetchChannelData(currChannelId);
                 if (currChannelId && Boolean(joinCallParam) && !connectedChannelID(store.getState())) {
-                    connectCall(currChannelId);
+                    connectCall(currChannelId, '');
                 }
                 joinCallParam = '';
             }
