@@ -67,7 +67,7 @@ export default class CallsClient extends EventEmitter {
         };
     }
 
-    public async init(channelID: string, title: string) {
+    public async init(channelID: string, title?: string) {
         await this.updateDevices();
         navigator.mediaDevices.ondevicechange = this.updateDevices;
 

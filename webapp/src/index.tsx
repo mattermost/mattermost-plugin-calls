@@ -9,7 +9,7 @@ import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/commo
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 
-import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from './selectors';
+import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceConnectedUsersInChannel, voiceChannelCallStartAt} from './selectors';
 
 import {pluginId} from './manifest';
 
@@ -269,6 +269,11 @@ export default class Plugin {
             switch (subCmd) {
             case 'join':
             case 'start':
+                if (subCmd === 'start') {
+                    if (voiceConnectedUsersInChannel(store.getState(), connectedID).length > 0) {
+                        return {error: {message: 'A call is already ongoing in the channel.'}};
+                    }
+                }
                 if (!connectedID) {
                     let title = '';
                     if (fields.length > 2) {
@@ -335,7 +340,7 @@ export default class Plugin {
                     }
 
                     if (!connectedChannelID(store.getState())) {
-                        connectCall(channel.id, '');
+                        connectCall(channel.id);
                     } else if (connectedChannelID(store.getState()) !== channel.id) {
                         store.dispatch({
                             type: SHOW_SWITCH_CALL_MODAL,
@@ -346,7 +351,7 @@ export default class Plugin {
         };
 
         let initializing = false;
-        const connectCall = async (channelID: string, title: string) => {
+        const connectCall = async (channelID: string, title?: string) => {
             if (initializing) {
                 console.log('client is already initializing');
                 return;
@@ -383,7 +388,7 @@ export default class Plugin {
                 return;
             }
             if (ev.data && ev.data.type === 'connectCall') {
-                connectCall(ev.data.channelID, '');
+                connectCall(ev.data.channelID);
             }
         };
         window.addEventListener('message', windowEventHandler);
@@ -552,7 +557,7 @@ export default class Plugin {
                 currChannelId = currentChannelId;
                 fetchChannelData(currChannelId);
                 if (currChannelId && Boolean(joinCallParam) && !connectedChannelID(store.getState())) {
-                    connectCall(currChannelId, '');
+                    connectCall(currChannelId);
                 }
                 joinCallParam = '';
             }

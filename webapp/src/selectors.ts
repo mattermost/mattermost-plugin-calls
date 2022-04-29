@@ -18,6 +18,14 @@ export const voiceConnectedUsers = (state: GlobalState) => {
     return [];
 };
 
+export const voiceConnectedUsersInChannel = (state: GlobalState, channelID: string) => {
+    const channels = voiceConnectedChannels(state);
+    if (channels && channels[channelID]) {
+        return channels[channelID];
+    }
+    return [];
+};
+
 export const connectedChannelID = (state: GlobalState) => getPluginState(state).connectedChannelID;
 
 export const voiceConnectedProfiles = (state: GlobalState) => {
