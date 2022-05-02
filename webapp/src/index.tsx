@@ -9,6 +9,8 @@ import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/commo
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 
+import {RTCStats} from 'src/types/types';
+
 import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from './selectors';
 
 import {pluginId} from './manifest';
@@ -250,7 +252,7 @@ export default class Plugin {
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
 
-        registry.registerSlashCommandWillBePostedHook((message, args) => {
+        registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             const fullCmd = message.trim();
             const fields = fullCmd.split(/\s+/);
             if (fields.length < 2) {
@@ -291,6 +293,18 @@ export default class Plugin {
                 } else if (fields[2] === 'off') {
                     console.log('experimental features disabled');
                     window.localStorage.removeItem('calls_experimental_features');
+                }
+                break;
+            case 'stats':
+                if (!window.callsClient) {
+                    return {error: {message: 'You are not connected to any call'}};
+                }
+                try {
+                    const stats = await window.callsClient.getStats();
+                    console.log(JSON.stringify(stats, null, 2));
+                    return {message: `/call stats "${JSON.stringify(stats)}"`, args};
+                } catch (err) {
+                    return {error: {message: err}};
                 }
             }
 
