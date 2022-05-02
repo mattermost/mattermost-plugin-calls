@@ -125,7 +125,7 @@ endif
 webapp/node_modules: $(wildcard webapp/package.json)
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && node skip_integrity_check.js
-	cd webapp && $(NPM) install
+	cd webapp && $(NPM) ci
 	touch $@
 endif
 

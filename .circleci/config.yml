@@ -39,7 +39,7 @@ commands:
           name: Getting JavaScript dependencies
           command: |
             cd webapp
-            NODE_ENV=development npm install --ignore-scripts --no-save
+            NODE_ENV=development npm ci --ignore-scripts --no-save
       - save_cache:
           name: Save npm cache
           key: v2-npm-{{ checksum "./webapp/package-lock.json" }}-{{ arch }}
