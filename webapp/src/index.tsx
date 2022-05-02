@@ -270,7 +270,7 @@ export default class Plugin {
             case 'join':
             case 'start':
                 if (subCmd === 'start') {
-                    if (voiceConnectedUsersInChannel(store.getState(), connectedID).length > 0) {
+                    if (voiceConnectedUsersInChannel(store.getState(), args.channel_id).length > 0) {
                         return {error: {message: 'A call is already ongoing in the channel.'}};
                     }
                 }
