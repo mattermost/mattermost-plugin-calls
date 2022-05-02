@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/mattermost/rtcd/logger"
-	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
@@ -42,25 +41,15 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	if cfg.RTCDServiceURL != "" {
-		clientCfg, err := p.getRTCDClientConfig(cfg.RTCDServiceURL)
-		if err != nil {
-			err = fmt.Errorf("failed to get rtcd client config: %w", err)
-			p.LogError(err.Error())
-			return err
-		}
-
-		client, err := rtcd.NewClient(clientCfg)
+		client, err := p.newRTCDClient(cfg.RTCDServiceURL)
 		if err != nil {
 			err = fmt.Errorf("failed to create rtcd client: %w", err)
 			p.LogError(err.Error())
 			return err
 		}
 
-		if err := client.Connect(); err != nil {
-			err = fmt.Errorf("failed to connect rtcd client: %w", err)
-			p.LogError(err.Error())
-			return err
-		}
+		p.LogDebug("rtcd client connected successfully")
+
 		p.rtcdClient = client
 		go func() {
 			for err := range p.rtcdClient.ErrorCh() {
