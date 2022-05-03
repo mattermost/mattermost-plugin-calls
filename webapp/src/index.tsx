@@ -340,19 +340,14 @@ export default class Plugin {
             );
         };
 
-        let initializing = false;
         const connectCall = async (channelID: string) => {
-            if (initializing) {
-                console.log('client is already initializing');
-                return;
-            } else if (window.callsClient) {
-                console.log('client is already initialized');
-                return;
-            }
             try {
-                initializing = true;
-                window.callsClient = await new CallsClient().init(channelID);
-                initializing = false;
+                if (window.callsClient) {
+                    console.log('calls client is already initialized');
+                    return;
+                }
+
+                window.callsClient = new CallsClient();
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', () => {
@@ -367,9 +362,12 @@ export default class Plugin {
                         audio.play();
                     }
                 });
+
+                window.callsClient.init(channelID);
+
                 this.unregisterChannelHeaderMenuButton();
             } catch (err) {
-                initializing = false;
+                delete window.callsClient;
                 console.log(err);
             }
         };
