@@ -579,11 +579,9 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("missing channelID")
 			return
 		}
-		title, ok := req.Data["title"].(string)
-		if !ok {
-			p.LogError("missing title")
-			return
-		}
+		// Title is optional, so if it's not present,
+		// it will be an empty string.
+		title, _ := req.Data["title"].(string)
 		go func() {
 			if err := p.handleJoin(userID, connID, channelID, title); err != nil {
 				p.LogError(err.Error())
