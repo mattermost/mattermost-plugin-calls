@@ -976,6 +976,10 @@ github.com/mattermost/morph v0.0.0-20220401091636-39f834798da8/go.mod h1:jxM3g1b
 github.com/mattermost/rsc v0.0.0-20160330161541-bbaefb05eaa0/go.mod h1:nV5bfVpT//+B1RPD2JvRnxbkLmJEYXmRaaVl15fsXjs=
 github.com/mattermost/rtcd v0.3.1-0.20220427165117-035048fda047 h1:pUG3+IgpM7tg1paLCwJ6x5Q/ZE/dET3w+7LsrtPbJQE=
 github.com/mattermost/rtcd v0.3.1-0.20220427165117-035048fda047/go.mod h1:yjK6nfY+CPzAXBKGrHPOiX8o1PY5eJjPUpQIbtCE8HU=
+github.com/mattermost/rtcd v0.3.1-0.20220503081231-4fc750992c05 h1:mjdr520Cz6pA8XsklPDroxmJp92o8/r+f9OIyqjnnsE=
+github.com/mattermost/rtcd v0.3.1-0.20220503081231-4fc750992c05/go.mod h1:yjK6nfY+CPzAXBKGrHPOiX8o1PY5eJjPUpQIbtCE8HU=
+github.com/mattermost/rtcd v0.3.1-0.20220503133805-5843e14828b7 h1:caH9RF9PJLDmslJF7JJy2PPLL2/co5/ytxxqwL/3YYY=
+github.com/mattermost/rtcd v0.3.1-0.20220503133805-5843e14828b7/go.mod h1:yjK6nfY+CPzAXBKGrHPOiX8o1PY5eJjPUpQIbtCE8HU=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-colorable v0.1.1/go.mod h1:FuOcm+DKB9mbwrcAfNl7/TZVBZ6rcnceauSikq3lYCQ=
 github.com/mattn/go-colorable v0.1.2/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
