@@ -353,6 +353,11 @@ export default class Plugin {
 
         const connectCall = async (channelID: string) => {
             try {
+                if (window.callsClient) {
+                    console.log('calls client is already initialized');
+                    return;
+                }
+
                 window.callsClient = new CallsClient();
 
                 let globalComponentID: string;
@@ -379,6 +384,7 @@ export default class Plugin {
 
                 this.unregisterChannelHeaderMenuButton();
             } catch (err) {
+                delete window.callsClient;
                 console.log(err);
             }
         };

@@ -26,6 +26,9 @@ type configuration struct {
 	ICEHostOverride string
 	// UDP port used by the RTC server to listen to.
 	UDPServerPort *int
+	// The URL to a running RTCD service instance that should host the calls.
+	// When set (non empty) all calls will be handled by the external service.
+	RTCDServiceURL string
 	// A comma separated list of user IDs that should be allowed to run the
 	// "/call recording" command.
 	AllowedRecordingUsers string
@@ -140,6 +143,7 @@ func (c *configuration) Clone() *configuration {
 	var cfg configuration
 
 	cfg.ICEHostOverride = c.ICEHostOverride
+	cfg.RTCDServiceURL = c.RTCDServiceURL
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)

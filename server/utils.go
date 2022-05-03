@@ -3,15 +3,14 @@ package main
 import (
 	"bytes"
 	"compress/zlib"
-	"context"
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/pion/stun"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -20,6 +19,7 @@ const (
 )
 
 func (p *Plugin) getHandlerID() (string, error) {
+	p.metrics.IncStoreOp("KVGet")
 	data, appErr := p.API.KVGet(handlerKey)
 	if appErr != nil {
 		return "", fmt.Errorf("failed to get handler id: %w", appErr)
@@ -28,6 +28,7 @@ func (p *Plugin) getHandlerID() (string, error) {
 }
 
 func (p *Plugin) setHandlerID(nodeID string) error {
+	p.metrics.IncStoreOp("KVSetWithExpiry")
 	if appErr := p.API.KVSetWithExpiry(handlerKey, []byte(nodeID), int64(handlerKeyCheckInterval.Seconds()*2)); appErr != nil {
 		return fmt.Errorf("failed to set handler id: %w", appErr)
 	}
@@ -36,7 +37,7 @@ func (p *Plugin) setHandlerID(nodeID string) error {
 
 func (p *Plugin) kvSetAtomic(key string, cb func(data []byte) ([]byte, error)) error {
 	for {
-		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVGet"}).Inc()
+		p.metrics.IncStoreOp("KVGet")
 		storedData, appErr := p.API.KVGet(key)
 		if appErr != nil {
 			return fmt.Errorf("KVGet failed: %w", appErr)
@@ -49,13 +50,15 @@ func (p *Plugin) kvSetAtomic(key string, cb func(data []byte) ([]byte, error)) e
 			return nil
 		}
 
-		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVCompareAndSet"}).Inc()
+		p.metrics.IncStoreOp("KVCompareAndSet")
 		ok, appErr := p.API.KVCompareAndSet(key, storedData, toStoreData)
 		if appErr != nil {
 			return fmt.Errorf("KVCompareAndSet failed: %w", appErr)
 		}
 
 		if !ok {
+			// pausing a little to avoid excessive lock contention
+			time.Sleep(5 * time.Millisecond)
 			continue
 		}
 
@@ -63,19 +66,15 @@ func (p *Plugin) kvSetAtomic(key string, cb func(data []byte) ([]byte, error)) e
 	}
 }
 
-func (p *Plugin) iterSessions(channelID string, cb func(us *session)) {
-	p.mut.RLock()
-	for _, session := range p.sessions {
-		if session.channelID == channelID {
-			p.mut.RUnlock()
-			cb(session)
-			p.mut.RLock()
-		}
+func getPublicIP(port int, iceServers []string) (string, error) {
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
+		Port: port,
+	})
+	if err != nil {
+		return "", err
 	}
-	p.mut.RUnlock()
-}
+	defer conn.Close()
 
-func getPublicIP(conn net.PacketConn, iceServers []string) (string, error) {
 	var stunURL string
 	for _, u := range iceServers {
 		if strings.HasPrefix(u, "stun:") {
@@ -150,21 +149,6 @@ func stunRequest(read func([]byte) (int, error), write func([]byte) (int, error)
 	return res, nil
 }
 
-func resolveHost(host string, timeout time.Duration) (string, error) {
-	var ip string
-	r := net.Resolver{}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	addrs, err := r.LookupIP(ctx, "ip4", host)
-	if err != nil {
-		return ip, fmt.Errorf("failed to resolve host %q: %w", host, err)
-	}
-	if len(addrs) > 0 {
-		ip = addrs[0].String()
-	}
-	return ip, err
-}
-
 func unpackSDPData(data []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(data)
 	rd, err := zlib.NewReader(buf)
@@ -176,4 +160,17 @@ func unpackSDPData(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read data: %w", err)
 	}
 	return unpacked, nil
+}
+
+func parseURL(u string) (string, string, string, error) {
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	clientID := parsed.User.Username()
+	authKey, _ := parsed.User.Password()
+	parsed.User = nil
+
+	return parsed.String(), clientID, authKey, nil
 }
