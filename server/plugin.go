@@ -14,7 +14,6 @@ import (
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
-	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 )
 
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
@@ -40,7 +39,6 @@ type Plugin struct {
 
 	rtcServer  *rtc.Server
 	rtcdClient *rtcd.Client
-	log        *mlog.Logger
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
@@ -60,7 +58,7 @@ func (p *Plugin) startSession(us *session, senderID string) {
 			SessionID: us.connID,
 		}
 		if err := p.rtcServer.InitSession(cfg, nil); err != nil {
-			p.LogError(err.Error(), "connID", us.connID)
+			p.LogError(err.Error(), "sessionConfig", fmt.Sprintf("%+v", cfg))
 		}
 	}()
 
@@ -112,7 +110,8 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 	switch clusterMessageType(ev.Id) {
 	case clusterMessageTypeConnect:
 		if us != nil {
-			return fmt.Errorf("session already exists, userID=%q, channelID=%q", us.userID, us.channelID)
+			return fmt.Errorf("session already exists, userID=%q, connID=%q, channelID=%q",
+				us.userID, msg.ConnID, us.channelID)
 		}
 		us := newUserSession(msg.UserID, msg.ChannelID, msg.ConnID)
 		p.mut.Lock()
@@ -121,7 +120,8 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		go p.startSession(us, msg.SenderID)
 	case clusterMessageTypeDisconnect:
 		if us == nil {
-			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
+			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, connID=%q, channelID=%q",
+				ev.Id, msg.UserID, msg.ConnID, msg.ChannelID)
 		}
 		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID)
 		p.mut.Lock()
@@ -134,7 +134,8 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 	case clusterMessageTypeSignaling:
 		if us == nil {
-			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
+			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, connID=%q, channelID=%q",
+				ev.Id, msg.UserID, msg.ConnID, msg.ChannelID)
 		}
 		if msg.ClientMessage.Type != clientMessageTypeSDP && msg.ClientMessage.Type != clientMessageTypeICE {
 			return fmt.Errorf("unexpected client message type %q", msg.ClientMessage.Type)
@@ -155,7 +156,8 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 	case clusterMessageTypeUserState:
 		if us == nil {
-			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
+			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, connID=%q, channelID=%q",
+				ev.Id, msg.UserID, msg.ConnID, msg.ChannelID)
 		}
 
 		var msgType rtc.MessageType
