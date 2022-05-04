@@ -5,7 +5,7 @@ import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels'
 
 import {voiceConnectedUsers, connectedChannelID, isVoiceEnabled} from '../../selectors';
 
-import ChannelHeaderButton from './component';
+import ChannelHeaderDropdownButton from './component';
 
 const mapStateToProps = (state: GlobalState) => ({
     hasCall: voiceConnectedUsers(state).length > 0,
@@ -13,4 +13,4 @@ const mapStateToProps = (state: GlobalState) => ({
     show: isVoiceEnabled(state),
 });
 
-export default connect(mapStateToProps)(ChannelHeaderButton);
+export default connect(mapStateToProps)(ChannelHeaderDropdownButton);

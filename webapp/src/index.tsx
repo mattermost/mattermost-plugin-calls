@@ -18,6 +18,7 @@ import {pluginId} from './manifest';
 import CallsClient from './client';
 
 import ChannelHeaderButton from './components/channel_header_button';
+import ChannelHeaderDropdownButton from './components/channel_header_dropdown_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import CallWidget from './components/call_widget';
 import ChannelLinkLabel from './components/channel_link_label';
@@ -323,9 +324,9 @@ export default class Plugin {
             if (channelHeaderMenuButtonID) {
                 return;
             }
-            channelHeaderMenuButtonID = registry.registerChannelHeaderButtonAction(
-                ChannelHeaderButton
-                ,
+            channelHeaderMenuButtonID = registry.registerCallButtonAction(
+                ChannelHeaderButton,
+                ChannelHeaderDropdownButton,
                 async (channel) => {
                     try {
                         const users = voiceConnectedUsers(store.getState());
@@ -367,7 +368,6 @@ export default class Plugin {
                 window.callsClient.on('close', () => {
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);
-                    this.registerChannelHeaderMenuButton();
                     if (window.callsClient) {
                         window.callsClient.destroy();
                         delete window.callsClient;
@@ -378,8 +378,6 @@ export default class Plugin {
                 });
 
                 window.callsClient.init(channelID);
-
-                this.unregisterChannelHeaderMenuButton();
             } catch (err) {
                 delete window.callsClient;
                 console.log(err);
@@ -471,8 +469,6 @@ export default class Plugin {
                 registry.unregisterComponent(channelHeaderMenuID);
                 console.log(err);
             }
-
-            this.unregisterChannelHeaderMenuButton();
 
             try {
                 const resp = await axios.get(`${getPluginPath()}/${channelID}`);
