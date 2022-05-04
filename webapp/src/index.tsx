@@ -71,8 +71,6 @@ import {PluginRegistry, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
-    private unregisterChannelHeaderMenuButton: any;
-    private registerChannelHeaderMenuButton: any;
 
     constructor() {
         this.unsubscribers = [];
@@ -85,15 +83,12 @@ export default class Plugin {
 
     private registerWebSocketEvents(registry: PluginRegistry, store: Store) {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
-            this.unregisterChannelHeaderMenuButton();
-            this.registerChannelHeaderMenuButton();
             store.dispatch({
                 type: VOICE_CHANNEL_ENABLE,
             });
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_disable_voice`, (data) => {
-            this.unregisterChannelHeaderMenuButton();
             store.dispatch({
                 type: VOICE_CHANNEL_DISABLE,
             });
@@ -313,17 +308,18 @@ export default class Plugin {
         });
 
         let channelHeaderMenuButtonID: string;
-        this.unregisterChannelHeaderMenuButton = () => {
+        const unregisterChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 registry.unregisterComponent(channelHeaderMenuButtonID);
                 channelHeaderMenuButtonID = '';
             }
         };
-        this.unsubscribers.push(this.unregisterChannelHeaderMenuButton);
-        this.registerChannelHeaderMenuButton = () => {
+        this.unsubscribers.push(unregisterChannelHeaderMenuButton);
+        const registerChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 return;
             }
+
             channelHeaderMenuButtonID = registry.registerCallButtonAction(
                 ChannelHeaderButton,
                 ChannelHeaderDropdownButton,
@@ -354,6 +350,8 @@ export default class Plugin {
                 },
             );
         };
+
+        registerChannelHeaderMenuButton();
 
         const connectCall = async (channelID: string) => {
             try {
@@ -472,9 +470,6 @@ export default class Plugin {
 
             try {
                 const resp = await axios.get(`${getPluginPath()}/${channelID}`);
-                if (resp.data.enabled && connectedChannelID(store.getState()) !== channelID) {
-                    this.registerChannelHeaderMenuButton();
-                }
                 store.dispatch({
                     type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                 });
