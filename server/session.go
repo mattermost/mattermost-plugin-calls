@@ -42,7 +42,7 @@ func newUserSession(userID, channelID, connID string) *session {
 		wsCloseCh:   make(chan struct{}),
 		closeCh:     make(chan struct{}),
 		doneCh:      make(chan struct{}),
-		limiter:     rate.NewLimiter(2, 20),
+		limiter:     rate.NewLimiter(2, 30),
 	}
 }
 
