@@ -12,6 +12,11 @@ import (
 )
 
 func (p *Plugin) OnActivate() error {
+	if os.Getenv("MM_CALLS_DISABLE") == "true" {
+		p.LogInfo("disable flag is set, exiting")
+		return fmt.Errorf("disabled by environment flag")
+	}
+
 	p.LogDebug("activating")
 
 	pluginAPIClient := pluginapi.NewClient(p.API, p.Driver)
