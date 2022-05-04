@@ -125,7 +125,7 @@ endif
 webapp/node_modules: $(wildcard webapp/package.json)
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && node skip_integrity_check.js
-	cd webapp && $(NPM) ci
+	cd webapp && $(NPM) install
 	touch $@
 endif
 
@@ -139,6 +139,11 @@ else
 	cd webapp && $(NPM) run debug;
 endif
 endif
+
+## Builds the webapp on ci
+.PHONY: webapp-ci
+webapp-ci:
+	cd webapp && $(NPM) ci && $(NPM) run build
 
 ## Generates a tar bundle of the plugin for install.
 .PHONY: bundle
@@ -170,7 +175,7 @@ dist:	apply server webapp bundle
 
 ## Builds and bundles the plugin on ci.
 .PHONY: dist-ci
-dist-ci:	apply server-ci webapp bundle
+dist-ci:	apply server-ci webapp-ci bundle
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
