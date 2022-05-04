@@ -140,6 +140,11 @@ else
 endif
 endif
 
+## Builds the webapp on ci -- dependencies are handled by the npm-dependencies step in ci
+.PHONY: webapp-ci
+webapp-ci:
+	cd webapp && $(NPM) run build
+
 ## Generates a tar bundle of the plugin for install.
 .PHONY: bundle
 bundle:
@@ -170,7 +175,7 @@ dist:	apply server webapp bundle
 
 ## Builds and bundles the plugin on ci.
 .PHONY: dist-ci
-dist-ci:	apply server-ci webapp bundle
+dist-ci:	apply server-ci webapp-ci bundle
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
