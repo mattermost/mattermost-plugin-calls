@@ -12,7 +12,10 @@ import (
 	"github.com/mattermost/mattermost-plugin-api/cluster"
 )
 
-const rtcdConfigKey = "rtcd_config"
+const (
+	rtcdConfigKey        = "rtcd_config"
+	maxReconnectAttempts = 8
+)
 
 func (p *Plugin) getStoredRTCDConfig() (rtcd.ClientConfig, error) {
 	var cfg rtcd.ClientConfig
@@ -62,7 +65,44 @@ func (p *Plugin) newRTCDClient(rtcdURL string) (*rtcd.Client, error) {
 		return nil, fmt.Errorf("failed to get rtcd client config: %w", err)
 	}
 
-	client, err := rtcd.NewClient(clientCfg)
+	registerClient := func() (*rtcd.ClientConfig, error) {
+		mutex, err := cluster.NewMutex(p.API, "rtcd_registration")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
+		}
+
+		lockCtx, cancelCtx := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelCtx()
+		if err := mutex.LockWithContext(lockCtx); err != nil {
+			return nil, fmt.Errorf("failed to acquire cluster lock: %w", err)
+		}
+		defer mutex.Unlock()
+
+		newCfg, err := p.registerRTCDClient(clientCfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to register rtcd client: %w", err)
+		}
+
+		return &newCfg, nil
+	}
+
+	reconnectCb := func(c *rtcd.Client, attempt int) error {
+		if attempt >= maxReconnectAttempts {
+			if appErr := p.API.DisablePlugin(manifest.Id); appErr != nil {
+				p.LogError(appErr.Error())
+			}
+			return fmt.Errorf("max reconnection attempts reached, disabling plugin")
+		}
+		newCfg, err := registerClient()
+		if err != nil {
+			p.LogError(fmt.Sprintf("failed to register client: %s", err.Error()))
+			return nil
+		}
+		c.SetAuthKey(newCfg.AuthKey)
+		return nil
+	}
+
+	client, err := rtcd.NewClient(clientCfg, rtcd.WithClientReconnectCb(reconnectCb))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rtcd client: %w", err)
 	}
@@ -79,25 +119,12 @@ func (p *Plugin) newRTCDClient(rtcdURL string) (*rtcd.Client, error) {
 	p.LogError(fmt.Sprintf("failed to connect rtcd client: %s", err.Error()))
 	p.LogDebug("attempting to re-register the rtcd client")
 
-	mutex, err := cluster.NewMutex(p.API, "rtcd_registration")
+	newCfg, err := registerClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
-	}
-
-	lockCtx, cancelCtx := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancelCtx()
-	if err := mutex.LockWithContext(lockCtx); err != nil {
-		return nil, fmt.Errorf("failed to acquire cluster lock: %w", err)
-	}
-	defer mutex.Unlock()
-
-	newCfg, err := p.registerRTCDClient(clientCfg)
-	if err != nil {
-		client.Close()
 		return nil, fmt.Errorf("failed to register rtcd client: %w", err)
 	}
 
-	newClient, err := rtcd.NewClient(newCfg)
+	newClient, err := rtcd.NewClient(*newCfg, rtcd.WithClientReconnectCb(reconnectCb))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rtcd client: %w", err)
 	}
