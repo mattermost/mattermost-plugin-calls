@@ -50,7 +50,7 @@ const PostType = ({post, connectedID, hasCall, pictures, profiles, showSwitchCal
 
     return (
         <>
-            <Message>{post.message}</Message>
+            <h3 class="markdown__heading">{post.message}</h3>
             <Main data-testid={'call-thread'}>
                 <SubMain ended={Boolean(post.props.end_at)}>
                     <Left>
