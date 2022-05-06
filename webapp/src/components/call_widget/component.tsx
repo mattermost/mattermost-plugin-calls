@@ -82,129 +82,133 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private node: React.RefObject<HTMLDivElement>;
     private screenPlayer = React.createRef<HTMLVideoElement>()
 
-    private style = {
-        main: {
-            position: 'fixed',
-            background: this.props.theme.centerChannelBg,
-            borderRadius: '8px',
-            display: 'flex',
-            bottom: '12px',
-            left: '12px',
-            lineHeight: '16px',
-            zIndex: '1000',
-            border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
-            userSelect: 'none',
-            color: this.props.theme.centerChannelColor,
-        },
-        topBar: {
-            background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
-            padding: '0 12px',
-            display: 'flex',
-            width: '100%',
-            alignItems: 'center',
-            height: '44px',
-            cursor: 'move',
-        },
-        bottomBar: {
-            padding: '6px 8px',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            width: '100%',
-            alignItems: 'center',
-        },
-        mutedButton: {
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: '24px',
-        },
-        unmutedButton: {
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: '24px',
-            background: 'rgba(61, 184, 135, 0.16)',
-            borderRadius: '4px',
-            color: 'rgba(61, 184, 135, 1)',
-        },
-        disconnectButton: {
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            color: 'color: rgba(255, 255, 255, 0.8)',
-            fontSize: '14px',
-            margin: '0 8px',
-            width: '24px',
-            height: '24px',
-            borderRadius: '4px',
-            backgroundColor: '#D24B4E',
-        },
-        status: {
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            width: '100%',
-        },
-        callInfo: {
-            display: 'flex',
-            fontSize: '11px',
-            color: changeOpacity(this.props.theme.centerChannelColor, 0.64),
-        },
-        profiles: {
-            display: 'flex',
-            marginRight: '8px',
-        },
-        menuButton: {
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            color: changeOpacity(this.props.theme.centerChannelColor, 0.8),
-            fontSize: '14px',
-            width: '24px',
-            height: '24px',
-        },
-        menu: {
-            position: 'absolute',
-            background: 'white',
-            color: this.props.theme.centerChannelColor,
-        },
-        screenSharingPanel: {
-            position: 'relative',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            width: '100%',
-            minWidth: 'revert',
-            maxWidth: 'revert',
-        },
-        leaveCallButton: {
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 8px',
-            height: '28px',
-            borderRadius: '4px',
-            color: '#D24B4E',
-            background: 'rgba(210, 75, 78, 0.04)',
-            marginRight: 'auto',
-        },
-        dotsMenu: {
-            position: 'relative',
-            width: '100%',
-            minWidth: 'revert',
-            maxWidth: 'revert',
-        },
-        audioInputsOutputsMenu: {
-            left: 'calc(100% + 4px)',
-            top: 'auto',
-        },
-        expandButton: {
-            position: 'absolute',
-            right: '8px',
-            top: '8px',
-            margin: 0,
-        },
-    };
+    private genStyle = () => {
+        return {
+            main: {
+                position: 'fixed',
+                background: this.props.theme.centerChannelBg,
+                borderRadius: '8px',
+                display: 'flex',
+                bottom: '12px',
+                left: '12px',
+                lineHeight: '16px',
+                zIndex: '1000',
+                border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
+                userSelect: 'none',
+                color: this.props.theme.centerChannelColor,
+            },
+            topBar: {
+                background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
+                padding: '0 12px',
+                display: 'flex',
+                width: '100%',
+                alignItems: 'center',
+                height: '44px',
+                cursor: 'move',
+            },
+            bottomBar: {
+                padding: '6px 8px',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                width: '100%',
+                alignItems: 'center',
+            },
+            mutedButton: {
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                width: '24px',
+            },
+            unmutedButton: {
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                width: '24px',
+                background: 'rgba(61, 184, 135, 0.16)',
+                borderRadius: '4px',
+                color: 'rgba(61, 184, 135, 1)',
+            },
+            disconnectButton: {
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                color: 'color: rgba(255, 255, 255, 0.8)',
+                fontSize: '14px',
+                margin: '0 8px',
+                width: '24px',
+                height: '24px',
+                borderRadius: '4px',
+                backgroundColor: '#D24B4E',
+            },
+            status: {
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                width: '100%',
+            },
+            callInfo: {
+                display: 'flex',
+                fontSize: '11px',
+                color: changeOpacity(this.props.theme.centerChannelColor, 0.64),
+            },
+            profiles: {
+                display: 'flex',
+                marginRight: '8px',
+            },
+            menuButton: {
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                color: changeOpacity(this.props.theme.centerChannelColor, 0.8),
+                fontSize: '14px',
+                width: '24px',
+                height: '24px',
+            },
+            menu: {
+                position: 'absolute',
+                background: 'white',
+                color: this.props.theme.centerChannelColor,
+            },
+            screenSharingPanel: {
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                width: '100%',
+                minWidth: 'revert',
+                maxWidth: 'revert',
+            },
+            leaveCallButton: {
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 8px',
+                height: '28px',
+                borderRadius: '4px',
+                color: '#D24B4E',
+                background: 'rgba(210, 75, 78, 0.04)',
+                marginRight: 'auto',
+            },
+            dotsMenu: {
+                position: 'relative',
+                width: '100%',
+                minWidth: 'revert',
+                maxWidth: 'revert',
+            },
+            audioInputsOutputsMenu: {
+                left: 'calc(100% + 4px)',
+                top: 'auto',
+            },
+            expandButton: {
+                position: 'absolute',
+                right: '8px',
+                top: '8px',
+                margin: 0,
+            },
+        };
+    }
+
+    private style = this.genStyle();
 
     constructor(props: Props) {
         super(props);
@@ -298,6 +302,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
+        if (prevProps.theme.type !== this.props.theme.type) {
+            this.style = this.genStyle();
+        }
+
         let screenStream = this.state.screenStream;
         if (this.props.screenSharingID === this.props.currentUserID) {
             screenStream = window.callsClient.getLocalScreenStream();
