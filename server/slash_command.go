@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -14,6 +16,7 @@ const (
 	leaveCommandTrigger        = "leave"
 	linkCommandTrigger         = "link"
 	experimentalCommandTrigger = "experimental"
+	statsCommandTrigger        = "stats"
 )
 
 var subCommands = []string{joinCommandTrigger, leaveCommandTrigger, linkCommandTrigger, experimentalCommandTrigger}
@@ -24,6 +27,7 @@ func getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(joinCommandTrigger, "", "Joins or starts a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(leaveCommandTrigger, "", "Leaves a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(linkCommandTrigger, "", "Generates a link to join a call in the current channel"))
+	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Shows some client-generated statistics about the call"))
 
 	experimentalCmdData := model.NewAutocompleteData(experimentalCommandTrigger, "", "Turns on/off experimental features")
 	experimentalCmdData.AddTextArgument("Available options: on, off", "", "on|off")
@@ -91,6 +95,32 @@ func handleExperimentalCommand(fields []string) (*model.CommandResponse, error) 
 	}, nil
 }
 
+func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("Invalid number of arguments provided")
+	}
+
+	if len(fields[2]) < 2 {
+		return nil, fmt.Errorf("Invalid stats object")
+	}
+
+	js := fields[2][1 : len(fields[2])-1]
+
+	if js == "{}" {
+		return nil, fmt.Errorf("Empty stats object")
+	}
+
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, []byte(js), "", " "); err != nil {
+		return nil, fmt.Errorf("Failed to indent JSON: %w", err)
+	}
+
+	return &model.CommandResponse{
+		ResponseType: model.CommandResponseTypeEphemeral,
+		Text:         fmt.Sprintf("```json\n%s\n```", buf.String()),
+	}, nil
+}
+
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
@@ -124,6 +154,17 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == experimentalCommandTrigger {
 		resp, err := handleExperimentalCommand(fields)
+		if err != nil {
+			return &model.CommandResponse{
+				ResponseType: model.CommandResponseTypeEphemeral,
+				Text:         fmt.Sprintf("Error: %s", err.Error()),
+			}, nil
+		}
+		return resp, nil
+	}
+
+	if subCmd == statsCommandTrigger {
+		resp, err := handleStatsCommand(fields)
 		if err != nil {
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,
