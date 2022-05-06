@@ -5,8 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/mattermost/rtcd/logger"
-	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
@@ -14,6 +12,11 @@ import (
 )
 
 func (p *Plugin) OnActivate() error {
+	if os.Getenv("MM_CALLS_DISABLE") == "true" {
+		p.LogInfo("disable flag is set, exiting")
+		return fmt.Errorf("disabled by environment flag")
+	}
+
 	p.LogDebug("activating")
 
 	pluginAPIClient := pluginapi.NewClient(p.API, p.Driver)
@@ -42,25 +45,15 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	if cfg.RTCDServiceURL != "" {
-		clientCfg, err := p.getRTCDClientConfig(cfg.RTCDServiceURL)
-		if err != nil {
-			err = fmt.Errorf("failed to get rtcd client config: %w", err)
-			p.LogError(err.Error())
-			return err
-		}
-
-		client, err := rtcd.NewClient(clientCfg)
+		client, err := p.newRTCDClient(cfg.RTCDServiceURL)
 		if err != nil {
 			err = fmt.Errorf("failed to create rtcd client: %w", err)
 			p.LogError(err.Error())
 			return err
 		}
 
-		if err := client.Connect(); err != nil {
-			err = fmt.Errorf("failed to connect rtcd client: %w", err)
-			p.LogError(err.Error())
-			return err
-		}
+		p.LogDebug("rtcd client connected successfully")
+
 		p.rtcdClient = client
 		go func() {
 			for err := range p.rtcdClient.ErrorCh() {
@@ -101,19 +94,10 @@ func (p *Plugin) OnActivate() error {
 			}
 		}
 
-		log, err := logger.New(logger.Config{
-			EnableConsole: true,
-			ConsoleLevel:  "DEBUG",
-		})
-		if err != nil {
-			p.LogError(err.Error())
-			return err
-		}
-
 		rtcServer, err := rtc.NewServer(rtc.ServerConfig{
 			ICEPortUDP:      *cfg.UDPServerPort,
 			ICEHostOverride: publicHost,
-		}, log, p.metrics.RTCMetrics())
+		}, newLogger(p), p.metrics.RTCMetrics())
 		if err != nil {
 			p.LogError(err.Error())
 			return err
@@ -128,7 +112,6 @@ func (p *Plugin) OnActivate() error {
 		p.nodeID = status.ClusterId
 		p.rtcServer = rtcServer
 		p.hostIP = publicHost
-		p.log = log
 		p.mut.Unlock()
 
 		go p.clusterEventsHandler()
@@ -156,12 +139,6 @@ func (p *Plugin) OnDeactivate() error {
 
 	if p.rtcServer != nil {
 		if err := p.rtcServer.Stop(); err != nil {
-			p.LogError(err.Error())
-		}
-	}
-
-	if p.log != nil {
-		if err := p.log.Shutdown(); err != nil {
 			p.LogError(err.Error())
 		}
 	}

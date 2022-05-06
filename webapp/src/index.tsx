@@ -9,7 +9,13 @@ import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/commo
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 
+<<<<<<< HEAD
 import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceConnectedUsersInChannel, voiceChannelCallStartAt} from './selectors';
+=======
+import {RTCStats} from 'src/types/types';
+
+import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from './selectors';
+>>>>>>> origin/main
 
 import {pluginId} from './manifest';
 
@@ -250,7 +256,7 @@ export default class Plugin {
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
 
-        registry.registerSlashCommandWillBePostedHook((message, args) => {
+        registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             const fullCmd = message.trim();
             const fields = fullCmd.split(/\s+/);
             if (fields.length < 2) {
@@ -302,6 +308,18 @@ export default class Plugin {
                     console.log('experimental features disabled');
                     window.localStorage.removeItem('calls_experimental_features');
                 }
+                break;
+            case 'stats':
+                if (!window.callsClient) {
+                    return {error: {message: 'You are not connected to any call'}};
+                }
+                try {
+                    const stats = await window.callsClient.getStats();
+                    console.log(JSON.stringify(stats, null, 2));
+                    return {message: `/call stats "${JSON.stringify(stats)}"`, args};
+                } catch (err) {
+                    return {error: {message: err}};
+                }
             }
 
             return {message, args};
@@ -350,19 +368,14 @@ export default class Plugin {
             );
         };
 
-        let initializing = false;
         const connectCall = async (channelID: string, title?: string) => {
-            if (initializing) {
-                console.log('client is already initializing');
-                return;
-            } else if (window.callsClient) {
-                console.log('client is already initialized');
-                return;
-            }
             try {
-                initializing = true;
-                window.callsClient = await new CallsClient().init(channelID, title);
-                initializing = false;
+                if (window.callsClient) {
+                    console.log('calls client is already initialized');
+                    return;
+                }
+
+                window.callsClient = new CallsClient();
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', () => {
@@ -377,9 +390,12 @@ export default class Plugin {
                         audio.play();
                     }
                 });
+
+                window.callsClient.init(channelID, title);
+
                 this.unregisterChannelHeaderMenuButton();
             } catch (err) {
-                initializing = false;
+                delete window.callsClient;
                 console.log(err);
             }
         };

@@ -7,10 +7,13 @@ import {deflate} from 'pako/lib/deflate.js';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {getPluginWSConnectionURL, getScreenStream, getPluginPath, setSDPMaxVideoBW} from './utils';
+import {RTCStats} from 'src/types/types';
 
+import {getPluginWSConnectionURL, getScreenStream, getPluginPath, setSDPMaxVideoBW} from './utils';
 import WebSocketClient from './websocket';
 import VoiceActivityDetector from './vad';
+
+import {parseRTCStats} from './rtc_stats';
 
 export default class CallsClient extends EventEmitter {
     private peer: SimplePeer.Instance | null;
@@ -463,5 +466,19 @@ export default class CallsClient extends EventEmitter {
             this.ws.send('unraise_hand');
         }
         this.isHandRaised = false;
+    }
+
+    public async getStats(): Promise<RTCStats | null> {
+        // @ts-ignore
+        // eslint-disable-next-line no-underscore-dangle
+        if (!this.peer || !this.peer._pc) {
+            throw new Error('not connected');
+        }
+
+        // @ts-ignore
+        // eslint-disable-next-line no-underscore-dangle
+        const stats = await this.peer._pc.getStats(null);
+
+        return parseRTCStats(stats);
     }
 }

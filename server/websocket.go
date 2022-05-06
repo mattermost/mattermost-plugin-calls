@@ -265,10 +265,10 @@ func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 
 	if us != nil {
 		go func() {
-			p.LogDebug("closing channel for session", "userID", userID, "connID", connID)
+			p.LogDebug("closing channel for session", "userID", userID, "connID", connID, "channelID", us.channelID)
 			close(us.wsCloseCh)
 			<-us.doneCh
-			p.LogDebug("done, removing session", "userID", userID, "connID", connID)
+			p.LogDebug("done, removing session", "userID", userID, "connID", connID, "channelID", us.channelID)
 			p.mut.Lock()
 			delete(p.sessions, connID)
 			p.mut.Unlock()
@@ -352,7 +352,7 @@ func (p *Plugin) wsWriter() {
 }
 
 func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
-	p.LogDebug("handleJoin", "userID", userID, "connID", connID)
+	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
 
 	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
 		return fmt.Errorf("forbidden")
@@ -365,7 +365,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	p.mut.Lock()
 	if _, exists := p.sessions[connID]; exists {
 		p.mut.Unlock()
-		p.LogDebug("session already exists", "userID", userID, "connID", connID)
+		p.LogDebug("session already exists", "userID", userID, "connID", connID, "channelID", channelID)
 		return fmt.Errorf("session already exists")
 	}
 	us := newUserSession(userID, channelID, connID)
@@ -452,7 +452,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 					UserID:    userID,
 					SessionID: connID,
 				}
-				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID)
+				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID)
 				if err = p.rtcServer.InitSession(cfg, nil); err != nil {
 					p.LogError(err.Error(), "connID", connID)
 				}
@@ -479,7 +479,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	case <-p.stopCh:
 		p.LogDebug("stop received, exiting")
 	case <-us.wsCloseCh:
-		p.LogDebug("done", "userID", userID, "connID", connID)
+		p.LogDebug("done", "userID", userID, "connID", connID, "channelID", channelID)
 	}
 
 	if state, err := p.kvGetChannelState(channelID); err != nil {
