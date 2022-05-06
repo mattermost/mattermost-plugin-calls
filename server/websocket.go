@@ -310,6 +310,17 @@ func (p *Plugin) wsWriter() {
 				if !ok {
 					return
 				}
+
+				if msg.Type == rtcd.ClientMessageHello {
+					msgData, ok := msg.Data.(map[string]string)
+					if !ok {
+						p.LogError(fmt.Sprintf("unexpected data type %T", msg.Data))
+						continue
+					}
+					p.LogDebug("received hello message from rtcd", "connID", msgData["connID"])
+					continue
+				}
+
 				rtcMsg, ok := msg.Data.(rtc.Message)
 				if !ok {
 					p.LogError(fmt.Sprintf("unexpected data type %T", msg.Data))

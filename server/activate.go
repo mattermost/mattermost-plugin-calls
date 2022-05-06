@@ -52,14 +52,15 @@ func (p *Plugin) OnActivate() error {
 			return err
 		}
 
-		p.LogDebug("rtcd client connected successfully")
-
-		p.rtcdClient = client
 		go func() {
-			for err := range p.rtcdClient.ErrorCh() {
+			for err := range client.ErrorCh() {
 				p.LogError(err.Error())
 			}
 		}()
+
+		p.LogDebug("rtcd client connected successfully")
+
+		p.rtcdClient = client
 	} else {
 		if os.Getenv("CALLS_IS_HANDLER") != "" {
 			go func() {
