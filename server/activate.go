@@ -12,8 +12,8 @@ import (
 )
 
 func (p *Plugin) OnActivate() error {
-	if os.Getenv("MM_CALLS_DISABLE") == "true" {
-		p.LogInfo("disable flag is set, exiting")
+	if p.IsCloud() && os.Getenv("MM_CALLS_DISABLE") != "false" {
+		p.LogInfo("disable flag not set to false, exiting")
 		return fmt.Errorf("disabled by environment flag")
 	}
 

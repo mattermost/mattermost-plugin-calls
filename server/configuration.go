@@ -233,3 +233,11 @@ func (p *Plugin) OnConfigurationChange() error {
 
 	return p.setConfiguration(cfg)
 }
+
+func (p *Plugin) IsCloud() bool {
+	license := p.API.GetLicense()
+	if license == nil || license.Features == nil || license.Features.Cloud == nil {
+		return false
+	}
+	return *license.Features.Cloud
+}
