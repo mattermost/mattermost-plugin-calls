@@ -85,19 +85,10 @@ func (p *Plugin) OnActivate() error {
 			}()
 		}
 
-		var err error
-		publicHost := cfg.ICEHostOverride
-		if publicHost == "" {
-			publicHost, err = getPublicIP(*cfg.UDPServerPort, cfg.ICEServers)
-			if err != nil {
-				p.LogError(err.Error())
-				return err
-			}
-		}
-
 		rtcServer, err := rtc.NewServer(rtc.ServerConfig{
 			ICEPortUDP:      *cfg.UDPServerPort,
-			ICEHostOverride: publicHost,
+			ICEHostOverride: cfg.ICEHostOverride,
+			ICEServers:      cfg.ICEServers,
 		}, newLogger(p), p.metrics.RTCMetrics())
 		if err != nil {
 			p.LogError(err.Error())
@@ -112,12 +103,11 @@ func (p *Plugin) OnActivate() error {
 		p.mut.Lock()
 		p.nodeID = status.ClusterId
 		p.rtcServer = rtcServer
-		p.hostIP = publicHost
 		p.mut.Unlock()
 
 		go p.clusterEventsHandler()
 
-		p.LogDebug("activate", "ClusterID", status.ClusterId, "publicHost", publicHost)
+		p.LogDebug("activate", "ClusterID", status.ClusterId)
 	}
 
 	go p.wsWriter()
