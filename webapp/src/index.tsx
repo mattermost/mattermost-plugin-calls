@@ -18,6 +18,7 @@ import {pluginId} from './manifest';
 import CallsClient from './client';
 
 import ChannelHeaderButton from './components/channel_header_button';
+import ChannelHeaderDropdownButton from './components/channel_header_dropdown_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import CallWidget from './components/call_widget';
 import ChannelLinkLabel from './components/channel_link_label';
@@ -70,8 +71,6 @@ import {PluginRegistry, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
-    private unregisterChannelHeaderMenuButton: any;
-    private registerChannelHeaderMenuButton: any;
 
     constructor() {
         this.unsubscribers = [];
@@ -84,15 +83,12 @@ export default class Plugin {
 
     private registerWebSocketEvents(registry: PluginRegistry, store: Store) {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
-            this.unregisterChannelHeaderMenuButton();
-            this.registerChannelHeaderMenuButton();
             store.dispatch({
                 type: VOICE_CHANNEL_ENABLE,
             });
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_disable_voice`, (data) => {
-            this.unregisterChannelHeaderMenuButton();
             store.dispatch({
                 type: VOICE_CHANNEL_DISABLE,
             });
@@ -312,20 +308,21 @@ export default class Plugin {
         });
 
         let channelHeaderMenuButtonID: string;
-        this.unregisterChannelHeaderMenuButton = () => {
+        const unregisterChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 registry.unregisterComponent(channelHeaderMenuButtonID);
                 channelHeaderMenuButtonID = '';
             }
         };
-        this.unsubscribers.push(this.unregisterChannelHeaderMenuButton);
-        this.registerChannelHeaderMenuButton = () => {
+        this.unsubscribers.push(unregisterChannelHeaderMenuButton);
+        const registerChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 return;
             }
-            channelHeaderMenuButtonID = registry.registerChannelHeaderButtonAction(
-                ChannelHeaderButton
-                ,
+
+            channelHeaderMenuButtonID = registry.registerCallButtonAction(
+                ChannelHeaderButton,
+                ChannelHeaderDropdownButton,
                 async (channel) => {
                     try {
                         const users = voiceConnectedUsers(store.getState());
@@ -354,6 +351,8 @@ export default class Plugin {
             );
         };
 
+        registerChannelHeaderMenuButton();
+
         const connectCall = async (channelID: string) => {
             try {
                 if (window.callsClient) {
@@ -367,7 +366,6 @@ export default class Plugin {
                 window.callsClient.on('close', () => {
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);
-                    this.registerChannelHeaderMenuButton();
                     if (window.callsClient) {
                         window.callsClient.destroy();
                         delete window.callsClient;
@@ -378,8 +376,6 @@ export default class Plugin {
                 });
 
                 window.callsClient.init(channelID);
-
-                this.unregisterChannelHeaderMenuButton();
             } catch (err) {
                 delete window.callsClient;
                 console.log(err);
@@ -472,13 +468,8 @@ export default class Plugin {
                 console.log(err);
             }
 
-            this.unregisterChannelHeaderMenuButton();
-
             try {
                 const resp = await axios.get(`${getPluginPath()}/${channelID}`);
-                if (resp.data.enabled && connectedChannelID(store.getState()) !== channelID) {
-                    this.registerChannelHeaderMenuButton();
-                }
                 store.dispatch({
                     type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                 });
