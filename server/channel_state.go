@@ -22,6 +22,7 @@ type callState struct {
 	ScreenSharingID string                `json:"screen_sharing_id"`
 	ScreenStreamID  string                `json:"screen_stream_id"`
 	Stats           callStats             `json:"stats"`
+	RTCDHost        string                `json:"rtcd_host"`
 }
 
 type channelState struct {

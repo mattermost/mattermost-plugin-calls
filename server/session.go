@@ -73,6 +73,15 @@ func (p *Plugin) addUserSession(userID, channelID string) (channelState, error) 
 				Users:   make(map[string]*userState),
 			}
 			state.NodeID = p.nodeID
+
+			if p.rtcdManager != nil {
+				host, err := p.rtcdManager.GetHostForNewCall()
+				if err != nil {
+					return nil, fmt.Errorf("failed to get rtcd host: %w", err)
+				}
+				p.LogDebug("rtcd host has been assigned to call", "host", host)
+				state.Call.RTCDHost = host
+			}
 		}
 
 		if _, ok := state.Call.Users[userID]; ok {

@@ -8,7 +8,6 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
 
-	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
@@ -36,8 +35,8 @@ type Plugin struct {
 	clusterEvCh chan model.PluginClusterEvent
 	sessions    map[string]*session
 
-	rtcServer  *rtc.Server
-	rtcdClient *rtcd.Client
+	rtcServer   *rtc.Server
+	rtcdManager *rtcdClientManager
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
@@ -150,7 +149,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			Data:      msg.ClientMessage.Data,
 		}
 
-		if err := p.sendRTCMessage(rtcMsg); err != nil {
+		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
 			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	case clusterMessageTypeUserState:
@@ -179,7 +178,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			Data:      msg.ClientMessage.Data,
 		}
 
-		if err := p.sendRTCMessage(rtcMsg); err != nil {
+		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
 			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	default:

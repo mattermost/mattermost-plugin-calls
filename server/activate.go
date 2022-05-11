@@ -45,74 +45,69 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	if cfg.RTCDServiceURL != "" {
-		client, err := p.newRTCDClient(cfg.RTCDServiceURL)
+		rtcdManager, err := p.newRTCDClientManager(cfg.RTCDServiceURL)
 		if err != nil {
-			err = fmt.Errorf("failed to create rtcd client: %w", err)
+			err = fmt.Errorf("failed to create rtcd manager: %w", err)
 			p.LogError(err.Error())
 			return err
 		}
 
-		go func() {
-			for err := range client.ErrorCh() {
-				p.LogError(err.Error())
-			}
-		}()
+		p.LogDebug("rtcd client manager initialized successfully")
 
-		p.LogDebug("rtcd client connected successfully")
+		p.rtcdManager = rtcdManager
 
-		p.rtcdClient = client
-	} else {
-		if os.Getenv("CALLS_IS_HANDLER") != "" {
-			go func() {
-				p.LogInfo("calls handler, setting state", "clusterID", status.ClusterId)
-				if err := p.setHandlerID(status.ClusterId); err != nil {
-					p.LogError(err.Error())
-					return
-				}
-				ticker := time.NewTicker(handlerKeyCheckInterval)
-				defer ticker.Stop()
-				for {
-					select {
-					case <-ticker.C:
-						if err := p.setHandlerID(status.ClusterId); err != nil {
-							p.LogError(err.Error())
-							return
-						}
-					case <-p.stopCh:
-						return
-					}
-				}
-			}()
-		}
+		p.LogDebug("activated", "ClusterID", status.ClusterId)
 
-		rtcServer, err := rtc.NewServer(rtc.ServerConfig{
-			ICEPortUDP:      *cfg.UDPServerPort,
-			ICEHostOverride: cfg.ICEHostOverride,
-			ICEServers:      cfg.ICEServers,
-		}, newLogger(p), p.metrics.RTCMetrics())
-		if err != nil {
-			p.LogError(err.Error())
-			return err
-		}
-
-		if err := rtcServer.Start(); err != nil {
-			p.LogError(err.Error())
-			return err
-		}
-
-		p.mut.Lock()
-		p.nodeID = status.ClusterId
-		p.rtcServer = rtcServer
-		p.mut.Unlock()
-
-		go p.clusterEventsHandler()
-
-		p.LogDebug("activate", "ClusterID", status.ClusterId)
+		return nil
 	}
 
+	if os.Getenv("CALLS_IS_HANDLER") != "" {
+		go func() {
+			p.LogInfo("calls handler, setting state", "clusterID", status.ClusterId)
+			if err := p.setHandlerID(status.ClusterId); err != nil {
+				p.LogError(err.Error())
+				return
+			}
+			ticker := time.NewTicker(handlerKeyCheckInterval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					if err := p.setHandlerID(status.ClusterId); err != nil {
+						p.LogError(err.Error())
+						return
+					}
+				case <-p.stopCh:
+					return
+				}
+			}
+		}()
+	}
+
+	rtcServer, err := rtc.NewServer(rtc.ServerConfig{
+		ICEPortUDP:      *cfg.UDPServerPort,
+		ICEHostOverride: cfg.ICEHostOverride,
+		ICEServers:      cfg.ICEServers,
+	}, newLogger(p), p.metrics.RTCMetrics())
+	if err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+
+	if err := rtcServer.Start(); err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+
+	p.mut.Lock()
+	p.nodeID = status.ClusterId
+	p.rtcServer = rtcServer
+	p.mut.Unlock()
+
+	go p.clusterEventsHandler()
 	go p.wsWriter()
 
-	p.LogDebug("activated")
+	p.LogDebug("activated", "ClusterID", status.ClusterId)
 
 	return nil
 }
@@ -122,8 +117,8 @@ func (p *Plugin) OnDeactivate() error {
 	p.API.PublishWebSocketEvent(wsEventDeactivate, nil, &model.WebsocketBroadcast{ReliableClusterSend: true})
 	close(p.stopCh)
 
-	if p.rtcdClient != nil {
-		if err := p.rtcdClient.Close(); err != nil {
+	if p.rtcdManager != nil {
+		if err := p.rtcdManager.Close(); err != nil {
 			p.LogError(err.Error())
 		}
 	}
