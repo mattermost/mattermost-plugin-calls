@@ -44,7 +44,7 @@ const ChannelLinkLabel = (props: Props) => {
             >
 
                 <ActiveCallIcon
-                    fill={props.theme.centerChannelColor}
+                    fill={props.theme.sidebarText}
                     style={{marginLeft: 'auto', height: 'auto'}}
                 />
 
