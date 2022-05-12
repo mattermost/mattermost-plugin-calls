@@ -22,14 +22,17 @@ func TestGetHostForNewCall(t *testing.T) {
 		m := &rtcdClientManager{
 			hosts: map[string]*rtcdHost{
 				"127.0.0.1": {
+					ip:           "127.0.0.1",
 					callsCounter: 10,
 					flagged:      true,
 				},
 				"127.0.0.2": {
+					ip:           "127.0.0.2",
 					callsCounter: 1,
 					flagged:      true,
 				},
 				"127.0.0.3": {
+					ip:           "127.0.0.3",
 					callsCounter: 5,
 					flagged:      true,
 				},
@@ -46,12 +49,15 @@ func TestGetHostForNewCall(t *testing.T) {
 		m := &rtcdClientManager{
 			hosts: map[string]*rtcdHost{
 				"127.0.0.1": {
+					ip:           "127.0.0.1",
 					callsCounter: 10,
 				},
 				"127.0.0.2": {
+					ip:           "127.0.0.2",
 					callsCounter: 9,
 				},
 				"127.0.0.3": {
+					ip:           "127.0.0.3",
 					callsCounter: 11,
 				},
 			},
@@ -60,25 +66,29 @@ func TestGetHostForNewCall(t *testing.T) {
 		host, err := m.GetHostForNewCall()
 		require.NoError(t, err)
 		require.Equal(t, "127.0.0.2", host)
-
+		require.Equal(t, uint64(10), m.hosts[host].callsCounter)
 	})
 
 	t.Run("non-flagged host with minimum calls counter", func(t *testing.T) {
 		m := &rtcdClientManager{
 			hosts: map[string]*rtcdHost{
 				"127.0.0.1": {
+					ip:           "127.0.0.1",
 					callsCounter: 10,
 					flagged:      false,
 				},
 				"127.0.0.2": {
+					ip:           "127.0.0.2",
 					callsCounter: 1,
 					flagged:      true,
 				},
 				"127.0.0.3": {
+					ip:           "127.0.0.3",
 					callsCounter: 5,
 					flagged:      false,
 				},
 				"127.0.0.4": {
+					ip:           "127.0.0.4",
 					callsCounter: 15,
 					flagged:      false,
 				},
@@ -88,6 +98,63 @@ func TestGetHostForNewCall(t *testing.T) {
 		host, err := m.GetHostForNewCall()
 		require.NoError(t, err)
 		require.Equal(t, "127.0.0.3", host)
+		require.Equal(t, uint64(6), m.hosts[host].callsCounter)
+	})
+
+	t.Run("load balancing", func(t *testing.T) {
+		m := &rtcdClientManager{
+			hosts: map[string]*rtcdHost{
+				"127.0.0.1": {
+					ip:           "127.0.0.1",
+					callsCounter: 0,
+					flagged:      false,
+				},
+				"127.0.0.2": {
+					ip:           "127.0.0.2",
+					callsCounter: 0,
+					flagged:      false,
+				},
+				"127.0.0.3": {
+					ip:           "127.0.0.2",
+					callsCounter: 0,
+					flagged:      false,
+				},
+			},
+		}
+
+		for i := 0; i < 99; i++ {
+			_, err := m.GetHostForNewCall()
+			require.NoError(t, err)
+		}
+
+		for _, host := range m.hosts {
+			require.Equal(t, uint64(33), host.callsCounter)
+		}
+	})
+
+	t.Run("load balancing - one flagged", func(t *testing.T) {
+		m := &rtcdClientManager{
+			hosts: map[string]*rtcdHost{
+				"127.0.0.1": {
+					ip:           "127.0.0.1",
+					callsCounter: 0,
+					flagged:      true,
+				},
+				"127.0.0.2": {
+					ip:           "127.0.0.2",
+					callsCounter: 0,
+					flagged:      false,
+				},
+			},
+		}
+
+		for i := 0; i < 100; i++ {
+			_, err := m.GetHostForNewCall()
+			require.NoError(t, err)
+		}
+
+		require.Equal(t, uint64(100), m.hosts["127.0.0.2"].callsCounter)
+		require.Equal(t, uint64(0), m.hosts["127.0.0.1"].callsCounter)
 	})
 }
 

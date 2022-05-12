@@ -216,24 +216,28 @@ func (m *rtcdClientManager) GetHostForNewCall() (string, error) {
 	m.mut.RLock()
 	defer m.mut.RUnlock()
 
-	var hostIP string
+	var h *rtcdHost
 	var minCounter uint64
-	for ip, host := range m.hosts {
+	for _, host := range m.hosts {
 		host.mut.RLock()
-		// TODO: this only takes in consideration the calls started from this
+		// TODO: this only takes into consideration the calls started from this
 		// instance. A better strategy would be to ask rtcd for a global count (coming soon).
-		if !host.flagged && (hostIP == "" || host.callsCounter < minCounter) {
-			hostIP = ip
+		if !host.flagged && (h == nil || host.callsCounter < minCounter) {
+			h = host
 			minCounter = host.callsCounter
 		}
 		host.mut.RUnlock()
 	}
 
-	if hostIP == "" {
+	if h == nil {
 		return "", fmt.Errorf("no host available")
 	}
 
-	return hostIP, nil
+	h.mut.Lock()
+	h.callsCounter++
+	h.mut.Unlock()
+
+	return h.ip, nil
 }
 
 // Send routes the message to the appropriate host that's handling the given
