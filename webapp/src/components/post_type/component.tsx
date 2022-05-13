@@ -48,11 +48,11 @@ const PostType = ({post, connectedID, hasCall, pictures, profiles, showSwitchCal
         <Duration>{moment(post.props.start_at).fromNow()}</Duration>
     );
 
-    const title = post.props.title ? (<h3 className='markdown__heading'>{post.props.title}</h3>) : (<div/>);
-
     return (
         <>
-            {title}
+            {post.props.title &&
+                <h3 className='markdown__heading'>{post.props.title}</h3>
+            }
             <Main data-testid={'call-thread'}>
                 <SubMain ended={Boolean(post.props.end_at)}>
                     <Left>
