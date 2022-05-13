@@ -5,9 +5,9 @@ go 1.17
 require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/mattermost/mattermost-server/v6 v6.6.0
-	github.com/pion/ice/v2 v2.2.2 // indirect
+	github.com/pion/ice/v2 v2.2.6 // indirect
 	github.com/pion/rtcp v1.2.9 // indirect
-	github.com/pion/webrtc/v3 v3.1.26 // indirect
+	github.com/pion/webrtc/v3 v3.1.37 // indirect
 	github.com/prometheus/client_golang v1.12.1
 	github.com/stretchr/testify v1.7.1
 )
@@ -15,7 +15,7 @@ require (
 require (
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.0.27
-	github.com/mattermost/rtcd v0.4.1-0.20220510065451-52a5335634f5
+	github.com/mattermost/rtcd v0.4.1-0.20220513071721-7c0bd16b658b
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324
 )
@@ -63,15 +63,15 @@ require (
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
 	github.com/pion/datachannel v1.5.2 // indirect
-	github.com/pion/dtls/v2 v2.1.3 // indirect
-	github.com/pion/interceptor v0.1.10 // indirect
+	github.com/pion/dtls/v2 v2.1.4 // indirect
+	github.com/pion/interceptor v0.1.11 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/mdns v0.0.5 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
-	github.com/pion/rtp v1.7.9 // indirect
+	github.com/pion/rtp v1.7.13 // indirect
 	github.com/pion/sctp v1.8.2 // indirect
 	github.com/pion/sdp/v3 v3.0.4 // indirect
-	github.com/pion/srtp/v2 v2.0.6-0.20211031173006-1d7627ee3ca0 // indirect
+	github.com/pion/srtp/v2 v2.0.7 // indirect
 	github.com/pion/stun v0.3.5 // indirect
 	github.com/pion/transport v0.13.0 // indirect
 	github.com/pion/turn/v2 v2.0.8 // indirect
@@ -95,12 +95,11 @@ require (
 	github.com/wiggin77/srslog v1.0.1 // indirect
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	github.com/yuin/goldmark v1.4.7 // indirect
-	golang.org/x/crypto v0.0.0-20220314234724-5d542ad81a58 // indirect
+	golang.org/x/crypto v0.0.0-20220507011949-2cf3adece122 // indirect
 	golang.org/x/exp v0.0.0-20200908183739-ae8ad444f925 // indirect
-	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
-	golang.org/x/sys v0.0.0-20220224120231-95c6836cb0e7 // indirect
+	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
+	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20220222213610-43724f9ea8cf // indirect
 	google.golang.org/grpc v1.44.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
