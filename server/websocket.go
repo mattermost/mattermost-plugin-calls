@@ -362,7 +362,7 @@ func (p *Plugin) wsWriter() {
 	}
 }
 
-func (p *Plugin) handleJoin(userID, connID, channelID string) error {
+func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
 
 	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
@@ -400,7 +400,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID string) error {
 		})
 
 		// new call has started
-		threadID, err := p.startNewCallThread(userID, channelID, state.Call.StartAt)
+		threadID, err := p.startNewCallThread(userID, channelID, state.Call.StartAt, title)
 		if err != nil {
 			p.LogError(err.Error())
 		}
@@ -590,8 +590,11 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("missing channelID")
 			return
 		}
+		// Title is optional, so if it's not present,
+		// it will be an empty string.
+		title, _ := req.Data["title"].(string)
 		go func() {
-			if err := p.handleJoin(userID, connID, channelID); err != nil {
+			if err := p.handleJoin(userID, connID, channelID, title); err != nil {
 				p.LogError(err.Error())
 				p.metrics.IncWebSocketEvent("out", "error")
 				p.API.PublishWebSocketEvent(wsEventError, map[string]interface{}{
