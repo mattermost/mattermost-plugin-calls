@@ -12,7 +12,6 @@ import ChannelCallToast from './component';
 const mapStateToProps = (state) => {
     let hasCall = false;
     const currentID = getCurrentChannelId(state);
-    const teamID = getCurrentTeamId(state);
     const connectedID = connectedChannelID(state);
     const channels = voiceConnectedChannels(state);
 
@@ -30,7 +29,6 @@ const mapStateToProps = (state) => {
     }
     return {
         currChannelID: currentID,
-        currTeamId: teamID,
         connectedID,
         hasCall,
         startAt: voiceChannelCallStartAt(state, currentID),

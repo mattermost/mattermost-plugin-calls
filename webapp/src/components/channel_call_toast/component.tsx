@@ -8,7 +8,6 @@ import ConnectedProfiles from '../../components/connected_profiles';
 
 interface Props {
     currChannelID: string,
-    currTeamId: string,
     connectedID?: string,
     hasCall: boolean,
     startAt?: number,
