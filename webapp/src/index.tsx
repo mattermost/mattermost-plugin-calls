@@ -353,7 +353,7 @@ export default class Plugin {
 
                     if (!connectedChannelID(store.getState())) {
                         connectCall(channel.id);
-                        followThread(channel.id, channel.teamID);
+                        followThread(channel.id, channel.team_id);
                     } else if (connectedChannelID(store.getState()) !== channel.id) {
                         store.dispatch({
                             type: SHOW_SWITCH_CALL_MODAL,
