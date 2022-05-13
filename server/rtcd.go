@@ -77,36 +77,13 @@ func (p *Plugin) newRTCDClientManager(rtcdURL string) (m *rtcdClientManager, err
 		if err != nil {
 			return nil, err
 		}
-		hosts[ip.String()] = &rtcdHost{
-			ip:     ip.String(),
-			client: client,
+		if err := m.addHost(ip.String(), client); err != nil {
+			return nil, fmt.Errorf("failed to add host: %w", err)
 		}
-
 		m.ctx.LogDebug("rtcd client created successfully", "host", ip.String())
 	}
 
 	m.hosts = hosts
-
-	for _, host := range hosts {
-		go func(client *rtcd.Client) {
-			for {
-				select {
-				case err, ok := <-client.ErrorCh():
-					if !ok {
-						return
-					}
-					m.ctx.LogError(err.Error())
-				case msg, ok := <-client.ReceiveCh():
-					if !ok {
-						return
-					}
-					if err := m.handleClientMsg(msg); err != nil {
-						m.ctx.LogError(err.Error())
-					}
-				}
-			}
-		}(host.client)
-	}
 
 	go m.hostsChecker()
 
@@ -162,8 +139,7 @@ func (m *rtcdClientManager) hostsChecker() {
 					}
 
 					if err := m.addHost(ip, client); err != nil {
-						_ = client.Close()
-						m.ctx.LogError(fmt.Sprintf("failed to add client: %s", err.Error()), "host", ip)
+						m.ctx.LogError(fmt.Sprintf("failed to add host: %s", err.Error()), "host", ip)
 						continue
 					}
 				}
@@ -191,9 +167,15 @@ func (m *rtcdClientManager) removeHost(host string) error {
 	return nil
 }
 
-func (m *rtcdClientManager) addHost(host string, client *rtcd.Client) error {
+func (m *rtcdClientManager) addHost(host string, client *rtcd.Client) (err error) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
+
+	defer func() {
+		if err != nil {
+			_ = client.Close()
+		}
+	}()
 
 	m.ctx.LogDebug("adding rtcd host", "host", host)
 
@@ -205,6 +187,8 @@ func (m *rtcdClientManager) addHost(host string, client *rtcd.Client) error {
 		ip:     host,
 		client: client,
 	}
+
+	go m.clientReader(client)
 
 	return nil
 }
@@ -263,8 +247,7 @@ func (m *rtcdClientManager) Send(msg rtcd.ClientMessage, callID string) error {
 			return fmt.Errorf("failed to create new client: %w", err)
 		}
 		if err := m.addHost(state.Call.RTCDHost, client); err != nil {
-			_ = client.Close()
-			return fmt.Errorf("failed to add client: %w", err)
+			return fmt.Errorf("failed to add host: %w", err)
 		}
 	} else {
 		client = h.client
@@ -527,5 +510,24 @@ func getDialFn(host, port string) rtcd.DialContextFn {
 			Timeout: dialingTimeout,
 		}
 		return dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%s", host, port))
+	}
+}
+
+func (m *rtcdClientManager) clientReader(client *rtcd.Client) {
+	for {
+		select {
+		case err, ok := <-client.ErrorCh():
+			if !ok {
+				return
+			}
+			m.ctx.LogError(err.Error())
+		case msg, ok := <-client.ReceiveCh():
+			if !ok {
+				return
+			}
+			if err := m.handleClientMsg(msg); err != nil {
+				m.ctx.LogError(err.Error())
+			}
+		}
 	}
 }
