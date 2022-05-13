@@ -7,7 +7,7 @@ orbs:
 executors:
   default:
     docker:
-      - image: cimg/go:1.17.6
+      - image: cimg/go:1.17.9@sha256:25086b6ea0e5e898f8d04f3a9a57d9bafedf50c973398981ef3d0952db7ee996
 
 commands:
   install-node-npm:
@@ -39,7 +39,7 @@ commands:
           name: Getting JavaScript dependencies
           command: |
             cd webapp
-            NODE_ENV=development npm install --ignore-scripts --no-save
+            NODE_ENV=development npm ci --ignore-scripts --no-save
       - save_cache:
           name: Save npm cache
           key: v2-npm-{{ checksum "./webapp/package-lock.json" }}-{{ arch }}
@@ -155,7 +155,7 @@ jobs:
 
   deploy-release-github:
     docker:
-      - image: cibuilds/github:0.13
+      - image: cibuilds/github:0.13.0@sha256:2cee61741812b8ecaa53a92b0cdb3d8fea24bc7c50c9d394c055df97497857be
     steps:
       - attach_workspace:
           at: dist

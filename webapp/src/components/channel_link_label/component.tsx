@@ -11,6 +11,7 @@ import {getUserDisplayName} from '../../utils';
 import ActiveCallIcon from '../../components/icons/active_call_icon';
 
 interface Props {
+    theme: any,
     hasCall: boolean,
     profiles: UserProfile[],
 }
@@ -43,7 +44,7 @@ const ChannelLinkLabel = (props: Props) => {
             >
 
                 <ActiveCallIcon
-                    fill='#FFFFFF'
+                    fill={props.theme.centerChannelColor}
                     style={{marginLeft: 'auto', height: 'auto'}}
                 />
 

@@ -4,13 +4,14 @@
     "description": "Integrates real-time voice communication in Mattermost",
     "homepage_url": "https://github.com/mattermost/mattermost-plugin-calls/",
     "support_url": "https://github.com/mattermost/mattermost-plugin-calls/issues",
-    "min_server_version": "6.3.0",
+    "min_server_version": "6.6.0",
     "server": {
         "executables": {
             "linux-amd64": "server/dist/plugin-linux-amd64",
             "linux-arm64": "server/dist/plugin-linux-arm64",
             "darwin-amd64": "server/dist/plugin-darwin-amd64",
-            "darwin-arm64": "server/dist/plugin-darwin-arm64"
+            "darwin-arm64": "server/dist/plugin-darwin-arm64",
+            "freebsd-amd64": "server/dist/plugin-freebsd-amd64"
         }
     },
     "webapp": {
@@ -33,6 +34,13 @@
           "help_text": "The UDP port the RTC server will listen on.",
           "default": 8443,
           "placeholder": "8443"
+        },
+        {
+          "key": "RTCDServiceURL",
+          "display_name": "RTCD Service URL",
+          "type": "text",
+          "help_text": "The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
+          "placeholder": "https://rtcd.example.com"
         },
         {
           "key": "ICEServers",

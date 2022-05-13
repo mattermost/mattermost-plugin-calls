@@ -11,6 +11,8 @@ import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels'
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
+import {RTCStats} from 'src/types/types';
+
 import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt, voiceChannelRootPost} from './selectors';
 
 import {pluginId} from './manifest';
@@ -18,6 +20,7 @@ import {pluginId} from './manifest';
 import CallsClient from './client';
 
 import ChannelHeaderButton from './components/channel_header_button';
+import ChannelHeaderDropdownButton from './components/channel_header_dropdown_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import CallWidget from './components/call_widget';
 import ChannelLinkLabel from './components/channel_link_label';
@@ -71,8 +74,6 @@ import {PluginRegistry, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
-    private unregisterChannelHeaderMenuButton: any;
-    private registerChannelHeaderMenuButton: any;
 
     constructor() {
         this.unsubscribers = [];
@@ -85,15 +86,12 @@ export default class Plugin {
 
     private registerWebSocketEvents(registry: PluginRegistry, store: Store) {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
-            this.unregisterChannelHeaderMenuButton();
-            this.registerChannelHeaderMenuButton();
             store.dispatch({
                 type: VOICE_CHANNEL_ENABLE,
             });
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_disable_voice`, (data) => {
-            this.unregisterChannelHeaderMenuButton();
             store.dispatch({
                 type: VOICE_CHANNEL_DISABLE,
             });
@@ -260,7 +258,7 @@ export default class Plugin {
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
 
-        registry.registerSlashCommandWillBePostedHook((message, args) => {
+        registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             const fullCmd = message.trim();
             const fields = fullCmd.split(/\s+/);
             if (fields.length < 2) {
@@ -303,26 +301,39 @@ export default class Plugin {
                     console.log('experimental features disabled');
                     window.localStorage.removeItem('calls_experimental_features');
                 }
+                break;
+            case 'stats':
+                if (!window.callsClient) {
+                    return {error: {message: 'You are not connected to any call'}};
+                }
+                try {
+                    const stats = await window.callsClient.getStats();
+                    console.log(JSON.stringify(stats, null, 2));
+                    return {message: `/call stats "${JSON.stringify(stats)}"`, args};
+                } catch (err) {
+                    return {error: {message: err}};
+                }
             }
 
             return {message, args};
         });
 
         let channelHeaderMenuButtonID: string;
-        this.unregisterChannelHeaderMenuButton = () => {
+        const unregisterChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 registry.unregisterComponent(channelHeaderMenuButtonID);
                 channelHeaderMenuButtonID = '';
             }
         };
-        this.unsubscribers.push(this.unregisterChannelHeaderMenuButton);
-        this.registerChannelHeaderMenuButton = () => {
+        this.unsubscribers.push(unregisterChannelHeaderMenuButton);
+        const registerChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 return;
             }
-            channelHeaderMenuButtonID = registry.registerChannelHeaderButtonAction(
-                ChannelHeaderButton
-                ,
+
+            channelHeaderMenuButtonID = registry.registerCallButtonAction(
+                ChannelHeaderButton,
+                ChannelHeaderDropdownButton,
                 async (channel) => {
                     try {
                         const users = voiceConnectedUsers(store.getState());
@@ -361,25 +372,21 @@ export default class Plugin {
             }
         };
 
-        let initializing = false;
+        registerChannelHeaderMenuButton();
+
         const connectCall = async (channelID: string) => {
-            if (initializing) {
-                console.log('client is already initializing');
-                return;
-            } else if (window.callsClient) {
-                console.log('client is already initialized');
-                return;
-            }
             try {
-                initializing = true;
-                window.callsClient = await new CallsClient().init(channelID);
-                initializing = false;
+                if (window.callsClient) {
+                    console.log('calls client is already initialized');
+                    return;
+                }
+
+                window.callsClient = new CallsClient();
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', () => {
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);
-                    this.registerChannelHeaderMenuButton();
                     if (window.callsClient) {
                         window.callsClient.destroy();
                         delete window.callsClient;
@@ -388,9 +395,10 @@ export default class Plugin {
                         audio.play();
                     }
                 });
-                this.unregisterChannelHeaderMenuButton();
+
+                window.callsClient.init(channelID);
             } catch (err) {
-                initializing = false;
+                delete window.callsClient;
                 console.log(err);
             }
         };
@@ -482,13 +490,8 @@ export default class Plugin {
                 console.log(err);
             }
 
-            this.unregisterChannelHeaderMenuButton();
-
             try {
                 const resp = await axios.get(`${getPluginPath()}/${channelID}`);
-                if (resp.data.enabled && connectedChannelID(store.getState()) !== channelID) {
-                    this.registerChannelHeaderMenuButton();
-                }
                 store.dispatch({
                     type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                 });

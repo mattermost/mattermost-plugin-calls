@@ -10,8 +10,6 @@ import (
 
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
@@ -131,7 +129,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	// loop on channels to check membership/permissions
 	page = 0
 	for {
-		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVList"}).Inc()
+		p.metrics.IncStoreOp("KVList")
 		channelIDs, appErr := p.API.KVList(page, perPage)
 		if appErr != nil {
 			p.LogError(appErr.Error())
@@ -182,52 +180,58 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
+	var res httpResponse
+	defer p.httpAudit("handlePostChannel", res, w, r)
+
 	userID := r.Header.Get("Mattermost-User-Id")
 
 	cfg := p.getConfiguration()
 	if !*cfg.AllowEnableCalls && !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		res.err = "Forbidden"
+		res.code = http.StatusForbidden
 		return
 	}
 
 	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
-		p.LogError(appErr.Error())
-		http.Error(w, appErr.Error(), http.StatusInternalServerError)
+		res.err = appErr.Error()
+		res.code = http.StatusInternalServerError
 		return
 	}
 
 	cm, appErr := p.API.GetChannelMember(channelID, userID)
 	if appErr != nil {
-		p.LogError(appErr.Error())
-		http.Error(w, appErr.Error(), http.StatusInternalServerError)
+		res.err = appErr.Error()
+		res.code = http.StatusInternalServerError
 		return
 	}
 
 	switch channel.Type {
 	case model.ChannelTypeOpen, model.ChannelTypePrivate:
 		if !cm.SchemeAdmin && !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			res.err = "Forbidden"
+			res.code = http.StatusForbidden
 			return
 		}
 	case model.ChannelTypeDirect, model.ChannelTypeGroup:
 		if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			res.err = "Forbidden"
+			res.code = http.StatusForbidden
 			return
 		}
 	}
 
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		p.LogError(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		res.err = err.Error()
+		res.code = http.StatusInternalServerError
 		return
 	}
 
 	var info ChannelState
 	if err := json.Unmarshal(data, &info); err != nil {
-		p.LogError(err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		res.err = err.Error()
+		res.code = http.StatusBadRequest
 		return
 	}
 
@@ -239,8 +243,8 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		return state, nil
 	}); err != nil {
 		// handle creation case
-		p.LogError(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		res.err = err.Error()
+		res.code = http.StatusInternalServerError
 		return
 	}
 
@@ -251,14 +255,23 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		evType = "channel_disable_voice"
 	}
 
-	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID})
+	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	if _, err := w.Write(data); err != nil {
 		p.LogError(err.Error())
 	}
 }
 
-func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleDebug", res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	if !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+		res.err = "Forbidden"
+		res.code = http.StatusForbidden
+		return
+	}
 	if strings.HasPrefix(r.URL.Path, "/debug/pprof/profile") {
 		pprof.Profile(w, r)
 		return
@@ -269,7 +282,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		pprof.Index(w, r)
 		return
 	}
+	res.err = "Not found"
+	res.code = http.StatusNotFound
+}
 
+func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/version") {
 		p.handleGetVersion(w, r)
 		return
@@ -282,6 +299,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	if r.Header.Get("Mattermost-User-Id") == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/debug") {
+		p.handleDebug(w, r)
 		return
 	}
 

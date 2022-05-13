@@ -1,17 +1,27 @@
 package main
 
 import (
-	"net"
+	"fmt"
 	"os"
-	"syscall"
 	"time"
 
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/rtcd/service/rtc"
 
-	"github.com/pion/webrtc/v3"
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 func (p *Plugin) OnActivate() error {
+	if os.Getenv("MM_CALLS_DISABLE") == "true" {
+		p.LogInfo("disable flag is set, exiting")
+		return fmt.Errorf("disabled by environment flag")
+	}
+
+	p.LogDebug("activating")
+
+	pluginAPIClient := pluginapi.NewClient(p.API, p.Driver)
+	p.pluginAPI = pluginAPIClient
+
 	if err := p.cleanUpState(); err != nil {
 		p.LogError(err.Error())
 		return err
@@ -28,117 +38,100 @@ func (p *Plugin) OnActivate() error {
 		return appErr
 	}
 
-	if os.Getenv("CALLS_IS_HANDLER") != "" {
-		go func() {
-			p.LogInfo("calls handler, setting state", "clusterID", status.ClusterId)
-			if err := p.setHandlerID(status.ClusterId); err != nil {
-				p.LogError(err.Error())
-				return
-			}
-			ticker := time.NewTicker(handlerKeyCheckInterval)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ticker.C:
-					if err := p.setHandlerID(status.ClusterId); err != nil {
-						p.LogError(err.Error())
-						return
-					}
-				case <-p.stopCh:
-					return
-				}
-			}
-		}()
-	}
-
 	cfg := p.getConfiguration()
 	if err := cfg.IsValid(); err != nil {
 		p.LogError(err.Error())
 		return err
 	}
 
-	udpServerConn, err := net.ListenUDP("udp4", &net.UDPAddr{
-		Port: *cfg.UDPServerPort,
-	})
-	if err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-
-	// Set size of UDP buffers.
-	if err := udpServerConn.SetWriteBuffer(4194304); err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-
-	if err := udpServerConn.SetReadBuffer(4194304); err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-	connFile, err := udpServerConn.File()
-	if err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-	defer connFile.Close()
-
-	sysConn, err := connFile.SyscallConn()
-	if err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-	err = sysConn.Control(func(fd uintptr) {
-		writeBufSize, err := syscall.GetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_SNDBUF)
+	if cfg.RTCDServiceURL != "" {
+		client, err := p.newRTCDClient(cfg.RTCDServiceURL)
 		if err != nil {
+			err = fmt.Errorf("failed to create rtcd client: %w", err)
 			p.LogError(err.Error())
+			return err
 		}
-		readBufSize, err := syscall.GetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_RCVBUF)
-		if err != nil {
-			p.LogError(err.Error())
-		}
-		p.LogInfo("UDP buffers", "writeBufSize", writeBufSize, "readBufSize", readBufSize)
-	})
-	if err != nil {
-		p.LogError(err.Error())
-		return err
-	}
 
-	publicHost := cfg.ICEHostOverride
-	if publicHost == "" {
-		publicHost, err = getPublicIP(udpServerConn, cfg.ICEServers)
+		go func() {
+			for err := range client.ErrorCh() {
+				p.LogError(err.Error())
+			}
+		}()
+
+		p.LogDebug("rtcd client connected successfully")
+
+		p.rtcdClient = client
+	} else {
+		if os.Getenv("CALLS_IS_HANDLER") != "" {
+			go func() {
+				p.LogInfo("calls handler, setting state", "clusterID", status.ClusterId)
+				if err := p.setHandlerID(status.ClusterId); err != nil {
+					p.LogError(err.Error())
+					return
+				}
+				ticker := time.NewTicker(handlerKeyCheckInterval)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-ticker.C:
+						if err := p.setHandlerID(status.ClusterId); err != nil {
+							p.LogError(err.Error())
+							return
+						}
+					case <-p.stopCh:
+						return
+					}
+				}
+			}()
+		}
+
+		rtcServer, err := rtc.NewServer(rtc.ServerConfig{
+			ICEPortUDP:      *cfg.UDPServerPort,
+			ICEHostOverride: cfg.ICEHostOverride,
+			ICEServers:      cfg.ICEServers,
+		}, newLogger(p), p.metrics.RTCMetrics())
 		if err != nil {
 			p.LogError(err.Error())
 			return err
 		}
+
+		if err := rtcServer.Start(); err != nil {
+			p.LogError(err.Error())
+			return err
+		}
+
+		p.mut.Lock()
+		p.nodeID = status.ClusterId
+		p.rtcServer = rtcServer
+		p.mut.Unlock()
+
+		go p.clusterEventsHandler()
+
+		p.LogDebug("activate", "ClusterID", status.ClusterId)
 	}
 
-	udpServerMux := webrtc.NewICEUDPMux(nil, udpServerConn)
+	go p.wsWriter()
 
-	p.mut.Lock()
-	p.nodeID = status.ClusterId
-	p.udpServerMux = udpServerMux
-	p.udpServerConn = udpServerConn
-	p.hostIP = publicHost
-	p.mut.Unlock()
-
-	p.LogDebug("activate", "ClusterID", status.ClusterId, "PublicHost", publicHost)
-
-	go p.clusterEventsHandler()
+	p.LogDebug("activated")
 
 	return nil
 }
 
 func (p *Plugin) OnDeactivate() error {
 	p.LogDebug("deactivate")
-	p.API.PublishWebSocketEvent(wsEventDeactivate, nil, &model.WebsocketBroadcast{})
+	p.API.PublishWebSocketEvent(wsEventDeactivate, nil, &model.WebsocketBroadcast{ReliableClusterSend: true})
 	close(p.stopCh)
 
-	if p.udpServerMux != nil {
-		p.udpServerMux.Close()
+	if p.rtcdClient != nil {
+		if err := p.rtcdClient.Close(); err != nil {
+			p.LogError(err.Error())
+		}
 	}
 
-	if p.udpServerConn != nil {
-		p.udpServerConn.Close()
+	if p.rtcServer != nil {
+		if err := p.rtcServer.Stop(); err != nil {
+			p.LogError(err.Error())
+		}
 	}
 
 	if err := p.cleanUpState(); err != nil {

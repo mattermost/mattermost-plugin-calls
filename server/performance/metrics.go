@@ -3,6 +3,9 @@ package performance
 import (
 	"net/http"
 
+	"github.com/mattermost/rtcd/service/perf"
+	"github.com/mattermost/rtcd/service/rtc"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -13,20 +16,16 @@ const (
 	metricsSubSystemWS      = "websocket"
 	metricsSubSystemCluster = "cluster"
 	metricsSubSystemStore   = "store"
-	metricsSubSystemRTC     = "rtc"
 )
 
 type Metrics struct {
-	registry *prometheus.Registry
+	registry   *prometheus.Registry
+	rtcMetrics *perf.Metrics
 
 	WebSocketConnections   *prometheus.GaugeVec
 	WebSocketEventCounters *prometheus.CounterVec
 	ClusterEventCounters   *prometheus.CounterVec
 	StoreOpCounters        *prometheus.CounterVec
-	RTPPacketCounters      *prometheus.CounterVec
-	RTPPacketBytesCounters *prometheus.CounterVec
-	RTCSessions            *prometheus.GaugeVec
-	RTCConnStateCounters   *prometheus.CounterVec
 }
 
 func NewMetrics() *Metrics {
@@ -44,7 +43,7 @@ func NewMetrics() *Metrics {
 		Name:      "connections_total",
 		Help:      "The total number of active WebSocket connections.",
 	},
-		[]string{"channelID"},
+		[]string{"callID"},
 	)
 	m.registry.MustRegister(m.WebSocketConnections)
 
@@ -81,53 +80,35 @@ func NewMetrics() *Metrics {
 	)
 	m.registry.MustRegister(m.StoreOpCounters)
 
-	m.RTPPacketCounters = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: metricsNamespace,
-			Subsystem: metricsSubSystemRTC,
-			Name:      "rtp_packets_total",
-			Help:      "Total number of sent/received RTP packets",
-		},
-		[]string{"direction", "type"},
-	)
-	m.registry.MustRegister(m.RTPPacketCounters)
-
-	m.RTPPacketBytesCounters = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: metricsNamespace,
-			Subsystem: metricsSubSystemRTC,
-			Name:      "rtp_bytes_total",
-			Help:      "Total number of sent/received RTP packet bytes",
-		},
-		[]string{"direction", "type"},
-	)
-	m.registry.MustRegister(m.RTPPacketBytesCounters)
-
-	m.RTCSessions = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: metricsNamespace,
-			Subsystem: metricsSubSystemRTC,
-			Name:      "sessions_total",
-			Help:      "Total number of active RTC sessions",
-		},
-		[]string{"channelID"},
-	)
-	m.registry.MustRegister(m.RTCSessions)
-
-	m.RTCConnStateCounters = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: metricsNamespace,
-			Subsystem: metricsSubSystemRTC,
-			Name:      "conn_states_total",
-			Help:      "Total number of RTC connection state changes",
-		},
-		[]string{"type"},
-	)
-	m.registry.MustRegister(m.RTCConnStateCounters)
+	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
 }
 
+func (m *Metrics) RTCMetrics() rtc.Metrics {
+	return m.rtcMetrics
+}
+
 func (m *Metrics) Handler() http.Handler {
 	return promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{})
+}
+
+func (m *Metrics) IncWebSocketEvent(direction, evType string) {
+	m.WebSocketEventCounters.With(prometheus.Labels{"direction": direction, "type": evType}).Inc()
+}
+
+func (m *Metrics) IncWebSocketConn(callID string) {
+	m.WebSocketConnections.With(prometheus.Labels{"callID": callID}).Inc()
+}
+
+func (m *Metrics) DecWebSocketConn(callID string) {
+	m.WebSocketConnections.With(prometheus.Labels{"callID": callID}).Dec()
+}
+
+func (m *Metrics) IncClusterEvent(evType string) {
+	m.ClusterEventCounters.With(prometheus.Labels{"type": evType}).Inc()
+}
+
+func (m *Metrics) IncStoreOp(op string) {
+	m.StoreOpCounters.With(prometheus.Labels{"type": op}).Inc()
 }
