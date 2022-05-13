@@ -35,7 +35,6 @@ type Plugin struct {
 	stopCh      chan struct{}
 	clusterEvCh chan model.PluginClusterEvent
 	sessions    map[string]*session
-	hostIP      string
 
 	rtcServer  *rtc.Server
 	rtcdClient *rtcd.Client

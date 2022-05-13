@@ -15,8 +15,7 @@ require (
 require (
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.0.27
-	github.com/mattermost/rtcd v0.3.1-0.20220503133805-5843e14828b7
-	github.com/pion/stun v0.3.5
+	github.com/mattermost/rtcd v0.4.1-0.20220510065451-52a5335634f5
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324
 )
@@ -73,6 +72,7 @@ require (
 	github.com/pion/sctp v1.8.2 // indirect
 	github.com/pion/sdp/v3 v3.0.4 // indirect
 	github.com/pion/srtp/v2 v2.0.6-0.20211031173006-1d7627ee3ca0 // indirect
+	github.com/pion/stun v0.3.5 // indirect
 	github.com/pion/transport v0.13.0 // indirect
 	github.com/pion/turn/v2 v2.0.8 // indirect
 	github.com/pion/udp v0.1.1 // indirect

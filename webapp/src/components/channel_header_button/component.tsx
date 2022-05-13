@@ -1,10 +1,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-import CallIcon from '../../components/icons/call_icon';
+import CompassIcon from '../../components/icons/compassIcon';
 
 interface Props {
     show: boolean,
+    inCall: boolean,
     hasCall: boolean,
 }
 
@@ -13,18 +14,18 @@ const ChannelHeaderButton = (props: Props) => {
         return null;
     }
     return (
-        <div
+        <button
             id='calls-join-button'
-            style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}
+            className={'style--none call-button ' + (props.inCall ? 'disabled' : '')}
+            disabled={Boolean(props.inCall)}
         >
-            <CallIcon style={{margin: '0 4px'}}/>
+            <CompassIcon icon='phone-outline'/>
             <span
-                className='icon__text'
-                style={{margin: '0 4px'}}
+                className='call-button-label'
             >
                 {props.hasCall ? 'Join Call' : 'Start Call'}
             </span>
-        </div>
+        </button>
     );
 };
 
