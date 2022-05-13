@@ -225,15 +225,13 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64, tit
 	post := &model.Post{
 		UserId:    userID,
 		ChannelId: channelID,
+		Message:   postMsg,
 		Type:      "custom_calls",
 		Props: map[string]interface{}{
 			"attachments": []*model.SlackAttachment{&slackAttachment},
 			"start_at":    startAt,
-			"start_msg":   postMsg,
+			"title":       title,
 		},
-	}
-	if title != "" {
-		post.Message = title
 	}
 
 	createdPost, appErr := p.API.CreatePost(post)
