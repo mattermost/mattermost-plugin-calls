@@ -48,7 +48,7 @@ const PostType = ({post, connectedID, hasCall, pictures, profiles, showSwitchCal
         <Duration>{moment(post.props.start_at).fromNow()}</Duration>
     );
 
-    const title = post.props.title ? (<h3 className='markdown__heading'>{post.props.title}</h3>): (<div></div>);
+    const title = post.props.title ? (<h3 className='markdown__heading'>{post.props.title}</h3>) : (<div/>);
 
     return (
         <>
