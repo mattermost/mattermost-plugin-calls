@@ -119,6 +119,10 @@ func deploy(client *model.Client4, pluginID, bundlePath string) error {
 	}
 	defer pluginBundle.Close()
 
+	// disabling in case the plugin is enabled. This helps to keep client state
+	// consistent as the plugin gets properly re-initialized.
+	_, _ = client.DisablePlugin(pluginID)
+
 	log.Print("Uploading plugin via API.")
 	_, _, err = client.UploadPluginForced(pluginBundle)
 	if err != nil {

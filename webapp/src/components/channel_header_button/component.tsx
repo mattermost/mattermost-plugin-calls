@@ -17,7 +17,7 @@ const ChannelHeaderButton = (props: Props) => {
         <button
             id='calls-join-button'
             className={'style--none call-button ' + (props.inCall ? 'disabled' : '')}
-            disabled={Boolean(props.inCall)}
+            disabled={props.inCall}
         >
             <CompassIcon icon='phone-outline'/>
             <span

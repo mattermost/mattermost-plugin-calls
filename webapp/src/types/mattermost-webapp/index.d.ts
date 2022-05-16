@@ -18,6 +18,8 @@ export interface PluginRegistry {
     registerCallButtonAction(button: React.ElementType, dropdownButton: React.ElementType, fn: (channel: Channel) => void)
     unregisterComponent(componentID: string)
     unregisterPostTypeComponent(componentID: string)
+    registerReconnectHandler(handler: () => void)
+    unregisterReconnectHandler(handler: () => void)
 }
 
 /**
