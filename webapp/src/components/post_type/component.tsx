@@ -49,59 +49,64 @@ const PostType = ({post, connectedID, hasCall, pictures, profiles, showSwitchCal
     );
 
     return (
-        <Main data-testid={'call-thread'}>
-            <SubMain ended={Boolean(post.props.end_at)}>
-                <Left>
-                    <CallIndicator ended={Boolean(post.props.end_at)}>
-                        {!post.props.end_at &&
-                            <ActiveCallIcon
-                                fill='var(--center-channel-bg)'
-                                style={{width: '100%', height: '100%'}}
-                            />
+        <>
+            {post.props.title &&
+                <h3 className='markdown__heading'>{post.props.title}</h3>
+            }
+            <Main data-testid={'call-thread'}>
+                <SubMain ended={Boolean(post.props.end_at)}>
+                    <Left>
+                        <CallIndicator ended={Boolean(post.props.end_at)}>
+                            {!post.props.end_at &&
+                                <ActiveCallIcon
+                                    fill='var(--center-channel-bg)'
+                                    style={{width: '100%', height: '100%'}}
+                                />
+                            }
+                            {post.props.end_at &&
+                                <LeaveCallIcon
+                                    fill={'rgba(var(--center-channel-color-rgb), 0.56)'}
+                                    style={{width: '100%', height: '100%'}}
+                                />
+                            }
+                        </CallIndicator>
+                        <MessageWrapper>
+                            <Message>{post.message}</Message>
+                            <SubMessage>{subMessage}</SubMessage>
+                        </MessageWrapper>
+                    </Left>
+                    <Right>
+                        {
+                            !post.props.end_at &&
+                            <Profiles>
+                                <ConnectedProfiles
+                                    profiles={profiles}
+                                    pictures={pictures}
+                                    size={32}
+                                    fontSize={12}
+                                    border={true}
+                                    maxShowedProfiles={2}
+                                />
+                            </Profiles>
                         }
-                        {post.props.end_at &&
-                            <LeaveCallIcon
-                                fill={'rgba(var(--center-channel-color-rgb), 0.56)'}
-                                style={{width: '100%', height: '100%'}}
-                            />
+                        {
+                            !post.props.end_at && (!connectedID || connectedID !== post.channel_id) &&
+                            <JoinButton onClick={onJoinCallClick}>
+                                <CallIcon fill='var(--center-channel-bg)'/>
+                                <ButtonText>{'Join call'}</ButtonText>
+                            </JoinButton>
                         }
-                    </CallIndicator>
-                    <MessageWrapper>
-                        <Message>{post.message}</Message>
-                        <SubMessage>{subMessage}</SubMessage>
-                    </MessageWrapper>
-                </Left>
-                <Right>
-                    {
-                        !post.props.end_at &&
-                        <Profiles>
-                            <ConnectedProfiles
-                                profiles={profiles}
-                                pictures={pictures}
-                                size={32}
-                                fontSize={12}
-                                border={true}
-                                maxShowedProfiles={2}
-                            />
-                        </Profiles>
-                    }
-                    {
-                        !post.props.end_at && (!connectedID || connectedID !== post.channel_id) &&
-                        <JoinButton onClick={onJoinCallClick}>
-                            <CallIcon fill='var(--center-channel-bg)'/>
-                            <ButtonText>{'Join call'}</ButtonText>
-                        </JoinButton>
-                    }
-                    {
-                        !post.props.end_at && connectedID && connectedID === post.channel_id &&
-                        <LeaveButton onClick={onLeaveButtonClick}>
-                            <LeaveCallIcon fill='var(--error-text)'/>
-                            <ButtonText>{'Leave call'}</ButtonText>
-                        </LeaveButton>
-                    }
-                </Right>
-            </SubMain>
-        </Main>
+                        {
+                            !post.props.end_at && connectedID && connectedID === post.channel_id &&
+                            <LeaveButton onClick={onLeaveButtonClick}>
+                                <LeaveCallIcon fill='var(--error-text)'/>
+                                <ButtonText>{'Leave call'}</ButtonText>
+                            </LeaveButton>
+                        }
+                    </Right>
+                </SubMain>
+            </Main>
+        </>
     );
 };
 
