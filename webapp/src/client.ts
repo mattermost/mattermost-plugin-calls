@@ -16,6 +16,7 @@ import VoiceActivityDetector from './vad';
 import {parseRTCStats} from './rtc_stats';
 
 export default class CallsClient extends EventEmitter {
+    public channelID: string;
     private peer: SimplePeer.Instance | null;
     private ws: WebSocketClient | null;
     private localScreenTrack: any;
@@ -42,6 +43,7 @@ export default class CallsClient extends EventEmitter {
         this.stream = null;
         this.audioDevices = {inputs: [], outputs: []};
         this.isHandRaised = false;
+        this.channelID = '';
     }
 
     private initVAD(inputStream: MediaStream) {
@@ -71,6 +73,7 @@ export default class CallsClient extends EventEmitter {
     }
 
     public async init(channelID: string, title?: string) {
+        this.channelID = channelID;
         await this.updateDevices();
         navigator.mediaDevices.ondevicechange = this.updateDevices;
 

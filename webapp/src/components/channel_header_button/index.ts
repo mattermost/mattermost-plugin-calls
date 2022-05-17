@@ -9,7 +9,7 @@ import ChannelHeaderButton from './component';
 
 const mapStateToProps = (state: GlobalState) => ({
     hasCall: voiceConnectedUsers(state).length > 0,
-    inCall: connectedChannelID(state) && connectedChannelID(state) === getCurrentChannelId(state),
+    inCall: Boolean(connectedChannelID(state) && connectedChannelID(state) === getCurrentChannelId(state)),
     show: isVoiceEnabled(state),
 });
 

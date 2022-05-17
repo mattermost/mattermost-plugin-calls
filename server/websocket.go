@@ -24,7 +24,6 @@ const (
 	wsEventUserScreenOn     = "user_screen_on"
 	wsEventUserScreenOff    = "user_screen_off"
 	wsEventCallStart        = "call_start"
-	wsEventDeactivate       = "deactivate"
 	wsEventUserRaiseHand    = "user_raise_hand"
 	wsEventUserUnraiseHand  = "user_unraise_hand"
 	wsEventJoin             = "join"
