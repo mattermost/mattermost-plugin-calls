@@ -12,6 +12,7 @@ import (
 
 const (
 	rootCommandTrigger         = "call"
+	startCommandTrigger        = "start"
 	joinCommandTrigger         = "join"
 	leaveCommandTrigger        = "leave"
 	linkCommandTrigger         = "link"
@@ -20,12 +21,15 @@ const (
 	statsCommandTrigger        = "stats"
 )
 
-var subCommands = []string{joinCommandTrigger, leaveCommandTrigger, linkCommandTrigger, experimentalCommandTrigger, recordingCommandTrigger}
+var subCommands = []string{startCommandTrigger, joinCommandTrigger, leaveCommandTrigger, linkCommandTrigger, experimentalCommandTrigger, recordingCommandTrigger}
 
 func getAutocompleteData() *model.AutocompleteData {
 	data := model.NewAutocompleteData(rootCommandTrigger, "[command]",
 		"Available commands: "+strings.Join(subCommands, ","))
-	data.AddCommand(model.NewAutocompleteData(joinCommandTrigger, "", "Joins or starts a call in the current channel"))
+	startCmdData := model.NewAutocompleteData(startCommandTrigger, "", "Starts a call in the current channel")
+	startCmdData.AddTextArgument("[message]", "Root message for the call", "")
+	data.AddCommand(startCmdData)
+	data.AddCommand(model.NewAutocompleteData(joinCommandTrigger, "", "Joins a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(leaveCommandTrigger, "", "Leaves a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(linkCommandTrigger, "", "Generates a link to join a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Shows some client-generated statistics about the call"))

@@ -70,7 +70,7 @@ export default class CallsClient extends EventEmitter {
         };
     }
 
-    public async init(channelID: string) {
+    public async init(channelID: string, title?: string) {
         await this.updateDevices();
         navigator.mediaDevices.ondevicechange = this.updateDevices;
 
@@ -146,6 +146,7 @@ export default class CallsClient extends EventEmitter {
             console.log('ws open, sending join msg');
             ws.send('join', {
                 channelID,
+                title,
             });
         });
 

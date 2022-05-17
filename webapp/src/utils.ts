@@ -297,3 +297,16 @@ export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
 export function hasExperimentalFlag() {
     return window.localStorage.getItem('calls_experimental_features') === 'on';
 }
+
+export function getUsersList(profiles: UserProfile[]) {
+    if (profiles.length === 0) {
+        return '';
+    }
+    if (profiles.length === 1) {
+        return getUserDisplayName(profiles[0]);
+    }
+    const list = profiles.slice(0, -1).map((profile, idx) => {
+        return getUserDisplayName(profile);
+    }).join(', ');
+    return list + ' and ' + getUserDisplayName(profiles[profiles.length - 1]);
+}

@@ -11,7 +11,7 @@ import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actio
 
 import {RTCStats} from 'src/types/types';
 
-import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from './selectors';
+import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceConnectedUsersInChannel, voiceChannelCallStartAt} from './selectors';
 
 import {pluginId} from './manifest';
 
@@ -268,8 +268,18 @@ export default class Plugin {
 
             switch (subCmd) {
             case 'join':
+            case 'start':
+                if (subCmd === 'start') {
+                    if (voiceConnectedUsersInChannel(store.getState(), args.channel_id).length > 0) {
+                        return {error: {message: 'A call is already ongoing in the channel.'}};
+                    }
+                }
                 if (!connectedID) {
-                    connectCall(args.channel_id);
+                    let title = '';
+                    if (fields.length > 2) {
+                        title = fields.slice(2).join(' ');
+                    }
+                    connectCall(args.channel_id, title);
                     return {};
                 }
                 return {error: {message: 'You are already connected to a call in the current channel.'}};
@@ -365,7 +375,7 @@ export default class Plugin {
 
         registerChannelHeaderMenuButton();
 
-        const connectCall = async (channelID: string) => {
+        const connectCall = async (channelID: string, title?: string) => {
             try {
                 if (window.callsClient) {
                     console.log('calls client is already initialized');
@@ -393,7 +403,7 @@ export default class Plugin {
                     }
                 });
 
-                window.callsClient.init(channelID);
+                window.callsClient.init(channelID, title);
             } catch (err) {
                 delete window.callsClient;
                 console.log(err);
