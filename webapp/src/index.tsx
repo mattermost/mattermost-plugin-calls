@@ -76,11 +76,7 @@ export default class Plugin {
         this.unsubscribers = [];
     }
 
-    private registerReconnectHandler(registry: PluginRegistry, store: Store, onActivate: () => void, onDeactivate: () => void) {
-        const handler = () => {
-            onDeactivate();
-            onActivate();
-        };
+    private registerReconnectHandler(registry: PluginRegistry, store: Store, handler: () => void) {
         registry.registerReconnectHandler(handler);
         this.unsubscribers.push(() => registry.unregisterReconnectHandler(handler));
     }
@@ -552,19 +548,32 @@ export default class Plugin {
             }
         };
 
-        const onDeactivate = () => {
+        this.unsubscribers.push(() => {
             if (window.callsClient) {
                 window.callsClient.disconnect();
             }
             store.dispatch({
                 type: VOICE_CHANNEL_UNINIT,
             });
-        };
-
-        this.unsubscribers.push(onDeactivate);
+        });
 
         this.registerWebSocketEvents(registry, store);
-        this.registerReconnectHandler(registry, store, onActivate, onDeactivate);
+        this.registerReconnectHandler(registry, store, () => {
+            store.dispatch({
+                type: VOICE_CHANNEL_UNINIT,
+            });
+            onActivate();
+            if (window.callsClient) {
+                store.dispatch({
+                    type: VOICE_CHANNEL_USER_CONNECTED,
+                    data: {
+                        channelID: window.callsClient.channelID,
+                        userID: getCurrentUserId(store.getState()),
+                        currentUserID: getCurrentUserId(store.getState()),
+                    },
+                });
+            }
+        });
 
         onActivate();
 
