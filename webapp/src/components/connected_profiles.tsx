@@ -3,6 +3,8 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 
+import {getUserDisplayName, getUsersList} from '../utils';
+
 import Avatar from './avatar/avatar';
 
 interface Props {
@@ -17,9 +19,10 @@ interface Props {
 const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSize, border}: Props) => {
     maxShowedProfiles = maxShowedProfiles || 2;
     const diff = profiles.length - maxShowedProfiles;
-    profiles = diff > 0 ? profiles.slice(0, maxShowedProfiles) : profiles;
 
-    const els = profiles.map((profile, idx) => {
+    const showedProfiles = diff > 0 ? profiles.slice(0, maxShowedProfiles) : profiles;
+
+    const els = showedProfiles.map((profile, idx) => {
         return (
             <OverlayTrigger
                 placement='bottom'
@@ -41,13 +44,26 @@ const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSiz
     });
 
     if (diff > 0) {
+        profiles = profiles.slice(showedProfiles.length);
         els.push(
-            <Avatar
-                size={size}
-                text={`+${diff}`}
-                border={Boolean(border)}
+            <OverlayTrigger
+                placement='bottom'
                 key='call_thread_more_profiles'
-            />,
+                overlay={
+                    <Tooltip
+                        id='call-profiles'
+                    >
+                        {getUsersList(profiles)}
+                    </Tooltip>
+                }
+            >
+                <Avatar
+                    size={size}
+                    text={`+${diff}`}
+                    border={Boolean(border)}
+                    key='call_thread_more_profiles'
+                />
+            </OverlayTrigger>,
         );
     }
 
