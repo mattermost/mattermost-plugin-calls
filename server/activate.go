@@ -8,7 +8,6 @@ import (
 	"github.com/mattermost/rtcd/service/rtc"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 func (p *Plugin) OnActivate() error {
@@ -114,7 +113,6 @@ func (p *Plugin) OnActivate() error {
 
 func (p *Plugin) OnDeactivate() error {
 	p.LogDebug("deactivate")
-	p.API.PublishWebSocketEvent(wsEventDeactivate, nil, &model.WebsocketBroadcast{ReliableClusterSend: true})
 	close(p.stopCh)
 
 	if p.rtcdManager != nil {

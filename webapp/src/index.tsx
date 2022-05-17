@@ -11,13 +11,14 @@ import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actio
 
 import {RTCStats} from 'src/types/types';
 
-import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceChannelCallStartAt} from './selectors';
+import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceConnectedUsersInChannel, voiceChannelCallStartAt} from './selectors';
 
 import {pluginId} from './manifest';
 
 import CallsClient from './client';
 
 import ChannelHeaderButton from './components/channel_header_button';
+import ChannelHeaderDropdownButton from './components/channel_header_dropdown_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import CallWidget from './components/call_widget';
 import ChannelLinkLabel from './components/channel_link_label';
@@ -70,29 +71,24 @@ import {PluginRegistry, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
-    private unregisterChannelHeaderMenuButton: any;
-    private registerChannelHeaderMenuButton: any;
 
     constructor() {
         this.unsubscribers = [];
-        this.unsubscribers.push(() => {
-            if (window.callsClient) {
-                window.callsClient.disconnect();
-            }
-        });
+    }
+
+    private registerReconnectHandler(registry: PluginRegistry, store: Store, handler: () => void) {
+        registry.registerReconnectHandler(handler);
+        this.unsubscribers.push(() => registry.unregisterReconnectHandler(handler));
     }
 
     private registerWebSocketEvents(registry: PluginRegistry, store: Store) {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
-            this.unregisterChannelHeaderMenuButton();
-            this.registerChannelHeaderMenuButton();
             store.dispatch({
                 type: VOICE_CHANNEL_ENABLE,
             });
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_disable_voice`, (data) => {
-            this.unregisterChannelHeaderMenuButton();
             store.dispatch({
                 type: VOICE_CHANNEL_DISABLE,
             });
@@ -215,10 +211,6 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_deactivate`, (ev) => {
-            this.uninitialize();
-        });
-
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_raise_hand`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_RAISE_HAND,
@@ -270,8 +262,18 @@ export default class Plugin {
 
             switch (subCmd) {
             case 'join':
+            case 'start':
+                if (subCmd === 'start') {
+                    if (voiceConnectedUsersInChannel(store.getState(), args.channel_id).length > 0) {
+                        return {error: {message: 'A call is already ongoing in the channel.'}};
+                    }
+                }
                 if (!connectedID) {
-                    connectCall(args.channel_id);
+                    let title = '';
+                    if (fields.length > 2) {
+                        title = fields.slice(2).join(' ');
+                    }
+                    connectCall(args.channel_id, title);
                     return {};
                 }
                 return {error: {message: 'You are already connected to a call in the current channel.'}};
@@ -312,20 +314,21 @@ export default class Plugin {
         });
 
         let channelHeaderMenuButtonID: string;
-        this.unregisterChannelHeaderMenuButton = () => {
+        const unregisterChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 registry.unregisterComponent(channelHeaderMenuButtonID);
                 channelHeaderMenuButtonID = '';
             }
         };
-        this.unsubscribers.push(this.unregisterChannelHeaderMenuButton);
-        this.registerChannelHeaderMenuButton = () => {
+        this.unsubscribers.push(unregisterChannelHeaderMenuButton);
+        const registerChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 return;
             }
-            channelHeaderMenuButtonID = registry.registerChannelHeaderButtonAction(
-                ChannelHeaderButton
-                ,
+
+            channelHeaderMenuButtonID = registry.registerCallButtonAction(
+                ChannelHeaderButton,
+                ChannelHeaderDropdownButton,
                 async (channel) => {
                     try {
                         const users = voiceConnectedUsers(store.getState());
@@ -354,7 +357,9 @@ export default class Plugin {
             );
         };
 
-        const connectCall = async (channelID: string) => {
+        registerChannelHeaderMenuButton();
+
+        const connectCall = async (channelID: string, title?: string) => {
             try {
                 if (window.callsClient) {
                     console.log('calls client is already initialized');
@@ -367,7 +372,6 @@ export default class Plugin {
                 window.callsClient.on('close', () => {
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);
-                    this.registerChannelHeaderMenuButton();
                     if (window.callsClient) {
                         window.callsClient.destroy();
                         delete window.callsClient;
@@ -377,9 +381,7 @@ export default class Plugin {
                     }
                 });
 
-                window.callsClient.init(channelID);
-
-                this.unregisterChannelHeaderMenuButton();
+                window.callsClient.init(channelID, title);
             } catch (err) {
                 delete window.callsClient;
                 console.log(err);
@@ -472,13 +474,8 @@ export default class Plugin {
                 console.log(err);
             }
 
-            this.unregisterChannelHeaderMenuButton();
-
             try {
                 const resp = await axios.get(`${getPluginPath()}/${channelID}`);
-                if (resp.data.enabled && connectedChannelID(store.getState()) !== channelID) {
-                    this.registerChannelHeaderMenuButton();
-                }
                 store.dispatch({
                     type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                 });
@@ -531,27 +528,56 @@ export default class Plugin {
             }
         };
 
-        this.registerWebSocketEvents(registry, store);
-        fetchChannels();
+        const onActivate = async () => {
+            const currChannelId = getCurrentChannelId(store.getState());
+            if (currChannelId) {
+                fetchChannelData(currChannelId);
+            } else {
+                const expandedID = getExpandedChannelID();
+                if (expandedID.length > 0) {
+                    await store.dispatch({
+                        type: VOICE_CHANNEL_USER_CONNECTED,
+                        data: {
+                            channelID: expandedID,
+                            userID: getCurrentUserId(store.getState()),
+                            currentUserID: getCurrentUserId(store.getState()),
+                        },
+                    });
+                    fetchChannelData(expandedID);
+                }
+            }
+        };
 
-        let currChannelId = getCurrentChannelId(store.getState());
-        if (currChannelId) {
-            fetchChannelData(currChannelId);
-        } else {
-            const expandedID = getExpandedChannelID();
-            if (expandedID.length > 0) {
-                await store.dispatch({
+        this.unsubscribers.push(() => {
+            if (window.callsClient) {
+                window.callsClient.disconnect();
+            }
+            store.dispatch({
+                type: VOICE_CHANNEL_UNINIT,
+            });
+        });
+
+        this.registerWebSocketEvents(registry, store);
+        this.registerReconnectHandler(registry, store, () => {
+            store.dispatch({
+                type: VOICE_CHANNEL_UNINIT,
+            });
+            onActivate();
+            if (window.callsClient) {
+                store.dispatch({
                     type: VOICE_CHANNEL_USER_CONNECTED,
                     data: {
-                        channelID: expandedID,
+                        channelID: window.callsClient.channelID,
                         userID: getCurrentUserId(store.getState()),
                         currentUserID: getCurrentUserId(store.getState()),
                     },
                 });
-                fetchChannelData(expandedID);
             }
-        }
+        });
 
+        onActivate();
+
+        let currChannelId = getCurrentChannelId(store.getState());
         let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
@@ -564,12 +590,6 @@ export default class Plugin {
                 joinCallParam = '';
             }
         }));
-
-        this.unsubscribers.push(() => {
-            store.dispatch({
-                type: VOICE_CHANNEL_UNINIT,
-            });
-        });
     }
 
     uninitialize() {

@@ -201,7 +201,7 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64) (string, error) {
+func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64, title string) (string, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return "", appErr
@@ -228,6 +228,7 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64) (st
 		Props: map[string]interface{}{
 			"attachments": []*model.SlackAttachment{&slackAttachment},
 			"start_at":    startAt,
+			"title":       title,
 		},
 	}
 

@@ -15,8 +15,11 @@ export interface PluginRegistry {
     registerCustomRoute(route: string, component: React.ElementType)
     registerNeedsTeamRoute(route: string, component: React.ElementType)
     registerSlashCommandWillBePostedHook(hook: (message: string, args: CommandArgs) => any)
+    registerCallButtonAction(button: React.ElementType, dropdownButton: React.ElementType, fn: (channel: Channel) => void)
     unregisterComponent(componentID: string)
     unregisterPostTypeComponent(componentID: string)
+    registerReconnectHandler(handler: () => void)
+    unregisterReconnectHandler(handler: () => void)
 }
 
 /**
