@@ -1,7 +1,6 @@
 import {connect} from 'react-redux';
 
 import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
 import {Client4} from 'mattermost-redux/client';
 
