@@ -14,7 +14,8 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     HIDE_SWITCH_CALL_MODAL,
     SHOW_SCREEN_SOURCE_MODAL,
-    HIDE_SCREEN_SOURCE_MODAL, RECEIVED_CLOUD_INFO,
+    HIDE_SCREEN_SOURCE_MODAL,
+    RECEIVED_CLOUD_INFO,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
