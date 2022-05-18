@@ -78,6 +78,15 @@ func (p *Plugin) addUserSession(userID, channelID string) (channelState, error) 
 		if _, ok := state.Call.Users[userID]; ok {
 			return nil, fmt.Errorf("user is already connected")
 		}
+
+		// Check for cloud limits -- needs to be done here to prevent a race condition
+		if allowed, err := p.JoinAllowed(channelID, state); !allowed {
+			if err != nil {
+				p.LogError("error checking for cloud limits", "error", err.Error())
+			}
+			return nil, fmt.Errorf("user cannot join because of cloud limits")
+		}
+
 		state.Call.Users[userID] = &userState{}
 		if len(state.Call.Users) > state.Call.Stats.Participants {
 			state.Call.Stats.Participants = len(state.Call.Users)

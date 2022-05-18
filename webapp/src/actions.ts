@@ -1,5 +1,5 @@
 import {Dispatch} from 'redux';
-import {GenericAction} from 'mattermost-redux/types/actions';
+import {ActionFunc, GenericAction} from 'mattermost-redux/types/actions';
 
 import {
     SHOW_EXPANDED_VIEW,
@@ -7,8 +7,12 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     HIDE_SWITCH_CALL_MODAL,
     SHOW_SCREEN_SOURCE_MODAL,
-    HIDE_SCREEN_SOURCE_MODAL,
+    HIDE_SCREEN_SOURCE_MODAL, RECEIVED_CLOUD_INFO,
 } from './action_types';
+import {bindClientFunc} from 'mattermost-redux/actions/helpers';
+import {Client4} from 'mattermost-redux/client';
+import {getPluginPath} from 'src/utils';
+import {CloudInfo} from 'src/types/types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
     dispatch({
@@ -48,3 +52,13 @@ export const hideScreenSourceModal = () => (dispatch: Dispatch<GenericAction>) =
         type: HIDE_SCREEN_SOURCE_MODAL,
     });
 };
+
+export const getCloudInfo = (): ActionFunc => {
+    return bindClientFunc({
+        clientFunc: () => Client4.doFetch<CloudInfo>(
+            `${getPluginPath()}/cloud`,
+            {method: 'get'},
+        ),
+        onSuccess: [RECEIVED_CLOUD_INFO],
+    });
+}

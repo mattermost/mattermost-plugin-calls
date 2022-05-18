@@ -28,8 +28,9 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     HIDE_SWITCH_CALL_MODAL,
     SHOW_SCREEN_SOURCE_MODAL,
-    HIDE_SCREEN_SOURCE_MODAL,
+    HIDE_SCREEN_SOURCE_MODAL, RECEIVED_CLOUD_INFO,
 } from './action_types';
+import {GenericAction} from 'mattermost-redux/types/actions';
 
 const isVoiceEnabled = (state = false, action: {type: string}) => {
     switch (action.type) {
@@ -420,6 +421,15 @@ const screenSourceModal = (state = false, action: {type: string}) => {
     }
 };
 
+const cloudInfo = (state = {sku_short_name: ''}, action: GenericAction) => {
+    switch (action.type) {
+    case RECEIVED_CLOUD_INFO:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     isVoiceEnabled,
     voiceConnectedChannels,
@@ -431,4 +441,5 @@ export default combineReducers({
     expandedView,
     switchCallModal,
     screenSourceModal,
+    cloudInfo,
 });

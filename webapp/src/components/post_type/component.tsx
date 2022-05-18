@@ -9,17 +9,26 @@ import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import ConnectedProfiles from 'src/components/connected_profiles';
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+import {CLOUD_MAX_PARTICIPANTS} from 'src/constants';
 
 interface Props {
     post: Post,
     connectedID: string,
-    hasCall: boolean,
     pictures: string[],
     profiles: UserProfile[],
     showSwitchCallModal: (targetID: string) => void,
+    isCloudPaid: boolean,
 }
 
-const PostType = ({post, connectedID, hasCall, pictures, profiles, showSwitchCallModal}: Props) => {
+const PostType = ({
+    post,
+    connectedID,
+    pictures,
+    profiles,
+    showSwitchCallModal,
+    isCloudPaid,
+}: Props) => {
     const onJoinCallClick = () => {
         if (connectedID) {
             showSwitchCallModal(post.channel_id);
@@ -47,6 +56,41 @@ const PostType = ({post, connectedID, hasCall, pictures, profiles, showSwitchCal
     ) : (
         <Duration>{moment(post.props.start_at).fromNow()}</Duration>
     );
+
+    let joinButton = (
+        <JoinButton onClick={onJoinCallClick}>
+            <CallIcon fill='var(--center-channel-bg)'/>
+            <ButtonText>{'Join call'}</ButtonText>
+        </JoinButton>
+    );
+    if (isCloudPaid && profiles.length >= CLOUD_MAX_PARTICIPANTS) {
+        joinButton = (
+            <OverlayTrigger
+                placement='top'
+                overlay={
+                    <Tooltip id='tooltip-limit'>
+                        {'Sorry, participants per call are currently limited to 8.'}
+                        <p>{'This is because Calls is in the Beta phase. We’re working to remove this limit soon.'}</p>
+                    </Tooltip>
+                }
+            >
+                <DisabledButton>
+                    <CallIcon fill='rgba(var(--center-channel-color-rgb), 0.32)'/>
+                    <ButtonText>{'Join call'}</ButtonText>
+                </DisabledButton>
+            </OverlayTrigger>
+        )
+    }
+
+    const callActive = !post.props.end_at;
+    const inCall = connectedID === post.channel_id;
+    let button = inCall ? (
+        <LeaveButton onClick={onLeaveButtonClick}>
+            <LeaveCallIcon fill='var(--error-text)'/>
+            <ButtonText>{'Leave call'}</ButtonText>
+        </LeaveButton>
+    ) : joinButton;
+
 
     return (
         <>
@@ -76,32 +120,20 @@ const PostType = ({post, connectedID, hasCall, pictures, profiles, showSwitchCal
                         </MessageWrapper>
                     </Left>
                     <Right>
-                        {
-                            !post.props.end_at &&
-                            <Profiles>
-                                <ConnectedProfiles
-                                    profiles={profiles}
-                                    pictures={pictures}
-                                    size={32}
-                                    fontSize={12}
-                                    border={true}
-                                    maxShowedProfiles={2}
-                                />
-                            </Profiles>
-                        }
-                        {
-                            !post.props.end_at && (!connectedID || connectedID !== post.channel_id) &&
-                            <JoinButton onClick={onJoinCallClick}>
-                                <CallIcon fill='var(--center-channel-bg)'/>
-                                <ButtonText>{'Join call'}</ButtonText>
-                            </JoinButton>
-                        }
-                        {
-                            !post.props.end_at && connectedID && connectedID === post.channel_id &&
-                            <LeaveButton onClick={onLeaveButtonClick}>
-                                <LeaveCallIcon fill='var(--error-text)'/>
-                                <ButtonText>{'Leave call'}</ButtonText>
-                            </LeaveButton>
+                        {callActive &&
+                            <>
+                                <Profiles>
+                                    <ConnectedProfiles
+                                        profiles={profiles}
+                                        pictures={pictures}
+                                        size={32}
+                                        fontSize={12}
+                                        border={true}
+                                        maxShowedProfiles={2}
+                                    />
+                                </Profiles>
+                                {button}
+                            </>
                         }
                     </Right>
                 </SubMain>
@@ -200,6 +232,12 @@ const LeaveButton = styled(Button)`
 const ButtonText = styled.span`
     font-weight: 600;
     margin: 0 8px;
+`;
+
+const DisabledButton = styled(Button)`
+    color: rgba(var(--center-channel-color-rgb), 0.32);
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+    cursor: not-allowed;
 `;
 
 export default PostType;

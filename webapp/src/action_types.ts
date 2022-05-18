@@ -26,3 +26,5 @@ export const HIDE_SWITCH_CALL_MODAL = pluginId + '_hide_switch_call_modal';
 export const SHOW_SCREEN_SOURCE_MODAL = pluginId + '_show_screen_source_modal';
 export const HIDE_SCREEN_SOURCE_MODAL = pluginId + '_hide_screen_source_modal';
 
+export const RECEIVED_CLOUD_INFO = pluginId + '_received_cloud_info';
+

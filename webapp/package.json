@@ -45,10 +45,11 @@
     "eslint-plugin-react": "7.24.0",
     "eslint-plugin-react-hooks": "4.3.0",
     "file-loader": "6.2.0",
+    "image-webpack-loader": "^8.0.1",
     "jest": "27.0.6",
     "jest-canvas-mock": "2.3.1",
     "jest-junit": "12.2.0",
-    "mattermost-webapp": "github:mattermost/mattermost-webapp#54a54c3b8da77af256b4ac8182cf4b81afe47561",
+    "mattermost-webapp": "github:mattermost/mattermost-webapp#6dcac2993000139f19c1b018f7fa6b9266973918",
     "process": "0.11.10",
     "react-intl": "5.20.12",
     "redux-thunk": "2.4.1",
@@ -61,7 +62,6 @@
     "@msgpack/msgpack": "2.7.1",
     "axios": "0.21.4",
     "core-js": "3.21.1",
-    "mattermost-redux": "github:mattermost/mattermost-redux#3d1028034d7677adfda58e91b9a5dcaf1bc0ff99",
     "pako": "2.0.4",
     "react": "16.13.1",
     "react-redux": "7.2.4",
@@ -88,7 +88,10 @@
       "^.+\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "identity-obj-proxy",
       "^.+\\.(css|less|scss)$": "identity-obj-proxy",
       "^.*i18n.*\\.(json)$": "<rootDir>/tests/i18n_mock.json",
-      "^bundle-loader\\?lazy\\!(.*)$": "$1"
+      "^bundle-loader\\?lazy\\!(.*)$": "$1",
+      "^mattermost-redux(.*)$": "<rootDir>/node_modules/mattermost-webapp/packages/mattermost-redux/src$1",
+      "^@mattermost/types(.*)$": "<rootDir>/node_modules/mattermost-webapp/packages/types/src/$1",
+      "^reselect": "<rootDir>/node_modules/mattermost-webapp/packages/reselect/src"
     },
     "moduleDirectories": [
       "",

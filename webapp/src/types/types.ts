@@ -54,3 +54,6 @@ export type RTCRemoteOutboundStats = {
     bytesSent: number,
 }
 
+export type CloudInfo = {
+    sku_short_name: string,
+}
