@@ -61,13 +61,15 @@ func (p *Plugin) newRTCDClientManager(rtcdURL string) (m *rtcdClientManager, err
 	}
 	m.rtcdPort = port
 
-	hosts := map[string]*rtcdHost{}
+	hosts := m.hosts
 
 	defer func() {
 		// closing all clients in case of error
 		if m == nil {
-			for _, hosts := range hosts {
-				hosts.client.Close()
+			m.ctx.LogError("failed, closing all clients")
+			for ip, host := range hosts {
+				m.removeHost(ip)
+				host.client.Close()
 			}
 		}
 	}()
@@ -82,8 +84,6 @@ func (p *Plugin) newRTCDClientManager(rtcdURL string) (m *rtcdClientManager, err
 		}
 		m.ctx.LogDebug("rtcd client created successfully", "host", ip.String())
 	}
-
-	m.hosts = hosts
 
 	go m.hostsChecker()
 
