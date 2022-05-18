@@ -66,9 +66,8 @@ func (p *Plugin) newRTCDClientManager(rtcdURL string) (m *rtcdClientManager, err
 	defer func() {
 		// closing all clients in case of error
 		if m == nil {
-			m.ctx.LogError("failed, closing all clients")
-			for ip, host := range hosts {
-				m.removeHost(ip)
+			m.ctx.LogError("init failed, closing all clients")
+			for _, host := range hosts {
 				host.client.Close()
 			}
 		}
@@ -114,13 +113,17 @@ func (m *rtcdClientManager) hostsChecker() {
 			// we look for hosts that may not be advertised anymore.
 			m.mut.RLock()
 			for ip, host := range m.hosts {
+				host.mut.Lock()
 				if _, ok := ipsMap[ip]; !ok && !host.flagged {
 					// flag host
 					m.ctx.LogDebug("flagging host", "host", ip)
-					host.mut.Lock()
 					host.flagged = true
-					host.mut.Unlock()
+				} else if ok && host.flagged {
+					// unflag host in the rare case a new host came up with the same ip.
+					m.ctx.LogDebug("unflagging host", "host", ip)
+					host.flagged = false
 				}
+				host.mut.Unlock()
 			}
 			m.mut.RUnlock()
 
@@ -206,6 +209,7 @@ func (m *rtcdClientManager) GetHostForNewCall() (string, error) {
 		host.mut.RLock()
 		// TODO: this only takes into consideration the calls started from this
 		// instance. A better strategy would be to ask rtcd for a global count (coming soon).
+		// TODO: consider also checking if the client is currently connected.
 		if !host.flagged && (h == nil || host.callsCounter < minCounter) {
 			h = host
 			minCounter = host.callsCounter
