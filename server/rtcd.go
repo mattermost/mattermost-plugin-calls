@@ -387,7 +387,10 @@ func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string, dialFn rtcd.Dial
 	var cfg rtcd.ClientConfig
 
 	// Give precedence to environment to override everything else.
-	cfg.ClientID = os.Getenv("CALLS_RTCD_CLIENT_ID")
+	cfg.ClientID = os.Getenv("MM_CLOUD_INSTALLATION_ID")
+	if cfg.ClientID == "" {
+		cfg.ClientID = os.Getenv("CALLS_RTCD_CLIENT_ID")
+	}
 	cfg.AuthKey = os.Getenv("CALLS_RTCD_AUTH_KEY")
 	cfg.URL = rtcdURL
 	if rtcdURL = os.Getenv("CALLS_RTCD_URL"); rtcdURL != "" {
