@@ -66,7 +66,6 @@ func (p *Plugin) newRTCDClientManager(rtcdURL string) (m *rtcdClientManager, err
 	defer func() {
 		// closing all clients in case of error
 		if m == nil {
-			m.ctx.LogError("init failed, closing all clients")
 			for _, host := range hosts {
 				host.client.Close()
 			}
@@ -470,13 +469,16 @@ func (m *rtcdClientManager) registerRTCDClient(cfg rtcd.ClientConfig, dialFn rtc
 		return fmt.Errorf("failed to marshal rtcd client config: %w", err)
 	}
 
+	if err := client.Register(cfg.ClientID, cfg.AuthKey); err != nil {
+		return fmt.Errorf("failed to register rtcd client: %w", err)
+	}
+
+	// TODO: guard against the "locked out" corner case that the server/plugin process exits
+	// before being able to store the credentials but after a successful
+	// registration.
 	m.ctx.metrics.IncStoreOp("KVSet")
 	if err := m.ctx.API.KVSet(rtcdConfigKey, cfgData); err != nil {
 		return fmt.Errorf("failed to store rtcd client config: %w", err)
-	}
-
-	if err := client.Register(cfg.ClientID, cfg.AuthKey); err != nil {
-		return fmt.Errorf("failed to register rtcd client: %w", err)
 	}
 
 	m.ctx.LogDebug("rtcd client registered successfully", "clientID", cfg.ClientID)
