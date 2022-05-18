@@ -1,7 +1,8 @@
 import React from 'react';
 
-import CompassIcon from '../../components/icons/compassIcon';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+
+import CompassIcon from '../../components/icons/compassIcon';
 
 interface Props {
     show: boolean,

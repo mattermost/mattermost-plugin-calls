@@ -5,11 +5,12 @@ import styled from 'styled-components';
 import {UserProfile} from 'mattermost-redux/types/users';
 import {Post} from 'mattermost-redux/types/posts';
 
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import ConnectedProfiles from 'src/components/connected_profiles';
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {CLOUD_MAX_PARTICIPANTS} from 'src/constants';
 
 interface Props {
@@ -79,18 +80,17 @@ const PostType = ({
                     <ButtonText>{'Join call'}</ButtonText>
                 </DisabledButton>
             </OverlayTrigger>
-        )
+        );
     }
 
     const callActive = !post.props.end_at;
     const inCall = connectedID === post.channel_id;
-    let button = inCall ? (
+    const button = inCall ? (
         <LeaveButton onClick={onLeaveButtonClick}>
             <LeaveCallIcon fill='var(--error-text)'/>
             <ButtonText>{'Leave call'}</ButtonText>
         </LeaveButton>
     ) : joinButton;
-
 
     return (
         <>

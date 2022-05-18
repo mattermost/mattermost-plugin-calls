@@ -2,6 +2,8 @@ import {combineReducers} from 'redux';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 
+import {GenericAction} from 'mattermost-redux/types/actions';
+
 import {UserState} from './types/types';
 
 import {
@@ -30,7 +32,6 @@ import {
     SHOW_SCREEN_SOURCE_MODAL,
     HIDE_SCREEN_SOURCE_MODAL, RECEIVED_CLOUD_INFO,
 } from './action_types';
-import {GenericAction} from 'mattermost-redux/types/actions';
 
 const isVoiceEnabled = (state = false, action: {type: string}) => {
     switch (action.type) {

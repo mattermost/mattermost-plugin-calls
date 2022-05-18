@@ -12,6 +12,7 @@ import {
     isCloudProfessionalOrEnterprise,
 } from 'src/selectors';
 import {showSwitchCallModal} from 'src/actions';
+
 import PostType from './component';
 
 interface OwnProps {

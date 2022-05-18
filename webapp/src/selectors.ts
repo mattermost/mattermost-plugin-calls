@@ -1,12 +1,15 @@
 import {getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {GlobalState} from 'mattermost-redux/types/store';
 
-import {pluginId} from './manifest';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {createSelector} from 'reselect';
+
+import {LicenseSkus} from '@mattermost/types/general';
+
 import {CLOUD_MAX_PARTICIPANTS} from 'src/constants';
 import {isDMChannel} from 'src/utils';
-import {LicenseSkus} from '@mattermost/types/general';
+
+import {pluginId} from './manifest';
 
 //@ts-ignore GlobalState is not complete
 const getPluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
@@ -70,9 +73,9 @@ export const screenSourceModal = (state: GlobalState) => {
     return getPluginState(state).screenSourceModal;
 };
 
-const sku = (state: GlobalState): string => {
+const getSku = (state: GlobalState): string => {
     return getPluginState(state).cloudInfo.sku_short_name;
-}
+};
 
 //
 // Selectors for Cloud and beta limits:
@@ -80,29 +83,28 @@ const sku = (state: GlobalState): string => {
 export const isCloud: (state: GlobalState) => boolean = createSelector(
     'isCloud',
     getLicense,
-    sku,
-    (license, sku) => license?.Cloud === 'true',
+    (license) => license?.Cloud === 'true',
 );
 
 export const isCloudStarter: (state: GlobalState) => boolean = createSelector(
     'isCloudStarter',
     isCloud,
-    sku,
-    (isCloud, sku) => isCloud && sku === LicenseSkus.Starter,
+    getSku,
+    (cloud, sku) => cloud && sku === LicenseSkus.Starter,
 );
 
 export const isCloudProfessional: (state: GlobalState) => boolean = createSelector(
     'isCloudProfessional',
     isCloud,
-    sku,
-    (isCloud, sku) => isCloud && sku === LicenseSkus.Professional,
+    getSku,
+    (cloud, sku) => cloud && sku === LicenseSkus.Professional,
 );
 
 export const isCloudEnterprise: (state: GlobalState) => boolean = createSelector(
     'isCloudEnterprise',
     isCloud,
-    sku,
-    (isCloud, sku) => isCloud && sku === LicenseSkus.Enterprise,
+    getSku,
+    (cloud, sku) => cloud && sku === LicenseSkus.Enterprise,
 );
 
 export const isCloudProfessionalOrEnterprise: (state: GlobalState) => boolean = createSelector(

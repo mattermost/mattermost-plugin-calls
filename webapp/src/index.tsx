@@ -9,13 +9,19 @@ import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/commo
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 
+import React from 'react';
+
+import {getCloudProducts, getCloudSubscription} from 'mattermost-redux/actions/cloud';
+
+import {getCloudInfo} from 'src/actions';
+
 import {
     isVoiceEnabled,
     connectedChannelID,
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
     voiceChannelCallStartAt,
-    isCloudFeatureRestricted, isCloudLimitRestricted
+    isCloudFeatureRestricted, isCloudLimitRestricted,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -73,9 +79,6 @@ import {
 
 // eslint-disable-next-line import/no-unresolved
 import {PluginRegistry, Store} from './types/mattermost-webapp';
-import React from 'react';
-import {getCloudProducts, getCloudSubscription} from 'mattermost-redux/actions/cloud';
-import {getCloudInfo} from 'src/actions';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];

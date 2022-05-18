@@ -1,9 +1,10 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+
 import CompassIcon from '../../components/icons/compassIcon';
 import {CLOUD_MAX_PARTICIPANTS} from 'src/constants';
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 interface Props {
     show: boolean,

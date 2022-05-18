@@ -8,7 +8,7 @@ import {
     connectedChannelID,
     isVoiceEnabled,
     isCloudFeatureRestricted,
-    isCloudLimitRestricted
+    isCloudLimitRestricted,
 } from 'src/selectors';
 
 import ChannelHeaderDropdownButton from './component';

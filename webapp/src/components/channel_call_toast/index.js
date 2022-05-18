@@ -9,7 +9,7 @@ import {
     voiceConnectedProfilesInChannel,
     connectedChannelID,
     voiceChannelCallStartAt,
-    isCloudLimitRestricted
+    isCloudLimitRestricted,
 } from 'selectors';
 
 import ChannelCallToast from './component';
