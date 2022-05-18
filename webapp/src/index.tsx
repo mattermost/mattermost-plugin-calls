@@ -547,6 +547,7 @@ export default class Plugin {
         };
 
         const onActivate = async () => {
+            fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
             if (currChannelId) {
                 fetchChannelData(currChannelId);
@@ -581,6 +582,7 @@ export default class Plugin {
 
         this.registerWebSocketEvents(registry, store);
         this.registerReconnectHandler(registry, store, () => {
+            console.log('calls: websocket reconnect handler');
             store.dispatch({
                 type: VOICE_CHANNEL_UNINIT,
             });
@@ -615,6 +617,7 @@ export default class Plugin {
     }
 
     uninitialize() {
+        console.log('calls: uninitialize');
         this.unsubscribers.forEach((unsubscribe) => {
             unsubscribe();
         });
