@@ -60,7 +60,7 @@ export const hideScreenSourceModal = () => (dispatch: Dispatch<GenericAction>) =
 export const getCloudInfo = (): ActionFunc => {
     return bindClientFunc({
         clientFunc: () => Client4.doFetch<CloudInfo>(
-            `${getPluginPath()}/cloud`,
+            `${getPluginPath()}/cloud-info`,
             {method: 'get'},
         ),
         onSuccess: [RECEIVED_CLOUD_INFO],

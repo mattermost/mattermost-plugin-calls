@@ -317,7 +317,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		}
 
 		// Return license information that isn't exposed to clients yet
-		if r.URL.Path == "/cloud" {
+		if r.URL.Path == "/cloud-info" {
 			w.Header().Set("Content-Type", "application/json")
 
 			license := p.pluginAPI.System.GetLicense()
