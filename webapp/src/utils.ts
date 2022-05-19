@@ -205,6 +205,7 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
     } else {
         // browser
         try {
+            // @ts-ignore (fixed in typescript 4.4+ but webapp is on 4.3.4)
             screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: true,
                 audio: Boolean(withAudio),
