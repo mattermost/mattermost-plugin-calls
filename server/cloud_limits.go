@@ -1,15 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/mattermost/mattermost-server/v6/model"
+	"net/http"
 )
 
 const cloudMaxParticipants = 8
 
 // JoinAllowed returns true if the user is allowed to join the call, taking into
 // account cloud limits
-func (p *Plugin) JoinAllowed(channelID string, state *channelState) (bool, error) {
+func (p *Plugin) joinAllowed(channelID string, state *channelState) (bool, error) {
 	license := p.pluginAPI.System.GetLicense()
 
 	// Rules are:
@@ -36,6 +38,24 @@ func (p *Plugin) JoinAllowed(channelID string, state *channelState) (bool, error
 	}
 
 	return true, nil
+}
+
+// handleCloudInfo returns license information that isn't exposed to clients yet
+func (p *Plugin) handleCloudInfo(w http.ResponseWriter) {
+	license := p.pluginAPI.System.GetLicense()
+	if license == nil {
+		http.Error(w, "no license", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	info := map[string]interface{}{
+		"sku_short_name": license.SkuShortName,
+	}
+	if err := json.NewEncoder(w).Encode(info); err != nil {
+		p.LogError(err.Error())
+		http.Error(w, "error encoding, see internal logs", http.StatusInternalServerError)
+	}
 }
 
 func isCloud(license *model.License) bool {

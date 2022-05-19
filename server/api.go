@@ -318,16 +318,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		// Return license information that isn't exposed to clients yet
 		if r.URL.Path == "/cloud-info" {
-			w.Header().Set("Content-Type", "application/json")
-
-			license := p.pluginAPI.System.GetLicense()
-			info := map[string]interface{}{
-				"sku_short_name": license.SkuShortName,
-			}
-
-			if err := json.NewEncoder(w).Encode(info); err != nil {
-				p.LogError(err.Error())
-			}
+			p.handleCloudInfo(w)
 			return
 		}
 

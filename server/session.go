@@ -80,7 +80,7 @@ func (p *Plugin) addUserSession(userID, channelID string) (channelState, error) 
 		}
 
 		// Check for cloud limits -- needs to be done here to prevent a race condition
-		if allowed, err := p.JoinAllowed(channelID, state); !allowed {
+		if allowed, err := p.joinAllowed(channelID, state); !allowed {
 			if err != nil {
 				p.LogError("error checking for cloud limits", "error", err.Error())
 			}
