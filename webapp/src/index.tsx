@@ -642,6 +642,11 @@ declare global {
         oBackingStorePixelRatio: number,
         backingStorePixelRatio: number,
     }
+
+    // fix for a type problem in webapp as of 6dcac2
+    type DeepPartial<T> = {
+        [P in keyof T]?: DeepPartial<T[P]>;
+    }
 }
 
 window.registerPlugin(pluginId, new Plugin());
