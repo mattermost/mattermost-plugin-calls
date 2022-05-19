@@ -4,8 +4,6 @@ import {GlobalState} from 'mattermost-redux/types/store';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {createSelector} from 'reselect';
 
-import {LicenseSkus} from '@mattermost/types/general';
-
 import {CLOUD_MAX_PARTICIPANTS} from 'src/constants';
 import {isDMChannel} from 'src/utils';
 
@@ -90,21 +88,21 @@ export const isCloudStarter: (state: GlobalState) => boolean = createSelector(
     'isCloudStarter',
     isCloud,
     getSku,
-    (cloud, sku) => cloud && sku === LicenseSkus.Starter,
+    (cloud, sku) => cloud && sku === 'starter',
 );
 
 export const isCloudProfessional: (state: GlobalState) => boolean = createSelector(
     'isCloudProfessional',
     isCloud,
     getSku,
-    (cloud, sku) => cloud && sku === LicenseSkus.Professional,
+    (cloud, sku) => cloud && sku === 'professional',
 );
 
 export const isCloudEnterprise: (state: GlobalState) => boolean = createSelector(
     'isCloudEnterprise',
     isCloud,
     getSku,
-    (cloud, sku) => cloud && sku === LicenseSkus.Enterprise,
+    (cloud, sku) => cloud && sku === 'enterprise',
 );
 
 export const isCloudProfessionalOrEnterprise: (state: GlobalState) => boolean = createSelector(
@@ -119,7 +117,7 @@ export const isCloudFeatureRestricted: (state: GlobalState) => boolean = createS
     'isCloudFeatureRestricted',
     isCloudStarter,
     getCurrentChannel,
-    (isStarter, channel) => isStarter && !isDMChannel(channel),
+    (isStarter, channel) => isStarter && channel && !isDMChannel(channel),
 );
 
 // isCloudLimitRestricted means: are you restricted from joining a call because of our beta limits?
