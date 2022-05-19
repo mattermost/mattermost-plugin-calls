@@ -47,6 +47,8 @@ module.exports = {
     resolve: {
         alias: {
             src: path.resolve(__dirname, './src/'),
+            'mattermost-redux': path.resolve(__dirname, './node_modules/mattermost-webapp/packages/mattermost-redux/src/'),
+            '@mattermost/types': path.resolve(__dirname, './node_modules/mattermost-webapp/packages/types/src/'),
             reselect: path.resolve(__dirname, './node_modules/mattermost-webapp/packages/reselect/src/index'),
         },
         modules: [
@@ -59,7 +61,7 @@ module.exports = {
         rules: [
             {
                 test: /\.(js|jsx|ts|tsx)$/,
-                exclude: /node_modules/,
+                exclude: /node_modules\/(?!(mattermost-webapp)\/).*/,
                 use: {
                     loader: 'babel-loader',
                     options: {
@@ -70,7 +72,7 @@ module.exports = {
                 },
             },
             {
-                test: /\.(scss|css)$/,
+                test: /\.scss$/,
                 use: [
                     'style-loader',
                     {
@@ -82,7 +84,26 @@ module.exports = {
                 ],
             },
             {
-                test: /\.(png|eot|tiff|svg|woff2|woff|ttf|gif|mp3|wav|jpg)$/,
+                test: /\.css$/,
+                use: ['style-loader', 'css-loader'],
+            },
+            {
+                test: /\.(png|eot|tiff|svg|woff2|woff|ttf|gif|mp3|jpg)$/,
+                use: [
+                    {
+                        loader: 'file-loader',
+                        options: {
+                            name: 'files/[contenthash].[ext]',
+                        },
+                    },
+                    {
+                        loader: 'image-webpack-loader',
+                        options: {},
+                    },
+                ],
+            },
+            {
+                test: /\.apng$/,
                 use: [
                     {
                         loader: 'file-loader',
