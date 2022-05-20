@@ -1,5 +1,3 @@
-import {GlobalState} from 'mattermost-redux/types/store';
-
 import axios from 'axios';
 
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
@@ -11,9 +9,9 @@ import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actio
 
 import React from 'react';
 
-import {getCloudProducts, getCloudSubscription} from 'mattermost-redux/actions/cloud';
+import {displayFreeTrial, getCloudInfo} from 'src/actions';
 
-import {getCloudInfo} from 'src/actions';
+import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 
 import {
     isVoiceEnabled,
@@ -34,7 +32,7 @@ import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import CallWidget from './components/call_widget';
 import ChannelLinkLabel from './components/channel_link_label';
 import ChannelCallToast from './components/channel_call_toast';
-import PostType from './components/post_type';
+import PostType from './components/custom_post_types/post_type';
 import ExpandedView from './components/expanded_view';
 import SwitchCallModal from './components/switch_call_modal';
 import ScreenSourceModal from './components/screen_source_modal';
@@ -251,6 +249,7 @@ export default class Plugin {
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
+        registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
@@ -343,7 +342,12 @@ export default class Plugin {
                 ChannelHeaderButton,
                 ChannelHeaderDropdownButton,
                 async (channel) => {
-                    if (isCloudFeatureRestricted(store.getState()) || isCloudLimitRestricted(store.getState())) {
+                    if (isCloudFeatureRestricted(store.getState())) {
+                        store.dispatch(displayFreeTrial());
+                        return;
+                    }
+
+                    if (isCloudLimitRestricted(store.getState())) {
                         return;
                     }
 
