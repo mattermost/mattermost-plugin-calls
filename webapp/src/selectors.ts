@@ -133,3 +133,32 @@ export const isCloudLimitRestricted: (state: GlobalState) => boolean = createSel
     voiceConnectedUsers,
     (isCloudPaid, users) => isCloudPaid && users.length >= CLOUD_MAX_PARTICIPANTS,
 );
+
+const getSubscription = (state: GlobalState) => {
+    return state.entities.cloud.subscription;
+};
+
+export const isCloudTrial: (state: GlobalState) => boolean = createSelector(
+    'isCloudTrial',
+    getSubscription,
+    (subscription) => {
+        return subscription?.is_free_trial === 'true';
+    },
+);
+
+export const isCloudTrialCompleted: (state: GlobalState) => boolean = createSelector(
+    'isCompletedCloudTrial',
+    getSubscription,
+    (subscription) => {
+        return subscription?.is_free_trial === 'false' && subscription?.trial_end_at > 0;
+    },
+);
+
+export const isCloudTrialNeverStarted: (state: GlobalState) => boolean = createSelector(
+    'isCloudTrial',
+    getSubscription,
+    (subscription) => {
+        return subscription?.trial_end_at === 0;
+    },
+);
+

@@ -1,12 +1,27 @@
 import {Dispatch} from 'redux';
-import {ActionFunc, GenericAction} from 'mattermost-redux/types/actions';
+import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
 
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 
 import {Client4} from 'mattermost-redux/client';
 
+import {CloudCustomer} from '@mattermost/types/cloud';
+
+import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+
 import {CloudInfo} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
+
+import {modals, openPricingModal} from 'src/webapp_globals';
+import {
+    CloudFreeTrialErrorModal,
+    CloudFreeTrialModalAdmin,
+    CloudFreeTrialModalUser,
+    CloudFreeTrialSuccessModal,
+    IDAdmin, IDError,
+    IDSuccess,
+    IDUser,
+} from 'src/cloud_pricing/modals';
 
 import {
     SHOW_EXPANDED_VIEW,
@@ -65,4 +80,78 @@ export const getCloudInfo = (): ActionFunc => {
         ),
         onSuccess: [RECEIVED_CLOUD_INFO],
     });
+};
+
+export const notifyAdminCloudFreeTrial = async () => {
+    return Client4.doFetch(
+        `${getPluginPath()}/cloud-notify-admins`,
+        {method: 'get'},
+    );
+};
+
+export const requestCloudTrial = async () => {
+    try {
+        await Client4.doFetchWithResponse<CloudCustomer>(
+            `${Client4.getCloudRoute()}/request-trial`,
+            {method: 'put'},
+        );
+    } catch (error) {
+        return false;
+    }
+    return true;
+};
+
+export const displayFreeTrial = () => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const isAdmin = isCurrentUserSystemAdmin(getState());
+
+        if (isAdmin) {
+            dispatch(modals.openModal({
+                modalId: IDAdmin,
+                dialogType: CloudFreeTrialModalAdmin,
+            }));
+        } else {
+            dispatch(modals.openModal({
+                modalId: IDUser,
+                dialogType: CloudFreeTrialModalUser,
+            }));
+        }
+
+        return {};
+    };
+};
+
+export const displayCloudPricing = () => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const isAdmin = isCurrentUserSystemAdmin(getState());
+        if (!isAdmin) {
+            return {};
+        }
+
+        openPricingModal()();
+        return {};
+    };
+};
+
+export const requestTrial = () => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const isAdmin = isCurrentUserSystemAdmin(getState());
+        if (!isAdmin) {
+            return {};
+        }
+
+        const success = await requestCloudTrial();
+        if (success) {
+            dispatch(modals.openModal({
+                modalId: IDSuccess,
+                dialogType: CloudFreeTrialSuccessModal,
+            }));
+        } else {
+            dispatch(modals.openModal({
+                modalId: IDError,
+                dialogType: CloudFreeTrialErrorModal,
+            }));
+        }
+        return {};
+    };
 };

@@ -2,7 +2,8 @@ import React from 'react';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
-import CompassIcon from '../../components/icons/compassIcon';
+import CompassIcon from 'src/components/icons/compassIcon';
+import {CallButton, UpsellIcon} from 'src/components/shared';
 
 interface Props {
     show: boolean,
@@ -22,21 +23,21 @@ const ChannelHeaderButton = ({
     if (!show) {
         return null;
     }
-    const disabled = inCall || isCloudFeatureRestricted || isCloudLimitRestricted;
+    const restricted = isCloudFeatureRestricted || isCloudLimitRestricted;
 
     const button = (
-        <button
+        <CallButton
             id='calls-join-button'
-            className={'style--none call-button ' + (disabled ? 'disabled' : '')}
+            className={'style--none call-button ' + (inCall || restricted ? 'disabled' : '')}
+            restricted={restricted}
         >
             <CompassIcon icon='phone-outline'/>
             <span className='call-button-label'>
                 {hasCall ? 'Join Call' : 'Start Call'}
             </span>
-        </button>
+        </CallButton>
     );
 
-    // TODO: to be finished in MM-44112
     if (isCloudFeatureRestricted) {
         return (
             <OverlayTrigger
@@ -48,7 +49,10 @@ const ChannelHeaderButton = ({
                     </Tooltip>
                 }
             >
-                {button}
+                <span className='inline-block'>
+                    {button}
+                    <UpsellIcon className={'icon icon-key-variant-circle'}/>
+                </span>
             </OverlayTrigger>
         );
     }

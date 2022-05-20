@@ -1,10 +1,9 @@
 import React from 'react';
-import PropTypes from 'prop-types';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import CompassIcon from '../../components/icons/compassIcon';
-import {CLOUD_MAX_PARTICIPANTS} from 'src/constants';
+import {CallButton, UpsellIcon} from 'src/components/shared';
 
 interface Props {
     show: boolean,
@@ -24,12 +23,15 @@ const ChannelHeaderDropdownButton = ({
     if (!show) {
         return null;
     }
-    const disabled = inCall || isCloudFeatureRestricted || isCloudLimitRestricted;
+    const restricted = isCloudFeatureRestricted || isCloudLimitRestricted;
+    const withUpsellIcon = isCloudFeatureRestricted || (isCloudLimitRestricted && !inCall);
 
     const button = (
-        <button
+        <CallButton
             id='calls-join-button'
-            className={'style--none call-button-dropdown ' + (disabled ? 'disabled' : '')}
+            className={'style--none call-button-dropdown ' + (inCall || restricted ? 'disabled' : '')}
+            restricted={restricted}
+            noBorder={true}
         >
             <CompassIcon icon='phone-outline'/>
             <div>
@@ -40,10 +42,12 @@ const ChannelHeaderDropdownButton = ({
                     {'In this channel'}
                 </span>
             </div>
-        </button>
+            {withUpsellIcon &&
+                <UpsellIcon className={'icon icon-key-variant-circle'}/>
+            }
+        </CallButton>
     );
 
-    // TODO: to be finished in MM-44112
     if (isCloudFeatureRestricted) {
         return (
             <OverlayTrigger

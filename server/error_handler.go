@@ -1,0 +1,32 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
+
+func (p *Plugin) HandleError(w http.ResponseWriter, internalErr error) {
+	p.HandleErrorWithCode(w, http.StatusInternalServerError, "An internal error has occurred. Check app server logs for details.", internalErr)
+}
+
+// HandleErrorWithCode logs the internal error and sends the public facing error
+// message as JSON in a response with the provided code.
+func (p *Plugin) HandleErrorWithCode(w http.ResponseWriter, code int, publicErrorMsg string, internalErr error) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+
+	details := ""
+	if internalErr != nil {
+		details = internalErr.Error()
+	}
+
+	p.LogError(fmt.Sprintf("public error message: %v; internal details: %v", publicErrorMsg, details))
+
+	responseMsg, _ := json.Marshal(struct {
+		Error string `json:"error"` // A public facing message providing details about the error.
+	}{
+		Error: publicErrorMsg,
+	})
+	_, _ = w.Write(responseMsg)
+}
