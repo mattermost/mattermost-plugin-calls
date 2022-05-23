@@ -3,15 +3,17 @@ import {GlobalState} from 'mattermost-redux/types/store';
 import axios from 'axios';
 
 import {getCurrentChannelId, getCurrentChannel, getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {getMyRoles} from 'mattermost-redux/selectors/entities/roles';
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
+import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
 import {RTCStats} from 'src/types/types';
 
-import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceConnectedUsersInChannel, voiceChannelCallStartAt} from './selectors';
+import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceConnectedUsersInChannel, voiceChannelRootPost, voiceChannelCallStartAt} from './selectors';
 
 import {pluginId} from './manifest';
 
@@ -63,6 +65,7 @@ import {
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_UNINIT,
+    VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
 } from './action_types';
 
@@ -190,6 +193,13 @@ export default class Plugin {
                     startAt: ev.data.start_at,
                 },
             });
+            store.dispatch({
+                type: VOICE_CHANNEL_ROOT_POST,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                    rootPost: ev.data.thread_id,
+                },
+            });
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_on`, (ev) => {
@@ -274,6 +284,7 @@ export default class Plugin {
                         title = fields.slice(2).join(' ');
                     }
                     connectCall(args.channel_id, title);
+                    followThread(args.channel_id, args.team_id);
                     return {};
                 }
                 return {error: {message: 'You are already connected to a call in the current channel.'}};
@@ -348,6 +359,7 @@ export default class Plugin {
 
                     if (!connectedChannelID(store.getState())) {
                         connectCall(channel.id);
+                        followThread(channel.id, channel.team_id);
                     } else if (connectedChannelID(store.getState()) !== channel.id) {
                         store.dispatch({
                             type: SHOW_SWITCH_CALL_MODAL,
@@ -355,6 +367,15 @@ export default class Plugin {
                     }
                 },
             );
+        };
+
+        const followThread = async (channelID: string, teamID: string) => {
+            const threadID = voiceChannelRootPost(store.getState(), channelID);
+            if (threadID) {
+                store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
+            } else {
+                console.error('Unable to follow call\'s thread, not registered in store');
+            }
         };
 
         registerChannelHeaderMenuButton();
@@ -393,6 +414,7 @@ export default class Plugin {
             }
             if (ev.data && ev.data.type === 'connectCall') {
                 connectCall(ev.data.channelID);
+                followThread(ev.data.channelID, getCurrentTeamId(store.getState()));
             }
         };
         window.addEventListener('message', windowEventHandler);
@@ -486,7 +508,15 @@ export default class Plugin {
                         channelID,
                     },
                 });
-
+                if (resp.data.call?.thread_id) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_ROOT_POST,
+                        data: {
+                            channelID,
+                            rootPost: resp.data.call?.thread_id,
+                        },
+                    });
+                }
                 if (resp.data.call?.users && resp.data.call?.users.length > 0) {
                     store.dispatch({
                         type: VOICE_CHANNEL_PROFILES_CONNECTED,
