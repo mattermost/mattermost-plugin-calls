@@ -376,7 +376,7 @@ export default class Plugin {
         const followThread = async (channelID: string, teamID: string) => {
             const threadID = voiceChannelRootPost(store.getState(), channelID);
             if (threadID) {
-                setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true)(store.dispatch, store.getState);
+                store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
             } else {
                 console.error('Unable to follow call\'s thread, not registered in store');
             }
