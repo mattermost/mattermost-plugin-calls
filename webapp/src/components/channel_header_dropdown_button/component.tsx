@@ -2,8 +2,10 @@ import React from 'react';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
-import CompassIcon from '../../components/icons/compassIcon';
-import {CallButton, UpsellIcon} from 'src/components/shared';
+import styled, {css} from 'styled-components';
+
+import CompassIcon from 'src/components/icons/compassIcon';
+import {Header, SubHeader} from 'src/components/shared';
 
 interface Props {
     show: boolean,
@@ -31,7 +33,6 @@ const ChannelHeaderDropdownButton = ({
             id='calls-join-button'
             className={'style--none call-button-dropdown ' + (inCall || restricted ? 'disabled' : '')}
             restricted={restricted}
-            noBorder={true}
         >
             <CompassIcon icon='phone-outline'/>
             <div>
@@ -43,7 +44,7 @@ const ChannelHeaderDropdownButton = ({
                 </span>
             </div>
             {withUpsellIcon &&
-                <UpsellIcon className={'icon icon-key-variant-circle'}/>
+                <UpsellIcon className={'icon icon-key-variant'}/>
             }
         </CallButton>
     );
@@ -54,8 +55,12 @@ const ChannelHeaderDropdownButton = ({
                 placement='bottom'
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
-                        {'Professional feature'}
-                        <p>{'This is a paid feature, available with a free 30-day trial'}</p>
+                        <Header>
+                            {'Professional feature'}
+                        </Header>
+                        <SubHeader>
+                            {'This is a paid feature, available with a free 30-day trial'}
+                        </SubHeader>
                     </Tooltip>
                 }
             >
@@ -70,8 +75,12 @@ const ChannelHeaderDropdownButton = ({
                 placement='bottom'
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
-                        {'Sorry, participants per call are currently limited to 8.'}
-                        <p>{'This is because Calls is in the Beta phase. We’re working to remove this limit soon.'}</p>
+                        <Header>
+                            {'Sorry, participants per call are currently limited to 8.'}
+                        </Header>
+                        <SubHeader>
+                            {'This is because Calls is in the Beta phase. We’re working to remove this limit soon.'}
+                        </SubHeader>
                     </Tooltip>
                 }
             >
@@ -82,5 +91,35 @@ const ChannelHeaderDropdownButton = ({
 
     return button;
 };
+
+const CallButton = styled.button<{restricted: boolean}>`
+    // &&&&& is to override the call-button styles
+    &&&&& {
+        ${(props) => props.restricted && css`
+            .call-button-label {
+                color: rgba(var(--center-channel-color-rgb), 0.72);
+            }
+            .call-button-dropdown-sublabel {
+                color: rgba(var(--center-channel-color-rgb), 0.56);
+            }
+            >i {
+                color: rgba(var(--center-channel-color-rgb), 0.56);
+            }
+        `}
+    }
+`;
+
+const UpsellIcon = styled.i`
+    // &&&&&& is to override the call-button styles
+    &&&&&& {
+      position: absolute;
+      right: 10px;
+      top: 16px;
+      color: var(--button-bg);
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+`;
 
 export default ChannelHeaderDropdownButton;
