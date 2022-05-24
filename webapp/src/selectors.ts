@@ -1,6 +1,13 @@
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {GlobalState} from 'mattermost-redux/types/store';
+
+import {getLicense} from 'mattermost-redux/selectors/entities/general';
+import {createSelector} from 'reselect';
+
+import {LicenseSkus} from '@mattermost/types/general';
+
+import {CLOUD_MAX_PARTICIPANTS} from 'src/constants';
+import {isDMChannel} from 'src/utils';
 
 import {pluginId} from './manifest';
 
@@ -66,3 +73,63 @@ export const screenSourceModal = (state: GlobalState) => {
     return getPluginState(state).screenSourceModal;
 };
 
+export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
+    return getPluginState(state).voiceChannelRootPost[channelID];
+};
+
+const getSku = (state: GlobalState): string => {
+    return getPluginState(state).cloudInfo.sku_short_name;
+};
+
+//
+// Selectors for Cloud and beta limits:
+//
+export const isCloud: (state: GlobalState) => boolean = createSelector(
+    'isCloud',
+    getLicense,
+    (license) => license?.Cloud === 'true',
+);
+
+export const isCloudStarter: (state: GlobalState) => boolean = createSelector(
+    'isCloudStarter',
+    isCloud,
+    getSku,
+    (cloud, sku) => cloud && sku === LicenseSkus.Starter,
+);
+
+export const isCloudProfessional: (state: GlobalState) => boolean = createSelector(
+    'isCloudProfessional',
+    isCloud,
+    getSku,
+    (cloud, sku) => cloud && sku === LicenseSkus.Professional,
+);
+
+export const isCloudEnterprise: (state: GlobalState) => boolean = createSelector(
+    'isCloudEnterprise',
+    isCloud,
+    getSku,
+    (cloud, sku) => cloud && sku === LicenseSkus.Enterprise,
+);
+
+export const isCloudProfessionalOrEnterprise: (state: GlobalState) => boolean = createSelector(
+    'isCloudProfessionalOrEnterprise',
+    isCloudProfessional,
+    isCloudEnterprise,
+    (isProf, isEnt) => isProf || isEnt,
+);
+
+// isCloudFeatureRestricted means: are you restricted from making a call because of your subscription?
+export const isCloudFeatureRestricted: (state: GlobalState) => boolean = createSelector(
+    'isCloudFeatureRestricted',
+    isCloudStarter,
+    getCurrentChannel,
+    (isStarter, channel) => isStarter && !isDMChannel(channel),
+);
+
+// isCloudLimitRestricted means: are you restricted from joining a call because of our beta limits?
+export const isCloudLimitRestricted: (state: GlobalState) => boolean = createSelector(
+    'isCloudLimitRestricted',
+    isCloudProfessionalOrEnterprise,
+    voiceConnectedUsers,
+    (isCloudPaid, users) => isCloudPaid && users.length >= CLOUD_MAX_PARTICIPANTS,
+);

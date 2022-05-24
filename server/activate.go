@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/mattermost/rtcd/service/rtc"
@@ -11,12 +12,21 @@ import (
 )
 
 func (p *Plugin) OnActivate() error {
+	p.LogDebug("activating")
+
 	if os.Getenv("MM_CALLS_DISABLE") == "true" {
 		p.LogInfo("disable flag is set, exiting")
 		return fmt.Errorf("disabled by environment flag")
 	}
 
-	p.LogDebug("activating")
+	maxPart := os.Getenv("MM_CALLS_CLOUD_MAX_PARTICIPANTS")
+	if maxPart != "" {
+		if max, err := strconv.Atoi(maxPart); err == nil {
+			cloudMaxParticipants = max
+		} else {
+			p.LogError("activate", "MM_CALLS_CLOUD_MAX_PARTICIPANTS error during parsing:", err.Error())
+		}
+	}
 
 	pluginAPIClient := pluginapi.NewClient(p.API, p.Driver)
 	p.pluginAPI = pluginAPIClient

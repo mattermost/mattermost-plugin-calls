@@ -1,10 +1,7 @@
 import {
     getCurrentRelativeTeamUrl,
-    getCurrentTeam,
     getCurrentTeamId,
     getTeam,
-    getTeamByName,
-    getTeamMemberships,
 } from 'mattermost-redux/selectors/entities/teams';
 
 import {Client4} from 'mattermost-redux/client';
@@ -15,7 +12,6 @@ import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_ut
 import {Team} from 'mattermost-redux/types/teams';
 import {Channel, ChannelMembership} from 'mattermost-redux/types/channels';
 import {UserProfile} from 'mattermost-redux/types/users';
-import {Dictionary} from 'mattermost-redux/types/utilities';
 
 import {GlobalState} from 'mattermost-redux/types/store';
 
@@ -111,22 +107,16 @@ export function getScreenResolution() {
     };
 }
 
-type userRoles = {
-    system: Set<string>;
-    team: Dictionary<Set<string>>;
-    channel: Dictionary<Set<string>>;
-}
-
-export function hasPermissionsToEnableCalls(channel: Channel, cm: ChannelMembership | null | undefined, roles: userRoles, allowEnable: boolean) {
+export function hasPermissionsToEnableCalls(channel: Channel, cm: ChannelMembership | null | undefined, systemRoles: Set<string>, channelRoles: Record<string, Set<string>>, allowEnable: boolean) {
     if (!allowEnable) {
-        return roles.system.has('system_admin');
+        return systemRoles.has('system_admin');
     }
 
     return (isDirectChannel(channel) ||
     isGroupChannel(channel)) ||
     cm?.scheme_admin === true ||
-    roles.channel[channel.id]?.has('channel_admin') ||
-    roles.system.has('system_admin');
+    channelRoles[channel.id]?.has('channel_admin') ||
+    systemRoles.has('system_admin');
 }
 
 export function getExpandedChannelID() {
@@ -215,6 +205,7 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
     } else {
         // browser
         try {
+            // @ts-ignore (fixed in typescript 4.4+ but webapp is on 4.3.4)
             screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: true,
                 audio: Boolean(withAudio),

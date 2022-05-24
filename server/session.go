@@ -46,12 +46,12 @@ func newUserSession(userID, channelID, connID string) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(userID, channelID string) (channelState, error) {
+func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelState, error) {
 	var st channelState
 
 	cfg := p.getConfiguration()
 
-	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+	err := p.kvSetAtomicChannelState(channel.Id, func(state *channelState) (*channelState, error) {
 		if state == nil {
 			if cfg.DefaultEnabled != nil && *cfg.DefaultEnabled {
 				state = &channelState{
@@ -87,6 +87,15 @@ func (p *Plugin) addUserSession(userID, channelID string) (channelState, error) 
 		if _, ok := state.Call.Users[userID]; ok {
 			return nil, fmt.Errorf("user is already connected")
 		}
+
+		// Check for cloud limits -- needs to be done here to prevent a race condition
+		if allowed, err := p.joinAllowed(channel, state); !allowed {
+			if err != nil {
+				p.LogError("error checking for cloud limits", "error", err.Error())
+			}
+			return nil, fmt.Errorf("user cannot join because of cloud limits")
+		}
+
 		state.Call.Users[userID] = &userState{}
 		if len(state.Call.Users) > state.Call.Stats.Participants {
 			state.Call.Stats.Participants = len(state.Call.Users)

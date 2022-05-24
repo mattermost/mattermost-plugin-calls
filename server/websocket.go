@@ -350,7 +350,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 		close(us.doneCh)
 	}()
 
-	state, err := p.addUserSession(userID, channelID)
+	state, err := p.addUserSession(userID, channel)
 	if err != nil {
 		return fmt.Errorf("failed to add user session: %w", err)
 	} else if state.Call == nil {
