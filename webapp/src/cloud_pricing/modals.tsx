@@ -41,7 +41,7 @@ export const CloudFreeTrialModalUser = (modalProps: Props) => {
             components={{FooterContainer}}
         >
             <VerticalSpacer size={22}/>
-            <p>{formatMessage({defaultMessage: 'Channel calls give you a quick, audio-first way of interacting with your colleagues. Get the full calls experience when you start a free, 30-day trial.'})}</p>
+            <p>{formatMessage({defaultMessage: 'Calls are a quick, audio-first way of interacting with your colleagues. Get the full calls experience when you start a free, 30-day trial.'})}</p>
             <p>{formatMessage({defaultMessage: 'Notify your admin to start your trial today and we will send an automatic request to your admins to start the trial.'})}</p>
         </SizedGenericModal>
     );
