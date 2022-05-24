@@ -2,30 +2,25 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"net/http"
 )
 
-const cloudMaxParticipants = 8
+// cloudMaxParticipants defaults to 8, can be overridden by setting the env variable
+// MM_CALLS_CLOUD_MAX_PARTICIPANTS
+var cloudMaxParticipants = 8
 
 // JoinAllowed returns true if the user is allowed to join the call, taking into
 // account cloud limits
-func (p *Plugin) joinAllowed(channelID string, state *channelState) (bool, error) {
-	license := p.pluginAPI.System.GetLicense()
-
+func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool, error) {
 	// Rules are:
 	// On-prem: no limits to calls
 	// Cloud Starter: DMs 1-1 only
 	// Cloud Professional & Cloud Enterprise: DMs 1-1, GMs and Channel calls limited to 8 people.
 
+	license := p.pluginAPI.System.GetLicense()
 	if !isCloud(license) {
 		return true, nil
-	}
-
-	channel, err := p.API.GetChannel(channelID)
-	if err != nil {
-		return false, fmt.Errorf("get channel failed: %w", err)
 	}
 
 	if isCloudStarter(license) {

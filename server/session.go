@@ -46,12 +46,12 @@ func newUserSession(userID, channelID, connID string) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(userID, channelID string) (channelState, error) {
+func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelState, error) {
 	var st channelState
 
 	cfg := p.getConfiguration()
 
-	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+	err := p.kvSetAtomicChannelState(channel.Id, func(state *channelState) (*channelState, error) {
 		if state == nil {
 			if cfg.DefaultEnabled != nil && *cfg.DefaultEnabled {
 				state = &channelState{
@@ -80,7 +80,7 @@ func (p *Plugin) addUserSession(userID, channelID string) (channelState, error) 
 		}
 
 		// Check for cloud limits -- needs to be done here to prevent a race condition
-		if allowed, err := p.joinAllowed(channelID, state); !allowed {
+		if allowed, err := p.joinAllowed(channel, state); !allowed {
 			if err != nil {
 				p.LogError("error checking for cloud limits", "error", err.Error())
 			}
