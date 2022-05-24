@@ -63,7 +63,7 @@ export const CloudFreeTrialModalAdmin = (modalProps: Props) => {
     if (trialTaken) {
         headerText = formatMessage({defaultMessage: 'Upgrade to use calls in Channels'});
         confirmButtonText = formatMessage({defaultMessage: 'View plans'});
-        bodyText = formatMessage({defaultMessage: 'Channel calls give you a quick, audio-first way of interacting with your colleagues. Upgrade to the Professional Plan to use calls in Channels and Group Messages.'});
+        bodyText = formatMessage({defaultMessage: 'Calls are a quick, audio-first way of interacting with your colleagues. Upgrade to Mattermost Professional to use calls in channels and group messages.'});
         confirmThunk = displayCloudPricing();
     }
 
