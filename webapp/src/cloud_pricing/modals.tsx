@@ -31,7 +31,7 @@ export const CloudFreeTrialModalUser = (modalProps: Props) => {
             id={IDUser}
             {...modalProps}
             modalHeaderText={formatMessage({defaultMessage: 'Try channel calls with a free trial'})}
-            confirmButtonText={formatMessage({defaultMessage: 'Notify admin'})}
+            confirmButtonText={formatMessage({defaultMessage: 'Notify Admin'})}
             cancelButtonText={formatMessage({defaultMessage: 'Back'})}
             handleConfirm={() => {
                 notifyAdminCloudFreeTrial();
