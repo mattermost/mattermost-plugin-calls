@@ -76,7 +76,7 @@ const ChannelHeaderDropdownButton = ({
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
-                            {'Sorry, participants per call are currently limited to 8.'}
+                            {'There's a limit of 8 participants per call.'}
                         </Header>
                         <SubHeader>
                             {'This is because Calls is in the Beta phase. We’re working to remove this limit soon.'}
