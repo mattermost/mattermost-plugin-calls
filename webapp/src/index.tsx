@@ -1,5 +1,4 @@
-import {GlobalState} from 'mattermost-redux/types/store';
-
+import React from 'react';
 import axios from 'axios';
 
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
@@ -10,10 +9,6 @@ import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/commo
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
-
-import React from 'react';
-
-import {getCloudProducts, getCloudSubscription} from 'mattermost-redux/actions/cloud';
 
 import {getCloudInfo} from 'src/actions';
 
