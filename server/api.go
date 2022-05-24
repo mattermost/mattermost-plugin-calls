@@ -316,6 +316,12 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 			return
 		}
 
+		// Return license information that isn't exposed to clients yet
+		if r.URL.Path == "/cloud-info" {
+			p.handleCloudInfo(w)
+			return
+		}
+
 		if r.URL.Path == "/channels" {
 			p.handleGetAllChannels(w, r)
 			return

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/mattermost/rtcd/service/rtc"
@@ -110,6 +111,15 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	go p.wsWriter()
+
+	maxPart := os.Getenv("MM_CALLS_CLOUD_MAX_PARTICIPANTS")
+	if maxPart != "" {
+		if max, err := strconv.Atoi(maxPart); err == nil {
+			cloudMaxParticipants = max
+		} else {
+			p.LogError("activate", "MM_CALLS_CLOUD_MAX_PARTICIPANTS error during parsing:", err.Error())
+		}
+	}
 
 	p.LogDebug("activated")
 

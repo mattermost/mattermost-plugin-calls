@@ -1,19 +1,27 @@
-import {GlobalState} from 'mattermost-redux/types/store';
-
+import React from 'react';
 import axios from 'axios';
 
-import {getCurrentChannelId, getCurrentChannel, getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
-import {getMyRoles} from 'mattermost-redux/selectors/entities/roles';
+import {getMyChannelRoles, getMySystemRoles} from 'mattermost-redux/selectors/entities/roles';
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
-import {RTCStats} from 'src/types/types';
+import {getCloudInfo} from 'src/actions';
 
-import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceConnectedUsersInChannel, voiceChannelRootPost, voiceChannelCallStartAt} from './selectors';
+import {
+    isVoiceEnabled,
+    connectedChannelID,
+    voiceConnectedUsers,
+    voiceConnectedUsersInChannel,
+    voiceChannelCallStartAt,
+    isCloudFeatureRestricted,
+    isCloudLimitRestricted,
+    voiceChannelRootPost,
+} from './selectors';
 
 import {pluginId} from './manifest';
 
@@ -324,6 +332,8 @@ export default class Plugin {
             return {message, args};
         });
 
+        store.dispatch(getCloudInfo());
+
         let channelHeaderMenuButtonID: string;
         const unregisterChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
@@ -341,6 +351,10 @@ export default class Plugin {
                 ChannelHeaderButton,
                 ChannelHeaderDropdownButton,
                 async (channel) => {
+                    if (isCloudFeatureRestricted(store.getState()) || isCloudLimitRestricted(store.getState())) {
+                        return;
+                    }
+
                     try {
                         const users = voiceConnectedUsers(store.getState());
                         if (users && users.length > 0) {
@@ -474,7 +488,8 @@ export default class Plugin {
                 channel = getChannel(store.getState(), channelID);
             }
 
-            const roles = getMyRoles(store.getState());
+            const systemRoles = getMySystemRoles(store.getState());
+            const channelRoles = getMyChannelRoles(store.getState());
             const cms = getMyChannelMemberships(store.getState());
 
             if (isDMChannel(channel)) {
@@ -488,7 +503,7 @@ export default class Plugin {
             try {
                 const resp = await axios.get(`${getPluginPath()}/config`);
                 registry.unregisterComponent(channelHeaderMenuID);
-                if (hasPermissionsToEnableCalls(channel, cms[channelID], roles, resp.data.AllowEnableCalls)) {
+                if (hasPermissionsToEnableCalls(channel, cms[channelID], systemRoles, channelRoles, resp.data.AllowEnableCalls)) {
                     registerChannelHeaderMenuAction();
                 }
             } catch (err) {
@@ -630,6 +645,7 @@ export default class Plugin {
 declare global {
     interface Window {
         registerPlugin(id: string, plugin: Plugin): void,
+
         callsClient: any,
         webkitAudioContext: AudioContext,
         basename: string,
@@ -649,6 +665,11 @@ declare global {
         msBackingStorePixelRatio: number,
         oBackingStorePixelRatio: number,
         backingStorePixelRatio: number,
+    }
+
+    // fix for a type problem in webapp as of 6dcac2
+    type DeepPartial<T> = {
+        [P in keyof T]?: DeepPartial<T[P]>;
     }
 }
 
