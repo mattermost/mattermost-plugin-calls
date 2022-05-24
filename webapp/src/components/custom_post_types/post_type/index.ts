@@ -13,7 +13,7 @@ import {
 } from 'src/selectors';
 import {showSwitchCallModal} from 'src/actions';
 
-import PostType from './component';
+import PostType from 'src/components/custom_post_types/post_type/component';
 
 interface OwnProps {
     post: Post,

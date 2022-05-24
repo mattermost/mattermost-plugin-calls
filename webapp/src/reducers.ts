@@ -34,7 +34,7 @@ import {
     HIDE_SCREEN_SOURCE_MODAL, RECEIVED_CLOUD_INFO,
 } from './action_types';
 
-const isVoiceEnabled = (state = false, action: {type: string}) => {
+const isVoiceEnabled = (state = false, action: { type: string }) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return false;
@@ -140,7 +140,7 @@ const voiceConnectedChannels = (state: connectedChannelsState = {}, action: conn
     }
 };
 
-const connectedChannelID = (state: string | null = null, action: {type: string, data: {channelID: string, currentUserID: string, userID: string}}) => {
+const connectedChannelID = (state: string | null = null, action: { type: string, data: { channelID: string, currentUserID: string, userID: string } }) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return null;
@@ -171,7 +171,7 @@ interface usersStatusesAction {
         channelID: string,
         userID: string,
         raised_hand?: number,
-        states: {[userID: string]: UserState},
+        states: { [userID: string]: UserState },
     },
 }
 
@@ -351,7 +351,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
     }
 };
 
-const callStartAt = (state: {[channelID: string]: number} = {}, action: {type: string, data: {channelID: string, startAt: number}}) => {
+const callStartAt = (state: { [channelID: string]: number } = {}, action: { type: string, data: { channelID: string, startAt: number } }) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
@@ -365,7 +365,7 @@ const callStartAt = (state: {[channelID: string]: number} = {}, action: {type: s
     }
 };
 
-const voiceChannelRootPost = (state: {[channelID: string]: string} = {}, action: {type:string, data: {channelID: string, rootPost: string}}) => {
+const voiceChannelRootPost = (state: { [channelID: string]: string } = {}, action: { type: string, data: { channelID: string, rootPost: string } }) => {
     switch (action.type) {
     case VOICE_CHANNEL_ROOT_POST:
         return {
@@ -377,7 +377,7 @@ const voiceChannelRootPost = (state: {[channelID: string]: string} = {}, action:
     }
 };
 
-const voiceChannelScreenSharingID = (state: {[channelID: string]: string} = {}, action: {type: string, data: {channelID: string, userID?: string}}) => {
+const voiceChannelScreenSharingID = (state: { [channelID: string]: string } = {}, action: { type: string, data: { channelID: string, userID?: string } }) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
@@ -396,7 +396,7 @@ const voiceChannelScreenSharingID = (state: {[channelID: string]: string} = {}, 
     }
 };
 
-const expandedView = (state = false, action: {type: string}) => {
+const expandedView = (state = false, action: { type: string }) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return false;
@@ -409,7 +409,10 @@ const expandedView = (state = false, action: {type: string}) => {
     }
 };
 
-const switchCallModal = (state = {show: false, targetID: ''}, action: {type: string, data?: {targetID: string}}) => {
+const switchCallModal = (state = {
+    show: false,
+    targetID: '',
+}, action: { type: string, data?: { targetID: string } }) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {show: false, targetID: ''};
@@ -422,7 +425,7 @@ const switchCallModal = (state = {show: false, targetID: ''}, action: {type: str
     }
 };
 
-const screenSourceModal = (state = false, action: {type: string}) => {
+const screenSourceModal = (state = false, action: { type: string }) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return false;
@@ -435,10 +438,13 @@ const screenSourceModal = (state = false, action: {type: string}) => {
     }
 };
 
-const cloudInfo = (state = {sku_short_name: ''}, action: GenericAction) => {
+const cloudInfo = (state = {sku_short_name: '', retrieved: false}, action: GenericAction) => {
     switch (action.type) {
     case RECEIVED_CLOUD_INFO:
-        return action.data;
+        return {
+            sku_short_name: action.data.sku_short_name,
+            retrieved: true,
+        };
     default:
         return state;
     }

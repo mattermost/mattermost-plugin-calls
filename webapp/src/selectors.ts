@@ -77,13 +77,17 @@ export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
     return getPluginState(state).voiceChannelRootPost[channelID];
 };
 
-const getSku = (state: GlobalState): string => {
-    return getPluginState(state).cloudInfo.sku_short_name;
-};
-
 //
 // Selectors for Cloud and beta limits:
 //
+const cloudSku = (state: GlobalState): string => {
+    return getPluginState(state).cloudInfo.sku_short_name;
+};
+
+export const retrievedCloudSku = (state: GlobalState): boolean => {
+    return getPluginState(state).cloudInfo.retrieved;
+};
+
 export const isCloud: (state: GlobalState) => boolean = createSelector(
     'isCloud',
     getLicense,
@@ -93,21 +97,21 @@ export const isCloud: (state: GlobalState) => boolean = createSelector(
 export const isCloudStarter: (state: GlobalState) => boolean = createSelector(
     'isCloudStarter',
     isCloud,
-    getSku,
+    cloudSku,
     (cloud, sku) => cloud && sku === LicenseSkus.Starter,
 );
 
 export const isCloudProfessional: (state: GlobalState) => boolean = createSelector(
     'isCloudProfessional',
     isCloud,
-    getSku,
+    cloudSku,
     (cloud, sku) => cloud && sku === LicenseSkus.Professional,
 );
 
 export const isCloudEnterprise: (state: GlobalState) => boolean = createSelector(
     'isCloudEnterprise',
     isCloud,
-    getSku,
+    cloudSku,
     (cloud, sku) => cloud && sku === LicenseSkus.Enterprise,
 );
 
@@ -133,3 +137,32 @@ export const isCloudLimitRestricted: (state: GlobalState) => boolean = createSel
     voiceConnectedUsers,
     (isCloudPaid, users) => isCloudPaid && users.length >= CLOUD_MAX_PARTICIPANTS,
 );
+
+const getSubscription = (state: GlobalState) => {
+    return state.entities.cloud.subscription;
+};
+
+export const isCloudTrial: (state: GlobalState) => boolean = createSelector(
+    'isCloudTrial',
+    getSubscription,
+    (subscription) => {
+        return subscription?.is_free_trial === 'true';
+    },
+);
+
+export const isCloudTrialCompleted: (state: GlobalState) => boolean = createSelector(
+    'isCompletedCloudTrial',
+    getSubscription,
+    (subscription) => {
+        return subscription?.is_free_trial === 'false' && subscription?.trial_end_at > 0;
+    },
+);
+
+export const isCloudTrialNeverStarted: (state: GlobalState) => boolean = createSelector(
+    'isCloudTrial',
+    getSubscription,
+    (subscription) => {
+        return subscription?.trial_end_at === 0;
+    },
+);
+

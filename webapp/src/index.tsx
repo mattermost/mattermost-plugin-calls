@@ -10,7 +10,8 @@ import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels'
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
-import {getCloudInfo} from 'src/actions';
+import {displayFreeTrial, getCloudInfo} from 'src/actions';
+import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 
 import {
     isVoiceEnabled,
@@ -21,6 +22,7 @@ import {
     isCloudFeatureRestricted,
     isCloudLimitRestricted,
     voiceChannelRootPost,
+    retrievedCloudSku,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -33,7 +35,7 @@ import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import CallWidget from './components/call_widget';
 import ChannelLinkLabel from './components/channel_link_label';
 import ChannelCallToast from './components/channel_call_toast';
-import PostType from './components/post_type';
+import PostType from './components/custom_post_types/post_type';
 import ExpandedView from './components/expanded_view';
 import SwitchCallModal from './components/switch_call_modal';
 import ScreenSourceModal from './components/screen_source_modal';
@@ -258,6 +260,7 @@ export default class Plugin {
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
+        registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
@@ -332,8 +335,6 @@ export default class Plugin {
             return {message, args};
         });
 
-        store.dispatch(getCloudInfo());
-
         let channelHeaderMenuButtonID: string;
         const unregisterChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
@@ -351,7 +352,12 @@ export default class Plugin {
                 ChannelHeaderButton,
                 ChannelHeaderDropdownButton,
                 async (channel) => {
-                    if (isCloudFeatureRestricted(store.getState()) || isCloudLimitRestricted(store.getState())) {
+                    if (isCloudFeatureRestricted(store.getState())) {
+                        store.dispatch(displayFreeTrial());
+                        return;
+                    }
+
+                    if (isCloudLimitRestricted(store.getState())) {
                         return;
                     }
 
@@ -482,6 +488,11 @@ export default class Plugin {
         };
 
         const fetchChannelData = async (channelID: string) => {
+            // Don't retrieve cloud info on every channel change.
+            if (!retrievedCloudSku(store.getState())) {
+                store.dispatch(getCloudInfo());
+            }
+
             let channel = getChannel(store.getState(), channelID);
             if (!channel) {
                 await getChannelAction(channelID)(store.dispatch as any, store.getState);
