@@ -35,7 +35,7 @@ const ChannelHeaderButton = ({
         >
             <CompassIcon icon='phone-outline'/>
             <span className='call-button-label'>
-                {hasCall ? 'Join Call' : 'Start Call'}
+                {hasCall ? 'Join call' : 'Start call'}
             </span>
         </CallButton>
     );
