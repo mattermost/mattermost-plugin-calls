@@ -57,7 +57,7 @@ export const CloudFreeTrialModalAdmin = (modalProps: Props) => {
     // So the default is trialNotTaken:
     let headerText = formatMessage({defaultMessage: 'Try channel calls with a free trial'});
     let confirmButtonText = formatMessage({defaultMessage: 'Try free for 30 days'});
-    let bodyText = formatMessage({defaultMessage: 'Channel calls give you a quick, audio-first way of interacting with your colleagues. Get the full calls experience when you start a free, 30-day trial.'});
+    let bodyText = formatMessage({defaultMessage: 'Calls are a quick, audio-first way of interacting with your colleagues. Get the full calls experience when you start a free, 30-day trial.'});
     let confirmThunk: Thunk = requestTrial();
 
     if (trialTaken) {
