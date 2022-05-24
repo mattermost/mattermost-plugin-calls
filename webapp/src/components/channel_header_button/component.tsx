@@ -73,7 +73,7 @@ const ChannelHeaderButton = ({
                             {'There's a limit of 8 participants per call.'}
                         </Header>
                         <SubHeader>
-                            {'This is because Calls is in the Beta phase. We’re working to remove this limit soon.'}
+                            {'This is because calls is currently in beta. We’re working to remove this limit soon.'}
                         </SubHeader>
                     </Tooltip>
                 }
