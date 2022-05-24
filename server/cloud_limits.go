@@ -93,7 +93,7 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 	postType := "custom_cloud_trial_req"
 	message := fmt.Sprintf("@%s requested access to a free trial for Calls.", author.Username)
 	title := "Make calls in channels"
-	text := "Make Calls in channels with up to 8 people. Make your boss proud. Look shnazzy in formal wear. Be attractive." + separator + "[Upgrade now](https://customers.mattermost.com)."
+	text := "Start a call in a channel. You can include up to 8 participants per call." + separator + "[Upgrade now](https://customers.mattermost.com)."
 
 	attachments := []*model.SlackAttachment{
 		{
