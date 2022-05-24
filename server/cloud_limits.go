@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 // cloudMaxParticipants defaults to 8, can be overridden by setting the env variable
 // MM_CALLS_CLOUD_MAX_PARTICIPANTS
 var cloudMaxParticipants = 8
+
 const maxAdminsToQueryForNotification = 1000
 
 // JoinAllowed returns true if the user is allowed to join the call, taking into
