@@ -104,7 +104,7 @@ export const CloudFreeTrialSuccessModal = (modalProps: Props) => {
                     {formatMessage({defaultMessage: 'Your trial has started!'})}
                     <p>{formatMessage({defaultMessage: 'Explore the benefits of Enterprise'})}</p>
                 </Heading>
-                {formatMessage({defaultMessage: 'Welcome to your Mattermost Enterprise trial! It expires on August 1st, 2021. You now have access to guest accounts, automated compliance reports, and mobile secure-ID push notifications, among many other features. View all features on our documentation.'})}
+                {formatMessage({defaultMessage: 'Welcome to your Mattermost Enterprise trial! You now have access to guest accounts, automated compliance reports, and mobile secure-ID push notifications, among many other features. [View a list of features on our pricing page](https://mattermost.com/pricing/). Ready to dive in? [Visit our documentation to get started](https://docs.mattermost.com/overview/index.html).'})}
             </div>
         </SizedGenericModal>
     );
