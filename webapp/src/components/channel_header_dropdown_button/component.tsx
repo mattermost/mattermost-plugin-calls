@@ -56,7 +56,7 @@ const ChannelHeaderDropdownButton = ({
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
-                            {'Professional feature'}
+                            {'Mattermost Professional feature'}
                         </Header>
                         <SubHeader>
                             {'This is a paid feature, available with a free 30-day trial'}
