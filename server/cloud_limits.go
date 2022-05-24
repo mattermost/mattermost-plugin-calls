@@ -12,7 +12,7 @@ import (
 // MM_CALLS_CLOUD_MAX_PARTICIPANTS
 var cloudMaxParticipants = 8
 
-const maxAdminsToQueryForNotification = 1000
+const maxAdminsToQueryForNotification = 25
 
 // JoinAllowed returns true if the user is allowed to join the call, taking into
 // account cloud limits
@@ -43,7 +43,7 @@ func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool,
 func (p *Plugin) handleCloudInfo(w http.ResponseWriter) error {
 	license := p.pluginAPI.System.GetLicense()
 	if license == nil {
-		p.HandleErrorWithCode(w, http.StatusBadRequest, "no license",
+		p.handleErrorWithCode(w, http.StatusBadRequest, "no license",
 			errors.New("no license found"))
 		return nil
 	}
@@ -63,7 +63,7 @@ func (p *Plugin) handleCloudInfo(w http.ResponseWriter) error {
 func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request) error {
 	license := p.pluginAPI.System.GetLicense()
 	if !isCloud(license) {
-		p.HandleErrorWithCode(w, http.StatusBadRequest, "not a cloud server",
+		p.handleErrorWithCode(w, http.StatusBadRequest, "not a cloud server",
 			errors.New("not a cloud server, will not notify admins"))
 		return nil
 	}
@@ -108,24 +108,22 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 	}
 
 	for _, admin := range admins {
-		go func(adminID string) {
-			channel, err := p.pluginAPI.Channel.GetDirect(adminID, systemBotID)
-			if err != nil {
-				p.pluginAPI.Log.Warn("failed to get Direct Message channel between user and bot", "user ID", adminID, "bot ID", systemBotID, "error", err)
-				return
-			}
+		channel, err := p.pluginAPI.Channel.GetDirect(admin.Id, systemBotID)
+		if err != nil {
+			p.pluginAPI.Log.Warn("failed to get Direct Message channel between user and bot", "user ID", admin.Id, "bot ID", systemBotID, "error", err)
+			continue
+		}
 
-			post := &model.Post{
-				Message:   message,
-				UserId:    systemBotID,
-				ChannelId: channel.Id,
-				Type:      postType,
-			}
-			model.ParseSlackAttachment(post, attachments)
-			if err := p.pluginAPI.Post.CreatePost(post); err != nil {
-				p.pluginAPI.Log.Warn("failed to send a DM to user", "user ID", adminID, "error", err)
-			}
-		}(admin.Id)
+		post := &model.Post{
+			Message:   message,
+			UserId:    systemBotID,
+			ChannelId: channel.Id,
+			Type:      postType,
+		}
+		model.ParseSlackAttachment(post, attachments)
+		if err := p.pluginAPI.Post.CreatePost(post); err != nil {
+			p.pluginAPI.Log.Warn("failed to send a DM to user", "user ID", admin.Id, "error", err)
+		}
 	}
 
 	p.track(evCallNotifyAdmin, map[string]interface{}{

@@ -85,7 +85,7 @@ export const getCloudInfo = (): ActionFunc => {
 export const notifyAdminCloudFreeTrial = async () => {
     return Client4.doFetch(
         `${getPluginPath()}/cloud-notify-admins`,
-        {method: 'get'},
+        {method: 'post'},
     );
 };
 

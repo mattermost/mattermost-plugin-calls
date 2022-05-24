@@ -319,15 +319,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		// Return license information that isn't exposed to clients yet
 		if r.URL.Path == "/cloud-info" {
 			if err := p.handleCloudInfo(w); err != nil {
-				p.HandleError(w, err)
-			}
-			return
-		}
-
-		// End user has requested to notify their admin about upgrading for calls
-		if r.URL.Path == "/cloud-notify-admins" {
-			if err := p.handleCloudNotifyAdmins(w, r); err != nil {
-				p.HandleError(w, err)
+				p.handleError(w, err)
 			}
 			return
 		}
@@ -344,6 +336,14 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	if r.Method == http.MethodPost {
+		// End user has requested to notify their admin about upgrading for calls
+		if r.URL.Path == "/cloud-notify-admins" {
+			if err := p.handleCloudNotifyAdmins(w, r); err != nil {
+				p.handleError(w, err)
+			}
+			return
+		}
+
 		if matches := chRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handlePostChannel(w, r, matches[1])
 			return
