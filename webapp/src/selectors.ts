@@ -77,13 +77,17 @@ export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
     return getPluginState(state).voiceChannelRootPost[channelID];
 };
 
-const getSku = (state: GlobalState): string => {
-    return getPluginState(state).cloudInfo.sku_short_name;
-};
-
 //
 // Selectors for Cloud and beta limits:
 //
+const cloudSku = (state: GlobalState): string => {
+    return getPluginState(state).cloudInfo.sku_short_name;
+};
+
+export const retrievedCloudSku = (state: GlobalState): boolean => {
+    return getPluginState(state).cloudInfo.retrieved;
+};
+
 export const isCloud: (state: GlobalState) => boolean = createSelector(
     'isCloud',
     getLicense,
@@ -93,21 +97,21 @@ export const isCloud: (state: GlobalState) => boolean = createSelector(
 export const isCloudStarter: (state: GlobalState) => boolean = createSelector(
     'isCloudStarter',
     isCloud,
-    getSku,
+    cloudSku,
     (cloud, sku) => cloud && sku === LicenseSkus.Starter,
 );
 
 export const isCloudProfessional: (state: GlobalState) => boolean = createSelector(
     'isCloudProfessional',
     isCloud,
-    getSku,
+    cloudSku,
     (cloud, sku) => cloud && sku === LicenseSkus.Professional,
 );
 
 export const isCloudEnterprise: (state: GlobalState) => boolean = createSelector(
     'isCloudEnterprise',
     isCloud,
-    getSku,
+    cloudSku,
     (cloud, sku) => cloud && sku === LicenseSkus.Enterprise,
 );
 
