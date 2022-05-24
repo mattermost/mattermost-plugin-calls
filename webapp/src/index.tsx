@@ -583,6 +583,7 @@ export default class Plugin {
             if (window.callsClient) {
                 window.callsClient.disconnect();
             }
+            console.log('calls: resetting state');
             store.dispatch({
                 type: VOICE_CHANNEL_UNINIT,
             });
@@ -591,20 +592,13 @@ export default class Plugin {
         this.registerWebSocketEvents(registry, store);
         this.registerReconnectHandler(registry, store, () => {
             console.log('calls: websocket reconnect handler');
-            store.dispatch({
-                type: VOICE_CHANNEL_UNINIT,
-            });
-            onActivate();
-            if (window.callsClient) {
+            if (!window.callsClient) {
+                console.log('calls: resetting state');
                 store.dispatch({
-                    type: VOICE_CHANNEL_USER_CONNECTED,
-                    data: {
-                        channelID: window.callsClient.channelID,
-                        userID: getCurrentUserId(store.getState()),
-                        currentUserID: getCurrentUserId(store.getState()),
-                    },
+                    type: VOICE_CHANNEL_UNINIT,
                 });
             }
+            onActivate();
         });
 
         onActivate();
