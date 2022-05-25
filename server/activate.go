@@ -70,7 +70,7 @@ func (p *Plugin) OnActivate() error {
 		return nil
 	}
 
-	if os.Getenv("CALLS_IS_HANDLER") != "" {
+	if os.Getenv("MM_CALLS_IS_HANDLER") != "" {
 		go func() {
 			p.LogInfo("calls handler, setting state", "clusterID", status.ClusterId)
 			if err := p.setHandlerID(status.ClusterId); err != nil {
