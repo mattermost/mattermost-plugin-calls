@@ -389,7 +389,12 @@ func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string, dialFn rtcd.Dial
 	// Give precedence to environment to override everything else.
 	cfg.ClientID = os.Getenv("MM_CLOUD_INSTALLATION_ID")
 	if cfg.ClientID == "" {
+		if isCloud(m.ctx.pluginAPI.System.GetLicense()) {
+			m.ctx.LogError("installation id is missing")
+		}
 		cfg.ClientID = os.Getenv("MM_CALLS_RTCD_CLIENT_ID")
+	} else {
+		m.ctx.LogDebug("installation id is set", "id", cfg.ClientID)
 	}
 	cfg.AuthKey = os.Getenv("MM_CALLS_RTCD_AUTH_KEY")
 	cfg.URL = rtcdURL
@@ -398,15 +403,16 @@ func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string, dialFn rtcd.Dial
 	}
 
 	// Parsing the URL in case it's already containing credentials.
+	u, clientID, authKey, err := parseURL(cfg.URL)
+	if err != nil {
+		return cfg, fmt.Errorf("failed to parse URL: %w", err)
+	}
 	if cfg.ClientID == "" && cfg.AuthKey == "" {
-		u, clientID, authKey, err := parseURL(cfg.URL)
-		if err != nil {
-			return cfg, fmt.Errorf("failed to parse URL: %w", err)
-		}
 		cfg.ClientID = clientID
 		cfg.AuthKey = authKey
-		cfg.URL = u
 	}
+	// Updating to the clean URL (with credentials stripped if present).
+	cfg.URL = u
 
 	// if no URL has been provided until now we fail with error.
 	if cfg.URL == "" {
