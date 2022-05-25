@@ -1,5 +1,3 @@
-import {CLOUD_MAX_PARTICIPANTS_DEFAULT} from 'src/constants';
-
 export type UserState = {
     voice: boolean;
     unmuted: boolean;
@@ -63,5 +61,5 @@ export type CloudInfo = {
 
 export const CloudInfoDefault = {
     sku_short_name: '',
-    cloud_max_participants: CLOUD_MAX_PARTICIPANTS_DEFAULT,
+    cloud_max_participants: 0,
 } as CloudInfo;

@@ -1,1 +1,0 @@
-export const CLOUD_MAX_PARTICIPANTS_DEFAULT = 8;
