@@ -91,7 +91,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 			Data:      msg.Data,
 		}
 
-		if err := p.sendRTCMessage(rtcMsg); err != nil {
+		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
 			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	}
@@ -126,7 +126,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				Data:      msg.Data,
 			}
 
-			if err := p.sendRTCMessage(rtcMsg); err != nil {
+			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
 				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
 			}
 		}
@@ -139,7 +139,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				Data:      msg.Data,
 			}
 
-			if err := p.sendRTCMessage(rtcMsg); err != nil {
+			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
 				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
 			}
 		} else {
@@ -178,7 +178,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				Data:      msg.Data,
 			}
 
-			if err := p.sendRTCMessage(rtcMsg); err != nil {
+			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
 				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
 			}
 		}
@@ -291,54 +291,19 @@ func (p *Plugin) wsReader(us *session, handlerID string) {
 	}
 }
 
-func (p *Plugin) sendRTCMessage(msg rtc.Message) error {
-	if p.rtcdClient != nil {
+func (p *Plugin) sendRTCMessage(msg rtc.Message, channelID string) error {
+	if p.rtcdManager != nil {
 		cm := rtcd.ClientMessage{
 			Type: rtcd.ClientMessageRTC,
 			Data: msg,
 		}
-		return p.rtcdClient.Send(cm)
+		return p.rtcdManager.Send(cm, channelID)
 	}
 
 	return p.rtcServer.Send(msg)
 }
 
 func (p *Plugin) wsWriter() {
-	if p.rtcdClient != nil {
-		for {
-			select {
-			case msg, ok := <-p.rtcdClient.ReceiveCh():
-				if !ok {
-					return
-				}
-
-				if msg.Type == rtcd.ClientMessageHello {
-					msgData, ok := msg.Data.(map[string]string)
-					if !ok {
-						p.LogError(fmt.Sprintf("unexpected data type %T", msg.Data))
-						continue
-					}
-					p.LogDebug("received hello message from rtcd", "connID", msgData["connID"])
-					continue
-				}
-
-				rtcMsg, ok := msg.Data.(rtc.Message)
-				if !ok {
-					p.LogError(fmt.Sprintf("unexpected data type %T", msg.Data))
-					continue
-				}
-				p.LogDebug("relaying ws message", "sessionID", rtcMsg.SessionID, "userID", rtcMsg.UserID)
-				p.metrics.IncWebSocketEvent("out", "signal")
-				p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
-					"data":   string(rtcMsg.Data),
-					"connID": rtcMsg.SessionID,
-				}, &model.WebsocketBroadcast{UserId: rtcMsg.UserID, ReliableClusterSend: true})
-			case <-p.stopCh:
-				return
-			}
-		}
-	}
-
 	for {
 		select {
 		case msg, ok := <-p.rtcServer.ReceiveCh():
@@ -387,7 +352,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 		close(us.doneCh)
 	}()
 
-	state, err := p.addUserSession(userID, channelID)
+	state, err := p.addUserSession(userID, channel)
 	if err != nil {
 		return fmt.Errorf("failed to add user session: %w", err)
 	} else if state.Call == nil {
@@ -441,7 +406,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	}
 
 	var wg sync.WaitGroup
-	if p.rtcdClient != nil {
+	if p.rtcdManager != nil {
 		msg := rtcd.ClientMessage{
 			Type: rtcd.ClientMessageJoin,
 			Data: map[string]string{
@@ -450,7 +415,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 				"sessionID": connID,
 			},
 		}
-		if err := p.rtcdClient.Send(msg); err != nil {
+		if err := p.rtcdManager.Send(msg, channelID); err != nil {
 			p.LogError(fmt.Errorf("failed to send client message: %w", err).Error())
 		}
 	} else {
@@ -519,14 +484,14 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 
 	wg.Wait()
 
-	if p.rtcdClient != nil {
+	if p.rtcdManager != nil {
 		msg := rtcd.ClientMessage{
 			Type: rtcd.ClientMessageLeave,
 			Data: map[string]string{
 				"sessionID": connID,
 			},
 		}
-		if err := p.rtcdClient.Send(msg); err != nil {
+		if err := p.rtcdManager.Send(msg, channelID); err != nil {
 			p.LogError(fmt.Errorf("failed to send client message: %w", err).Error())
 		}
 	}
@@ -554,7 +519,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 				"Participants": prevState.Call.Stats.Participants,
 			})
 
-			if handlerID != p.nodeID && p.rtcdClient == nil {
+			if handlerID != p.nodeID && p.rtcdManager == nil {
 				if err := p.sendClusterMessage(clusterMessage{
 					ChannelID: channelID,
 					SenderID:  p.nodeID,

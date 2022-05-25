@@ -22,12 +22,14 @@
     "@babel/preset-react": "7.16.0",
     "@babel/preset-typescript": "7.16.0",
     "@types/jest": "27.0.2",
+    "@types/lodash": "4.14.182",
     "@types/node": "16.3.1",
     "@types/react": "16.9.49",
     "@types/react-bootstrap": "0.32.26",
     "@types/react-dom": "16.9.8",
     "@types/react-intl": "3.0.0",
     "@types/react-redux": "7.1.21",
+    "@types/shallow-equals": "1.0.0",
     "@types/simple-peer": "9.11.3",
     "@types/styled-components": "5.1.25",
     "@typescript-eslint/eslint-plugin": "4.33.0",
@@ -36,7 +38,7 @@
     "babel-loader": "8.2.3",
     "babel-plugin-formatjs": "10.3.7",
     "babel-plugin-styled-components": "2.0.6",
-    "babel-plugin-typescript-to-proptypes": "1.4.2",
+    "babel-plugin-typescript-to-proptypes": "2.0.0",
     "css-loader": "5.2.6",
     "eslint": "7.31.0",
     "eslint-import-resolver-webpack": "0.13.1",
@@ -48,7 +50,7 @@
     "jest": "27.0.6",
     "jest-canvas-mock": "2.3.1",
     "jest-junit": "12.2.0",
-    "mattermost-webapp": "github:mattermost/mattermost-webapp#54a54c3b8da77af256b4ac8182cf4b81afe47561",
+    "mattermost-webapp": "github:mattermost/mattermost-webapp#6dcac2993000139f19c1b018f7fa6b9266973918",
     "process": "0.11.10",
     "react-intl": "5.20.12",
     "redux-thunk": "2.4.1",
@@ -61,7 +63,6 @@
     "@msgpack/msgpack": "2.7.1",
     "axios": "0.21.4",
     "core-js": "3.21.1",
-    "mattermost-redux": "github:mattermost/mattermost-redux#3d1028034d7677adfda58e91b9a5dcaf1bc0ff99",
     "pako": "2.0.4",
     "react": "16.13.1",
     "react-redux": "7.2.4",
@@ -69,7 +70,7 @@
     "semver-parser": "4.0.0",
     "simple-peer": "9.11.0",
     "styled-components": "5.3.5",
-    "typescript": "4.4.3"
+    "typescript": "4.3.4"
   },
   "jest": {
     "testPathIgnorePatterns": [
@@ -88,7 +89,10 @@
       "^.+\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "identity-obj-proxy",
       "^.+\\.(css|less|scss)$": "identity-obj-proxy",
       "^.*i18n.*\\.(json)$": "<rootDir>/tests/i18n_mock.json",
-      "^bundle-loader\\?lazy\\!(.*)$": "$1"
+      "^bundle-loader\\?lazy\\!(.*)$": "$1",
+      "^mattermost-redux(.*)$": "<rootDir>/node_modules/mattermost-webapp/packages/mattermost-redux/src$1",
+      "^@mattermost/types(.*)$": "<rootDir>/node_modules/mattermost-webapp/packages/types/src/$1",
+      "^reselect": "<rootDir>/node_modules/mattermost-webapp/packages/reselect/src"
     },
     "moduleDirectories": [
       "",

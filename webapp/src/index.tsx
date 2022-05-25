@@ -1,17 +1,29 @@
-import {GlobalState} from 'mattermost-redux/types/store';
-
+import React from 'react';
 import axios from 'axios';
 
-import {getCurrentChannelId, getCurrentChannel, getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
-import {getMyRoles} from 'mattermost-redux/selectors/entities/roles';
+import {getMyChannelRoles, getMySystemRoles} from 'mattermost-redux/selectors/entities/roles';
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
+import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
-import {RTCStats} from 'src/types/types';
+import {displayFreeTrial, getCloudInfo} from 'src/actions';
+import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 
-import {isVoiceEnabled, connectedChannelID, voiceConnectedUsers, voiceConnectedUsersInChannel, voiceChannelCallStartAt} from './selectors';
+import {
+    isVoiceEnabled,
+    connectedChannelID,
+    voiceConnectedUsers,
+    voiceConnectedUsersInChannel,
+    voiceChannelCallStartAt,
+    isCloudFeatureRestricted,
+    isCloudLimitRestricted,
+    voiceChannelRootPost,
+    retrievedCloudSku,
+} from './selectors';
 
 import {pluginId} from './manifest';
 
@@ -23,7 +35,7 @@ import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import CallWidget from './components/call_widget';
 import ChannelLinkLabel from './components/channel_link_label';
 import ChannelCallToast from './components/channel_call_toast';
-import PostType from './components/post_type';
+import PostType from './components/custom_post_types/post_type';
 import ExpandedView from './components/expanded_view';
 import RecordingView from './components/recording_view';
 import SwitchCallModal from './components/switch_call_modal';
@@ -65,6 +77,7 @@ import {
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_UNINIT,
+    VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
 } from './action_types';
 
@@ -192,6 +205,13 @@ export default class Plugin {
                     startAt: ev.data.start_at,
                 },
             });
+            store.dispatch({
+                type: VOICE_CHANNEL_ROOT_POST,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                    rootPost: ev.data.thread_id,
+                },
+            });
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_on`, (ev) => {
@@ -242,6 +262,7 @@ export default class Plugin {
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
+        registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
@@ -276,6 +297,7 @@ export default class Plugin {
                         title = fields.slice(2).join(' ');
                     }
                     connectCall(args.channel_id, title);
+                    followThread(args.channel_id, args.team_id);
                     return {};
                 }
                 return {error: {message: 'You are already connected to a call in the current channel.'}};
@@ -342,6 +364,15 @@ export default class Plugin {
                 ChannelHeaderButton,
                 ChannelHeaderDropdownButton,
                 async (channel) => {
+                    if (isCloudFeatureRestricted(store.getState())) {
+                        store.dispatch(displayFreeTrial());
+                        return;
+                    }
+
+                    if (isCloudLimitRestricted(store.getState())) {
+                        return;
+                    }
+
                     try {
                         const users = voiceConnectedUsers(store.getState());
                         if (users && users.length > 0) {
@@ -360,6 +391,7 @@ export default class Plugin {
 
                     if (!connectedChannelID(store.getState())) {
                         connectCall(channel.id);
+                        followThread(channel.id, channel.team_id);
                     } else if (connectedChannelID(store.getState()) !== channel.id) {
                         store.dispatch({
                             type: SHOW_SWITCH_CALL_MODAL,
@@ -367,6 +399,15 @@ export default class Plugin {
                     }
                 },
             );
+        };
+
+        const followThread = async (channelID: string, teamID: string) => {
+            const threadID = voiceChannelRootPost(store.getState(), channelID);
+            if (threadID) {
+                store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
+            } else {
+                console.error('Unable to follow call\'s thread, not registered in store');
+            }
         };
 
         registerChannelHeaderMenuButton();
@@ -411,6 +452,7 @@ export default class Plugin {
             }
             if (ev.data && ev.data.type === 'connectCall') {
                 connectCall(ev.data.channelID);
+                followThread(ev.data.channelID, getCurrentTeamId(store.getState()));
             }
         };
         window.addEventListener('message', windowEventHandler);
@@ -464,13 +506,19 @@ export default class Plugin {
         };
 
         const fetchChannelData = async (channelID: string) => {
+            // Don't retrieve cloud info on every channel change.
+            if (!retrievedCloudSku(store.getState())) {
+                store.dispatch(getCloudInfo());
+            }
+
             let channel = getChannel(store.getState(), channelID);
             if (!channel) {
                 await getChannelAction(channelID)(store.dispatch as any, store.getState);
                 channel = getChannel(store.getState(), channelID);
             }
 
-            const roles = getMyRoles(store.getState());
+            const systemRoles = getMySystemRoles(store.getState());
+            const channelRoles = getMyChannelRoles(store.getState());
             const cms = getMyChannelMemberships(store.getState());
 
             if (isDMChannel(channel)) {
@@ -484,7 +532,7 @@ export default class Plugin {
             try {
                 const resp = await axios.get(`${getPluginPath()}/config`);
                 registry.unregisterComponent(channelHeaderMenuID);
-                if (hasPermissionsToEnableCalls(channel, cms[channelID], roles, resp.data.AllowEnableCalls)) {
+                if (hasPermissionsToEnableCalls(channel, cms[channelID], systemRoles, channelRoles, resp.data.AllowEnableCalls)) {
                     registerChannelHeaderMenuAction();
                 }
             } catch (err) {
@@ -504,7 +552,15 @@ export default class Plugin {
                         channelID,
                     },
                 });
-
+                if (resp.data.call?.thread_id) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_ROOT_POST,
+                        data: {
+                            channelID,
+                            rootPost: resp.data.call?.thread_id,
+                        },
+                    });
+                }
                 if (resp.data.call?.users && resp.data.call?.users.length > 0) {
                     store.dispatch({
                         type: VOICE_CHANNEL_PROFILES_CONNECTED,
@@ -575,6 +631,7 @@ export default class Plugin {
             if (window.callsClient) {
                 window.callsClient.disconnect();
             }
+            console.log('calls: resetting state');
             store.dispatch({
                 type: VOICE_CHANNEL_UNINIT,
             });
@@ -583,20 +640,13 @@ export default class Plugin {
         this.registerWebSocketEvents(registry, store);
         this.registerReconnectHandler(registry, store, () => {
             console.log('calls: websocket reconnect handler');
-            store.dispatch({
-                type: VOICE_CHANNEL_UNINIT,
-            });
-            onActivate();
-            if (window.callsClient) {
+            if (!window.callsClient) {
+                console.log('calls: resetting state');
                 store.dispatch({
-                    type: VOICE_CHANNEL_USER_CONNECTED,
-                    data: {
-                        channelID: window.callsClient.channelID,
-                        userID: getCurrentUserId(store.getState()),
-                        currentUserID: getCurrentUserId(store.getState()),
-                    },
+                    type: VOICE_CHANNEL_UNINIT,
                 });
             }
+            onActivate();
         });
 
         onActivate();
@@ -628,6 +678,7 @@ export default class Plugin {
 declare global {
     interface Window {
         registerPlugin(id: string, plugin: Plugin): void,
+
         callsClient: any,
         webkitAudioContext: AudioContext,
         basename: string,
@@ -647,6 +698,11 @@ declare global {
         msBackingStorePixelRatio: number,
         oBackingStorePixelRatio: number,
         backingStorePixelRatio: number,
+    }
+
+    // fix for a type problem in webapp as of 6dcac2
+    type DeepPartial<T> = {
+        [P in keyof T]?: DeepPartial<T[P]>;
     }
 }
 

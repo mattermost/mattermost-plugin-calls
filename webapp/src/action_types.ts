@@ -18,6 +18,7 @@ export const VOICE_CHANNEL_USER_SCREEN_OFF = pluginId + '_voice_channel_screen_o
 export const VOICE_CHANNEL_UNINIT = pluginId + '_voice_channel_uninit';
 export const VOICE_CHANNEL_USER_RAISE_HAND = pluginId + '_voice_channel_user_raise_hand';
 export const VOICE_CHANNEL_USER_UNRAISE_HAND = pluginId + '_voice_channel_user_unraise_hand';
+export const VOICE_CHANNEL_ROOT_POST = pluginId + '_voice_channel_root_post';
 
 export const SHOW_EXPANDED_VIEW = pluginId + '_show_expanded_view';
 export const HIDE_EXPANDED_VIEW = pluginId + '_hide_expanded_view';
@@ -25,4 +26,6 @@ export const SHOW_SWITCH_CALL_MODAL = pluginId + '_show_switch_call_modal';
 export const HIDE_SWITCH_CALL_MODAL = pluginId + '_hide_switch_call_modal';
 export const SHOW_SCREEN_SOURCE_MODAL = pluginId + '_show_screen_source_modal';
 export const HIDE_SCREEN_SOURCE_MODAL = pluginId + '_hide_screen_source_modal';
+
+export const RECEIVED_CLOUD_INFO = pluginId + '_received_cloud_info';
 

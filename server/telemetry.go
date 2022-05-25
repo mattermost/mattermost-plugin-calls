@@ -5,10 +5,11 @@ import (
 )
 
 const (
-	evCallStarted    = "call_started"
-	evCallEnded      = "call_ended"
-	evCallUserJoined = "call_user_joined"
-	evCallUserLeft   = "call_user_left"
+	evCallStarted     = "call_started"
+	evCallEnded       = "call_ended"
+	evCallUserJoined  = "call_user_joined"
+	evCallUserLeft    = "call_user_left"
+	evCallNotifyAdmin = "call_notify_admin"
 )
 
 func (p *Plugin) track(ev string, props map[string]interface{}) {
