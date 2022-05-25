@@ -11,7 +11,6 @@ import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import ConnectedProfiles from 'src/components/connected_profiles';
-import {CLOUD_MAX_PARTICIPANTS} from 'src/constants';
 
 interface Props {
     post: Post,
@@ -20,6 +19,7 @@ interface Props {
     profiles: UserProfile[],
     showSwitchCallModal: (targetID: string) => void,
     isCloudPaid: boolean,
+    cloudMaxParticipants: number,
 }
 
 const PostType = ({
@@ -29,6 +29,7 @@ const PostType = ({
     profiles,
     showSwitchCallModal,
     isCloudPaid,
+    cloudMaxParticipants,
 }: Props) => {
     const onJoinCallClick = () => {
         if (connectedID) {
@@ -64,7 +65,9 @@ const PostType = ({
             <ButtonText>{'Join call'}</ButtonText>
         </JoinButton>
     );
-    if (isCloudPaid && profiles.length >= CLOUD_MAX_PARTICIPANTS) {
+
+    // Note: don't use isCloudLimitRestricted because that uses current channel, and this post could be in RHS
+    if (isCloudPaid && profiles.length >= cloudMaxParticipants) {
         joinButton = (
             <OverlayTrigger
                 placement='top'
@@ -155,11 +158,11 @@ const Main = styled.div`
     border-radius: 4px;
 `;
 
-const SubMain = styled.div<{ ended: Boolean }>`
+const SubMain = styled.div<{ ended: boolean }>`
     display: flex;
     align-items: center;
     width: 100%;
-    flex-wrap: ${props => props.ended ? 'nowrap' : 'wrap'};
+    flex-wrap: ${(props) => (props.ended ? 'nowrap' : 'wrap')};
     row-gap: 8px;
 `;
 
@@ -175,8 +178,8 @@ const Right = styled.div`
     flex-grow: 1;
 `;
 
-const CallIndicator = styled.div<{ ended: Boolean }>`
-    background: ${props => props.ended ? 'rgba(var(--center-channel-color-rgb), 0.16)' : 'var(--online-indicator)'};
+const CallIndicator = styled.div<{ ended: boolean }>`
+    background: ${(props) => (props.ended ? 'rgba(var(--center-channel-color-rgb), 0.16)' : 'var(--online-indicator)')};
     border-radius: 4px;
     padding: 10px;
     width: 40px;

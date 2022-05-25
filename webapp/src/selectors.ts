@@ -6,7 +6,6 @@ import {createSelector} from 'reselect';
 
 import {LicenseSkus} from '@mattermost/types/general';
 
-import {CLOUD_MAX_PARTICIPANTS} from 'src/constants';
 import {isDMChannel} from 'src/utils';
 
 import {pluginId} from './manifest';
@@ -24,6 +23,12 @@ export const voiceConnectedUsers = (state: GlobalState) => {
     }
     return [];
 };
+
+const numCurrentVoiceConnectedUsers: (state: GlobalState) => number = createSelector(
+    'numCurrentVoiceConnectedUsers',
+    voiceConnectedUsers,
+    (connectedUsers) => connectedUsers.length,
+);
 
 export const voiceConnectedUsersInChannel = (state: GlobalState, channelID: string) => {
     const channels = voiceConnectedChannels(state);
@@ -84,8 +89,8 @@ const cloudSku = (state: GlobalState): string => {
     return getPluginState(state).cloudInfo.sku_short_name;
 };
 
-export const retrievedCloudSku = (state: GlobalState): boolean => {
-    return getPluginState(state).cloudInfo.retrieved;
+export const cloudMaxParticipants = (state: GlobalState) => {
+    return getPluginState(state).cloudInfo.cloud_max_participants;
 };
 
 export const isCloud: (state: GlobalState) => boolean = createSelector(
@@ -134,8 +139,9 @@ export const isCloudFeatureRestricted: (state: GlobalState) => boolean = createS
 export const isCloudLimitRestricted: (state: GlobalState) => boolean = createSelector(
     'isCloudLimitRestricted',
     isCloudProfessionalOrEnterprise,
-    voiceConnectedUsers,
-    (isCloudPaid, users) => isCloudPaid && users.length >= CLOUD_MAX_PARTICIPANTS,
+    numCurrentVoiceConnectedUsers,
+    cloudMaxParticipants,
+    (isCloudPaid, numCurrentUsers, maxParticipants) => isCloudPaid && numCurrentUsers >= maxParticipants,
 );
 
 const getSubscription = (state: GlobalState) => {
@@ -165,4 +171,3 @@ export const isCloudTrialNeverStarted: (state: GlobalState) => boolean = createS
         return subscription?.trial_end_at === 0;
     },
 );
-

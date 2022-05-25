@@ -56,4 +56,10 @@ export type RTCRemoteOutboundStats = {
 
 export type CloudInfo = {
     sku_short_name: string,
+    cloud_max_participants: number,
 }
+
+export const CloudInfoDefault = {
+    sku_short_name: '',
+    cloud_max_participants: 0,
+} as CloudInfo;
