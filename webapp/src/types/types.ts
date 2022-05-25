@@ -54,12 +54,18 @@ export type RTCRemoteOutboundStats = {
     bytesSent: number,
 }
 
-export type CloudInfo = {
+export type CallsConfig = {
+    ice_servers: string[],
+    allow_enable_calls: boolean,
+    default_enabled: boolean,
     sku_short_name: string,
     cloud_max_participants: number,
 }
 
-export const CloudInfoDefault = {
+export const CallsConfigDefault = {
+    ice_servers: [],
+    allow_enable_calls: false,
+    default_enabled: false,
     sku_short_name: '',
     cloud_max_participants: 0,
-} as CloudInfo;
+} as CallsConfig;

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/pprof"
@@ -286,6 +287,33 @@ func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
 	res.code = http.StatusNotFound
 }
 
+// handleConfig returns the client configuration, and cloud license information
+// that isn't exposed to clients yet on the webapp
+func (p *Plugin) handleConfig(w http.ResponseWriter) error {
+	license := p.pluginAPI.System.GetLicense()
+	if license == nil {
+		p.handleErrorWithCode(w, http.StatusBadRequest, "no license",
+			errors.New("no license found"))
+		return nil
+	}
+
+	clientConfig := p.getConfiguration().getClientConfig()
+	config := map[string]interface{}{
+		"ice_servers":            clientConfig.ICEServers,
+		"allow_enable_calls":     clientConfig.AllowEnableCalls,
+		"default_enabled":        clientConfig.DefaultEnabled,
+		"sku_short_name":         license.SkuShortName,
+		"cloud_max_participants": cloudMaxParticipants,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(config); err != nil {
+		return errors.Wrap(err, "error encoding config")
+	}
+
+	return nil
+}
+
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/version") {
 		p.handleGetVersion(w, r)
@@ -309,16 +337,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	if r.Method == http.MethodGet {
 		if r.URL.Path == "/config" {
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(p.getConfiguration().getClientConfig()); err != nil {
-				p.LogError(err.Error())
-			}
-			return
-		}
-
-		// Return license information that isn't exposed to clients yet
-		if r.URL.Path == "/cloud-info" {
-			if err := p.handleCloudInfo(w); err != nil {
+			if err := p.handleConfig(w); err != nil {
 				p.handleError(w, err)
 			}
 			return

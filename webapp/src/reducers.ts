@@ -2,7 +2,7 @@ import {combineReducers} from 'redux';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 
-import {CloudInfo, CloudInfoDefault, UserState} from './types/types';
+import {CallsConfigDefault, CallsConfig, UserState} from './types/types';
 
 import {
     VOICE_CHANNEL_ENABLE,
@@ -29,7 +29,8 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     HIDE_SWITCH_CALL_MODAL,
     SHOW_SCREEN_SOURCE_MODAL,
-    HIDE_SCREEN_SOURCE_MODAL, RECEIVED_CLOUD_INFO,
+    HIDE_SCREEN_SOURCE_MODAL,
+    RECEIVED_CALLS_CONFIG,
 } from './action_types';
 
 const isVoiceEnabled = (state = false, action: { type: string }) => {
@@ -436,9 +437,9 @@ const screenSourceModal = (state = false, action: { type: string }) => {
     }
 };
 
-const cloudInfo = (state = CloudInfoDefault, action: { type: string, data: CloudInfo }) => {
+const callsConfig = (state = CallsConfigDefault, action: { type: string, data: CallsConfig }) => {
     switch (action.type) {
-    case RECEIVED_CLOUD_INFO:
+    case RECEIVED_CALLS_CONFIG:
         return action.data;
     default:
         return state;
@@ -457,5 +458,5 @@ export default combineReducers({
     switchCallModal,
     screenSourceModal,
     voiceChannelRootPost,
-    cloudInfo,
+    callsConfig,
 });
