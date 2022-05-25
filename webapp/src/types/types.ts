@@ -1,3 +1,5 @@
+import {CLOUD_MAX_PARTICIPANTS_DEFAULT} from 'src/constants';
+
 export type UserState = {
     voice: boolean;
     unmuted: boolean;
@@ -56,4 +58,10 @@ export type RTCRemoteOutboundStats = {
 
 export type CloudInfo = {
     sku_short_name: string,
+    cloud_max_participants: number,
 }
+
+export const CloudInfoDefault = {
+    sku_short_name: '',
+    cloud_max_participants: CLOUD_MAX_PARTICIPANTS_DEFAULT,
+} as CloudInfo;

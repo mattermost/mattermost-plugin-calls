@@ -22,7 +22,6 @@ import {
     isCloudFeatureRestricted,
     isCloudLimitRestricted,
     voiceChannelRootPost,
-    retrievedCloudSku,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -488,11 +487,6 @@ export default class Plugin {
         };
 
         const fetchChannelData = async (channelID: string) => {
-            // Don't retrieve cloud info on every channel change.
-            if (!retrievedCloudSku(store.getState())) {
-                store.dispatch(getCloudInfo());
-            }
-
             let channel = getChannel(store.getState(), channelID);
             if (!channel) {
                 await getChannelAction(channelID)(store.dispatch as any, store.getState);
@@ -585,6 +579,7 @@ export default class Plugin {
         };
 
         const onActivate = async () => {
+            store.dispatch(getCloudInfo());
             fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
             if (currChannelId) {
