@@ -10,7 +10,7 @@ import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels'
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
-import {displayFreeTrial, getCloudInfo} from 'src/actions';
+import {displayFreeTrial, getCallsConfig} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 
 import {
@@ -22,6 +22,8 @@ import {
     isCloudFeatureRestricted,
     isCloudLimitRestricted,
     voiceChannelRootPost,
+    allowEnableCalls,
+    iceServers,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -406,7 +408,7 @@ export default class Plugin {
                     return;
                 }
 
-                window.callsClient = new CallsClient();
+                window.callsClient = new CallsClient(iceServers(store.getState()));
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', () => {
@@ -506,9 +508,9 @@ export default class Plugin {
             }
 
             try {
-                const resp = await axios.get(`${getPluginPath()}/config`);
+                const allowEnable = allowEnableCalls(store.getState());
                 registry.unregisterComponent(channelHeaderMenuID);
-                if (hasPermissionsToEnableCalls(channel, cms[channelID], systemRoles, channelRoles, resp.data.AllowEnableCalls)) {
+                if (hasPermissionsToEnableCalls(channel, cms[channelID], systemRoles, channelRoles, allowEnable)) {
                     registerChannelHeaderMenuAction();
                 }
             } catch (err) {
@@ -579,7 +581,7 @@ export default class Plugin {
         };
 
         const onActivate = async () => {
-            store.dispatch(getCloudInfo());
+            store.dispatch(getCallsConfig());
             fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
             if (currChannelId) {
