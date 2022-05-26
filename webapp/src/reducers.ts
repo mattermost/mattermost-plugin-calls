@@ -2,9 +2,7 @@ import {combineReducers} from 'redux';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 
-import {GenericAction} from 'mattermost-redux/types/actions';
-
-import {UserState} from './types/types';
+import {CloudInfo, CloudInfoDefault, UserState} from './types/types';
 
 import {
     VOICE_CHANNEL_ENABLE,
@@ -438,13 +436,10 @@ const screenSourceModal = (state = false, action: { type: string }) => {
     }
 };
 
-const cloudInfo = (state = {sku_short_name: '', retrieved: false}, action: GenericAction) => {
+const cloudInfo = (state = CloudInfoDefault, action: { type: string, data: CloudInfo }) => {
     switch (action.type) {
     case RECEIVED_CLOUD_INFO:
-        return {
-            sku_short_name: action.data.sku_short_name,
-            retrieved: true,
-        };
+        return action.data;
     default:
         return state;
     }

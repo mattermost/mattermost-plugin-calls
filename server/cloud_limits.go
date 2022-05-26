@@ -50,7 +50,8 @@ func (p *Plugin) handleCloudInfo(w http.ResponseWriter) error {
 
 	w.Header().Set("Content-Type", "application/json")
 	info := map[string]interface{}{
-		"sku_short_name": license.SkuShortName,
+		"sku_short_name":         license.SkuShortName,
+		"cloud_max_participants": cloudMaxParticipants,
 	}
 	if err := json.NewEncoder(w).Encode(info); err != nil {
 		return errors.Wrap(err, "error encoding cloud info")
