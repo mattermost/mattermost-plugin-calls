@@ -11,6 +11,7 @@ import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import ConnectedProfiles from 'src/components/connected_profiles';
+import {Header, SubHeader} from 'src/components/shared';
 
 interface Props {
     post: Post,
@@ -73,8 +74,12 @@ const PostType = ({
                 placement='top'
                 overlay={
                     <Tooltip id='tooltip-limit'>
-                        {'Sorry, participants per call are currently limited to 8.'}
-                        <p>{'This is because Calls is in the Beta phase. We’re working to remove this limit soon.'}</p>
+                        <Header>
+                            {`Sorry, participants per call are currently limited to ${cloudMaxParticipants}.`}
+                        </Header>
+                        <SubHeader>
+                            {'This is because Calls is in the Beta phase. We’re working to remove this limit soon.'}
+                        </SubHeader>
                     </Tooltip>
                 }
             >

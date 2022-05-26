@@ -9,6 +9,7 @@ import {
     isVoiceEnabled,
     isCloudFeatureRestricted,
     isCloudLimitRestricted,
+    cloudMaxParticipants,
 } from 'src/selectors';
 
 import ChannelHeaderButton from './component';
@@ -19,6 +20,7 @@ const mapStateToProps = (state: GlobalState) => ({
     hasCall: voiceConnectedUsers(state).length > 0,
     isCloudFeatureRestricted: isCloudFeatureRestricted(state),
     isCloudLimitRestricted: isCloudLimitRestricted(state),
+    cloudMaxParticipants: cloudMaxParticipants(state),
 });
 
 export default connect(mapStateToProps)(ChannelHeaderButton);
