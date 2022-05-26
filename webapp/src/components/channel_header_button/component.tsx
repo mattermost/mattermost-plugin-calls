@@ -13,6 +13,7 @@ interface Props {
     hasCall: boolean,
     isCloudFeatureRestricted: boolean,
     isCloudLimitRestricted: boolean,
+    cloudMaxParticipants: number,
 }
 
 const ChannelHeaderButton = ({
@@ -21,6 +22,7 @@ const ChannelHeaderButton = ({
     hasCall,
     isCloudFeatureRestricted,
     isCloudLimitRestricted,
+    cloudMaxParticipants,
 }: Props) => {
     if (!show) {
         return null;
@@ -70,7 +72,7 @@ const ChannelHeaderButton = ({
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
-                            {'There\'s a limit of 8 participants per call.'}
+                            {`There's a limit of ${cloudMaxParticipants} participants per call.`}
                         </Header>
                         <SubHeader>
                             {'This is because calls is currently in beta. We’re working to remove this limit soon.'}
