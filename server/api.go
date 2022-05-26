@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/pprof"
@@ -309,7 +309,7 @@ func (p *Plugin) handleConfig(w http.ResponseWriter) error {
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(ret); err != nil {
-		return errors.Wrap(err, "error encoding config")
+		return fmt.Errorf("error encoding config: %w", err)
 	}
 
 	return nil
