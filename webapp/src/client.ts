@@ -1,15 +1,10 @@
 import {EventEmitter} from 'events';
 import SimplePeer from 'simple-peer';
-import axios from 'axios';
 
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
-import {GetStateFunc} from 'mattermost-redux/types/actions';
-
 import {RTCStats} from 'src/types/types';
-
-import {iceServers as getIceServers} from 'src/selectors';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import WebSocketClient from './websocket';
@@ -18,8 +13,8 @@ import VoiceActivityDetector from './vad';
 import {parseRTCStats} from './rtc_stats';
 
 export default class CallsClient extends EventEmitter {
-    private getState: GetStateFunc;
     public channelID: string;
+    private readonly iceServers: string[];
     private peer: SimplePeer.Instance | null;
     private ws: WebSocketClient | null;
     private localScreenTrack: any;
@@ -34,7 +29,7 @@ export default class CallsClient extends EventEmitter {
     private audioTrack: MediaStreamTrack | null;
     public isHandRaised: boolean;
 
-    constructor(getState: GetStateFunc) {
+    constructor(iceServers: string[]) {
         super();
         this.ws = null;
         this.peer = null;
@@ -47,7 +42,7 @@ export default class CallsClient extends EventEmitter {
         this.audioDevices = {inputs: [], outputs: []};
         this.isHandRaised = false;
         this.channelID = '';
-        this.getState = getState;
+        this.iceServers = iceServers;
     }
 
     private initVAD(inputStream: MediaStream) {
@@ -159,8 +154,7 @@ export default class CallsClient extends EventEmitter {
 
         ws.on('join', async () => {
             console.log('join ack received, initializing connection');
-            const configServers = getIceServers(this.getState());
-            const iceServers = configServers?.length > 0 ? [{urls: configServers}] : [];
+            const iceServers = this.iceServers?.length > 0 ? [{urls: this.iceServers}] : [];
             const peer = new SimplePeer({
                 initiator: true,
                 trickle: true,

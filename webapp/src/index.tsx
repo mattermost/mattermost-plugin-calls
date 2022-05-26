@@ -21,7 +21,9 @@ import {
     voiceChannelCallStartAt,
     isCloudFeatureRestricted,
     isCloudLimitRestricted,
-    voiceChannelRootPost, allowEnableCalls,
+    voiceChannelRootPost,
+    allowEnableCalls,
+    iceServers,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -406,7 +408,7 @@ export default class Plugin {
                     return;
                 }
 
-                window.callsClient = new CallsClient(store.getState);
+                window.callsClient = new CallsClient(iceServers(store.getState()));
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', () => {

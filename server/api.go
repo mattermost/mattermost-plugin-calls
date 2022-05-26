@@ -290,24 +290,25 @@ func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
 // handleConfig returns the client configuration, and cloud license information
 // that isn't exposed to clients yet on the webapp
 func (p *Plugin) handleConfig(w http.ResponseWriter) error {
+	skuShortName := "starter"
 	license := p.pluginAPI.System.GetLicense()
-	if license == nil {
-		p.handleErrorWithCode(w, http.StatusBadRequest, "no license",
-			errors.New("no license found"))
-		return nil
+	if license != nil {
+		skuShortName = license.SkuShortName
 	}
 
-	clientConfig := p.getConfiguration().getClientConfig()
-	config := map[string]interface{}{
-		"ice_servers":            clientConfig.ICEServers,
-		"allow_enable_calls":     clientConfig.AllowEnableCalls,
-		"default_enabled":        clientConfig.DefaultEnabled,
-		"sku_short_name":         license.SkuShortName,
-		"cloud_max_participants": cloudMaxParticipants,
+	type config struct {
+		clientConfig
+		SkuShortName         string `json:"sku_short_name"`
+		CloudMaxParticipants int    `json:"cloud_max_participants"`
+	}
+	ret := config{
+		clientConfig:         p.getConfiguration().getClientConfig(),
+		SkuShortName:         skuShortName,
+		CloudMaxParticipants: cloudMaxParticipants,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(config); err != nil {
+	if err := json.NewEncoder(w).Encode(ret); err != nil {
 		return errors.Wrap(err, "error encoding config")
 	}
 

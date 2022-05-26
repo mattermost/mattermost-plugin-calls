@@ -91,13 +91,13 @@ const callsConfig = (state: GlobalState): CallsConfig => {
 export const iceServers: (state: GlobalState) => string[] = createSelector(
     'iceServers',
     callsConfig,
-    (config) => config.ice_servers,
+    (config) => config.ICEServers,
 );
 
 export const allowEnableCalls: (state: GlobalState) => boolean = createSelector(
     'allowEnableCalls',
     callsConfig,
-    (config) => config.allow_enable_calls,
+    (config) => config.AllowEnableCalls,
 );
 
 //
