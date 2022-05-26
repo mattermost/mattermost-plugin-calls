@@ -100,6 +100,10 @@ export const allowEnableCalls: (state: GlobalState) => boolean = createSelector(
     (config) => config.AllowEnableCalls,
 );
 
+export const endCallModal = (state: GlobalState) => {
+    return getPluginState(state).endCallModal;
+};
+
 //
 // Selectors for Cloud and beta limits:
 //

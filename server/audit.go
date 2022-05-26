@@ -1,23 +1,31 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
 
 type httpResponse struct {
-	err  string
-	code int
+	Msg  string `json:"msg,omitempty"`
+	Err  string `json:"err,omitempty"`
+	Code int    `json:"code"`
 }
 
-func (p *Plugin) httpAudit(handler string, res httpResponse, w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) httpAudit(handler string, res *httpResponse, w http.ResponseWriter, r *http.Request) {
 	logFields := reqAuditFields(r)
-	if res.err != "" {
-		http.Error(w, res.err, res.code)
-		logFields = append(logFields, "error", res.err, "code", res.code, "status", "fail")
+	if res.Err != "" {
+		logFields = append(logFields, "error", res.Err, "code", res.Code, "status", "fail")
 	} else {
 		logFields = append(logFields, "status", "success")
 	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(res.Code)
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		p.LogError(fmt.Sprintf("failed to encode data: %s", err))
+	}
+
 	p.LogDebug(handler, logFields...)
 }
 

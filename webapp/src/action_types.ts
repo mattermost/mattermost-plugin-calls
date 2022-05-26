@@ -27,6 +27,8 @@ export const SHOW_SWITCH_CALL_MODAL = pluginId + '_show_switch_call_modal';
 export const HIDE_SWITCH_CALL_MODAL = pluginId + '_hide_switch_call_modal';
 export const SHOW_SCREEN_SOURCE_MODAL = pluginId + '_show_screen_source_modal';
 export const HIDE_SCREEN_SOURCE_MODAL = pluginId + '_hide_screen_source_modal';
+export const SHOW_END_CALL_MODAL = pluginId + '_show_end_call_modal';
+export const HIDE_END_CALL_MODAL = pluginId + '_hide_end_call_modal';
 
 export const RECEIVED_CALLS_CONFIG = pluginId + '_received_calls_config';
 

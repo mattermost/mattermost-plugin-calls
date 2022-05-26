@@ -40,6 +40,7 @@ import PostType from './components/custom_post_types/post_type';
 import ExpandedView from './components/expanded_view';
 import SwitchCallModal from './components/switch_call_modal';
 import ScreenSourceModal from './components/screen_source_modal';
+import EndCallModal from './components/end_call_modal';
 
 import JoinUserSound from './sounds/join_user.mp3';
 import JoinSelfSound from './sounds/join_self.mp3';
@@ -79,6 +80,7 @@ import {
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
+    SHOW_END_CALL_MODAL,
 } from './action_types';
 
 // eslint-disable-next-line import/no-unresolved
@@ -278,6 +280,7 @@ export default class Plugin {
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
+        registry.registerGlobalComponent(EndCallModal);
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             const fullCmd = message.trim();
@@ -319,10 +322,18 @@ export default class Plugin {
                     return {};
                 }
                 return {error: {message: 'You are not connected to a call in the current channel.'}};
-
             case 'end':
-                // TODO: add confirmation dialog or other action to prevent user mistakes.
-                break;
+                if (voiceConnectedUsersInChannel(store.getState(), args.channel_id)?.length === 0) {
+                    return {error: {message: 'No ongoing call in the channel.'}};
+                }
+
+                store.dispatch({
+                    type: SHOW_END_CALL_MODAL,
+                    data: {
+                        targetID: args.channel_id,
+                    },
+                });
+                return {};
             case 'link':
                 break;
             case 'experimental':

@@ -32,6 +32,8 @@ import {
     SHOW_SCREEN_SOURCE_MODAL,
     HIDE_SCREEN_SOURCE_MODAL,
     RECEIVED_CALLS_CONFIG,
+    SHOW_END_CALL_MODAL,
+    HIDE_END_CALL_MODAL,
 } from './action_types';
 
 const isVoiceEnabled = (state = false, action: { type: string }) => {
@@ -441,6 +443,20 @@ const switchCallModal = (state = {
     }
 };
 
+const endCallModal = (state = {
+    show: false,
+    targetID: '',
+}, action: { type: string, data?: { targetID: string } }) => {
+    switch (action.type) {
+    case SHOW_END_CALL_MODAL:
+        return {show: true, targetID: action.data?.targetID};
+    case HIDE_END_CALL_MODAL:
+        return {show: false, targetID: ''};
+    default:
+        return state;
+    }
+};
+
 const screenSourceModal = (state = false, action: { type: string }) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
@@ -473,6 +489,7 @@ export default combineReducers({
     voiceChannelScreenSharingID,
     expandedView,
     switchCallModal,
+    endCallModal,
     screenSourceModal,
     voiceChannelRootPost,
     callsConfig,

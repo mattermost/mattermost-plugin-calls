@@ -1,4 +1,6 @@
 import {Dispatch} from 'redux';
+import axios from 'axios';
+
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
 
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
@@ -30,6 +32,7 @@ import {
     HIDE_SWITCH_CALL_MODAL,
     SHOW_SCREEN_SOURCE_MODAL,
     HIDE_SCREEN_SOURCE_MODAL,
+    HIDE_END_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
 } from './action_types';
 
@@ -57,6 +60,12 @@ export const showSwitchCallModal = (targetID?: string) => (dispatch: Dispatch<Ge
 export const hideSwitchCallModal = () => (dispatch: Dispatch<GenericAction>) => {
     dispatch({
         type: HIDE_SWITCH_CALL_MODAL,
+    });
+};
+
+export const hideEndCallModal = () => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: HIDE_END_CALL_MODAL,
     });
 };
 
@@ -154,4 +163,9 @@ export const requestTrial = () => {
         }
         return {};
     };
+};
+
+export const endCall = (channelID: string) => {
+    return axios.post(`${getPluginPath()}/calls/${channelID}/end`, null,
+        {headers: {'X-Requested-With': 'XMLHttpRequest'}});
 };

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
@@ -129,70 +128,6 @@ func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 }
 
 func (p *Plugin) handleEndCallCommand(userID, channelID string) (*model.CommandResponse, error) {
-	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
-
-	state, err := p.kvGetChannelState(channelID)
-	if err != nil {
-		return nil, err
-	}
-
-	if state == nil || state.Call == nil {
-		return nil, fmt.Errorf("no call ongoing")
-	}
-
-	if !isAdmin && state.Call.CreatorID != userID {
-		return nil, fmt.Errorf("no permissions to end the call")
-	}
-
-	callID := state.Call.ID
-
-	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil || state.Call == nil {
-			return nil, nil
-		}
-
-		if state.Call.ID != callID {
-			return nil, fmt.Errorf("previous call has ended and new one has started")
-		}
-
-		if state.Call.EndAt == 0 {
-			state.Call.EndAt = time.Now().UnixMilli()
-		}
-
-		return state, nil
-	}); err != nil {
-		return nil, fmt.Errorf("failed to set state: %w", err)
-	}
-
-	p.API.PublishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-
-	go func() {
-		// We wait a few seconds for the call to end cleanly. If this doesn't
-		// happen we force end it.
-		time.Sleep(5 * time.Second)
-
-		state, err := p.kvGetChannelState(channelID)
-		if err != nil {
-			p.LogError(err.Error())
-			return
-		}
-		if state == nil || state.Call == nil || state.Call.ID != callID {
-			return
-		}
-
-		p.LogInfo("call state is still in store, force ending it")
-
-		for connID := range state.Call.Sessions {
-			if err := p.closeRTCSession(userID, connID, channelID, state.NodeID); err != nil {
-				p.LogError(err.Error())
-			}
-		}
-
-		if err := p.cleanCallState(channelID); err != nil {
-			p.LogError(err.Error())
-		}
-	}()
-
 	return &model.CommandResponse{}, nil
 }
 
