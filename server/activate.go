@@ -31,9 +31,11 @@ func (p *Plugin) OnActivate() error {
 	pluginAPIClient := pluginapi.NewClient(p.API, p.Driver)
 	p.pluginAPI = pluginAPIClient
 
-	if err := p.cleanUpState(); err != nil {
-		p.LogError(err.Error())
-		return err
+	if !p.isHAEnabled() {
+		if err := p.cleanUpState(); err != nil {
+			p.LogError(err.Error())
+			return err
+		}
 	}
 
 	if err := p.registerCommands(); err != nil {
@@ -137,8 +139,10 @@ func (p *Plugin) OnDeactivate() error {
 		}
 	}
 
-	if err := p.cleanUpState(); err != nil {
-		p.LogError(err.Error())
+	if !p.isHAEnabled() {
+		if err := p.cleanUpState(); err != nil {
+			p.LogError(err.Error())
+		}
 	}
 
 	if err := p.unregisterCommands(); err != nil {

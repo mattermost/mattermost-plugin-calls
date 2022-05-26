@@ -18,6 +18,7 @@ import {
     VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_USER_VOICE_OFF,
     VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_CALL_END,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
@@ -88,6 +89,11 @@ const voiceConnectedProfiles = (state: connectedProfilesState = {}, action: conn
             ...state,
             [action.data.channelID]: state[action.data.channelID]?.filter((val) => val.id !== action.data.userID),
         };
+    case VOICE_CHANNEL_CALL_END:
+        return {
+            ...state,
+            [action.data.channelID]: [],
+        };
     default:
         return state;
     }
@@ -134,6 +140,11 @@ const voiceConnectedChannels = (state: connectedChannelsState = {}, action: conn
             ...state,
             [action.data.channelID]: action.data.users,
         };
+    case VOICE_CHANNEL_CALL_END:
+        return {
+            ...state,
+            [action.data.channelID]: [],
+        };
     default:
         return state;
     }
@@ -150,6 +161,11 @@ const connectedChannelID = (state: string | null = null, action: { type: string,
         return state;
     case VOICE_CHANNEL_USER_DISCONNECTED:
         if (action.data.currentUserID === action.data.userID) {
+            return null;
+        }
+        return state;
+    case VOICE_CHANNEL_CALL_END:
+        if (state === action.data.channelID) {
             return null;
         }
         return state;
@@ -385,6 +401,7 @@ const voiceChannelScreenSharingID = (state: { [channelID: string]: string } = {}
             ...state,
             [action.data.channelID]: action.data.userID,
         };
+    case VOICE_CHANNEL_CALL_END:
     case VOICE_CHANNEL_USER_SCREEN_OFF:
         return {
             ...state,

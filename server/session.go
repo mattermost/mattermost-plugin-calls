@@ -46,7 +46,7 @@ func newUserSession(userID, channelID, connID string) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelState, error) {
+func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (channelState, error) {
 	var st channelState
 
 	cfg := p.getConfiguration()
@@ -68,9 +68,11 @@ func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelS
 
 		if state.Call == nil {
 			state.Call = &callState{
-				ID:      model.NewId(),
-				StartAt: time.Now().UnixMilli(),
-				Users:   make(map[string]*userState),
+				ID:        model.NewId(),
+				StartAt:   time.Now().UnixMilli(),
+				Users:     make(map[string]*userState),
+				Sessions:  make(map[string]struct{}),
+				CreatorID: userID,
 			}
 			state.NodeID = p.nodeID
 
@@ -82,6 +84,10 @@ func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelS
 				p.LogDebug("rtcd host has been assigned to call", "host", host)
 				state.Call.RTCDHost = host
 			}
+		}
+
+		if state.Call.EndAt > 0 {
+			return nil, fmt.Errorf("call has ended")
 		}
 
 		if _, ok := state.Call.Users[userID]; ok {
@@ -97,6 +103,7 @@ func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelS
 		}
 
 		state.Call.Users[userID] = &userState{}
+		state.Call.Sessions[connID] = struct{}{}
 		if len(state.Call.Users) > state.Call.Stats.Participants {
 			state.Call.Stats.Participants = len(state.Call.Users)
 		}
@@ -108,7 +115,7 @@ func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelS
 	return st, err
 }
 
-func (p *Plugin) removeUserSession(userID, channelID string) (channelState, channelState, error) {
+func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelState, channelState, error) {
 	var currState channelState
 	var prevState channelState
 	errNotFound := errors.New("not found")
@@ -133,6 +140,7 @@ func (p *Plugin) removeUserSession(userID, channelID string) (channelState, chan
 		}
 
 		delete(state.Call.Users, userID)
+		delete(state.Call.Sessions, connID)
 
 		if len(state.Call.Users) == 0 {
 			state.Call = nil

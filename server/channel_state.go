@@ -17,7 +17,10 @@ type callStats struct {
 type callState struct {
 	ID              string                `json:"id"`
 	StartAt         int64                 `json:"create_at"`
+	EndAt           int64                 `json:"end_at"`
 	Users           map[string]*userState `json:"users,omitempty"`
+	Sessions        map[string]struct{}   `json:"sessions,omitempty"`
+	CreatorID       string                `json:"creator_id"`
 	ThreadID        string                `json:"thread_id"`
 	ScreenSharingID string                `json:"screen_sharing_id"`
 	ScreenStreamID  string                `json:"screen_stream_id"`
@@ -80,6 +83,7 @@ func (p *Plugin) kvSetAtomicChannelState(channelID string, cb func(state *channe
 }
 
 func (p *Plugin) cleanUpState() error {
+	p.LogDebug("cleaning up calls state")
 	var page int
 	perPage := 100
 	for {
@@ -112,24 +116,32 @@ func (p *Plugin) cleanUpState() error {
 				continue
 			}
 
-			if err := p.kvSetAtomicChannelState(k, func(state *channelState) (*channelState, error) {
-				if state == nil {
-					return nil, nil
-				}
-				state.NodeID = ""
-
-				if state.Call != nil {
-					if _, err := p.updateCallThreadEnded(state.Call.ThreadID); err != nil {
-						p.LogError(err.Error())
-					}
-				}
-				state.Call = nil
-				return state, nil
-			}); err != nil {
+			if err := p.cleanCallState(k); err != nil {
 				return fmt.Errorf("failed to clean up state: %w", err)
 			}
 		}
 		page++
 	}
+	return nil
+}
+
+func (p *Plugin) cleanCallState(channelID string) error {
+	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+		if state == nil {
+			return nil, nil
+		}
+		state.NodeID = ""
+
+		if state.Call != nil {
+			if _, err := p.updateCallThreadEnded(state.Call.ThreadID); err != nil {
+				p.LogError(err.Error())
+			}
+		}
+		state.Call = nil
+		return state, nil
+	}); err != nil {
+		return fmt.Errorf("failed to cleanup state: %w", err)
+	}
+
 	return nil
 }

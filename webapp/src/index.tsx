@@ -71,6 +71,7 @@ import {
     VOICE_CHANNEL_USER_VOICE_OFF,
     VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_CALL_END,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
@@ -213,6 +214,18 @@ export default class Plugin {
             });
         });
 
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_end`, (ev) => {
+            if (connectedChannelID(store.getState()) === ev.broadcast.channel_id && window.callsClient) {
+                window.callsClient.disconnect();
+            }
+            store.dispatch({
+                type: VOICE_CHANNEL_CALL_END,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                },
+            });
+        });
+
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_on`, (ev) => {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_SCREEN_ON,
@@ -306,6 +319,10 @@ export default class Plugin {
                     return {};
                 }
                 return {error: {message: 'You are not connected to a call in the current channel.'}};
+
+            case 'end':
+                // TODO: add confirmation dialog or other action to prevent user mistakes.
+                break;
             case 'link':
                 break;
             case 'experimental':
