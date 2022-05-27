@@ -493,15 +493,6 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 				"Duration":     dur,
 				"Participants": prevState.Call.Stats.Participants,
 			})
-
-			if handlerID != p.nodeID && p.rtcdManager == nil {
-				if err := p.sendClusterMessage(clusterMessage{
-					ChannelID: channelID,
-					SenderID:  p.nodeID,
-				}, clusterMessageTypeCallEnded, handlerID); err != nil {
-					p.LogError(err.Error())
-				}
-			}
 		}
 	}
 
