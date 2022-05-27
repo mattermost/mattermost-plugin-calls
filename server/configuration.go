@@ -119,7 +119,7 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.DefaultEnabled == nil {
 		c.DefaultEnabled = new(bool)
-		*c.DefaultEnabled = true
+		*c.DefaultEnabled = false
 	}
 }
 

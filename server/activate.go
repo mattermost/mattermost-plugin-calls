@@ -53,6 +53,18 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
+	// On Cloud installations we want calls enabled in all channels so we
+	// override it since the plugin's default is now false.
+	if isCloud(p.pluginAPI.System.GetLicense()) {
+		cfg.DefaultEnabled = new(bool)
+		*cfg.DefaultEnabled = true
+		if err := p.setConfiguration(cfg); err != nil {
+			err = fmt.Errorf("failed to set configuration: %w", err)
+			p.LogError(err.Error())
+			return err
+		}
+	}
+
 	if cfg.RTCDServiceURL != "" {
 		rtcdManager, err := p.newRTCDClientManager(cfg.RTCDServiceURL)
 		if err != nil {
