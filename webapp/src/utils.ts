@@ -14,6 +14,7 @@ import {Channel, ChannelMembership} from 'mattermost-redux/types/channels';
 import {UserProfile} from 'mattermost-redux/types/users';
 
 import {GlobalState} from 'mattermost-redux/types/store';
+import {ClientConfig} from 'mattermost-redux/types/config';
 
 import {UserState} from './types/types';
 
@@ -29,16 +30,12 @@ export function getPluginPath() {
         `/plugins/${pluginId}`;
 }
 
-export function getWSConnectionURL(): string {
+export function getWSConnectionURL(config: Partial<ClientConfig>): string {
     const loc = window.location;
     const uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${uri}//${loc.host}${Client4.getUrlVersion()}/websocket`;
-}
+    const baseURL = config && config.WebsocketURL ? config.WebsocketURL : `${uri}//${loc.host}`;
 
-export function getPluginWSConnectionURL(channelID: string): string {
-    const loc = window.location;
-    const uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${uri}//${loc.host}${getPluginPath()}/${channelID}/ws`;
+    return `${baseURL}${Client4.getUrlVersion()}/websocket`;
 }
 
 export function getTeamRelativeUrl(team: Team) {

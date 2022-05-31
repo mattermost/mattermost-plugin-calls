@@ -4,7 +4,7 @@ import SimplePeer from 'simple-peer';
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
-import {RTCStats} from 'src/types/types';
+import {CallsClientConfig, RTCStats} from 'src/types/types';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import WebSocketClient from './websocket';
@@ -14,7 +14,7 @@ import {parseRTCStats} from './rtc_stats';
 
 export default class CallsClient extends EventEmitter {
     public channelID: string;
-    private readonly iceServers: string[];
+    private readonly config: CallsClientConfig;
     private peer: SimplePeer.Instance | null;
     private ws: WebSocketClient | null;
     private localScreenTrack: any;
@@ -29,7 +29,7 @@ export default class CallsClient extends EventEmitter {
     private audioTrack: MediaStreamTrack | null;
     public isHandRaised: boolean;
 
-    constructor(iceServers: string[]) {
+    constructor(config: CallsClientConfig) {
         super();
         this.ws = null;
         this.peer = null;
@@ -42,7 +42,7 @@ export default class CallsClient extends EventEmitter {
         this.audioDevices = {inputs: [], outputs: []};
         this.isHandRaised = false;
         this.channelID = '';
-        this.iceServers = iceServers;
+        this.config = config;
     }
 
     private initVAD(inputStream: MediaStream) {
@@ -130,7 +130,7 @@ export default class CallsClient extends EventEmitter {
         this.initVAD(this.stream);
         this.audioTrack.enabled = false;
 
-        const ws = new WebSocketClient();
+        const ws = new WebSocketClient(this.config.wsURL);
         this.ws = ws;
 
         ws.on('error', (err) => {
@@ -154,7 +154,7 @@ export default class CallsClient extends EventEmitter {
 
         ws.on('join', async () => {
             console.log('join ack received, initializing connection');
-            const iceServers = this.iceServers?.length > 0 ? [{urls: this.iceServers}] : [];
+            const iceServers = this.config.iceServers?.length > 0 ? [{urls: this.config.iceServers}] : [];
             const peer = new SimplePeer({
                 initiator: true,
                 trickle: true,
