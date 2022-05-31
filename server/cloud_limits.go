@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
@@ -39,27 +38,6 @@ func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool,
 	return true, nil
 }
 
-// handleCloudInfo returns license information that isn't exposed to clients yet
-func (p *Plugin) handleCloudInfo(w http.ResponseWriter) error {
-	license := p.pluginAPI.System.GetLicense()
-	if license == nil {
-		p.handleErrorWithCode(w, http.StatusBadRequest, "no license",
-			errors.New("no license found"))
-		return nil
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	info := map[string]interface{}{
-		"sku_short_name":         license.SkuShortName,
-		"cloud_max_participants": cloudMaxParticipants,
-	}
-	if err := json.NewEncoder(w).Encode(info); err != nil {
-		return errors.Wrap(err, "error encoding cloud info")
-	}
-
-	return nil
-}
-
 // handleCloudNotifyAdmins notifies the user's admin about upgrading for calls
 func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request) error {
 	license := p.pluginAPI.System.GetLicense()
@@ -94,7 +72,8 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 	postType := "custom_cloud_trial_req"
 	message := fmt.Sprintf("@%s requested access to a free trial for Calls.", author.Username)
 	title := "Make calls in channels"
-	text := "Start a call in a channel. You can include up to 8 participants per call." + separator + "[Upgrade now](https://customers.mattermost.com)."
+	text := fmt.Sprintf("Start a call in a channel. You can include up to %d participants per call.%s[Upgrade now](https://customers.mattermost.com).",
+		cloudMaxParticipants, separator)
 
 	attachments := []*model.SlackAttachment{
 		{

@@ -8,6 +8,8 @@ import {LicenseSkus} from '@mattermost/types/general';
 
 import {isDMChannel} from 'src/utils';
 
+import {CallsConfig} from 'src/types/types';
+
 import {pluginId} from './manifest';
 
 //@ts-ignore GlobalState is not complete
@@ -82,16 +84,36 @@ export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
     return getPluginState(state).voiceChannelRootPost[channelID];
 };
 
+const callsConfig = (state: GlobalState): CallsConfig => {
+    return getPluginState(state).callsConfig;
+};
+
+export const iceServers: (state: GlobalState) => string[] = createSelector(
+    'iceServers',
+    callsConfig,
+    (config) => config.ICEServers,
+);
+
+export const allowEnableCalls: (state: GlobalState) => boolean = createSelector(
+    'allowEnableCalls',
+    callsConfig,
+    (config) => config.AllowEnableCalls,
+);
+
 //
 // Selectors for Cloud and beta limits:
 //
-const cloudSku = (state: GlobalState): string => {
-    return getPluginState(state).cloudInfo.sku_short_name;
-};
+const cloudSku: (state: GlobalState) => string = createSelector(
+    'cloudSku',
+    callsConfig,
+    (config) => config.sku_short_name,
+);
 
-export const cloudMaxParticipants = (state: GlobalState) => {
-    return getPluginState(state).cloudInfo.cloud_max_participants;
-};
+export const cloudMaxParticipants: (state: GlobalState) => number = createSelector(
+    'cloudMaxParticipants',
+    callsConfig,
+    (config) => config.cloud_max_participants,
+);
 
 export const isCloud: (state: GlobalState) => boolean = createSelector(
     'isCloud',

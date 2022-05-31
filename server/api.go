@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/pprof"
@@ -286,6 +287,34 @@ func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
 	res.code = http.StatusNotFound
 }
 
+// handleConfig returns the client configuration, and cloud license information
+// that isn't exposed to clients yet on the webapp
+func (p *Plugin) handleConfig(w http.ResponseWriter) error {
+	skuShortName := "starter"
+	license := p.pluginAPI.System.GetLicense()
+	if license != nil {
+		skuShortName = license.SkuShortName
+	}
+
+	type config struct {
+		clientConfig
+		SkuShortName         string `json:"sku_short_name"`
+		CloudMaxParticipants int    `json:"cloud_max_participants"`
+	}
+	ret := config{
+		clientConfig:         p.getConfiguration().getClientConfig(),
+		SkuShortName:         skuShortName,
+		CloudMaxParticipants: cloudMaxParticipants,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(ret); err != nil {
+		return fmt.Errorf("error encoding config: %w", err)
+	}
+
+	return nil
+}
+
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/version") {
 		p.handleGetVersion(w, r)
@@ -309,16 +338,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	if r.Method == http.MethodGet {
 		if r.URL.Path == "/config" {
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(p.getConfiguration().getClientConfig()); err != nil {
-				p.LogError(err.Error())
-			}
-			return
-		}
-
-		// Return license information that isn't exposed to clients yet
-		if r.URL.Path == "/cloud-info" {
-			if err := p.handleCloudInfo(w); err != nil {
+			if err := p.handleConfig(w); err != nil {
 				p.handleError(w, err)
 			}
 			return

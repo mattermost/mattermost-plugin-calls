@@ -9,7 +9,7 @@ import {CloudCustomer} from '@mattermost/types/cloud';
 
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 
-import {CloudInfo} from 'src/types/types';
+import {CallsConfig} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
 
 import {modals, openPricingModal} from 'src/webapp_globals';
@@ -30,7 +30,7 @@ import {
     HIDE_SWITCH_CALL_MODAL,
     SHOW_SCREEN_SOURCE_MODAL,
     HIDE_SCREEN_SOURCE_MODAL,
-    RECEIVED_CLOUD_INFO,
+    RECEIVED_CALLS_CONFIG,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -72,13 +72,13 @@ export const hideScreenSourceModal = () => (dispatch: Dispatch<GenericAction>) =
     });
 };
 
-export const getCloudInfo = (): ActionFunc => {
+export const getCallsConfig = (): ActionFunc => {
     return bindClientFunc({
-        clientFunc: () => Client4.doFetch<CloudInfo>(
-            `${getPluginPath()}/cloud-info`,
+        clientFunc: () => Client4.doFetch<CallsConfig>(
+            `${getPluginPath()}/config`,
             {method: 'get'},
         ),
-        onSuccess: [RECEIVED_CLOUD_INFO],
+        onSuccess: [RECEIVED_CALLS_CONFIG],
     });
 };
 

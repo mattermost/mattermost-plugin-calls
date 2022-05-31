@@ -547,6 +547,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 
 	if us != nil && !us.limiter.Allow() {
 		p.LogError("message was dropped by rate limiter", "msgType", msg.Type, "userID", us.userID, "connID", us.connID)
+		return
 	}
 
 	switch msg.Type {
