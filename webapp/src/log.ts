@@ -11,7 +11,7 @@ export function logWarn(...args: any[]) {
 }
 
 export function logInfo(...args: any[]) {
-    console.info(`${pluginId}`, ...args);
+    console.info(`${pluginId}:`, ...args);
 }
 
 export function logDebug(...args: any[]) {
