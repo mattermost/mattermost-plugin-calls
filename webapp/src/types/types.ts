@@ -69,3 +69,8 @@ export const CallsConfigDefault = {
     sku_short_name: '',
     cloud_max_participants: 0,
 } as CallsConfig;
+
+export type CallsClientConfig = {
+    wsURL: string,
+    iceServers: string[],
+}
