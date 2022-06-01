@@ -368,14 +368,29 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
     }
 };
 
-const callStartAt = (state: { [channelID: string]: number } = {}, action: { type: string, data: { channelID: string, startAt: number } }) => {
+interface callState {
+    channelID: string,
+    startAt: number,
+    creatorID: string,
+}
+
+interface callStartAction {
+    type: string,
+    data: callState,
+}
+
+const voiceChannelCalls = (state: {[channelID: string]: callState} = {}, action: callStartAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
     case VOICE_CHANNEL_CALL_START:
         return {
             ...state,
-            [action.data.channelID]: action.data.startAt,
+            [action.data.channelID]: {
+                channelID: action.data.channelID,
+                startAt: action.data.startAt,
+                creatorID: action.data.creatorID,
+            },
         };
     default:
         return state;
@@ -485,7 +500,7 @@ export default combineReducers({
     connectedChannelID,
     voiceConnectedProfiles,
     voiceUsersStatuses,
-    callStartAt,
+    voiceChannelCalls,
     voiceChannelScreenSharingID,
     expandedView,
     switchCallModal,

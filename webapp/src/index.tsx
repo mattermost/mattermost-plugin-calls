@@ -3,7 +3,7 @@ import axios from 'axios';
 
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getMyChannelRoles, getMySystemRoles} from 'mattermost-redux/selectors/entities/roles';
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
@@ -19,6 +19,7 @@ import {
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
     voiceChannelCallStartAt,
+    voiceChannelCallCreatorID,
     isCloudFeatureRestricted,
     isCloudLimitRestricted,
     voiceChannelRootPost,
@@ -205,6 +206,7 @@ export default class Plugin {
                 data: {
                     channelID: ev.broadcast.channel_id,
                     startAt: ev.data.start_at,
+                    creatorID: ev.data.creator_id,
                 },
             });
             store.dispatch({
@@ -325,6 +327,11 @@ export default class Plugin {
             case 'end':
                 if (voiceConnectedUsersInChannel(store.getState(), args.channel_id)?.length === 0) {
                     return {error: {message: 'No ongoing call in the channel.'}};
+                }
+
+                if (!isCurrentUserSystemAdmin(store.getState()) &&
+                    getCurrentUserId(store.getState()) !== voiceChannelCallCreatorID(store.getState(), args.channel_id)) {
+                    return {error: {message: 'You do not have permission to end the call. Please ask the call creator to end call.'}};
                 }
 
                 store.dispatch({
@@ -507,6 +514,7 @@ export default class Plugin {
                             data: {
                                 channelID: resp.data[i].channel_id,
                                 startAt: resp.data[i].call?.start_at,
+                                creatorID: resp.data[i].call?.creator_id,
                             },
                         });
                     }

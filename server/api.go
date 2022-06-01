@@ -24,6 +24,7 @@ type Call struct {
 	States          []userState `json:"states,omitempty"`
 	ThreadID        string      `json:"thread_id"`
 	ScreenSharingID string      `json:"screen_sharing_id"`
+	CreatorID       string      `json:"creator_id"`
 }
 
 type ChannelState struct {
@@ -77,6 +78,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 				States:          states,
 				ThreadID:        state.Call.ThreadID,
 				ScreenSharingID: state.Call.ScreenSharingID,
+				CreatorID:       state.Call.CreatorID,
 			}
 		}
 	}
@@ -164,6 +166,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 					States:          states,
 					ThreadID:        state.Call.ThreadID,
 					ScreenSharingID: state.Call.ScreenSharingID,
+					CreatorID:       state.Call.CreatorID,
 				}
 			}
 			channels = append(channels, info)

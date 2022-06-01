@@ -372,9 +372,10 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 
 		// TODO: send all the info attached to a call.
 		p.API.PublishWebSocketEvent(wsEventCallStart, map[string]interface{}{
-			"channelID": channelID,
-			"start_at":  state.Call.StartAt,
-			"thread_id": threadID,
+			"channelID":  channelID,
+			"start_at":   state.Call.StartAt,
+			"thread_id":  threadID,
+			"creator_id": state.Call.CreatorID,
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
