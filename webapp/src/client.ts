@@ -7,6 +7,7 @@ import {deflate} from 'pako/lib/deflate.js';
 import {CallsClientConfig, RTCStats} from 'src/types/types';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
+import {logErr, logDebug} from './log';
 import WebSocketClient from './websocket';
 import VoiceActivityDetector from './vad';
 
@@ -90,13 +91,13 @@ export default class CallsClient extends EventEmitter {
             });
 
             if (devices && devices.length === 1) {
-                console.log(`found default audio input device to use: ${devices[0].label}`);
+                logDebug(`found default audio input device to use: ${devices[0].label}`);
                 audioOptions.deviceId = {
                     exact: defaultInputID,
                 };
                 this.currentAudioInputDevice = devices[0];
             } else {
-                console.log('audio input device not found');
+                logDebug('audio input device not found');
                 window.localStorage.removeItem('calls_default_audio_input');
             }
         }
@@ -107,10 +108,10 @@ export default class CallsClient extends EventEmitter {
             });
 
             if (devices && devices.length === 1) {
-                console.log(`found default audio output device to use: ${devices[0].label}`);
+                logDebug(`found default audio output device to use: ${devices[0].label}`);
                 this.currentAudioOutputDevice = devices[0];
             } else {
-                console.log('audio output device not found');
+                logDebug('audio output device not found');
                 window.localStorage.removeItem('calls_default_audio_output');
             }
         }
@@ -133,19 +134,19 @@ export default class CallsClient extends EventEmitter {
         const ws = new WebSocketClient(this.config.wsURL);
         this.ws = ws;
 
-        ws.on('error', (err) => {
-            console.log('ws error', err);
+        ws.on('error', (ev) => {
+            logErr('ws error', ev);
             this.disconnect();
         });
 
         ws.on('close', (code?: number) => {
-            console.log(`ws close: ${code}`);
+            logDebug(`ws close: ${code}`);
             this.ws = null;
             this.disconnect();
         });
 
         ws.on('open', (connID: string) => {
-            console.log('ws open, sending join msg');
+            logDebug('ws open, sending join msg');
             ws.send('join', {
                 channelID,
                 title,
@@ -153,7 +154,7 @@ export default class CallsClient extends EventEmitter {
         });
 
         ws.on('join', async () => {
-            console.log('join ack received, initializing connection');
+            logDebug('join ack received, initializing connection');
             const iceServers = this.config.iceServers?.length > 0 ? [{urls: this.config.iceServers}] : [];
             const peer = new SimplePeer({
                 initiator: true,
@@ -163,7 +164,7 @@ export default class CallsClient extends EventEmitter {
 
             this.peer = peer;
             peer.on('signal', (data) => {
-                console.log('signal', data);
+                logDebug(`local signal: ${JSON.stringify(data)}`);
                 if (data.type === 'offer' || data.type === 'answer') {
                     if (!ws) {
                         return;
@@ -181,25 +182,24 @@ export default class CallsClient extends EventEmitter {
                 }
             });
             peer.on('error', (err) => {
-                console.log('peer error', err);
+                logErr('peer error', err);
                 this.disconnect();
             });
             peer.on('stream', (remoteStream) => {
-                console.log('new remote stream received');
-                console.log(remoteStream);
+                logDebug('new remote stream received', remoteStream);
+                logDebug('remote tracks', remoteStream.getTracks());
 
                 this.streams.push(remoteStream);
 
                 if (remoteStream.getAudioTracks().length > 0) {
                     this.emit('remoteVoiceStream', remoteStream);
                 } else if (remoteStream.getVideoTracks().length > 0) {
-                    console.log(remoteStream.getTracks());
                     this.emit('remoteScreenStream', remoteStream);
                     this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
                 }
             });
             peer.on('connect', () => {
-                console.log('rtc connected');
+                logDebug('rtc connected');
                 this.emit('connect');
             });
         });
@@ -210,7 +210,7 @@ export default class CallsClient extends EventEmitter {
                 return;
             }
             if (msg.type !== 'ping') {
-                console.log('ws', data);
+                logDebug('remote signal', data);
             }
             if (msg.type === 'answer' || msg.type === 'offer' || msg.type === 'candidate') {
                 if (msg.type === 'answer' || msg.type === 'offer') {
@@ -311,7 +311,7 @@ export default class CallsClient extends EventEmitter {
         });
 
         if (this.ws) {
-            console.log('disconnect');
+            logDebug('disconnect');
             this.ws.close();
             this.ws = null;
         }

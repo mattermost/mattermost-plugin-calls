@@ -11,6 +11,7 @@ import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 import {UserState} from 'src/types/types';
 import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel, isGMChannel, hasExperimentalFlag} from 'src/utils';
+import {logDebug, logErr} from 'src/log';
 
 import Avatar from '../avatar/avatar';
 import {pluginId} from '../../manifest';
@@ -259,7 +260,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEl.controls = false;
             audioEl.autoplay = true;
             audioEl.style.display = 'none';
-            audioEl.onerror = (err) => console.log(err);
+            audioEl.onerror = (err) => logErr(err);
 
             const deviceID = window.callsClient.currentAudioOutputDevice?.deviceId;
             if (deviceID) {
@@ -470,9 +471,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 ps.push(audioEl.setSinkId(device.deviceId));
             }
             Promise.all(ps).then(() => {
-                console.log('audio output has changed');
+                logDebug('audio output has changed');
             }).catch((err) => {
-                console.log(err);
+                logErr(err);
             });
         }
         this.setState({showAudioOutputDevicesMenu: false, currentAudioOutputDevice: device});

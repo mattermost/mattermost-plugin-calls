@@ -19,6 +19,7 @@ import {ClientConfig} from 'mattermost-redux/types/config';
 import {UserState} from './types/types';
 
 import {pluginId} from './manifest';
+import {logErr} from './log';
 
 export function getPluginStaticPath() {
     return window.basename ? `${window.basename}/static/plugins/${pluginId}` :
@@ -196,7 +197,7 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
                 audio: withAudio ? {mandatory: options} as any : false,
             });
         } catch (err) {
-            console.log(err);
+            logErr(err);
             return null;
         }
     } else {
@@ -208,7 +209,7 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
                 audio: Boolean(withAudio),
             });
         } catch (err) {
-            console.log(err);
+            logErr(err);
         }
     }
 
