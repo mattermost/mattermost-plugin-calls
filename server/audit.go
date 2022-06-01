@@ -6,10 +6,12 @@ import (
 	"net/http"
 )
 
+// httpResponse holds data returned to API clients.
+// JSON fields are overridden to be compliant with what MM server would return.
 type httpResponse struct {
-	Msg  string `json:"msg,omitempty"`
-	Err  string `json:"err,omitempty"`
-	Code int    `json:"code"`
+	Msg  string `json:"message,omitempty"`
+	Err  string `json:"detailed_error,omitempty"`
+	Code int    `json:"status_code"`
 }
 
 func (p *Plugin) httpAudit(handler string, res *httpResponse, w http.ResponseWriter, r *http.Request) {
@@ -18,6 +20,11 @@ func (p *Plugin) httpAudit(handler string, res *httpResponse, w http.ResponseWri
 		logFields = append(logFields, "error", res.Err, "code", res.Code, "status", "fail")
 	} else {
 		logFields = append(logFields, "status", "success")
+	}
+
+	if res.Err != "" && res.Msg == "" {
+		res.Msg = res.Err
+		res.Err = ""
 	}
 
 	w.Header().Add("Content-Type", "application/json")
