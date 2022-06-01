@@ -3,7 +3,7 @@ import {EventEmitter} from 'events';
 import {encode} from '@msgpack/msgpack/dist';
 
 import {pluginId} from './manifest';
-import {getWSConnectionURL} from './utils';
+import {logWarn, logErr} from './log';
 
 export default class WebSocketClient extends EventEmitter {
     private ws: WebSocket | null;
@@ -11,9 +11,9 @@ export default class WebSocketClient extends EventEmitter {
     private connID = '';
     private eventPrefix: string = 'custom_' + pluginId;
 
-    constructor() {
+    constructor(wsURL: string) {
         super();
-        this.ws = new WebSocket(getWSConnectionURL());
+        this.ws = new WebSocket(wsURL);
 
         this.ws.onerror = (err) => {
             this.emit('error', err);
@@ -34,7 +34,7 @@ export default class WebSocketClient extends EventEmitter {
             try {
                 msg = JSON.parse(data);
             } catch (err) {
-                console.log(err);
+                logErr('ws msg parse error', err);
             }
 
             if (!msg || !msg.event || !msg.data) {
@@ -46,7 +46,7 @@ export default class WebSocketClient extends EventEmitter {
                 this.emit('open');
                 return;
             } else if (!this.connID) {
-                console.log('ws message received while waiting for hello');
+                logWarn('ws message received while waiting for hello');
                 return;
             }
 

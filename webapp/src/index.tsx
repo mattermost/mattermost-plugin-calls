@@ -9,6 +9,7 @@ import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/commo
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {displayFreeTrial, getCallsConfig} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
@@ -55,7 +56,9 @@ import {
     getProfilesByIds,
     isDMChannel,
     getUserIdFromDM,
+    getWSConnectionURL,
 } from './utils';
+import {logErr, logDebug} from './log';
 
 import {
     VOICE_CHANNEL_ENABLE,
@@ -141,7 +144,7 @@ export default class Plugin {
                     },
                 });
             } catch (err) {
-                console.log(err);
+                logErr(err);
             }
         });
 
@@ -314,9 +317,9 @@ export default class Plugin {
                 }
                 if (fields[2] === 'on') {
                     window.localStorage.setItem('calls_experimental_features', 'on');
-                    console.log('experimental features enabled');
+                    logDebug('experimental features enabled');
                 } else if (fields[2] === 'off') {
-                    console.log('experimental features disabled');
+                    logDebug('experimental features disabled');
                     window.localStorage.removeItem('calls_experimental_features');
                 }
                 break;
@@ -326,7 +329,7 @@ export default class Plugin {
                 }
                 try {
                     const stats = await window.callsClient.getStats();
-                    console.log(JSON.stringify(stats, null, 2));
+                    logDebug(JSON.stringify(stats, null, 2));
                     return {message: `/call stats "${JSON.stringify(stats)}"`, args};
                 } catch (err) {
                     return {error: {message: err}};
@@ -374,7 +377,7 @@ export default class Plugin {
                             });
                         }
                     } catch (err) {
-                        console.log(err);
+                        logErr(err);
                         return;
                     }
 
@@ -395,7 +398,7 @@ export default class Plugin {
             if (threadID) {
                 store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
             } else {
-                console.error('Unable to follow call\'s thread, not registered in store');
+                logErr('Unable to follow call\'s thread, not registered in store');
             }
         };
 
@@ -404,11 +407,14 @@ export default class Plugin {
         const connectCall = async (channelID: string, title?: string) => {
             try {
                 if (window.callsClient) {
-                    console.log('calls client is already initialized');
+                    logErr('calls client is already initialized');
                     return;
                 }
 
-                window.callsClient = new CallsClient(iceServers(store.getState()));
+                window.callsClient = new CallsClient({
+                    wsURL: getWSConnectionURL(getConfig(store.getState())),
+                    iceServers: iceServers(store.getState()),
+                });
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', () => {
@@ -426,7 +432,7 @@ export default class Plugin {
                 window.callsClient.init(channelID, title);
             } catch (err) {
                 delete window.callsClient;
-                console.log(err);
+                logErr(err);
             }
         };
         const windowEventHandler = (ev: MessageEvent) => {
@@ -456,7 +462,7 @@ export default class Plugin {
                             type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                         });
                     } catch (err) {
-                        console.log(err);
+                        logErr(err);
                     }
                 },
             );
@@ -484,7 +490,7 @@ export default class Plugin {
                     }
                 }
             } catch (err) {
-                console.log(err);
+                logErr(err);
             }
         };
 
@@ -515,7 +521,7 @@ export default class Plugin {
                 }
             } catch (err) {
                 registry.unregisterComponent(channelHeaderMenuID);
-                console.log(err);
+                logErr(err);
             }
 
             try {
@@ -573,7 +579,7 @@ export default class Plugin {
                     },
                 });
             } catch (err) {
-                console.log(err);
+                logErr(err);
                 store.dispatch({
                     type: VOICE_CHANNEL_DISABLE,
                 });
@@ -606,7 +612,7 @@ export default class Plugin {
             if (window.callsClient) {
                 window.callsClient.disconnect();
             }
-            console.log('calls: resetting state');
+            logDebug('resetting state');
             store.dispatch({
                 type: VOICE_CHANNEL_UNINIT,
             });
@@ -614,9 +620,9 @@ export default class Plugin {
 
         this.registerWebSocketEvents(registry, store);
         this.registerReconnectHandler(registry, store, () => {
-            console.log('calls: websocket reconnect handler');
+            logDebug('websocket reconnect handler');
             if (!window.callsClient) {
-                console.log('calls: resetting state');
+                logDebug('resetting state');
                 store.dispatch({
                     type: VOICE_CHANNEL_UNINIT,
                 });
@@ -642,7 +648,7 @@ export default class Plugin {
     }
 
     uninitialize() {
-        console.log('calls: uninitialize');
+        logDebug('uninitialize');
         this.unsubscribers.forEach((unsubscribe) => {
             unsubscribe();
         });
