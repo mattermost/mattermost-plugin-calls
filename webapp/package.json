@@ -112,6 +112,7 @@
     "setupFilesAfterEnv": [
       "<rootDir>/tests/setup.js"
     ],
-    "testURL": "http://localhost:8065"
+    "testURL": "http://localhost:8065",
+    "testEnvironment": "jsdom"
   }
 }

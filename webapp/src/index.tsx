@@ -9,6 +9,7 @@ import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/commo
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {displayFreeTrial, getCallsConfig} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
@@ -55,6 +56,7 @@ import {
     getProfilesByIds,
     isDMChannel,
     getUserIdFromDM,
+    getWSConnectionURL,
 } from './utils';
 
 import {
@@ -408,7 +410,10 @@ export default class Plugin {
                     return;
                 }
 
-                window.callsClient = new CallsClient(iceServers(store.getState()));
+                window.callsClient = new CallsClient({
+                    wsURL: getWSConnectionURL(getConfig(store.getState())),
+                    iceServers: iceServers(store.getState()),
+                });
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', () => {

@@ -3,7 +3,6 @@ import {EventEmitter} from 'events';
 import {encode} from '@msgpack/msgpack/dist';
 
 import {pluginId} from './manifest';
-import {getWSConnectionURL} from './utils';
 
 export default class WebSocketClient extends EventEmitter {
     private ws: WebSocket | null;
@@ -11,9 +10,9 @@ export default class WebSocketClient extends EventEmitter {
     private connID = '';
     private eventPrefix: string = 'custom_' + pluginId;
 
-    constructor() {
+    constructor(wsURL: string) {
         super();
-        this.ws = new WebSocket(getWSConnectionURL());
+        this.ws = new WebSocket(wsURL);
 
         this.ws.onerror = (err) => {
             this.emit('error', err);

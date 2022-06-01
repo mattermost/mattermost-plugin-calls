@@ -660,6 +660,23 @@
           }
         ]
       }
+    },
+    {
+      "files": ["tests/**", "**/*.test.*"],
+      "env": {
+        "jest": true
+      },
+      "rules": {
+        "func-names": 0,
+        "global-require": 0,
+        "max-lines": 0,
+        "new-cap": 0,
+        "no-empty-function": 0,
+        "no-import-assign": 0,
+        "no-process-env": 0,
+        "prefer-arrow-callback": 0,
+        "max-nested-callbacks": 0
+      }
     }
   ]
 }
