@@ -8,7 +8,7 @@ import (
 )
 
 // cloudMaxParticipantsDefault is set to 8.
-// The value used can be overridden by setting the MM_CLOUD_MAX_PARTICIPANTS env variable.
+// The value used can be overridden by setting the MM_CALLS_MAX_PARTICIPANTS env variable.
 
 const (
 	cloudMaxParticipantsDefault     = 8
