@@ -47,7 +47,7 @@
           "key": "MaxCallParticipants",
           "display_name": "Max Call Participants",
           "type": "number",
-          "help_text": "The maximum number of participants that can join a call. If left empty it means unlimited.",
+          "help_text": "The maximum number of participants that can join a call. If left empty, or set to 0, it means unlimited.",
           "default": 0
         },
         {
