@@ -101,12 +101,9 @@ const CallButton = styled.button<{ restricted: boolean, isCloudPaid: boolean }>`
         ${(props) => props.restricted && css`
             color: rgba(var(--center-channel-color-rgb), 0.48);
             border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
-            cursor: pointer;
             margin-right: 4px;
         `}
-        ${(props) => props.isCloudPaid && css`
-            cursor: not-allowed;
-        `}
+        cursor: ${(props) => (props.restricted && props.isCloudPaid ? 'not-allowed' : 'pointer')};
     }
 `;
 

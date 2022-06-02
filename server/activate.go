@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/mattermost/rtcd/service/rtc"
@@ -40,29 +39,6 @@ func (p *Plugin) OnActivate() error {
 
 	cfg := p.getConfiguration()
 	if err := cfg.IsValid(); err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-
-	if isCloud(p.pluginAPI.System.GetLicense()) {
-		cfg.MaxCallParticipants = new(int)
-		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
-		// On Cloud installations we want calls enabled in all channels so we
-		// override it since the plugin's default is now false.
-		cfg.DefaultEnabled = new(bool)
-		*cfg.DefaultEnabled = true
-	}
-
-	if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
-		if max, err := strconv.Atoi(maxPart); err == nil {
-			*cfg.MaxCallParticipants = max
-		} else {
-			p.LogError("activate", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
-		}
-	}
-
-	if err := p.setConfiguration(cfg); err != nil {
-		err = fmt.Errorf("failed to set configuration: %w", err)
 		p.LogError(err.Error())
 		return err
 	}
