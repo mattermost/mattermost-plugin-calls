@@ -17,5 +17,5 @@ For more details on how to develop a plugin refer to the official [documentation
 
 ## License
 
-See [LICENSE](LICENSE) and [LICENSE.enterprise](LICENSE.enterprise) for license rights and limitations.
+See [LICENSE](LICENSE) and [LICENSE.enterprise](server/enterprise/LICENSE) for license rights and limitations.
 
