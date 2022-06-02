@@ -44,26 +44,27 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
-	// On Cloud installations we want calls enabled in all channels so we
-	// override it since the plugin's default is now false.
 	if isCloud(p.pluginAPI.System.GetLicense()) {
 		cfg.MaxCallParticipants = new(int)
 		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
-		if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
-			if max, err := strconv.Atoi(maxPart); err == nil {
-				*cfg.MaxCallParticipants = max
-			} else {
-				p.LogError("activate", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
-			}
-		}
-
+		// On Cloud installations we want calls enabled in all channels so we
+		// override it since the plugin's default is now false.
 		cfg.DefaultEnabled = new(bool)
 		*cfg.DefaultEnabled = true
-		if err := p.setConfiguration(cfg); err != nil {
-			err = fmt.Errorf("failed to set configuration: %w", err)
-			p.LogError(err.Error())
-			return err
+	}
+
+	if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
+		if max, err := strconv.Atoi(maxPart); err == nil {
+			*cfg.MaxCallParticipants = max
+		} else {
+			p.LogError("activate", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
 		}
+	}
+
+	if err := p.setConfiguration(cfg); err != nil {
+		err = fmt.Errorf("failed to set configuration: %w", err)
+		p.LogError(err.Error())
+		return err
 	}
 
 	if cfg.RTCDServiceURL != "" {
