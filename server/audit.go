@@ -14,6 +14,10 @@ type httpResponse struct {
 	Code int    `json:"status_code"`
 }
 
+func (r httpResponse) isEmpty() bool {
+	return r == httpResponse{}
+}
+
 func (p *Plugin) httpAudit(handler string, res *httpResponse, w http.ResponseWriter, r *http.Request) {
 	logFields := reqAuditFields(r)
 	if res.Err != "" {
@@ -27,10 +31,14 @@ func (p *Plugin) httpAudit(handler string, res *httpResponse, w http.ResponseWri
 		res.Err = ""
 	}
 
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(res.Code)
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		p.LogError(fmt.Sprintf("failed to encode data: %s", err))
+	if !res.isEmpty() {
+		if res.Code != 0 {
+			w.WriteHeader(res.Code)
+		}
+		w.Header().Add("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			p.LogError(fmt.Sprintf("failed to encode data: %s", err))
+		}
 	}
 
 	p.LogDebug(handler, logFields...)
