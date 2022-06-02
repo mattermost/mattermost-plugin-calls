@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
+
 	"github.com/mattermost/rtcd/service/rtc"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
@@ -30,6 +32,7 @@ func (p *Plugin) OnActivate() error {
 
 	pluginAPIClient := pluginapi.NewClient(p.API, p.Driver)
 	p.pluginAPI = pluginAPIClient
+	p.licenseChecker = enterprise.NewLicenseChecker(pluginAPIClient)
 
 	if err := p.cleanUpState(); err != nil {
 		p.LogError(err.Error())
@@ -53,7 +56,7 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
-	if cfg.RTCDServiceURL != "" {
+	if cfg.RTCDServiceURL != "" && p.licenseChecker.RTCDAllowed() {
 		rtcdManager, err := p.newRTCDClientManager(cfg.RTCDServiceURL)
 		if err != nil {
 			err = fmt.Errorf("failed to create rtcd manager: %w", err)
