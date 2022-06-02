@@ -7,8 +7,9 @@ import (
 	"net/http"
 )
 
-// cloudMaxParticipantsDefault is set to 8, can be overridden by setting the env variable
-// MM_CALLS_CLOUD_MAX_PARTICIPANTS
+// cloudMaxParticipantsDefault is set to 8.
+// The value used can be overridden by setting the MM_CLOUD_MAX_PARTICIPANTS env variable.
+
 const (
 	cloudMaxParticipantsDefault     = 8
 	maxAdminsToQueryForNotification = 25
