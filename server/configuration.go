@@ -41,6 +41,9 @@ type clientConfig struct {
 	AllowEnableCalls *bool
 	// When set to true, calls will be possible in all channels where they are not explicitly disabled.
 	DefaultEnabled *bool
+	// The maximum number of participants that can join a call. The zero value
+	// means unlimited.
+	MaxCallParticipants *int
 }
 
 type ICEServers []string
@@ -104,9 +107,10 @@ func (pr PortsRange) IsValid() error {
 
 func (c *configuration) getClientConfig() clientConfig {
 	return clientConfig{
-		AllowEnableCalls: c.AllowEnableCalls,
-		DefaultEnabled:   c.DefaultEnabled,
-		ICEServers:       c.ICEServers,
+		AllowEnableCalls:    c.AllowEnableCalls,
+		DefaultEnabled:      c.DefaultEnabled,
+		ICEServers:          c.ICEServers,
+		MaxCallParticipants: c.MaxCallParticipants,
 	}
 }
 
@@ -119,7 +123,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.DefaultEnabled == nil {
 		c.DefaultEnabled = new(bool)
-		*c.DefaultEnabled = false
+	}
+	if c.MaxCallParticipants == nil {
+		c.MaxCallParticipants = new(int)
 	}
 }
 
@@ -130,6 +136,10 @@ func (c *configuration) IsValid() error {
 
 	if *c.UDPServerPort < 1024 || *c.UDPServerPort > 49151 {
 		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [1024, 49151]", *c.UDPServerPort)
+	}
+
+	if c.MaxCallParticipants == nil || *c.MaxCallParticipants < 0 {
+		return fmt.Errorf("MaxCallParticipants is not valid")
 	}
 
 	return nil
@@ -160,6 +170,10 @@ func (c *configuration) Clone() *configuration {
 		for i, u := range c.ICEServers {
 			cfg.ICEServers[i] = u
 		}
+	}
+
+	if c.MaxCallParticipants != nil {
+		cfg.MaxCallParticipants = model.NewInt(*c.MaxCallParticipants)
 	}
 
 	return &cfg

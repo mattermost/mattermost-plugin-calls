@@ -58,16 +58,16 @@ export type CallsConfig = {
     ICEServers: string[],
     AllowEnableCalls: boolean,
     DefaultEnabled: boolean,
+    MaxCallParticipants: number,
     sku_short_name: string,
-    cloud_max_participants: number,
 }
 
 export const CallsConfigDefault = {
     ICEServers: [],
     AllowEnableCalls: false,
     DefaultEnabled: false,
+    MaxCallParticipants: 0,
     sku_short_name: '',
-    cloud_max_participants: 0,
 } as CallsConfig;
 
 export type CallsClientConfig = {

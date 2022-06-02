@@ -21,7 +21,7 @@ import {
     voiceConnectedUsersInChannel,
     voiceChannelCallStartAt,
     isCloudFeatureRestricted,
-    isCloudLimitRestricted,
+    isLimitRestricted,
     voiceChannelRootPost,
     allowEnableCalls,
     iceServers,
@@ -361,7 +361,7 @@ export default class Plugin {
                         return;
                     }
 
-                    if (isCloudLimitRestricted(store.getState())) {
+                    if (isLimitRestricted(store.getState())) {
                         return;
                     }
 

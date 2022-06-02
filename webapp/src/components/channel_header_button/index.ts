@@ -8,8 +8,9 @@ import {
     connectedChannelID,
     isVoiceEnabled,
     isCloudFeatureRestricted,
-    isCloudLimitRestricted,
-    cloudMaxParticipants,
+    isCloudProfessionalOrEnterprise,
+    isLimitRestricted,
+    maxParticipants,
 } from 'src/selectors';
 
 import ChannelHeaderButton from './component';
@@ -19,8 +20,9 @@ const mapStateToProps = (state: GlobalState) => ({
     inCall: Boolean(connectedChannelID(state) && connectedChannelID(state) === getCurrentChannelId(state)),
     hasCall: voiceConnectedUsers(state).length > 0,
     isCloudFeatureRestricted: isCloudFeatureRestricted(state),
-    isCloudLimitRestricted: isCloudLimitRestricted(state),
-    cloudMaxParticipants: cloudMaxParticipants(state),
+    isCloudPaid: isCloudProfessionalOrEnterprise(state),
+    isLimitRestricted: isLimitRestricted(state),
+    maxParticipants: maxParticipants(state),
 });
 
 export default connect(mapStateToProps)(ChannelHeaderButton);

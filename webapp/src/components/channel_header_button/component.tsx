@@ -12,8 +12,9 @@ interface Props {
     inCall: boolean,
     hasCall: boolean,
     isCloudFeatureRestricted: boolean,
-    isCloudLimitRestricted: boolean,
-    cloudMaxParticipants: number,
+    isCloudPaid: boolean,
+    isLimitRestricted: boolean,
+    maxParticipants: number,
 }
 
 const ChannelHeaderButton = ({
@@ -21,19 +22,22 @@ const ChannelHeaderButton = ({
     inCall,
     hasCall,
     isCloudFeatureRestricted,
-    isCloudLimitRestricted,
-    cloudMaxParticipants,
+    isCloudPaid,
+    isLimitRestricted,
+    maxParticipants,
 }: Props) => {
     if (!show) {
         return null;
     }
-    const restricted = isCloudFeatureRestricted || isCloudLimitRestricted;
+
+    const restricted = isLimitRestricted || isCloudFeatureRestricted;
 
     const button = (
         <CallButton
             id='calls-join-button'
             className={'style--none call-button ' + (inCall || restricted ? 'disabled' : '')}
             restricted={restricted}
+            isCloudPaid={isCloudPaid}
         >
             <CompassIcon icon='phone-outline'/>
             <span className='call-button-label'>
@@ -65,18 +69,21 @@ const ChannelHeaderButton = ({
         );
     }
 
-    if (isCloudLimitRestricted && !inCall) {
+    if (isLimitRestricted && !inCall) {
         return (
             <OverlayTrigger
                 placement='bottom'
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
-                            {`There's a limit of ${cloudMaxParticipants} participants per call.`}
+                            {`There's a limit of ${maxParticipants} participants per call.`}
                         </Header>
+
+                        {isCloudPaid &&
                         <SubHeader>
                             {'This is because calls is currently in beta. We’re working to remove this limit soon.'}
                         </SubHeader>
+                        }
                     </Tooltip>
                 }
             >
@@ -88,7 +95,7 @@ const ChannelHeaderButton = ({
     return button;
 };
 
-const CallButton = styled.button<{ restricted: boolean }>`
+const CallButton = styled.button<{ restricted: boolean, isCloudPaid: boolean }>`
     // &&& is to override the call-button styles
     &&& {
         ${(props) => props.restricted && css`
@@ -96,6 +103,9 @@ const CallButton = styled.button<{ restricted: boolean }>`
             border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
             cursor: pointer;
             margin-right: 4px;
+        `}
+        ${(props) => props.isCloudPaid && css`
+            cursor: not-allowed;
         `}
     }
 `;

@@ -7,36 +7,12 @@ import (
 	"net/http"
 )
 
-// cloudMaxParticipants defaults to 8, can be overridden by setting the env variable
+// cloudMaxParticipantsDefault is set to 8, can be overridden by setting the env variable
 // MM_CALLS_CLOUD_MAX_PARTICIPANTS
-var cloudMaxParticipants = 8
-
-const maxAdminsToQueryForNotification = 25
-
-// JoinAllowed returns true if the user is allowed to join the call, taking into
-// account cloud limits
-func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool, error) {
-	// Rules are:
-	// On-prem: no limits to calls
-	// Cloud Starter: DMs 1-1 only
-	// Cloud Professional & Cloud Enterprise: DMs 1-1, GMs and Channel calls limited to 8 people.
-
-	license := p.pluginAPI.System.GetLicense()
-	if !isCloud(license) {
-		return true, nil
-	}
-
-	if isCloudStarter(license) {
-		return channel.Type == model.ChannelTypeDirect, nil
-	}
-
-	// we are cloud paid (starter or enterprise)
-	if len(state.Call.Users) >= cloudMaxParticipants {
-		return false, nil
-	}
-
-	return true, nil
-}
+const (
+	cloudMaxParticipantsDefault     = 8
+	maxAdminsToQueryForNotification = 25
+)
 
 // handleCloudNotifyAdmins notifies the user's admin about upgrading for calls
 func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request) error {
@@ -68,12 +44,18 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 		return fmt.Errorf("no admins found")
 	}
 
+	maxParticipants := cloudMaxParticipantsDefault
+	cfg := p.getConfiguration()
+	if cfg != nil && cfg.MaxCallParticipants != nil {
+		maxParticipants = *cfg.MaxCallParticipants
+	}
+
 	separator := "\n\n---\n\n"
 	postType := "custom_cloud_trial_req"
 	message := fmt.Sprintf("@%s requested access to a free trial for Calls.", author.Username)
 	title := "Make calls in channels"
 	text := fmt.Sprintf("Start a call in a channel. You can include up to %d participants per call.%s[Upgrade now](https://customers.mattermost.com).",
-		cloudMaxParticipants, separator)
+		maxParticipants, separator)
 
 	attachments := []*model.SlackAttachment{
 		{

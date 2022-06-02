@@ -19,15 +19,6 @@ func (p *Plugin) OnActivate() error {
 		return fmt.Errorf("disabled by environment flag")
 	}
 
-	maxPart := os.Getenv("MM_CALLS_CLOUD_MAX_PARTICIPANTS")
-	if maxPart != "" {
-		if max, err := strconv.Atoi(maxPart); err == nil {
-			cloudMaxParticipants = max
-		} else {
-			p.LogError("activate", "MM_CALLS_CLOUD_MAX_PARTICIPANTS error during parsing:", err.Error())
-		}
-	}
-
 	pluginAPIClient := pluginapi.NewClient(p.API, p.Driver)
 	p.pluginAPI = pluginAPIClient
 
@@ -56,6 +47,16 @@ func (p *Plugin) OnActivate() error {
 	// On Cloud installations we want calls enabled in all channels so we
 	// override it since the plugin's default is now false.
 	if isCloud(p.pluginAPI.System.GetLicense()) {
+		cfg.MaxCallParticipants = new(int)
+		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
+		if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
+			if max, err := strconv.Atoi(maxPart); err == nil {
+				*cfg.MaxCallParticipants = max
+			} else {
+				p.LogError("activate", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
+			}
+		}
+
 		cfg.DefaultEnabled = new(bool)
 		*cfg.DefaultEnabled = true
 		if err := p.setConfiguration(cfg); err != nil {

@@ -13,7 +13,7 @@ interface Props {
     startAt?: number,
     pictures: string[],
     profiles: UserProfile[],
-    isCloudLimitRestricted: boolean,
+    isLimitRestricted: boolean,
 }
 
 interface State {
@@ -58,7 +58,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
     }
 
     render() {
-        if (!this.props.hasCall || this.state.hidden || this.props.isCloudLimitRestricted) {
+        if (!this.props.hasCall || this.state.hidden || this.props.isLimitRestricted) {
             return null;
         }
 

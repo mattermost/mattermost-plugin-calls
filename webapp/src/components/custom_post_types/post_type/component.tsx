@@ -20,7 +20,7 @@ interface Props {
     profiles: UserProfile[],
     showSwitchCallModal: (targetID: string) => void,
     isCloudPaid: boolean,
-    cloudMaxParticipants: number,
+    maxParticipants: number,
 }
 
 const PostType = ({
@@ -30,7 +30,7 @@ const PostType = ({
     profiles,
     showSwitchCallModal,
     isCloudPaid,
-    cloudMaxParticipants,
+    maxParticipants,
 }: Props) => {
     const onJoinCallClick = () => {
         if (connectedID) {
@@ -67,19 +67,21 @@ const PostType = ({
         </JoinButton>
     );
 
-    // Note: don't use isCloudLimitRestricted because that uses current channel, and this post could be in RHS
-    if (isCloudPaid && profiles.length >= cloudMaxParticipants) {
+    // Note: don't use isLimitRestricted because that uses current channel, and this post could be in RHS
+    if (maxParticipants > 0 && profiles.length >= maxParticipants) {
         joinButton = (
             <OverlayTrigger
                 placement='top'
                 overlay={
                     <Tooltip id='tooltip-limit'>
                         <Header>
-                            {`Sorry, participants per call are currently limited to ${cloudMaxParticipants}.`}
+                            {`Sorry, participants per call are currently limited to ${maxParticipants}.`}
                         </Header>
+                        { isCloudPaid &&
                         <SubHeader>
                             {'This is because Calls is in the Beta phase. We’re working to remove this limit soon.'}
                         </SubHeader>
+                        }
                     </Tooltip>
                 }
             >

@@ -298,13 +298,11 @@ func (p *Plugin) handleConfig(w http.ResponseWriter) error {
 
 	type config struct {
 		clientConfig
-		SkuShortName         string `json:"sku_short_name"`
-		CloudMaxParticipants int    `json:"cloud_max_participants"`
+		SkuShortName string `json:"sku_short_name"`
 	}
 	ret := config{
-		clientConfig:         p.getConfiguration().getClientConfig(),
-		SkuShortName:         skuShortName,
-		CloudMaxParticipants: cloudMaxParticipants,
+		clientConfig: p.getConfiguration().getClientConfig(),
+		SkuShortName: skuShortName,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
