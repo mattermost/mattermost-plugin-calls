@@ -257,7 +257,7 @@ func (p *Plugin) OnConfigurationChange() error {
 		} else {
 			p.LogError("setOverrides", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
 		}
-	} else if clusterID := os.Getenv("MM_INSTALLATION_ID"); clusterID != "" {
+	} else if license := p.pluginAPI.System.GetLicense(); license != nil && isCloud(license) {
 		// otherwise, if this is a cloud installation, set it at the default
 		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
 	}
@@ -266,8 +266,7 @@ func (p *Plugin) OnConfigurationChange() error {
 }
 
 func (p *Plugin) setOverrides(cfg *configuration) {
-	// if MM_INSTALLATION_ID is set, this is cloud
-	if clusterID := os.Getenv("MM_INSTALLATION_ID"); clusterID != "" {
+	if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
 		// On Cloud installations we want calls enabled in all channels so we
 		// override it since the plugin's default is now false.
