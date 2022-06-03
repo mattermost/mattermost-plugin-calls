@@ -208,6 +208,10 @@ func (p *Plugin) setConfiguration(configuration *configuration) error {
 	p.configurationLock.Lock()
 	defer p.configurationLock.Unlock()
 
+	if p.configuration == nil && configuration != nil {
+		p.setOverrides(configuration)
+	}
+
 	if configuration != nil && p.configuration == configuration {
 		// Ignore assignment if the configuration struct is empty. Go will optimize the
 		// allocation for same to point at the same memory address, breaking the check
@@ -246,29 +250,27 @@ func (p *Plugin) OnConfigurationChange() error {
 		return fmt.Errorf("OnConfigurationChange: failed to load plugin configuration: %w", err)
 	}
 
-	p.setOverrides(cfg)
-
-	return p.setConfiguration(cfg)
-}
-
-func (p *Plugin) setOverrides(cfg *configuration) {
-	if p.pluginAPI == nil {
-		return
-	}
-
-	if license := p.pluginAPI.System.GetLicense(); license != nil && isCloud(license) {
-		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
-		// On Cloud installations we want calls enabled in all channels so we
-		// override it since the plugin's default is now false.
-		*cfg.DefaultEnabled = true
-	}
-
-	// Allow env var to permanently override system console setting
+	// Allow env var to permanently override system console settings
 	if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
 		if max, err := strconv.Atoi(maxPart); err == nil {
 			*cfg.MaxCallParticipants = max
 		} else {
 			p.LogError("setOverrides", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
 		}
+	} else if clusterID := os.Getenv("MM_INSTALLATION_ID"); clusterID != "" {
+		// otherwise, if this is a cloud installation, set it at the default
+		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
+	}
+
+	return p.setConfiguration(cfg)
+}
+
+func (p *Plugin) setOverrides(cfg *configuration) {
+	// if MM_INSTALLATION_ID is set, this is cloud
+	if clusterID := os.Getenv("MM_INSTALLATION_ID"); clusterID != "" {
+		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
+		// On Cloud installations we want calls enabled in all channels so we
+		// override it since the plugin's default is now false.
+		*cfg.DefaultEnabled = true
 	}
 }
