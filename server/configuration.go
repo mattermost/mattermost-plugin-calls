@@ -250,6 +250,19 @@ func (p *Plugin) OnConfigurationChange() error {
 		return fmt.Errorf("OnConfigurationChange: failed to load plugin configuration: %w", err)
 	}
 
+	// Permanently override with envVar and cloud overrides
+	p.setOverrides(cfg)
+
+	return p.setConfiguration(cfg)
+}
+
+func (p *Plugin) setOverrides(cfg *configuration) {
+	if license := p.API.GetLicense(); license != nil && isCloud(license) {
+		// On Cloud installations we want calls enabled in all channels so we
+		// override it since the plugin's default is now false.
+		*cfg.DefaultEnabled = true
+	}
+
 	// Allow env var to permanently override system console settings
 	if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
 		if max, err := strconv.Atoi(maxPart); err == nil {
@@ -257,19 +270,8 @@ func (p *Plugin) OnConfigurationChange() error {
 		} else {
 			p.LogError("setOverrides", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
 		}
-	} else if license := p.pluginAPI.System.GetLicense(); license != nil && isCloud(license) {
+	} else if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// otherwise, if this is a cloud installation, set it at the default
 		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
-	}
-
-	return p.setConfiguration(cfg)
-}
-
-func (p *Plugin) setOverrides(cfg *configuration) {
-	if license := p.API.GetLicense(); license != nil && isCloud(license) {
-		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
-		// On Cloud installations we want calls enabled in all channels so we
-		// override it since the plugin's default is now false.
-		*cfg.DefaultEnabled = true
 	}
 }
