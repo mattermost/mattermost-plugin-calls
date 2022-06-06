@@ -30,7 +30,7 @@ func getAutocompleteData() *model.AutocompleteData {
 	startCmdData.AddTextArgument("[message]", "Root message for the call", "")
 	data.AddCommand(startCmdData)
 	data.AddCommand(model.NewAutocompleteData(joinCommandTrigger, "", "Joins a call in the current channel"))
-	data.AddCommand(model.NewAutocompleteData(leaveCommandTrigger, "", "Leaves a call in the current channel"))
+	data.AddCommand(model.NewAutocompleteData(leaveCommandTrigger, "", "Leave a call in the current channel."))
 	data.AddCommand(model.NewAutocompleteData(linkCommandTrigger, "", "Generates a link to join a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Shows some client-generated statistics about the call"))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately"))
