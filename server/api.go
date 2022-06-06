@@ -24,7 +24,7 @@ type Call struct {
 	States          []userState `json:"states,omitempty"`
 	ThreadID        string      `json:"thread_id"`
 	ScreenSharingID string      `json:"screen_sharing_id"`
-	CreatorID       string      `json:"creator_id"`
+	OwnerID         string      `json:"owner_id"`
 }
 
 type ChannelState struct {
@@ -78,7 +78,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 				States:          states,
 				ThreadID:        state.Call.ThreadID,
 				ScreenSharingID: state.Call.ScreenSharingID,
-				CreatorID:       state.Call.CreatorID,
+				OwnerID:         state.Call.OwnerID,
 			}
 		}
 	}
@@ -166,7 +166,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 					States:          states,
 					ThreadID:        state.Call.ThreadID,
 					ScreenSharingID: state.Call.ScreenSharingID,
-					CreatorID:       state.Call.CreatorID,
+					OwnerID:         state.Call.OwnerID,
 				}
 			}
 			channels = append(channels, info)
@@ -206,7 +206,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 		return
 	}
 
-	if !isAdmin && state.Call.CreatorID != userID {
+	if !isAdmin && state.Call.OwnerID != userID {
 		res.Err = "no permissions to end the call"
 		res.Code = http.StatusForbidden
 		return

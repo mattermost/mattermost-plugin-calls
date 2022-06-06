@@ -371,7 +371,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
 interface callState {
     channelID: string,
     startAt: number,
-    creatorID: string,
+    ownerID: string,
 }
 
 interface callStartAction {
@@ -389,7 +389,7 @@ const voiceChannelCalls = (state: {[channelID: string]: callState} = {}, action:
             [action.data.channelID]: {
                 channelID: action.data.channelID,
                 startAt: action.data.startAt,
-                creatorID: action.data.creatorID,
+                ownerID: action.data.ownerID,
             },
         };
     default:

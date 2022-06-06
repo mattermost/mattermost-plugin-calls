@@ -19,7 +19,7 @@ import {
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
     voiceChannelCallStartAt,
-    voiceChannelCallCreatorID,
+    voiceChannelCallOwnerID,
     isCloudFeatureRestricted,
     isCloudLimitRestricted,
     voiceChannelRootPost,
@@ -206,7 +206,7 @@ export default class Plugin {
                 data: {
                     channelID: ev.broadcast.channel_id,
                     startAt: ev.data.start_at,
-                    creatorID: ev.data.creator_id,
+                    ownerID: ev.data.owner_id,
                 },
             });
             store.dispatch({
@@ -317,21 +317,21 @@ export default class Plugin {
                     followThread(args.channel_id, args.team_id);
                     return {};
                 }
-                return {error: {message: 'You are already connected to a call in the current channel.'}};
+                return {error: {message: `You're already connected to a call in the current channel.`}};
             case 'leave':
                 if (connectedID && args.channel_id === connectedID && window.callsClient) {
                     window.callsClient.disconnect();
                     return {};
                 }
-                return {error: {message: 'You're not connected to a call in the current channel.'}};
+                return {error: {message: `You're not connected to a call in the current channel.`}};
             case 'end':
                 if (voiceConnectedUsersInChannel(store.getState(), args.channel_id)?.length === 0) {
                     return {error: {message: 'No ongoing call in the channel.'}};
                 }
 
                 if (!isCurrentUserSystemAdmin(store.getState()) &&
-                    getCurrentUserId(store.getState()) !== voiceChannelCallCreatorID(store.getState(), args.channel_id)) {
-                    return {error: {message: 'You do not have permission to end the call. Please ask the call creator to end call.'}};
+                    getCurrentUserId(store.getState()) !== voiceChannelCallOwnerID(store.getState(), args.channel_id)) {
+                    return {error: {message: `You don't have permission to end the call. Please ask the call owner to end call.`}};
                 }
 
                 store.dispatch({
@@ -357,7 +357,7 @@ export default class Plugin {
                 break;
             case 'stats':
                 if (!window.callsClient) {
-                    return {error: {message: 'You are not connected to any call'}};
+                    return {error: {message: `You're not connected to any call`}};
                 }
                 try {
                     const stats = await window.callsClient.getStats();
@@ -514,7 +514,7 @@ export default class Plugin {
                             data: {
                                 channelID: resp.data[i].channel_id,
                                 startAt: resp.data[i].call?.start_at,
-                                creatorID: resp.data[i].call?.creator_id,
+                                ownerID: resp.data[i].call?.owner_id,
                             },
                         });
                     }

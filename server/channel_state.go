@@ -20,7 +20,7 @@ type callState struct {
 	EndAt           int64                 `json:"end_at"`
 	Users           map[string]*userState `json:"users,omitempty"`
 	Sessions        map[string]struct{}   `json:"sessions,omitempty"`
-	CreatorID       string                `json:"creator_id"`
+	OwnerID         string                `json:"owner_id"`
 	ThreadID        string                `json:"thread_id"`
 	ScreenSharingID string                `json:"screen_sharing_id"`
 	ScreenStreamID  string                `json:"screen_stream_id"`

@@ -68,11 +68,11 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 
 		if state.Call == nil {
 			state.Call = &callState{
-				ID:        model.NewId(),
-				StartAt:   time.Now().UnixMilli(),
-				Users:     make(map[string]*userState),
-				Sessions:  make(map[string]struct{}),
-				CreatorID: userID,
+				ID:       model.NewId(),
+				StartAt:  time.Now().UnixMilli(),
+				Users:    make(map[string]*userState),
+				Sessions: make(map[string]struct{}),
+				OwnerID:  userID,
 			}
 			state.NodeID = p.nodeID
 
