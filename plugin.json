@@ -38,7 +38,7 @@
         },
         {
           "key": "DefaultEnabled",
-          "display_name": "Enable on All Channels",
+          "display_name": "Enable on all channels",
           "type": "bool",
           "help_text": "When set to true, calls will be possible in all channels where they are not explicitly disabled.",
           "default": false
