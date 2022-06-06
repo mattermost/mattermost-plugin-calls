@@ -54,7 +54,7 @@
           "key": "ICEServers",
           "display_name": "ICE Servers",
           "type": "text",
-          "help_text": "(Optional) A comma separated list of ICE servers URLs (STUN/TURN) to use.",
+          "help_text": "(Optional) A comma-separated list of ICE servers' URLs (STUN/TURN) to use.",
           "default": "stun:stun.global.calls.mattermost.com:3478",
           "placeholder": "stun:example.com:3478"
         },
