@@ -323,7 +323,7 @@ export default class Plugin {
                     window.callsClient.disconnect();
                     return {};
                 }
-                return {error: {message: 'You are not connected to a call in the current channel.'}};
+                return {error: {message: 'You're not connected to a call in the current channel.'}};
             case 'end':
                 if (voiceConnectedUsersInChannel(store.getState(), args.channel_id)?.length === 0) {
                     return {error: {message: 'No ongoing call in the channel.'}};
