@@ -40,7 +40,7 @@
           "key": "DefaultEnabled",
           "display_name": "Enable on all channels",
           "type": "bool",
-          "help_text": "When set to true, calls will be possible in all channels where they are not explicitly disabled.",
+          "help_text": "When set to true, calls can be started in all channels where they're not explicitly disabled.",
           "default": false
         },
         {
