@@ -35,7 +35,7 @@ func getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Show client-generated statistics about the call."))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately."))
 
-	experimentalCmdData := model.NewAutocompleteData(experimentalCommandTrigger, "", "Turns on/off experimental features")
+	experimentalCmdData := model.NewAutocompleteData(experimentalCommandTrigger, "", "Turn experimental features on or off.")
 	experimentalCmdData.AddTextArgument("Available options: on, off", "", "on|off")
 	data.AddCommand(experimentalCmdData)
 	return data
