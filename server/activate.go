@@ -73,8 +73,8 @@ func (p *Plugin) OnActivate() error {
 		}
 	}
 
-	if cfg.RTCDServiceURL != "" && p.licenseChecker.RTCDAllowed() {
-		rtcdManager, err := p.newRTCDClientManager(cfg.RTCDServiceURL)
+	if rtcdURL := cfg.getRTCDURL(); rtcdURL != "" && p.licenseChecker.RTCDAllowed() {
+		rtcdManager, err := p.newRTCDClientManager(rtcdURL)
 		if err != nil {
 			err = fmt.Errorf("failed to create rtcd manager: %w", err)
 			p.LogError(err.Error())

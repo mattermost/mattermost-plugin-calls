@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -166,6 +167,13 @@ func (c *configuration) Clone() *configuration {
 	}
 
 	return &cfg
+}
+
+func (c *configuration) getRTCDURL() string {
+	if url := os.Getenv("MM_CALLS_RTCD_URL"); url != "" {
+		return url
+	}
+	return c.RTCDServiceURL
 }
 
 // getConfiguration retrieves the active configuration under lock, making it safe to use
