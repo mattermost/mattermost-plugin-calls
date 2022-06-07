@@ -9,7 +9,7 @@ import {
     voiceConnectedProfilesInChannel,
     connectedChannelID,
     voiceChannelCallStartAt,
-    isCloudLimitRestricted,
+    isLimitRestricted,
 } from 'selectors';
 
 import ChannelCallToast from './component';
@@ -39,7 +39,7 @@ const mapStateToProps = (state) => {
         startAt: voiceChannelCallStartAt(state, currentID),
         pictures,
         profiles,
-        isCloudLimitRestricted: isCloudLimitRestricted(state),
+        isLimitRestricted: isLimitRestricted(state),
     };
 };
 

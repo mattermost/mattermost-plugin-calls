@@ -44,6 +44,13 @@
           "default": false
         },
         {
+          "key": "MaxCallParticipants",
+          "display_name": "Max call participants",
+          "type": "number",
+          "help_text": "The maximum number of participants that can join a call. If left empty, or set to 0, it means unlimited.",
+          "default": 0
+        },
+        {
           "key": "ICEHostOverride",
           "display_name": "ICE Host Override",
           "type": "text",

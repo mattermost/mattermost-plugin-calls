@@ -12,8 +12,9 @@ interface Props {
     inCall: boolean,
     hasCall: boolean,
     isCloudFeatureRestricted: boolean,
-    isCloudLimitRestricted: boolean,
-    cloudMaxParticipants: number,
+    isCloudPaid: boolean,
+    isLimitRestricted: boolean,
+    maxParticipants: number,
 }
 
 const ChannelHeaderDropdownButton = ({
@@ -21,13 +22,15 @@ const ChannelHeaderDropdownButton = ({
     inCall,
     hasCall,
     isCloudFeatureRestricted,
-    isCloudLimitRestricted,
-    cloudMaxParticipants,
+    isCloudPaid,
+    isLimitRestricted,
+    maxParticipants,
 }: Props) => {
     if (!show) {
         return null;
     }
-    const restricted = isCloudFeatureRestricted || isCloudLimitRestricted;
+    const restricted = isLimitRestricted || isCloudFeatureRestricted;
+    const isCloudLimitRestricted = isCloudPaid && isLimitRestricted;
     const withUpsellIcon = isCloudFeatureRestricted || (isCloudLimitRestricted && !inCall);
 
     const button = (
@@ -71,18 +74,21 @@ const ChannelHeaderDropdownButton = ({
         );
     }
 
-    if (isCloudLimitRestricted && !inCall) {
+    if (isLimitRestricted && !inCall) {
         return (
             <OverlayTrigger
                 placement='bottom'
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
-                            {`There's a limit of ${cloudMaxParticipants} participants per call.`}
+                            {`There's a limit of ${maxParticipants} participants per call.`}
                         </Header>
+
+                        {isCloudPaid &&
                         <SubHeader>
                             {'This is because calls is currently in beta. We’re working to remove this limit soon.'}
                         </SubHeader>
+                        }
                     </Tooltip>
                 }
             >
