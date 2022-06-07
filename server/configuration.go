@@ -236,3 +236,8 @@ func (p *Plugin) OnConfigurationChange() error {
 
 	return p.setConfiguration(cfg)
 }
+
+func (p *Plugin) isHAEnabled() bool {
+	cfg := p.API.GetConfig()
+	return cfg != nil && cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
+}
