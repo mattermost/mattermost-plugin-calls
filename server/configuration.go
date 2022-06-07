@@ -184,6 +184,13 @@ func (c *configuration) Clone() *configuration {
 	return &cfg
 }
 
+func (c *configuration) getRTCDURL() string {
+	if url := os.Getenv("MM_CALLS_RTCD_URL"); url != "" {
+		return url
+	}
+	return c.RTCDServiceURL
+}
+
 // getConfiguration retrieves the active configuration under lock, making it safe to use
 // concurrently. The active configuration may change underneath the client of this method, but
 // the struct returned by this API call is considered immutable.
