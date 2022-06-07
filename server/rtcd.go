@@ -401,9 +401,6 @@ func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string, dialFn rtcd.Dial
 	}
 	cfg.AuthKey = os.Getenv("MM_CALLS_RTCD_AUTH_KEY")
 	cfg.URL = rtcdURL
-	if rtcdURL = os.Getenv("MM_CALLS_RTCD_URL"); rtcdURL != "" {
-		cfg.URL = rtcdURL
-	}
 
 	// Parsing the URL in case it's already containing credentials.
 	u, clientID, authKey, err := parseURL(cfg.URL)
