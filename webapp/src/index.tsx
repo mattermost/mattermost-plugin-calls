@@ -216,7 +216,9 @@ export default class Plugin {
             });
 
             const channel = getChannel(store.getState(), ev.broadcast.channel_id);
-            followThread(channel?.id, channel?.team_id);
+            if (channel) {
+                followThread(channel.id, channel.team_id);
+            }
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_on`, (ev) => {
