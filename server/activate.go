@@ -1,9 +1,14 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 
 	"github.com/mattermost/rtcd/service/rtc"
 
@@ -20,10 +25,13 @@ func (p *Plugin) OnActivate() error {
 
 	pluginAPIClient := pluginapi.NewClient(p.API, p.Driver)
 	p.pluginAPI = pluginAPIClient
+	p.licenseChecker = enterprise.NewLicenseChecker(pluginAPIClient)
 
-	if err := p.cleanUpState(); err != nil {
-		p.LogError(err.Error())
-		return err
+	if !p.isHAEnabled() {
+		if err := p.cleanUpState(); err != nil {
+			p.LogError(err.Error())
+			return err
+		}
 	}
 
 	if err := p.registerCommands(); err != nil {
@@ -43,7 +51,19 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
-	if cfg.RTCDServiceURL != "" {
+	// On Cloud installations we want calls enabled in all channels so we
+	// override it since the plugin's default is now false.
+	if isCloud(p.pluginAPI.System.GetLicense()) {
+		cfg.DefaultEnabled = new(bool)
+		*cfg.DefaultEnabled = true
+		if err := p.setConfiguration(cfg); err != nil {
+			err = fmt.Errorf("failed to set configuration: %w", err)
+			p.LogError(err.Error())
+			return err
+		}
+	}
+
+	if cfg.RTCDServiceURL != "" && p.licenseChecker.RTCDAllowed() {
 		rtcdManager, err := p.newRTCDClientManager(cfg.RTCDServiceURL)
 		if err != nil {
 			err = fmt.Errorf("failed to create rtcd manager: %w", err)
@@ -127,8 +147,10 @@ func (p *Plugin) OnDeactivate() error {
 		}
 	}
 
-	if err := p.cleanUpState(); err != nil {
-		p.LogError(err.Error())
+	if !p.isHAEnabled() {
+		if err := p.cleanUpState(); err != nil {
+			p.LogError(err.Error())
+		}
 	}
 
 	if err := p.unregisterCommands(); err != nil {

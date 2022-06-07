@@ -61,7 +61,11 @@ export const voiceUsersStatuses = (state: GlobalState) => {
 };
 
 export const voiceChannelCallStartAt = (state: GlobalState, channelID: string) => {
-    return getPluginState(state).callStartAt[channelID];
+    return getPluginState(state).voiceChannelCalls[channelID]?.startAt;
+};
+
+export const voiceChannelCallOwnerID = (state: GlobalState, channelID: string) => {
+    return getPluginState(state).voiceChannelCalls[channelID]?.ownerID;
 };
 
 export const voiceChannelScreenSharingID = (state: GlobalState, channelID: string) => {
@@ -112,6 +116,10 @@ export const isLimitRestricted: (state: GlobalState) => boolean = createSelector
     maxParticipants,
     (numCurrentUsers, max) => max > 0 && numCurrentUsers >= max,
 );
+
+export const endCallModal = (state: GlobalState) => {
+    return getPluginState(state).endCallModal;
+};
 
 //
 // Selectors for Cloud and beta limits:

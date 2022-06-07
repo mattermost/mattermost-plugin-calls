@@ -31,21 +31,21 @@
         },
         {
           "key": "AllowEnableCalls",
-          "display_name": "Enable on Specific Channels",
+          "display_name": "Enable on specific channels",
           "type": "bool",
-          "help_text": "When set to true, it allows channel admins to enable or disable calls in their channels. It also allows participants of DMs/GMs to enable or disable calls.",
+          "help_text": "When set to true, Channel Admins can enable or disable calls in their channels. It also allows participants in DMs/GMs to enable or disable calls.",
           "default": false
         },
         {
           "key": "DefaultEnabled",
-          "display_name": "Enable on All Channels",
+          "display_name": "Enable on all channels",
           "type": "bool",
-          "help_text": "When set to true, calls will be possible in all channels where they are not explicitly disabled.",
+          "help_text": "When set to true, calls can be started in all channels where they're not explicitly disabled.",
           "default": false
         },
         {
           "key": "MaxCallParticipants",
-          "display_name": "Max Call Participants",
+          "display_name": "Max call participants",
           "type": "number",
           "help_text": "The maximum number of participants that can join a call. If left empty, or set to 0, it means unlimited.",
           "default": 0
@@ -61,13 +61,13 @@
           "key": "ICEServers",
           "display_name": "ICE Servers",
           "type": "text",
-          "help_text": "(Optional) A comma separated list of ICE servers URLs (STUN/TURN) to use.",
+          "help_text": "(Optional) A comma-separated list of ICE servers' URLs (STUN/TURN) to use.",
           "default": "stun:stun.global.calls.mattermost.com:3478",
           "placeholder": "stun:example.com:3478"
         },
         {
           "key": "RTCDServiceURL",
-          "display_name": "RTCD Service URL",
+          "display_name": "RTCD service URL",
           "type": "text",
           "help_text": "(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
           "placeholder": "https://rtcd.example.com"

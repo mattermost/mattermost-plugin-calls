@@ -3,7 +3,7 @@ import axios from 'axios';
 
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getMyChannelRoles, getMySystemRoles} from 'mattermost-redux/selectors/entities/roles';
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
@@ -20,6 +20,7 @@ import {
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
     voiceChannelCallStartAt,
+    voiceChannelCallOwnerID,
     isCloudFeatureRestricted,
     isLimitRestricted,
     voiceChannelRootPost,
@@ -41,6 +42,7 @@ import PostType from './components/custom_post_types/post_type';
 import ExpandedView from './components/expanded_view';
 import SwitchCallModal from './components/switch_call_modal';
 import ScreenSourceModal from './components/screen_source_modal';
+import EndCallModal from './components/end_call_modal';
 
 import JoinUserSound from './sounds/join_user.mp3';
 import JoinSelfSound from './sounds/join_self.mp3';
@@ -74,6 +76,7 @@ import {
     VOICE_CHANNEL_USER_VOICE_OFF,
     VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_CALL_END,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
@@ -81,6 +84,7 @@ import {
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
+    SHOW_END_CALL_MODAL,
 } from './action_types';
 
 // eslint-disable-next-line import/no-unresolved
@@ -205,6 +209,7 @@ export default class Plugin {
                 data: {
                     channelID: ev.broadcast.channel_id,
                     startAt: ev.data.start_at,
+                    ownerID: ev.data.owner_id,
                 },
             });
             store.dispatch({
@@ -212,6 +217,18 @@ export default class Plugin {
                 data: {
                     channelID: ev.broadcast.channel_id,
                     rootPost: ev.data.thread_id,
+                },
+            });
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_end`, (ev) => {
+            if (connectedChannelID(store.getState()) === ev.broadcast.channel_id && window.callsClient) {
+                window.callsClient.disconnect();
+            }
+            store.dispatch({
+                type: VOICE_CHANNEL_CALL_END,
+                data: {
+                    channelID: ev.broadcast.channel_id,
                 },
             });
         });
@@ -268,6 +285,7 @@ export default class Plugin {
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
+        registry.registerGlobalComponent(EndCallModal);
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             const fullCmd = message.trim();
@@ -302,13 +320,30 @@ export default class Plugin {
                     followThread(args.channel_id, args.team_id);
                     return {};
                 }
-                return {error: {message: 'You are already connected to a call in the current channel.'}};
+                return {error: {message: 'You\'re already connected to a call in the current channel.'}};
             case 'leave':
                 if (connectedID && args.channel_id === connectedID && window.callsClient) {
                     window.callsClient.disconnect();
                     return {};
                 }
-                return {error: {message: 'You are not connected to a call in the current channel.'}};
+                return {error: {message: 'You\'re not connected to a call in the current channel.'}};
+            case 'end':
+                if (voiceConnectedUsersInChannel(store.getState(), args.channel_id)?.length === 0) {
+                    return {error: {message: 'No ongoing call in the channel.'}};
+                }
+
+                if (!isCurrentUserSystemAdmin(store.getState()) &&
+                    getCurrentUserId(store.getState()) !== voiceChannelCallOwnerID(store.getState(), args.channel_id)) {
+                    return {error: {message: 'You don\'t have permission to end the call. Please ask the call owner to end call.'}};
+                }
+
+                store.dispatch({
+                    type: SHOW_END_CALL_MODAL,
+                    data: {
+                        targetID: args.channel_id,
+                    },
+                });
+                return {};
             case 'link':
                 break;
             case 'experimental':
@@ -325,7 +360,7 @@ export default class Plugin {
                 break;
             case 'stats':
                 if (!window.callsClient) {
-                    return {error: {message: 'You are not connected to any call'}};
+                    return {error: {message: 'You\'re not connected to any call'}};
                 }
                 try {
                     const stats = await window.callsClient.getStats();
@@ -485,6 +520,7 @@ export default class Plugin {
                             data: {
                                 channelID: resp.data[i].channel_id,
                                 startAt: resp.data[i].call?.start_at,
+                                ownerID: resp.data[i].call?.owner_id,
                             },
                         });
                     }

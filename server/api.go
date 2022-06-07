@@ -1,3 +1,6 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
@@ -8,12 +11,14 @@ import (
 	"net/http/pprof"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 )
 
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
+var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
 
 type Call struct {
 	ID              string      `json:"id"`
@@ -22,6 +27,7 @@ type Call struct {
 	States          []userState `json:"states,omitempty"`
 	ThreadID        string      `json:"thread_id"`
 	ScreenSharingID string      `json:"screen_sharing_id"`
+	OwnerID         string      `json:"owner_id"`
 }
 
 type ChannelState struct {
@@ -75,6 +81,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 				States:          states,
 				ThreadID:        state.Call.ThreadID,
 				ScreenSharingID: state.Call.ScreenSharingID,
+				OwnerID:         state.Call.OwnerID,
 			}
 		}
 	}
@@ -162,6 +169,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 					States:          states,
 					ThreadID:        state.Call.ThreadID,
 					ScreenSharingID: state.Call.ScreenSharingID,
+					OwnerID:         state.Call.OwnerID,
 				}
 			}
 			channels = append(channels, info)
@@ -180,59 +188,141 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID string) {
+	var res httpResponse
+	defer p.httpAudit("handleEndCall", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
+
+	state, err := p.kvGetChannelState(channelID)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	if state == nil || state.Call == nil {
+		res.Err = "no call ongoing"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if !isAdmin && state.Call.OwnerID != userID {
+		res.Err = "no permissions to end the call"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	callID := state.Call.ID
+
+	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+		if state == nil || state.Call == nil {
+			return nil, nil
+		}
+
+		if state.Call.ID != callID {
+			return nil, fmt.Errorf("previous call has ended and new one has started")
+		}
+
+		if state.Call.EndAt == 0 {
+			state.Call.EndAt = time.Now().UnixMilli()
+		}
+
+		return state, nil
+	}); err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	p.API.PublishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+	go func() {
+		// We wait a few seconds for the call to end cleanly. If this doesn't
+		// happen we force end it.
+		time.Sleep(5 * time.Second)
+
+		state, err := p.kvGetChannelState(channelID)
+		if err != nil {
+			p.LogError(err.Error())
+			return
+		}
+		if state == nil || state.Call == nil || state.Call.ID != callID {
+			return
+		}
+
+		p.LogInfo("call state is still in store, force ending it")
+
+		for connID := range state.Call.Sessions {
+			if err := p.closeRTCSession(userID, connID, channelID, state.NodeID); err != nil {
+				p.LogError(err.Error())
+			}
+		}
+
+		if err := p.cleanCallState(channelID); err != nil {
+			p.LogError(err.Error())
+		}
+	}()
+
+	res.Code = http.StatusOK
+	res.Msg = "success"
+}
+
 func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	var res httpResponse
-	defer p.httpAudit("handlePostChannel", res, w, r)
+	defer p.httpAudit("handlePostChannel", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 
 	cfg := p.getConfiguration()
 	if !*cfg.AllowEnableCalls && !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-		res.err = "Forbidden"
-		res.code = http.StatusForbidden
+		res.Err = "Forbidden"
+		res.Code = http.StatusForbidden
 		return
 	}
 
 	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
-		res.err = appErr.Error()
-		res.code = http.StatusInternalServerError
+		res.Err = appErr.Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
 	cm, appErr := p.API.GetChannelMember(channelID, userID)
 	if appErr != nil {
-		res.err = appErr.Error()
-		res.code = http.StatusInternalServerError
+		res.Err = appErr.Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
 	switch channel.Type {
 	case model.ChannelTypeOpen, model.ChannelTypePrivate:
 		if !cm.SchemeAdmin && !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-			res.err = "Forbidden"
-			res.code = http.StatusForbidden
+			res.Err = "Forbidden"
+			res.Code = http.StatusForbidden
 			return
 		}
 	case model.ChannelTypeDirect, model.ChannelTypeGroup:
 		if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
-			res.err = "Forbidden"
-			res.code = http.StatusForbidden
+			res.Err = "Forbidden"
+			res.Code = http.StatusForbidden
 			return
 		}
 	}
 
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		res.err = err.Error()
-		res.code = http.StatusInternalServerError
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
 	var info ChannelState
 	if err := json.Unmarshal(data, &info); err != nil {
-		res.err = err.Error()
-		res.code = http.StatusBadRequest
+		res.Err = err.Error()
+		res.Code = http.StatusBadRequest
 		return
 	}
 
@@ -244,8 +334,8 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		return state, nil
 	}); err != nil {
 		// handle creation case
-		res.err = err.Error()
-		res.code = http.StatusInternalServerError
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
@@ -265,12 +355,12 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 
 func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
-	defer p.httpAudit("handleDebug", res, w, r)
+	defer p.httpAudit("handleDebug", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 	if !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-		res.err = "Forbidden"
-		res.code = http.StatusForbidden
+		res.Err = "Forbidden"
+		res.Code = http.StatusForbidden
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/debug/pprof/profile") {
@@ -283,8 +373,8 @@ func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
 		pprof.Index(w, r)
 		return
 	}
-	res.err = "Not found"
-	res.code = http.StatusNotFound
+	res.Err = "Not found"
+	res.Code = http.StatusNotFound
 }
 
 // handleConfig returns the client configuration, and cloud license information
@@ -364,6 +454,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if matches := chRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handlePostChannel(w, r, matches[1])
+			return
+		}
+
+		if matches := callEndRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleEndCall(w, r, matches[1])
 			return
 		}
 	}

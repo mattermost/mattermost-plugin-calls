@@ -18,6 +18,7 @@ import {
     VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_USER_VOICE_OFF,
     VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_CALL_END,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
@@ -31,6 +32,8 @@ import {
     SHOW_SCREEN_SOURCE_MODAL,
     HIDE_SCREEN_SOURCE_MODAL,
     RECEIVED_CALLS_CONFIG,
+    SHOW_END_CALL_MODAL,
+    HIDE_END_CALL_MODAL,
 } from './action_types';
 
 const isVoiceEnabled = (state = false, action: { type: string }) => {
@@ -88,6 +91,11 @@ const voiceConnectedProfiles = (state: connectedProfilesState = {}, action: conn
             ...state,
             [action.data.channelID]: state[action.data.channelID]?.filter((val) => val.id !== action.data.userID),
         };
+    case VOICE_CHANNEL_CALL_END:
+        return {
+            ...state,
+            [action.data.channelID]: [],
+        };
     default:
         return state;
     }
@@ -134,6 +142,11 @@ const voiceConnectedChannels = (state: connectedChannelsState = {}, action: conn
             ...state,
             [action.data.channelID]: action.data.users,
         };
+    case VOICE_CHANNEL_CALL_END:
+        return {
+            ...state,
+            [action.data.channelID]: [],
+        };
     default:
         return state;
     }
@@ -150,6 +163,11 @@ const connectedChannelID = (state: string | null = null, action: { type: string,
         return state;
     case VOICE_CHANNEL_USER_DISCONNECTED:
         if (action.data.currentUserID === action.data.userID) {
+            return null;
+        }
+        return state;
+    case VOICE_CHANNEL_CALL_END:
+        if (state === action.data.channelID) {
             return null;
         }
         return state;
@@ -350,14 +368,29 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
     }
 };
 
-const callStartAt = (state: { [channelID: string]: number } = {}, action: { type: string, data: { channelID: string, startAt: number } }) => {
+interface callState {
+    channelID: string,
+    startAt: number,
+    ownerID: string,
+}
+
+interface callStartAction {
+    type: string,
+    data: callState,
+}
+
+const voiceChannelCalls = (state: {[channelID: string]: callState} = {}, action: callStartAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
     case VOICE_CHANNEL_CALL_START:
         return {
             ...state,
-            [action.data.channelID]: action.data.startAt,
+            [action.data.channelID]: {
+                channelID: action.data.channelID,
+                startAt: action.data.startAt,
+                ownerID: action.data.ownerID,
+            },
         };
     default:
         return state;
@@ -385,6 +418,7 @@ const voiceChannelScreenSharingID = (state: { [channelID: string]: string } = {}
             ...state,
             [action.data.channelID]: action.data.userID,
         };
+    case VOICE_CHANNEL_CALL_END:
     case VOICE_CHANNEL_USER_SCREEN_OFF:
         return {
             ...state,
@@ -424,6 +458,20 @@ const switchCallModal = (state = {
     }
 };
 
+const endCallModal = (state = {
+    show: false,
+    targetID: '',
+}, action: { type: string, data?: { targetID: string } }) => {
+    switch (action.type) {
+    case SHOW_END_CALL_MODAL:
+        return {show: true, targetID: action.data?.targetID};
+    case HIDE_END_CALL_MODAL:
+        return {show: false, targetID: ''};
+    default:
+        return state;
+    }
+};
+
 const screenSourceModal = (state = false, action: { type: string }) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
@@ -452,10 +500,11 @@ export default combineReducers({
     connectedChannelID,
     voiceConnectedProfiles,
     voiceUsersStatuses,
-    callStartAt,
+    voiceChannelCalls,
     voiceChannelScreenSharingID,
     expandedView,
     switchCallModal,
+    endCallModal,
     screenSourceModal,
     voiceChannelRootPost,
     callsConfig,

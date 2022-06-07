@@ -1,3 +1,6 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
@@ -124,6 +127,7 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.DefaultEnabled == nil {
 		c.DefaultEnabled = new(bool)
+		*c.DefaultEnabled = false
 	}
 	if c.MaxCallParticipants == nil {
 		c.MaxCallParticipants = new(int)
@@ -274,4 +278,9 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 		// otherwise, if this is a cloud installation, set it at the default
 		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
 	}
+}
+
+func (p *Plugin) isHAEnabled() bool {
+	cfg := p.API.GetConfig()
+	return cfg != nil && cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
 }
