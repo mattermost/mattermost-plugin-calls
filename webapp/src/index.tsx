@@ -102,7 +102,7 @@ export default class Plugin {
         this.unsubscribers.push(() => registry.unregisterReconnectHandler(handler));
     }
 
-    private registerWebSocketEvents(registry: PluginRegistry, store: Store) {
+    private registerWebSocketEvents(registry: PluginRegistry, store: Store, followThread: (channelID: string, teamID: string) => Promise<void>) {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
             store.dispatch({
                 type: VOICE_CHANNEL_ENABLE,
@@ -219,6 +219,11 @@ export default class Plugin {
                     rootPost: ev.data.thread_id,
                 },
             });
+
+            const channel = getChannel(store.getState(), ev.broadcast.channel_id);
+            if (channel) {
+                followThread(channel.id, channel.team_id);
+            }
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_end`, (ev) => {
@@ -418,7 +423,12 @@ export default class Plugin {
 
                     if (!connectedChannelID(store.getState())) {
                         connectCall(channel.id);
-                        followThread(channel.id, channel.team_id);
+
+                        // following the thread only on join. On call start
+                        // this is done in the call_start ws event handler.
+                        if (voiceConnectedUsersInChannel(store.getState(), channel.id).length > 0) {
+                            followThread(channel.id, channel.team_id);
+                        }
                     } else if (connectedChannelID(store.getState()) !== channel.id) {
                         store.dispatch({
                             type: SHOW_SWITCH_CALL_MODAL,
@@ -654,7 +664,7 @@ export default class Plugin {
             });
         });
 
-        this.registerWebSocketEvents(registry, store);
+        this.registerWebSocketEvents(registry, store, followThread);
         this.registerReconnectHandler(registry, store, () => {
             logDebug('websocket reconnect handler');
             if (!window.callsClient) {
