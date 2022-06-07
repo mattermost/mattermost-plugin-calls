@@ -11,7 +11,8 @@
             "linux-arm64": "server/dist/plugin-linux-arm64",
             "darwin-amd64": "server/dist/plugin-darwin-amd64",
             "darwin-arm64": "server/dist/plugin-darwin-arm64",
-            "freebsd-amd64": "server/dist/plugin-freebsd-amd64"
+            "freebsd-amd64": "server/dist/plugin-freebsd-amd64",
+            "openbsd-amd64": "server/dist/plugin-openbsd-amd64"
         }
     },
     "webapp": {
