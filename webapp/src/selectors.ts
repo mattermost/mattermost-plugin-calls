@@ -61,7 +61,11 @@ export const voiceUsersStatuses = (state: GlobalState) => {
 };
 
 export const voiceChannelCallStartAt = (state: GlobalState, channelID: string) => {
-    return getPluginState(state).callStartAt[channelID];
+    return getPluginState(state).voiceChannelCalls[channelID]?.startAt;
+};
+
+export const voiceChannelCallOwnerID = (state: GlobalState, channelID: string) => {
+    return getPluginState(state).voiceChannelCalls[channelID]?.ownerID;
 };
 
 export const voiceChannelScreenSharingID = (state: GlobalState, channelID: string) => {
@@ -100,6 +104,23 @@ export const allowEnableCalls: (state: GlobalState) => boolean = createSelector(
     (config) => config.AllowEnableCalls,
 );
 
+export const maxParticipants: (state: GlobalState) => number = createSelector(
+    'maxParticipants',
+    callsConfig,
+    (config) => config.MaxCallParticipants,
+);
+
+export const isLimitRestricted: (state: GlobalState) => boolean = createSelector(
+    'isLimitRestricted',
+    numCurrentVoiceConnectedUsers,
+    maxParticipants,
+    (numCurrentUsers, max) => max > 0 && numCurrentUsers >= max,
+);
+
+export const endCallModal = (state: GlobalState) => {
+    return getPluginState(state).endCallModal;
+};
+
 //
 // Selectors for Cloud and beta limits:
 //
@@ -107,12 +128,6 @@ const cloudSku: (state: GlobalState) => string = createSelector(
     'cloudSku',
     callsConfig,
     (config) => config.sku_short_name,
-);
-
-export const cloudMaxParticipants: (state: GlobalState) => number = createSelector(
-    'cloudMaxParticipants',
-    callsConfig,
-    (config) => config.cloud_max_participants,
 );
 
 export const isCloud: (state: GlobalState) => boolean = createSelector(
@@ -155,15 +170,6 @@ export const isCloudFeatureRestricted: (state: GlobalState) => boolean = createS
     isCloudStarter,
     getCurrentChannel,
     (isStarter, channel) => isStarter && !isDMChannel(channel),
-);
-
-// isCloudLimitRestricted means: are you restricted from joining a call because of our beta limits?
-export const isCloudLimitRestricted: (state: GlobalState) => boolean = createSelector(
-    'isCloudLimitRestricted',
-    isCloudProfessionalOrEnterprise,
-    numCurrentVoiceConnectedUsers,
-    cloudMaxParticipants,
-    (isCloudPaid, numCurrentUsers, maxParticipants) => isCloudPaid && numCurrentUsers >= maxParticipants,
 );
 
 const getSubscription = (state: GlobalState) => {

@@ -1,8 +1,12 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -44,6 +48,9 @@ type clientConfig struct {
 	AllowEnableCalls *bool
 	// When set to true, calls will be possible in all channels where they are not explicitly disabled.
 	DefaultEnabled *bool
+	// The maximum number of participants that can join a call. The zero value
+	// means unlimited.
+	MaxCallParticipants *int
 }
 
 type ICEServers []string
@@ -107,9 +114,10 @@ func (pr PortsRange) IsValid() error {
 
 func (c *configuration) getClientConfig() clientConfig {
 	return clientConfig{
-		AllowEnableCalls: c.AllowEnableCalls,
-		DefaultEnabled:   c.DefaultEnabled,
-		ICEServers:       c.ICEServers,
+		AllowEnableCalls:    c.AllowEnableCalls,
+		DefaultEnabled:      c.DefaultEnabled,
+		ICEServers:          c.ICEServers,
+		MaxCallParticipants: c.MaxCallParticipants,
 	}
 }
 
@@ -122,7 +130,10 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.DefaultEnabled == nil {
 		c.DefaultEnabled = new(bool)
-		*c.DefaultEnabled = true
+		*c.DefaultEnabled = false
+	}
+	if c.MaxCallParticipants == nil {
+		c.MaxCallParticipants = new(int)
 	}
 }
 
@@ -133,6 +144,10 @@ func (c *configuration) IsValid() error {
 
 	if *c.UDPServerPort < 1024 || *c.UDPServerPort > 49151 {
 		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [1024, 49151]", *c.UDPServerPort)
+	}
+
+	if c.MaxCallParticipants == nil || *c.MaxCallParticipants < 0 {
+		return fmt.Errorf("MaxCallParticipants is not valid")
 	}
 
 	return nil
@@ -165,9 +180,20 @@ func (c *configuration) Clone() *configuration {
 		}
 	}
 
+	if c.MaxCallParticipants != nil {
+		cfg.MaxCallParticipants = model.NewInt(*c.MaxCallParticipants)
+	}
+
 	cfg.AllowedRecordingUsers = c.AllowedRecordingUsers
 
 	return &cfg
+}
+
+func (c *configuration) getRTCDURL() string {
+	if url := os.Getenv("MM_CALLS_RTCD_URL"); url != "" {
+		return url
+	}
+	return c.RTCDServiceURL
 }
 
 // getConfiguration retrieves the active configuration under lock, making it safe to use
@@ -197,6 +223,10 @@ func (p *Plugin) getConfiguration() *configuration {
 func (p *Plugin) setConfiguration(configuration *configuration) error {
 	p.configurationLock.Lock()
 	defer p.configurationLock.Unlock()
+
+	if p.configuration == nil && configuration != nil {
+		p.setOverrides(configuration)
+	}
 
 	if configuration != nil && p.configuration == configuration {
 		// Ignore assignment if the configuration struct is empty. Go will optimize the
@@ -236,5 +266,33 @@ func (p *Plugin) OnConfigurationChange() error {
 		return fmt.Errorf("OnConfigurationChange: failed to load plugin configuration: %w", err)
 	}
 
+	// Permanently override with envVar and cloud overrides
+	p.setOverrides(cfg)
+
 	return p.setConfiguration(cfg)
+}
+
+func (p *Plugin) setOverrides(cfg *configuration) {
+	if license := p.API.GetLicense(); license != nil && isCloud(license) {
+		// On Cloud installations we want calls enabled in all channels so we
+		// override it since the plugin's default is now false.
+		*cfg.DefaultEnabled = true
+	}
+
+	// Allow env var to permanently override system console settings
+	if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
+		if max, err := strconv.Atoi(maxPart); err == nil {
+			*cfg.MaxCallParticipants = max
+		} else {
+			p.LogError("setOverrides", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
+		}
+	} else if license := p.API.GetLicense(); license != nil && isCloud(license) {
+		// otherwise, if this is a cloud installation, set it at the default
+		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
+	}
+}
+
+func (p *Plugin) isHAEnabled() bool {
+	cfg := p.API.GetConfig()
+	return cfg != nil && cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
 }

@@ -3,12 +3,13 @@ import axios from 'axios';
 
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getMyChannelRoles, getMySystemRoles} from 'mattermost-redux/selectors/entities/roles';
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {displayFreeTrial, getCallsConfig} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
@@ -19,8 +20,9 @@ import {
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
     voiceChannelCallStartAt,
+    voiceChannelCallOwnerID,
     isCloudFeatureRestricted,
-    isCloudLimitRestricted,
+    isLimitRestricted,
     voiceChannelRootPost,
     allowEnableCalls,
     iceServers,
@@ -41,6 +43,7 @@ import ExpandedView from './components/expanded_view';
 import RecordingView from './components/recording_view';
 import SwitchCallModal from './components/switch_call_modal';
 import ScreenSourceModal from './components/screen_source_modal';
+import EndCallModal from './components/end_call_modal';
 
 import JoinUserSound from './sounds/join_user.mp3';
 import JoinSelfSound from './sounds/join_self.mp3';
@@ -57,7 +60,9 @@ import {
     getProfilesByIds,
     isDMChannel,
     getUserIdFromDM,
+    getWSConnectionURL,
 } from './utils';
+import {logErr, logDebug} from './log';
 
 import {
     VOICE_CHANNEL_ENABLE,
@@ -73,6 +78,7 @@ import {
     VOICE_CHANNEL_USER_VOICE_OFF,
     VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_CALL_END,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
@@ -80,6 +86,7 @@ import {
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
+    SHOW_END_CALL_MODAL,
 } from './action_types';
 
 // eslint-disable-next-line import/no-unresolved
@@ -97,7 +104,7 @@ export default class Plugin {
         this.unsubscribers.push(() => registry.unregisterReconnectHandler(handler));
     }
 
-    private registerWebSocketEvents(registry: PluginRegistry, store: Store) {
+    private registerWebSocketEvents(registry: PluginRegistry, store: Store, followThread: (channelID: string, teamID: string) => Promise<void>) {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
             store.dispatch({
                 type: VOICE_CHANNEL_ENABLE,
@@ -143,7 +150,7 @@ export default class Plugin {
                     },
                 });
             } catch (err) {
-                console.log(err);
+                logErr(err);
             }
         });
 
@@ -204,6 +211,7 @@ export default class Plugin {
                 data: {
                     channelID: ev.broadcast.channel_id,
                     startAt: ev.data.start_at,
+                    ownerID: ev.data.owner_id,
                 },
             });
             store.dispatch({
@@ -211,6 +219,23 @@ export default class Plugin {
                 data: {
                     channelID: ev.broadcast.channel_id,
                     rootPost: ev.data.thread_id,
+                },
+            });
+
+            const channel = getChannel(store.getState(), ev.broadcast.channel_id);
+            if (channel) {
+                followThread(channel.id, channel.team_id);
+            }
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_end`, (ev) => {
+            if (connectedChannelID(store.getState()) === ev.broadcast.channel_id && window.callsClient) {
+                window.callsClient.disconnect();
+            }
+            store.dispatch({
+                type: VOICE_CHANNEL_CALL_END,
+                data: {
+                    channelID: ev.broadcast.channel_id,
                 },
             });
         });
@@ -267,6 +292,7 @@ export default class Plugin {
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
+        registry.registerGlobalComponent(EndCallModal);
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             const fullCmd = message.trim();
@@ -301,13 +327,30 @@ export default class Plugin {
                     followThread(args.channel_id, args.team_id);
                     return {};
                 }
-                return {error: {message: 'You are already connected to a call in the current channel.'}};
+                return {error: {message: 'You\'re already connected to a call in the current channel.'}};
             case 'leave':
                 if (connectedID && args.channel_id === connectedID && window.callsClient) {
                     window.callsClient.disconnect();
                     return {};
                 }
-                return {error: {message: 'You are not connected to a call in the current channel.'}};
+                return {error: {message: 'You\'re not connected to a call in the current channel.'}};
+            case 'end':
+                if (voiceConnectedUsersInChannel(store.getState(), args.channel_id)?.length === 0) {
+                    return {error: {message: 'No ongoing call in the channel.'}};
+                }
+
+                if (!isCurrentUserSystemAdmin(store.getState()) &&
+                    getCurrentUserId(store.getState()) !== voiceChannelCallOwnerID(store.getState(), args.channel_id)) {
+                    return {error: {message: 'You don\'t have permission to end the call. Please ask the call owner to end call.'}};
+                }
+
+                store.dispatch({
+                    type: SHOW_END_CALL_MODAL,
+                    data: {
+                        targetID: args.channel_id,
+                    },
+                });
+                return {};
             case 'link':
                 break;
             case 'experimental':
@@ -316,9 +359,9 @@ export default class Plugin {
                 }
                 if (fields[2] === 'on') {
                     window.localStorage.setItem('calls_experimental_features', 'on');
-                    console.log('experimental features enabled');
+                    logDebug('experimental features enabled');
                 } else if (fields[2] === 'off') {
-                    console.log('experimental features disabled');
+                    logDebug('experimental features disabled');
                     window.localStorage.removeItem('calls_experimental_features');
                 }
                 break;
@@ -333,11 +376,11 @@ export default class Plugin {
                 break;
             case 'stats':
                 if (!window.callsClient) {
-                    return {error: {message: 'You are not connected to any call'}};
+                    return {error: {message: 'You\'re not connected to any call'}};
                 }
                 try {
                     const stats = await window.callsClient.getStats();
-                    console.log(JSON.stringify(stats, null, 2));
+                    logDebug(JSON.stringify(stats, null, 2));
                     return {message: `/call stats "${JSON.stringify(stats)}"`, args};
                 } catch (err) {
                     return {error: {message: err}};
@@ -370,7 +413,7 @@ export default class Plugin {
                         return;
                     }
 
-                    if (isCloudLimitRestricted(store.getState())) {
+                    if (isLimitRestricted(store.getState())) {
                         return;
                     }
 
@@ -386,13 +429,18 @@ export default class Plugin {
                             });
                         }
                     } catch (err) {
-                        console.log(err);
+                        logErr(err);
                         return;
                     }
 
                     if (!connectedChannelID(store.getState())) {
                         connectCall(channel.id);
-                        followThread(channel.id, channel.team_id);
+
+                        // following the thread only on join. On call start
+                        // this is done in the call_start ws event handler.
+                        if (voiceConnectedUsersInChannel(store.getState(), channel.id).length > 0) {
+                            followThread(channel.id, channel.team_id);
+                        }
                     } else if (connectedChannelID(store.getState()) !== channel.id) {
                         store.dispatch({
                             type: SHOW_SWITCH_CALL_MODAL,
@@ -407,7 +455,7 @@ export default class Plugin {
             if (threadID) {
                 store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
             } else {
-                console.error('Unable to follow call\'s thread, not registered in store');
+                logErr('Unable to follow call\'s thread, not registered in store');
             }
         };
 
@@ -416,11 +464,14 @@ export default class Plugin {
         const connectCall = async (channelID: string, title?: string) => {
             try {
                 if (window.callsClient) {
-                    console.log('calls client is already initialized');
+                    logErr('calls client is already initialized');
                     return;
                 }
 
-                window.callsClient = new CallsClient(iceServers(store.getState()));
+                window.callsClient = new CallsClient({
+                    wsURL: getWSConnectionURL(getConfig(store.getState())),
+                    iceServers: iceServers(store.getState()),
+                });
 
                 let globalComponentID: string;
                 let rootComponentID: string;
@@ -444,7 +495,7 @@ export default class Plugin {
                 window.callsClient.init(channelID, title);
             } catch (err) {
                 delete window.callsClient;
-                console.log(err);
+                logErr(err);
             }
         };
         const windowEventHandler = (ev: MessageEvent) => {
@@ -474,7 +525,7 @@ export default class Plugin {
                             type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
                         });
                     } catch (err) {
-                        console.log(err);
+                        logErr(err);
                     }
                 },
             );
@@ -497,12 +548,13 @@ export default class Plugin {
                             data: {
                                 channelID: resp.data[i].channel_id,
                                 startAt: resp.data[i].call?.start_at,
+                                ownerID: resp.data[i].call?.owner_id,
                             },
                         });
                     }
                 }
             } catch (err) {
-                console.log(err);
+                logErr(err);
             }
         };
 
@@ -533,7 +585,7 @@ export default class Plugin {
                 }
             } catch (err) {
                 registry.unregisterComponent(channelHeaderMenuID);
-                console.log(err);
+                logErr(err);
             }
 
             try {
@@ -591,7 +643,7 @@ export default class Plugin {
                     },
                 });
             } catch (err) {
-                console.log(err);
+                logErr(err);
                 store.dispatch({
                     type: VOICE_CHANNEL_DISABLE,
                 });
@@ -628,17 +680,17 @@ export default class Plugin {
             if (window.callsClient) {
                 window.callsClient.disconnect();
             }
-            console.log('calls: resetting state');
+            logDebug('resetting state');
             store.dispatch({
                 type: VOICE_CHANNEL_UNINIT,
             });
         });
 
-        this.registerWebSocketEvents(registry, store);
+        this.registerWebSocketEvents(registry, store, followThread);
         this.registerReconnectHandler(registry, store, () => {
-            console.log('calls: websocket reconnect handler');
+            logDebug('websocket reconnect handler');
             if (!window.callsClient) {
-                console.log('calls: resetting state');
+                logDebug('resetting state');
                 store.dispatch({
                     type: VOICE_CHANNEL_UNINIT,
                 });
@@ -664,7 +716,7 @@ export default class Plugin {
     }
 
     uninitialize() {
-        console.log('calls: uninitialize');
+        logDebug('uninitialize');
         this.unsubscribers.forEach((unsubscribe) => {
             unsubscribe();
         });

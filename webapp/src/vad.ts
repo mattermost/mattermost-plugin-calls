@@ -1,5 +1,7 @@
 import {EventEmitter} from 'events';
 
+import {logDebug} from './log';
+
 export default class VoiceActivityDetector extends EventEmitter {
     private inputStream: MediaStream;
     private sourceNode: MediaStreamAudioSourceNode;
@@ -62,7 +64,7 @@ export default class VoiceActivityDetector extends EventEmitter {
                 return;
             } else if (noiseSamples.length > 0) {
                 noiseAvg = noiseSamples.reduce((acc, val) => acc + val) / noiseSamples.length;
-                console.log('vad: noise avg', noiseSamples.length, noiseAvg);
+                logDebug('vad: noise avg', noiseSamples.length, noiseAvg);
                 noiseSamples = [];
 
                 this.isReady = true;
@@ -95,7 +97,6 @@ export default class VoiceActivityDetector extends EventEmitter {
     }
 
     start() {
-        // console.log('vad start');
         this.isActive = false;
         if (this.sourceNode) {
             this.sourceNode.connect(this.analyserNode);
@@ -121,7 +122,6 @@ export default class VoiceActivityDetector extends EventEmitter {
     }
 
     stop() {
-        // console.log('vad stop');
         this.disconnect();
         this.emit('stop');
     }

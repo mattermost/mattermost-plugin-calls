@@ -321,6 +321,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <Avatar
                         size={24}
                         fontSize={10}
+                        border={false}
                         url={this.props.pictures[profile.id]}
                         style={{
                             boxShadow: isSpeaking ? '0px 0px 4px 4px rgba(61, 184, 135, 0.8)' : '',

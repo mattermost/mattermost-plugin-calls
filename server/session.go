@@ -1,3 +1,6 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
@@ -46,7 +49,7 @@ func newUserSession(userID, channelID, connID string) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelState, error) {
+func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (channelState, error) {
 	var st channelState
 
 	cfg := p.getConfiguration()
@@ -68,9 +71,11 @@ func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelS
 
 		if state.Call == nil {
 			state.Call = &callState{
-				ID:      model.NewId(),
-				StartAt: time.Now().UnixMilli(),
-				Users:   make(map[string]*userState),
+				ID:       model.NewId(),
+				StartAt:  time.Now().UnixMilli(),
+				Users:    make(map[string]*userState),
+				Sessions: make(map[string]struct{}),
+				OwnerID:  userID,
 			}
 			state.NodeID = p.nodeID
 
@@ -84,6 +89,10 @@ func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelS
 			}
 		}
 
+		if state.Call.EndAt > 0 {
+			return nil, fmt.Errorf("call has ended")
+		}
+
 		if _, ok := state.Call.Users[userID]; ok {
 			return nil, fmt.Errorf("user is already connected")
 		}
@@ -91,12 +100,13 @@ func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelS
 		// Check for cloud limits -- needs to be done here to prevent a race condition
 		if allowed, err := p.joinAllowed(channel, state); !allowed {
 			if err != nil {
-				p.LogError("error checking for cloud limits", "error", err.Error())
+				p.LogError("joinAllowed failed", "error", err.Error())
 			}
-			return nil, fmt.Errorf("user cannot join because of cloud limits")
+			return nil, fmt.Errorf("user cannot join because of limits")
 		}
 
 		state.Call.Users[userID] = &userState{}
+		state.Call.Sessions[connID] = struct{}{}
 		if len(state.Call.Users) > state.Call.Stats.Participants {
 			state.Call.Stats.Participants = len(state.Call.Users)
 		}
@@ -108,7 +118,7 @@ func (p *Plugin) addUserSession(userID string, channel *model.Channel) (channelS
 	return st, err
 }
 
-func (p *Plugin) removeUserSession(userID, channelID string) (channelState, channelState, error) {
+func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelState, channelState, error) {
 	var currState channelState
 	var prevState channelState
 	errNotFound := errors.New("not found")
@@ -133,6 +143,7 @@ func (p *Plugin) removeUserSession(userID, channelID string) (channelState, chan
 		}
 
 		delete(state.Call.Users, userID)
+		delete(state.Call.Sessions, connID)
 
 		if len(state.Call.Users) == 0 {
 			state.Call = nil
@@ -157,4 +168,29 @@ func (p *Plugin) removeUserSession(userID, channelID string) (channelState, chan
 	}
 
 	return currState, prevState, err
+}
+
+// JoinAllowed returns true if the user is allowed to join the call, taking into
+// account cloud and configuration limits
+func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool, error) {
+	// Rules are:
+	// On-prem, Cloud Professional & Cloud Enterprise: DMs 1-1, GMs and Channel calls
+	// limited to cfg.MaxCallParticipants people.
+	// Cloud Starter: DMs 1-1 only
+
+	if cfg := p.getConfiguration(); cfg != nil && cfg.MaxCallParticipants != nil &&
+		*cfg.MaxCallParticipants != 0 && len(state.Call.Users) >= *cfg.MaxCallParticipants {
+		return false, nil
+	}
+
+	license := p.pluginAPI.System.GetLicense()
+	if !isCloud(license) {
+		return true, nil
+	}
+
+	if isCloudStarter(license) {
+		return channel.Type == model.ChannelTypeDirect, nil
+	}
+
+	return true, nil
 }

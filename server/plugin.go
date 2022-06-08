@@ -1,3 +1,6 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
@@ -5,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
 
@@ -18,7 +22,8 @@ import (
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
 type Plugin struct {
 	plugin.MattermostPlugin
-	pluginAPI *pluginapi.Client
+	pluginAPI      *pluginapi.Client
+	licenseChecker *enterprise.LicenseChecker
 
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex

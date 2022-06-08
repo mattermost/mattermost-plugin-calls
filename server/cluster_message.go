@@ -1,3 +1,6 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
@@ -22,7 +25,6 @@ const (
 	clusterMessageTypeDisconnect clusterMessageType = "disconnect"
 	clusterMessageTypeSignaling  clusterMessageType = "signaling"
 	clusterMessageTypeUserState  clusterMessageType = "user_state"
-	clusterMessageTypeCallEnded  clusterMessageType = "call_ended"
 )
 
 func (m *clusterMessage) ToJSON() ([]byte, error) {

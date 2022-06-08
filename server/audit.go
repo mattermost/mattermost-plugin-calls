@@ -1,23 +1,49 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
 
+// httpResponse holds data returned to API clients.
+// JSON fields are overridden to be compliant with what MM server would return.
 type httpResponse struct {
-	err  string
-	code int
+	Msg  string `json:"message,omitempty"`
+	Err  string `json:"detailed_error,omitempty"`
+	Code int    `json:"status_code"`
 }
 
-func (p *Plugin) httpAudit(handler string, res httpResponse, w http.ResponseWriter, r *http.Request) {
+func (r httpResponse) isEmpty() bool {
+	return r == httpResponse{}
+}
+
+func (p *Plugin) httpAudit(handler string, res *httpResponse, w http.ResponseWriter, r *http.Request) {
 	logFields := reqAuditFields(r)
-	if res.err != "" {
-		http.Error(w, res.err, res.code)
-		logFields = append(logFields, "error", res.err, "code", res.code, "status", "fail")
+	if res.Err != "" {
+		logFields = append(logFields, "error", res.Err, "code", res.Code, "status", "fail")
 	} else {
 		logFields = append(logFields, "status", "success")
 	}
+
+	if res.Err != "" && res.Msg == "" {
+		res.Msg = res.Err
+		res.Err = ""
+	}
+
+	if !res.isEmpty() {
+		if res.Code != 0 {
+			w.WriteHeader(res.Code)
+		}
+		w.Header().Add("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			p.LogError(fmt.Sprintf("failed to encode data: %s", err))
+		}
+	}
+
 	p.LogDebug(handler, logFields...)
 }
 

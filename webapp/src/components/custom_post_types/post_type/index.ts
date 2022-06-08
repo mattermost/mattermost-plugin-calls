@@ -10,7 +10,7 @@ import {
     voiceConnectedProfilesInChannel,
     connectedChannelID,
     isCloudProfessionalOrEnterprise,
-    cloudMaxParticipants,
+    maxParticipants,
 } from 'src/selectors';
 import {showSwitchCallModal} from 'src/actions';
 
@@ -40,7 +40,7 @@ const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
         pictures,
         profiles,
         isCloudPaid: isCloudProfessionalOrEnterprise(state),
-        cloudMaxParticipants: cloudMaxParticipants(state),
+        maxParticipants: maxParticipants(state),
     };
 };
 
