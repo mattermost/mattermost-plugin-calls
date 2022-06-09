@@ -26,6 +26,7 @@ import {
     voiceChannelRootPost,
     allowEnableCalls,
     iceServers,
+    callsConfig,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -687,6 +688,12 @@ export default class Plugin {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
+
+                // If we haven't retrieved config, user must not have been logged in during onActivate
+                if (!callsConfig(store.getState()).retrieved) {
+                    store.dispatch(getCallsConfig());
+                }
+
                 fetchChannelData(currChannelId);
                 if (currChannelId && Boolean(joinCallParam) && !connectedChannelID(store.getState())) {
                     connectCall(currChannelId);

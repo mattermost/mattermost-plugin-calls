@@ -88,7 +88,7 @@ export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
     return getPluginState(state).voiceChannelRootPost[channelID];
 };
 
-const callsConfig = (state: GlobalState): CallsConfig => {
+export const callsConfig = (state: GlobalState): CallsConfig => {
     return getPluginState(state).callsConfig;
 };
 

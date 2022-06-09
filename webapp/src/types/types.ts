@@ -60,6 +60,7 @@ export type CallsConfig = {
     DefaultEnabled: boolean,
     MaxCallParticipants: number,
     sku_short_name: string,
+    retrieved: boolean,
 }
 
 export const CallsConfigDefault = {
@@ -68,6 +69,7 @@ export const CallsConfigDefault = {
     DefaultEnabled: false,
     MaxCallParticipants: 0,
     sku_short_name: '',
+    retrieved: false,
 } as CallsConfig;
 
 export type CallsClientConfig = {
