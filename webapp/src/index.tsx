@@ -544,6 +544,11 @@ export default class Plugin {
         };
 
         const fetchChannelData = async (channelID: string) => {
+            if (!channelID) {
+                // Must be Global threads view, or another view that isn't a channel.
+                return;
+            }
+
             let channel = getChannel(store.getState(), channelID);
             if (!channel) {
                 await getChannelAction(channelID)(store.dispatch as any, store.getState);
