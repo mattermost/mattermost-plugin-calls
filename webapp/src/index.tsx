@@ -128,13 +128,6 @@ export default class Plugin {
                     const audio = new Audio(getPluginStaticPath() + JoinUserSound);
                     audio.play();
                 }
-
-                if (window.callsClient.channelID === channelID) {
-                    const channel = getChannel(store.getState(), channelID);
-                    if (channel) {
-                        followThread(channel.id, channel.team_id);
-                    }
-                }
             }
 
             store.dispatch({
@@ -211,10 +204,12 @@ export default class Plugin {
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_start`, (ev) => {
+            const channelID = ev.broadcast.channel_id;
+
             store.dispatch({
                 type: VOICE_CHANNEL_CALL_START,
                 data: {
-                    channelID: ev.broadcast.channel_id,
+                    channelID,
                     startAt: ev.data.start_at,
                     ownerID: ev.data.owner_id,
                 },
@@ -222,10 +217,17 @@ export default class Plugin {
             store.dispatch({
                 type: VOICE_CHANNEL_ROOT_POST,
                 data: {
-                    channelID: ev.broadcast.channel_id,
+                    channelID,
                     rootPost: ev.data.thread_id,
                 },
             });
+
+            if (window.callsClient?.channelID === channelID) {
+                const channel = getChannel(store.getState(), channelID);
+                if (channel) {
+                    followThread(channel.id, channel.team_id);
+                }
+            }
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_end`, (ev) => {
