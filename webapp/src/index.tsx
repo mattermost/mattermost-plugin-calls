@@ -128,6 +128,13 @@ export default class Plugin {
                     const audio = new Audio(getPluginStaticPath() + JoinUserSound);
                     audio.play();
                 }
+
+                if (window.callsClient.channelID === channelID) {
+                    const channel = getChannel(store.getState(), channelID);
+                    if (channel) {
+                        followThread(channel.id, channel.team_id);
+                    }
+                }
             }
 
             store.dispatch({
@@ -219,11 +226,6 @@ export default class Plugin {
                     rootPost: ev.data.thread_id,
                 },
             });
-
-            const channel = getChannel(store.getState(), ev.broadcast.channel_id);
-            if (channel) {
-                followThread(channel.id, channel.team_id);
-            }
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_end`, (ev) => {
