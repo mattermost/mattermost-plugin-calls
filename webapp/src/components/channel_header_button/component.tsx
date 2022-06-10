@@ -50,6 +50,7 @@ const ChannelHeaderButton = ({
         return (
             <OverlayTrigger
                 placement='bottom'
+                rootClose={true}
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
@@ -73,6 +74,7 @@ const ChannelHeaderButton = ({
         return (
             <OverlayTrigger
                 placement='bottom'
+                rootClose={true}
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
