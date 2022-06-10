@@ -690,19 +690,15 @@ export default class Plugin {
 
         let currChannelId = getCurrentChannelId(store.getState());
         let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
-        this.unsubscribers.push(store.subscribe(async () => {
+        this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
 
                 // If we haven't retrieved config, user must not have been logged in during onActivate
                 if (!configRetrieved) {
-                    const res = await store.dispatch(getCallsConfig());
-
-                    // @ts-ignore
-                    if (!res.error) {
-                        configRetrieved = true;
-                    }
+                    store.dispatch(getCallsConfig());
+                    configRetrieved = true;
                 }
 
                 fetchChannelData(currChannelId);
