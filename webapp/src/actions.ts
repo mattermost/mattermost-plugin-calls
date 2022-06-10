@@ -16,12 +16,9 @@ import {getPluginPath} from 'src/utils';
 
 import {modals, openPricingModal} from 'src/webapp_globals';
 import {
-    CloudFreeTrialErrorModal,
     CloudFreeTrialModalAdmin,
     CloudFreeTrialModalUser,
-    CloudFreeTrialSuccessModal,
-    IDAdmin, IDError,
-    IDSuccess,
+    IDAdmin,
     IDUser,
 } from 'src/cloud_pricing/modals';
 
@@ -138,29 +135,6 @@ export const displayCloudPricing = () => {
         }
 
         openPricingModal()();
-        return {};
-    };
-};
-
-export const requestTrial = () => {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
-        const isAdmin = isCurrentUserSystemAdmin(getState());
-        if (!isAdmin) {
-            return {};
-        }
-
-        const success = await requestCloudTrial();
-        if (success) {
-            dispatch(modals.openModal({
-                modalId: IDSuccess,
-                dialogType: CloudFreeTrialSuccessModal,
-            }));
-        } else {
-            dispatch(modals.openModal({
-                modalId: IDError,
-                dialogType: CloudFreeTrialErrorModal,
-            }));
-        }
         return {};
     };
 };
