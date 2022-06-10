@@ -2,12 +2,12 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {Post} from 'mattermost-redux/types/posts';
+import {Post} from '@mattermost/types/posts';
 import {useDispatch, useSelector} from 'react-redux';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {Channel} from 'mattermost-redux/types/channels';
-import {GlobalState} from 'mattermost-redux/types/store';
-import {Team} from 'mattermost-redux/types/teams';
+import {Channel} from '@mattermost/types/channels';
+import {GlobalState} from '@mattermost/types/store';
+import {Team} from '@mattermost/types/teams';
 import {getTeam} from 'mattermost-redux/selectors/entities/teams';
 
 import {FormattedMessage} from 'react-intl';

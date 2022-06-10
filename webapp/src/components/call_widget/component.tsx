@@ -3,10 +3,10 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import moment from 'moment-timezone';
 import {compareSemVer} from 'semver-parser';
 
-import {UserProfile} from 'mattermost-redux/types/users';
-import {Channel} from 'mattermost-redux/types/channels';
-import {Team} from 'mattermost-redux/types/teams';
-import {IDMappedObjects} from 'mattermost-redux/types/utilities';
+import {UserProfile} from '@mattermost/types/users';
+import {Channel} from '@mattermost/types/channels';
+import {Team} from '@mattermost/types/teams';
+import {IDMappedObjects} from '@mattermost/types/utilities';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 import {UserState} from 'src/types/types';

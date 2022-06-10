@@ -2,8 +2,8 @@ import React from 'react';
 import moment from 'moment-timezone';
 import styled from 'styled-components';
 
-import {UserProfile} from 'mattermost-redux/types/users';
-import {Post} from 'mattermost-redux/types/posts';
+import {UserProfile} from '@mattermost/types/users';
+import {Post} from '@mattermost/types/posts';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 

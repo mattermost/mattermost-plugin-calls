@@ -1,7 +1,7 @@
 import {bindActionCreators, Dispatch} from 'redux';
 import {connect} from 'react-redux';
-import {GlobalState} from 'mattermost-redux/types/store';
-import {UserProfile} from 'mattermost-redux/types/users';
+import {GlobalState} from '@mattermost/types/store';
+import {UserProfile} from '@mattermost/types/users';
 
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';

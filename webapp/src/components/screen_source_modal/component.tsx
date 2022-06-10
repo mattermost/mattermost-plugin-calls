@@ -2,7 +2,7 @@ import React, {CSSProperties} from 'react';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 
-import {Channel} from 'mattermost-redux/types/channels';
+import {Channel} from '@mattermost/types/channels';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 

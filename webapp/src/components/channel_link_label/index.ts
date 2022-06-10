@@ -1,6 +1,6 @@
 import {connect} from 'react-redux';
-import {GlobalState} from 'mattermost-redux/types/store';
-import {Channel} from 'mattermost-redux/types/channels';
+import {GlobalState} from '@mattermost/types/store';
+import {Channel} from '@mattermost/types/channels';
 
 import {voiceConnectedChannels, voiceConnectedProfilesInChannel} from '../../selectors';
 

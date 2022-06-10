@@ -1,6 +1,6 @@
 import {Store as BaseStore} from 'redux';
 import {ThunkDispatch} from 'redux-thunk';
-import {GlobalState} from 'mattermost-redux/types/store';
+import {GlobalState} from '@mattermost/types/store';
 
 export interface PluginRegistry {
     registerPostTypeComponent(typeName: string, component: React.ElementType)

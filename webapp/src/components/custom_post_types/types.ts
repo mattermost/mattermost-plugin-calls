@@ -1,4 +1,4 @@
-import {Channel} from 'mattermost-redux/types/channels';
+import {Channel} from '@mattermost/types/channels';
 
 export type ChannelNamesMap = {
     [name: string]: {
