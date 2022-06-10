@@ -41,8 +41,9 @@ type configuration struct {
 }
 
 type clientConfig struct {
-	// A comma separated list of ICE servers URLs (STUN/TURN) to use.
+	// **DEPRECATED use ICEServersConfigs** A comma separated list of ICE servers URLs (STUN/TURN) to use.
 	ICEServers ICEServers
+
 	// A list of ICE server configurations to use.
 	ICEServersConfigs ICEServersConfigs
 	// When set to true, it allows channel admins to enable or disable calls in their channels.
