@@ -644,8 +644,15 @@ export default class Plugin {
             }
         };
 
+        let configRetrieved = false;
         const onActivate = async () => {
-            store.dispatch(getCallsConfig());
+            const res = await store.dispatch(getCallsConfig());
+
+            // @ts-ignore
+            if (!res.error) {
+                configRetrieved = true;
+            }
+
             fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
             if (currChannelId) {
@@ -696,6 +703,13 @@ export default class Plugin {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
+
+                // If we haven't retrieved config, user must not have been logged in during onActivate
+                if (!configRetrieved) {
+                    store.dispatch(getCallsConfig());
+                    configRetrieved = true;
+                }
+
                 fetchChannelData(currChannelId);
                 if (currChannelId && Boolean(joinCallParam) && !connectedChannelID(store.getState())) {
                     connectCall(currChannelId);
