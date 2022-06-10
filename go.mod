@@ -15,7 +15,7 @@ require (
 require (
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.0.27
-	github.com/mattermost/rtcd v0.5.1
+	github.com/mattermost/rtcd v0.6.5-0.20220609185544-df3153ebd103
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324

@@ -92,10 +92,10 @@ const callsConfig = (state: GlobalState): CallsConfig => {
     return getPluginState(state).callsConfig;
 };
 
-export const iceServers: (state: GlobalState) => string[] = createSelector(
+export const iceServers: (state: GlobalState) => RTCIceServer[] = createSelector(
     'iceServers',
     callsConfig,
-    (config) => config.ICEServers,
+    (config) => config.ICEServersConfigs,
 );
 
 export const allowEnableCalls: (state: GlobalState) => boolean = createSelector(

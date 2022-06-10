@@ -106,7 +106,7 @@ func (p *Plugin) OnActivate() error {
 	rtcServer, err := rtc.NewServer(rtc.ServerConfig{
 		ICEPortUDP:      *cfg.UDPServerPort,
 		ICEHostOverride: cfg.ICEHostOverride,
-		ICEServers:      cfg.ICEServers,
+		ICEServers:      rtc.ICEServers(cfg.getICEServers()),
 	}, newLogger(p), p.metrics.RTCMetrics())
 	if err != nil {
 		p.LogError(err.Error())

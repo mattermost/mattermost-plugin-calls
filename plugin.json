@@ -60,11 +60,19 @@
         },
         {
           "key": "ICEServers",
-          "display_name": "ICE Servers",
+          "display_name": "STUN Servers",
           "type": "text",
           "help_text": "(Optional) A comma-separated list of ICE servers' URLs (STUN/TURN) to use.",
           "default": "stun:stun.global.calls.mattermost.com:3478",
           "placeholder": "stun:example.com:3478"
+        },
+        {
+          "key": "ICEServersConfigs",
+          "display_name": "ICE servers configurations",
+          "type": "longtext",
+          "help_text": "(Optional) A list of ICE servers (STUN/TURN) configurations to use. This field should contain a valid JSON array.",
+          "default": "",
+          "placeholder": "[{\n \"urls\": \"[\"turn:turnserver.example.org\"]\",\n \"username\": \"webrtc\",\n \"credential\": \"turnpassword\"\n}]"
         },
         {
           "key": "RTCDServiceURL",
