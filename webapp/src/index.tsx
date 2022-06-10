@@ -26,7 +26,6 @@ import {
     voiceChannelRootPost,
     allowEnableCalls,
     iceServers,
-    callsConfig,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -636,8 +635,15 @@ export default class Plugin {
             }
         };
 
+        let configRetrieved = false;
         const onActivate = async () => {
-            store.dispatch(getCallsConfig());
+            const res = await store.dispatch(getCallsConfig());
+
+            // @ts-ignore
+            if (!res.error) {
+                configRetrieved = true;
+            }
+
             fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
             if (currChannelId) {
@@ -684,14 +690,19 @@ export default class Plugin {
 
         let currChannelId = getCurrentChannelId(store.getState());
         let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
-        this.unsubscribers.push(store.subscribe(() => {
+        this.unsubscribers.push(store.subscribe(async () => {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
 
                 // If we haven't retrieved config, user must not have been logged in during onActivate
-                if (!callsConfig(store.getState()).retrieved) {
-                    store.dispatch(getCallsConfig());
+                if (!configRetrieved) {
+                    const res = await store.dispatch(getCallsConfig());
+
+                    // @ts-ignore
+                    if (!res.error) {
+                        configRetrieved = true;
+                    }
                 }
 
                 fetchChannelData(currChannelId);
