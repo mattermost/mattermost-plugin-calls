@@ -410,6 +410,10 @@ func eventHandler(ws *websocket.Client, channelID, username string, unmuted, scr
 			case "custom_com.mattermost.calls_signal":
 				log.Printf("%s: received signal", username)
 				handleSignal(ws, pc, ev, iceCh, username)
+			case "custom_com.mattermost.calls_call_end":
+				log.Printf("%s: call end event, exiting", username)
+				ws.Close()
+				return
 			default:
 			}
 		case <-doneCh:
