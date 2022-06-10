@@ -29,6 +29,7 @@ export default class CallsClient extends EventEmitter {
     private audioDevices: { inputs: MediaDeviceInfo[]; outputs: MediaDeviceInfo[]; };
     private audioTrack: MediaStreamTrack | null;
     public isHandRaised: boolean;
+    private onDeviceChange: () => void;
 
     constructor(config: CallsClientConfig) {
         super();
@@ -44,6 +45,9 @@ export default class CallsClient extends EventEmitter {
         this.isHandRaised = false;
         this.channelID = '';
         this.config = config;
+        this.onDeviceChange = () => {
+            this.updateDevices();
+        };
     }
 
     private initVAD(inputStream: MediaStream) {
@@ -65,6 +69,7 @@ export default class CallsClient extends EventEmitter {
     }
 
     private async updateDevices() {
+        logDebug('a/v device change detected');
         const devices = await navigator.mediaDevices.enumerateDevices();
         this.audioDevices = {
             inputs: devices.filter((device) => device.kind === 'audioinput'),
@@ -75,7 +80,7 @@ export default class CallsClient extends EventEmitter {
     public async init(channelID: string, title?: string) {
         this.channelID = channelID;
         await this.updateDevices();
-        navigator.mediaDevices.ondevicechange = this.updateDevices;
+        navigator.mediaDevices.addEventListener('devicechange', this.onDeviceChange);
 
         const audioOptions = {
             autoGainControl: true,
@@ -234,6 +239,7 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('connect');
         this.removeAllListeners('remoteVoiceStream');
         this.removeAllListeners('remoteScreenStream');
+        navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
     }
 
     public getAudioDevices() {
