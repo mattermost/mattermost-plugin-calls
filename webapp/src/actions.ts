@@ -1,7 +1,7 @@
 import {Dispatch} from 'redux';
 import axios from 'axios';
 
-import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from '@mattermost/types/actions';
+import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
 
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 

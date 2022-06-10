@@ -8,7 +8,7 @@ import styled from 'styled-components';
 
 import {useDispatch, useSelector} from 'react-redux';
 
-import {Thunk} from '@mattermost/types/actions';
+import {Thunk} from 'mattermost-redux/types/actions';
 
 import GenericModal from 'src/components/generic_modal';
 import {displayCloudPricing, notifyAdminCloudFreeTrial} from 'src/actions';
