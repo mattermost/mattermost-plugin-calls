@@ -1,7 +1,7 @@
 import {bindActionCreators, Dispatch} from 'redux';
 import {connect} from 'react-redux';
-import {GlobalState} from 'mattermost-redux/types/store';
-import {Post} from 'mattermost-redux/types/posts';
+import {GlobalState} from '@mattermost/types/store';
+import {Post} from '@mattermost/types/posts';
 
 import {Client4} from 'mattermost-redux/client';
 

@@ -3,8 +3,8 @@ import moment from 'moment-timezone';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
-import {UserProfile} from 'mattermost-redux/types/users';
-import {Channel} from 'mattermost-redux/types/channels';
+import {UserProfile} from '@mattermost/types/users';
+import {Channel} from '@mattermost/types/channels';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
 import {UserState} from 'src/types/types';

@@ -1,5 +1,5 @@
 import {getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {GlobalState} from 'mattermost-redux/types/store';
+import {GlobalState} from '@mattermost/types/store';
 
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {createSelector} from 'reselect';
