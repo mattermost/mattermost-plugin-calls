@@ -4,8 +4,8 @@
 import React, {ReactNode, ReactNodeArray} from 'react';
 import {useSelector} from 'react-redux';
 
-import {GlobalState} from 'mattermost-redux/types/store';
-import {Team} from 'mattermost-redux/types/teams';
+import {GlobalState} from '@mattermost/types/store';
+import {Team} from '@mattermost/types/teams';
 import {getChannelsNameMapInCurrentTeam} from 'mattermost-redux/selectors/entities/channels';
 
 import styled from 'styled-components';

@@ -2,8 +2,8 @@ import React, {CSSProperties} from 'react';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 
-import {Channel} from 'mattermost-redux/types/channels';
-import {UserProfile} from 'mattermost-redux/types/users';
+import {Channel} from '@mattermost/types/channels';
+import {UserProfile} from '@mattermost/types/users';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 

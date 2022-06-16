@@ -9,12 +9,12 @@ import {Client4} from 'mattermost-redux/client';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
 
-import {Team} from 'mattermost-redux/types/teams';
-import {Channel, ChannelMembership} from 'mattermost-redux/types/channels';
-import {UserProfile} from 'mattermost-redux/types/users';
+import {Team} from '@mattermost/types/teams';
+import {Channel, ChannelMembership} from '@mattermost/types/channels';
+import {UserProfile} from '@mattermost/types/users';
 
-import {GlobalState} from 'mattermost-redux/types/store';
-import {ClientConfig} from 'mattermost-redux/types/config';
+import {GlobalState} from '@mattermost/types/store';
+import {ClientConfig} from '@mattermost/types/config';
 
 import {UserState} from './types/types';
 
@@ -22,13 +22,11 @@ import {pluginId} from './manifest';
 import {logErr} from './log';
 
 export function getPluginStaticPath() {
-    return window.basename ? `${window.basename}/static/plugins/${pluginId}` :
-        `/static/plugins/${pluginId}`;
+    return window.basename ? `${window.basename}/static/plugins/${pluginId}` : `/static/plugins/${pluginId}`;
 }
 
 export function getPluginPath() {
-    return window.basename ? `${window.basename}/plugins/${pluginId}` :
-        `/plugins/${pluginId}`;
+    return window.basename ? `${window.basename}/plugins/${pluginId}` : `/plugins/${pluginId}`;
 }
 
 export function getWSConnectionURL(config: Partial<ClientConfig>): string {

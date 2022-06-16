@@ -1,6 +1,6 @@
 import {combineReducers} from 'redux';
 
-import {UserProfile} from 'mattermost-redux/types/users';
+import {UserProfile} from '@mattermost/types/users';
 
 import {CallsConfigDefault, CallsConfig, UserState} from './types/types';
 

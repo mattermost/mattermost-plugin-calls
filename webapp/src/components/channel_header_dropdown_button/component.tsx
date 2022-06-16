@@ -58,6 +58,7 @@ const ChannelHeaderDropdownButton = ({
         return (
             <OverlayTrigger
                 placement='bottom'
+                rootClose={true}
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
@@ -78,6 +79,7 @@ const ChannelHeaderDropdownButton = ({
         return (
             <OverlayTrigger
                 placement='bottom'
+                rootClose={true}
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
