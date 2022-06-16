@@ -199,16 +199,12 @@ func (c *configuration) Clone() *configuration {
 
 	if c.ICEServers != nil {
 		cfg.ICEServers = make(ICEServers, len(c.ICEServers))
-		for i, u := range c.ICEServers {
-			cfg.ICEServers[i] = u
-		}
+		copy(cfg.ICEServers, c.ICEServers)
 	}
 
 	if c.ICEServersConfigs != nil {
 		cfg.ICEServersConfigs = make([]rtc.ICEServerConfig, len(c.ICEServersConfigs))
-		for i, u := range c.ICEServersConfigs {
-			cfg.ICEServersConfigs[i] = u
-		}
+		copy(cfg.ICEServersConfigs, c.ICEServersConfigs)
 	}
 
 	if c.MaxCallParticipants != nil {
