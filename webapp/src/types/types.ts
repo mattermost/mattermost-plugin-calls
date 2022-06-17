@@ -60,6 +60,7 @@ export type CallsConfig = {
     AllowEnableCalls: boolean,
     DefaultEnabled: boolean,
     MaxCallParticipants: number,
+    NeedsTURNCredentials: boolean,
     sku_short_name: string,
 }
 
@@ -69,6 +70,7 @@ export const CallsConfigDefault = {
     AllowEnableCalls: false,
     DefaultEnabled: false,
     MaxCallParticipants: 0,
+    NeedsTURNCredentials: false,
     sku_short_name: '',
 } as CallsConfig;
 

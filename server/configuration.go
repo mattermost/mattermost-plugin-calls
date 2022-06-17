@@ -36,12 +36,19 @@ type configuration struct {
 	// The URL to a running RTCD service instance that should host the calls.
 	// When set (non empty) all calls will be handled by the external service.
 	RTCDServiceURL string
+	// The secret key used to generate TURN short-lived authentication credentials
+	TURNStaticAuthSecret string
+	// The number of minutes that the generated TURN credentials will be valid for.
+	TURNCredentialsExpirationMinutes *int
+	// When set to true it will pass and use configured TURN candidates to server
+	// initiated connections.
+	ServerSideTURN *bool
 
 	clientConfig
 }
 
 type clientConfig struct {
-	// **DEPRECATED use ICEServersConfigs** A comma separated list of ICE servers URLs (STUN/TURN) to use.
+	// **DEPRECATED: use ICEServersConfigs** A comma separated list of ICE servers URLs (STUN/TURN) to use.
 	ICEServers ICEServers
 
 	// A list of ICE server configurations to use.
@@ -54,6 +61,8 @@ type clientConfig struct {
 	// The maximum number of participants that can join a call. The zero value
 	// means unlimited.
 	MaxCallParticipants *int
+	// Used to signal the client whether or not to generate TURN credentials. This is a client only option, generated server side.
+	NeedsTURNCredentials *bool
 }
 
 type ICEServers []string
@@ -137,11 +146,12 @@ func (pr PortsRange) IsValid() error {
 
 func (c *configuration) getClientConfig() clientConfig {
 	return clientConfig{
-		AllowEnableCalls:    c.AllowEnableCalls,
-		DefaultEnabled:      c.DefaultEnabled,
-		ICEServers:          c.ICEServers,
-		ICEServersConfigs:   c.getICEServers(),
-		MaxCallParticipants: c.MaxCallParticipants,
+		AllowEnableCalls:     c.AllowEnableCalls,
+		DefaultEnabled:       c.DefaultEnabled,
+		ICEServers:           c.ICEServers,
+		ICEServersConfigs:    c.getICEServers(true),
+		MaxCallParticipants:  c.MaxCallParticipants,
+		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
 	}
 }
 
@@ -159,6 +169,12 @@ func (c *configuration) SetDefaults() {
 	if c.MaxCallParticipants == nil {
 		c.MaxCallParticipants = new(int)
 	}
+	if c.TURNCredentialsExpirationMinutes == nil {
+		c.TURNCredentialsExpirationMinutes = model.NewInt(1440)
+	}
+	if c.ServerSideTURN == nil {
+		c.ServerSideTURN = new(bool)
+	}
 }
 
 func (c *configuration) IsValid() error {
@@ -174,6 +190,10 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("MaxCallParticipants is not valid")
 	}
 
+	if c.TURNCredentialsExpirationMinutes != nil && *c.TURNCredentialsExpirationMinutes < 0 {
+		return fmt.Errorf("TURNCredentialsExpirationMinutes is not valid")
+	}
+
 	return nil
 }
 
@@ -183,6 +203,7 @@ func (c *configuration) Clone() *configuration {
 
 	cfg.ICEHostOverride = c.ICEHostOverride
 	cfg.RTCDServiceURL = c.RTCDServiceURL
+	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)
@@ -209,6 +230,14 @@ func (c *configuration) Clone() *configuration {
 
 	if c.MaxCallParticipants != nil {
 		cfg.MaxCallParticipants = model.NewInt(*c.MaxCallParticipants)
+	}
+
+	if c.TURNCredentialsExpirationMinutes != nil {
+		cfg.TURNCredentialsExpirationMinutes = model.NewInt(*c.TURNCredentialsExpirationMinutes)
+	}
+
+	if c.ServerSideTURN != nil {
+		cfg.ServerSideTURN = model.NewBool(*c.ServerSideTURN)
 	}
 
 	return &cfg
@@ -322,8 +351,16 @@ func (p *Plugin) isHAEnabled() bool {
 	return cfg != nil && cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
 }
 
-func (c *configuration) getICEServers() ICEServersConfigs {
-	iceServers := c.ICEServersConfigs
+func (c *configuration) getICEServers(forClient bool) ICEServersConfigs {
+	var iceServers ICEServersConfigs
+
+	for _, cfg := range c.ICEServersConfigs {
+		if forClient && cfg.IsTURN() && cfg.Username == "" && cfg.Credential == "" {
+			continue
+		}
+		iceServers = append(iceServers, cfg)
+	}
+
 	if len(c.ICEServers) > 0 {
 		iceServers = append(iceServers, rtc.ICEServerConfig{
 			URLs: c.ICEServers,
@@ -331,4 +368,14 @@ func (c *configuration) getICEServers() ICEServersConfigs {
 	}
 
 	return iceServers
+}
+
+func (cfgs ICEServersConfigs) getTURNConfigsForCredentials() []rtc.ICEServerConfig {
+	var configs []rtc.ICEServerConfig
+	for _, cfg := range cfgs {
+		if cfg.IsTURN() && cfg.Username == "" && cfg.Credential == "" {
+			configs = append(configs, cfg)
+		}
+	}
+	return configs
 }

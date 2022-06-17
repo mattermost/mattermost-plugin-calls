@@ -95,7 +95,7 @@ const callsConfig = (state: GlobalState): CallsConfig => {
 export const iceServers: (state: GlobalState) => RTCIceServer[] = createSelector(
     'iceServers',
     callsConfig,
-    (config) => config.ICEServersConfigs,
+    (config) => config.ICEServersConfigs || [],
 );
 
 export const allowEnableCalls: (state: GlobalState) => boolean = createSelector(
@@ -108,6 +108,12 @@ export const maxParticipants: (state: GlobalState) => number = createSelector(
     'maxParticipants',
     callsConfig,
     (config) => config.MaxCallParticipants,
+);
+
+export const needsTURNCredentials: (state: GlobalState) => boolean = createSelector(
+    'maxParticipants',
+    callsConfig,
+    (config) => config.NeedsTURNCredentials,
 );
 
 export const isLimitRestricted: (state: GlobalState) => boolean = createSelector(
