@@ -1,0 +1,42 @@
+%button-switch-call-modal {
+  border-radius: 4px;
+  margin: 0 4px;
+  font-weight: 600;
+  padding: 12px 20px;
+
+  color: rgba(var(--center-channel-color-rgb), 0.64);
+}
+
+button.switch-call-modal-close {
+  position: absolute;
+  font-size: 24px;
+  color: rgba(var(--center-channel-color-rgb), 0.56);
+  right: 18px;
+  top: 18px;
+  width: 40px;
+  height: 40px;
+
+  &:hover {
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+  }
+}
+
+button.switch-call-modal-cancel {
+  @extend %button-switch-call-modal;
+  background: rgba(var(--button-bg-rgb), 0.08);
+  color: rgb(var(--button-bg-rgb));
+
+  &:hover {
+    background: rgba(var(--button-bg-rgb), 0.12);
+  }
+}
+
+button.switch-call-modal-join {
+  @extend %button-switch-call-modal;
+  background: rgb(var(--button-bg-rgb));
+  color: rgb(var(--center-channel-bg-rgb));
+
+  &:hover {
+    background: rgba(var(--button-bg-rgb), 0.90);
+  }
+}

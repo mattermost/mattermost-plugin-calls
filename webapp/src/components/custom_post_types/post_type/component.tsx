@@ -9,6 +9,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
+import CompassIcon from 'src/components/icons/compassIcon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import ConnectedProfiles from 'src/components/connected_profiles';
 import {Header, SubHeader} from 'src/components/shared';
@@ -46,6 +47,10 @@ const PostType = ({
         }
     };
 
+    const onNextStepsClick = () => {
+        console.log('next steps click');
+    };
+
     const subMessage = post.props.end_at ? (
         <>
             <Duration>
@@ -58,6 +63,13 @@ const PostType = ({
         </>
     ) : (
         <Duration>{moment(post.props.start_at).fromNow()}</Duration>
+    );
+
+    const nextStepsButton = (
+        <NextStepsButton onClick={onNextStepsClick}>
+            <CompassIcon icon='pencil-outline'/>
+            <ButtonText>{'Add next steps'}</ButtonText>
+        </NextStepsButton>
     );
 
     let joinButton = (
@@ -130,21 +142,19 @@ const PostType = ({
                         </MessageWrapper>
                     </Left>
                     <Right>
-                        {callActive &&
-                            <>
-                                <Profiles>
-                                    <ConnectedProfiles
-                                        profiles={profiles}
-                                        pictures={pictures}
-                                        size={32}
-                                        fontSize={12}
-                                        border={true}
-                                        maxShowedProfiles={2}
-                                    />
-                                </Profiles>
-                                {button}
-                            </>
-                        }
+                        {callActive ? <>
+                            <Profiles>
+                                <ConnectedProfiles
+                                    profiles={profiles}
+                                    pictures={pictures}
+                                    size={32}
+                                    fontSize={12}
+                                    border={true}
+                                    maxShowedProfiles={2}
+                                />
+                            </Profiles>
+                            {button}
+                        </> : nextStepsButton}
                     </Right>
                 </SubMain>
             </Main>
@@ -237,6 +247,11 @@ const JoinButton = styled(Button)`
 const LeaveButton = styled(Button)`
     color: var(--error-text);
     background: rgba(var(--error-text-color-rgb), 0.16);
+`;
+
+const NextStepsButton = styled(Button)`
+    color: var(–button-color);
+    background: var(–button-bg);
 `;
 
 const ButtonText = styled.span`
