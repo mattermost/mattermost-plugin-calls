@@ -187,7 +187,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 height: '28px',
                 borderRadius: '4px',
                 color: '#D24B4E',
-                background: 'rgba(210, 75, 78, 0.04)',
+                background: 'rgba(210, 75, 78, 0.08)',
                 marginRight: 'auto',
             },
             dotsMenu: {
