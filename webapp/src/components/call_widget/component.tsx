@@ -588,6 +588,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
 
+        let fill = '';
+        if (isSharing) {
+            fill = 'rgba(210, 75, 78, 1)';
+        } else if (sharingID) {
+            fill = changeOpacity(this.props.theme.centerChannelColor, 0.34);
+        }
+
         return (
             <OverlayTrigger
                 key='share_screen'
@@ -608,8 +615,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     onClick={this.onShareScreenToggle}
                 >
                     <ScreenIcon
-                        style={{width: '16px', height: '16px', fill: isSharing ? 'rgba(210, 75, 78, 1)' : ''}}
-                        fill={isSharing ? 'rgba(210, 75, 78, 1)' : ''}
+                        style={{
+                            width: '16px',
+                            height: '16px',
+                            fill,
+                        }}
                     />
                 </button>
             </OverlayTrigger>
