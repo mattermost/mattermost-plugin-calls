@@ -22,46 +22,50 @@ import {pluginId} from './manifest';
 import {logErr} from './log';
 
 export function getPluginStaticPath() {
-    return window.basename ? `${window.basename}/static/plugins/${pluginId}` : `/static/plugins/${pluginId}`;
+    return `${window.basename || ''}/static/plugins/${pluginId}`;
 }
 
 export function getPluginPath() {
-    return window.basename ? `${window.basename}/plugins/${pluginId}` : `/plugins/${pluginId}`;
+    return `${window.basename || ''}/plugins/${pluginId}`;
 }
 
 export function getWSConnectionURL(config: Partial<ClientConfig>): string {
     const loc = window.location;
     const uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-    const baseURL = config && config.WebsocketURL ? config.WebsocketURL : `${uri}//${loc.host}`;
+    const baseURL = config && config.WebsocketURL ? config.WebsocketURL : `${uri}//${loc.host}${window.basename || ''}`;
 
     return `${baseURL}${Client4.getUrlVersion()}/websocket`;
 }
 
-export function getTeamRelativeUrl(team: Team) {
+export function getTeamRelativeURL(team: Team) {
     if (!team) {
         return '';
     }
 
-    return '/' + team.name;
+    return `/${team.name}`;
+}
+
+export function getPopOutURL(team: Team, channel: Channel) {
+    return `${window.basename || ''}/${team.name}/${pluginId}/expanded/${channel.id}`;
 }
 
 export function getChannelURL(state: GlobalState, channel: Channel, teamId: string) {
-    let notificationURL;
+    let channelURL;
     if (channel && (channel.type === 'D' || channel.type === 'G')) {
-        notificationURL = getCurrentRelativeTeamUrl(state) + '/channels/' + channel.name;
+        channelURL = getCurrentRelativeTeamUrl(state) + '/channels/' + channel.name;
     } else if (channel) {
         const team = getTeam(state, teamId);
-        notificationURL = getTeamRelativeUrl(team) + '/channels/' + channel.name;
+        channelURL = getTeamRelativeURL(team) + '/channels/' + channel.name;
     } else if (teamId) {
         const team = getTeam(state, teamId);
         const redirectChannel = getRedirectChannelNameForTeam(state, teamId);
-        notificationURL = getTeamRelativeUrl(team) + `/channels/${redirectChannel}`;
+        channelURL = getTeamRelativeURL(team) + `/channels/${redirectChannel}`;
     } else {
         const currentTeamId = getCurrentTeamId(state);
         const redirectChannel = getRedirectChannelNameForTeam(state, currentTeamId);
-        notificationURL = getCurrentRelativeTeamUrl(state) + `/channels/${redirectChannel}`;
+        channelURL = getCurrentRelativeTeamUrl(state) + `/channels/${redirectChannel}`;
     }
-    return notificationURL;
+    return channelURL;
 }
 
 export function getUserDisplayName(user: UserProfile | undefined) {

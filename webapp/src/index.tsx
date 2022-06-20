@@ -1,6 +1,7 @@
 import React from 'react';
 import axios from 'axios';
 
+import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
@@ -285,6 +286,11 @@ export default class Plugin {
     }
 
     public async initialize(registry: PluginRegistry, store: Store): Promise<void> {
+        // Setting the base URL if present, in case MM is running under a subpath.
+        if (window.basename) {
+            Client4.setUrl(window.basename);
+        }
+
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
