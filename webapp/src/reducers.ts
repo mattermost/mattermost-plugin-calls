@@ -156,13 +156,15 @@ const connectedChannelID = (state: string | null = null, action: { type: string,
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return null;
-    case VOICE_CHANNEL_USER_CONNECTED:
-        if (action.data.currentUserID === action.data.userID) {
+    case VOICE_CHANNEL_USER_CONNECTED: {
+        const callsClient = window.callsClient || window.opener?.callsClient;
+        if (action.data.currentUserID === action.data.userID && callsClient?.channelID === action.data.channelID) {
             return action.data.channelID;
         }
         return state;
+    }
     case VOICE_CHANNEL_USER_DISCONNECTED:
-        if (action.data.currentUserID === action.data.userID) {
+        if (action.data.currentUserID === action.data.userID && state === action.data.channelID) {
             return null;
         }
         return state;

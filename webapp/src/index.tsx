@@ -121,7 +121,7 @@ export default class Plugin {
             const channelID = ev.broadcast.channel_id;
             const currentUserID = getCurrentUserId(store.getState());
 
-            if (window.callsClient) {
+            if (window.callsClient?.channelID === channelID) {
                 if (userID === currentUserID) {
                     const audio = new Audio(getPluginStaticPath() + JoinSelfSound);
                     audio.play();
