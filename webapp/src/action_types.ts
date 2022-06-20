@@ -23,6 +23,8 @@ export const VOICE_CHANNEL_ROOT_POST = pluginId + '_voice_channel_root_post';
 
 export const SHOW_EXPANDED_VIEW = pluginId + '_show_expanded_view';
 export const HIDE_EXPANDED_VIEW = pluginId + '_hide_expanded_view';
+export const SHOW_NEXT_STEPS_MODAL = pluginId + '_show_next_steps_modal';
+export const HIDE_NEXT_STEPS_MODAL = pluginId + '_hide_next_steps_modal';
 export const SHOW_SWITCH_CALL_MODAL = pluginId + '_show_switch_call_modal';
 export const HIDE_SWITCH_CALL_MODAL = pluginId + '_hide_switch_call_modal';
 export const SHOW_SCREEN_SOURCE_MODAL = pluginId + '_show_screen_source_modal';

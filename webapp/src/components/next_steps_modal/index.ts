@@ -1,43 +1,32 @@
 import {bindActionCreators, Dispatch} from 'redux';
 import {connect} from 'react-redux';
 import {GlobalState} from '@mattermost/types/store';
-import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 
-import {hideSwitchCallModal} from '../../actions';
-import {connectedChannelID, switchCallModal} from '../../selectors';
-import {isDMChannel, getUserIdFromDM} from '../../utils';
+import {getPost} from 'mattermost-redux/selectors/entities/posts';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/common';
+import {createPost} from 'mattermost-redux/actions/posts';
 
-import SwitchCallModal from './component';
+import {hideNextStepsModal} from '../../actions';
+import {nextStepsModal} from '../../selectors';
+
+import NextStepsModal from './component';
 
 const mapStateToProps = (state: GlobalState) => {
-    const switchCallState = switchCallModal(state);
-    const connectedChannel = getChannel(state, connectedChannelID(state));
-    const currentChannel = switchCallState.targetID ? getChannel(state, switchCallState.targetID) : getChannel(state, getCurrentChannelId(state));
-
-    let connectedDMUser;
-    if (connectedChannel && isDMChannel(connectedChannel)) {
-        const otherID = getUserIdFromDM(connectedChannel.name, getCurrentUserId(state));
-        connectedDMUser = getUser(state, otherID);
-    }
-
-    let currentDMUser;
-    if (currentChannel && isDMChannel(currentChannel)) {
-        const otherID = getUserIdFromDM(currentChannel.name, getCurrentUserId(state));
-        currentDMUser = getUser(state, otherID);
-    }
+    const nextStepsState = nextStepsModal(state);
+    const post = getPost(state, nextStepsState.targetID);
+    const currentUserId = getCurrentUserId(state);
 
     return {
-        show: switchCallModal(state).show,
-        connectedChannel,
-        currentChannel,
-        connectedDMUser,
-        currentDMUser,
+        show: nextStepsModal(state).show,
+        rootPostId: post?.id || '',
+        channelId: post?.channel_id || '',
+        currentUserId,
     };
 };
 
 const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
-    hideSwitchCallModal,
+    hideNextStepsModal,
+    createPost,
 }, dispatch);
 
-export default connect(mapStateToProps, mapDispatchToProps)(SwitchCallModal);
+export default connect(mapStateToProps, mapDispatchToProps)(NextStepsModal);

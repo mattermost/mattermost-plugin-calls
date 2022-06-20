@@ -19,6 +19,7 @@ interface Props {
     connectedID: string,
     pictures: string[],
     profiles: UserProfile[],
+    showNextStepsModal: (targetID: string) => void,
     showSwitchCallModal: (targetID: string) => void,
     isCloudPaid: boolean,
     maxParticipants: number,
@@ -29,6 +30,7 @@ const PostType = ({
     connectedID,
     pictures,
     profiles,
+    showNextStepsModal,
     showSwitchCallModal,
     isCloudPaid,
     maxParticipants,
@@ -48,7 +50,7 @@ const PostType = ({
     };
 
     const onNextStepsClick = () => {
-        console.log('next steps click');
+        showNextStepsModal(post.id);
     };
 
     const subMessage = post.props.end_at ? (

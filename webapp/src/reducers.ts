@@ -27,6 +27,8 @@ import {
     VOICE_CHANNEL_ROOT_POST,
     SHOW_EXPANDED_VIEW,
     HIDE_EXPANDED_VIEW,
+    SHOW_NEXT_STEPS_MODAL,
+    HIDE_NEXT_STEPS_MODAL,
     SHOW_SWITCH_CALL_MODAL,
     HIDE_SWITCH_CALL_MODAL,
     SHOW_SCREEN_SOURCE_MODAL,
@@ -442,6 +444,22 @@ const expandedView = (state = false, action: { type: string }) => {
     }
 };
 
+const nextStepsModal = (state = {
+    show: false,
+    targetID: '',
+}, action: { type: string, data?: { targetID: string } }) => {
+    switch (action.type) {
+    case VOICE_CHANNEL_UNINIT:
+        return {show: false, targetID: ''};
+    case SHOW_NEXT_STEPS_MODAL:
+        return {show: true, targetID: action.data?.targetID};
+    case HIDE_NEXT_STEPS_MODAL:
+        return {show: false, targetID: ''};
+    default:
+        return state;
+    }
+};
+
 const switchCallModal = (state = {
     show: false,
     targetID: '',
@@ -503,6 +521,7 @@ export default combineReducers({
     voiceChannelCalls,
     voiceChannelScreenSharingID,
     expandedView,
+    nextStepsModal,
     switchCallModal,
     endCallModal,
     screenSourceModal,

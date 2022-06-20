@@ -1,30 +1,24 @@
 import React, {CSSProperties} from 'react';
-import ReactDOM from 'react-dom';
-import PropTypes from 'prop-types';
-
-import {Channel} from '@mattermost/types/channels';
-import {UserProfile} from '@mattermost/types/users';
+import {Post} from '@mattermost/types/posts';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
-
-import {isDMChannel, isGMChannel, getUserDisplayName} from '../../utils';
 
 import CompassIcon from '../../components/icons/compassIcon';
 
 import './component.scss';
-
 interface Props {
     theme: any,
-    currentChannel: Channel,
-    connectedChannel: Channel,
-    currentDMUser: UserProfile | undefined,
-    connectedDMUser: UserProfile | undefined,
+    rootPostId: string,
+    channelId: string,
+    currentUserId: string,
     show: boolean,
     hideNextStepsModal: () => void,
+    createPost: (post: Post, files: any[]) => void,
 }
 
 export default class NextStepsModal extends React.PureComponent<Props> {
     private node: React.RefObject<HTMLDivElement>;
+    private textarea: React.RefObject<HTMLTextAreaElement>;
     private style = {
         main: {
             position: 'absolute',
@@ -49,7 +43,7 @@ export default class NextStepsModal extends React.PureComponent<Props> {
             borderRadius: '8px',
             border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.16)}`,
             boxShadow: `0px 20px 32px ${changeOpacity(this.props.theme.centerChannelColor, 0.12)}`,
-            width: '512px',
+            width: '768px',
             padding: '48px 32px',
         },
         header: {
@@ -79,6 +73,7 @@ export default class NextStepsModal extends React.PureComponent<Props> {
     constructor(props: Props) {
         super(props);
         this.node = React.createRef();
+        this.textarea = React.createRef();
     }
 
     private keyboardClose = (e: KeyboardEvent) => {
@@ -97,10 +92,16 @@ export default class NextStepsModal extends React.PureComponent<Props> {
         this.props.hideNextStepsModal();
     }
 
-    private joinCall = () => {
-        this.props.hideNextStepsModal();
-        window.callsClient?.disconnect();
-        window.postMessage({type: 'connectCall', channelID: this.props.currentChannel.id}, window.origin);
+    private postNextSteps = () => {
+        const {createPost, hideNextStepsModal, rootPostId, channelId, currentUserId} = this.props;
+        const message = `#### Next Steps from Call\n\n${this.textarea.current?.value || ''}`;
+        createPost({
+            user_id: currentUserId,
+            root_id: rootPostId,
+            channel_id: channelId,
+            message,
+        } as Post, []);
+        hideNextStepsModal();
     }
 
     componentDidMount() {
@@ -118,76 +119,37 @@ export default class NextStepsModal extends React.PureComponent<Props> {
             return null;
         }
 
-        let message1;
-        if (isDMChannel(this.props.connectedChannel)) {
-            message1 = (<React.Fragment>
-                {'You\'re already in a call with '}
-                <span style={{fontWeight: 600}}>{getUserDisplayName(this.props.connectedDMUser)}</span>
-            </React.Fragment>);
-        } else if (isGMChannel(this.props.connectedChannel)) {
-            message1 = (<React.Fragment>
-                {'You\'re already in a call with '}
-                <span style={{fontWeight: 600}}>{this.props.connectedChannel.display_name}</span>
-            </React.Fragment>);
-        } else {
-            message1 = (<React.Fragment>
-                {'You\'re already in a call in '}
-                <span style={{fontWeight: 600}}>{this.props.connectedChannel.display_name}</span>
-            </React.Fragment>);
-        }
-
-        let message2;
-        if (isDMChannel(this.props.currentChannel)) {
-            message2 = (<React.Fragment>
-                {'. Do you want to leave and join a call with '}
-                <span style={{fontWeight: 600}}>{getUserDisplayName(this.props.currentDMUser)}</span>
-                {'?'}
-            </React.Fragment>);
-        } else if (isGMChannel(this.props.currentChannel)) {
-            message2 = (<React.Fragment>
-                {'. Do you want to leave and join a call with '}
-                <span style={{fontWeight: 600}}>{this.props.currentChannel.display_name}</span>
-                {'?'}
-            </React.Fragment>);
-        } else {
-            message2 = (<React.Fragment>
-                {'. Do you want to leave and join a call in '}
-                <span style={{fontWeight: 600}}>{this.props.currentChannel.display_name}</span>
-                {'?'}
-            </React.Fragment>);
-        }
-
         return (
             <div style={this.style.main as CSSProperties}>
                 <div
-                    id='calls-switch-call-modal'
+                    id='calls-next-steps-modal'
                     style={this.style.modal as CSSProperties}
                     ref={this.node}
                 >
                     <button
-                        className='style--none switch-call-modal-close'
+                        className='style--none next-steps-modal-close'
                         onClick={this.props.hideNextStepsModal}
                     >
                         <CompassIcon icon='close'/>
                     </button>
                     <div style={this.style.header as CSSProperties}>
                         <span style={this.style.title}>
-                            {'You\'re already in a call'}
+                            {'Write next steps for the call:'}
                         </span>
                     </div>
-                    <div style={this.style.body as CSSProperties}>
-                        { message1 }
-                        { message2 }
-                    </div>
+                    <textarea
+                        ref={this.textarea}
+                        className='next-steps-input'
+                    />
                     <div style={this.style.footer}>
                         <button
-                            className='style--none switch-call-modal-cancel'
+                            className='style--none next-steps-modal-cancel'
                             onClick={this.props.hideNextStepsModal}
                         >{'Cancel'}</button>
                         <button
-                            className='style--none switch-call-modal-join'
-                            onClick={this.joinCall}
-                        >{'Leave & join new call'}</button>
+                            className='style--none next-steps-modal-join'
+                            onClick={this.postNextSteps}
+                        >{'Post'}</button>
                     </div>
                 </div>
             </div>

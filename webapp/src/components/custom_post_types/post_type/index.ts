@@ -12,7 +12,7 @@ import {
     isCloudProfessionalOrEnterprise,
     maxParticipants,
 } from 'src/selectors';
-import {showSwitchCallModal} from 'src/actions';
+import {showNextStepsModal, showSwitchCallModal} from 'src/actions';
 
 import PostType from 'src/components/custom_post_types/post_type/component';
 
@@ -45,6 +45,7 @@ const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
 };
 
 const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
+    showNextStepsModal,
     showSwitchCallModal,
 }, dispatch);
 

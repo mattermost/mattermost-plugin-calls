@@ -25,6 +25,8 @@ import {
 import {
     SHOW_EXPANDED_VIEW,
     HIDE_EXPANDED_VIEW,
+    SHOW_NEXT_STEPS_MODAL,
+    HIDE_NEXT_STEPS_MODAL,
     SHOW_SWITCH_CALL_MODAL,
     HIDE_SWITCH_CALL_MODAL,
     SHOW_SCREEN_SOURCE_MODAL,
@@ -42,6 +44,21 @@ export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
 export const hideExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
     dispatch({
         type: HIDE_EXPANDED_VIEW,
+    });
+};
+
+export const showNextStepsModal = (targetID?: string) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: SHOW_NEXT_STEPS_MODAL,
+        data: {
+            targetID,
+        },
+    });
+};
+
+export const hideNextStepsModal = () => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: HIDE_NEXT_STEPS_MODAL,
     });
 };
 

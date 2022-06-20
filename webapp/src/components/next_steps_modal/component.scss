@@ -1,4 +1,4 @@
-%button-switch-call-modal {
+%button-next-steps-modal {
   border-radius: 4px;
   margin: 0 4px;
   font-weight: 600;
@@ -7,7 +7,7 @@
   color: rgba(var(--center-channel-color-rgb), 0.64);
 }
 
-button.switch-call-modal-close {
+button.next-steps-modal-close {
   position: absolute;
   font-size: 24px;
   color: rgba(var(--center-channel-color-rgb), 0.56);
@@ -21,8 +21,8 @@ button.switch-call-modal-close {
   }
 }
 
-button.switch-call-modal-cancel {
-  @extend %button-switch-call-modal;
+button.next-steps-modal-cancel {
+  @extend %button-next-steps-modal;
   background: rgba(var(--button-bg-rgb), 0.08);
   color: rgb(var(--button-bg-rgb));
 
@@ -31,12 +31,26 @@ button.switch-call-modal-cancel {
   }
 }
 
-button.switch-call-modal-join {
-  @extend %button-switch-call-modal;
+button.next-steps-modal-join {
+  @extend %button-next-steps-modal;
   background: rgb(var(--button-bg-rgb));
   color: rgb(var(--center-channel-bg-rgb));
 
   &:hover {
     background: rgba(var(--button-bg-rgb), 0.90);
+  }
+}
+
+textarea.next-steps-input {
+  height: 144px;
+  border: 1px solid var(--center-channel-color-16);
+  border-radius: 4px;
+  padding: 12px 14px;
+  width: 100%;
+  font-size: 14px;
+  resize: none;
+  overflow: auto;
+  &:focus {
+      border-color: var(--center-channel-color-32);
   }
 }

@@ -40,6 +40,7 @@ import ChannelLinkLabel from './components/channel_link_label';
 import ChannelCallToast from './components/channel_call_toast';
 import PostType from './components/custom_post_types/post_type';
 import ExpandedView from './components/expanded_view';
+import NextStepsModal from './components/next_steps_modal';
 import SwitchCallModal from './components/switch_call_modal';
 import ScreenSourceModal from './components/screen_source_modal';
 import EndCallModal from './components/end_call_modal';
@@ -292,6 +293,7 @@ export default class Plugin {
         registry.registerPostTypeComponent('custom_calls', PostType);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
         registry.registerNeedsTeamRoute('/expanded', ExpandedView);
+        registry.registerGlobalComponent(NextStepsModal);
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
         registry.registerGlobalComponent(EndCallModal);
