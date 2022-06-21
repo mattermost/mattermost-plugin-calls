@@ -10,11 +10,18 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 import {UserState} from 'src/types/types';
-import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel, isGMChannel, hasExperimentalFlag} from 'src/utils';
+import {
+    getUserDisplayName,
+    isPublicChannel,
+    isPrivateChannel,
+    isDMChannel,
+    isGMChannel,
+    hasExperimentalFlag,
+    getPopOutURL,
+} from 'src/utils';
 import {logDebug, logErr} from 'src/log';
 
 import Avatar from '../avatar/avatar';
-import {pluginId} from '../../manifest';
 import MutedIcon from '../../components/icons/muted_icon';
 import UnmutedIcon from '../../components/icons/unmuted_icon';
 import LeaveCallIcon from '../../components/icons/leave_call_icon';
@@ -1069,7 +1076,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.props.showExpandedView();
         } else {
             const expandedViewWindow = window.open(
-                `/${this.props.team.name}/${pluginId}/expanded/${this.props.channel.id}`,
+                getPopOutURL(this.props.team, this.props.channel),
                 'ExpandedView',
                 'resizable=yes',
             );

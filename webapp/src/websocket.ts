@@ -7,7 +7,7 @@ import {logWarn, logErr} from './log';
 
 export default class WebSocketClient extends EventEmitter {
     private ws: WebSocket | null;
-    private seqNo = 0;
+    private seqNo = 1;
     private connID = '';
     private eventPrefix: string = 'custom_' + pluginId;
 
@@ -90,7 +90,7 @@ export default class WebSocketClient extends EventEmitter {
         } else {
             this.emit('close', code);
         }
-        this.seqNo = 0;
+        this.seqNo = 1;
         this.connID = '';
     }
 }
