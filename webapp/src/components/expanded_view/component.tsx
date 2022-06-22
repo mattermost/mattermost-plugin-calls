@@ -350,7 +350,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                         { this.props.screenSharingID === profile.id &&
                         <ScreenIcon
-                            fill={'rgba(210, 75, 78, 1)'}
+                            fill={'rgb(var(--dnd-indicator-rgb))'}
                             style={{width: '14px', height: '14px'}}
                         />
                         }
@@ -481,11 +481,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onShareScreenToggle}
-                                    style={{background: isSharing ? 'rgba(210, 75, 78, 0.12)' : ''}}
+                                    style={{background: isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}}
                                 >
                                     <ScreenIcon
                                         style={{width: '28px', height: '28px'}}
-                                        fill={isSharing ? 'rgba(210, 75, 78, 1)' : 'white'}
+                                        fill={isSharing ? 'rgb(var(--dnd-indicator-rgb))' : 'white'}
                                     />
 
                                 </button>
@@ -507,7 +507,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     <MuteIcon
                                         style={{width: '28px', height: '28px'}}
                                         fill={isMuted ? 'white' : 'rgba(61, 184, 135, 1)'}
-                                        stroke={isMuted ? 'rgba(210, 75, 78, 1)' : ''}
+                                        stroke={isMuted ? 'rgb(var(--dnd-indicator-rgb))' : ''}
                                     />
 
                                 </button>
