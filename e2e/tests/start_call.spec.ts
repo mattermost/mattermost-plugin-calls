@@ -241,7 +241,7 @@ test.describe('setting audio output device', () => {
         await devPage.leaveCall();
     });
 
-    test.only('setting default', async ({page}) => {
+    test('setting default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
         await devPage.wait(1000);

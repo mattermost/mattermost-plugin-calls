@@ -22,7 +22,7 @@ test.describe('popout window', () => {
         const text = await popOut.textContent('#calls-popout-mute-button');
         expect(text).toBe('Unmute');
 
-        await devPage.leaveCall();
+        await popOut.locator('.button-leave').click();
     });
 
     test('window title matches', async ({page, context}) => {
@@ -39,7 +39,7 @@ test.describe('popout window', () => {
         await expect(popOut).toHaveTitle(`Call - calls${idx}`);
         await expect(page).not.toHaveTitle(`Call - calls${idx}`);
 
-        await devPage.leaveCall();
+        await popOut.locator('.button-leave').click();
     });
 });
 
