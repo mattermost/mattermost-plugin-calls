@@ -9,3 +9,17 @@ export const {
 
 // @ts-ignore
 export const openPricingModal = global.openPricingModal;
+
+export const {
+    Timestamp,
+    Textbox,
+
+    // @ts-ignore
+} = global.Components ?? {};
+
+export const {
+    formatText,
+    messageHtmlToComponent,
+
+    // @ts-ignore
+} = global.PostUtils ?? {};

@@ -1,14 +1,19 @@
-import {getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {GlobalState} from '@mattermost/types/store';
-
-import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {createSelector} from 'reselect';
 
+import {GlobalState} from '@mattermost/types/store';
+import {UserProfile} from '@mattermost/types/users';
+import {IDMappedObjects} from '@mattermost/types/utilities';
 import {LicenseSkus} from '@mattermost/types/general';
+
+import {getUsers} from 'mattermost-redux/selectors/entities/common';
+import {getLicense} from 'mattermost-redux/selectors/entities/general';
+import {sortByUsername} from 'mattermost-redux/utils/user_utils';
+import {getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 
 import {isDMChannel} from 'src/utils';
 
 import {CallsConfig} from 'src/types/types';
+import {ChecklistItemsFilterDefault, ChecklistItemsFilter} from 'src/types/checklist';
 
 import {pluginId} from './manifest';
 
@@ -203,3 +208,46 @@ export const isCloudTrialNeverStarted: (state: GlobalState) => boolean = createS
         return subscription?.trial_end_at === 0;
     },
 );
+
+export const currentChecklistItemsFilter = (state: GlobalState): ChecklistItemsFilter => {
+    const channelId = getCurrentChannelId(state);
+    return getPluginState(state).checklistItemsFilterByChannel[channelId] || ChecklistItemsFilterDefault;
+};
+
+const emptyChecklistState = {} as Record<number, boolean>;
+
+export const currentChecklistCollapsedState = createSelector(
+    'currentChecklistCollapsedState',
+    getCurrentChannelId,
+    getPluginState,
+    (channelId, plugin) => {
+        return plugin.checklistCollapsedState[channelId] ?? emptyChecklistState;
+    },
+);
+
+const PROFILE_SET_ALL = 'all';
+
+// sortAndInjectProfiles is an unexported function copied from mattermost-redux, it is called
+// whenever a function returns a populated list of UserProfiles. Since getProfileSetForChannel is
+// new, we have to sort and inject profiles before returning the list.
+function sortAndInjectProfiles(profiles: IDMappedObjects<UserProfile>, profileSet?: 'all' | Array<UserProfile['id']> | Set<UserProfile['id']>): Array<UserProfile> {
+    let currentProfiles: UserProfile[] = [];
+
+    if (typeof profileSet === 'undefined') {
+        return currentProfiles;
+    } else if (profileSet === PROFILE_SET_ALL) {
+        currentProfiles = Object.keys(profiles).map((key) => profiles[key]);
+    } else {
+        currentProfiles = Array.from(profileSet).map((p) => profiles[p]);
+    }
+
+    currentProfiles = currentProfiles.filter((profile) => Boolean(profile));
+
+    return currentProfiles.sort(sortByUsername);
+}
+
+export const getProfileSetForChannel = (state: GlobalState, channelId: string) => {
+    const profileSet = state.entities.users.profilesInChannel[channelId];
+    const profiles = getUsers(state);
+    return sortAndInjectProfiles(profiles, profileSet);
+};

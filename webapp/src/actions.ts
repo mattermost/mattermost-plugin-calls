@@ -33,6 +33,7 @@ import {
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_END_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
+    SET_CHECKLIST_COLLAPSED_STATE,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -160,3 +161,10 @@ export const endCall = (channelID: string) => {
     return axios.post(`${getPluginPath()}/calls/${channelID}/end`, null,
         {headers: {'X-Requested-With': 'XMLHttpRequest'}});
 };
+
+export const setChecklistCollapsedState = (channelId: string, checklistIndex: number, collapsed: boolean): SetChecklistCollapsedState => ({
+    type: SET_CHECKLIST_COLLAPSED_STATE,
+    channelId,
+    checklistIndex,
+    collapsed,
+});

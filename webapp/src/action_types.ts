@@ -34,3 +34,5 @@ export const HIDE_END_CALL_MODAL = pluginId + '_hide_end_call_modal';
 
 export const RECEIVED_CALLS_CONFIG = pluginId + '_received_calls_config';
 
+export const SET_CHECKLIST_COLLAPSED_STATE = pluginId + '_set_checklist_collapsed_state';
+
