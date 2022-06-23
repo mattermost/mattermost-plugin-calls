@@ -15,7 +15,7 @@ import {UserState} from '../../types/types';
 
 import {showExpandedView, showScreenSourceModal} from '../../actions';
 
-import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelCallStartAt, voiceChannelScreenSharingID, expandedView} from '../../selectors';
+import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelCallStartAt, voiceChannelScreenSharingID, expandedView, voiceChannelRootPost} from '../../selectors';
 
 import {getChannelURL, alphaSortProfiles, stateSortProfiles} from '../../utils';
 
@@ -44,8 +44,10 @@ const mapStateToProps = (state: GlobalState) => {
     }
 
     let channelURL = '';
+    let postId = '';
     if (channel) {
         channelURL = getChannelURL(state, channel, channel.team_id);
+        postId = voiceChannelRootPost(state, channel.id);
     }
 
     return {
@@ -60,6 +62,8 @@ const mapStateToProps = (state: GlobalState) => {
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         screenSharingID,
         show: !expandedView(state),
+        integrations: (state as any).plugins.components.CallsDropdownMenu,
+        postId,
     };
 };
 

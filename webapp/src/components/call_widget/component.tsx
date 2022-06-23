@@ -57,6 +57,8 @@ interface Props {
     show: boolean,
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
+    integrations?: any[],
+    postId: string,
 }
 
 interface DraggingState {
@@ -80,11 +82,18 @@ interface State {
     devices?: any,
     showAudioInputDevicesMenu?: boolean,
     showAudioOutputDevicesMenu?: boolean,
+    showIntegrations?: boolean,
     dragging: DraggingState,
     expandedViewWindow: Window | null,
     showUsersJoined: string[],
     audioEls: HTMLAudioElement[],
 }
+
+const clearSubmenusState = {
+    showIntegrations: false,
+    showAudioInputDevicesMenu: false,
+    showAudioOutputDevicesMenu: false,
+};
 
 export default class CallWidget extends React.PureComponent<Props, State> {
     private node: React.RefObject<HTMLDivElement>;
@@ -803,9 +812,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const onClickHandler = () => {
             const devices = window.callsClient?.getAudioDevices();
             if (deviceType === 'input') {
-                this.setState({showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu, showAudioOutputDevicesMenu: false, devices});
+                this.setState({...clearSubmenusState, showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu, devices});
             } else {
-                this.setState({showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu, showAudioInputDevicesMenu: false, devices});
+                this.setState({...clearSubmenusState, showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu, devices});
             }
         };
 
@@ -898,6 +907,97 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {!hasTeamSidebar && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
+                    {this.renderIntegrations()}
+                </ul>
+            </div>
+        );
+    }
+
+    renderIntegrations = () => {
+        const onClickHandler = () => {
+            this.setState({...clearSubmenusState, showIntegrations: !this.state.showIntegrations});
+        };
+
+        return (
+            <React.Fragment>
+                {this.renderIntegrationsMenu()}
+                <li
+                    className='MenuItem'
+                >
+                    <button
+                        id={'calls-widget-integrations-button'}
+                        className='style--none'
+                        style={{display: 'flex', flexDirection: 'column'}}
+                        onClick={onClickHandler}
+                    >
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%'}}>
+                            <ExpandIcon
+                                style={{width: '14px', height: '14px', marginRight: '8px', fill: changeOpacity(this.props.theme.centerChannelColor, 0.56)}}
+                            />
+                            <span
+                                className='MenuItem__primary-text'
+                                style={{padding: '0'}}
+                            >{'Integrations'}</span>
+                            <ShowMoreIcon
+                                style={{width: '11px', height: '11px', marginLeft: 'auto', fill: changeOpacity(this.props.theme.centerChannelColor, 0.56)}}
+                            />
+                        </div>
+                    </button>
+                </li>
+            </React.Fragment>
+        );
+    }
+
+    runIntegrationAction = (integration: any) => {
+        try {
+            integration.action(this.props.channel.team_id, this.props.channel.id, this.props.postId);
+        } catch (e) {
+            logErr(integration.pluginId, `failed to execute action ${integration.text}`);
+        }
+
+        this.setState({...clearSubmenusState, showMenu: false});
+    }
+
+    renderIntegrationsMenu = () => {
+        if (!this.state.showIntegrations) {
+            return null;
+        }
+
+        let content;
+        if (this.props.integrations?.length) {
+            content = this.props.integrations?.map((integration: any) => {
+                return (
+                    <li
+                        className='MenuItem'
+                        key={`integration-${integration.pluginId}-${integration.text}`}
+                    >
+                        <button
+                            className='style--none'
+                            onClick={() => this.runIntegrationAction(integration)}
+                        >
+                            <span style={{color: changeOpacity(this.props.theme.centerChannelColor, 0.56), fontSize: '12px', width: '100%'}}>{integration.text}</span>
+                        </button>
+                    </li>
+                );
+            });
+        } else {
+            content = (
+                <li
+                    className='MenuItem'
+                    key={'integration-no-integrations'}
+                >
+                    <span style={{color: changeOpacity(this.props.theme.centerChannelColor, 0.56), fontSize: '12px', width: '100%', paddingLeft: '12px', paddingRight: '12px'}}>{'Ask your system administrator to install plugins integrated with calls like Matterpoll'}</span>
+                </li>
+            );
+        }
+        return (
+            <div className='Menu'>
+                <ul
+                    id={'calls-widget-integrations-menu'}
+                    className='Menu__content dropdown-menu'
+                    style={this.style.audioInputsOutputsMenu}
+                >
+                    {content}
                 </ul>
             </div>
         );
