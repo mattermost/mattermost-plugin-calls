@@ -11,6 +11,7 @@ interface Props {
     checklist: Checklist,
     getAgendaForChannel: (channelId: string) => void,
     updateAgendaItemForChannel: (channelId: string, item: ChecklistItem) => void,
+    addAgendaItemToChannel: (channelId: string, item: ChecklistItem) => void,
 }
 
 export default class ExpandedView extends React.PureComponent<Props> {
@@ -20,12 +21,13 @@ export default class ExpandedView extends React.PureComponent<Props> {
     }
 
     render() {
-        const {channelId, checklist, updateAgendaItemForChannel} = this.props;
+        const {channelId, checklist, updateAgendaItemForChannel, addAgendaItemToChannel} = this.props;
         return (
             <ChecklistList
                 checklists={[checklist]}
                 onChecklistsUpdated={() => console.log('checklists updated')}
                 onUpdateChecklistItem={(item: ChecklistItem) => updateAgendaItemForChannel(channelId, item)}
+                onAddChecklistItem={(item: ChecklistItem) => addAgendaItemToChannel(channelId, item)}
             />
         );
     }

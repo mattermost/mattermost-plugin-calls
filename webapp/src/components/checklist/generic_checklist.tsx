@@ -33,6 +33,7 @@ interface Props {
     checklistIndex: number;
     onUpdateChecklist: (newChecklist: Checklist) => void;
     onUpdateChecklistItem: (newItem: ChecklistItem, index: number) => void;
+    onAddChecklistItem: (newItem: ChecklistItem) => void;
 }
 
 const GenericChecklist = (props: Props) => {
@@ -92,13 +93,14 @@ const GenericChecklist = (props: Props) => {
         props.onUpdateChecklist(newChecklist);
     };*/
 
+    /*
     const onAddChecklistItem = (newItem: ChecklistItem) => {
         const newChecklistItems = [...props.checklist.items];
         newChecklistItems.push(newItem);
         const newChecklist = {...props.checklist};
         newChecklist.items = newChecklistItems;
         props.onUpdateChecklist(newChecklist);
-    };
+    };*/
 
     const onDuplicateChecklistItem = (index: number) => {
         const newChecklistItems = [...props.checklist.items];
@@ -168,7 +170,7 @@ const GenericChecklist = (props: Props) => {
                                 cancelAddingItem={() => {
                                     setAddingItem(false);
                                 }}
-                                onAddChecklistItem={onAddChecklistItem}
+                                onAddChecklistItem={props.onAddChecklistItem}
                             />
                         }
                         {droppableProvided.placeholder}

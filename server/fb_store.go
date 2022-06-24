@@ -24,7 +24,7 @@ const (
 
 type FocalboardStore interface {
 	GetBoard(channelID string, creatorUserID string) (*fbModel.Board, error)
-	AddCard(userID string, channelID string, title string) (string, error)
+	AddCard(userID string, channelID string, title string) (*fbModel.Block, error)
 	GetUpnextCards(channelID string) ([]fbModel.Block, error)
 	UpdateCardStatus(cardID, channelID, status string) error
 }
@@ -295,33 +295,28 @@ func (l *focalboardStore) getBlock(boardID, blockID string) (*fbModel.Block, err
 	return nil, nil
 }
 
-func (l *focalboardStore) AddCard(userID string, channelID string, title string) (string, error) {
+func (l *focalboardStore) AddCard(userID string, channelID string, title string) (*fbModel.Block, error) {
 	board, err := l.getOrCreateBoardForChannel(channelID, userID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	statusProp := getCardPropertyByName(board, "Status")
 	if statusProp == nil {
-		return "", errors.New("status card property not found on board")
+		return nil, errors.New("status card property not found on board")
 	}
 
 	creator := userID
-	optionTitle := "To Do"
+	optionTitle := StatusUpNext
 
 	statusOption := getPropertyOptionByValue(statusProp, optionTitle)
 	if statusOption == nil {
-		return "", errors.New("option not found on status card property")
-	}
-
-	postIDProp := getCardPropertyByName(board, "Post ID")
-	if postIDProp == nil {
-		return "", errors.New("post id card property not found on board")
+		return nil, errors.New("option not found on status card property")
 	}
 
 	createdByProp := getCardPropertyByName(board, "Created By")
 	if createdByProp == nil {
-		return "", errors.New("created by card property not found on board")
+		return nil, errors.New("created by card property not found on board")
 	}
 
 	now := model.GetMillis()
@@ -335,7 +330,6 @@ func (l *focalboardStore) AddCard(userID string, channelID string, title string)
 			"icon": "📋",
 			"properties": map[string]interface{}{
 				statusProp["id"].(string):    statusOption["id"],
-				postIDProp["id"].(string):    "",
 				createdByProp["id"].(string): creator,
 			},
 		},
@@ -346,14 +340,14 @@ func (l *focalboardStore) AddCard(userID string, channelID string, title string)
 
 	blocks, resp := l.client.InsertBlocks(board.ID, []fbModel.Block{card})
 	if resp.Error != nil {
-		return "", resp.Error
+		return nil, resp.Error
 	}
 
 	if len(blocks) != 1 {
-		return "", errors.New("blocks not inserted correctly")
+		return nil, errors.New("blocks not inserted correctly")
 	}
 
-	return blocks[0].ID, nil
+	return &blocks[0], nil
 }
 
 func (l *focalboardStore) GetUpnextCards(channelID string) ([]fbModel.Block, error) {

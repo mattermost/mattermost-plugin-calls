@@ -11,7 +11,7 @@ import {CloudCustomer} from '@mattermost/types/cloud';
 
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 
-import {fetchAgendaForChannel, updateAgendaItem} from 'src/rest_client';
+import {fetchAgendaForChannel, updateAgendaItem, addAgendaItem} from 'src/rest_client';
 
 import {CallsConfig} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
@@ -203,7 +203,7 @@ export const updateAgendaItemForChannel = (channelId: string, item: ChecklistIte
 
 export const addAgendaItemToChannel = (channelId: string, item: ChecklistItem) => {
     return async (dispatch: DispatchFunc) => {
-        // const item = await client.addAgendaItemToChannel(channelId, item)
+        item = await addAgendaItem(channelId, item);
 
         dispatch({
             type: SET_CHECKLIST_ITEM,

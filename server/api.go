@@ -21,6 +21,7 @@ var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
 var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
 var agendaGetRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)$`)
 var agendaUpdateRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)\/item$`)
+var agendaAddRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)\/item$`)
 
 type Call struct {
 	ID              string      `json:"id"`
@@ -501,6 +502,45 @@ func (p *Plugin) handleUpdateAgendaItem(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
+func (p *Plugin) handleAddAgendaItem(w http.ResponseWriter, r *http.Request, channelID string) {
+	userID := r.Header.Get("Mattermost-User-Id")
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var item AgendaItem
+	if err := json.Unmarshal(data, &item); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	block, err := p.fbStore.AddCard(item.ID, channelID, item.Title)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	item.ID = block.ID
+
+	resBytes, err := json.Marshal(item)
+	if err != nil {
+		p.LogError(err.Error())
+		http.Error(w, "", http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(resBytes); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/version") {
 		p.handleGetVersion(w, r)
@@ -569,6 +609,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if matches := callEndRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handleEndCall(w, r, matches[1])
+			return
+		}
+
+		if matches := agendaAddRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleAddAgendaItem(w, r, matches[1])
 			return
 		}
 	}
