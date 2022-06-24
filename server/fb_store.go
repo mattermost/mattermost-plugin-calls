@@ -26,6 +26,7 @@ type FocalboardStore interface {
 	GetBoard(channelID string, creatorUserID string) (*fbModel.Board, error)
 	AddCard(userID string, channelID string, title string) (string, error)
 	GetUpnextCards(channelID string) ([]fbModel.Block, error)
+	UpdateCardStatus(cardID, channelID, status string) error
 }
 
 type focalboardStore struct {
@@ -280,6 +281,20 @@ func (l *focalboardStore) getBoardForChannel(channelID string) (*fbModel.Board, 
 	return board, nil
 }
 
+func (l *focalboardStore) getBlock(boardID, blockID string) (*fbModel.Block, error) {
+	blocks, resp := l.client.GetAllBlocksForBoard(boardID)
+	if resp.Error != nil {
+		return nil, errors.Wrap(resp.Error, "unable to get blocks")
+	}
+
+	for _, b := range blocks {
+		if b.ID == blockID {
+			return &b, nil
+		}
+	}
+	return nil, nil
+}
+
 func (l *focalboardStore) AddCard(userID string, channelID string, title string) (string, error) {
 	board, err := l.getOrCreateBoardForChannel(channelID, userID)
 	if err != nil {
@@ -398,6 +413,56 @@ func (l *focalboardStore) GetUpnextCards(channelID string) ([]fbModel.Block, err
 	}
 
 	return upNextCards, nil
+}
+
+func (l *focalboardStore) UpdateCardStatus(cardID, channelID, status string) error {
+	board, err := l.getBoardForChannel(channelID)
+	if err != nil {
+		return errors.Wrap(err, "unable to get board")
+	}
+
+	if board == nil {
+		return errors.New("unable to find board")
+	}
+
+	block, err := l.getBlock(board.ID, cardID)
+	if err != nil {
+		return errors.Wrap(err, "unable to get block to update status")
+	}
+	if block == nil {
+		return errors.New("unable to find block to update")
+	}
+
+	statusProp := getCardPropertyByName(board, "Status")
+	if statusProp == nil {
+		return errors.New("status card property not found on board")
+	}
+	statusID := statusProp["id"].(string)
+
+	newOption := getPropertyOptionByValue(statusProp, status)
+	if newOption == nil {
+		return errors.New("new option not found on status card property")
+	}
+	newID := newOption["id"].(string)
+
+	properties, ok := block.Fields["properties"].(map[string]interface{})
+	if !ok {
+		return errors.New("unable to get block properties")
+	}
+	properties[statusID] = newID
+
+	patch := &fbModel.BlockPatch{
+		UpdatedFields: map[string]interface{}{
+			"properties": properties,
+		},
+	}
+
+	_, resp := l.client.PatchBlock(board.ID, block.ID, patch)
+	if resp.Error != nil {
+		return errors.Wrap(err, "unable to patch block")
+	}
+
+	return nil
 }
 
 func indexForSorting(strSlice []string, str string) int {
