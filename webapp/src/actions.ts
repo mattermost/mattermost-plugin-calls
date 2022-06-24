@@ -11,6 +11,8 @@ import {CloudCustomer} from '@mattermost/types/cloud';
 
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 
+import {fetchAgendaForChannel} from 'src/rest_client';
+
 import {CallsConfig} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
 
@@ -177,20 +179,12 @@ export const setChecklistCollapsedState = (channelId: string, checklistIndex: nu
 
 export const getAgendaForChannel = (channelId: string) => {
     return async (dispatch: DispatchFunc) => {
+        const checklist = await fetchAgendaForChannel(channelId);
+
         dispatch({
             type: SET_CHECKLIST,
             channelId,
-            nextState: {
-                title: 'Test Agenda 1',
-                items: [{
-                    title: 'Discuss Z',
-                    description: '',
-                    state: '',
-                    command: '',
-                    command_last_run: 0,
-                    due_date: 0,
-                }],
-            },
+            nextState: checklist,
         } as SetChecklist);
     };
 };
