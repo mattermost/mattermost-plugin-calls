@@ -20,6 +20,7 @@ import (
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
 var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
 var agendaGetRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)$`)
+var agendaUpdateRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)\/item$`)
 
 type Call struct {
 	ID              string      `json:"id"`
@@ -453,6 +454,53 @@ func (p *Plugin) handleGetAgenda(w http.ResponseWriter, r *http.Request, channel
 	}
 }
 
+func (p *Plugin) handleUpdateAgendaItem(w http.ResponseWriter, r *http.Request, channelID string) {
+	userID := r.Header.Get("Mattermost-User-Id")
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var item AgendaItem
+	if err := json.Unmarshal(data, &item); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	status := ""
+	switch item.State {
+	case "closed":
+		status = StatusDone
+	default:
+		status = StatusUpNext
+	}
+
+	err = p.fbStore.UpdateCardStatus(item.ID, channelID, status)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var res httpResponse
+	res.Code = http.StatusOK
+	resBytes, err := json.Marshal(res)
+	if err != nil {
+		p.LogError(err.Error())
+		http.Error(w, "", http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(resBytes); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/version") {
 		p.handleGetVersion(w, r)
@@ -494,6 +542,13 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if matches := agendaGetRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handleGetAgenda(w, r, matches[1])
+			return
+		}
+	}
+
+	if r.Method == http.MethodPut {
+		if matches := agendaUpdateRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleUpdateAgendaItem(w, r, matches[1])
 			return
 		}
 	}

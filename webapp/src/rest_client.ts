@@ -5,7 +5,7 @@ import {Client4} from 'mattermost-redux/client';
 import {ClientError} from 'mattermost-redux/client/client4';
 
 import {pluginId} from './manifest';
-import {Checklist} from './types/checklist';
+import {Checklist, ChecklistItem} from './types/checklist';
 
 let siteURL = '';
 let basePath = '';
@@ -38,6 +38,10 @@ export async function fetchAgendaForChannel(channelId: string): Checklist {
     }
 
     return data as Checklist;
+}
+
+export async function updateAgendaItem(channelId: string, item: ChecklistItem) {
+    await doPut(`${apiUrl}/agenda/${channelId}/item`, JSON.stringify(item));
 }
 
 export const doGet = async <TData = any>(url: string) => {
