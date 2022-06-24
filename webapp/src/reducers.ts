@@ -4,7 +4,7 @@ import {combineReducers} from 'redux';
 
 import {UserProfile} from '@mattermost/types/users';
 
-import {Checklist, ChecklistItemsFilter} from './types/checklist';
+import {Checklist, ChecklistItemsFilter, emptyChecklist} from './types/checklist';
 import {CallsConfigDefault, CallsConfig, UserState} from './types/types';
 
 import {
@@ -49,6 +49,8 @@ import {
     SetChecklistItemsFilter,
     SetChecklist,
     SET_CHECKLIST,
+    SET_CHECKLIST_ITEM,
+    SetChecklistItem,
 } from './action_types';
 
 const isVoiceEnabled = (state = false, action: { type: string }) => {
@@ -525,13 +527,32 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
     }
 };
 
-const checklistsByChannel = (state: Record<string, Checklist> = {}, action: SetChecklist) => {
+const checklistsByChannel = (state: Record<string, Checklist> = {}, action: SetChecklist | SetChecklistItem) => {
     switch (action.type) {
-    case SET_CHECKLIST:
+    case SET_CHECKLIST: {
+        const setAction = action as SetChecklist;
         return {
             ...state,
-            [action.channelId]: action.nextState,
+            [action.channelId]: setAction.nextState,
         };
+    }
+    case SET_CHECKLIST_ITEM: {
+        const setAction = action as SetChecklistItem;
+        const newList = state[action.channelId] ? {...state[action.channelId]} : emptyChecklist();
+        newList.items = [...newList.items];
+        const newItem = setAction.item;
+        const index = newList.items.findIndex((it) => it.id === newItem.id);
+        if (index === -1) {
+            newList.items.push(newItem);
+        } else {
+            newList.items[index] = newItem;
+        }
+
+        return {
+            ...state,
+            [action.channelId]: newList,
+        };
+    }
     default:
         return state;
     }

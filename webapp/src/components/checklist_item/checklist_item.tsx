@@ -30,7 +30,6 @@ interface ChecklistItemProps {
     checklistNum: number;
     itemNum: number;
     referenceID?: string;
-    onChange?: (id:string, state: ChecklistItemState) => void;
     draggableProvided?: DraggableProvided;
     dragging: boolean;
     disabled: boolean;
@@ -64,6 +63,15 @@ export const ChecklistItem = (props: ChecklistItemProps): React.ReactElement => 
         setCommand(props.checklistItem.command);
         setDueDate(props.checklistItem.due_date);
     }, [props.checklistItem]);
+
+    const onStateChange = async (state: ChecklistItemState) => {
+        if (props.newItem) {
+            return;
+        }
+        const newItem = {...props.checklistItem};
+        newItem.state = state;
+        onUpdateChecklistItem?.(newItem, referenceID);
+    };
 
     const onAssigneeChange = async (userType?: string, user?: UserProfile) => {
         setShowMenu(false);
@@ -203,7 +211,7 @@ export const ChecklistItem = (props: ChecklistItemProps): React.ReactElement => 
                         isSkipped={props.checklistItem.state === ChecklistItemState.Skip}
                         onEdit={() => setIsEditing(true)}
                         isEditing={isEditing}
-                        onChange={(state: ChecklistItemState) => props.onChange?.(props.checklistItem.id, state)}
+                        onChange={onStateChange}
                         description={props.checklistItem.description}
                         showDescription={showDescription}
                         toggleDescription={toggleDescription}
@@ -225,7 +233,7 @@ export const ChecklistItem = (props: ChecklistItemProps): React.ReactElement => 
                 <CheckBoxButton
                     disabled={props.disabled || props.checklistItem.state === ChecklistItemState.Skip}
                     item={props.checklistItem}
-                    onChange={(item: ChecklistItemState) => props.onChange?.(props.checklistItem.id, item)}
+                    onChange={onStateChange}
                 />
                 <ChecklistItemTitleWrapper
                     onClick={() => props.collapsibleDescription && props.checklistItem.description !== '' && toggleDescription()}

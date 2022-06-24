@@ -1,5 +1,5 @@
 import {pluginId} from './manifest';
-import {Checklist, ChecklistItemsFilter} from './types/checklist';
+import {Checklist, ChecklistItem, ChecklistItemsFilter} from './types/checklist';
 
 export const VOICE_CHANNEL_ENABLE = pluginId + '_voice_channel_enable';
 export const VOICE_CHANNEL_DISABLE = pluginId + '_voice_channel_disable';
@@ -40,6 +40,7 @@ export const SET_CHECKLIST_COLLAPSED_STATE = pluginId + '_set_checklist_collapse
 export const SET_ALL_CHECKLISTS_COLLAPSED_STATE = pluginId + '_set_all_checklists_collapsed_state';
 export const SET_CHECKLIST_ITEMS_FILTER = pluginId + '_set_checklist_items_filter';
 export const SET_CHECKLIST = pluginId + '_set_checklist';
+export const SET_CHECKLIST_ITEM = pluginId + '_set_checklist_item';
 
 export interface SetChecklistCollapsedState {
     type: typeof SET_CHECKLIST_COLLAPSED_STATE;
@@ -71,4 +72,10 @@ export interface SetChecklist {
     type: typeof SET_CHECKLIST;
     channelId: string;
     nextState: Checklist;
+}
+
+export interface SetChecklistItem {
+    type: typeof SET_CHECKLIST;
+    channelId: string;
+    item: ChecklistItem;
 }

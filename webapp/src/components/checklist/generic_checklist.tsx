@@ -32,7 +32,7 @@ interface Props {
     checklist: Checklist;
     checklistIndex: number;
     onUpdateChecklist: (newChecklist: Checklist) => void;
-    onChecklistItemStateChanged: (id: string, state: ChecklistItemState) => void;
+    onUpdateChecklistItem: (newItem: ChecklistItem, index: number) => void;
 }
 
 const GenericChecklist = (props: Props) => {
@@ -83,13 +83,14 @@ const GenericChecklist = (props: Props) => {
         return true;
     };
 
+    /*
     const onUpdateChecklistItem = (index: number, newItem: ChecklistItem) => {
         const newChecklistItems = [...props.checklist.items];
         newChecklistItems[index] = newItem;
         const newChecklist = {...props.checklist};
         newChecklist.items = newChecklistItems;
         props.onUpdateChecklist(newChecklist);
-    };
+    };*/
 
     const onAddChecklistItem = (newItem: ChecklistItem) => {
         const newChecklistItems = [...props.checklist.items];
@@ -149,8 +150,7 @@ const GenericChecklist = (props: Props) => {
                                     cancelAddingItem={() => {
                                         setAddingItem(false);
                                     }}
-                                    onChange={props.onChecklistItemStateChanged}
-                                    onUpdateChecklistItem={(newItem: ChecklistItem) => onUpdateChecklistItem(index, newItem)}
+                                    onUpdateChecklistItem={(newItem: ChecklistItem) => props.onUpdateChecklistItem(newItem, index)}
                                     onDuplicateChecklistItem={() => onDuplicateChecklistItem(index)}
                                     onDeleteChecklistItem={() => onDeleteChecklistItem(index)}
                                 />
