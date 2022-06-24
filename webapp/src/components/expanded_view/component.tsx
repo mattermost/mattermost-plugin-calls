@@ -21,7 +21,6 @@ import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import ParticipantsIcon from '../../components/icons/participants';
 
 import './component.scss';
-import ExpandIcon from '../icons/expand';
 import {logErr} from 'src/log';
 
 interface Props {
@@ -40,7 +39,7 @@ interface Props {
     screenSharingID: string,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
-    integrations: any,
+    integrations?: any[],
     postId: string,
 }
 
@@ -458,6 +457,52 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
 
+        let integrationsButton;
+        if (this.props.integrations?.length === 1) {
+            const integration = this.props.integrations[0];
+            integrationsButton = (
+                <>
+                    <button
+                        className='button-center-controls'
+                        onClick={() => this.runIntegrationAction(integration)}
+                        style={{background: this.state.showIntegrations ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : '', width: '68px', height: '68px'}}
+                    >
+                        <CompassIcon
+                            icon={integration.icon || 'apps'}
+                            className={'expanded-integrations-icon'}
+                            style={{color: this.state.showIntegrations ? 'rgba(var(--dnd-indicator-rgb))' : 'white'}}
+                        />
+                    </button>
+                    <span
+                        style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                    >
+                        {integration.text}
+                    </span>
+                </>
+            );
+        } else {
+            integrationsButton = (
+                <>
+                    <button
+                        className='button-center-controls'
+                        onClick={() => this.setState({showIntegrations: !this.state.showIntegrations})}
+                        style={{background: this.state.showIntegrations ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : '', width: '68px', height: '68px'}}
+                    >
+                        <CompassIcon
+                            icon='apps'
+                            className={'expanded-integrations-icon'}
+                            style={{color: this.state.showIntegrations ? 'rgba(var(--dnd-indicator-rgb))' : 'white'}}
+                        />
+                    </button>
+                    <span
+                        style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                    >
+                        {'Integrations'}
+                    </span>
+                    {this.renderIntegrations()}
+                </>
+            );
+        }
         return (
             <div
                 id='calls-expanded-view'
@@ -544,22 +589,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 >{raiseHandText}</span>
                             </div>
                             <div style={{...style.buttonContainer, position: 'relative'} as CSSProperties}>
-                                <button
-                                    className='button-center-controls'
-                                    onClick={() => this.setState({showIntegrations: !this.state.showIntegrations})}
-                                    style={{background: this.state.showIntegrations ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}}
-                                >
-                                    <ExpandIcon
-                                        style={{width: '28px', height: '28px'}}
-                                        fill={this.state.showIntegrations ? 'rgb(var(--dnd-indicator-rgb))' : 'white'}
-                                    />
-                                </button>
-                                <span
-                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                                >
-                                    {'Integrations'}
-                                </span>
-                                {this.renderIntegrations()}
+                                {integrationsButton}
                             </div>
                             { (isSharing || !sharingID) &&
                             <div style={style.buttonContainer as CSSProperties}>

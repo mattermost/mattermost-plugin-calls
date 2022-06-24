@@ -907,6 +907,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {!hasTeamSidebar && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
+                    <div style={{width: '100%', borderTop: '1px', borderTopStyle: 'solid', borderTopColor: changeOpacity(this.props.theme.centerChannelColor, 0.16), marginTop: '5px', marginBottom: '5px'}}/>
                     {this.renderIntegrations()}
                 </ul>
             </div>
@@ -914,6 +915,43 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     renderIntegrations = () => {
+        if (!this.props.integrations) {
+            return (
+                <li
+                    className='MenuItem'
+                >
+                    <div style={{display: 'flex', flexDirection: 'column'}}>
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%'}}>
+                            <CompassIcon
+                                icon='apps'
+                                className='integrations-icon'
+                            />
+                            <span
+                                className='MenuItem__primary-text'
+                                style={{padding: '0'}}
+                            >{'Integrations'}</span>
+
+                        </div>
+                        <span
+                            style={{
+                                color: changeOpacity(this.props.theme.centerChannelColor, 0.56),
+                                fontSize: '12px',
+                                width: '100%',
+                                whiteSpace: 'normal',
+                                lineHeight: '16px',
+                            }}
+                        >
+                            {'Ask your system administrator to install plugins integrated with calls like Matterpoll'}
+                        </span>
+                    </div>
+                </li>
+            );
+        }
+
+        if (this.props.integrations.length === 1) {
+            return this.renderIntegrationsItem(this.props.integrations[0], true);
+        }
+
         const onClickHandler = () => {
             this.setState({...clearSubmenusState, showIntegrations: !this.state.showIntegrations});
         };
@@ -931,8 +969,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         onClick={onClickHandler}
                     >
                         <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%'}}>
-                            <ExpandIcon
-                                style={{width: '14px', height: '14px', marginRight: '8px', fill: changeOpacity(this.props.theme.centerChannelColor, 0.56)}}
+                            <CompassIcon
+                                icon='apps'
+                                className='integrations-icon'
                             />
                             <span
                                 className='MenuItem__primary-text'
@@ -963,33 +1002,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        let content;
-        if (this.props.integrations?.length) {
-            content = this.props.integrations?.map((integration: any) => {
-                return (
-                    <li
-                        className='MenuItem'
-                        key={`integration-${integration.pluginId}-${integration.text}`}
-                    >
-                        <button
-                            className='style--none'
-                            onClick={() => this.runIntegrationAction(integration)}
-                        >
-                            <span style={{color: changeOpacity(this.props.theme.centerChannelColor, 0.56), fontSize: '12px', width: '100%'}}>{integration.text}</span>
-                        </button>
-                    </li>
-                );
-            });
-        } else {
-            content = (
-                <li
-                    className='MenuItem'
-                    key={'integration-no-integrations'}
-                >
-                    <span style={{color: changeOpacity(this.props.theme.centerChannelColor, 0.56), fontSize: '12px', width: '100%', paddingLeft: '12px', paddingRight: '12px'}}>{'Ask your system administrator to install plugins integrated with calls like Matterpoll'}</span>
-                </li>
-            );
-        }
+        const content = this.props.integrations?.map((integration: any) => {
+            return this.renderIntegrationsItem(integration);
+        });
+
         return (
             <div className='Menu'>
                 <ul
@@ -1000,6 +1016,29 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {content}
                 </ul>
             </div>
+        );
+    }
+
+    renderIntegrationsItem = (integration: any, isMain = false) => {
+        const spanClass = isMain ? 'MenuItem__primary-text' : '';
+        const spanStyle = isMain ? {} : {color: changeOpacity(this.props.theme.centerChannelColor, 0.56), fontSize: '12px', width: '100%'};
+        return (
+            <li
+                className='MenuItem'
+                key={`integration-${integration.pluginId}-${integration.text}`}
+            >
+                <button
+                    className='style--none'
+                    onClick={() => this.runIntegrationAction(integration)}
+                >
+                    <span
+                        className={spanClass}
+                        style={spanStyle}
+                    >
+                        {integration.text}
+                    </span>
+                </button>
+            </li>
         );
     }
 
