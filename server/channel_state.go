@@ -115,7 +115,7 @@ func (p *Plugin) cleanUpState() error {
 				continue
 			}
 
-			if len(k) < 26 {
+			if len(k) != 26 {
 				continue
 			}
 

@@ -37,7 +37,10 @@ import {
     SetChecklistCollapsedState,
     SET_CHECKLIST,
     SetChecklist,
+    SetChecklistItem,
+    SET_CHECKLIST_ITEM,
 } from './action_types';
+import {ChecklistItem} from './types/checklist';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
     dispatch({
@@ -189,5 +192,28 @@ export const getAgendaForChannel = (channelId: string) => {
                 }],
             },
         } as SetChecklist);
+    };
+};
+
+export const updateAgendaItemForChannel = (channelId: string, item: ChecklistItem) => {
+    return async (dispatch: DispatchFunc) => {
+        // const item = await client.updateAgendaItemForChannel(channelId, item)
+        dispatch({
+            type: SET_CHECKLIST_ITEM,
+            channelId,
+            item,
+        } as SetChecklistItem);
+    };
+};
+
+export const addAgendaItemToChannel = (channelId: string, item: ChecklistItem) => {
+    return async (dispatch: DispatchFunc) => {
+        // const item = await client.addAgendaItemToChannel(channelId, item)
+
+        dispatch({
+            type: SET_CHECKLIST_ITEM,
+            channelId,
+            item,
+        } as SetChecklistItem);
     };
 };

@@ -19,6 +19,7 @@ import (
 
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
 var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
+var agendaGetRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)$`)
 
 type Call struct {
 	ID              string      `json:"id"`
@@ -403,6 +404,55 @@ func (p *Plugin) handleConfig(w http.ResponseWriter) error {
 	return nil
 }
 
+type Agenda struct {
+	Title string        `json:"title"`
+	Items []*AgendaItem `json:"items"`
+}
+
+type AgendaItem struct {
+	ID             string `json:"id"`
+	Title          string `json:"title"`
+	Description    string `json:"description"`
+	State          string `json:"state"`
+	AssigneeID     string `json:"assignee_id"`
+	Command        string `json:"command"`
+	CommandLastRun int64  `json:"command_last_run"`
+	DueDate        int64  `json:"due_date"`
+}
+
+func (p *Plugin) handleGetAgenda(w http.ResponseWriter, r *http.Request, channelID string) {
+	userID := r.Header.Get("Mattermost-User-Id")
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	agenda := &Agenda{
+		Title: "Agenda for " + channelID,
+		Items: []*AgendaItem{},
+	}
+
+	blocks, err := p.fbStore.GetUpnextCards(channelID)
+	if err != nil {
+		http.Error(w, "unable to get cards for agenda", http.StatusInternalServerError)
+		return
+	}
+	if len(blocks) > 0 {
+		agenda.Items = make([]*AgendaItem, len(blocks))
+		for i, block := range blocks {
+			agenda.Items[i] = &AgendaItem{
+				ID:    block.ID,
+				Title: block.Title,
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(agenda); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/version") {
 		p.handleGetVersion(w, r)
@@ -439,6 +489,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if matches := chRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handleGetChannel(w, r, matches[1])
+			return
+		}
+
+		if matches := agendaGetRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleGetAgenda(w, r, matches[1])
 			return
 		}
 	}
