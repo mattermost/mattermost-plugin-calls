@@ -13,7 +13,7 @@ import {getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors
 import {isDMChannel} from 'src/utils';
 
 import {CallsConfig} from 'src/types/types';
-import {ChecklistItemsFilterDefault, ChecklistItemsFilter} from 'src/types/checklist';
+import {ChecklistItemsFilterDefault, ChecklistItemsFilter, emptyChecklist, Checklist} from 'src/types/checklist';
 
 import {pluginId} from './manifest';
 
@@ -250,4 +250,8 @@ export const getProfileSetForChannel = (state: GlobalState, channelId: string) =
     const profileSet = state.entities.users.profilesInChannel[channelId];
     const profiles = getUsers(state);
     return sortAndInjectProfiles(profiles, profileSet);
+};
+
+export const checklistForChannel = (state: GlobalState, channelId: string): Checklist => {
+    return getPluginState(state).checklistsByChannel[channelId] || emptyChecklist();
 };

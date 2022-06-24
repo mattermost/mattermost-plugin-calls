@@ -1,10 +1,7 @@
 // Copyright (c) 2017-present Mattermost, Inc. All Rights Reserved.
 // See License for license information.
 
-import React from 'react';
 import styled from 'styled-components';
-
-import UpgradeBadge from 'src/components/backstage/upgrade_badge';
 
 export const Button = styled.button`
     display: inline-flex;
@@ -166,24 +163,6 @@ export const DestructiveButton = styled.button`
     :disabled {
         background: rgba(var(--center-channel-color-rgb), 0.08);
     }
-`;
-
-export type UpgradeButtonProps = React.ComponentProps<typeof PrimaryButton>;
-
-export const UpgradeButton = (props: UpgradeButtonProps) => {
-    const {children, ...rest} = props;
-    return (
-        <PrimaryButton {...rest}>
-            {children}
-            <PositionedUpgradeBadge/>
-        </PrimaryButton>
-    );
-};
-
-const PositionedUpgradeBadge = styled(UpgradeBadge)`
-    position: absolute;
-    top: -4px;
-    right: -6px;
 `;
 
 export const ButtonIcon = styled.button`

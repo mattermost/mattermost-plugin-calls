@@ -26,10 +26,13 @@ window['__react-beautiful-dnd-disable-dev-warnings'] = true;
 
 interface Props {
     extra?: any;
+    referenceID?: string;
     disabled?: boolean;
+    allowAddItem?: boolean;
     checklist: Checklist;
     checklistIndex: number;
     onUpdateChecklist: (newChecklist: Checklist) => void;
+    onChecklistItemStateChanged: (id: string, state: ChecklistItemState) => void;
 }
 
 const GenericChecklist = (props: Props) => {
@@ -113,7 +116,7 @@ const GenericChecklist = (props: Props) => {
         props.onUpdateChecklist(newChecklist);
     };
 
-    const keys = generateKeys(props.checklist.items.map((item) => props.playbookRun?.id + item.title));
+    const keys = generateKeys(props.checklist.items.map((item) => props.referenceID + item.title));
 
     return (
         <Droppable
@@ -137,7 +140,7 @@ const GenericChecklist = (props: Props) => {
                             return (
                                 <DraggableChecklistItem
                                     key={keys[index]}
-                                    playbookRun={props.playbookRun}
+                                    referenceID={props.referenceID}
                                     disabled={props.disabled}
                                     checklistIndex={props.checklistIndex}
                                     item={checklistItem}
@@ -146,6 +149,7 @@ const GenericChecklist = (props: Props) => {
                                     cancelAddingItem={() => {
                                         setAddingItem(false);
                                     }}
+                                    onChange={props.onChecklistItemStateChanged}
                                     onUpdateChecklistItem={(newItem: ChecklistItem) => onUpdateChecklistItem(index, newItem)}
                                     onDuplicateChecklistItem={() => onDuplicateChecklistItem(index)}
                                     onDeleteChecklistItem={() => onDeleteChecklistItem(index)}
@@ -155,7 +159,7 @@ const GenericChecklist = (props: Props) => {
                         {addingItem &&
                             <DraggableChecklistItem
                                 key={'new_checklist_item'}
-                                playbookRun={props.playbookRun}
+                                referenceID={props.referenceID}
                                 disabled={false}
                                 checklistIndex={props.checklistIndex}
                                 item={emptyChecklistItem()}
@@ -169,7 +173,7 @@ const GenericChecklist = (props: Props) => {
                         }
                         {droppableProvided.placeholder}
                     </div>
-                    {props.playbookRun?.current_status !== PlaybookRunStatus.Finished &&
+                    {props.allowAddItem &&
                         <AddTaskLink
                             disabled={props.disabled}
                             onClick={() => {
@@ -180,7 +184,7 @@ const GenericChecklist = (props: Props) => {
                             <IconWrapper>
                                 <i className='icon icon-plus'/>
                             </IconWrapper>
-                            {formatMessage({defaultMessage: 'Add a task'})}
+                            {formatMessage({defaultMessage: 'Add an item'})}
                         </AddTaskLink>
                     }
                 </ChecklistContainer>

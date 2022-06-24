@@ -30,7 +30,7 @@ interface ChecklistItemProps {
     checklistNum: number;
     itemNum: number;
     referenceID?: string;
-    onChange?: (item: ChecklistItemState) => void;
+    onChange?: (id:string, state: ChecklistItemState) => void;
     draggableProvided?: DraggableProvided;
     dragging: boolean;
     disabled: boolean;
@@ -203,7 +203,7 @@ export const ChecklistItem = (props: ChecklistItemProps): React.ReactElement => 
                         isSkipped={props.checklistItem.state === ChecklistItemState.Skip}
                         onEdit={() => setIsEditing(true)}
                         isEditing={isEditing}
-                        onChange={props.onChange}
+                        onChange={(state: ChecklistItemState) => props.onChange?.(props.checklistItem.id, state)}
                         description={props.checklistItem.description}
                         showDescription={showDescription}
                         toggleDescription={toggleDescription}
@@ -225,7 +225,7 @@ export const ChecklistItem = (props: ChecklistItemProps): React.ReactElement => 
                 <CheckBoxButton
                     disabled={props.disabled || props.checklistItem.state === ChecklistItemState.Skip}
                     item={props.checklistItem}
-                    onChange={(item: ChecklistItemState) => props.onChange?.(item)}
+                    onChange={(item: ChecklistItemState) => props.onChange?.(props.checklistItem.id, item)}
                 />
                 <ChecklistItemTitleWrapper
                     onClick={() => props.collapsibleDescription && props.checklistItem.description !== '' && toggleDescription()}
@@ -263,6 +263,7 @@ export const ChecklistItem = (props: ChecklistItemProps): React.ReactElement => 
                         if (props.newItem) {
                             props.cancelAddingItem?.();
                             const newItem = {
+                                id: '',
                                 title: titleValue,
                                 command,
                                 description: descValue,

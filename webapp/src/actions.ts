@@ -34,6 +34,9 @@ import {
     HIDE_END_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
     SET_CHECKLIST_COLLAPSED_STATE,
+    SetChecklistCollapsedState,
+    SET_CHECKLIST,
+    SetChecklist,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -168,3 +171,23 @@ export const setChecklistCollapsedState = (channelId: string, checklistIndex: nu
     checklistIndex,
     collapsed,
 });
+
+export const getAgendaForChannel = (channelId: string) => {
+    return async (dispatch: DispatchFunc) => {
+        dispatch({
+            type: SET_CHECKLIST,
+            channelId,
+            nextState: {
+                title: 'Test Agenda 1',
+                items: [{
+                    title: 'Discuss Z',
+                    description: '',
+                    state: '',
+                    command: '',
+                    command_last_run: 0,
+                    due_date: 0,
+                }],
+            },
+        } as SetChecklist);
+    };
+};

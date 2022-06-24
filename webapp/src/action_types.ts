@@ -1,4 +1,5 @@
 import {pluginId} from './manifest';
+import {Checklist, ChecklistItemsFilter} from './types/checklist';
 
 export const VOICE_CHANNEL_ENABLE = pluginId + '_voice_channel_enable';
 export const VOICE_CHANNEL_DISABLE = pluginId + '_voice_channel_disable';
@@ -34,5 +35,40 @@ export const HIDE_END_CALL_MODAL = pluginId + '_hide_end_call_modal';
 
 export const RECEIVED_CALLS_CONFIG = pluginId + '_received_calls_config';
 
+export const SET_EACH_CHECKLIST_COLLAPSED_STATE = pluginId + '_set_every_checklist_collapsed_state';
 export const SET_CHECKLIST_COLLAPSED_STATE = pluginId + '_set_checklist_collapsed_state';
+export const SET_ALL_CHECKLISTS_COLLAPSED_STATE = pluginId + '_set_all_checklists_collapsed_state';
+export const SET_CHECKLIST_ITEMS_FILTER = pluginId + '_set_checklist_items_filter';
+export const SET_CHECKLIST = pluginId + '_set_checklist';
 
+export interface SetChecklistCollapsedState {
+    type: typeof SET_CHECKLIST_COLLAPSED_STATE;
+    channelId: string;
+    checklistIndex: number;
+    collapsed: boolean;
+}
+
+export interface SetEachChecklistCollapsedState {
+    type: typeof SET_EACH_CHECKLIST_COLLAPSED_STATE;
+    channelId: string;
+    state: Record<number, boolean>;
+}
+
+export interface SetAllChecklistsCollapsedState {
+    type: typeof SET_ALL_CHECKLISTS_COLLAPSED_STATE;
+    channelId: string;
+    numOfChecklists: number;
+    collapsed: boolean;
+}
+
+export interface SetChecklistItemsFilter {
+    type: typeof SET_CHECKLIST_ITEMS_FILTER;
+    channelId: string;
+    nextState: ChecklistItemsFilter;
+}
+
+export interface SetChecklist {
+    type: typeof SET_CHECKLIST;
+    channelId: string;
+    nextState: Checklist;
+}

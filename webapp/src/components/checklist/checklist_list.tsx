@@ -41,14 +41,15 @@ window['__react-beautiful-dnd-disable-dev-warnings'] = true;
 
 interface Props {
     checklists: Checklist[];
-    extra: any;
+    extra?: any;
     referenceID?: string;
     finished?: boolean;
     archived?: boolean;
     onChecklistsUpdated: (newChecklists: Checklist[]) => void;
+    onChecklistItemStateChanged: (id: string, state: ChecklistItemState) => void;
 }
 
-const ChecklistList = ({checklists, extra, referenceID, finished, archived, onChecklistsUpdated}: Props) => {
+const ChecklistList = ({checklists, extra, referenceID, finished, archived, onChecklistsUpdated, onChecklistItemStateChanged}: Props) => {
     const dispatch = useDispatch();
     const {formatMessage} = useIntl();
     const channelId = useSelector(getCurrentChannelId);
@@ -254,6 +255,7 @@ const ChecklistList = ({checklists, extra, referenceID, finished, archived, onCh
                                                     checklist={checklist}
                                                     checklistIndex={checklistIndex}
                                                     onUpdateChecklist={(newChecklist: Checklist) => onUpdateChecklist(checklistIndex, newChecklist)}
+                                                    onChecklistItemStateChanged={onChecklistItemStateChanged}
                                                 />
                                             </CollapsibleChecklist>
                                         );

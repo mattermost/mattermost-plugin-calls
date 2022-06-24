@@ -14,6 +14,7 @@ export enum ChecklistItemState {
 }
 
 export interface ChecklistItem {
+    id: string;
     title: string;
     description: string;
     state: ChecklistItemState | string;
@@ -52,6 +53,7 @@ export function emptyChecklist(): Checklist {
 
 export function emptyChecklistItem(): ChecklistItem {
     return {
+        id: '',
         title: '',
         state: ChecklistItemState.Open,
         command: '',
@@ -61,7 +63,8 @@ export function emptyChecklistItem(): ChecklistItem {
     };
 }
 
-export const newChecklistItem = (title = '', description = '', command = '', state = ChecklistItemState.Open): ChecklistItem => ({
+export const newChecklistItem = (id = '', title = '', description = '', command = '', state = ChecklistItemState.Open): ChecklistItem => ({
+    id,
     title,
     description,
     command,

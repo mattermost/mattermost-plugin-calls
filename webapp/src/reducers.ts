@@ -1,7 +1,10 @@
+/* eslint-disable max-lines */
+
 import {combineReducers} from 'redux';
 
 import {UserProfile} from '@mattermost/types/users';
 
+import {Checklist, ChecklistItemsFilter} from './types/checklist';
 import {CallsConfigDefault, CallsConfig, UserState} from './types/types';
 
 import {
@@ -36,6 +39,16 @@ import {
     RECEIVED_CALLS_CONFIG,
     SHOW_END_CALL_MODAL,
     HIDE_END_CALL_MODAL,
+    SET_CHECKLIST_ITEMS_FILTER,
+    SetChecklistCollapsedState,
+    SetAllChecklistsCollapsedState,
+    SetEachChecklistCollapsedState,
+    SET_CHECKLIST_COLLAPSED_STATE,
+    SET_ALL_CHECKLISTS_COLLAPSED_STATE,
+    SET_EACH_CHECKLIST_COLLAPSED_STATE,
+    SetChecklistItemsFilter,
+    SetChecklist,
+    SET_CHECKLIST,
 } from './action_types';
 
 const isVoiceEnabled = (state = false, action: { type: string }) => {
@@ -512,6 +525,72 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
     }
 };
 
+const checklistsByChannel = (state: Record<string, Checklist> = {}, action: SetChecklist) => {
+    switch (action.type) {
+    case SET_CHECKLIST:
+        return {
+            ...state,
+            [action.channelId]: action.nextState,
+        };
+    default:
+        return state;
+    }
+};
+
+const checklistItemsFilterByChannel = (state: Record<string, ChecklistItemsFilter> = {}, action: SetChecklistItemsFilter) => {
+    switch (action.type) {
+    case SET_CHECKLIST_ITEMS_FILTER:
+        return {
+            ...state,
+            [action.channelId]: action.nextState,
+        };
+    default:
+        return state;
+    }
+};
+
+// checklistCollapsedState keeps a map of channelId -> checklist number -> collapsed
+const checklistCollapsedState = (
+    state: Record<string, Record<number, boolean>> = {},
+    action:
+    | SetChecklistCollapsedState
+    | SetAllChecklistsCollapsedState
+    | SetEachChecklistCollapsedState,
+) => {
+    switch (action.type) {
+    case SET_CHECKLIST_COLLAPSED_STATE: {
+        const setAction = action as SetChecklistCollapsedState;
+        return {
+            ...state,
+            [setAction.channelId]: {
+                ...state[setAction.channelId],
+                [setAction.checklistIndex]: setAction.collapsed,
+            },
+        };
+    }
+    case SET_ALL_CHECKLISTS_COLLAPSED_STATE: {
+        const setAction = action as SetAllChecklistsCollapsedState;
+        const newState: Record<number, boolean> = {};
+        for (let i = 0; i < setAction.numOfChecklists; i++) {
+            newState[i] = setAction.collapsed;
+        }
+        return {
+            ...state,
+            [setAction.channelId]: newState,
+        };
+    }
+    case SET_EACH_CHECKLIST_COLLAPSED_STATE: {
+        const setAction = action as SetEachChecklistCollapsedState;
+        return {
+            ...state,
+            [setAction.channelId]: setAction.state,
+        };
+    }
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     isVoiceEnabled,
     voiceConnectedChannels,
@@ -527,4 +606,7 @@ export default combineReducers({
     screenSourceModal,
     voiceChannelRootPost,
     callsConfig,
+    checklistItemsFilterByChannel,
+    checklistCollapsedState,
+    checklistsByChannel,
 });

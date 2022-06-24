@@ -1,3 +1,5 @@
+/* eslint-disable max-lines */
+
 import React, {CSSProperties} from 'react';
 import moment from 'moment-timezone';
 import {compareSemVer} from 'semver-parser';
@@ -19,6 +21,9 @@ import ScreenIcon from '../../components/icons/screen_icon';
 import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import ParticipantsIcon from '../../components/icons/participants';
+import ShowMoreIcon from '../../components/icons/show_more';
+
+import AgendaComponent from 'src/components/agenda';
 
 import './component.scss';
 
@@ -40,10 +45,16 @@ interface Props {
     connectedDMUser: UserProfile | undefined,
 }
 
+enum RHSState {
+    Closed = 'closed',
+    Participants = 'participants',
+    Agenda = 'agenda',
+}
+
 interface State {
     intervalID?: NodeJS.Timer,
     screenStream: MediaStream | null,
-    showParticipantsList: boolean,
+    rhsState: RHSState,
 }
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
@@ -54,7 +65,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.screenPlayer = React.createRef();
         this.state = {
             screenStream: null,
-            showParticipantsList: false,
+            rhsState: RHSState.Closed,
         };
 
         if (window.opener) {
@@ -124,8 +135,22 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onParticipantsListToggle = () => {
+        if (this.state.rhsState === RHSState.Participants) {
+            this.setState({rhsState: RHSState.Closed});
+            return;
+        }
         this.setState({
-            showParticipantsList: !this.state.showParticipantsList,
+            rhsState: RHSState.Participants,
+        });
+    }
+
+    onAgendaToggle = () => {
+        if (this.state.rhsState === RHSState.Agenda) {
+            this.setState({rhsState: RHSState.Closed});
+            return;
+        }
+        this.setState({
+            rhsState: RHSState.Agenda,
         });
     }
 
@@ -439,7 +464,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     <Tooltip
                                         id='show-participants-list'
                                     >
-                                        {this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list'}
+                                        {this.state.rhsState === RHSState.Participants ? 'Hide participants list' : 'Show participants list'}
                                     </Tooltip>
                                 }
                             >
@@ -447,11 +472,34 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onParticipantsListToggle}
-                                    style={{background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}}
+                                    style={{background: this.state.rhsState === RHSState.Participants ? 'rgba(28, 88, 217, 0.32)' : ''}}
                                 >
                                     <ParticipantsIcon
                                         style={{width: '24px', height: '24px'}}
-                                        fill={this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white'}
+                                        fill={this.state.rhsState === RHSState.Participants ? 'rgb(28, 88, 217)' : 'white'}
+                                    />
+                                </button>
+                            </OverlayTrigger>
+                            <OverlayTrigger
+                                key='show_agenda'
+                                placement='top'
+                                overlay={
+                                    <Tooltip
+                                        id='show-agenda'
+                                    >
+                                        {this.state.rhsState === RHSState.Agenda ? 'Hide agenda' : 'Show agenda'}
+                                    </Tooltip>
+                                }
+                            >
+
+                                <button
+                                    className='button-center-controls'
+                                    onClick={this.onAgendaToggle}
+                                    style={{background: this.state.rhsState === RHSState.Agenda ? 'rgba(28, 88, 217, 0.32)' : ''}}
+                                >
+                                    <ShowMoreIcon
+                                        style={{width: '24px', height: '24px'}}
+                                        fill={this.state.rhsState === RHSState.Agenda ? 'rgb(28, 88, 217)' : 'white'}
                                     />
                                 </button>
                             </OverlayTrigger>
@@ -536,10 +584,20 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
                     </div>
                 </div>
-                { this.state.showParticipantsList &&
+                { this.state.rhsState !== RHSState.Closed &&
                 <ul style={style.rhs as CSSProperties}>
-                    <span style={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Participants list'}</span>
-                    { this.renderParticipantsRHSList() }
+                    {this.state.rhsState === RHSState.Participants &&
+                        <>
+                            <span style={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Participants list'}</span>
+                            {this.renderParticipantsRHSList()}
+                        </>
+                    }
+                    {this.state.rhsState === RHSState.Agenda &&
+                        <>
+                            <span style={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Agenda'}</span>
+                            <AgendaComponent channelId={this.props.channel.id}/>
+                        </>
+                    }
                 </ul>
                 }
             </div>
@@ -619,7 +677,7 @@ const style = {
     rhs: {
         display: 'flex',
         flexDirection: 'column',
-        width: '300px',
+        width: '400px',
         background: 'rgba(9, 10, 11, 1)',
         margin: 0,
         padding: 0,
