@@ -21,6 +21,8 @@ import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import ParticipantsIcon from '../../components/icons/participants';
 
 import './component.scss';
+import ExpandIcon from '../icons/expand';
+import {logErr} from 'src/log';
 
 interface Props {
     show: boolean,
@@ -38,12 +40,15 @@ interface Props {
     screenSharingID: string,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
+    integrations: any,
+    postId: string,
 }
 
 interface State {
     intervalID?: NodeJS.Timer,
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
+    showIntegrations: boolean,
 }
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
@@ -55,6 +60,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.state = {
             screenStream: null,
             showParticipantsList: false,
+            showIntegrations: false,
         };
 
         if (window.opener) {
@@ -367,6 +373,68 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         });
     }
 
+    runIntegrationAction = (integration: any) => {
+        try {
+            integration.action(this.props.channel.team_id, this.props.channel.id, this.props.postId);
+        } catch (e) {
+            logErr(integration.pluginId, `failed to execute action ${integration.text}`);
+        }
+
+        this.setState({showIntegrations: false});
+    }
+
+    renderIntegrations = () => {
+        if (!this.state.showIntegrations) {
+            return null;
+        }
+
+        let content;
+        if (this.props.integrations?.length) {
+            content = this.props.integrations?.map((integration: any) => {
+                return (
+                    <li
+                        className='MenuItem'
+                        key={`integration-${integration.pluginId}-${integration.text}`}
+                    >
+                        <button
+                            className='style--none'
+                            onClick={() => this.runIntegrationAction(integration)}
+                        >
+                            <span style={{color: '#000', fontSize: '12px', width: '100%'}}>{integration.text}</span>
+                        </button>
+                    </li>
+                );
+            });
+        } else {
+            content = (
+                <li
+                    className='MenuItem'
+                    key={'integration-no-integrations'}
+                >
+                    <span style={{color: '#000', fontSize: '12px', width: '100%', paddingLeft: '12px', paddingRight: '12px'}}>{'Ask your system administrator to install plugins integrated with calls like Matterpoll'}</span>
+                </li>
+            );
+        }
+        return (
+            <div
+                className='Menu'
+                style={{
+                    position: 'absolute',
+                    bottom: 105,
+                    left: 12,
+                }}
+            >
+                <ul
+                    id={'calls-widget-integrations-menu'}
+                    className='Menu__content dropdown-menu'
+                    style={{position: 'static'}}
+                >
+                    {content}
+                </ul>
+            </div>
+        );
+    }
+
     render() {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
             return null;
@@ -475,7 +543,24 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
                                 >{raiseHandText}</span>
                             </div>
-
+                            <div style={{...style.buttonContainer, position: 'relative'} as CSSProperties}>
+                                <button
+                                    className='button-center-controls'
+                                    onClick={() => this.setState({showIntegrations: !this.state.showIntegrations})}
+                                    style={{background: this.state.showIntegrations ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}}
+                                >
+                                    <ExpandIcon
+                                        style={{width: '28px', height: '28px'}}
+                                        fill={this.state.showIntegrations ? 'rgb(var(--dnd-indicator-rgb))' : 'white'}
+                                    />
+                                </button>
+                                <span
+                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                                >
+                                    {'Integrations'}
+                                </span>
+                                {this.renderIntegrations()}
+                            </div>
                             { (isSharing || !sharingID) &&
                             <div style={style.buttonContainer as CSSProperties}>
                                 <button

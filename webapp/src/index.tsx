@@ -7,7 +7,7 @@ import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getMyChannelRoles, getMySystemRoles} from 'mattermost-redux/selectors/entities/roles';
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
-import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
+import {getChannel as getChannelAction, selectChannel} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
@@ -674,6 +674,7 @@ export default class Plugin {
                             currentUserID: getCurrentUserId(store.getState()),
                         },
                     });
+                    await store.dispatch(selectChannel(expandedID));
                     fetchChannelData(expandedID);
                 }
             }
