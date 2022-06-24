@@ -8,11 +8,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 
 	"github.com/mattermost/rtcd/service/rtc"
 
+	fbClient "github.com/mattermost/focalboard/server/client"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
+
+	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 func (p *Plugin) OnActivate() error {
@@ -125,6 +130,38 @@ func (p *Plugin) OnActivate() error {
 
 	go p.clusterEventsHandler()
 	go p.wsWriter()
+
+	botID, err := pluginAPIClient.Bot.EnsureBot(&model.Bot{
+		Username:    "calls",
+		DisplayName: "Calls Plugin Bot",
+		Description: "Created by the Calls plugin.",
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to ensure calls bot")
+	}
+	token := ""
+	rawToken, appErr := p.API.KVGet(BotTokenKey)
+	if appErr != nil {
+		return errors.Wrap(appErr, "failed to get stored bot access token")
+	}
+
+	if rawToken == nil {
+		accessToken, appErr := p.API.CreateUserAccessToken(&model.UserAccessToken{UserId: botID, Description: "For agenda plugin access to focalboard REST API"})
+		if appErr != nil {
+			return errors.Wrap(appErr, "failed to create access token for bot")
+		}
+		token = accessToken.Token
+		appErr = p.API.KVSet(BotTokenKey, []byte(token))
+		if appErr != nil {
+			return errors.Wrap(appErr, "failed to store bot access token")
+		}
+		p.API.LogDebug("created access token for bot")
+	} else {
+		token = string(rawToken)
+	}
+
+	client := fbClient.NewClient("http://localhost:8065/plugins/focalboard", token)
+	p.fbStore = NewFocalboardStore(p.API, client)
 
 	p.LogDebug("activated", "ClusterID", status.ClusterId)
 

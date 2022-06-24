@@ -19,11 +19,18 @@ import (
 	"github.com/mattermost/mattermost-server/v6/plugin"
 )
 
+const (
+	// BotTokenKey is the KV store key for the bot's access token, used for the Focalboard API
+	BotTokenKey = "bot_token"
+)
+
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
 type Plugin struct {
 	plugin.MattermostPlugin
 	pluginAPI      *pluginapi.Client
 	licenseChecker *enterprise.LicenseChecker
+
+	fbStore FocalboardStore
 
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
@@ -256,6 +263,9 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64, tit
 	if err != nil {
 		return "", err
 	}
+
+	// Gets or creates it not existing an Agenda board for this channel
+	p.fbStore.GetBoard(channelID, userID)
 
 	return createdPost.Id, nil
 }
