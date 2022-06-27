@@ -915,7 +915,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     renderIntegrations = () => {
-        if (!this.props.integrations) {
+        if (!this.props.integrations?.length) {
             return (
                 <li
                     className='MenuItem'
