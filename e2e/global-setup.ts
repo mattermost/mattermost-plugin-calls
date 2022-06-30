@@ -9,8 +9,10 @@ import {userState, baseURL, defaultTeam} from './constants';
 async function globalSetup(config: FullConfig) {
     const headers = {'X-Requested-With': 'XMLHttpRequest'};
 
-    const adminContext = await request.newContext();
-    await adminContext.post(`${baseURL}/api/v4/users/login`, {
+    const adminContext = await request.newContext({
+        baseURL,
+    });
+    await adminContext.post('/api/v4/users/login', {
         data: {
             login_id: userState.admin.username,
             password: userState.admin.password,
@@ -21,7 +23,7 @@ async function globalSetup(config: FullConfig) {
 
     // create and log users in.
     for (const user of userState.users) {
-        await adminContext.post(`${baseURL}/api/v4/users`, {
+        await adminContext.post('api/v4/users', {
             data: {
                 email: `${user.username}@example.com`,
                 username: user.username,
@@ -29,8 +31,10 @@ async function globalSetup(config: FullConfig) {
             },
             headers,
         });
-        const requestContext = await request.newContext();
-        await requestContext.post(`${baseURL}/api/v4/users/login`, {
+        const requestContext = await request.newContext({
+            baseURL,
+        });
+        await requestContext.post('/api/v4/users/login', {
             data: {
                 login_id: user.username,
                 password: user.password,
@@ -41,10 +45,10 @@ async function globalSetup(config: FullConfig) {
         await requestContext.dispose();
     }
 
-    let resp = await adminContext.get(`${baseURL}/api/v4/teams/name/${defaultTeam}`);
+    let resp = await adminContext.get(`/api/v4/teams/name/${defaultTeam}`);
     if (resp.status() >= 400) {
         // create team if missing.
-        resp = await adminContext.post(`${baseURL}/api/v4/teams`, {
+        resp = await adminContext.post('/api/v4/teams', {
             data: {
                 name: defaultTeam,
                 display_name: defaultTeam,
@@ -58,21 +62,21 @@ async function globalSetup(config: FullConfig) {
 
     // add users to team.
     for (const userInfo of userState.users) {
-        resp = await adminContext.get(`${baseURL}/api/v4/users/username/${userInfo.username}`);
+        resp = await adminContext.get(`/api/v4/users/username/${userInfo.username}`);
         const user = await resp.json();
-        await adminContext.post(`${baseURL}/api/v4/teams/${team.id}/members`, {
+        await adminContext.post(`/api/v4/teams/${team.id}/members`, {
             data: {
                 team_id: team.id,
                 user_id: user.id,
             },
             headers,
         });
-        await adminContext.put(`${baseURL}/api/v4/users/${user.id}/preferences`, {
+        await adminContext.put(`/api/v4/users/${user.id}/preferences`, {
             data: [{user_id: user.id, category: 'recommended_next_steps', name: 'skip', value: 'true'}],
             headers,
         });
 
-        await adminContext.post(`${baseURL}/api/v4/users/${user.id}/image`, {
+        await adminContext.post(`/api/v4/users/${user.id}/image`, {
             multipart: {
                 image: {
                     name: 'profile.png',
@@ -90,7 +94,7 @@ async function globalSetup(config: FullConfig) {
     for (let i = 0; i < config.workers * 2; i++) {
         const name = `calls${i}`;
         channels.push(name);
-        await adminContext.post(`${baseURL}/api/v4/channels`, {
+        await adminContext.post('/api/v4/channels', {
             data: {
                 team_id: team.id,
                 name,
@@ -103,12 +107,12 @@ async function globalSetup(config: FullConfig) {
 
     // add users to channels.
     for (const channelName of channels) {
-        resp = await adminContext.get(`${baseURL}/api/v4/teams/${team.id}/channels/name/${channelName}`);
+        resp = await adminContext.get(`/api/v4/teams/${team.id}/channels/name/${channelName}`);
         const channel = await resp.json();
         for (const userInfo of userState.users) {
-            resp = await adminContext.post(`${baseURL}/api/v4/users/usernames`, {data: [userInfo.username], headers});
+            resp = await adminContext.post('/api/v4/users/usernames', {data: [userInfo.username], headers});
             const users = await resp.json();
-            await adminContext.post(`${baseURL}/api/v4/channels/${channel.id}/members`, {
+            await adminContext.post(`/api/v4/channels/${channel.id}/members`, {
                 data: {
                     user_id: users[0].id,
                 },
@@ -119,9 +123,9 @@ async function globalSetup(config: FullConfig) {
 
     // enable calls.
     for (const channelName of channels) {
-        resp = await adminContext.get(`${baseURL}/api/v4/teams/${team.id}/channels/name/${channelName}`);
+        resp = await adminContext.get(`/api/v4/teams/${team.id}/channels/name/${channelName}`);
         const channel = await resp.json();
-        await adminContext.post(`${baseURL}/plugins/${plugin.id}/${channel.id}`, {
+        await adminContext.post(`/plugins/${plugin.id}/${channel.id}`, {
             data: {
                 enabled: true,
             },
@@ -130,8 +134,10 @@ async function globalSetup(config: FullConfig) {
     }
 
     // enable calls in DMs.
-    const userContext = await request.newContext();
-    await userContext.post(`${baseURL}/api/v4/users/login`, {
+    const userContext = await request.newContext({
+        baseURL,
+    });
+    await userContext.post('/api/v4/users/login', {
         data: {
             login_id: userState.users[0].username,
             password: userState.users[0].password,
@@ -139,11 +145,11 @@ async function globalSetup(config: FullConfig) {
         headers,
     });
     for (const userInfo of userState.users.slice(1)) {
-        resp = await userContext.post(`${baseURL}/api/v4/users/usernames`, {data: [userState.users[0].username, userInfo.username], headers});
+        resp = await userContext.post('/api/v4/users/usernames', {data: [userState.users[0].username, userInfo.username], headers});
         const users = await resp.json();
-        resp = await userContext.post(`${baseURL}/api/v4/channels/direct`, {data: [users[0].id, users[1].id], headers});
+        resp = await userContext.post('/api/v4/channels/direct', {data: [users[0].id, users[1].id], headers});
         const channel = await resp.json();
-        await userContext.post(`${baseURL}/plugins/${plugin.id}/${channel.id}`, {
+        await userContext.post(`/plugins/${plugin.id}/${channel.id}`, {
             data: {
                 enabled: true,
             },
