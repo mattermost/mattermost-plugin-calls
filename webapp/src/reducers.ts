@@ -79,9 +79,10 @@ const voiceConnectedProfiles = (state: connectedProfilesState = {}, action: conn
                 [action.data.channelID]: [action.data.profile],
             };
         }
+
         // avoid duplicates
         for (const profile of state[action.data.channelID]) {
-            if (profile.id === action.data.profile.id) {
+            if (profile.id === action.data.profile?.id) {
                 return state;
             }
         }
