@@ -382,22 +382,24 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
-	// send successful join response
-	p.metrics.IncWebSocketEvent("out", "join")
-	p.API.PublishWebSocketEvent(wsEventJoin, map[string]interface{}{
-		"connID": connID,
-	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
-	p.metrics.IncWebSocketEvent("out", "user_connected")
-	p.API.PublishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
-		"userID": userID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-	p.metrics.IncWebSocketConn(channelID)
-	defer p.metrics.DecWebSocketConn(channelID)
-	p.track(evCallUserJoined, map[string]interface{}{
-		"ParticipantID": userID,
-		"ChannelID":     channelID,
-		"CallID":        state.Call.ID,
-	})
+	defer func() {
+		p.LogDebug("removing session from state", "userID", userID)
+		if currState, prevState, err := p.removeUserSession(userID, connID, channelID); err != nil {
+			p.LogError(err.Error())
+		} else if currState.Call == nil && prevState.Call != nil {
+			// call has ended
+			if dur, err := p.updateCallThreadEnded(prevState.Call.ThreadID); err != nil {
+				p.LogError(err.Error())
+			} else {
+				p.track(evCallEnded, map[string]interface{}{
+					"ChannelID":    channelID,
+					"CallID":       prevState.Call.ID,
+					"Duration":     dur,
+					"Participants": prevState.Call.Stats.Participants,
+				})
+			}
+		}
+	}()
 
 	handlerID, err := p.getHandlerID()
 	p.LogDebug("got handlerID", "handlerID", handlerID)
@@ -419,24 +421,20 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 			},
 		}
 		if err := p.rtcdManager.Send(msg, channelID); err != nil {
-			p.LogError(fmt.Errorf("failed to send client message: %w", err).Error())
+			return fmt.Errorf("failed to send client join message: %w", err)
 		}
 	} else {
 		if handlerID == p.nodeID {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				cfg := rtc.SessionConfig{
-					GroupID:   "default",
-					CallID:    channelID,
-					UserID:    userID,
-					SessionID: connID,
-				}
-				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID)
-				if err = p.rtcServer.InitSession(cfg, nil); err != nil {
-					p.LogError(err.Error(), "connID", connID)
-				}
-			}()
+			cfg := rtc.SessionConfig{
+				GroupID:   "default",
+				CallID:    channelID,
+				UserID:    userID,
+				SessionID: connID,
+			}
+			p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID)
+			if err = p.rtcServer.InitSession(cfg, nil); err != nil {
+				return fmt.Errorf("failed to init session: %w", err)
+			}
 		} else {
 			if err := p.sendClusterMessage(clusterMessage{
 				ConnID:    connID,
@@ -444,10 +442,27 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 				ChannelID: channelID,
 				SenderID:  p.nodeID,
 			}, clusterMessageTypeConnect, handlerID); err != nil {
-				p.LogError(err.Error())
+				return fmt.Errorf("failed to send connect message: %w", err)
 			}
 		}
 	}
+
+	// send successful join response
+	p.metrics.IncWebSocketEvent("out", "join")
+	p.API.PublishWebSocketEvent(wsEventJoin, map[string]interface{}{
+		"connID": connID,
+	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
+	p.metrics.IncWebSocketEvent("out", "user_connected")
+	p.API.PublishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
+		"userID": userID,
+	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	p.metrics.IncWebSocketConn(channelID)
+	defer p.metrics.DecWebSocketConn(channelID)
+	p.track(evCallUserJoined, map[string]interface{}{
+		"ParticipantID": userID,
+		"ChannelID":     channelID,
+		"CallID":        state.Call.ID,
+	})
 
 	wg.Add(1)
 	go func() {
@@ -483,23 +498,6 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 		"CallID":        state.Call.ID,
 	})
 
-	p.LogDebug("removing session from state", "userID", userID)
-	if currState, prevState, err := p.removeUserSession(userID, connID, channelID); err != nil {
-		p.LogError(err.Error())
-	} else if currState.Call == nil && prevState.Call != nil {
-		// call has ended
-		if dur, err := p.updateCallThreadEnded(prevState.Call.ThreadID); err != nil {
-			p.LogError(err.Error())
-		} else {
-			p.track(evCallEnded, map[string]interface{}{
-				"ChannelID":    channelID,
-				"CallID":       prevState.Call.ID,
-				"Duration":     dur,
-				"Participants": prevState.Call.Stats.Participants,
-			})
-		}
-	}
-
 	return nil
 }
 
@@ -532,7 +530,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		title, _ := req.Data["title"].(string)
 		go func() {
 			if err := p.handleJoin(userID, connID, channelID, title); err != nil {
-				p.LogError(err.Error())
+				p.LogError(err.Error(), "userID", userID, "connID", connID, "channelID", channelID)
 				p.metrics.IncWebSocketEvent("out", "error")
 				p.API.PublishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
