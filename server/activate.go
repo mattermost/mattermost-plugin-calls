@@ -104,13 +104,15 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	rtcServerConfig := rtc.ServerConfig{
-		ICEPortUDP:                       *cfg.UDPServerPort,
-		ICEHostOverride:                  cfg.ICEHostOverride,
-		ICEServers:                       rtc.ICEServers(cfg.getICEServers(false)),
-		TURNCredentialsExpirationMinutes: *cfg.TURNCredentialsExpirationMinutes,
+		ICEPortUDP:      *cfg.UDPServerPort,
+		ICEHostOverride: cfg.ICEHostOverride,
+		ICEServers:      rtc.ICEServers(cfg.getICEServers(false)),
+		TURNConfig: rtc.TURNConfig{
+			CredentialsExpirationMinutes: *cfg.TURNCredentialsExpirationMinutes,
+		},
 	}
 	if *cfg.ServerSideTURN {
-		rtcServerConfig.TURNStaticAuthSecret = cfg.TURNStaticAuthSecret
+		rtcServerConfig.TURNConfig.StaticAuthSecret = cfg.TURNStaticAuthSecret
 	}
 	rtcServer, err := rtc.NewServer(rtcServerConfig, newLogger(p), p.metrics.RTCMetrics())
 	if err != nil {
