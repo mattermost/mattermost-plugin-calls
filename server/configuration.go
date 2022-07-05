@@ -4,12 +4,15 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 )
@@ -38,8 +41,11 @@ type configuration struct {
 }
 
 type clientConfig struct {
-	// A comma separated list of ICE servers URLs (STUN/TURN) to use.
+	// **DEPRECATED use ICEServersConfigs** A comma separated list of ICE servers URLs (STUN/TURN) to use.
 	ICEServers ICEServers
+
+	// A list of ICE server configurations to use.
+	ICEServersConfigs ICEServersConfigs
 	// When set to true, it allows channel admins to enable or disable calls in their channels.
 	// It also allows participants of DMs/GMs to enable or disable calls.
 	AllowEnableCalls *bool
@@ -51,6 +57,26 @@ type clientConfig struct {
 }
 
 type ICEServers []string
+type ICEServersConfigs rtc.ICEServers
+
+func (cfgs *ICEServersConfigs) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+	unquoted, err := strconv.Unquote(string(data))
+	if err != nil {
+		return err
+	}
+	if unquoted == "" {
+		return nil
+	}
+
+	var dst []rtc.ICEServerConfig
+	err = json.Unmarshal([]byte(unquoted), &dst)
+	*cfgs = dst
+
+	return err
+}
 
 func (is *ICEServers) UnmarshalJSON(data []byte) error {
 	*is = []string{}
@@ -114,6 +140,7 @@ func (c *configuration) getClientConfig() clientConfig {
 		AllowEnableCalls:    c.AllowEnableCalls,
 		DefaultEnabled:      c.DefaultEnabled,
 		ICEServers:          c.ICEServers,
+		ICEServersConfigs:   c.getICEServers(),
 		MaxCallParticipants: c.MaxCallParticipants,
 	}
 }
@@ -172,9 +199,12 @@ func (c *configuration) Clone() *configuration {
 
 	if c.ICEServers != nil {
 		cfg.ICEServers = make(ICEServers, len(c.ICEServers))
-		for i, u := range c.ICEServers {
-			cfg.ICEServers[i] = u
-		}
+		copy(cfg.ICEServers, c.ICEServers)
+	}
+
+	if c.ICEServersConfigs != nil {
+		cfg.ICEServersConfigs = make([]rtc.ICEServerConfig, len(c.ICEServersConfigs))
+		copy(cfg.ICEServersConfigs, c.ICEServersConfigs)
 	}
 
 	if c.MaxCallParticipants != nil {
@@ -290,4 +320,15 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 func (p *Plugin) isHAEnabled() bool {
 	cfg := p.API.GetConfig()
 	return cfg != nil && cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
+}
+
+func (c *configuration) getICEServers() ICEServersConfigs {
+	iceServers := c.ICEServersConfigs
+	if len(c.ICEServers) > 0 {
+		iceServers = append(iceServers, rtc.ICEServerConfig{
+			URLs: c.ICEServers,
+		})
+	}
+
+	return iceServers
 }

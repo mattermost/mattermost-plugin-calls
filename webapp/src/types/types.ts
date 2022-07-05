@@ -56,6 +56,7 @@ export type RTCRemoteOutboundStats = {
 
 export type CallsConfig = {
     ICEServers: string[],
+    ICEServersConfigs: RTCIceServer[],
     AllowEnableCalls: boolean,
     DefaultEnabled: boolean,
     MaxCallParticipants: number,
@@ -64,6 +65,7 @@ export type CallsConfig = {
 
 export const CallsConfigDefault = {
     ICEServers: [],
+    ICEServersConfigs: [],
     AllowEnableCalls: false,
     DefaultEnabled: false,
     MaxCallParticipants: 0,
@@ -72,5 +74,5 @@ export const CallsConfigDefault = {
 
 export type CallsClientConfig = {
     wsURL: string,
-    iceServers: string[],
+    iceServers: RTCIceServer[],
 }

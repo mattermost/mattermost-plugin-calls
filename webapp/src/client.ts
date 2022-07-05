@@ -160,11 +160,13 @@ export default class CallsClient extends EventEmitter {
 
         ws.on('join', async () => {
             logDebug('join ack received, initializing connection');
-            const iceServers = this.config.iceServers?.length > 0 ? [{urls: this.config.iceServers}] : [];
+
             const peer = new SimplePeer({
                 initiator: true,
                 trickle: true,
-                config: {iceServers},
+                config: {
+                    iceServers: this.config.iceServers || [],
+                },
             }) as SimplePeer.Instance;
 
             this.peer = peer;
