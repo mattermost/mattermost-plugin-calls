@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/time/rate"
+
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
@@ -42,6 +44,11 @@ type Plugin struct {
 
 	rtcServer   *rtc.Server
 	rtcdManager *rtcdClientManager
+
+	// A map of userID -> limiter to implement basic, user based API rate-limiting.
+	// TODO: consider moving this to a dedicated API object.
+	apiLimiters    map[string]*rate.Limiter
+	apiLimitersMut sync.RWMutex
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {

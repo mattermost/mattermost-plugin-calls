@@ -27,6 +27,7 @@ import {
     voiceChannelRootPost,
     allowEnableCalls,
     iceServers,
+    needsTURNCredentials,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -466,9 +467,20 @@ export default class Plugin {
                     return;
                 }
 
+                const iceConfigs = [...iceServers(store.getState())];
+                if (needsTURNCredentials(store.getState())) {
+                    logDebug('turn credentials needed');
+                    try {
+                        const resp = await axios.get(`${getPluginPath()}/turn-credentials`);
+                        iceConfigs.push(...resp.data);
+                    } catch (err) {
+                        logErr(err);
+                    }
+                }
+
                 window.callsClient = new CallsClient({
                     wsURL: getWSConnectionURL(getConfig(store.getState())),
-                    iceServers: iceServers(store.getState()),
+                    iceServers: iceConfigs,
                 });
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);

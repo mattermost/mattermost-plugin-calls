@@ -13,6 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/time/rate"
+
+	"github.com/mattermost/rtcd/service/rtc"
+
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 )
@@ -377,6 +381,44 @@ func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
 	res.Code = http.StatusNotFound
 }
 
+func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleGetTURNCredentials", &res, w, r)
+
+	cfg := p.getConfiguration()
+	if cfg.TURNStaticAuthSecret == "" {
+		res.Err = "TURNStaticAuthSecret should be set"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	turnServers := cfg.ICEServersConfigs.getTURNConfigsForCredentials()
+	if len(turnServers) == 0 {
+		res.Err = "No TURN server was configured"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	user, appErr := p.API.GetUser(r.Header.Get("Mattermost-User-Id"))
+	if appErr != nil {
+		res.Err = appErr.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	configs, err := rtc.GenTURNConfigs(turnServers, user.Username, cfg.TURNStaticAuthSecret, *cfg.TURNCredentialsExpirationMinutes)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(configs); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
 // handleConfig returns the client configuration, and cloud license information
 // that isn't exposed to clients yet on the webapp
 func (p *Plugin) handleConfig(w http.ResponseWriter) error {
@@ -403,6 +445,24 @@ func (p *Plugin) handleConfig(w http.ResponseWriter) error {
 	return nil
 }
 
+func (p *Plugin) checkAPIRateLimits(userID string) error {
+	p.apiLimitersMut.RLock()
+	limiter := p.apiLimiters[userID]
+	p.apiLimitersMut.RUnlock()
+	if limiter == nil {
+		limiter = rate.NewLimiter(1, 10)
+		p.apiLimitersMut.Lock()
+		p.apiLimiters[userID] = limiter
+		p.apiLimitersMut.Unlock()
+	}
+
+	if !limiter.Allow() {
+		return fmt.Errorf(`{"message": "too many requests", "status_code": %d}`, http.StatusTooManyRequests)
+	}
+
+	return nil
+}
+
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/version") {
 		p.handleGetVersion(w, r)
@@ -414,8 +474,14 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if r.Header.Get("Mattermost-User-Id") == "" {
+	userID := r.Header.Get("Mattermost-User-Id")
+	if userID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := p.checkAPIRateLimits(userID); err != nil {
+		http.Error(w, err.Error(), http.StatusTooManyRequests)
 		return
 	}
 
@@ -434,6 +500,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if r.URL.Path == "/channels" {
 			p.handleGetAllChannels(w, r)
+			return
+		}
+
+		if r.URL.Path == "/turn-credentials" {
+			p.handleGetTURNCredentials(w, r)
 			return
 		}
 
