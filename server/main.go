@@ -4,6 +4,8 @@
 package main
 
 import (
+	"golang.org/x/time/rate"
+
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -26,5 +28,6 @@ func main() {
 		clusterEvCh: make(chan model.PluginClusterEvent, clusterEventQueueSize),
 		sessions:    map[string]*session{},
 		metrics:     performance.NewMetrics(),
+		apiLimiters: map[string]*rate.Limiter{},
 	})
 }

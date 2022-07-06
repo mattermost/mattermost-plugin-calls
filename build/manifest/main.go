@@ -181,11 +181,13 @@ func applyManifest(manifest *model.Manifest) error {
 			return err
 		}
 		manifestStr := string(manifestBytes)
+		// escaping necessary to make JS string evaluation happy with embedding JSON.
+		manifestStr = strings.ReplaceAll(fmt.Sprintf(pluginIDJSFileTemplate, manifestStr), `\`, `\\`)
 
 		// write generated code to file by using JS file template.
 		if err := ioutil.WriteFile(
 			"webapp/src/manifest.ts",
-			[]byte(fmt.Sprintf(pluginIDJSFileTemplate, manifestStr)),
+			[]byte(manifestStr),
 			0600,
 		); err != nil {
 			return errors.Wrap(err, "failed to open webapp/src/manifest.ts")

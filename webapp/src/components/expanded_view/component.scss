@@ -33,7 +33,7 @@
   color: white;
   border-radius: 8px;
   padding: 14px 20px;
-  background: rgba(210, 75, 78, 1);
+  background: rgb(var(--dnd-indicator-rgb));
   border: none;
 
   &:hover {
