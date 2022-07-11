@@ -127,8 +127,12 @@ async function globalSetup(config: FullConfig) {
 
     // enable calls for all channels
     const serverConfig = await (await adminContext.get('/api/v4/config')).json();
-    console.log(serverConfig, serverConfig.PluginSettings);
-    serverConfig.PluginSettings.Plugins[`${plugin.id}`].defaultenabled = true;
+    serverConfig.PluginSettings.Plugins = {
+        ...serverConfig.PluginSettings.Plugins,
+        'com.mattermost.calls': {
+            defaultenabled: true,
+        },
+    };
     await adminContext.put('/api/v4/config', {
         data: serverConfig,
         headers,
