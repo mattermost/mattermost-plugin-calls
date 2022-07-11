@@ -11,8 +11,10 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/mattermost/mattermost-load-test-ng/loadtest/user/websocket"
@@ -547,7 +549,7 @@ func (u *user) wsListen(authToken string) {
 	}
 }
 
-func (u *user) Connect() error {
+func (u *user) Connect(stopCh chan struct{}) error {
 	log.Printf("%s: connecting user", u.cfg.username)
 
 	var user *model.User
@@ -602,7 +604,11 @@ func (u *user) Connect() error {
 
 	ticker := time.NewTicker(u.cfg.duration)
 	defer ticker.Stop()
-	<-ticker.C
+
+	select {
+	case <-ticker.C:
+	case <-stopCh:
+	}
 
 	log.Printf("%s: disconnecting...", u.cfg.username)
 	close(u.doneCh)
@@ -732,6 +738,7 @@ func main() {
 		}
 	}
 
+	stopCh := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(numUsersPerCall * numCalls)
 	for j := 0; j < numCalls; j++ {
@@ -746,7 +753,15 @@ func main() {
 					log.Printf("%s: going to transmit screen", username)
 				}
 				defer wg.Done()
-				time.Sleep(time.Duration(rand.Intn(int(joinDur.Seconds()))) * time.Second)
+
+				ticker := time.NewTicker(time.Duration(rand.Intn(int(joinDur.Milliseconds())))*time.Millisecond + 1)
+				defer ticker.Stop()
+				select {
+				case <-ticker.C:
+				case <-stopCh:
+					return
+				}
+
 				cfg := config{
 					username:      username,
 					password:      userPassword,
@@ -760,12 +775,18 @@ func main() {
 				}
 
 				user := newUser(cfg)
-				if err := user.Connect(); err != nil {
+				if err := user.Connect(stopCh); err != nil {
 					log.Printf("connectUser failed: %s", err.Error())
 				}
 			}((numUsersPerCall*j)+i+offset, channels[j].Id, i < numUnmuted, i == 0 && j < numScreenSharing)
 		}
 	}
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	<-sig
+
+	close(stopCh)
 
 	wg.Wait()
 
