@@ -59,7 +59,25 @@ type config struct {
 	screenSharing bool
 }
 
-func transmitScreen(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh <-chan struct{}) {
+type user struct {
+	cfg         config
+	ws          *websocket.Client
+	pc          *webrtc.PeerConnection
+	connectedCh chan struct{}
+	doneCh      chan struct{}
+	iceCh       chan webrtc.ICECandidateInit
+}
+
+func newUser(cfg config) *user {
+	return &user{
+		cfg:         cfg,
+		connectedCh: make(chan struct{}),
+		doneCh:      make(chan struct{}),
+		iceCh:       make(chan webrtc.ICECandidateInit, 10),
+	}
+}
+
+func (u *user) transmitScreen() {
 	track, err := webrtc.NewTrackLocalStaticSample(rtpVideoCodecVP8, "video", "screen-"+model.NewId())
 	if err != nil {
 		log.Fatalf(err.Error())
@@ -73,13 +91,13 @@ func transmitScreen(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh
 		log.Fatalf(err.Error())
 	}
 
-	if err := ws.SendMessage("custom_com.mattermost.calls_screen_on", map[string]interface{}{
+	if err := u.ws.SendMessage("custom_com.mattermost.calls_screen_on", map[string]interface{}{
 		"data": string(data),
 	}); err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	rtpSender, err := pc.AddTrack(track)
+	rtpSender, err := u.pc.AddTrack(track)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
@@ -95,7 +113,7 @@ func transmitScreen(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh
 
 	go func() {
 		defer func() {
-			if err := ws.SendMessage("custom_com.mattermost.calls_screen_off", nil); err != nil {
+			if err := u.ws.SendMessage("custom_com.mattermost.calls_screen_off", nil); err != nil {
 				log.Fatalf(err.Error())
 			}
 		}()
@@ -113,7 +131,7 @@ func transmitScreen(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh
 		}
 
 		// Wait for connection established
-		<-connectedCh
+		<-u.connectedCh
 
 		// Send our video file frame at a time. Pace our sending so we send it at the same speed it should be played back as.
 		// This isn't required since the video is timestamped, but we will such much higher loss if we send all at once.
@@ -148,7 +166,7 @@ func transmitScreen(ws *websocket.Client, pc *webrtc.PeerConnection, connectedCh
 	}()
 }
 
-func transmitAudio(ws *websocket.Client, track *webrtc.TrackLocalStaticSample, rtpSender *webrtc.RTPSender, connectedCh <-chan struct{}) {
+func (u *user) transmitAudio(track *webrtc.TrackLocalStaticSample, rtpSender *webrtc.RTPSender) {
 	go func() {
 		rtcpBuf := make([]byte, 1500)
 		for {
@@ -173,13 +191,13 @@ func transmitAudio(ws *websocket.Client, track *webrtc.TrackLocalStaticSample, r
 		}
 
 		// Wait for connection established
-		<-connectedCh
+		<-u.connectedCh
 
-		if err := ws.SendMessage("custom_com.mattermost.calls_unmute", nil); err != nil {
+		if err := u.ws.SendMessage("custom_com.mattermost.calls_unmute", nil); err != nil {
 			log.Fatalf(err.Error())
 		}
 		defer func() {
-			if err := ws.SendMessage("custom_com.mattermost.calls_mute", nil); err != nil {
+			if err := u.ws.SendMessage("custom_com.mattermost.calls_mute", nil); err != nil {
 				log.Fatalf(err.Error())
 			}
 		}()
@@ -220,8 +238,8 @@ func transmitAudio(ws *websocket.Client, track *webrtc.TrackLocalStaticSample, r
 	}()
 }
 
-func initRTC(ws *websocket.Client, channelID, username string, unmuted, screenSharing bool) (*webrtc.PeerConnection, error) {
-	log.Printf("%s: setting up RTC connection", username)
+func (u *user) initRTC() error {
+	log.Printf("%s: setting up RTC connection", u.cfg.username)
 
 	peerConnConfig := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -236,22 +254,22 @@ func initRTC(ws *websocket.Client, channelID, username string, unmuted, screenSh
 
 	pc, err := webrtc.NewPeerConnection(peerConnConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	u.pc = pc
 
 	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
 		log.Printf("ice: %v", c)
 	})
 
-	connectedCh := make(chan struct{})
 	pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		if connectionState == webrtc.ICEConnectionStateConnected {
-			close(connectedCh)
+			close(u.connectedCh)
 		}
 
 		if connectionState == webrtc.ICEConnectionStateDisconnected || connectionState == webrtc.ICEConnectionStateFailed {
 			log.Printf("ice disconnect")
-			ws.Close()
+			u.ws.Close()
 		}
 	})
 
@@ -282,41 +300,41 @@ func initRTC(ws *websocket.Client, channelID, username string, unmuted, screenSh
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
-	if unmuted {
-		transmitAudio(ws, audioTrack, audioRTPSender, connectedCh)
+	if u.cfg.unmuted {
+		u.transmitAudio(audioTrack, audioRTPSender)
 	}
 
-	if screenSharing {
-		transmitScreen(ws, pc, connectedCh)
+	if u.cfg.screenSharing {
+		u.transmitScreen()
 	}
 
 	sdp, err := pc.CreateOffer(nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := pc.SetLocalDescription(sdp); err != nil {
-		return nil, err
+		return err
 	}
 
 	var sdpData bytes.Buffer
 	w := zlib.NewWriter(&sdpData)
 	if err := json.NewEncoder(w).Encode(sdp); err != nil {
-		return nil, err
+		return err
 	}
 	w.Close()
 
 	data := map[string]interface{}{
 		"data": sdpData.Bytes(),
 	}
-	if err := ws.SendBinaryMessage("custom_com.mattermost.calls_sdp", data); err != nil {
-		return nil, err
+	if err := u.ws.SendBinaryMessage("custom_com.mattermost.calls_sdp", data); err != nil {
+		return err
 	}
 
-	return pc, nil
+	return nil
 }
 
-func handleSignal(ws *websocket.Client, pc *webrtc.PeerConnection, ev *model.WebSocketEvent, iceCh chan webrtc.ICECandidateInit, username string) {
+func (u *user) handleSignal(ev *model.WebSocketEvent) {
 	evData := ev.GetData()
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(evData["data"].(string)), &data); err != nil {
@@ -326,11 +344,11 @@ func handleSignal(ws *websocket.Client, pc *webrtc.PeerConnection, ev *model.Web
 	t, _ := data["type"].(string)
 
 	if t == "candidate" {
-		log.Printf("%s: ice!", username)
-		iceCh <- webrtc.ICECandidateInit{Candidate: data["candidate"].(map[string]interface{})["candidate"].(string)}
+		log.Printf("%s: ice!", u.cfg.username)
+		u.iceCh <- webrtc.ICECandidateInit{Candidate: data["candidate"].(map[string]interface{})["candidate"].(string)}
 	} else if t == "answer" {
-		log.Printf("%s: sdp answer!", username)
-		if err := pc.SetRemoteDescription(webrtc.SessionDescription{
+		log.Printf("%s: sdp answer!", u.cfg.username)
+		if err := u.pc.SetRemoteDescription(webrtc.SessionDescription{
 			Type: webrtc.SDPTypeAnswer,
 			SDP:  data["sdp"].(string),
 		}); err != nil {
@@ -338,28 +356,28 @@ func handleSignal(ws *websocket.Client, pc *webrtc.PeerConnection, ev *model.Web
 		}
 
 		go func() {
-			for ice := range iceCh {
-				if err := pc.AddICECandidate(ice); err != nil {
+			for ice := range u.iceCh {
+				if err := u.pc.AddICECandidate(ice); err != nil {
 					log.Printf(err.Error())
 				}
 			}
 		}()
 
 	} else if t == "offer" {
-		log.Printf("%s: sdp offer!", username)
-		if err := pc.SetRemoteDescription(webrtc.SessionDescription{
+		log.Printf("%s: sdp offer!", u.cfg.username)
+		if err := u.pc.SetRemoteDescription(webrtc.SessionDescription{
 			Type: webrtc.SDPTypeOffer,
 			SDP:  data["sdp"].(string),
 		}); err != nil {
 			log.Printf(err.Error())
 		}
 
-		sdp, err := pc.CreateAnswer(nil)
+		sdp, err := u.pc.CreateAnswer(nil)
 		if err != nil {
 			log.Printf(err.Error())
 		}
 
-		if err := pc.SetLocalDescription(sdp); err != nil {
+		if err := u.pc.SetLocalDescription(sdp); err != nil {
 			log.Printf(err.Error())
 		}
 
@@ -373,62 +391,58 @@ func handleSignal(ws *websocket.Client, pc *webrtc.PeerConnection, ev *model.Web
 		data := map[string]interface{}{
 			"data": sdpData.Bytes(),
 		}
-		if err := ws.SendBinaryMessage("custom_com.mattermost.calls_sdp", data); err != nil {
+		if err := u.ws.SendBinaryMessage("custom_com.mattermost.calls_sdp", data); err != nil {
 			log.Fatalf(err.Error())
 		}
 	}
 }
 
-func eventHandler(ws *websocket.Client, channelID, username string, unmuted, screenSharing bool, doneCh chan struct{}) {
-	var err error
-	var pc *webrtc.PeerConnection
-	iceCh := make(chan webrtc.ICECandidateInit, 10)
-	defer close(iceCh)
+func (u *user) wsEventHandler() {
+	defer close(u.iceCh)
 
 	for {
 		select {
-		case ev, ok := <-ws.EventChannel:
+		case ev, ok := <-u.ws.EventChannel:
 			if !ok {
 				return
 			}
 			switch ev.EventType() {
 			case "hello":
-				log.Printf("%s: joining call", username)
+				log.Printf("%s: joining call", u.cfg.username)
 				data := map[string]interface{}{
-					"channelID": channelID,
+					"channelID": u.cfg.channelID,
 				}
-				if err := ws.SendMessage("custom_com.mattermost.calls_join", data); err != nil {
+				if err := u.ws.SendMessage("custom_com.mattermost.calls_join", data); err != nil {
 					log.Fatalf(err.Error())
 				}
 			case "custom_com.mattermost.calls_join":
-				log.Printf("%s: joined call", username)
-				pc, err = initRTC(ws, channelID, username, unmuted, screenSharing)
-				if err != nil {
+				log.Printf("%s: joined call", u.cfg.username)
+				if err := u.initRTC(); err != nil {
 					log.Fatalf(err.Error())
 				}
-				defer pc.Close()
+				defer u.pc.Close()
 			case "custom_com.mattermost.calls_signal":
-				log.Printf("%s: received signal", username)
-				handleSignal(ws, pc, ev, iceCh, username)
+				log.Printf("%s: received signal", u.cfg.username)
+				u.handleSignal(ev)
 			case "custom_com.mattermost.calls_call_end":
-				log.Printf("%s: call end event, exiting", username)
-				ws.Close()
+				log.Printf("%s: call end event, exiting", u.cfg.username)
+				u.ws.Close()
 				return
 			default:
 			}
-		case <-doneCh:
+		case <-u.doneCh:
 			return
 		}
 	}
 }
 
-func connectUser(c config) error {
-	log.Printf("%s: connecting user", c.username)
+func (u *user) Connect() error {
+	log.Printf("%s: connecting user", u.cfg.username)
 
 	var user *model.User
-	client := model.NewAPIv4Client(c.siteURL)
+	client := model.NewAPIv4Client(u.cfg.siteURL)
 	// login (or create) user
-	user, _, err := client.Login(c.username, c.password)
+	user, _, err := client.Login(u.cfg.username, u.cfg.password)
 	appErr, ok := err.(*model.AppError)
 	if err != nil && !ok {
 		return err
@@ -437,64 +451,63 @@ func connectUser(c config) error {
 	if ok && appErr != nil && appErr.Id != "api.user.login.invalid_credentials_email_username" {
 		return err
 	} else if ok && appErr != nil && appErr.Id == "api.user.login.invalid_credentials_email_username" {
-		log.Printf("%s: registering user", c.username)
+		log.Printf("%s: registering user", u.cfg.username)
 		user, _, err = client.CreateUser(&model.User{
-			Username: c.username,
-			Password: c.password,
-			Email:    c.username + "@example.com",
+			Username: u.cfg.username,
+			Password: u.cfg.password,
+			Email:    u.cfg.username + "@example.com",
 		})
 		if err != nil {
 			return err
 		}
-		_, _, err = client.Login(c.username, c.password)
+		_, _, err = client.Login(u.cfg.username, u.cfg.password)
 		if err != nil {
 			return err
 		}
 	}
 
-	log.Printf("%s: logged in", c.username)
+	log.Printf("%s: logged in", u.cfg.username)
 
 	// join team
-	_, _, err = client.AddTeamMember(c.teamID, user.Id)
+	_, _, err = client.AddTeamMember(u.cfg.teamID, user.Id)
 	if err != nil {
 		return err
 	}
 
 	// join channel
-	_, _, err = client.AddChannelMember(c.channelID, user.Id)
+	_, _, err = client.AddChannelMember(u.cfg.channelID, user.Id)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("%s: connecting to websocket", c.username)
+	log.Printf("%s: connecting to websocket", u.cfg.username)
 
 	ws, err := websocket.NewClient4(&websocket.ClientParams{
-		WsURL:     c.wsURL,
+		WsURL:     u.cfg.wsURL,
 		AuthToken: client.AuthToken,
 	})
 	if err != nil {
 		return err
 	}
-
-	doneCh := make(chan struct{})
+	u.ws = ws
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		eventHandler(ws, c.channelID, c.username, c.unmuted, c.screenSharing, doneCh)
+		u.wsEventHandler()
 	}()
 
-	ticker := time.NewTicker(c.duration)
+	ticker := time.NewTicker(u.cfg.duration)
 	defer ticker.Stop()
 	<-ticker.C
 
-	log.Printf("%s: disconnecting...", c.username)
-	close(doneCh)
+	log.Printf("%s: disconnecting...", u.cfg.username)
+	close(u.doneCh)
 	wg.Wait()
 	ws.Close()
 
-	log.Printf("%s: disconnected", c.username)
+	log.Printf("%s: disconnected", u.cfg.username)
 
 	return nil
 }
@@ -644,7 +657,9 @@ func main() {
 					unmuted:       unmuted,
 					screenSharing: screenSharing,
 				}
-				if err := connectUser(cfg); err != nil {
+
+				user := newUser(cfg)
+				if err := user.Connect(); err != nil {
 					log.Printf("connectUser failed: %s", err.Error())
 				}
 			}((numUsersPerCall*j)+i+offset, channels[j].Id, i < numUnmuted, i == 0 && j < numScreenSharing)
