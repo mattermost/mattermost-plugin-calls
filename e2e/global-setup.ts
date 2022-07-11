@@ -129,7 +129,7 @@ async function globalSetup(config: FullConfig) {
     const serverConfig = await (await adminContext.get('/api/v4/config')).json();
     serverConfig.PluginSettings.Plugins = {
         ...serverConfig.PluginSettings.Plugins,
-        'com.mattermost.calls': {
+        [`${plugin.id}`]: {
             defaultenabled: true,
         },
     };
