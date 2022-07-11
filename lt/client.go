@@ -61,11 +61,20 @@ type config struct {
 
 type user struct {
 	cfg         config
-	ws          *websocket.Client
 	pc          *webrtc.PeerConnection
 	connectedCh chan struct{}
 	doneCh      chan struct{}
 	iceCh       chan webrtc.ICECandidateInit
+
+	// WebSocket
+	wsCloseCh chan struct{}
+	wsSendCh  chan wsMsg
+}
+
+type wsMsg struct {
+	event  string
+	data   map[string]interface{}
+	binary bool
 }
 
 func newUser(cfg config) *user {
@@ -74,6 +83,8 @@ func newUser(cfg config) *user {
 		connectedCh: make(chan struct{}),
 		doneCh:      make(chan struct{}),
 		iceCh:       make(chan webrtc.ICECandidateInit, 10),
+		wsCloseCh:   make(chan struct{}),
+		wsSendCh:    make(chan wsMsg, 256),
 	}
 }
 
@@ -91,10 +102,12 @@ func (u *user) transmitScreen() {
 		log.Fatalf(err.Error())
 	}
 
-	if err := u.ws.SendMessage("custom_com.mattermost.calls_screen_on", map[string]interface{}{
+	select {
+	case u.wsSendCh <- wsMsg{event: "custom_com.mattermost.calls_screen_on", data: map[string]interface{}{
 		"data": string(data),
-	}); err != nil {
-		log.Fatalf(err.Error())
+	}}:
+	default:
+		log.Printf("failed to send ws message")
 	}
 
 	rtpSender, err := u.pc.AddTrack(track)
@@ -113,8 +126,10 @@ func (u *user) transmitScreen() {
 
 	go func() {
 		defer func() {
-			if err := u.ws.SendMessage("custom_com.mattermost.calls_screen_off", nil); err != nil {
-				log.Fatalf(err.Error())
+			select {
+			case u.wsSendCh <- wsMsg{event: "custom_com.mattermost.calls_screen_off", data: nil}:
+			default:
+				log.Printf("failed to send ws message")
 			}
 		}()
 
@@ -193,12 +208,16 @@ func (u *user) transmitAudio(track *webrtc.TrackLocalStaticSample, rtpSender *we
 		// Wait for connection established
 		<-u.connectedCh
 
-		if err := u.ws.SendMessage("custom_com.mattermost.calls_unmute", nil); err != nil {
-			log.Fatalf(err.Error())
+		select {
+		case u.wsSendCh <- wsMsg{event: "custom_com.mattermost.calls_unmute", data: nil}:
+		default:
+			log.Printf("failed to send ws message")
 		}
 		defer func() {
-			if err := u.ws.SendMessage("custom_com.mattermost.calls_mute", nil); err != nil {
-				log.Fatalf(err.Error())
+			select {
+			case u.wsSendCh <- wsMsg{event: "custom_com.mattermost.calls_mute", data: nil}:
+			default:
+				log.Printf("failed to send ws message")
 			}
 		}()
 
@@ -269,7 +288,7 @@ func (u *user) initRTC() error {
 
 		if connectionState == webrtc.ICEConnectionStateDisconnected || connectionState == webrtc.ICEConnectionStateFailed {
 			log.Printf("ice disconnect")
-			u.ws.Close()
+			close(u.wsCloseCh)
 		}
 	})
 
@@ -327,8 +346,11 @@ func (u *user) initRTC() error {
 	data := map[string]interface{}{
 		"data": sdpData.Bytes(),
 	}
-	if err := u.ws.SendBinaryMessage("custom_com.mattermost.calls_sdp", data); err != nil {
-		return err
+
+	select {
+	case u.wsSendCh <- wsMsg{"custom_com.mattermost.calls_sdp", data, true}:
+	default:
+		log.Printf("failed to send ws message")
 	}
 
 	return nil
@@ -391,30 +413,105 @@ func (u *user) handleSignal(ev *model.WebSocketEvent) {
 		data := map[string]interface{}{
 			"data": sdpData.Bytes(),
 		}
-		if err := u.ws.SendBinaryMessage("custom_com.mattermost.calls_sdp", data); err != nil {
-			log.Fatalf(err.Error())
+		select {
+		case u.wsSendCh <- wsMsg{"custom_com.mattermost.calls_sdp", data, true}:
+		default:
+			log.Printf("failed to send ws message")
 		}
 	}
 }
 
-func (u *user) wsEventHandler() {
+func (u *user) wsListen(authToken string) {
 	defer close(u.iceCh)
+
+	var wsConnID string
+	var originalConnID string
+	var wsServerSeq int64
+
+	connect := func() (*websocket.Client, error) {
+		ws, err := websocket.NewClient4(&websocket.ClientParams{
+			WsURL:          u.cfg.wsURL,
+			AuthToken:      authToken,
+			ConnID:         wsConnID,
+			ServerSequence: wsServerSeq,
+		})
+		return ws, err
+	}
+
+	ws, err := connect()
+	if err != nil {
+		log.Fatalf(err.Error())
+		return
+	}
+
+	defer func() {
+		err := ws.SendMessage("custom_com.mattermost.calls_leave", map[string]interface{}{
+			"channelID": u.cfg.channelID,
+		})
+		if err != nil {
+			log.Printf(err.Error())
+		}
+		ws.Close()
+	}()
 
 	for {
 		select {
-		case ev, ok := <-u.ws.EventChannel:
+		case ev, ok := <-ws.EventChannel:
 			if !ok {
+				log.Printf("ws disconnected")
+				for {
+					time.Sleep(time.Second)
+					log.Printf("attempting ws reconnection")
+					ws, err = connect()
+					if err != nil {
+						log.Printf(err.Error())
+						continue
+					}
+
+					data := map[string]interface{}{
+						"channelID":      u.cfg.channelID,
+						"originalConnID": originalConnID,
+						"prevConnID":     wsConnID,
+					}
+					if err := ws.SendMessage("custom_com.mattermost.calls_reconnect", data); err != nil {
+						log.Printf(err.Error())
+						continue
+					}
+
+					break
+				}
+				continue
+			}
+			if ev.EventType() == "hello" {
+				if connID, ok := ev.GetData()["connection_id"].(string); ok {
+					if wsConnID != connID {
+						log.Printf("new connection id from server")
+						wsServerSeq = 0
+					}
+					wsConnID = connID
+					if originalConnID == "" {
+						log.Printf("setting original conn id")
+						originalConnID = connID
+
+						log.Printf("%s: joining call", u.cfg.username)
+						data := map[string]interface{}{
+							"channelID": u.cfg.channelID,
+						}
+						if err := ws.SendMessage("custom_com.mattermost.calls_join", data); err != nil {
+							log.Fatalf(err.Error())
+						}
+					}
+				}
+			}
+
+			if ev.GetSequence() != wsServerSeq {
+				log.Printf("missed websocket event")
 				return
 			}
+
+			wsServerSeq = ev.GetSequence() + 1
+
 			switch ev.EventType() {
-			case "hello":
-				log.Printf("%s: joining call", u.cfg.username)
-				data := map[string]interface{}{
-					"channelID": u.cfg.channelID,
-				}
-				if err := u.ws.SendMessage("custom_com.mattermost.calls_join", data); err != nil {
-					log.Fatalf(err.Error())
-				}
 			case "custom_com.mattermost.calls_join":
 				log.Printf("%s: joined call", u.cfg.username)
 				if err := u.initRTC(); err != nil {
@@ -426,10 +523,24 @@ func (u *user) wsEventHandler() {
 				u.handleSignal(ev)
 			case "custom_com.mattermost.calls_call_end":
 				log.Printf("%s: call end event, exiting", u.cfg.username)
-				u.ws.Close()
 				return
 			default:
 			}
+		case msg, ok := <-u.wsSendCh:
+			if !ok {
+				return
+			}
+			if msg.binary {
+				if err := ws.SendBinaryMessage(msg.event, msg.data); err != nil {
+					log.Fatalf(err.Error())
+				}
+			} else {
+				if err := ws.SendMessage(msg.event, msg.data); err != nil {
+					log.Fatalf(err.Error())
+				}
+			}
+		case <-u.wsCloseCh:
+			return
 		case <-u.doneCh:
 			return
 		}
@@ -482,20 +593,11 @@ func (u *user) Connect() error {
 
 	log.Printf("%s: connecting to websocket", u.cfg.username)
 
-	ws, err := websocket.NewClient4(&websocket.ClientParams{
-		WsURL:     u.cfg.wsURL,
-		AuthToken: client.AuthToken,
-	})
-	if err != nil {
-		return err
-	}
-	u.ws = ws
-
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		u.wsEventHandler()
+		u.wsListen(client.AuthToken)
 	}()
 
 	ticker := time.NewTicker(u.cfg.duration)
@@ -505,7 +607,6 @@ func (u *user) Connect() error {
 	log.Printf("%s: disconnecting...", u.cfg.username)
 	close(u.doneCh)
 	wg.Wait()
-	ws.Close()
 
 	log.Printf("%s: disconnected", u.cfg.username)
 
