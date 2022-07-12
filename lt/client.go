@@ -782,11 +782,12 @@ func main() {
 		}
 	}
 
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	<-sig
-
-	close(stopCh)
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+		<-sig
+		close(stopCh)
+	}()
 
 	wg.Wait()
 
