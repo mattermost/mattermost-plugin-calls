@@ -121,41 +121,22 @@ async function globalSetup(config: FullConfig) {
         }
     }
 
-    // enable calls.
-    for (const channelName of channels) {
-        resp = await adminContext.get(`/api/v4/teams/${team.id}/channels/name/${channelName}`);
-        const channel = await resp.json();
-        await adminContext.post(`/plugins/${plugin.id}/${channel.id}`, {
-            data: {
-                enabled: true,
-            },
-            headers,
-        });
-    }
-
-    // enable calls in DMs.
-    const userContext = await request.newContext({
-        baseURL,
-    });
-    await userContext.post('/api/v4/users/login', {
-        data: {
-            login_id: userState.users[0].username,
-            password: userState.users[0].password,
-        },
+    await adminContext.post(`/api/v4/plugins/${plugin.id}/enable`, {
         headers,
     });
-    for (const userInfo of userState.users.slice(1)) {
-        resp = await userContext.post('/api/v4/users/usernames', {data: [userState.users[0].username, userInfo.username], headers});
-        const users = await resp.json();
-        resp = await userContext.post('/api/v4/channels/direct', {data: [users[0].id, users[1].id], headers});
-        const channel = await resp.json();
-        await userContext.post(`/plugins/${plugin.id}/${channel.id}`, {
-            data: {
-                enabled: true,
-            },
-            headers,
-        });
-    }
+
+    // enable calls for all channels
+    const serverConfig = await (await adminContext.get('/api/v4/config')).json();
+    serverConfig.PluginSettings.Plugins = {
+        ...serverConfig.PluginSettings.Plugins,
+        [`${plugin.id}`]: {
+            defaultenabled: true,
+        },
+    };
+    await adminContext.put('/api/v4/config', {
+        data: serverConfig,
+        headers,
+    });
 
     await adminContext.dispose();
 }
