@@ -12,7 +12,7 @@ import {UserState} from '../../types/types';
 
 import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from '../../utils';
 import {hideExpandedView, showScreenSourceModal} from '../../actions';
-import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID} from '../../selectors';
+import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID, voiceChannelRootPost} from '../../selectors';
 
 import ExpandedView from './component';
 
@@ -38,6 +38,8 @@ const mapStateToProps = (state: GlobalState) => {
         connectedDMUser = getUser(state, otherID);
     }
 
+    const postId = channel ? voiceChannelRootPost(state, channel.id) : '';
+
     return {
         show: expandedView(state),
         currentUserID: getCurrentUserId(state),
@@ -48,6 +50,8 @@ const mapStateToProps = (state: GlobalState) => {
         screenSharingID,
         channel,
         connectedDMUser,
+        integrations: (state as any).plugins.components.CallsDropdownMenu,
+        postId,
     };
 };
 
