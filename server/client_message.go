@@ -14,6 +14,8 @@ type clientMessage struct {
 
 const (
 	clientMessageTypeJoin        = "join"
+	clientMessageTypeLeave       = "leave"
+	clientMessageTypeReconnect   = "reconnect"
 	clientMessageTypeSDP         = "sdp"
 	clientMessageTypeICE         = "ice"
 	clientMessageTypeMute        = "mute"

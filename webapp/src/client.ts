@@ -8,7 +8,7 @@ import {CallsClientConfig, RTCStats} from 'src/types/types';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';
-import WebSocketClient from './websocket';
+import {WebSocketClient, wsReconnectionTimeoutErr} from './websocket';
 import VoiceActivityDetector from './vad';
 
 import {parseRTCStats} from './rtc_stats';
@@ -30,6 +30,8 @@ export default class CallsClient extends EventEmitter {
     private audioTrack: MediaStreamTrack | null;
     public isHandRaised: boolean;
     private onDeviceChange: () => void;
+    private onBeforeUnload: () => void;
+    private closed = false;
 
     constructor(config: CallsClientConfig) {
         super();
@@ -48,6 +50,11 @@ export default class CallsClient extends EventEmitter {
         this.onDeviceChange = () => {
             this.updateDevices();
         };
+        this.onBeforeUnload = () => {
+            logDebug('unload');
+            this.disconnect();
+        };
+        window.addEventListener('beforeunload', this.onBeforeUnload);
     }
 
     private initVAD(inputStream: MediaStream) {
@@ -139,23 +146,33 @@ export default class CallsClient extends EventEmitter {
         const ws = new WebSocketClient(this.config.wsURL);
         this.ws = ws;
 
-        ws.on('error', (ev) => {
-            logErr('ws error', ev);
-            this.disconnect();
+        ws.on('error', (err) => {
+            logErr('ws error', err);
+            if (err === wsReconnectionTimeoutErr) {
+                this.ws = null;
+                this.disconnect();
+            }
         });
 
         ws.on('close', (code?: number) => {
             logDebug(`ws close: ${code}`);
-            this.ws = null;
-            this.disconnect();
         });
 
-        ws.on('open', (connID: string) => {
-            logDebug('ws open, sending join msg');
-            ws.send('join', {
-                channelID,
-                title,
-            });
+        ws.on('open', (originalConnID: string, prevConnID: string, isReconnect: boolean) => {
+            if (isReconnect) {
+                logDebug('ws reconnect, sending reconnect msg');
+                ws.send('reconnect', {
+                    channelID,
+                    originalConnID,
+                    prevConnID,
+                });
+            } else {
+                logDebug('ws open, sending join msg');
+                ws.send('join', {
+                    channelID,
+                    title,
+                });
+            }
         });
 
         ws.on('join', async () => {
@@ -209,6 +226,12 @@ export default class CallsClient extends EventEmitter {
                 logDebug('rtc connected');
                 this.emit('connect');
             });
+            peer.on('close', () => {
+                logDebug('rtc closed');
+                if (!this.closed) {
+                    this.disconnect();
+                }
+            });
         });
 
         ws.on('message', ({data}) => {
@@ -241,6 +264,7 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('connect');
         this.removeAllListeners('remoteVoiceStream');
         this.removeAllListeners('remoteScreenStream');
+        window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
     }
 
@@ -301,6 +325,8 @@ export default class CallsClient extends EventEmitter {
     }
 
     public disconnect() {
+        logDebug('disconnect');
+        this.closed = true;
         if (this.peer) {
             this.peer.destroy();
             this.peer = null;
@@ -319,7 +345,9 @@ export default class CallsClient extends EventEmitter {
         });
 
         if (this.ws) {
-            logDebug('disconnect');
+            this.ws.send('leave', {
+                channelID: this.channelID,
+            });
             this.ws.close();
             this.ws = null;
         }

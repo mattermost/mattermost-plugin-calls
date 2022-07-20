@@ -18,34 +18,44 @@ const (
 )
 
 type session struct {
-	userID    string
-	channelID string
-	connID    string
+	userID         string
+	channelID      string
+	connID         string
+	originalConnID string
 
 	// WebSocket
-	signalInCh  chan []byte
-	signalOutCh chan []byte
-	wsMsgCh     chan clientMessage
-	wsCloseCh   chan struct{}
+	signalOutCh   chan []byte
+	wsMsgCh       chan clientMessage
+	wsCloseCh     chan struct{}
+	wsClosed      int32
+	wsReconnectCh chan struct{}
+	wsReconnected int32
 
-	doneCh  chan struct{}
-	closeCh chan struct{}
+	// RTC
+	rtcCloseCh chan struct{}
+	rtcClosed  int32
+	rtc        bool
+
+	leaveCh chan struct{}
+	left    int32
 
 	limiter *rate.Limiter
 }
 
-func newUserSession(userID, channelID, connID string) *session {
+func newUserSession(userID, channelID, connID string, rtc bool) *session {
 	return &session{
-		userID:      userID,
-		channelID:   channelID,
-		connID:      connID,
-		signalInCh:  make(chan []byte, msgChSize),
-		signalOutCh: make(chan []byte, msgChSize),
-		wsMsgCh:     make(chan clientMessage, msgChSize*2),
-		wsCloseCh:   make(chan struct{}),
-		closeCh:     make(chan struct{}),
-		doneCh:      make(chan struct{}),
-		limiter:     rate.NewLimiter(2, 50),
+		userID:         userID,
+		channelID:      channelID,
+		connID:         connID,
+		originalConnID: connID,
+		signalOutCh:    make(chan []byte, msgChSize),
+		wsMsgCh:        make(chan clientMessage, msgChSize*2),
+		wsCloseCh:      make(chan struct{}),
+		wsReconnectCh:  make(chan struct{}),
+		leaveCh:        make(chan struct{}),
+		rtcCloseCh:     make(chan struct{}),
+		limiter:        rate.NewLimiter(2, 50),
+		rtc:            rtc,
 	}
 }
 
@@ -193,4 +203,36 @@ func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool,
 	}
 
 	return true, nil
+}
+
+func (p *Plugin) removeSession(us *session) error {
+	p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
+		"userID": us.userID,
+	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+
+	p.LogDebug("removing session from state", "userID", us.userID)
+
+	p.mut.Lock()
+	delete(p.sessions, us.connID)
+	p.mut.Unlock()
+
+	currState, prevState, err := p.removeUserSession(us.userID, us.originalConnID, us.channelID)
+	if err != nil {
+		return err
+	}
+
+	if currState.Call == nil && prevState.Call != nil {
+		// call has ended
+		dur, err := p.updateCallThreadEnded(prevState.Call.ThreadID)
+		if err != nil {
+			return err
+		}
+		p.track(evCallEnded, map[string]interface{}{
+			"ChannelID":    us.channelID,
+			"CallID":       prevState.Call.ID,
+			"Duration":     dur,
+			"Participants": prevState.Call.Stats.Participants,
+		})
+	}
+	return nil
 }
