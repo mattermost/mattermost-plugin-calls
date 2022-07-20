@@ -24,18 +24,26 @@ type session struct {
 	originalConnID string
 
 	// WebSocket
-	signalOutCh   chan []byte
-	wsMsgCh       chan clientMessage
-	wsCloseCh     chan struct{}
-	wsClosed      int32
+
+	signalOutCh chan []byte
+	wsMsgCh     chan clientMessage
+	// to notify of websocket disconnect.
+	wsCloseCh chan struct{}
+	wsClosed  int32
+	// to notify of websocket reconnection.
 	wsReconnectCh chan struct{}
 	wsReconnected int32
 
 	// RTC
+
+	// to notify of rtc session disconnect.
 	rtcCloseCh chan struct{}
 	rtcClosed  int32
-	rtc        bool
+	// rtc indicates whether or not the session is also handling the WebRTC
+	// connection.
+	rtc bool
 
+	// to notify of session leaving a call.
 	leaveCh chan struct{}
 	left    int32
 

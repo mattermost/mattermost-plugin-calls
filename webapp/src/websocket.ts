@@ -48,6 +48,7 @@ export class WebSocketClient extends EventEmitter {
 
         if (isReconnect) {
             this.ws.onopen = () => {
+                logDebug('ws: reconnected');
                 this.lastDisconnect = 0;
                 this.reconnectRetryTime = wsMinReconnectRetryTimeMs;
                 this.emit('open', this.originalConnID, this.connID, true);

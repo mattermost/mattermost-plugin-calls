@@ -11,12 +11,12 @@ import (
 )
 
 type clusterMessage struct {
-	ConnID        string        `json:"conn_id"`
+	ConnID        string        `json:"conn_id,omitempty"`
 	PrevConnID    string        `json:"prev_conn_id,omitempty"`
-	UserID        string        `json:"user_id"`
-	ChannelID     string        `json:"channel_id"`
-	SenderID      string        `json:"sender_id"`
-	ClientMessage clientMessage `json:"client_message"`
+	UserID        string        `json:"user_id,omitempty"`
+	ChannelID     string        `json:"channel_id,omitempty"`
+	SenderID      string        `json:"sender_id,omitempty"`
+	ClientMessage clientMessage `json:"client_message,omitempty"`
 }
 
 type clusterMessageType string
