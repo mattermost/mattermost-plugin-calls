@@ -67,6 +67,7 @@ type user struct {
 	connectedCh chan struct{}
 	doneCh      chan struct{}
 	iceCh       chan webrtc.ICECandidateInit
+	initCh      chan struct{}
 
 	// WebSocket
 	wsCloseCh chan struct{}
@@ -87,6 +88,7 @@ func newUser(cfg config) *user {
 		iceCh:       make(chan webrtc.ICECandidateInit, 10),
 		wsCloseCh:   make(chan struct{}),
 		wsSendCh:    make(chan wsMsg, 256),
+		initCh:      make(chan struct{}),
 	}
 }
 
@@ -280,7 +282,7 @@ func (u *user) initRTC() error {
 	u.pc = pc
 
 	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
-		log.Printf("ice: %v", c)
+		log.Printf("%s: ice: %v", u.cfg.username, c)
 	})
 
 	pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
@@ -289,7 +291,7 @@ func (u *user) initRTC() error {
 		}
 
 		if connectionState == webrtc.ICEConnectionStateDisconnected || connectionState == webrtc.ICEConnectionStateFailed {
-			log.Printf("ice disconnect")
+			log.Printf("%s: ice disconnect", u.cfg.username)
 			close(u.wsCloseCh)
 		}
 	})
@@ -301,7 +303,7 @@ func (u *user) initRTC() error {
 		}
 
 		codecName := strings.Split(track.Codec().RTPCodecCapability.MimeType, "/")[1]
-		log.Printf("Track has started, of type %d: %s \n", track.PayloadType(), codecName)
+		log.Printf("%s: Track has started, of type %d: %s \n", u.cfg.username, track.PayloadType(), codecName)
 
 		buf := make([]byte, 1400)
 		for {
@@ -338,6 +340,8 @@ func (u *user) initRTC() error {
 		return err
 	}
 
+	log.Printf("%s: set local description", u.cfg.username)
+
 	var sdpData bytes.Buffer
 	w := zlib.NewWriter(&sdpData)
 	if err := json.NewEncoder(w).Encode(sdp); err != nil {
@@ -354,6 +358,8 @@ func (u *user) initRTC() error {
 	default:
 		log.Printf("failed to send ws message")
 	}
+
+	close(u.initCh)
 
 	return nil
 }
@@ -376,39 +382,39 @@ func (u *user) handleSignal(ev *model.WebSocketEvent) {
 			Type: webrtc.SDPTypeAnswer,
 			SDP:  data["sdp"].(string),
 		}); err != nil {
-			log.Printf(err.Error())
+			log.Printf("%s: SetRemoteDescription failed: %s", u.cfg.username, err.Error())
 		}
 
 		go func() {
 			for ice := range u.iceCh {
 				if err := u.pc.AddICECandidate(ice); err != nil {
-					log.Printf(err.Error())
+					log.Printf("%s: %s", u.cfg.username, err.Error())
 				}
 			}
 		}()
 
 	} else if t == "offer" {
-		log.Printf("%s: sdp offer!", u.cfg.username)
+		log.Printf("%s: sdp offer", u.cfg.username)
 		if err := u.pc.SetRemoteDescription(webrtc.SessionDescription{
 			Type: webrtc.SDPTypeOffer,
 			SDP:  data["sdp"].(string),
 		}); err != nil {
-			log.Printf(err.Error())
+			log.Printf("%s: SetRemoteDescription failed: %s", u.cfg.username, err.Error())
 		}
 
 		sdp, err := u.pc.CreateAnswer(nil)
 		if err != nil {
-			log.Printf(err.Error())
+			log.Printf("%s: %s", u.cfg.username, err.Error())
 		}
 
 		if err := u.pc.SetLocalDescription(sdp); err != nil {
-			log.Printf(err.Error())
+			log.Printf("%s: SetLocalDescription failed: %s", u.cfg.username, err.Error())
 		}
 
 		var sdpData bytes.Buffer
 		w := zlib.NewWriter(&sdpData)
 		if err := json.NewEncoder(w).Encode(sdp); err != nil {
-			log.Fatalf(err.Error())
+			log.Fatalf("%s: %s", u.cfg.username, err.Error())
 		}
 		w.Close()
 
@@ -447,9 +453,7 @@ func (u *user) wsListen(authToken string) {
 	}
 
 	defer func() {
-		err := ws.SendMessage("custom_com.mattermost.calls_leave", map[string]interface{}{
-			"channelID": u.cfg.channelID,
-		})
+		err := ws.SendMessage("custom_com.mattermost.calls_leave", nil)
 		if err != nil {
 			log.Printf(err.Error())
 		}
@@ -513,6 +517,10 @@ func (u *user) wsListen(authToken string) {
 
 			wsServerSeq = ev.GetSequence() + 1
 
+			if connID, ok := ev.GetData()["connID"].(string); !ok || (connID != wsConnID && connID != originalConnID) {
+				continue
+			}
+
 			switch ev.EventType() {
 			case "custom_com.mattermost.calls_join":
 				log.Printf("%s: joined call", u.cfg.username)
@@ -522,7 +530,12 @@ func (u *user) wsListen(authToken string) {
 				defer u.pc.Close()
 			case "custom_com.mattermost.calls_signal":
 				log.Printf("%s: received signal", u.cfg.username)
-				u.handleSignal(ev)
+				select {
+				case <-u.initCh:
+					u.handleSignal(ev)
+				case <-time.After(2 * time.Second):
+					log.Printf("%s: timed out waiting for init", u.cfg.username)
+				}
 			case "custom_com.mattermost.calls_call_end":
 				log.Printf("%s: call end event, exiting", u.cfg.username)
 				return
