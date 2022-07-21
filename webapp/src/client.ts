@@ -345,9 +345,7 @@ export default class CallsClient extends EventEmitter {
         });
 
         if (this.ws) {
-            this.ws.send('leave', {
-                channelID: this.channelID,
-            });
+            this.ws.send('leave');
             this.ws.close();
             this.ws = null;
         }

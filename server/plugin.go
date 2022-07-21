@@ -133,7 +133,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		go p.startSession(us, msg.SenderID)
 		return nil
 	case clusterMessageTypeReconnect:
-		p.LogDebug("reconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID, "PrevConnID", msg.PrevConnID)
+		p.LogDebug("reconnect event", "UserID", msg.UserID, "ConnID", msg.ConnID, "PrevConnID", msg.PrevConnID)
 
 		p.mut.Lock()
 		defer p.mut.Unlock()
@@ -159,7 +159,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 
 		return nil
 	case clusterMessageTypeLeave:
-		p.LogDebug("leave event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID)
+		p.LogDebug("leave event", "UserID", msg.UserID, "ConnID", msg.ConnID)
 
 		p.mut.RLock()
 		us := p.sessions[msg.ConnID]

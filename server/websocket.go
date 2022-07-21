@@ -543,7 +543,6 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		ConnID:     connID,
 		PrevConnID: prevConnID,
 		UserID:     userID,
-		ChannelID:  channelID,
 		SenderID:   p.nodeID,
 	}, clusterMessageTypeReconnect, ""); err != nil {
 		p.LogError(err.Error())
@@ -647,21 +646,14 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	case clientMessageTypeLeave:
 		p.LogDebug("leave message", "userID", userID, "connID", connID)
 
-		channelID, ok := req.Data["channelID"].(string)
-		if !ok {
-			p.LogError("missing channelID")
-			return
-		}
-
 		if us != nil && atomic.CompareAndSwapInt32(&us.left, 0, 1) {
 			close(us.leaveCh)
 		}
 
 		if err := p.sendClusterMessage(clusterMessage{
-			ConnID:    connID,
-			UserID:    userID,
-			ChannelID: channelID,
-			SenderID:  p.nodeID,
+			ConnID:   connID,
+			UserID:   userID,
+			SenderID: p.nodeID,
 		}, clusterMessageTypeLeave, ""); err != nil {
 			p.LogError(err.Error())
 		}
