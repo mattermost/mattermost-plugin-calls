@@ -133,16 +133,12 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		go p.startSession(us, msg.SenderID)
 		return nil
 	case clusterMessageTypeReconnect:
-		p.LogDebug("reconnect event", "UserID", msg.UserID, "ConnID", msg.ConnID, "PrevConnID", msg.PrevConnID)
+		p.LogDebug("reconnect event", "UserID", msg.UserID, "ConnID", msg.ConnID)
 
 		p.mut.Lock()
 		defer p.mut.Unlock()
 
 		us := p.sessions[msg.ConnID]
-		if us == nil && msg.PrevConnID != "" {
-			us = p.sessions[msg.PrevConnID]
-		}
-
 		if us == nil {
 			return nil
 		}

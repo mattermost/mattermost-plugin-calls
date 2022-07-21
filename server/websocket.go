@@ -540,10 +540,9 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 	p.mut.Unlock()
 
 	if err := p.sendClusterMessage(clusterMessage{
-		ConnID:     connID,
-		PrevConnID: prevConnID,
-		UserID:     userID,
-		SenderID:   p.nodeID,
+		ConnID:   prevConnID,
+		UserID:   userID,
+		SenderID: p.nodeID,
 	}, clusterMessageTypeReconnect, ""); err != nil {
 		p.LogError(err.Error())
 	}
@@ -631,7 +630,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 		prevConnID, _ := req.Data["prevConnID"].(string)
-		if connID != originalConnID && prevConnID == "" {
+		if prevConnID == "" {
 			p.LogError("missing prevConnID")
 			return
 		}
