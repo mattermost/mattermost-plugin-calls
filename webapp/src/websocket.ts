@@ -33,7 +33,17 @@ export class WebSocketClient extends EventEmitter {
             logWarn('client is closed!');
             return;
         }
+
         this.ws = new WebSocket(`${this.wsURL}?connection_id=${this.connID}&sequence_number=${this.serverSeqNo}`);
+
+        if (isReconnect) {
+            this.ws.onopen = () => {
+                logDebug('ws: reconnected');
+                this.lastDisconnect = 0;
+                this.reconnectRetryTime = wsMinReconnectRetryTimeMs;
+                this.emit('open', this.originalConnID, this.connID, true);
+            };
+        }
 
         this.ws.onerror = (err) => {
             this.emit('error', err);
@@ -45,15 +55,6 @@ export class WebSocketClient extends EventEmitter {
                 this.close(code);
             }
         };
-
-        if (isReconnect) {
-            this.ws.onopen = () => {
-                logDebug('ws: reconnected');
-                this.lastDisconnect = 0;
-                this.reconnectRetryTime = wsMinReconnectRetryTimeMs;
-                this.emit('open', this.originalConnID, this.connID, true);
-            };
-        }
 
         this.ws.onmessage = ({data}) => {
             if (!data) {
