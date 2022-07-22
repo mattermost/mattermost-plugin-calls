@@ -326,6 +326,12 @@ export default class CallsClient extends EventEmitter {
 
     public disconnect() {
         logDebug('disconnect');
+
+        if (this.closed) {
+            logErr('client already disconnected');
+            return;
+        }
+
         this.closed = true;
         if (this.peer) {
             this.peer.destroy();
