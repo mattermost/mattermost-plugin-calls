@@ -35,5 +35,10 @@ const config: PlaywrightTestConfig = {
             },
         },
     ],
+    reporter: process.env.CI ? [
+        ['html', {open: 'never'}],
+        ['json', {outputFile: 'pw-results.json'}],
+        ['list'],
+    ] : 'list',
 };
 export default config;

@@ -1,4 +1,4 @@
 include:
   - project: qa/calls-e2e-testing
-    ref: main
+    ref: gh-report-status
     file: private.yml
