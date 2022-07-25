@@ -27,7 +27,7 @@ func (p *Plugin) OnActivate() error {
 	p.pluginAPI = pluginAPIClient
 	p.licenseChecker = enterprise.NewLicenseChecker(pluginAPIClient)
 
-	if !p.isHAEnabled() {
+	if p.isSingleHandler() {
 		if err := p.cleanUpState(); err != nil {
 			p.LogError(err.Error())
 			return err
@@ -74,6 +74,8 @@ func (p *Plugin) OnActivate() error {
 		p.LogDebug("rtcd client manager initialized successfully")
 
 		p.rtcdManager = rtcdManager
+
+		go p.clusterEventsHandler()
 
 		p.LogDebug("activated", "ClusterID", status.ClusterId)
 
@@ -154,7 +156,7 @@ func (p *Plugin) OnDeactivate() error {
 		}
 	}
 
-	if !p.isHAEnabled() {
+	if p.isSingleHandler() {
 		if err := p.cleanUpState(); err != nil {
 			p.LogError(err.Error())
 		}

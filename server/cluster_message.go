@@ -11,11 +11,11 @@ import (
 )
 
 type clusterMessage struct {
-	ConnID        string        `json:"conn_id"`
-	UserID        string        `json:"user_id"`
-	ChannelID     string        `json:"channel_id"`
-	SenderID      string        `json:"sender_id"`
-	ClientMessage clientMessage `json:"client_message"`
+	ConnID        string        `json:"conn_id,omitempty"`
+	UserID        string        `json:"user_id,omitempty"`
+	ChannelID     string        `json:"channel_id,omitempty"`
+	SenderID      string        `json:"sender_id,omitempty"`
+	ClientMessage clientMessage `json:"client_message,omitempty"`
 }
 
 type clusterMessageType string
@@ -23,6 +23,8 @@ type clusterMessageType string
 const (
 	clusterMessageTypeConnect    clusterMessageType = "connect"
 	clusterMessageTypeDisconnect clusterMessageType = "disconnect"
+	clusterMessageTypeLeave      clusterMessageType = "leave"
+	clusterMessageTypeReconnect  clusterMessageType = "reconnect"
 	clusterMessageTypeSignaling  clusterMessageType = "signaling"
 	clusterMessageTypeUserState  clusterMessageType = "user_state"
 )
