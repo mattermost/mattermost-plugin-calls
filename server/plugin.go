@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -52,23 +53,27 @@ type Plugin struct {
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	defer func() {
-		wg.Wait()
-		p.LogDebug("exiting session handler")
-	}()
-
-	go func() {
-		defer wg.Done()
-		cfg := rtc.SessionConfig{
-			GroupID:   "default",
-			CallID:    us.channelID,
-			UserID:    us.userID,
-			SessionID: us.connID,
+	cfg := rtc.SessionConfig{
+		GroupID:   "default",
+		CallID:    us.channelID,
+		UserID:    us.userID,
+		SessionID: us.connID,
+	}
+	if err := p.rtcServer.InitSession(cfg, func() error {
+		p.LogDebug("rtc session close cb", "sessionID", us.connID)
+		if atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
+			close(us.rtcCloseCh)
 		}
-		if err := p.rtcServer.InitSession(cfg, nil); err != nil {
-			p.LogError(err.Error(), "sessionConfig", fmt.Sprintf("%+v", cfg))
+		return p.removeSession(us)
+	}); err != nil {
+		p.LogError(err.Error(), "sessionConfig", fmt.Sprintf("%+v", cfg))
+		return
+	}
+
+	defer func() {
+		p.LogDebug("closing rtc session", "sessionID", us.connID)
+		if err := p.rtcServer.CloseSession(us.connID); err != nil {
+			p.LogError("failed to close session", "error", err.Error())
 		}
 	}()
 
@@ -91,7 +96,7 @@ func (p *Plugin) startSession(us *session, senderID string) {
 			if err := p.sendClusterMessage(clusterMsg, clusterMessageTypeSignaling, senderID); err != nil {
 				p.LogError(err.Error())
 			}
-		case <-us.closeCh:
+		case <-us.rtcCloseCh:
 			return
 		}
 	}
@@ -113,36 +118,76 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		return err
 	}
 
-	p.mut.RLock()
-	us := p.sessions[msg.ConnID]
-	p.mut.RUnlock()
-
 	switch clusterMessageType(ev.Id) {
 	case clusterMessageTypeConnect:
+		p.LogDebug("connect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID)
+		p.mut.Lock()
+		defer p.mut.Unlock()
+		us := p.sessions[msg.ConnID]
 		if us != nil {
 			return fmt.Errorf("session already exists, userID=%q, connID=%q, channelID=%q",
 				us.userID, msg.ConnID, us.channelID)
 		}
-		us := newUserSession(msg.UserID, msg.ChannelID, msg.ConnID)
-		p.mut.Lock()
+		us = newUserSession(msg.UserID, msg.ChannelID, msg.ConnID, true)
 		p.sessions[msg.ConnID] = us
-		p.mut.Unlock()
 		go p.startSession(us, msg.SenderID)
+		return nil
+	case clusterMessageTypeReconnect:
+		p.LogDebug("reconnect event", "UserID", msg.UserID, "ConnID", msg.ConnID)
+
+		p.mut.Lock()
+		defer p.mut.Unlock()
+
+		us := p.sessions[msg.ConnID]
+		if us == nil {
+			return nil
+		}
+
+		if atomic.CompareAndSwapInt32(&us.wsReconnected, 0, 1) {
+			p.LogDebug("closing reconnectCh", "connID", msg.ConnID)
+			close(us.wsReconnectCh)
+			if !us.rtc {
+				delete(p.sessions, us.connID)
+			}
+		} else {
+			return fmt.Errorf("session already reconnected, connID=%q", msg.ConnID)
+		}
+
+		return nil
+	case clusterMessageTypeLeave:
+		p.LogDebug("leave event", "UserID", msg.UserID, "ConnID", msg.ConnID)
+
+		p.mut.RLock()
+		us := p.sessions[msg.ConnID]
+		p.mut.RUnlock()
+
+		if us == nil {
+			return nil
+		}
+
+		if atomic.CompareAndSwapInt32(&us.left, 0, 1) {
+			p.LogDebug("closing leaveCh", "connID", msg.ConnID)
+			close(us.leaveCh)
+		}
 	case clusterMessageTypeDisconnect:
+		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID)
+		p.mut.RLock()
+		us := p.sessions[msg.ConnID]
+		p.mut.RUnlock()
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, connID=%q, channelID=%q",
 				ev.Id, msg.UserID, msg.ConnID, msg.ChannelID)
 		}
-		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID)
-		p.mut.Lock()
-		delete(p.sessions, us.connID)
-		p.mut.Unlock()
-		close(us.signalInCh)
-		close(us.closeCh)
-		if err := p.rtcServer.CloseSession(us.connID); err != nil {
-			return fmt.Errorf("failed to close session: %w", err)
+		if atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
+			close(us.rtcCloseCh)
 		}
+		return nil
 	case clusterMessageTypeSignaling:
+		p.LogDebug("signaling event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID)
+		p.mut.RLock()
+		us := p.sessions[msg.ConnID]
+		p.mut.RUnlock()
+
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, connID=%q, channelID=%q",
 				ev.Id, msg.UserID, msg.ConnID, msg.ChannelID)
@@ -165,6 +210,11 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	case clusterMessageTypeUserState:
+		p.LogDebug("user state event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID)
+		p.mut.RLock()
+		us := p.sessions[msg.ConnID]
+		p.mut.RUnlock()
+
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, connID=%q, channelID=%q",
 				ev.Id, msg.UserID, msg.ConnID, msg.ChannelID)

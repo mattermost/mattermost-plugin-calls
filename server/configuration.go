@@ -351,9 +351,25 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	}
 }
 
-func (p *Plugin) isHAEnabled() bool {
+func (p *Plugin) isSingleHandler() bool {
 	cfg := p.API.GetConfig()
-	return cfg != nil && cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
+	pluginCfg := p.getConfiguration()
+
+	if cfg == nil || pluginCfg == nil || p.licenseChecker == nil {
+		return false
+	}
+
+	rtcdURL := pluginCfg.getRTCDURL()
+	hasRTCD := rtcdURL != "" && p.licenseChecker.RTCDAllowed()
+
+	if hasRTCD {
+		return false
+	}
+
+	isHA := cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
+	hasEnvVar := os.Getenv("MM_CALLS_IS_HANDLER") != ""
+
+	return !isHA || (isHA && hasEnvVar)
 }
 
 func (c *configuration) getICEServers(forClient bool) ICEServersConfigs {

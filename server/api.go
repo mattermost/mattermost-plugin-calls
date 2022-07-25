@@ -117,7 +117,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
 
 	var page int
-	var channels []ChannelState
+	channels := []ChannelState{}
 	channelMembers := map[string]*model.ChannelMember{}
 	perPage := 200
 
