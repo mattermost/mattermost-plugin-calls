@@ -315,15 +315,15 @@ func (u *user) initRTC() error {
 		}
 	})
 
-	audioTrack, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	audioRTPSender, err := pc.AddTrack(audioTrack)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
 	if u.cfg.unmuted {
+		audioTrack, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		audioRTPSender, err := pc.AddTrack(audioTrack)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
 		u.transmitAudio(audioTrack, audioRTPSender)
 	}
 
@@ -562,7 +562,7 @@ func (u *user) wsListen(authToken string) {
 	}
 }
 
-func (u *user) Connect(stopCh chan struct{}) error {
+func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) error {
 	log.Printf("%s: connecting user", u.cfg.username)
 
 	var user *model.User
@@ -600,10 +600,12 @@ func (u *user) Connect(stopCh chan struct{}) error {
 		return err
 	}
 
-	// join channel
-	_, _, err = client.AddChannelMember(u.cfg.channelID, user.Id)
-	if err != nil {
-		return err
+	if channelType == "O" || channelType == "P" {
+		// join channel
+		_, _, err = client.AddChannelMember(u.cfg.channelID, user.Id)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Printf("%s: connecting to websocket", u.cfg.username)
@@ -635,6 +637,7 @@ func (u *user) Connect(stopCh chan struct{}) error {
 func main() {
 	// TODO: consider using a config file instead.
 	var teamID string
+	var channelID string
 	var siteURL string
 	var userPassword string
 	var userPrefix string
@@ -649,6 +652,7 @@ func main() {
 	var numUsersPerCall int
 
 	flag.StringVar(&teamID, "team", "", "team ID")
+	flag.StringVar(&channelID, "channel", "", "channel ID")
 	flag.StringVar(&siteURL, "url", "http://localhost:8065", "MM SiteURL")
 	flag.StringVar(&userPrefix, "user-prefix", "testuser-", "user prefix")
 	flag.StringVar(&userPassword, "user-password", "testPass123$", "user password")
@@ -670,6 +674,10 @@ func main() {
 
 	if numCalls == 0 {
 		log.Fatalf("calls should be > 0")
+	}
+
+	if channelID != "" && numCalls != 1 {
+		log.Fatalf("calls should be 1")
 	}
 
 	if numUsersPerCall == 0 {
@@ -716,39 +724,47 @@ func main() {
 	}
 
 	var channels []*model.Channel
-	page := 0
-	perPage := 100
-	for {
-		chs, _, err := adminClient.SearchChannels(teamID, &model.ChannelSearch{
-			Public:  true,
-			PerPage: &perPage,
-			Page:    &page,
-		})
+	if channelID == "" {
+		page := 0
+		perPage := 100
+		for {
+			chs, _, err := adminClient.SearchChannels(teamID, &model.ChannelSearch{
+				Public:  true,
+				PerPage: &perPage,
+				Page:    &page,
+			})
+			if err != nil {
+				log.Fatalf("failed to search channels: %s", err.Error())
+			}
+			channels = append(channels, chs...)
+			if len(channels) >= numCalls || len(chs) < perPage {
+				break
+			}
+			page++
+		}
+
+		if len(channels) < numCalls {
+			channels = make([]*model.Channel, numCalls)
+			for i := 0; i < numCalls; i++ {
+				name := model.NewId()
+				channel, _, err := adminClient.CreateChannel(&model.Channel{
+					TeamId:      teamID,
+					Name:        name,
+					DisplayName: "test-" + name,
+					Type:        model.ChannelTypeOpen,
+				})
+				if err != nil {
+					log.Fatalf("failed to create channel: %s", err.Error())
+				}
+				channels[i] = channel
+			}
+		}
+	} else {
+		channel, _, err := adminClient.GetChannel(channelID, "")
 		if err != nil {
 			log.Fatalf("failed to search channels: %s", err.Error())
 		}
-		channels = append(channels, chs...)
-		if len(channels) >= numCalls || len(chs) < perPage {
-			break
-		}
-		page++
-	}
-
-	if len(channels) < numCalls {
-		channels = make([]*model.Channel, numCalls)
-		for i := 0; i < numCalls; i++ {
-			name := model.NewId()
-			channel, _, err := adminClient.CreateChannel(&model.Channel{
-				TeamId:      teamID,
-				Name:        name,
-				DisplayName: "test-" + name,
-				Type:        model.ChannelTypeOpen,
-			})
-			if err != nil {
-				log.Fatalf("failed to create channel: %s", err.Error())
-			}
-			channels[i] = channel
-		}
+		channels = append(channels, channel)
 	}
 
 	stopCh := make(chan struct{})
@@ -757,7 +773,7 @@ func main() {
 	for j := 0; j < numCalls; j++ {
 		log.Printf("starting call in %s", channels[j].DisplayName)
 		for i := 0; i < numUsersPerCall; i++ {
-			go func(idx int, channelID string, unmuted, screenSharing bool) {
+			go func(idx int, channelID string, channelType model.ChannelType, unmuted, screenSharing bool) {
 				username := fmt.Sprintf("%s%d", userPrefix, idx)
 				if unmuted {
 					log.Printf("%s: going to transmit screen", username)
@@ -788,10 +804,10 @@ func main() {
 				}
 
 				user := newUser(cfg)
-				if err := user.Connect(stopCh); err != nil {
+				if err := user.Connect(stopCh, channelType); err != nil {
 					log.Printf("connectUser failed: %s", err.Error())
 				}
-			}((numUsersPerCall*j)+i+offset, channels[j].Id, i < numUnmuted, i == 0 && j < numScreenSharing)
+			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].Type, i < numUnmuted, i == 0 && j < numScreenSharing)
 		}
 	}
 
