@@ -281,6 +281,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             document.body.appendChild(audioEl);
             voiceTrack.onended = () => {
+                audioEl.srcObject = null;
                 audioEl.remove();
             };
         });
