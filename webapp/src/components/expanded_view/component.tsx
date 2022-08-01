@@ -204,6 +204,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     height='100%'
                     muted={true}
                     autoPlay={true}
+                    onClick={(ev) => ev.preventDefault()}
                     controls={true}
                 />
                 <span
