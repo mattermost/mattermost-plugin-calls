@@ -619,6 +619,8 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		}()
 		return
 	case clientMessageTypeReconnect:
+		p.metrics.IncWebSocketEvent("in", "reconnect")
+
 		channelID, _ := req.Data["channelID"].(string)
 		if channelID == "" {
 			p.LogError("missing channelID")
@@ -643,6 +645,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		}()
 		return
 	case clientMessageTypeLeave:
+		p.metrics.IncWebSocketEvent("in", "leave")
 		p.LogDebug("leave message", "userID", userID, "connID", connID)
 
 		if us != nil && atomic.CompareAndSwapInt32(&us.left, 0, 1) {

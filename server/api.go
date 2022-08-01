@@ -241,6 +241,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 		return
 	}
 
+	p.metrics.IncWebSocketEvent("out", "call_end")
 	p.API.PublishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	go func() {
