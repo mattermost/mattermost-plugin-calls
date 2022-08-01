@@ -1201,7 +1201,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={this.style.profiles}>
                             {this.renderProfiles()}
                         </div>
-                        <div style={{width: hasTeamSidebar ? '204px' : '140px'}}>
+                        <div style={{width: hasTeamSidebar ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
