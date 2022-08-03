@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	rtcd "github.com/mattermost/rtcd/service"
@@ -502,6 +503,25 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 			return fmt.Errorf("unexpected data type %T", msg.Data)
 		}
 		m.ctx.LogDebug("received hello message from rtcd", "connID", msgData["connID"])
+		return nil
+	} else if msg.Type == rtcd.ClientMessageClose {
+		msgData, ok := msg.Data.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected data type %T", msg.Data)
+		}
+		sessionID := msgData["sessionID"]
+		if sessionID == "" {
+			return fmt.Errorf("missing sessionID")
+		}
+		m.ctx.LogDebug("received close message from rtcd", "sessionID", sessionID)
+		m.ctx.mut.RLock()
+		us := m.ctx.sessions[sessionID]
+		m.ctx.mut.RUnlock()
+		if us != nil && atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
+			m.ctx.LogDebug("closing rtc close channel", "sessionID", sessionID)
+			close(us.rtcCloseCh)
+			return m.ctx.removeSession(us)
+		}
 		return nil
 	}
 
