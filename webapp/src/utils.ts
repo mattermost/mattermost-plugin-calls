@@ -301,3 +301,12 @@ export function getUsersList(profiles: UserProfile[]) {
     }).join(', ');
     return list + ' and ' + getUserDisplayName(profiles[profiles.length - 1]);
 }
+
+export function playSound(src: string) {
+    const audio = new Audio(src);
+    audio.play();
+    audio.onended = () => {
+        audio.src = '';
+        audio.remove();
+    };
+}

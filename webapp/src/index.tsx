@@ -63,6 +63,7 @@ import {
     isDMChannel,
     getUserIdFromDM,
     getWSConnectionURL,
+    playSound,
 } from './utils';
 import {logErr, logDebug} from './log';
 
@@ -126,11 +127,9 @@ export default class Plugin {
 
             if (window.callsClient?.channelID === channelID) {
                 if (userID === currentUserID) {
-                    const audio = new Audio(getPluginStaticPath() + JoinSelfSound);
-                    audio.play();
+                    playSound(getPluginStaticPath() + JoinSelfSound);
                 } else if (channelID === connectedChannelID(store.getState())) {
-                    const audio = new Audio(getPluginStaticPath() + JoinUserSound);
-                    audio.play();
+                    playSound(getPluginStaticPath() + JoinUserSound);
                 }
             }
 
@@ -508,9 +507,7 @@ export default class Plugin {
                     if (window.callsClient) {
                         window.callsClient.destroy();
                         delete window.callsClient;
-                        const sound = getPluginStaticPath() + LeaveSelfSound;
-                        const audio = new Audio(sound);
-                        audio.play();
+                        playSound(getPluginStaticPath() + LeaveSelfSound);
                     }
                 });
 

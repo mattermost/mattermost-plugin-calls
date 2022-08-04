@@ -281,6 +281,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             document.body.appendChild(audioEl);
             voiceTrack.onended = () => {
+                audioEl.srcObject = null;
                 audioEl.remove();
             };
         });
@@ -293,7 +294,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         window.callsClient.on('connect', () => {
             if (isDMChannel(this.props.channel) || isGMChannel(this.props.channel)) {
-                window.callsClient.unmute();
+                // FIXME (MM-46048) - HACK
+                // There's a race condition between unmuting and receiving existing tracks from other participants.
+                // Fixing this properly requires extensive and potentially breaking changes.
+                // Waiting for a second before unmuting is a decent workaround that should work in most cases.
+                setTimeout(() => {
+                    window.callsClient.unmute();
+                }, 1000);
             }
             this.setState({currentAudioInputDevice: window.callsClient.currentAudioInputDevice});
             this.setState({currentAudioOutputDevice: window.callsClient.currentAudioOutputDevice});
@@ -646,8 +653,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <div style={{fontSize: '12px', display: 'flex', whiteSpace: 'pre'}}>
                 <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                    {speakingProfile ? getUserDisplayName(speakingProfile) : 'No one'}
-                </span><span>{' is talking...'}</span>
+                    {speakingProfile ? getUserDisplayName(speakingProfile) : 'No one'} <span style={{fontWeight: 400}}>{'is talking...'}</span>
+                </span>
             </div>
         );
     }
@@ -1201,7 +1208,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={this.style.profiles}>
                             {this.renderProfiles()}
                         </div>
-                        <div style={{width: '85%'}}>
+                        <div style={{width: hasTeamSidebar ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
