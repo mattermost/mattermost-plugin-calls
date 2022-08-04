@@ -315,15 +315,15 @@ func (u *user) initRTC() error {
 		}
 	})
 
+	audioTrack, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	audioRTPSender, err := pc.AddTrack(audioTrack)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 	if u.cfg.unmuted {
-		audioTrack, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-		audioRTPSender, err := pc.AddTrack(audioTrack)
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
 		u.transmitAudio(audioTrack, audioRTPSender)
 	}
 
