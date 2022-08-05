@@ -7,15 +7,13 @@ import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {IDMappedObjects} from '@mattermost/types/utilities';
+
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 
 import {UserState} from 'src/types/types';
 import {
     getUserDisplayName,
-    isPublicChannel,
-    isPrivateChannel,
-    isDMChannel,
-    isGMChannel,
     hasExperimentalFlag,
     getPopOutURL,
 } from 'src/utils';
@@ -44,6 +42,7 @@ interface Props {
     channel: Channel,
     team: Team,
     channelURL: string,
+    channelDisplayName: string,
     profiles: UserProfile[],
     profilesMap: IDMappedObjects<UserProfile>,
     picturesMap: {
@@ -293,7 +292,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient.on('connect', () => {
-            if (isDMChannel(this.props.channel) || isGMChannel(this.props.channel)) {
+            if (isDirectChannel(this.props.channel) || isGroupChannel(this.props.channel)) {
                 // FIXME (MM-46048) - HACK
                 // There's a race condition between unmuting and receiving existing tracks from other participants.
                 // Fixing this properly requires extensive and potentially breaking changes.
@@ -1131,19 +1130,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     renderChannelName = (hasTeamSidebar: boolean) => {
-        console.log('propssss', this.props);
-
-        let name = '';
-        if (isPublicChannel(this.props.channel) || isPrivateChannel(this.props.channel) || isGMChannel(this.props.channel)) {
-            name = this.props.channel.display_name;
-        } else if (isDMChannel(this.props.channel)) {
-            name = this.props.channel.name;
-        }
-
-        if (!name.length) {
-            return null;
-        }
-
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
@@ -1153,10 +1139,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     onClick={this.onChannelLinkClick}
                     className='calls-channel-link'
                 >
-                    {isPublicChannel(this.props.channel) && <CompassIcon icon='globe'/>}
+                    {isOpenChannel(this.props.channel) && <CompassIcon icon='globe'/>}
                     {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
-                    {isDMChannel(this.props.channel) && <CompassIcon icon='account-outline'/>}
-                    {isGMChannel(this.props.channel) && <CompassIcon icon='account-multiple-outline'/>}
+                    {isDirectChannel(this.props.channel) && <CompassIcon icon='account-outline'/>}
+                    {isGroupChannel(this.props.channel) && <CompassIcon icon='account-multiple-outline'/>}
                     <span
                         style={{
                             overflow: 'hidden',
@@ -1165,7 +1151,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             maxWidth: hasTeamSidebar ? '24ch' : '14ch',
                         }}
                     >
-                        {name}
+                        {this.props.channelDisplayName}
                     </span>
                 </a>
             </React.Fragment>
@@ -1299,7 +1285,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             </button>
                         </OverlayTrigger>
 
-                        { !isDMChannel(this.props.channel) &&
+                        { !isDirectChannel(this.props.channel) &&
                         <OverlayTrigger
                             key='hand'
                             placement='top'
@@ -1322,7 +1308,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </OverlayTrigger>
                         }
 
-                        {(hasTeamSidebar || isDMChannel(this.props.channel)) && this.renderScreenShareButton()}
+                        {(hasTeamSidebar || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <OverlayTrigger
                             key='mute'
