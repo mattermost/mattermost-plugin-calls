@@ -1131,6 +1131,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     renderChannelName = (hasTeamSidebar: boolean) => {
+        console.log('propssss', this.props);
+
+        let name = '';
+        if (isPublicChannel(this.props.channel) || isPrivateChannel(this.props.channel) || isGMChannel(this.props.channel)) {
+            name = this.props.channel.display_name;
+        } else if (isDMChannel(this.props.channel)) {
+            name = this.props.channel.name;
+        }
+
+        if (!name.length) {
+            return null;
+        }
+
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
@@ -1140,7 +1153,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     onClick={this.onChannelLinkClick}
                     className='calls-channel-link'
                 >
-                    {isPublicChannel(this.props.channel) ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
+                    {isPublicChannel(this.props.channel) && <CompassIcon icon='globe'/>}
+                    {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
+                    {isDMChannel(this.props.channel) && <CompassIcon icon='account-outline'/>}
+                    {isGMChannel(this.props.channel) && <CompassIcon icon='account-multiple-outline'/>}
                     <span
                         style={{
                             overflow: 'hidden',
@@ -1149,7 +1165,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             maxWidth: hasTeamSidebar ? '24ch' : '14ch',
                         }}
                     >
-                        {this.props.channel.display_name}
+                        {name}
                     </span>
                 </a>
             </React.Fragment>
@@ -1212,7 +1228,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
-                                {(isPublicChannel(this.props.channel) || isPrivateChannel(this.props.channel)) && this.renderChannelName(hasTeamSidebar)}
+                                {this.renderChannelName(hasTeamSidebar)}
                             </div>
                         </div>
                     </div>
