@@ -689,6 +689,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             fontSize={10}
                             url={this.props.picturesMap[profile.id]}
                             style={{marginRight: '8px'}}
+                            borderGlow={isSpeaking}
                         />
 
                         <span className='MenuItem__primary-text'>
