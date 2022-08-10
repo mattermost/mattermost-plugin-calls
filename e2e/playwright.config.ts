@@ -27,7 +27,7 @@ const config: PlaywrightTestConfig = {
             ],
         },
     },
-    projects: [
+    projects: process.env.CI ? [
         {
             name: 'chromium',
             use: {
@@ -36,6 +36,13 @@ const config: PlaywrightTestConfig = {
         },
         {
             name: 'webkit',
+        },
+    ] : [
+        {
+            name: 'chromium',
+            use: {
+                ...devices['Desktop Chrome'],
+            },
         },
     ],
     reporter: process.env.CI ? [
