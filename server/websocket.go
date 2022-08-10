@@ -292,6 +292,8 @@ func (p *Plugin) wsReader(us *session, handlerID string) {
 			return
 		case <-us.wsCloseCh:
 			return
+		case <-us.rtcCloseCh:
+			return
 		}
 	}
 }
@@ -342,6 +344,9 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 		return nil
 	case <-us.leaveCh:
 		p.LogDebug("user left call", "userID", userID, "connID", connID, "channelID", us.channelID)
+	case <-us.rtcCloseCh:
+		p.LogDebug("rtc connection was closed", "userID", userID, "connID", connID, "channelID", us.channelID)
+		return nil
 	case <-time.After(wsReconnectionTimeout):
 		p.LogDebug("timeout waiting for reconnection", "userID", userID, "connID", connID, "channelID", channelID)
 	}

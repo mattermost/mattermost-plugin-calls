@@ -11,7 +11,27 @@ async function globalSetup(config: FullConfig) {
 
     const adminContext = await request.newContext({
         baseURL,
+        storageState: {
+            cookies: [{
+                name: '',
+                value: '',
+                domain: '',
+                path: '',
+                expires: 0,
+                httpOnly: false,
+                secure: false,
+                sameSite: 'None',
+            }],
+            origins: [{
+                origin: baseURL,
+                localStorage: [{
+                    name: '__landingPageSeen__',
+                    value: 'true',
+                }],
+            }],
+        },
     });
+
     await adminContext.post('/api/v4/users/login', {
         data: {
             login_id: userState.admin.username,
@@ -33,6 +53,25 @@ async function globalSetup(config: FullConfig) {
         });
         const requestContext = await request.newContext({
             baseURL,
+            storageState: {
+                cookies: [{
+                    name: '',
+                    value: '',
+                    domain: '',
+                    path: '',
+                    expires: 0,
+                    httpOnly: false,
+                    secure: false,
+                    sameSite: 'None',
+                }],
+                origins: [{
+                    origin: baseURL,
+                    localStorage: [{
+                        name: '__landingPageSeen__',
+                        value: 'true',
+                    }],
+                }],
+            },
         });
         await requestContext.post('/api/v4/users/login', {
             data: {
