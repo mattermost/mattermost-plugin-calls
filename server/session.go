@@ -218,7 +218,7 @@ func (p *Plugin) removeSession(us *session) error {
 		"userID": us.userID,
 	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 
-	p.LogDebug("removing session from state", "userID", us.userID)
+	p.LogDebug("removing session from state", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
 
 	p.mut.Lock()
 	delete(p.sessions, us.connID)
