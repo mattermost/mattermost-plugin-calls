@@ -27,7 +27,17 @@ const config: PlaywrightTestConfig = {
             ],
         },
     },
-    projects: [
+    projects: process.env.CI ? [
+        {
+            name: 'chromium',
+            use: {
+                ...devices['Desktop Chrome'],
+            },
+        },
+        {
+            name: 'webkit',
+        },
+    ] : [
         {
             name: 'chromium',
             use: {
