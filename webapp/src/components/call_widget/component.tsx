@@ -299,7 +299,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 // Fixing this properly requires extensive and potentially breaking changes.
                 // Waiting for a second before unmuting is a decent workaround that should work in most cases.
                 setTimeout(() => {
-                    window.callsClient.unmute();
+                    window.callsClient?.unmute();
                 }, 1000);
             }
             this.setState({currentAudioInputDevice: window.callsClient.currentAudioInputDevice});
