@@ -61,7 +61,7 @@ module.exports = {
     output: {
         devtoolNamespace: PLUGIN_ID,
         path: path.join(__dirname, '/dist'),
-        publicPath: '/',
+        publicPath: `/static/plugins/${PLUGIN_ID}/widget/`,
         filename: 'widget.[contenthash].js',
         clean: true,
     },
@@ -69,12 +69,15 @@ module.exports = {
         alias: {
             src: path.resolve(__dirname, './src/'),
             'mattermost-redux': path.resolve(__dirname, './node_modules/mattermost-webapp/packages/mattermost-redux/src/'),
+            'mattermost-webapp': path.resolve(__dirname, './node_modules/mattermost-webapp/'),
             reselect: path.resolve(__dirname, './node_modules/mattermost-webapp/packages/reselect/src/index'),
             plugin: path.resolve(__dirname, '../webapp/src'),
             utils: path.resolve(__dirname, './node_modules/mattermost-webapp/utils'),
             images: path.resolve(__dirname, './node_modules/mattermost-webapp/images'),
             react: path.resolve(__dirname, './node_modules/react'),
             'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
+            'react-bootstrap': path.resolve(__dirname, './node_modules/react-bootstrap'),
+            bootstrap: path.resolve(__dirname, './node_modules/bootstrap'),
         },
         fallback: {
             src: path.resolve(__dirname, '../webapp/src'),
@@ -108,6 +111,12 @@ module.exports = {
                     },
                     {
                         loader: 'sass-loader',
+                        options: {
+                            sassOptions: {
+                                includePaths: [path.join(__dirname, 'node_modules/mattermost-webapp'),
+                                    path.join(__dirname, 'node_modules/mattermost-webapp/sass')],
+                            },
+                        },
                     },
                 ],
             },

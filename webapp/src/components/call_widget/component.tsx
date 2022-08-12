@@ -50,6 +50,7 @@ import CallDuration from './call_duration';
 import './component.scss';
 
 interface Props {
+    store: any,
     theme: any,
     currentUserID: string,
     channel: Channel,
@@ -70,6 +71,7 @@ interface Props {
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    global: boolean,
 }
 
 interface DraggingState {
@@ -1208,7 +1210,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const MuteIcon = window.callsClient.isMuted() ? MutedIcon : UnmutedIcon;
         const muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
 
-        const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar'));
+        const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
         const mainWidth = hasTeamSidebar ? '280px' : '216px';
 
         const ShowIcon = window.desktop ? ExpandIcon : PopOutIcon;

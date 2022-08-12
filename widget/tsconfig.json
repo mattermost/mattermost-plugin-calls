@@ -22,17 +22,19 @@
     "jsx": "react",
     "baseUrl": ".",
     "paths": {
-      "src": ["src"],
+      "src/*": ["src/*", "../webapp/src/*"],
       "@mattermost/types/*": ["node_modules/@mattermost/types/lib/*"],
       "mattermost-redux/*": ["node_modules/mattermost-webapp/packages/mattermost-redux/src/*"],
-      "reselect": ["node_modules/mattermost-webapp/packages/reselect/src"]
+      "reselect": ["node_modules/mattermost-webapp/packages/reselect/src"],
+      "plugin/*": ["../webapp/src/*"],
     },
   },
   "include": [
-    "./**/*"
+    "./**/*",
+    "../webapp/src/types/semver-parser/*",
   ],
   "exclude": [
     "dist",
-    "!node_modules/@types"
+    "!node_modules/@types",
   ],
 }

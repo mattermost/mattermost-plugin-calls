@@ -62,11 +62,14 @@
     "webpack-cli": "4.7.2"
   },
   "dependencies": {
+    "@mattermost/compass-icons": "0.1.24",
     "@mattermost/types": "6.7.0-0",
     "@msgpack/msgpack": "2.7.1",
+    "bootstrap": "3.4.1",
     "core-js": "3.21.1",
     "pako": "2.0.4",
     "react": "16.13.1",
+    "react-bootstrap": "github:mattermost/react-bootstrap#c6957962364e0818a51bbfd13e89919903b422d6",
     "react-dom": "16.13.1",
     "react-redux": "7.2.4",
     "redux": "4.1.0",
