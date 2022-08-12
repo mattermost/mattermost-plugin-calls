@@ -95,6 +95,8 @@ export class WebSocketClient extends EventEmitter {
                 return;
             }
 
+            this.emit('event', msg);
+
             if (msg.data.connID !== this.connID && msg.data.connID !== this.originalConnID) {
                 return;
             }
@@ -137,6 +139,13 @@ export class WebSocketClient extends EventEmitter {
             this.serverSeqNo = 0;
             this.connID = '';
             this.originalConnID = '';
+
+            this.removeAllListeners('open');
+            this.removeAllListeners('event');
+            this.removeAllListeners('join');
+            this.removeAllListeners('close');
+            this.removeAllListeners('error');
+            this.removeAllListeners('message');
         } else {
             this.emit('close', code);
 

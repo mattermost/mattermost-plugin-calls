@@ -294,6 +294,10 @@ export function getUsersList(profiles: UserProfile[]) {
 }
 
 export function playSound(src: string) {
+    if (!src.includes(pluginId)) {
+        src = getPluginStaticPath() + src;
+    }
+
     const audio = new Audio(src);
     audio.play();
     audio.onended = () => {

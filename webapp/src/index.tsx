@@ -18,6 +18,10 @@ import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_t
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 
 import {
+    handleUserConnected,
+} from './websocket_handlers';
+
+import {
     callsEnabled,
     connectedChannelID,
     voiceConnectedUsers,
@@ -125,6 +129,7 @@ export default class Plugin {
             });
         });
 
+<<<<<<< HEAD
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_connected`, async (ev) => {
             const userID = ev.data.userID;
             const channelID = ev.broadcast.channel_id;
@@ -158,6 +163,10 @@ export default class Plugin {
             } catch (err) {
                 logErr(err);
             }
+=======
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_connected`, (ev) => {
+            handleUserConnected(store, ev);
+>>>>>>> WebSocket handlers, part I
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_disconnected`, (ev) => {
@@ -507,7 +516,7 @@ export default class Plugin {
                     if (window.callsClient) {
                         window.callsClient.destroy();
                         delete window.callsClient;
-                        playSound(getPluginStaticPath() + LeaveSelfSound);
+                        playSound(LeaveSelfSound);
                     }
                 });
 

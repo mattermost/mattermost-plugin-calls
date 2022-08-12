@@ -71,7 +71,7 @@ interface Props {
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
-    global: boolean,
+    global?: boolean,
 }
 
 interface DraggingState {

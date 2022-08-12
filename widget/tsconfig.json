@@ -32,6 +32,7 @@
   "include": [
     "./**/*",
     "../webapp/src/types/semver-parser/*",
+    "../webapp/src/types/static/*",
   ],
   "exclude": [
     "dist",

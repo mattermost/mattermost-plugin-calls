@@ -23,6 +23,10 @@ import {
     getWSConnectionURL,
 } from 'plugin/utils';
 
+import {
+    handleUserConnected,
+} from 'plugin/websocket_handlers';
+
 // CSS
 import 'mattermost-webapp/sass/styles.scss';
 import 'mattermost-webapp/components/widgets/menu/menu.scss';
@@ -37,7 +41,7 @@ function getCallID() {
     return params.get('call_id');
 }
 
-function connectCall(channelID: string, wsURL: string) {
+function connectCall(channelID: string, wsURL: string, wsEventHandler: (ev: any) => void) {
     try {
         if (window.callsClient) {
             console.error('calls client is already initialized');
@@ -46,6 +50,8 @@ function connectCall(channelID: string, wsURL: string) {
 
         window.callsClient = new CallsClient({
             wsURL,
+
+            // TODO: pass config.
             iceServers: [],
         });
 
@@ -58,7 +64,9 @@ function connectCall(channelID: string, wsURL: string) {
             }
         });
 
-        window.callsClient.init(channelID).catch((err: Error) => {
+        window.callsClient.init(channelID).then(() => {
+            window.callsClient.ws.on('event', wsEventHandler);
+        }).catch((err: Error) => {
             delete window.callsClient;
             console.error(err);
         });
@@ -111,7 +119,17 @@ async function init() {
 
     console.log(team);
 
-    connectCall(channelID, getWSConnectionURL(getConfig(store.getState())));
+    connectCall(channelID, getWSConnectionURL(getConfig(store.getState())), (ev) => {
+        console.log('got ws event');
+        console.log(ev);
+
+        switch (ev.event) {
+        case `custom_${pluginId}_user_connected`:
+            handleUserConnected(store, ev);
+            break;
+        default:
+        }
+    });
 
     await store.dispatch({
         type: VOICE_CHANNEL_USER_CONNECTED,
