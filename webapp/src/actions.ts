@@ -134,7 +134,7 @@ export const displayCloudPricing = () => {
             return {};
         }
 
-        openPricingModal()('calls > ');
+        openPricingModal()({callerInfo: 'calls > '});
         return {};
     };
 };
