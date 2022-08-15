@@ -43,6 +43,8 @@ import {
 
 import {applyTheme} from './theme_utils';
 
+import {ChannelState} from './types/calls';
+
 // CSS
 import 'mattermost-webapp/sass/styles.scss';
 import 'mattermost-webapp/components/widgets/menu/menu.scss';
@@ -94,7 +96,7 @@ function connectCall(channelID: string, wsURL: string, wsEventHandler: (ev: any)
 
 async function fetchChannelData(store: Store, channelID: string) {
     try {
-        const resp = await Client4.doFetch(
+        const resp = await Client4.doFetch<ChannelState>(
             `${getPluginPath()}/${channelID}`,
             {method: 'get'},
         );
@@ -116,6 +118,23 @@ async function fetchChannelData(store: Store, channelID: string) {
             data: {
                 channelID,
                 rootPost: resp.call.thread_id,
+            },
+        });
+
+        store.dispatch({
+            type: VOICE_CHANNEL_USER_SCREEN_ON,
+            data: {
+                channelID,
+                userID: resp.call.screen_sharing_id,
+            },
+        });
+
+        store.dispatch({
+            type: VOICE_CHANNEL_CALL_START,
+            data: {
+                channelID: resp.channel_id,
+                startAt: resp.call.start_at,
+                ownerID: resp.call.owner_id,
             },
         });
 
@@ -142,23 +161,6 @@ async function fetchChannelData(store: Store, channelID: string) {
                 },
             });
         }
-
-        store.dispatch({
-            type: VOICE_CHANNEL_USER_SCREEN_ON,
-            data: {
-                channelID,
-                userID: resp.call.screen_sharing_id,
-            },
-        });
-
-        store.dispatch({
-            type: VOICE_CHANNEL_CALL_START,
-            data: {
-                channelID: resp.data.channel_id,
-                startAt: resp.data.call.start_at,
-                ownerID: resp.data.call.owner_id,
-            },
-        });
     } catch (err) {
         console.error(err);
     }
@@ -184,7 +186,7 @@ async function init() {
         console.error('invalid call id');
         return;
     }
-    
+
     // initialize some basic state.
     await Promise.all([
         getMe()(store.dispatch, store.getState),
