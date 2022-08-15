@@ -29,6 +29,7 @@ import {
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
     VOICE_CHANNEL_CALL_START,
 } from 'plugin/action_types';
+import {getCallsConfig} from 'plugin/actions';
 
 import {
     getWSConnectionURL,
@@ -36,6 +37,16 @@ import {
     getProfilesByIds,
     playSound,
 } from 'plugin/utils';
+
+import {
+    iceServers,
+    needsTURNCredentials,
+} from 'plugin/selectors';
+
+import {
+    logDebug,
+    logErr,
+} from 'plugin/log';
 
 import {
     handleUserConnected,
@@ -70,18 +81,16 @@ function getCallID() {
     return params.get('call_id');
 }
 
-function connectCall(channelID: string, wsURL: string, wsEventHandler: (ev: any) => void) {
+function connectCall(channelID: string, wsURL: string, iceConfigs: RTCIceServer[], wsEventHandler: (ev: any) => void) {
     try {
         if (window.callsClient) {
-            console.error('calls client is already initialized');
+            logErr('calls client is already initialized');
             return;
         }
 
         window.callsClient = new CallsClient({
             wsURL,
-
-            // TODO: pass config.
-            iceServers: [],
+            iceServers: iceConfigs,
         });
 
         window.callsClient.on('close', () => {
@@ -96,11 +105,11 @@ function connectCall(channelID: string, wsURL: string, wsEventHandler: (ev: any)
             window.callsClient.ws.on('event', wsEventHandler);
         }).catch((err: Error) => {
             delete window.callsClient;
-            console.error(err);
+            logErr(err);
         });
     } catch (err) {
         delete window.callsClient;
-        console.error(err);
+        logErr(err);
     }
 }
 
@@ -172,7 +181,7 @@ async function fetchChannelData(store: Store, channelID: string) {
             });
         }
     } catch (err) {
-        console.error(err);
+        logErr(err);
     }
 }
 
@@ -184,16 +193,11 @@ async function init() {
         },
     });
 
-    console.log(pluginId);
-    console.log(store);
-    console.log(store.getState());
-    console.log('init');
+    logDebug('global widget init');
 
     const channelID = getCallID();
-    console.log(channelID);
-
     if (!channelID) {
-        console.error('invalid call id');
+        logErr('invalid call id');
         return;
     }
 
@@ -206,22 +210,30 @@ async function init() {
 
     const channel = getChannel(store.getState(), channelID);
     if (!channel) {
-        console.error('channel not found');
+        logErr('channel not found');
         return;
     }
-
-    console.log(channel);
 
     if (isOpenChannel(channel) || isPrivateChannel(channel)) {
         await getTeamAction(channel.team_id)(store.dispatch, store.getState);
     }
 
-    fetchChannelData(store, channelID);
+    await Promise.all([
+        fetchChannelData(store, channelID),
+        store.dispatch(getCallsConfig()),
+    ]);
 
-    connectCall(channelID, getWSConnectionURL(getConfig(store.getState())), (ev) => {
-        console.log('got ws event');
-        console.log(ev);
+    const iceConfigs = [...iceServers(store.getState())];
+    if (needsTURNCredentials(store.getState())) {
+        logDebug('turn credentials needed');
+        const configs = await Client4.doFetch<RTCIceServer[]>(
+            `${getPluginPath()}/turn-credentials`,
+            {method: 'get'},
+        );
+        iceConfigs.push(...configs);
+    }
 
+    connectCall(channelID, getWSConnectionURL(getConfig(store.getState())), iceConfigs, (ev) => {
         switch (ev.event) {
         case `custom_${pluginId}_call_start`:
             handleCallStart(store, ev);
