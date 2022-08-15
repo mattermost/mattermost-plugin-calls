@@ -34,6 +34,7 @@ import {
     getWSConnectionURL,
     getPluginPath,
     getProfilesByIds,
+    playSound,
 } from 'plugin/utils';
 
 import {
@@ -77,8 +78,7 @@ function connectCall(channelID: string, wsURL: string, wsEventHandler: (ev: any)
             if (window.callsClient) {
                 window.callsClient.destroy();
                 delete window.callsClient;
-
-                // playSound(getPluginStaticPath() + LeaveSelfSound);
+                playSound('leave_self');
             }
         });
 

@@ -30,6 +30,10 @@ import {
 
 import {Store} from './types/mattermost-webapp';
 
+import LeaveSelfSound from './sounds/leave_self.mp3';
+import JoinUserSound from './sounds/join_user.mp3';
+import JoinSelfSound from './sounds/join_self.mp3';
+
 export function getPluginStaticPath() {
     return `${window.basename || ''}/static/plugins/${pluginId}`;
 }
@@ -302,12 +306,28 @@ export function getUsersList(profiles: UserProfile[]) {
     return list + ' and ' + getUserDisplayName(profiles[profiles.length - 1]);
 }
 
-export function playSound(src: string) {
-    if (!src.includes(pluginId)) {
-        src = getPluginStaticPath() + src;
+export function playSound(name: string) {
+    let src = '';
+    switch (name) {
+        case 'leave_self':
+            src = LeaveSelfSound;
+            break;
+        case 'join_self':
+            src = JoinSelfSound;
+            break;
+        case 'join_user':
+            src = JoinUserSound;
+            break;
+        default:
+            logErr(`sound ${name} not found`);
+            return;
     }
 
-    const audio = new Audio(src);
+    // A hack to make the standalone widget re-use the sound files included
+    // from here.
+    src = src.replace('/static', '');
+
+    const audio = new Audio(getPluginStaticPath() + src);
     audio.play();
     audio.onended = () => {
         audio.src = '';

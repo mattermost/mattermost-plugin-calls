@@ -61,7 +61,7 @@ module.exports = {
     output: {
         devtoolNamespace: PLUGIN_ID,
         path: path.join(__dirname, '/dist'),
-        publicPath: `/static/plugins/${PLUGIN_ID}/widget/`,
+        publicPath: '/static/',
         filename: 'widget.[contenthash].js',
         clean: true,
     },

@@ -54,10 +54,6 @@ import SwitchCallModal from './components/switch_call_modal';
 import ScreenSourceModal from './components/screen_source_modal';
 import EndCallModal from './components/end_call_modal';
 
-import JoinUserSound from './sounds/join_user.mp3';
-import JoinSelfSound from './sounds/join_self.mp3';
-import LeaveSelfSound from './sounds/leave_self.mp3';
-
 import reducer from './reducers';
 
 import {
@@ -450,7 +446,7 @@ export default class Plugin {
                     if (window.callsClient) {
                         window.callsClient.destroy();
                         delete window.callsClient;
-                        playSound(LeaveSelfSound);
+                        playSound('leave_self');
                     }
                 });
 

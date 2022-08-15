@@ -1,10 +1,6 @@
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 
-import JoinUserSound from './sounds/join_user.mp3';
-import JoinSelfSound from './sounds/join_self.mp3';
-import LeaveSelfSound from './sounds/leave_self.mp3';
-
 import {Store} from './types/mattermost-webapp';
 
 import {
@@ -61,9 +57,9 @@ export async function handleUserConnected(store: Store, ev: any) {
 
     if (window.callsClient?.channelID === channelID) {
         if (userID === currentUserID) {
-            playSound(JoinSelfSound);
+            playSound('join_self');
         } else if (channelID === connectedChannelID(store.getState())) {
-            playSound(JoinUserSound);
+            playSound('join_user');
         }
     }
 
