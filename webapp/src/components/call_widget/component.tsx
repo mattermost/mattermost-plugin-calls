@@ -1148,7 +1148,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            maxWidth: hasTeamSidebar ? '24ch' : '14ch',
+                            maxWidth: hasTeamSidebar ? '22ch' : '12ch',
                         }}
                     >
                         {this.props.channelDisplayName}
