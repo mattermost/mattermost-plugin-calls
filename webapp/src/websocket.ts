@@ -85,6 +85,7 @@ export class WebSocketClient extends EventEmitter {
                         logDebug('ws: setting original conn id');
                         this.originalConnID = this.connID;
                     }
+                    this.emit('event', msg);
                 }
                 if (!isReconnect) {
                     this.emit('open', this.originalConnID, this.connID, false);

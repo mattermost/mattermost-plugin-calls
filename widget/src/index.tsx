@@ -5,6 +5,7 @@ import {Client4} from 'mattermost-redux/client';
 import configureStore from 'mattermost-redux/store';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getMe} from 'mattermost-redux/actions/users';
+import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
 import {getTeam as getTeamAction} from 'mattermost-redux/actions/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
@@ -235,6 +236,9 @@ async function init() {
 
     connectCall(channelID, getWSConnectionURL(getConfig(store.getState())), iceConfigs, (ev) => {
         switch (ev.event) {
+        case 'hello':
+            setServerVersion(ev.data.server_version)(store.dispatch, store.getState);
+            break;
         case `custom_${pluginId}_call_start`:
             handleCallStart(store, ev);
             break;
