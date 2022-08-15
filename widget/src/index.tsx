@@ -4,12 +4,17 @@ import ReactDOM from 'react-dom';
 import {Client4} from 'mattermost-redux/client';
 import configureStore from 'mattermost-redux/store';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
+import {getMe} from 'mattermost-redux/actions/users';
+import {getMyPreferences} from 'mattermost-redux/actions/preferences';
 import {getTeam as getTeamAction} from 'mattermost-redux/actions/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
+import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
+
+import {Store} from 'plugin/types/mattermost-webapp';
 
 import {pluginId} from 'plugin/manifest';
 import CallWidget from 'plugin/components/call_widget';
@@ -17,15 +22,26 @@ import CallsClient from 'plugin/client';
 import reducer from 'plugin/reducers';
 import {
     VOICE_CHANNEL_USER_CONNECTED,
+    VOICE_CHANNEL_USER_SCREEN_ON,
+    VOICE_CHANNEL_ROOT_POST,
+    VOICE_CHANNEL_PROFILES_CONNECTED,
+    VOICE_CHANNEL_USERS_CONNECTED,
+    VOICE_CHANNEL_USERS_CONNECTED_STATES,
+    VOICE_CHANNEL_CALL_START,
 } from 'plugin/action_types';
 
 import {
     getWSConnectionURL,
+    getPluginPath,
+    getProfilesByIds,
 } from 'plugin/utils';
 
 import {
+    handleCallStart,
     handleUserConnected,
 } from 'plugin/websocket_handlers';
+
+import {applyTheme} from './theme_utils';
 
 // CSS
 import 'mattermost-webapp/sass/styles.scss';
@@ -76,6 +92,78 @@ function connectCall(channelID: string, wsURL: string, wsEventHandler: (ev: any)
     }
 }
 
+async function fetchChannelData(store: Store, channelID: string) {
+    try {
+        const resp = await Client4.doFetch(
+            `${getPluginPath()}/${channelID}`,
+            {method: 'get'},
+        );
+
+        if (!resp.call) {
+            return;
+        }
+
+        store.dispatch({
+            type: VOICE_CHANNEL_USERS_CONNECTED,
+            data: {
+                users: resp.call.users,
+                channelID,
+            },
+        });
+
+        store.dispatch({
+            type: VOICE_CHANNEL_ROOT_POST,
+            data: {
+                channelID,
+                rootPost: resp.call.thread_id,
+            },
+        });
+
+        if (resp.call.users.length > 0) {
+            store.dispatch({
+                type: VOICE_CHANNEL_PROFILES_CONNECTED,
+                data: {
+                    profiles: await getProfilesByIds(store.getState(), resp.call.users),
+                    channelID,
+                },
+            });
+
+            const userStates = {} as any;
+            const users = resp.call.users || [];
+            const states = resp.call.states || [];
+            for (let i = 0; i < users.length; i++) {
+                userStates[users[i]] = states[i];
+            }
+            store.dispatch({
+                type: VOICE_CHANNEL_USERS_CONNECTED_STATES,
+                data: {
+                    states: userStates,
+                    channelID,
+                },
+            });
+        }
+
+        store.dispatch({
+            type: VOICE_CHANNEL_USER_SCREEN_ON,
+            data: {
+                channelID,
+                userID: resp.call.screen_sharing_id,
+            },
+        });
+
+        store.dispatch({
+            type: VOICE_CHANNEL_CALL_START,
+            data: {
+                channelID: resp.data.channel_id,
+                startAt: resp.data.call.start_at,
+                ownerID: resp.data.call.owner_id,
+            },
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}
+
 async function init() {
     const storeKey = `plugins-${pluginId}`;
     const store = configureStore({
@@ -89,10 +177,6 @@ async function init() {
     console.log(store.getState());
     console.log('init');
 
-    const theme = getTheme(store.getState());
-
-    console.log(theme);
-
     const channelID = getCallID();
     console.log(channelID);
 
@@ -100,8 +184,14 @@ async function init() {
         console.error('invalid call id');
         return;
     }
+    
+    // initialize some basic state.
+    await Promise.all([
+        getMe()(store.dispatch, store.getState),
+        getMyPreferences()(store.dispatch, store.getState),
+        getChannelAction(channelID)(store.dispatch, store.getState),
+    ]);
 
-    await getChannelAction(channelID)(store.dispatch, store.getState);
     const channel = getChannel(store.getState(), channelID);
     if (!channel) {
         console.error('channel not found');
@@ -110,20 +200,20 @@ async function init() {
 
     console.log(channel);
 
-    await getTeamAction(channel.team_id)(store.dispatch, store.getState);
-    const team = getTeam(store.getState(), channel.team_id);
-    if (!team) {
-        console.error('team not found');
-        return;
+    if (isOpenChannel(channel) || isPrivateChannel(channel)) {
+        await getTeamAction(channel.team_id)(store.dispatch, store.getState);
     }
 
-    console.log(team);
+    fetchChannelData(store, channelID);
 
     connectCall(channelID, getWSConnectionURL(getConfig(store.getState())), (ev) => {
         console.log('got ws event');
         console.log(ev);
 
         switch (ev.event) {
+        case `custom_${pluginId}_call_start`:
+            handleCallStart(store, ev);
+            break;
         case `custom_${pluginId}_user_connected`:
             handleUserConnected(store, ev);
             break;
@@ -139,6 +229,9 @@ async function init() {
             currentUserID: getCurrentUserId(store.getState()),
         },
     });
+
+    const theme = getTheme(store.getState());
+    applyTheme(theme);
 
     ReactDOM.render(
         <CallWidget

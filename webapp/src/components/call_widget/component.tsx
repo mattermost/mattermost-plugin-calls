@@ -8,7 +8,11 @@ import {Team} from '@mattermost/types/teams';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
+<<<<<<< HEAD
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
+=======
+import {Theme} from 'mattermost-redux/types/themes';
+>>>>>>> More improvements to initial state
 
 import {UserState, AudioDevices} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
@@ -51,7 +55,7 @@ import './component.scss';
 
 interface Props {
     store: any,
-    theme: any,
+    theme: Theme,
     currentUserID: string,
     channel: Channel,
     team: Team,

@@ -1,20 +1,24 @@
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+
 import JoinUserSound from './sounds/join_user.mp3';
 import JoinSelfSound from './sounds/join_self.mp3';
 import LeaveSelfSound from './sounds/leave_self.mp3';
 
 import {Store} from './types/mattermost-webapp';
 
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-
 import {
     VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_PROFILE_CONNECTED,
+    VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_ROOT_POST,
 } from './action_types';
 
 import {
     getProfilesByIds,
     getPluginStaticPath,
     playSound,
+    followThread,
 } from './utils';
 
 import {
@@ -22,6 +26,33 @@ import {
 } from './selectors';
 
 import {logErr, logDebug} from './log';
+
+export function handleCallStart(store: Store, ev: any) {
+    const channelID = ev.broadcast.channel_id;
+
+    store.dispatch({
+        type: VOICE_CHANNEL_CALL_START,
+        data: {
+            channelID,
+            startAt: ev.data.start_at,
+            ownerID: ev.data.owner_id,
+        },
+    });
+    store.dispatch({
+        type: VOICE_CHANNEL_ROOT_POST,
+        data: {
+            channelID,
+            rootPost: ev.data.thread_id,
+        },
+    });
+
+    if (window.callsClient?.channelID === channelID) {
+        const channel = getChannel(store.getState(), channelID);
+        if (channel) {
+            followThread(store, channel.id, channel.team_id);
+        }
+    }
+}
 
 export async function handleUserConnected(store: Store, ev: any) {
     const userID = ev.data.userID;

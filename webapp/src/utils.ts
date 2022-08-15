@@ -4,10 +4,13 @@ import {
     getTeam,
 } from 'mattermost-redux/selectors/entities/teams';
 
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+
 import {Client4} from 'mattermost-redux/client';
 
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
+import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
 import {Team} from '@mattermost/types/teams';
 import {Channel, ChannelMembership} from '@mattermost/types/channels';
@@ -19,7 +22,13 @@ import {ClientConfig} from '@mattermost/types/config';
 import {UserState} from './types/types';
 
 import {pluginId} from './manifest';
-import {logErr} from './log';
+import {logErr, logDebug} from './log';
+
+import {
+    voiceChannelRootPost,
+} from './selectors';
+
+import {Store} from './types/mattermost-webapp';
 
 export function getPluginStaticPath() {
     return `${window.basename || ''}/static/plugins/${pluginId}`;
@@ -304,4 +313,17 @@ export function playSound(src: string) {
         audio.src = '';
         audio.remove();
     };
+}
+
+export async function followThread(store: Store, channelID: string, teamID: string) {
+    if (!teamID) {
+        logDebug('followThread: no team for channel');
+        return;
+    }
+    const threadID = voiceChannelRootPost(store.getState(), channelID);
+    if (threadID) {
+        store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
+    } else {
+        logErr('Unable to follow call\'s thread, not registered in store');
+    }
 }
