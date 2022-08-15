@@ -309,18 +309,18 @@ export function getUsersList(profiles: UserProfile[]) {
 export function playSound(name: string) {
     let src = '';
     switch (name) {
-        case 'leave_self':
-            src = LeaveSelfSound;
-            break;
-        case 'join_self':
-            src = JoinSelfSound;
-            break;
-        case 'join_user':
-            src = JoinUserSound;
-            break;
-        default:
-            logErr(`sound ${name} not found`);
-            return;
+    case 'leave_self':
+        src = LeaveSelfSound;
+        break;
+    case 'join_self':
+        src = JoinSelfSound;
+        break;
+    case 'join_user':
+        src = JoinUserSound;
+        break;
+    default:
+        logErr(`sound ${name} not found`);
+        return;
     }
 
     // A hack to make the standalone widget re-use the sound files included

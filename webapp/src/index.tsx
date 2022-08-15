@@ -18,8 +18,18 @@ import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_t
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 
 import {
-    handleCallStart,
     handleUserConnected,
+    handleUserDisconnected,
+    handleCallStart,
+    handleCallEnd,
+    handleUserMuted,
+    handleUserUnmuted,
+    handleUserScreenOn,
+    handleUserScreenOff,
+    handleUserVoiceOn,
+    handleUserVoiceOff,
+    handleUserRaisedHand,
+    handleUserUnraisedHand,
 } from './websocket_handlers';
 
 import {
@@ -77,21 +87,13 @@ import {
 import {
     RECEIVED_CHANNEL_STATE,
     VOICE_CHANNEL_USER_CONNECTED,
-    VOICE_CHANNEL_USER_DISCONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
     VOICE_CHANNEL_PROFILES_CONNECTED,
     VOICE_CHANNEL_PROFILE_CONNECTED,
-    VOICE_CHANNEL_USER_MUTED,
-    VOICE_CHANNEL_USER_UNMUTED,
-    VOICE_CHANNEL_USER_VOICE_OFF,
-    VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_CALL_START,
-    VOICE_CHANNEL_CALL_END,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USER_SCREEN_OFF,
-    VOICE_CHANNEL_USER_RAISE_HAND,
-    VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
@@ -132,54 +134,23 @@ export default class Plugin {
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_disconnected`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_DISCONNECTED,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                    currentUserID: getCurrentUserId(store.getState()),
-                },
-            });
+            handleUserDisconnected(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_muted`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_MUTED,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                },
-            });
+            handleUserMuted(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unmuted`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_UNMUTED,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                },
-            });
+            handleUserUnmuted(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_voice_on`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_VOICE_ON,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                },
-            });
+            handleUserVoiceOn(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_voice_off`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_VOICE_OFF,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                },
-            });
+            handleUserVoiceOff(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_start`, (ev) => {
@@ -187,56 +158,23 @@ export default class Plugin {
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_end`, (ev) => {
-            if (connectedChannelID(store.getState()) === ev.broadcast.channel_id && window.callsClient) {
-                window.callsClient.disconnect();
-            }
-            store.dispatch({
-                type: VOICE_CHANNEL_CALL_END,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                },
-            });
+            handleCallEnd(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_on`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_SCREEN_ON,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                },
-            });
+            handleUserScreenOn(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_off`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_SCREEN_OFF,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                },
-            });
+            handleUserScreenOff(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_raise_hand`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_RAISE_HAND,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                    raised_hand: ev.data.raised_hand,
-                },
-            });
+            handleUserRaisedHand(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unraise_hand`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_UNRAISE_HAND,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                    raised_hand: ev.data.raised_hand,
-                },
-            });
+            handleUserUnraisedHand(store, ev);
         });
     }
 

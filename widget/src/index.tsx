@@ -38,8 +38,18 @@ import {
 } from 'plugin/utils';
 
 import {
-    handleCallStart,
     handleUserConnected,
+    handleUserDisconnected,
+    handleCallStart,
+    handleCallEnd,
+    handleUserMuted,
+    handleUserUnmuted,
+    handleUserScreenOn,
+    handleUserScreenOff,
+    handleUserVoiceOn,
+    handleUserVoiceOff,
+    handleUserRaisedHand,
+    handleUserUnraisedHand,
 } from 'plugin/websocket_handlers';
 
 import {applyTheme} from './theme_utils';
@@ -216,8 +226,38 @@ async function init() {
         case `custom_${pluginId}_call_start`:
             handleCallStart(store, ev);
             break;
+        case `custom_${pluginId}_call_end`:
+            handleCallEnd(store, ev);
+            break;
         case `custom_${pluginId}_user_connected`:
             handleUserConnected(store, ev);
+            break;
+        case `custom_${pluginId}_user_disconnected`:
+            handleUserDisconnected(store, ev);
+            break;
+        case `custom_${pluginId}_user_voice_on`:
+            handleUserVoiceOn(store, ev);
+            break;
+        case `custom_${pluginId}_user_voice_off`:
+            handleUserVoiceOff(store, ev);
+            break;
+        case `custom_${pluginId}_user_screen_on`:
+            handleUserScreenOn(store, ev);
+            break;
+        case `custom_${pluginId}_user_screen_off`:
+            handleUserScreenOff(store, ev);
+            break;
+        case `custom_${pluginId}_user_muted`:
+            handleUserMuted(store, ev);
+            break;
+        case `custom_${pluginId}_user_unmuted`:
+            handleUserUnmuted(store, ev);
+            break;
+        case `custom_${pluginId}_user_raise_hand`:
+            handleUserRaisedHand(store, ev);
+            break;
+        case `custom_${pluginId}_user_unraise_hand`:
+            handleUserUnraisedHand(store, ev);
             break;
         default:
         }
