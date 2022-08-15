@@ -8,6 +8,7 @@
   border-radius: 4px;
   color: rgba(var(--center-channel-color-rgb), 0.64);
   margin: 0 4px;
+  app-region: no-drag;
 
   &.button-controls--wide {
     width: auto;

@@ -96,9 +96,13 @@ function connectCall(channelID: string, wsURL: string, iceConfigs: RTCIceServer[
 
         window.callsClient.on('close', () => {
             if (window.callsClient) {
-                window.callsClient.destroy();
-                delete window.callsClient;
                 playSound('leave_self');
+                setTimeout(() => {
+                    logDebug('sending leave call message to desktop app');
+                    window.postMessage({type: 'calls-leave-call'}, window.location.origin);
+                    window.callsClient.destroy();
+                    delete window.callsClient;
+                }, 200);
             }
         });
 
@@ -187,6 +191,8 @@ async function fetchChannelData(store: Store, channelID: string) {
 }
 
 async function init() {
+    const initStartTime = performance.now();
+
     const storeKey = `plugins-${pluginId}`;
     const store = configureStore({
         appReducers: {
@@ -194,7 +200,8 @@ async function init() {
         },
     });
 
-    logDebug('global widget init');
+    // support transparent window
+    document.body.style.background = 'transparent';
 
     const channelID = getCallID();
     if (!channelID) {
@@ -296,9 +303,12 @@ async function init() {
             store={store}
             theme={theme}
             global={true}
+            position={{bottom: 0, left: 0}}
         />,
         document.getElementById('root'),
     );
+
+    logDebug(`global widget init completed in ${Math.round(performance.now() - initStartTime)}ms`);
 }
 
 declare global {

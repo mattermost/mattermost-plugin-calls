@@ -77,6 +77,7 @@ import {
     getWSConnectionURL,
     playSound,
     followThread,
+    shouldRenderDesktopWidget,
 } from './utils';
 import {logErr, logDebug} from './log';
 import {
@@ -355,6 +356,21 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
 
         const connectCall = async (channelID: string, title?: string) => {
+            if (shouldRenderDesktopWidget()) {
+                logDebug('sending join call message to desktop app');
+                window.postMessage(
+                    {
+                        type: 'calls-join-call',
+                        message: {
+                            channelID,
+                            title,
+                        },
+                    },
+                    window.location.origin,
+                );
+                return;
+            }
+
             try {
                 if (window.callsClient) {
                     logErr('calls client is already initialized');

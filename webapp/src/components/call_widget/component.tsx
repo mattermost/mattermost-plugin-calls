@@ -8,11 +8,8 @@ import {Team} from '@mattermost/types/teams';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
-<<<<<<< HEAD
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
-=======
 import {Theme} from 'mattermost-redux/types/themes';
->>>>>>> More improvements to initial state
 
 import {UserState, AudioDevices} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
@@ -75,7 +72,11 @@ interface Props {
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
-    global?: boolean,
+    global?: true,
+    position?: {
+        bottom: number,
+        left: number,
+    },
 }
 
 interface DraggingState {
@@ -115,13 +116,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 background: this.props.theme.centerChannelBg,
                 borderRadius: '8px',
                 display: 'flex',
-                bottom: '12px',
-                left: '12px',
+                bottom: `${this.props.position ? this.props.position.bottom : 12}px`,
+                left: `${this.props.position ? this.props.position.left : 12}px`,
                 lineHeight: '16px',
                 zIndex: '1000',
                 border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
                 userSelect: 'none',
                 color: this.props.theme.centerChannelColor,
+                'app-region': 'drag',
             },
             topBar: {
                 background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
@@ -279,7 +281,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentDidMount() {
-        document.addEventListener('mouseup', this.onMouseUp, false);
+        if (!this.props.global) {
+            document.addEventListener('mouseup', this.onMouseUp, false);
+        }
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
 
@@ -351,7 +355,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentWillUnmount() {
-        document.removeEventListener('mouseup', this.onMouseUp, false);
+        if (!this.props.global) {
+            document.removeEventListener('mouseup', this.onMouseUp, false);
+        }
         document.removeEventListener('click', this.closeOnBlur, true);
         document.removeEventListener('keyup', this.keyboardClose, true);
         document.removeEventListener('keydown', this.handleKBShortcuts, true);
@@ -1241,7 +1247,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                     <div
                         style={this.style.topBar}
-                        onMouseDown={this.onMouseDown}
+                        onMouseDown={this.props.global ? undefined : this.onMouseDown}
                     >
                         <button
                             id='calls-widget-expand-button'

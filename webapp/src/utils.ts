@@ -1,3 +1,5 @@
+import {compareSemVer} from 'semver-parser';
+
 import {
     getCurrentRelativeTeamUrl,
     getCurrentTeamId,
@@ -346,4 +348,8 @@ export async function followThread(store: Store, channelID: string, teamID: stri
     } else {
         logErr('Unable to follow call\'s thread, not registered in store');
     }
+}
+
+export function shouldRenderDesktopWidget() {
+ return window.desktop && compareSemVer(window.desktop.version, '5.2.0') >= 0;
 }
