@@ -1,6 +1,5 @@
 import React, {CSSProperties} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-import moment from 'moment-timezone';
 import {compareSemVer} from 'semver-parser';
 
 import {UserProfile} from '@mattermost/types/users';
@@ -35,6 +34,8 @@ import ExpandIcon from '../../components/icons/expand';
 import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import SpeakerIcon from '../../components/icons/speaker_icon';
+
+import CallDuration from './call_duration';
 
 import './component.scss';
 
@@ -73,7 +74,6 @@ interface State {
     showMenu: boolean,
     showParticipantsList: boolean,
     screenSharingID?: string,
-    intervalID?: NodeJS.Timer,
     screenStream?: any,
     currentAudioInputDevice?: any,
     currentAudioOutputDevice?: any,
@@ -245,12 +245,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
 
-        // This is needed to force a re-render to periodically update
-        // the start time.
-        const id = setInterval(() => this.forceUpdate(), 1000);
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
-            intervalID: id,
             showUsersJoined: [this.props.currentUserID],
         });
 
@@ -311,9 +307,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         document.removeEventListener('mouseup', this.onMouseUp, false);
         document.removeEventListener('click', this.closeOnBlur, true);
         document.removeEventListener('keyup', this.keyboardClose, true);
-        if (this.state.intervalID) {
-            clearInterval(this.state.intervalID);
-        }
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
@@ -387,14 +380,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
         this.setState({showMenu: false});
-    }
-
-    getCallDuration = () => {
-        const dur = moment.utc(moment().diff(moment(this.props.callStartAt)));
-        if (dur.hours() === 0) {
-            return dur.format('mm:ss');
-        }
-        return dur.format('HH:mm:ss');
     }
 
     onShareScreenToggle = async () => {
@@ -1211,7 +1196,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={{width: hasTeamSidebar ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
-                                <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
+                                <CallDuration startAt={this.props.callStartAt}/>
                                 {(isPublicChannel(this.props.channel) || isPrivateChannel(this.props.channel)) && this.renderChannelName(hasTeamSidebar)}
                             </div>
                         </div>
