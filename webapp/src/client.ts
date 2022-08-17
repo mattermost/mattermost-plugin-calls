@@ -3,7 +3,7 @@ import {EventEmitter} from 'events';
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
-import {CallsClientConfig, RTCStats} from 'src/types/types';
+import {CallsClientConfig, RTCStats, AudioDevices} from 'src/types/types';
 
 import RTCPeer from './rtcpeer';
 
@@ -27,7 +27,7 @@ export default class CallsClient extends EventEmitter {
     private voiceTrackAdded: boolean;
     private streams: MediaStream[];
     private stream: MediaStream | null;
-    private audioDevices: { inputs: MediaDeviceInfo[]; outputs: MediaDeviceInfo[]; };
+    private audioDevices: AudioDevices;
     private audioTrack: MediaStreamTrack | null;
     public isHandRaised: boolean;
     private onDeviceChange: () => void;
@@ -83,7 +83,7 @@ export default class CallsClient extends EventEmitter {
             inputs: devices.filter((device) => device.kind === 'audioinput'),
             outputs: devices.filter((device) => device.kind === 'audiooutput'),
         };
-        this.emit('devicechange');
+        this.emit('devicechange', this.audioDevices);
     }
 
     public async init(channelID: string, title?: string) {
@@ -273,10 +273,6 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('devicechange');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
-    }
-
-    public getAudioDevices() {
-        return this.audioDevices;
     }
 
     public async setAudioInputDevice(device: MediaDeviceInfo) {

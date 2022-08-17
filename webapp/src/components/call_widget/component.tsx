@@ -8,7 +8,7 @@ import {Team} from '@mattermost/types/teams';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
-import {UserState} from 'src/types/types';
+import {UserState, AudioDevices} from 'src/types/types';
 import {
     getUserDisplayName,
     isPublicChannel,
@@ -288,9 +288,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
-        window.callsClient.on('devicechange', () => {
+        window.callsClient.on('devicechange', (devices: AudioDevices) => {
             this.setState({
-                devices: window.callsClient?.getAudioDevices(),
+                devices,
             });
         });
 
