@@ -294,3 +294,30 @@ test.describe('setting audio output device', () => {
         }
     });
 });
+
+test.describe('switching products', () => {
+    test.use({storageState: userState.users[0].storageStatePath});
+
+    test.only('boards', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        const switchProductsButton = devPage.page.locator('h1', {hasText: 'Channels'});
+        await expect(switchProductsButton).toBeVisible();
+        await switchProductsButton.click();
+
+        const boardsButton = devPage.page.locator('#product-switcher-menu-dropdown div', {hasText: 'Boards'});
+        await expect(boardsButton).toBeVisible();
+        await boardsButton.click();
+
+        await expect(devPage.page.locator('#calls-widget')).toBeVisible();
+
+        await devPage.page.locator('#calls-widget-participants-button').click();
+        const participantsList = devPage.page.locator('#calls-widget-participants-menu');
+        await expect(participantsList).toBeVisible();
+        expect(await participantsList.screenshot()).toMatchSnapshot('calls-widget-participants-list-boards.png');
+
+        await devPage.leaveCall();
+    });
+});
