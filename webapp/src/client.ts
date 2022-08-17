@@ -1,10 +1,11 @@
 import {EventEmitter} from 'events';
-import SimplePeer from 'simple-peer';
 
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
 import {CallsClientConfig, RTCStats} from 'src/types/types';
+
+import RTCPeer from './rtcpeer';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';
@@ -16,7 +17,7 @@ import {parseRTCStats} from './rtc_stats';
 export default class CallsClient extends EventEmitter {
     public channelID: string;
     private readonly config: CallsClientConfig;
-    private peer: SimplePeer.Instance | null;
+    private peer: RTCPeer | null;
     private ws: WebSocketClient | null;
     private localScreenTrack: any;
     private remoteScreenTrack: any;
@@ -178,37 +179,39 @@ export default class CallsClient extends EventEmitter {
         ws.on('join', async () => {
             logDebug('join ack received, initializing connection');
 
-            const peer = new SimplePeer({
-                initiator: true,
-                trickle: true,
-                config: {
-                    iceServers: this.config.iceServers || [],
-                },
-            }) as SimplePeer.Instance;
+            const peer = new RTCPeer({
+                iceServers: this.config.iceServers || [],
+            });
 
             this.peer = peer;
-            peer.on('signal', (data) => {
-                logDebug(`local signal: ${JSON.stringify(data)}`);
-                if (data.type === 'offer' || data.type === 'answer') {
-                    if (!ws) {
-                        return;
-                    }
-                    ws.send('sdp', {
-                        data: deflate(JSON.stringify(data)),
-                    }, true);
-                } else if (data.type === 'candidate') {
-                    if (!ws) {
-                        return;
-                    }
-                    ws.send('ice', {
-                        data: JSON.stringify(data.candidate),
-                    });
-                }
+
+            peer.on('offer', (sdp) => {
+                logDebug(`local signal: ${JSON.stringify(sdp)}`);
+                ws.send('sdp', {
+                    data: deflate(JSON.stringify(sdp)),
+                }, true);
             });
+
+            peer.on('answer', (sdp) => {
+                logDebug(`local signal: ${JSON.stringify(sdp)}`);
+                ws.send('sdp', {
+                    data: deflate(JSON.stringify(sdp)),
+                }, true);
+            });
+
+            peer.on('candidate', (candidate) => {
+                ws.send('ice', {
+                    data: JSON.stringify(candidate),
+                });
+            });
+
             peer.on('error', (err) => {
                 logErr('peer error', err);
-                this.disconnect();
+                if (!this.closed) {
+                    this.disconnect();
+                }
             });
+
             peer.on('stream', (remoteStream) => {
                 logDebug('new remote stream received', remoteStream);
                 logDebug('remote tracks', remoteStream.getTracks());
@@ -222,10 +225,12 @@ export default class CallsClient extends EventEmitter {
                     this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
                 }
             });
+
             peer.on('connect', () => {
                 logDebug('rtc connected');
                 this.emit('connect');
             });
+
             peer.on('close', () => {
                 logDebug('rtc closed');
                 if (!this.closed) {
@@ -234,7 +239,7 @@ export default class CallsClient extends EventEmitter {
             });
         });
 
-        ws.on('message', ({data}) => {
+        ws.on('message', async ({data}) => {
             const msg = JSON.parse(data);
             if (!msg) {
                 return;
@@ -251,7 +256,7 @@ export default class CallsClient extends EventEmitter {
                     }
                 }
                 if (this.peer) {
-                    this.peer.signal(data);
+                    await this.peer.signal(data);
                 }
             }
         });
@@ -306,7 +311,7 @@ export default class CallsClient extends EventEmitter {
         newTrack.enabled = isEnabled;
         if (isEnabled) {
             if (this.voiceTrackAdded) {
-                this.peer.replaceTrack(this.audioTrack, newTrack, this.stream);
+                this.peer.replaceTrack(this.audioTrack.id, newTrack);
             } else {
                 this.peer.addTrack(newTrack, this.stream);
             }
@@ -376,7 +381,7 @@ export default class CallsClient extends EventEmitter {
         }
 
         // @ts-ignore: we actually mean (and need) to pass null here
-        this.peer.replaceTrack(this.audioTrack, null, this.stream);
+        this.peer.replaceTrack(this.audioTrack.id, null);
         this.audioTrack.enabled = false;
 
         if (this.ws) {
@@ -394,7 +399,7 @@ export default class CallsClient extends EventEmitter {
         }
 
         if (this.voiceTrackAdded) {
-            this.peer.replaceTrack(this.audioTrack, this.audioTrack, this.stream);
+            this.peer.replaceTrack(this.audioTrack.id, this.audioTrack);
         } else {
             this.peer.addTrack(this.audioTrack, this.stream);
             this.voiceTrackAdded = true;
@@ -448,7 +453,7 @@ export default class CallsClient extends EventEmitter {
             }
 
             // @ts-ignore: we actually mean to pass null here
-            this.peer.replaceTrack(screenTrack, null, screenStream);
+            this.peer.replaceTrack(screenTrack.id, null);
             this.ws.send('screen_off');
         };
 
@@ -501,15 +506,14 @@ export default class CallsClient extends EventEmitter {
     }
 
     public async getStats(): Promise<RTCStats | null> {
-        // @ts-ignore
-        // eslint-disable-next-line no-underscore-dangle
-        if (!this.peer || !this.peer._pc) {
+        if (!this.peer) {
             throw new Error('not connected');
         }
 
-        // @ts-ignore
-        // eslint-disable-next-line no-underscore-dangle
-        const stats = await this.peer._pc.getStats(null);
+        const stats = await this.peer.getStats();
+        if (!stats) {
+            return null;
+        }
 
         return parseRTCStats(stats);
     }
