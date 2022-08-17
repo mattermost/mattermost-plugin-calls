@@ -228,10 +228,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             size={50}
                             fontSize={18}
                             border={false}
+                            borderGlow={isSpeaking}
                             url={this.props.pictures[profile.id]}
-                            style={{
-                                boxShadow: isSpeaking ? '0px 0px 4px 4px rgba(61, 184, 135, 0.8)' : '',
-                            }}
                         />
                         <div
                             style={{
@@ -304,9 +302,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         size={24}
                         fontSize={10}
                         border={false}
+                        borderGlow={isSpeaking}
                         url={this.props.pictures[profile.id]}
                         style={{
-                            boxShadow: isSpeaking ? '0px 0px 4px 4px rgba(61, 184, 135, 0.8)' : '',
                             marginRight: '8px',
                         }}
                     />
