@@ -298,7 +298,7 @@ test.describe('setting audio output device', () => {
 test.describe('switching products', () => {
     test.use({storageState: userState.users[0].storageStatePath});
 
-    test.only('boards', async ({page}) => {
+    test('boards', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
         await devPage.wait(1000);
