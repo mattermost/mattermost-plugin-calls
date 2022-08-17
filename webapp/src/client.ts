@@ -83,6 +83,7 @@ export default class CallsClient extends EventEmitter {
             inputs: devices.filter((device) => device.kind === 'audioinput'),
             outputs: devices.filter((device) => device.kind === 'audiooutput'),
         };
+        this.emit('devicechange');
     }
 
     public async init(channelID: string, title?: string) {
@@ -269,6 +270,7 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('connect');
         this.removeAllListeners('remoteVoiceStream');
         this.removeAllListeners('remoteScreenStream');
+        this.removeAllListeners('devicechange');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
     }
