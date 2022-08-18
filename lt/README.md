@@ -35,5 +35,9 @@ go run ./lt/client.go -team 11o73u33upfuprysuifa17dn5e -url http://localhost:806
     	user prefix (default "testuser-")
   -users-per-call int
     	number of users per call (default 1)
+  -sim bool
+    	simulate user interactions, e.g.: raise/lower hand, unmute/mute, voice on/off, leave/join (default false)
+  -sim-interval string
+    	rough interval between user actions during simulation
 ```
 

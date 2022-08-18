@@ -63,6 +63,7 @@ type config struct {
 
 type user struct {
 	cfg         config
+	authToken   string
 	pc          *webrtc.PeerConnection
 	connectedCh chan struct{}
 	doneCh      chan struct{}
@@ -81,15 +82,20 @@ type wsMsg struct {
 }
 
 func newUser(cfg config) *user {
-	return &user{
-		cfg:         cfg,
-		connectedCh: make(chan struct{}),
-		doneCh:      make(chan struct{}),
-		iceCh:       make(chan webrtc.ICECandidateInit, 10),
-		wsCloseCh:   make(chan struct{}),
-		wsSendCh:    make(chan wsMsg, 256),
-		initCh:      make(chan struct{}),
+	u := &user{
+		cfg: cfg,
 	}
+	u.resetChannels()
+	return u
+}
+
+func (u *user) resetChannels() {
+	u.connectedCh = make(chan struct{})
+	u.doneCh = make(chan struct{})
+	u.iceCh = make(chan webrtc.ICECandidateInit, 10)
+	u.wsCloseCh = make(chan struct{})
+	u.wsSendCh = make(chan wsMsg, 256)
+	u.initCh = make(chan struct{})
 }
 
 func (u *user) transmitScreen() {
@@ -429,7 +435,7 @@ func (u *user) handleSignal(ev *model.WebSocketEvent) {
 	}
 }
 
-func (u *user) wsListen(authToken string) {
+func (u *user) wsListen() {
 	defer close(u.iceCh)
 
 	var wsConnID string
@@ -439,7 +445,7 @@ func (u *user) wsListen(authToken string) {
 	connect := func() (*websocket.Client, error) {
 		ws, err := websocket.NewClient4(&websocket.ClientParams{
 			WsURL:          u.cfg.wsURL,
-			AuthToken:      authToken,
+			AuthToken:      u.authToken,
 			ConnID:         wsConnID,
 			ServerSequence: wsServerSeq,
 		})
@@ -562,8 +568,8 @@ func (u *user) wsListen(authToken string) {
 	}
 }
 
-func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) error {
-	log.Printf("%s: connecting user", u.cfg.username)
+func (u *user) AddUserToChannel(channelType model.ChannelType) error {
+	log.Printf("%s: adding user to channel", u.cfg.username)
 
 	var user *model.User
 	client := model.NewAPIv4Client(u.cfg.siteURL)
@@ -593,6 +599,7 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 	}
 
 	log.Printf("%s: logged in", u.cfg.username)
+	u.authToken = client.AuthToken
 
 	// join team
 	_, _, err = client.AddTeamMember(u.cfg.teamID, user.Id)
@@ -608,13 +615,19 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 		}
 	}
 
+	return nil
+}
+
+func (u *user) ConnectToCall(stopCh chan struct{}) error {
+	log.Printf("%s: connecting user to call", u.cfg.username)
+
 	log.Printf("%s: connecting to websocket", u.cfg.username)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		u.wsListen(client.AuthToken)
+		u.wsListen()
 	}()
 
 	ticker := time.NewTicker(u.cfg.duration)
@@ -626,6 +639,13 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 	}
 
 	log.Printf("%s: disconnecting...", u.cfg.username)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("%s: caught a panic, probably closing an already closed channel. That's expected bc of the sim. Err: %v\n",
+				u.cfg.username, err)
+		}
+	}()
 	close(u.doneCh)
 	wg.Wait()
 
@@ -650,6 +670,8 @@ func main() {
 	var numScreenSharing int
 	var numCalls int
 	var numUsersPerCall int
+	var simulate bool
+	var simulateInterval string
 
 	flag.StringVar(&teamID, "team", "", "team ID")
 	flag.StringVar(&channelID, "channel", "", "channel ID")
@@ -665,6 +687,8 @@ func main() {
 	flag.StringVar(&joinDuration, "join-duration", "30s", "join duration")
 	flag.StringVar(&adminUsername, "admin-username", "sysadmin", "admin username")
 	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "admin password")
+	flag.BoolVar(&simulate, "sim", false, "simulate behavior")
+	flag.StringVar(&simulateInterval, "sim-interval", "10s", "rough interval between user actions")
 
 	flag.Parse()
 
@@ -715,6 +739,11 @@ func main() {
 
 	if numScreenSharing > numCalls {
 		log.Fatalf("screen-sharing cannot be greater than the number of calls")
+	}
+
+	simInterval, err := time.ParseDuration(simulateInterval)
+	if err != nil {
+		log.Fatalf(err.Error())
 	}
 
 	adminClient := model.NewAPIv4Client(siteURL)
@@ -776,7 +805,7 @@ func main() {
 			go func(idx int, channelID string, channelType model.ChannelType, unmuted, screenSharing bool) {
 				username := fmt.Sprintf("%s%d", userPrefix, idx)
 				if unmuted {
-					log.Printf("%s: going to transmit screen", username)
+					log.Printf("%s: going to unmute", username)
 				}
 				if screenSharing {
 					log.Printf("%s: going to transmit screen", username)
@@ -804,8 +833,16 @@ func main() {
 				}
 
 				user := newUser(cfg)
-				if err := user.Connect(stopCh, channelType); err != nil {
-					log.Printf("connectUser failed: %s", err.Error())
+				if err := user.AddUserToChannel(channelType); err != nil {
+					log.Printf("AddUserToChannel failed: %s", err.Error())
+				}
+
+				if simulate {
+					go user.simulateBehavior(simInterval, stopCh)
+				}
+
+				if err := user.ConnectToCall(stopCh); err != nil {
+					log.Printf("ConnectToCall failed: %s", err.Error())
 				}
 			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].Type, i < numUnmuted, i == 0 && j < numScreenSharing)
 		}
