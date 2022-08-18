@@ -3,7 +3,7 @@
 ## Sample usage
 
 ```sh
-go run ./lt/client.go -team 11o73u33upfuprysuifa17dn5e -url http://localhost:8065/ -calls 2 -users-per-call 5 -join-duration 10s -duration 60s -unmuted 1 -screen-sharing 1
+go run ./lt/*.go -team 11o73u33upfuprysuifa17dn5e -url http://localhost:8065/ -calls 2 -users-per-call 5 -join-duration 10s -duration 60s -unmuted 1 -screen-sharing 1
 ```
 
 ## Options
