@@ -16,6 +16,14 @@ import {
     hasExperimentalFlag,
     getPopOutURL,
 } from 'src/utils';
+import {
+    MUTE_UNMUTE,
+    RAISE_LOWER_HAND,
+    SHARE_UNSHARE_SCREEN,
+    PARTICIPANTS_LIST_TOGGLE,
+    LEAVE_CALL,
+    keyToAction,
+} from 'src/shortcuts';
 import {logDebug, logErr} from 'src/log';
 
 import Avatar from '../avatar/avatar';
@@ -239,10 +247,33 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.screenPlayer = React.createRef();
     }
 
+    handleKBShortcuts = (ev: KeyboardEvent) => {
+        switch (keyToAction('widget', ev)) {
+        case MUTE_UNMUTE:
+            this.onMuteToggle();
+            break;
+        case RAISE_LOWER_HAND:
+            this.onRaiseHandToggle();
+            break;
+        case SHARE_UNSHARE_SCREEN:
+            this.onShareScreenToggle();
+            break;
+        case PARTICIPANTS_LIST_TOGGLE:
+            this.onParticipantsButtonClick();
+            break;
+        case LEAVE_CALL:
+            this.onDisconnectClick();
+            break;
+        }
+    }
+
     public componentDidMount() {
         document.addEventListener('mouseup', this.onMouseUp, false);
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
+
+        // keyboard shortcuts
+        document.addEventListener('keydown', this.handleKBShortcuts, true);
 
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
@@ -312,6 +343,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         document.removeEventListener('mouseup', this.onMouseUp, false);
         document.removeEventListener('click', this.closeOnBlur, true);
         document.removeEventListener('keyup', this.keyboardClose, true);
+        document.removeEventListener('keydown', this.handleKBShortcuts, true);
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {

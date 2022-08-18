@@ -20,6 +20,15 @@ import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import ParticipantsIcon from '../../components/icons/participants';
 import CallDuration from '../call_widget/call_duration';
 
+import {
+    MUTE_UNMUTE,
+    RAISE_LOWER_HAND,
+    SHARE_UNSHARE_SCREEN,
+    PARTICIPANTS_LIST_TOGGLE,
+    LEAVE_CALL,
+    keyToAction,
+} from 'src/shortcuts';
+
 import './component.scss';
 
 interface Props {
@@ -59,6 +68,26 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (window.opener) {
             const callsClient = window.opener.callsClient;
             callsClient.on('close', () => window.close());
+        }
+    }
+
+    handleKBShortcuts = (ev: KeyboardEvent) => {
+        switch (keyToAction('popout', ev)) {
+        case MUTE_UNMUTE:
+            this.onMuteToggle();
+            break;
+        case RAISE_LOWER_HAND:
+            this.onRaiseHandToggle();
+            break;
+        case SHARE_UNSHARE_SCREEN:
+            this.onShareScreenToggle();
+            break;
+        case PARTICIPANTS_LIST_TOGGLE:
+            this.onParticipantsListToggle();
+            break;
+        case LEAVE_CALL:
+            this.onDisconnectClick();
+            break;
         }
     }
 
@@ -143,6 +172,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     public componentDidMount() {
+        // keyboard shortcuts
+        window.addEventListener('keydown', this.handleKBShortcuts, true);
+
         const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
         callsClient.on('remoteScreenStream', (stream: MediaStream) => {
             this.setState({
@@ -156,6 +188,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.setState({
             screenStream,
         });
+    }
+
+    public componentWillUnmount() {
+        window.removeEventListener('keydown', this.handleKBShortcuts, true);
     }
 
     renderScreenSharingPlayer = () => {
