@@ -8,7 +8,7 @@ import {Team} from '@mattermost/types/teams';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
-import {UserState} from 'src/types/types';
+import {UserState, AudioDevices} from 'src/types/types';
 import {
     getUserDisplayName,
     isPublicChannel,
@@ -288,6 +288,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
+        window.callsClient.on('devicechange', (devices: AudioDevices) => {
+            this.setState({
+                devices,
+            });
+        });
+
         window.callsClient.on('connect', () => {
             if (isDMChannel(this.props.channel) || isGMChannel(this.props.channel)) {
                 // FIXME (MM-46048) - HACK
@@ -442,7 +448,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     onMenuClick = () => {
         this.setState({
             showMenu: !this.state.showMenu,
-            devices: window.callsClient?.getAudioDevices(),
             showParticipantsList: false,
         });
     }
@@ -794,11 +799,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const DeviceIcon = deviceType === 'input' ? UnmutedIcon : SpeakerIcon;
 
         const onClickHandler = () => {
-            const devices = window.callsClient?.getAudioDevices();
             if (deviceType === 'input') {
-                this.setState({showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu, showAudioOutputDevicesMenu: false, devices});
+                this.setState({showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu, showAudioOutputDevicesMenu: false});
             } else {
-                this.setState({showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu, showAudioInputDevicesMenu: false, devices});
+                this.setState({showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu, showAudioInputDevicesMenu: false});
             }
         };
 
