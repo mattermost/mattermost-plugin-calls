@@ -758,9 +758,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <div
                 className='Menu'
-                style={{}}
             >
                 <ul
+                    id='calls-widget-participants-list'
                     className='Menu__content dropdown-menu'
                     style={{width: '100%', minWidth: 'revert', maxWidth: 'revert', maxHeight: '188px', overflow: 'auto', position: 'relative'}}
                 >
