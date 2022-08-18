@@ -111,7 +111,10 @@ async function globalSetup(config: FullConfig) {
             headers,
         });
         await adminContext.put(`/api/v4/users/${user.id}/preferences`, {
-            data: [{user_id: user.id, category: 'recommended_next_steps', name: 'skip', value: 'true'}],
+            data: [
+                {user_id: user.id, category: 'recommended_next_steps', name: 'skip', value: 'true'},
+                {user_id: user.id, category: 'insights', name: 'insights_tutorial_state', value: '{"insights_modal_viewed":true}'},
+            ],
             headers,
         });
 

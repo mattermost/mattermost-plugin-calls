@@ -725,8 +725,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         return (
             <div
+                id='calls-widget-participants-menu'
                 className='Menu'
-                style={{}}
             >
                 <ul
                     className='Menu__content dropdown-menu'
@@ -1257,6 +1257,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         >
                             <button
                                 className='style--none button-controls button-controls--wide'
+                                id='calls-widget-participants-button'
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
