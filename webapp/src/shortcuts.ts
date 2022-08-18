@@ -43,7 +43,7 @@ export function keyToAction(scope: string, ev: KeyboardEvent) {
 
     if (action) {
         ev.preventDefault();
-        ev.stopPropagation();
+        ev.stopImmediatePropagation();
     }
 
     return action;

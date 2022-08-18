@@ -72,6 +72,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
+        if ((!this.props.show || !window.callsClient) && !window.opener) {
+            return;
+        }
+
         switch (keyToAction('popout', ev)) {
         case MUTE_UNMUTE:
             this.onMuteToggle();
