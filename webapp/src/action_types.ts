@@ -1,7 +1,5 @@
 import {pluginId} from './manifest';
 
-export const VOICE_CHANNEL_ENABLE = pluginId + '_voice_channel_enable';
-export const VOICE_CHANNEL_DISABLE = pluginId + '_voice_channel_disable';
 export const VOICE_CHANNEL_USER_CONNECTED = pluginId + '_voice_channel_user_connected';
 export const VOICE_CHANNEL_USER_DISCONNECTED = pluginId + '_voice_channel_user_disconnected';
 export const VOICE_CHANNEL_USER_MUTED = pluginId + '_voice_channel_user_muted';
@@ -31,4 +29,5 @@ export const SHOW_END_CALL_MODAL = pluginId + '_show_end_call_modal';
 export const HIDE_END_CALL_MODAL = pluginId + '_hide_end_call_modal';
 
 export const RECEIVED_CALLS_CONFIG = pluginId + '_received_calls_config';
+export const RECEIVED_CHANNEL_STATE = pluginId + 'received_channel_state';
 
