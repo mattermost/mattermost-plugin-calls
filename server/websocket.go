@@ -393,6 +393,9 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	if appErr != nil {
 		return appErr
 	}
+	if channel.DeleteAt > 0 {
+		return fmt.Errorf("cannot join call in archived channel")
+	}
 
 	state, err := p.addUserSession(userID, connID, channel)
 	if err != nil {

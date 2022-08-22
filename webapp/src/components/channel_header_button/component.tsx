@@ -15,6 +15,7 @@ interface Props {
     isCloudPaid: boolean,
     isLimitRestricted: boolean,
     maxParticipants: number,
+    isChannelArchived: boolean,
 }
 
 const ChannelHeaderButton = ({
@@ -25,12 +26,13 @@ const ChannelHeaderButton = ({
     isCloudPaid,
     isLimitRestricted,
     maxParticipants,
+    isChannelArchived,
 }: Props) => {
     if (!show) {
         return null;
     }
 
-    const restricted = isLimitRestricted || isCloudFeatureRestricted;
+    const restricted = isLimitRestricted || isCloudFeatureRestricted || isChannelArchived;
 
     const button = (
         <CallButton
@@ -45,6 +47,24 @@ const ChannelHeaderButton = ({
             </span>
         </CallButton>
     );
+
+    if (isChannelArchived) {
+        return (
+            <OverlayTrigger
+                placement='bottom'
+                rootClose={true}
+                overlay={
+                    <Tooltip id='tooltip-limit-header'>
+                        {'Calls are not available in archived channels.'}
+                    </Tooltip>
+                }
+            >
+                <Wrapper>
+                    {button}
+                </Wrapper>
+            </OverlayTrigger>
+        );
+    }
 
     if (isCloudFeatureRestricted) {
         return (
