@@ -3,8 +3,7 @@ import {readFile} from 'fs/promises';
 import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {userState, baseURL} from '../constants';
-import plugin from '../../plugin.json';
+import {userState} from '../constants';
 
 declare global {
     interface Window {
