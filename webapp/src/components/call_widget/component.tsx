@@ -1,21 +1,18 @@
 import React, {CSSProperties} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-import moment from 'moment-timezone';
 import {compareSemVer} from 'semver-parser';
 
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
-import {UserState} from 'src/types/types';
+import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
+
+import {UserState, AudioDevices} from 'src/types/types';
 import {
     getUserDisplayName,
-    isPublicChannel,
-    isPrivateChannel,
-    isDMChannel,
-    isGMChannel,
     hasExperimentalFlag,
     getPopOutURL,
 } from 'src/utils';
@@ -36,6 +33,8 @@ import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import SpeakerIcon from '../../components/icons/speaker_icon';
 
+import CallDuration from './call_duration';
+
 import './component.scss';
 
 interface Props {
@@ -44,6 +43,7 @@ interface Props {
     channel: Channel,
     team: Team,
     channelURL: string,
+    channelDisplayName: string,
     profiles: UserProfile[],
     profilesMap: IDMappedObjects<UserProfile>,
     picturesMap: {
@@ -73,7 +73,6 @@ interface State {
     showMenu: boolean,
     showParticipantsList: boolean,
     screenSharingID?: string,
-    intervalID?: NodeJS.Timer,
     screenStream?: any,
     currentAudioInputDevice?: any,
     currentAudioOutputDevice?: any,
@@ -245,12 +244,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
 
-        // This is needed to force a re-render to periodically update
-        // the start time.
-        const id = setInterval(() => this.forceUpdate(), 1000);
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
-            intervalID: id,
             showUsersJoined: [this.props.currentUserID],
         });
 
@@ -292,8 +287,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
+        window.callsClient.on('devicechange', (devices: AudioDevices) => {
+            this.setState({
+                devices,
+            });
+        });
+
         window.callsClient.on('connect', () => {
-            if (isDMChannel(this.props.channel) || isGMChannel(this.props.channel)) {
+            if (isDirectChannel(this.props.channel) || isGroupChannel(this.props.channel)) {
                 // FIXME (MM-46048) - HACK
                 // There's a race condition between unmuting and receiving existing tracks from other participants.
                 // Fixing this properly requires extensive and potentially breaking changes.
@@ -311,9 +312,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         document.removeEventListener('mouseup', this.onMouseUp, false);
         document.removeEventListener('click', this.closeOnBlur, true);
         document.removeEventListener('keyup', this.keyboardClose, true);
-        if (this.state.intervalID) {
-            clearInterval(this.state.intervalID);
-        }
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
@@ -389,14 +387,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     }
 
-    getCallDuration = () => {
-        const dur = moment.utc(moment().diff(moment(this.props.callStartAt)));
-        if (dur.hours() === 0) {
-            return dur.format('mm:ss');
-        }
-        return dur.format('HH:mm:ss');
-    }
-
     onShareScreenToggle = async () => {
         const state = {} as State;
         if (this.props.screenSharingID === this.props.currentUserID) {
@@ -457,7 +447,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     onMenuClick = () => {
         this.setState({
             showMenu: !this.state.showMenu,
-            devices: window.callsClient?.getAudioDevices(),
             showParticipantsList: false,
         });
     }
@@ -689,6 +678,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             fontSize={10}
                             url={this.props.picturesMap[profile.id]}
                             style={{marginRight: '8px'}}
+                            borderGlow={isSpeaking}
                         />
 
                         <span className='MenuItem__primary-text'>
@@ -735,8 +725,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         return (
             <div
+                id='calls-widget-participants-menu'
                 className='Menu'
-                style={{}}
             >
                 <ul
                     className='Menu__content dropdown-menu'
@@ -808,11 +798,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const DeviceIcon = deviceType === 'input' ? UnmutedIcon : SpeakerIcon;
 
         const onClickHandler = () => {
-            const devices = window.callsClient?.getAudioDevices();
             if (deviceType === 'input') {
-                this.setState({showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu, showAudioOutputDevicesMenu: false, devices});
+                this.setState({showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu, showAudioOutputDevicesMenu: false});
             } else {
-                this.setState({showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu, showAudioInputDevicesMenu: false, devices});
+                this.setState({showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu, showAudioInputDevicesMenu: false});
             }
         };
 
@@ -1140,16 +1129,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     onClick={this.onChannelLinkClick}
                     className='calls-channel-link'
                 >
-                    {isPublicChannel(this.props.channel) ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
+                    {isOpenChannel(this.props.channel) && <CompassIcon icon='globe'/>}
+                    {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
+                    {isDirectChannel(this.props.channel) && <CompassIcon icon='account-outline'/>}
+                    {isGroupChannel(this.props.channel) && <CompassIcon icon='account-multiple-outline'/>}
                     <span
                         style={{
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            maxWidth: hasTeamSidebar ? '24ch' : '14ch',
+                            maxWidth: hasTeamSidebar ? '22ch' : '12ch',
                         }}
                     >
-                        {this.props.channel.display_name}
+                        {this.props.channelDisplayName}
                     </span>
                 </a>
             </React.Fragment>
@@ -1211,8 +1203,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={{width: hasTeamSidebar ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
-                                <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
-                                {(isPublicChannel(this.props.channel) || isPrivateChannel(this.props.channel)) && this.renderChannelName(hasTeamSidebar)}
+                                <CallDuration startAt={this.props.callStartAt}/>
+                                {this.renderChannelName(hasTeamSidebar)}
                             </div>
                         </div>
                     </div>
@@ -1265,6 +1257,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         >
                             <button
                                 className='style--none button-controls button-controls--wide'
+                                id='calls-widget-participants-button'
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -1283,7 +1276,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             </button>
                         </OverlayTrigger>
 
-                        { !isDMChannel(this.props.channel) &&
+                        { !isDirectChannel(this.props.channel) &&
                         <OverlayTrigger
                             key='hand'
                             placement='top'
@@ -1306,7 +1299,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </OverlayTrigger>
                         }
 
-                        {(hasTeamSidebar || isDMChannel(this.props.channel)) && this.renderScreenShareButton()}
+                        {(hasTeamSidebar || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <OverlayTrigger
                             key='mute'

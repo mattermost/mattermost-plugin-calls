@@ -14,6 +14,7 @@ type Props = {
     text?: string;
     icon?: string;
     border?: boolean;
+    borderGlow?: boolean;
 };
 
 type Attrs = HTMLAttributes<HTMLElement>;
@@ -28,6 +29,7 @@ const Avatar = ({
     text,
     icon,
     border = true,
+    borderGlow = false,
     ...attrs
 }: Props & Attrs) => {
     if (text) {
@@ -38,6 +40,7 @@ const Avatar = ({
                 size={size}
                 fontSize={fontSize}
                 border={border}
+                borderGlow={borderGlow}
             />
         );
     }
@@ -49,6 +52,7 @@ const Avatar = ({
                 size={size}
                 fontSize={fontSize}
                 border={border}
+                borderGlow={borderGlow}
             >
                 <CompassIcon icon={icon}/>
             </ProfilePlain>
@@ -63,6 +67,7 @@ const Avatar = ({
             size={size}
             fontSize={fontSize}
             border={border}
+            borderGlow={borderGlow}
         />
     );
 };
@@ -71,6 +76,7 @@ interface ProfileProps {
     size: number;
     fontSize: number;
     border?: boolean;
+    borderGlow?: boolean;
 }
 
 const Profile = styled.div<ProfileProps>`
@@ -87,7 +93,7 @@ const Profile = styled.div<ProfileProps>`
     vertical-align: sub;
     background: var(--center-channel-bg);
 
-    ${props => props.border && css`
+    ${(props) => props.border && css`
         border: 1px solid var(--center-channel-bg);
     `}
 
@@ -99,6 +105,10 @@ const Profile = styled.div<ProfileProps>`
     :not(:first-child) {
         margin-left: -${({size}) => size * 0.25}px;
     }
+
+    ${(props) => props.borderGlow && css`
+        box-shadow: 0px 0px 4px 4px rgba(61, 184, 135, 0.8);
+    `}
 `;
 
 const ProfilePlain = styled(Profile)`

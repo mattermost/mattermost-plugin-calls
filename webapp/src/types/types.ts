@@ -78,3 +78,8 @@ export type CallsClientConfig = {
     wsURL: string,
     iceServers: RTCIceServer[],
 }
+
+export type AudioDevices = {
+    inputs: MediaDeviceInfo[],
+    outputs: MediaDeviceInfo[],
+}

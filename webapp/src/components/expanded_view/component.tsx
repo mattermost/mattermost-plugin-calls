@@ -1,5 +1,4 @@
 import React, {CSSProperties} from 'react';
-import moment from 'moment-timezone';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
@@ -19,6 +18,7 @@ import ScreenIcon from '../../components/icons/screen_icon';
 import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import ParticipantsIcon from '../../components/icons/participants';
+import CallDuration from '../call_widget/call_duration';
 
 import './component.scss';
 
@@ -41,7 +41,6 @@ interface Props {
 }
 
 interface State {
-    intervalID?: NodeJS.Timer,
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
 }
@@ -61,14 +60,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             const callsClient = window.opener.callsClient;
             callsClient.on('close', () => window.close());
         }
-    }
-
-    getCallDuration = () => {
-        const dur = moment.utc(moment().diff(moment(this.props.callStartAt)));
-        if (dur.hours() === 0) {
-            return dur.format('mm:ss');
-        }
-        return dur.format('HH:mm:ss');
     }
 
     onDisconnectClick = () => {
@@ -161,20 +152,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         const screenStream = callsClient.getLocalScreenStream() || callsClient.getRemoteScreenStream();
 
-        // This is needed to force a re-render to periodically update
-        // the start time.
-        const id = setInterval(() => this.forceUpdate(), 1000);
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
-            intervalID: id,
             screenStream,
         });
-    }
-
-    public componentWillUnmount() {
-        if (this.state.intervalID) {
-            clearInterval(this.state.intervalID);
-        }
     }
 
     renderScreenSharingPlayer = () => {
@@ -247,10 +228,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             size={50}
                             fontSize={18}
                             border={false}
+                            borderGlow={isSpeaking}
                             url={this.props.pictures[profile.id]}
-                            style={{
-                                boxShadow: isSpeaking ? '0px 0px 4px 4px rgba(61, 184, 135, 0.8)' : '',
-                            }}
                         />
                         <div
                             style={{
@@ -323,9 +302,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         size={24}
                         fontSize={10}
                         border={false}
+                        borderGlow={isSpeaking}
                         url={this.props.pictures[profile.id]}
                         style={{
-                            boxShadow: isSpeaking ? '0px 0px 4px 4px rgba(61, 184, 135, 0.8)' : '',
                             marginRight: '8px',
                         }}
                     />
@@ -399,7 +378,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <div style={style.main as CSSProperties}>
                     <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
                         <div style={style.topLeftContainer as CSSProperties}>
-                            <span style={{margin: '4px', fontWeight: 600}}>{this.getCallDuration()}</span>
+                            <CallDuration
+                                style={{margin: '4px'}}
+                                startAt={this.props.callStartAt}
+                            />
                             <span style={{margin: '4px'}}>{'•'}</span>
                             <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
 
