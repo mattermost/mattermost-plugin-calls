@@ -64,7 +64,7 @@ export type CallsConfig = {
     sku_short_name: string,
 }
 
-export const CallsConfigDefault = {
+export const CallsConfigDefault: CallsConfig = {
     ICEServers: [],
     ICEServersConfigs: [],
     AllowEnableCalls: false,
@@ -72,7 +72,7 @@ export const CallsConfigDefault = {
     MaxCallParticipants: 0,
     NeedsTURNCredentials: false,
     sku_short_name: '',
-} as CallsConfig;
+};
 
 export type CallsClientConfig = {
     wsURL: string,

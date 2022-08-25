@@ -8,17 +8,20 @@ import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/use
 
 import {Client4} from 'mattermost-redux/client';
 
+import {getPost} from 'mattermost-redux/actions/posts';
+
 import {UserState} from '../../types/types';
 
 import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from '../../utils';
 import {hideExpandedView, showScreenSourceModal} from '../../actions';
-import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID} from '../../selectors';
+import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID, voiceChannelRootPost} from '../../selectors';
 
 import ExpandedView from './component';
 
 const mapStateToProps = (state: GlobalState) => {
     const channel = getChannel(state, connectedChannelID(state));
     const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
+    const threadID = voiceChannelRootPost(state, channel?.id);
 
     const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
         return [...profiles].sort(alphaSortProfiles(profiles)).sort(stateSortProfiles(profiles, statuses, screenSharingID));
@@ -48,12 +51,23 @@ const mapStateToProps = (state: GlobalState) => {
         screenSharingID,
         channel,
         connectedDMUser,
+        threadID,
     };
 };
 
 const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     hideExpandedView,
     showScreenSourceModal,
+    selectThread: (postId: string, channelId: string) => async (innerDispatch: Dispatch) => {
+        // @ts-ignore
+        await innerDispatch(getPost(postId));
+        return innerDispatch({
+            type: 'SELECT_POST',
+            postId,
+            channelId,
+            timestamp: Date.now(),
+        });
+    },
 }, dispatch);
 
 export default connect(mapStateToProps, mapDispatchToProps)(ExpandedView);

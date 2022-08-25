@@ -4,6 +4,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
+import {Post} from '@mattermost/types/posts';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
 import {UserState} from 'src/types/types';
@@ -35,9 +36,11 @@ interface Props {
     callStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
+    selectThread: (postID: string, channelID: string) => void,
     screenSharingID: string,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
+    threadID: Post['id'];
 }
 
 interface State {
@@ -156,6 +159,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.setState({
             screenStream,
         });
+
+        document.body.classList.add('app__body');
+    }
+
+    openThread = () => {
+        if (this.props.threadID && this.props.channel) {
+            this.props.selectThread(this.props.threadID, this.props.channel.id);
+        }
     }
 
     renderScreenSharingPlayer = () => {
@@ -499,6 +510,20 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 >{muteButtonText}</span>
                             </div>
 
+                            <div style={style.buttonContainer as CSSProperties}>
+                                <button
+                                    className='button-center-controls'
+                                    onClick={this.openThread}
+                                    style={{background: isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
+                                >
+                                    <CompassIcon icon='product-channels'/>
+
+                                </button>
+                                <span
+                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                                >{'Open Chat'}</span>
+                            </div>
+
                         </div>
 
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
@@ -532,15 +557,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
 const style = {
     root: {
-        position: 'absolute',
+
+        // position: 'absolute',
         display: 'flex',
-        top: 0,
-        left: 0,
+
+        // top: 0,
+        // left: 0,
         width: '100%',
         height: '100%',
         zIndex: 100,
         background: 'rgba(37, 38, 42, 1)',
         color: 'white',
+        gridArea: 'center',
     },
     main: {
         display: 'flex',
