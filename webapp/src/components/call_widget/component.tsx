@@ -45,6 +45,7 @@ import SpeakerIcon from '../../components/icons/speaker_icon';
 import Shortcut from 'src/components/shortcut';
 
 import CallDuration from './call_duration';
+import {WidgetBanner, Props as BannerProps} from './widget_banner';
 
 import './component.scss';
 
@@ -94,6 +95,11 @@ interface State {
     expandedViewWindow: Window | null,
     showUsersJoined: string[],
     audioEls: HTMLAudioElement[],
+    banners: {
+        [key: string]: {
+            show: boolean,
+        },
+    },
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -245,6 +251,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             expandedViewWindow: null,
             showUsersJoined: [],
             audioEls: [],
+            banners: {
+                missingAudioInput: {
+                    show: false,
+                },
+                missingScreenPermissions: {
+                    show: false,
+                },
+            },
         };
         this.node = React.createRef();
         this.screenPlayer = React.createRef();
@@ -322,9 +336,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient.on('devicechange', (devices: AudioDevices) => {
-            this.setState({
-                devices,
-            });
+            this.setState({devices,
+                banners: {
+                    ...this.state.banners,
+                    missingAudioInput: {
+                        show: devices.inputs.length === 0,
+                    },
+                }});
         });
 
         window.callsClient.on('connect', () => {
@@ -432,7 +450,16 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 this.props.showScreenSourceModal();
             } else {
                 const stream = await window.callsClient.shareScreen('', hasExperimentalFlag());
-                state.screenStream = stream;
+                if (stream) {
+                    state.screenStream = stream;
+                } else {
+                    state.banners = {
+                        ...this.state.banners,
+                        missingScreenPermissions: {
+                            show: true,
+                        },
+                    };
+                }
             }
         }
 
@@ -980,6 +1007,47 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
+    renderBanners = () => {
+        const banners: {[key: string]: BannerProps} = {};
+
+        if (this.state.banners.missingAudioInput.show) {
+            banners.missingAudioInput = {
+                type: 'error',
+                icon: 'microphone',
+                body: 'Unable to find audio input device. Try plugging in the audio input device.',
+                onClose: () => {
+                    this.setState({banners: {
+                        ...this.state.banners,
+                        missingAudioInput: {show: false},
+                    }});
+                },
+            };
+        }
+
+        if (this.state.banners.missingScreenPermissions.show) {
+            banners.missingScreenPermissions = {
+                type: 'error',
+                icon: 'monitor',
+                body: 'Allow screen recording access to Mattermost in your system preferences.',
+                onClose: () => {
+                    this.setState({banners: {
+                        ...this.state.banners,
+                        missingScreenPermissions: {show: false},
+                    }});
+                },
+            };
+        }
+
+        return Object.entries(banners).map((keyVal) => {
+            return (
+                <WidgetBanner
+                    key={`widget_banner_${keyVal[0]}`}
+                    {...keyVal[1]}
+                />
+            );
+        });
+    }
+
     renderNotificationBar = () => {
         if (!this.props.currentUserID) {
             return null;
@@ -1213,6 +1281,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <div style={this.style.status as CSSProperties}>
                     <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%'}}>
                         {this.renderNotificationBar()}
+                        {this.renderBanners()}
                         {this.renderScreenSharingPanel()}
                         {this.renderParticipantsList()}
                         {this.renderMenu(hasTeamSidebar)}
