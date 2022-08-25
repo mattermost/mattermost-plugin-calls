@@ -42,6 +42,13 @@ export const voiceConnectedUsersInChannel = (state: GlobalState, channelID: stri
 
 export const connectedChannelID = (state: GlobalState) => getPluginState(state).connectedChannelID;
 
+const numUsersInConnectedChannel: (state: GlobalState) => number = createSelector(
+    'numUsersInConnectedChannel',
+    connectedChannelID,
+    voiceConnectedChannels,
+    (channelID, channels) => channels ? channels[channelID]?.length || 0 : 0,
+);
+
 export const voiceConnectedProfiles = (state: GlobalState) => {
     if (!getPluginState(state).voiceConnectedProfiles) {
         return [];
@@ -209,3 +216,12 @@ export const isCloudTrialNeverStarted: (state: GlobalState) => boolean = createS
 export const callsUserPreferences = (state: GlobalState): CallsUserPreferences => {
     return getPluginState(state).callsUserPreferences;
 };
+
+export const shouldPlayJoinUserSound: (state: GlobalState) => boolean = createSelector(
+    'shouldPlayJoinUserSound',
+    numUsersInConnectedChannel,
+    callsUserPreferences,
+    (numUsers, preferences) => {
+        return numUsers < preferences.joinSoundParticipantsThreshold;
+    },
+);
