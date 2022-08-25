@@ -2,7 +2,13 @@ import {combineReducers} from 'redux';
 
 import {UserProfile} from '@mattermost/types/users';
 
-import {CallsConfigDefault, CallsConfig, UserState} from './types/types';
+import {
+    CallsConfigDefault,
+    CallsConfig,
+    UserState,
+    CallsUserPreferences,
+    CallsUserPreferencesDefault,
+} from './types/types';
 
 import {
     VOICE_CHANNEL_ENABLE,
@@ -34,6 +40,7 @@ import {
     RECEIVED_CALLS_CONFIG,
     SHOW_END_CALL_MODAL,
     HIDE_END_CALL_MODAL,
+    RECEIVED_CALLS_USER_PREFERENCES,
 } from './action_types';
 
 const isVoiceEnabled = (state = false, action: { type: string }) => {
@@ -503,6 +510,15 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
     }
 };
 
+const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { type: string, data: CallsUserPreferences}) => {
+    switch (action.type) {
+    case RECEIVED_CALLS_USER_PREFERENCES:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     isVoiceEnabled,
     voiceConnectedChannels,
@@ -517,4 +533,5 @@ export default combineReducers({
     screenSourceModal,
     voiceChannelRootPost,
     callsConfig,
+    callsUserPreferences,
 });

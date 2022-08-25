@@ -8,7 +8,7 @@ import {LicenseSkus} from '@mattermost/types/general';
 
 import {isDMChannel} from 'src/utils';
 
-import {CallsConfig} from 'src/types/types';
+import {CallsConfig, CallsUserPreferences} from 'src/types/types';
 
 import {pluginId} from './manifest';
 
@@ -205,3 +205,7 @@ export const isCloudTrialNeverStarted: (state: GlobalState) => boolean = createS
         return subscription?.trial_end_at === 0;
     },
 );
+
+export const callsUserPreferences = (state: GlobalState): CallsUserPreferences => {
+    return getPluginState(state).callsUserPreferences;
+};

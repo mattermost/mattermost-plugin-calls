@@ -83,3 +83,11 @@ export type AudioDevices = {
     inputs: MediaDeviceInfo[],
     outputs: MediaDeviceInfo[],
 }
+
+export type CallsUserPreferences = {
+    joinSoundParticipantsThreshold: number,
+}
+
+export const CallsUserPreferencesDefault = {
+    joinSoundParticipantsThreshold: 8,
+};
