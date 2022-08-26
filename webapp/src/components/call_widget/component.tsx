@@ -45,7 +45,8 @@ import SpeakerIcon from '../../components/icons/speaker_icon';
 import Shortcut from 'src/components/shortcut';
 
 import CallDuration from './call_duration';
-import {WidgetBanner, Props as BannerProps} from './widget_banner';
+import {WidgetBanner, Props as WidgetBannerProps} from './widget_banner';
+import WidgetButton from './widget_button';
 
 import './component.scss';
 
@@ -97,6 +98,7 @@ interface State {
     audioEls: HTMLAudioElement[],
     banners: {
         [key: string]: {
+            active: boolean,
             show: boolean,
         },
     },
@@ -137,21 +139,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 width: '100%',
                 alignItems: 'center',
             },
-            mutedButton: {
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                width: '24px',
-            },
-            unmutedButton: {
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                width: '24px',
-                background: 'rgba(61, 184, 135, 0.16)',
-                borderRadius: '4px',
-                color: 'rgba(61, 184, 135, 1)',
-            },
             disconnectButton: {
                 display: 'flex',
                 justifyContent: 'center',
@@ -186,8 +173,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 alignItems: 'center',
                 color: changeOpacity(this.props.theme.centerChannelColor, 0.8),
                 fontSize: '14px',
-                width: '24px',
-                height: '24px',
+                width: 'auto',
+                padding: '0 6px',
             },
             menu: {
                 position: 'absolute',
@@ -253,9 +240,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEls: [],
             banners: {
                 missingAudioInput: {
+                    active: false,
                     show: false,
                 },
                 missingScreenPermissions: {
+                    active: false,
                     show: false,
                 },
             },
@@ -340,6 +329,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 banners: {
                     ...this.state.banners,
                     missingAudioInput: {
+                        active: devices.inputs.length === 0,
                         show: devices.inputs.length === 0,
                     },
                 }});
@@ -452,10 +442,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 const stream = await window.callsClient.shareScreen('', hasExperimentalFlag());
                 if (stream) {
                     state.screenStream = stream;
+                    state.banners = {
+                        ...this.state.banners,
+                        missingScreenPermissions: {
+                            active: false,
+                            show: false,
+                        },
+                    };
                 } else {
                     state.banners = {
                         ...this.state.banners,
                         missingScreenPermissions: {
+                            active: true,
                             show: true,
                         },
                     };
@@ -660,35 +658,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             fill = changeOpacity(this.props.theme.centerChannelColor, 0.34);
         }
 
+        const shareScreenTooltipText = isSharing ? 'Stop presenting' : 'Start presenting';
+
         return (
-            <OverlayTrigger
-                key='share_screen'
-                placement='top'
-                overlay={
-                    <Tooltip
-                        id='tooltip-mute'
-                        style={{display: sharingID && !isSharing ? 'none' : ''}}
-                    >
-                        {isSharing ? 'Stop presenting' : 'Start presenting'}
-                        <Shortcut shortcut={reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}/>
-                    </Tooltip>
-                }
-            >
-                <button
-                    className={`style--none ${!sharingID || isSharing ? 'button-controls' : 'button-controls-disabled'} button-controls--wide`}
-                    disabled={sharingID !== '' && !isSharing}
-                    style={{background: isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}}
-                    onClick={this.onShareScreenToggle}
-                >
-                    <ScreenIcon
-                        style={{
-                            width: '16px',
-                            height: '16px',
-                            fill,
-                        }}
-                    />
-                </button>
-            </OverlayTrigger>
+            <WidgetButton
+                id='share-screen'
+                onToggle={this.onShareScreenToggle}
+                toolTipText={shareScreenTooltipText}
+                shortcut={reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}
+                bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                icon={<ScreenIcon style={{width: '16px', height: '16px', fill}}/>}
+                unavailable={this.state.banners.missingScreenPermissions.active}
+                disabled={sharingID !== '' && !isSharing}
+            />
         );
     }
 
@@ -1008,7 +990,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     renderBanners = () => {
-        const banners: {[key: string]: BannerProps} = {};
+        const banners: {[key: string]: WidgetBannerProps} = {};
 
         if (this.state.banners.missingAudioInput.show) {
             banners.missingAudioInput = {
@@ -1018,7 +1000,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 onClose: () => {
                     this.setState({banners: {
                         ...this.state.banners,
-                        missingAudioInput: {show: false},
+                        missingAudioInput: {
+                            ...this.state.banners.missingAudioInput,
+                            show: false,
+                        },
                     }});
                 },
             };
@@ -1032,7 +1017,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 onClose: () => {
                     this.setState({banners: {
                         ...this.state.banners,
-                        missingScreenPermissions: {show: false},
+                        missingScreenPermissions: {
+                            ...this.state.banners.missingScreenPermissions,
+                            show: false,
+                        },
                     }});
                 },
             };
@@ -1258,8 +1246,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const MuteIcon = window.callsClient.isMuted() ? MutedIcon : UnmutedIcon;
-        const muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
+        const noInputDevices = this.state.devices.inputs?.length === 0;
+        const MuteIcon = window.callsClient.isMuted() && !noInputDevices ? MutedIcon : UnmutedIcon;
+        let muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
+        if (noInputDevices) {
+            muteTooltipText = 'No audio input device';
+        }
 
         const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar'));
         const mainWidth = hasTeamSidebar ? '280px' : '216px';
@@ -1385,53 +1377,29 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </OverlayTrigger>
 
                         { !isDirectChannel(this.props.channel) &&
-                        <OverlayTrigger
-                            key='hand'
-                            placement='top'
-                            overlay={
-                                <Tooltip id='tooltip-hand'>
-                                    {handTooltipText}
-                                    <Shortcut shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}/>
-                                </Tooltip>
-                            }
-                        >
-                            <button
-                                className='cursor--pointer style--none button-controls'
-                                onClick={this.onRaiseHandToggle}
-                                style={{background: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
-                            >
-                                <HandIcon
-                                    style={{width: '16px', height: '16px', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}
-                                />
-                            </button>
-
-                        </OverlayTrigger>
+                        <WidgetButton
+                            id='raise-hand'
+                            onToggle={this.onRaiseHandToggle}
+                            shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
+                            toolTipText={handTooltipText}
+                            bgColor={window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
+                            icon={<HandIcon style={{width: '16px', height: '16px', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}/>}
+                        />
                         }
 
                         {(hasTeamSidebar || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
 
-                        <OverlayTrigger
-                            key='mute'
-                            placement='top'
-                            overlay={
-                                <Tooltip id='tooltip-mute'>
-                                    {muteTooltipText}
-                                    <Shortcut shortcut={reverseKeyMappings.widget[MUTE_UNMUTE][0]}/>
-                                </Tooltip>
-                            }
-                        >
-                            <button
-                                id='voice-mute-unmute'
-                                className='cursor--pointer style--none button-controls'
-                                style={window.callsClient.isMuted() ? this.style.mutedButton : this.style.unmutedButton}
-                                onClick={this.onMuteToggle}
-                            >
-                                <MuteIcon
-                                    style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : 'rgba(61, 184, 135, 1)'}}
-                                    stroke={window.callsClient.isMuted() ? 'rgb(var(--dnd-indicator-rgb))' : ''}
-                                />
-                            </button>
-                        </OverlayTrigger>
+                        <WidgetButton
+                            id='voice-mute-unmute'
+                            // eslint-disable-next-line no-undefined
+                            onToggle={noInputDevices ? undefined : this.onMuteToggle}
+                            shortcut={reverseKeyMappings.widget[MUTE_UNMUTE][0]}
+                            toolTipText={muteTooltipText}
+                            toolTipSubText={noInputDevices ? 'Try replugging your audio input device' : ''}
+                            bgColor={window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
+                            icon={<MuteIcon style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)'}}/>}
+                            unavailable={noInputDevices}
+                        />
                     </div>
                 </div>
             </div>

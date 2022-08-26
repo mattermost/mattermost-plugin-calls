@@ -1,7 +1,7 @@
 import React from 'react';
 import styled, {css} from 'styled-components';
 
-import CompassIcon from '../../components/icons/compassIcon';
+import CompassIcon from 'src/components/icons/compassIcon';
 
 export type Props = {
     type: 'error' | 'warning',
