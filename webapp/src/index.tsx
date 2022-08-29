@@ -511,10 +511,7 @@ export default class Plugin {
                     }
                 });
 
-                window.callsClient.init(channelID, title).catch((err: Error) => {
-                    delete window.callsClient;
-                    logErr(err);
-                });
+                window.callsClient.init(channelID, title);
             } catch (err) {
                 delete window.callsClient;
                 logErr(err);

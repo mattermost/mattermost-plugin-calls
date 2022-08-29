@@ -52,6 +52,7 @@ import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import SpeakerIcon from '../../components/icons/speaker_icon';
 
 import Shortcut from 'src/components/shortcut';
+import {AudioInputPermissionsError} from 'src/client';
 
 import CallDuration from './call_duration';
 import WidgetBanner from './widget_banner';
@@ -343,6 +344,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
             this.setState({currentAudioInputDevice: window.callsClient.currentAudioInputDevice});
             this.setState({currentAudioOutputDevice: window.callsClient.currentAudioOutputDevice});
+        });
+
+        window.callsClient.on('error', (err: Error) => {
+            if (err === AudioInputPermissionsError) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        missingAudioInputPermissions: {
+                            active: true,
+                            show: true,
+                        },
+                    }});
+            }
         });
     }
 
@@ -1228,10 +1242,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         const noInputDevices = this.state.devices.inputs?.length === 0;
-        const MuteIcon = window.callsClient.isMuted() && !noInputDevices ? MutedIcon : UnmutedIcon;
+        const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
+        const MuteIcon = window.callsClient.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
         let muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
         if (noInputDevices) {
             muteTooltipText = 'No audio input device';
+        }
+        if (noAudioPermissions) {
+            muteTooltipText = 'No permissions';
+        }
+        let muteTooltipSubtext = '';
+        if (noInputDevices) {
+            muteTooltipSubtext = 'Try replugging your audio input device';
+        }
+        if (noAudioPermissions) {
+            muteTooltipSubtext = 'Allow access to your microphone';
         }
 
         const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar'));
@@ -1373,13 +1398,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <WidgetButton
                             id='voice-mute-unmute'
                             // eslint-disable-next-line no-undefined
-                            onToggle={noInputDevices ? undefined : this.onMuteToggle}
+                            onToggle={noInputDevices || noAudioPermissions ? undefined : this.onMuteToggle}
                             shortcut={reverseKeyMappings.widget[MUTE_UNMUTE][0]}
                             toolTipText={muteTooltipText}
-                            toolTipSubText={noInputDevices ? 'Try replugging your audio input device' : ''}
+                            toolTipSubText={muteTooltipSubtext}
                             bgColor={window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
                             icon={<MuteIcon style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)'}}/>}
-                            unavailable={noInputDevices}
+                            unavailable={noInputDevices || noAudioPermissions}
                         />
                     </div>
                 </div>

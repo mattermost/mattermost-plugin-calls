@@ -14,6 +14,9 @@ import VoiceActivityDetector from './vad';
 
 import {parseRTCStats} from './rtc_stats';
 
+export const AudioInputPermissionsError = new Error('missing audio input permissions');
+export const AudioInputMissingError = new Error('no audio input available');
+
 export default class CallsClient extends EventEmitter {
     public channelID: string;
     private readonly config: CallsClientConfig;
@@ -79,12 +82,17 @@ export default class CallsClient extends EventEmitter {
 
     private async updateDevices() {
         logDebug('a/v device change detected');
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        this.audioDevices = {
-            inputs: devices.filter((device) => device.kind === 'audioinput'),
-            outputs: devices.filter((device) => device.kind === 'audiooutput'),
-        };
-        this.emit('devicechange', this.audioDevices);
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            this.audioDevices = {
+                inputs: devices.filter((device) => device.kind === 'audioinput'),
+                outputs: devices.filter((device) => device.kind === 'audiooutput'),
+            };
+            this.emit('devicechange', this.audioDevices);
+        } catch (err) {
+            logErr(err);
+        }
     }
 
     public async init(channelID: string, title?: string) {
@@ -131,20 +139,25 @@ export default class CallsClient extends EventEmitter {
             }
         }
 
-        this.stream = await navigator.mediaDevices.getUserMedia({
-            video: false,
-            audio: audioOptions,
-        });
+        try {
+            this.stream = await navigator.mediaDevices.getUserMedia({
+                video: false,
+                audio: audioOptions,
+            });
 
-        // updating the devices again cause some browsers (e.g Firefox) will
-        // return empty labels unless permissions were previously granted.
-        await this.updateDevices();
+            // updating the devices again cause some browsers (e.g Firefox) will
+            // return empty labels unless permissions were previously granted.
+            await this.updateDevices();
 
-        this.audioTrack = this.stream.getAudioTracks()[0];
-        this.streams.push(this.stream);
+            this.audioTrack = this.stream.getAudioTracks()[0];
+            this.streams.push(this.stream);
 
-        this.initVAD(this.stream);
-        this.audioTrack.enabled = false;
+            this.initVAD(this.stream);
+            this.audioTrack.enabled = false;
+        } catch (err) {
+            logErr(err);
+            this.emit('error', this.audioDevices.inputs.length > 0 ? AudioInputPermissionsError : AudioInputMissingError);
+        }
 
         const ws = new WebSocketClient(this.config.wsURL);
         this.ws = ws;
@@ -272,6 +285,7 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('remoteVoiceStream');
         this.removeAllListeners('remoteScreenStream');
         this.removeAllListeners('devicechange');
+        this.removeAllListeners('error');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
     }
