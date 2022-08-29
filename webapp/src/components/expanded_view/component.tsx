@@ -36,6 +36,7 @@ import {
 } from 'src/shortcuts';
 
 import GlobalBanner from './global_banner';
+import ControlsButton from './controls_button';
 
 import './component.scss';
 
@@ -292,6 +293,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.removeEventListener('blur', this.handleBlur, true);
     }
 
+    shouldRenderAlertBanner = () => {
+        return Object.entries(this.state.banners).filter(kv => kv[1].show).length > 0;
+    }
+
     renderAlertBanner = () => {
         if (this.state.banners.missingAudioInput.show) {
             return (
@@ -353,7 +358,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const msg = isSharing ? 'You are sharing your screen' : `You are viewing ${getUserDisplayName(profile as UserProfile)}'s screen`;
 
         return (
-            <div style={style.screenContainer as CSSProperties}>
+            <div
+                style={{
+                    ...style.screenContainer,
+
+                    // Account for when we display an alert banner.
+                    maxHeight: `calc(100% - ${this.shouldRenderAlertBanner() ? 240 : 200}px)`,
+                } as CSSProperties}
+            >
                 <video
                     id='screen-player'
                     ref={this.screenPlayer}
@@ -533,8 +545,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const noInputDevices = this.state.banners.missingAudioInput.active;
         const isMuted = callsClient.isMuted();
-        const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
+        const MuteIcon = isMuted && !noInputDevices ? MutedIcon : UnmutedIcon;
         const muteButtonText = isMuted ? 'Unmute' : 'Mute';
 
         const isHandRaised = callsClient.isHandRaised;
@@ -620,80 +633,47 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
 
                         <div style={style.centerControls}>
-                            <OverlayTrigger
-                                key='tooltip-hand-toggle'
-                                placement='top'
-                                overlay={
-                                    <Tooltip
-                                        id='tooltip-hand-toggle'
-                                    >
-                                        <span>{raiseHandText}</span>
-                                        <Shortcut shortcut={reverseKeyMappings.popout[RAISE_LOWER_HAND][0]}/>
-                                    </Tooltip>
-                                }
-                            >
-                                <button
-                                    className='button-center-controls'
-                                    onClick={this.onRaiseHandToggle}
-                                    style={{background: isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
-                                >
+                            <ControlsButton
+                                id='calls-popout-raisehand-button'
+                                onToggle={this.onRaiseHandToggle}
+                                toolTipText={raiseHandText}
+                                shortcut={reverseKeyMappings.popout[RAISE_LOWER_HAND][0]}
+                                bgColor={isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
+                                icon={
                                     <HandIcon
-                                        style={{width: '28px', height: '28px'}}
-                                        fill={isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}
+                                        style={{width: '28px', height: '28px', fill: isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}}
                                     />
-                                </button>
-                            </OverlayTrigger>
-
-                            <OverlayTrigger
-                                key='tooltip-screen-toggle'
-                                placement='top'
-                                overlay={
-                                    <Tooltip
-                                        id='tooltip-screen-toggle'
-                                    >
-                                        <span>{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
-                                        <Shortcut shortcut={reverseKeyMappings.popout[SHARE_UNSHARE_SCREEN][0]}/>
-                                    </Tooltip>
                                 }
-                            >
-                                <button
-                                    className='button-center-controls'
-                                    onClick={this.onShareScreenToggle}
-                                    style={{background: isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}}
-                                >
+                            />
+
+                            <ControlsButton
+                                id='calls-popout-screenshare-button'
+                                onToggle={this.onShareScreenToggle}
+                                toolTipText={isSharing ? 'Stop presenting' : 'Start presenting'}
+                                shortcut={reverseKeyMappings.popout[SHARE_UNSHARE_SCREEN][0]}
+                                bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                                icon={
                                     <ScreenIcon
-                                        style={{width: '28px', height: '28px'}}
-                                        fill={isSharing ? 'rgb(var(--dnd-indicator-rgb))' : 'white'}
+                                        style={{width: '28px', height: '28px', fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : ''}}
                                     />
-
-                                </button>
-                            </OverlayTrigger>
-
-                            <OverlayTrigger
-                                key='tooltip-mute-toggle'
-                                placement='top'
-                                overlay={
-                                    <Tooltip
-                                        id='tooltip-mute-toggle'
-                                    >
-                                        <span>{muteButtonText}</span>
-                                        <Shortcut shortcut={reverseKeyMappings.popout[MUTE_UNMUTE][0]}/>
-                                    </Tooltip>
                                 }
-                            >
-                                <button
-                                    id='calls-popout-mute-button'
-                                    className='button-center-controls'
-                                    onClick={this.onMuteToggle}
-                                    style={{background: isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}}
-                                >
+                                unavailable={this.state.banners.missingScreenPermissions.active}
+                            />
+
+                            <ControlsButton
+                                id='calls-popout-mute-button'
+                                // eslint-disable-next-line no-undefined
+                                onToggle={noInputDevices ? undefined : this.onMuteToggle}
+                                toolTipText={muteButtonText}
+                                shortcut={reverseKeyMappings.popout[MUTE_UNMUTE][1]}
+                                bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
+                                icon={
                                     <MuteIcon
-                                        style={{width: '28px', height: '28px'}}
-                                        fill={isMuted ? 'white' : 'rgba(61, 184, 135, 1)'}
-                                        stroke={isMuted ? 'rgb(var(--dnd-indicator-rgb))' : ''}
+                                        style={{width: '28px', height: '28px', fill: isMuted ? '' : 'rgba(61, 184, 135, 1)'}}
                                     />
-                                </button>
-                            </OverlayTrigger>
+                                }
+                                unavailable={noInputDevices}
+                            />
                         </div>
 
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
@@ -782,14 +762,6 @@ const style = {
         alignItems: 'center',
         justifyContent: 'center',
     },
-    buttonContainer: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        margin: '0 8px',
-        width: '112px',
-    },
     topLeftContainer: {
         display: 'flex',
         alignItems: 'center',
@@ -805,7 +777,6 @@ const style = {
         alignItems: 'center',
         margin: 'auto',
         maxWidth: 'calc(100% - 16px)',
-        maxHeight: 'calc(100% - 200px)',
     },
     rhs: {
         display: 'flex',
