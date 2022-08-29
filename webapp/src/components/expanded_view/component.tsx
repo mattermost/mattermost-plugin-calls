@@ -9,7 +9,7 @@ import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
-import {UserState} from 'src/types/types';
+import {UserState, AudioDevices} from 'src/types/types';
 
 import Avatar from '../avatar/avatar';
 
@@ -35,6 +35,8 @@ import {
     reverseKeyMappings,
 } from 'src/shortcuts';
 
+import GlobalBanner from './global_banner';
+
 import './component.scss';
 
 interface Props {
@@ -58,6 +60,12 @@ interface Props {
 interface State {
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
+    banners: {
+        [key: string]: {
+            active: boolean,
+            show: boolean,
+        },
+    },
 }
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
@@ -70,6 +78,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.state = {
             screenStream: null,
             showParticipantsList: false,
+            banners: {
+                missingAudioInput: {
+                    active: false,
+                    show: false,
+                },
+                missingScreenPermissions: {
+                    active: false,
+                    show: false,
+                },
+            },
         };
 
         if (window.opener) {
@@ -130,6 +148,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
+    setDevices = (devices: AudioDevices) => {
+        this.setState({
+            banners: {
+                ...this.state.banners,
+                missingAudioInput: {
+                    active: devices.inputs.length === 0,
+                    show: devices.inputs.length === 0,
+                },
+            }});
+    }
+
     onDisconnectClick = () => {
         this.props.hideExpandedView();
         const callsClient = this.getCallsClient();
@@ -164,14 +193,33 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 this.props.showScreenSourceModal();
             } else {
+                const state = {} as State;
                 const stream = await getScreenStream('', hasExperimentalFlag());
                 if (window.opener && stream) {
                     window.screenSharingTrackId = stream.getVideoTracks()[0].id;
                 }
                 callsClient.setScreenStream(stream);
-                this.setState({
-                    screenStream: stream,
-                });
+                state.screenStream = stream;
+
+                if (stream) {
+                    state.banners = {
+                        ...this.state.banners,
+                        missingScreenPermissions: {
+                            active: false,
+                            show: false,
+                        },
+                    };
+                } else {
+                    state.banners = {
+                        ...this.state.banners,
+                        missingScreenPermissions: {
+                            active: true,
+                            show: true,
+                        },
+                    };
+                }
+
+                this.setState(state);
             }
         }
     }
@@ -226,6 +274,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         });
 
+        callsClient.on('devicechange', this.setDevices);
+
+        this.setDevices(callsClient.getAudioDevices());
+
         const screenStream = callsClient.getLocalScreenStream() || callsClient.getRemoteScreenStream();
 
         // eslint-disable-next-line react/no-did-mount-set-state
@@ -238,6 +290,48 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.removeEventListener('keydown', this.handleKBShortcuts, true);
         window.removeEventListener('keyup', this.handleKeyUp, true);
         window.removeEventListener('blur', this.handleBlur, true);
+    }
+
+    renderAlertBanner = () => {
+        if (this.state.banners.missingAudioInput.show) {
+            return (
+                <GlobalBanner
+                    type={'error'}
+                    icon={'alert-outline'}
+                    body={'Unable to find audio input device. Try plugging in the audio input device.'}
+                    onClose={() => {
+                        this.setState({banners: {
+                            ...this.state.banners,
+                            missingAudioInput: {
+                                ...this.state.banners.missingAudioInput,
+                                show: false,
+                            },
+                        }});
+                    }}
+                />
+            );
+        }
+
+        if (this.state.banners.missingScreenPermissions.show) {
+            return (
+                <GlobalBanner
+                    type={'error'}
+                    icon={'alert-outline'}
+                    body={'Allow screen recording access to Mattermost in your system preferences.'}
+                    onClose={() => {
+                        this.setState({banners: {
+                            ...this.state.banners,
+                            missingScreenPermissions: {
+                                ...this.state.banners.missingScreenPermissions,
+                                show: false,
+                            },
+                        }});
+                    }}
+                />
+            );
+        }
+
+        return null;
     }
 
     renderScreenSharingPlayer = () => {
@@ -458,6 +552,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 style={style.root as CSSProperties}
             >
                 <div style={style.main as CSSProperties}>
+                    { this.renderAlertBanner() }
+
                     <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
                         <div style={style.topLeftContainer as CSSProperties}>
                             <CallDuration

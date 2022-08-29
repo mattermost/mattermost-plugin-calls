@@ -537,4 +537,8 @@ export default class CallsClient extends EventEmitter {
             rtcStats: stats ? parseRTCStats(stats) : null,
         };
     }
+
+    public getAudioDevices() {
+        return this.audioDevices;
+    }
 }
