@@ -84,6 +84,22 @@ export type AudioDevices = {
     outputs: MediaDeviceInfo[],
 }
 
+export type TrackInfo = {
+    id: string,
+    streamID: string,
+    kind: string,
+    label: string,
+    enabled: boolean,
+    readyState: MediaStreamTrackState,
+}
+
+export type CallsClientStats = {
+    initTime: number,
+    callID: string,
+    tracksInfo: TrackInfo[],
+    rtcStats: RTCStats | null,
+}
+
 export type CallsUserPreferences = {
     joinSoundParticipantsThreshold: number,
 }

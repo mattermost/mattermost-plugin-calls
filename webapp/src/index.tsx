@@ -375,16 +375,15 @@ export default class Plugin {
                 }
                 break;
             case 'stats':
-                if (!window.callsClient) {
-                    return {error: {message: 'You\'re not connected to any call'}};
+                if (window.callsClient) {
+                    try {
+                        const stats = await window.callsClient.getStats();
+                        return {message: `/call stats "${JSON.stringify(stats)}"`, args};
+                    } catch (err) {
+                        return {error: {message: err}};
+                    }
                 }
-                try {
-                    const stats = await window.callsClient.getStats();
-                    logDebug(JSON.stringify(stats, null, 2));
-                    return {message: `/call stats "${JSON.stringify(stats)}"`, args};
-                } catch (err) {
-                    return {error: {message: err}};
-                }
+                return {message: `/call stats "${sessionStorage.getItem('calls_client_stats') || '{}'}"`, args};
             }
 
             return {message, args};
