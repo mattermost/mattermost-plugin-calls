@@ -28,6 +28,7 @@ import {
     allowEnableCalls,
     iceServers,
     needsTURNCredentials,
+    shouldPlayJoinUserSound,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -126,7 +127,7 @@ export default class Plugin {
             if (window.callsClient?.channelID === channelID) {
                 if (userID === currentUserID) {
                     playSound(getPluginStaticPath() + JoinSelfSound);
-                } else if (channelID === connectedChannelID(store.getState())) {
+                } else if (shouldPlayJoinUserSound(store.getState())) {
                     playSound(getPluginStaticPath() + JoinUserSound);
                 }
             }

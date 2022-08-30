@@ -99,3 +99,11 @@ export type CallsClientStats = {
     tracksInfo: TrackInfo[],
     rtcStats: RTCStats | null,
 }
+
+export type CallsUserPreferences = {
+    joinSoundParticipantsThreshold: number,
+}
+
+export const CallsUserPreferencesDefault = {
+    joinSoundParticipantsThreshold: 8,
+};

@@ -8,7 +8,7 @@ import {LicenseSkus} from '@mattermost/types/general';
 
 import {isDMChannel} from 'src/utils';
 
-import {CallsConfig} from 'src/types/types';
+import {CallsConfig, CallsUserPreferences} from 'src/types/types';
 
 import {pluginId} from './manifest';
 
@@ -41,6 +41,13 @@ export const voiceConnectedUsersInChannel = (state: GlobalState, channelID: stri
 };
 
 export const connectedChannelID = (state: GlobalState) => getPluginState(state).connectedChannelID;
+
+const numUsersInConnectedChannel: (state: GlobalState) => number = createSelector(
+    'numUsersInConnectedChannel',
+    connectedChannelID,
+    voiceConnectedChannels,
+    (channelID, channels) => channels[channelID]?.length || 0,
+);
 
 export const voiceConnectedProfiles = (state: GlobalState) => {
     if (!getPluginState(state).voiceConnectedProfiles) {
@@ -203,5 +210,18 @@ export const isCloudTrialNeverStarted: (state: GlobalState) => boolean = createS
     getSubscription,
     (subscription) => {
         return subscription?.trial_end_at === 0;
+    },
+);
+
+export const callsUserPreferences = (state: GlobalState): CallsUserPreferences => {
+    return getPluginState(state).callsUserPreferences;
+};
+
+export const shouldPlayJoinUserSound: (state: GlobalState) => boolean = createSelector(
+    'shouldPlayJoinUserSound',
+    numUsersInConnectedChannel,
+    callsUserPreferences,
+    (numUsers, preferences) => {
+        return numUsers < preferences.joinSoundParticipantsThreshold;
     },
 );
