@@ -1,4 +1,4 @@
-import {bindActionCreators, Dispatch} from 'redux';
+import {bindActionCreators} from 'redux';
 import {connect} from 'react-redux';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
@@ -9,6 +9,8 @@ import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/use
 import {Client4} from 'mattermost-redux/client';
 
 import {getPost} from 'mattermost-redux/actions/posts';
+
+import {Dispatch, Store} from 'src/types/mattermost-webapp';
 
 import {UserState} from '../../types/types';
 
@@ -59,7 +61,6 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     hideExpandedView,
     showScreenSourceModal,
     selectThread: (postId: string, channelId: string) => async (innerDispatch: Dispatch) => {
-        // @ts-ignore
         await innerDispatch(getPost(postId));
         return innerDispatch({
             type: 'SELECT_POST',
