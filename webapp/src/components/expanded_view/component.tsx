@@ -306,6 +306,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return (
                 <GlobalBanner
                     {...alertConfig}
+                    icon='alert-outline'
                     body={alertConfig.text}
                     onClose={() => {
                         this.setState({
