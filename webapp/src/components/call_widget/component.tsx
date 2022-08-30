@@ -358,6 +358,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     }});
             }
         });
+
+        window.callsClient.on('initaudio', () => {
+            this.setState({
+                alerts: {
+                    ...this.state.alerts,
+                    missingAudioInputPermissions: {
+                        active: false,
+                        show: false,
+                    },
+                }});
+        });
     }
 
     public componentWillUnmount() {
@@ -1398,7 +1409,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <WidgetButton
                             id='voice-mute-unmute'
                             // eslint-disable-next-line no-undefined
-                            onToggle={noInputDevices || noAudioPermissions ? undefined : this.onMuteToggle}
+                            onToggle={noInputDevices ? undefined : this.onMuteToggle}
                             shortcut={reverseKeyMappings.widget[MUTE_UNMUTE][0]}
                             toolTipText={muteTooltipText}
                             toolTipSubText={muteTooltipSubtext}

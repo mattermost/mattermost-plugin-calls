@@ -95,11 +95,7 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
-    public async init(channelID: string, title?: string) {
-        this.channelID = channelID;
-        await this.updateDevices();
-        navigator.mediaDevices.addEventListener('devicechange', this.onDeviceChange);
-
+    private async initAudio() {
         const audioOptions = {
             autoGainControl: true,
             echoCancellation: true,
@@ -154,9 +150,26 @@ export default class CallsClient extends EventEmitter {
 
             this.initVAD(this.stream);
             this.audioTrack.enabled = false;
+
+            this.emit('initaudio');
         } catch (err) {
             logErr(err);
-            this.emit('error', this.audioDevices.inputs.length > 0 ? AudioInputPermissionsError : AudioInputMissingError);
+            if (this.audioDevices.inputs.length > 0) {
+                throw AudioInputPermissionsError;
+            }
+            throw AudioInputMissingError;
+        }
+    }
+
+    public async init(channelID: string, title?: string) {
+        this.channelID = channelID;
+        await this.updateDevices();
+        navigator.mediaDevices.addEventListener('devicechange', this.onDeviceChange);
+
+        try {
+            await this.initAudio();
+        } catch (err) {
+            this.emit('error', err);
         }
 
         const ws = new WebSocketClient(this.config.wsURL);
@@ -275,8 +288,6 @@ export default class CallsClient extends EventEmitter {
                 }
             }
         });
-
-        return this;
     }
 
     public destroy() {
@@ -286,6 +297,7 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('remoteScreenStream');
         this.removeAllListeners('devicechange');
         this.removeAllListeners('error');
+        this.removeAllListeners('initaudio');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
     }
@@ -407,9 +419,18 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
-    public unmute() {
-        if (!this.peer || !this.audioTrack || !this.stream) {
+    public async unmute() {
+        if (!this.peer) {
             return;
+        }
+
+        if (!this.audioTrack) {
+            try {
+                await this.initAudio();
+            } catch (err) {
+                this.emit('error', err);
+                return;
+            }
         }
 
         if (this.voiceDetector) {
@@ -417,12 +438,12 @@ export default class CallsClient extends EventEmitter {
         }
 
         if (this.voiceTrackAdded) {
-            this.peer.replaceTrack(this.audioTrack.id, this.audioTrack);
+            this.peer.replaceTrack(this.audioTrack!.id, this.audioTrack!);
         } else {
-            this.peer.addTrack(this.audioTrack, this.stream);
+            this.peer.addTrack(this.audioTrack!, this.stream!);
             this.voiceTrackAdded = true;
         }
-        this.audioTrack.enabled = true;
+        this.audioTrack!.enabled = true;
         if (this.ws) {
             this.ws.send('unmute');
         }
