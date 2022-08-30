@@ -30,4 +30,5 @@ export const HIDE_END_CALL_MODAL = pluginId + '_hide_end_call_modal';
 
 export const RECEIVED_CALLS_CONFIG = pluginId + '_received_calls_config';
 export const RECEIVED_CHANNEL_STATE = pluginId + 'received_channel_state';
+export const RECEIVED_CALLS_USER_PREFERENCES = pluginId + '_received_calls_user_preferences';
 

@@ -18,7 +18,7 @@ export default class RTCPeer extends EventEmitter {
         this.pc = new RTCPeerConnection(config);
         this.pc.onnegotiationneeded = () => this.onNegotiationNeeded();
         this.pc.onicecandidate = (ev) => this.onICECandidate(ev);
-        this.pc.onconnectionstatechange = () => this.onConnectionStateChange();
+        this.pc.oniceconnectionstatechange = () => this.onICEConnectionStateChange();
         this.pc.ontrack = (ev) => this.onTrack(ev);
 
         // We create a data channel for two reasons:
@@ -33,13 +33,10 @@ export default class RTCPeer extends EventEmitter {
         }
     }
 
-    private onConnectionStateChange() {
-        switch (this.pc?.connectionState) {
+    private onICEConnectionStateChange() {
+        switch (this.pc?.iceConnectionState) {
         case 'connected':
             this.emit('connect');
-            break;
-        case 'disconnected':
-            this.emit('disconnect');
             break;
         case 'failed':
             this.emit('error', new Error('rtc connection failed'));
@@ -131,17 +128,17 @@ export default class RTCPeer extends EventEmitter {
         if (!this.pc) {
             throw new Error('peer has been destroyed already');
         }
-        this.removeAllListeners('close');
+
+        this.removeAllListeners('candidate');
         this.removeAllListeners('connect');
-        this.removeAllListeners('signal');
+        this.removeAllListeners('error');
+        this.removeAllListeners('close');
         this.removeAllListeners('offer');
         this.removeAllListeners('answer');
-        this.removeAllListeners('candidate');
         this.removeAllListeners('stream');
-        this.removeAllListeners('error');
         this.pc.onnegotiationneeded = null;
         this.pc.onicecandidate = null;
-        this.pc.onconnectionstatechange = null;
+        this.pc.oniceconnectionstatechange = null;
         this.pc.ontrack = null;
         this.pc.close();
         this.pc = null;
