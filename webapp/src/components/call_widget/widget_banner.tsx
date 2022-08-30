@@ -3,24 +3,24 @@ import styled, {css} from 'styled-components';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 
-export type Props = {
-    type: 'error' | 'warning',
+type Props = {
+    type: string,
     icon: string,
     body: string | React.ReactNode,
     onClose?: () => void,
 }
 
-const colorMap = {
+const colorMap: {[key: string]: string} = {
     error: 'var(--button-color)',
     warning: 'var(--center-channel-color)',
 };
 
-const bgMap = {
+const bgMap: {[key: string]: string} = {
     error: 'var(--dnd-indicator)',
     warning: 'var(--away-indicator)',
 };
 
-export function WidgetBanner(props: Props) {
+export default function WidgetBanner(props: Props) {
     return (
         <Banner
             color={colorMap[props.type]}

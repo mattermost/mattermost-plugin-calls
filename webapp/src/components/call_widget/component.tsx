@@ -10,7 +10,12 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 
-import {UserState, AudioDevices} from 'src/types/types';
+import {
+    UserState,
+    AudioDevices,
+    CallAlertStates,
+    CallAlertStatesDefault,
+} from 'src/types/types';
 import {
     getUserDisplayName,
     hasExperimentalFlag,
@@ -25,6 +30,10 @@ import {
     keyToAction,
     reverseKeyMappings,
 } from 'src/shortcuts';
+import {
+    CallAlertConfigs,
+} from 'src/constants';
+
 import {logDebug, logErr} from 'src/log';
 
 import Avatar from '../avatar/avatar';
@@ -45,7 +54,7 @@ import SpeakerIcon from '../../components/icons/speaker_icon';
 import Shortcut from 'src/components/shortcut';
 
 import CallDuration from './call_duration';
-import {WidgetBanner, Props as WidgetBannerProps} from './widget_banner';
+import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
 
 import './component.scss';
@@ -96,12 +105,7 @@ interface State {
     expandedViewWindow: Window | null,
     showUsersJoined: string[],
     audioEls: HTMLAudioElement[],
-    banners: {
-        [key: string]: {
-            active: boolean,
-            show: boolean,
-        },
-    },
+    alerts: CallAlertStates,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -238,16 +242,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             expandedViewWindow: null,
             showUsersJoined: [],
             audioEls: [],
-            banners: {
-                missingAudioInput: {
-                    active: false,
-                    show: false,
-                },
-                missingScreenPermissions: {
-                    active: false,
-                    show: false,
-                },
-            },
+            alerts: CallAlertStatesDefault,
         };
         this.node = React.createRef();
         this.screenPlayer = React.createRef();
@@ -326,9 +321,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         window.callsClient.on('devicechange', (devices: AudioDevices) => {
             this.setState({devices,
-                banners: {
-                    ...this.state.banners,
+                alerts: {
+                    ...this.state.alerts,
                     missingAudioInput: {
+                        ...this.state.alerts.missingAudioInput,
                         active: devices.inputs.length === 0,
                         show: devices.inputs.length === 0,
                     },
@@ -442,17 +438,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 const stream = await window.callsClient.shareScreen('', hasExperimentalFlag());
                 if (stream) {
                     state.screenStream = stream;
-                    state.banners = {
-                        ...this.state.banners,
+                    state.alerts = {
+                        ...this.state.alerts,
                         missingScreenPermissions: {
+                            ...this.state.alerts.missingScreenPermissions,
                             active: false,
                             show: false,
                         },
                     };
                 } else {
-                    state.banners = {
-                        ...this.state.banners,
+                    state.alerts = {
+                        ...this.state.alerts,
                         missingScreenPermissions: {
+                            ...this.state.alerts.missingScreenPermissions,
                             active: true,
                             show: true,
                         },
@@ -668,7 +666,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 shortcut={reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
                 icon={<ScreenIcon style={{width: '16px', height: '16px', fill}}/>}
-                unavailable={this.state.banners.missingScreenPermissions.active}
+                unavailable={this.state.alerts.missingScreenPermissions.active}
                 disabled={sharingID !== '' && !isSharing}
             />
         );
@@ -989,48 +987,31 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
-    renderBanners = () => {
-        const banners: {[key: string]: WidgetBannerProps} = {};
+    renderAlertBanners = () => {
+        return Object.entries(this.state.alerts).map((keyVal) => {
+            const [alertID, alertState] = keyVal;
+            if (!alertState.show) {
+                return null;
+            }
 
-        if (this.state.banners.missingAudioInput.show) {
-            banners.missingAudioInput = {
-                type: 'error',
-                icon: 'microphone',
-                body: 'Unable to find audio input device. Try plugging in the audio input device.',
-                onClose: () => {
-                    this.setState({banners: {
-                        ...this.state.banners,
-                        missingAudioInput: {
-                            ...this.state.banners.missingAudioInput,
-                            show: false,
-                        },
-                    }});
-                },
-            };
-        }
+            const alertConfig = CallAlertConfigs[alertID];
 
-        if (this.state.banners.missingScreenPermissions.show) {
-            banners.missingScreenPermissions = {
-                type: 'error',
-                icon: 'monitor',
-                body: 'Allow screen recording access to Mattermost in your system preferences.',
-                onClose: () => {
-                    this.setState({banners: {
-                        ...this.state.banners,
-                        missingScreenPermissions: {
-                            ...this.state.banners.missingScreenPermissions,
-                            show: false,
-                        },
-                    }});
-                },
-            };
-        }
-
-        return Object.entries(banners).map((keyVal) => {
             return (
                 <WidgetBanner
-                    key={`widget_banner_${keyVal[0]}`}
-                    {...keyVal[1]}
+                    {...alertConfig}
+                    key={`widget_banner_${alertID}`}
+                    body={alertConfig.text}
+                    onClose={() => {
+                        this.setState({
+                            alerts: {
+                                ...this.state.alerts,
+                                [alertID]: {
+                                    ...alertState,
+                                    show: false,
+                                },
+                            },
+                        });
+                    }}
                 />
             );
         });
@@ -1273,7 +1254,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <div style={this.style.status as CSSProperties}>
                     <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%'}}>
                         {this.renderNotificationBar()}
-                        {this.renderBanners()}
+                        {this.renderAlertBanners()}
                         {this.renderScreenSharingPanel()}
                         {this.renderParticipantsList()}
                         {this.renderMenu(hasTeamSidebar)}

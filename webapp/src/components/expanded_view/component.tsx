@@ -9,7 +9,15 @@ import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
-import {UserState, AudioDevices} from 'src/types/types';
+import {
+    UserState,
+    AudioDevices,
+    CallAlertStates,
+    CallAlertStatesDefault,
+} from 'src/types/types';
+import {
+    CallAlertConfigs,
+} from 'src/constants';
 
 import Avatar from '../avatar/avatar';
 
@@ -61,12 +69,7 @@ interface Props {
 interface State {
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
-    banners: {
-        [key: string]: {
-            active: boolean,
-            show: boolean,
-        },
-    },
+    alerts: CallAlertStates,
 }
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
@@ -79,16 +82,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.state = {
             screenStream: null,
             showParticipantsList: false,
-            banners: {
-                missingAudioInput: {
-                    active: false,
-                    show: false,
-                },
-                missingScreenPermissions: {
-                    active: false,
-                    show: false,
-                },
-            },
+            alerts: CallAlertStatesDefault,
         };
 
         if (window.opener) {
@@ -151,9 +145,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     setDevices = (devices: AudioDevices) => {
         this.setState({
-            banners: {
-                ...this.state.banners,
+            alerts: {
+                ...this.state.alerts,
                 missingAudioInput: {
+                    ...this.state.alerts.missingAudioInput,
                     active: devices.inputs.length === 0,
                     show: devices.inputs.length === 0,
                 },
@@ -203,17 +198,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 state.screenStream = stream;
 
                 if (stream) {
-                    state.banners = {
-                        ...this.state.banners,
+                    state.alerts = {
+                        ...this.state.alerts,
                         missingScreenPermissions: {
+                            ...this.state.alerts.missingScreenPermissions,
                             active: false,
                             show: false,
                         },
                     };
                 } else {
-                    state.banners = {
-                        ...this.state.banners,
+                    state.alerts = {
+                        ...this.state.alerts,
                         missingScreenPermissions: {
+                            ...this.state.alerts.missingScreenPermissions,
                             active: true,
                             show: true,
                         },
@@ -294,43 +291,32 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     shouldRenderAlertBanner = () => {
-        return Object.entries(this.state.banners).filter(kv => kv[1].show).length > 0;
+        return Object.entries(this.state.alerts).filter(kv => kv[1].show).length > 0;
     }
 
     renderAlertBanner = () => {
-        if (this.state.banners.missingAudioInput.show) {
-            return (
-                <GlobalBanner
-                    type={'error'}
-                    icon={'alert-outline'}
-                    body={'Unable to find audio input device. Try plugging in the audio input device.'}
-                    onClose={() => {
-                        this.setState({banners: {
-                            ...this.state.banners,
-                            missingAudioInput: {
-                                ...this.state.banners.missingAudioInput,
-                                show: false,
-                            },
-                        }});
-                    }}
-                />
-            );
-        }
+        for (const keyVal of Object.entries(this.state.alerts)) {
+            const [alertID, alertState] = keyVal;
+            if (!alertState.show) {
+                continue;
+            }
 
-        if (this.state.banners.missingScreenPermissions.show) {
+            const alertConfig = CallAlertConfigs[alertID];
+
             return (
                 <GlobalBanner
-                    type={'error'}
-                    icon={'alert-outline'}
-                    body={'Allow screen recording access to Mattermost in your system preferences.'}
+                    {...alertConfig}
+                    body={alertConfig.text}
                     onClose={() => {
-                        this.setState({banners: {
-                            ...this.state.banners,
-                            missingScreenPermissions: {
-                                ...this.state.banners.missingScreenPermissions,
-                                show: false,
+                        this.setState({
+                            alerts: {
+                                ...this.state.alerts,
+                                [alertID]: {
+                                    ...alertState,
+                                    show: false,
+                                },
                             },
-                        }});
+                        });
                     }}
                 />
             );
@@ -545,7 +531,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const noInputDevices = this.state.banners.missingAudioInput.active;
+        const noInputDevices = this.state.alerts.missingAudioInput.active;
         const isMuted = callsClient.isMuted();
         const MuteIcon = isMuted && !noInputDevices ? MutedIcon : UnmutedIcon;
         const muteButtonText = isMuted ? 'Unmute' : 'Mute';
@@ -657,7 +643,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         style={{width: '28px', height: '28px', fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : ''}}
                                     />
                                 }
-                                unavailable={this.state.banners.missingScreenPermissions.active}
+                                unavailable={this.state.alerts.missingScreenPermissions.active}
                             />
 
                             <ControlsButton
