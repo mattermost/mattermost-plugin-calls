@@ -11,8 +11,6 @@ import {
 } from './types/types';
 
 import {
-    VOICE_CHANNEL_ENABLE,
-    VOICE_CHANNEL_DISABLE,
     VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_DISCONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED,
@@ -40,17 +38,26 @@ import {
     RECEIVED_CALLS_CONFIG,
     SHOW_END_CALL_MODAL,
     HIDE_END_CALL_MODAL,
+    RECEIVED_CHANNEL_STATE,
     RECEIVED_CALLS_USER_PREFERENCES,
 } from './action_types';
 
-const isVoiceEnabled = (state = false, action: { type: string }) => {
+interface channelState {
+    id: string,
+    enabled: boolean,
+}
+
+interface channelStateAction {
+    type: string,
+    data: channelState,
+}
+
+const channelState = (state: {[channelID: string]: channelState} = {}, action: channelStateAction) => {
     switch (action.type) {
-    case VOICE_CHANNEL_UNINIT:
-        return false;
-    case VOICE_CHANNEL_ENABLE:
-        return true;
-    case VOICE_CHANNEL_DISABLE:
-        return false;
+    case RECEIVED_CHANNEL_STATE:
+        return {
+            [action.data.id]: action.data,
+        };
     default:
         return state;
     }
@@ -520,7 +527,7 @@ const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { typ
 };
 
 export default combineReducers({
-    isVoiceEnabled,
+    channelState,
     voiceConnectedChannels,
     connectedChannelID,
     voiceConnectedProfiles,

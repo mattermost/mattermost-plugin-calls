@@ -15,7 +15,6 @@ import {pluginId} from './manifest';
 //@ts-ignore GlobalState is not complete
 const getPluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
 
-export const isVoiceEnabled = (state: GlobalState) => getPluginState(state).isVoiceEnabled;
 export const voiceConnectedChannels = (state: GlobalState) => getPluginState(state).voiceConnectedChannels;
 export const voiceConnectedUsers = (state: GlobalState) => {
     const currentChannelID = getCurrentChannelId(state);
@@ -212,6 +211,10 @@ export const isCloudTrialNeverStarted: (state: GlobalState) => boolean = createS
         return subscription?.trial_end_at === 0;
     },
 );
+
+export const channelState = (state: GlobalState, channelID: string) => getPluginState(state).channelState[channelID];
+
+export const callsEnabled = (state: GlobalState, channelID: string) => Boolean(channelState(state, channelID)?.enabled);
 
 export const callsUserPreferences = (state: GlobalState): CallsUserPreferences => {
     return getPluginState(state).callsUserPreferences;
