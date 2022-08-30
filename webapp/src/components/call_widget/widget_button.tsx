@@ -72,7 +72,7 @@ const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailab
       `}
     }
 
-    ${({isDisabled}) => isDisabled && css`
+    ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
       :hover {
         background-color: transparent;
       }
@@ -86,6 +86,13 @@ const UnavailableIcon = styled.div<{}>`
   right: -2px;
   color: var(--dnd-indicator);
   font-size: 12px;
+
+  &&& {
+    i {
+      border-radius: 50%;
+      background-color: var(--center-channel-bg);
+    }
+  }
 `;
 
 const TooltipSubText = styled.div`
