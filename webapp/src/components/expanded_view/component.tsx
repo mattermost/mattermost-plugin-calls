@@ -569,6 +569,7 @@ const styles: Record<string, CSSObject> = {
         background: 'rgba(37, 38, 42, 1)',
         color: 'white',
         gridArea: 'center',
+        overflow: 'auto',
     },
     main: {
         display: 'flex',
