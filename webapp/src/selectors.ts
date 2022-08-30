@@ -46,7 +46,7 @@ const numUsersInConnectedChannel: (state: GlobalState) => number = createSelecto
     'numUsersInConnectedChannel',
     connectedChannelID,
     voiceConnectedChannels,
-    (channelID, channels) => channels ? channels[channelID]?.length || 0 : 0,
+    (channelID, channels) => channels[channelID]?.length || 0,
 );
 
 export const voiceConnectedProfiles = (state: GlobalState) => {
