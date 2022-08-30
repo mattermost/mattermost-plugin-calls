@@ -206,3 +206,5 @@ export const isCloudTrialNeverStarted: (state: GlobalState) => boolean = createS
 );
 
 export const channelState = (state: GlobalState, channelID: string) => getPluginState(state).channelState[channelID];
+
+export const callsEnabled = (state: GlobalState, channelID: string) => Boolean(channelState(state, channelID)?.enabled);

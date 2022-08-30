@@ -16,7 +16,7 @@ import {displayFreeTrial, getCallsConfig} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 
 import {
-    channelState,
+    callsEnabled,
     connectedChannelID,
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
@@ -322,7 +322,7 @@ export default class Plugin {
             switch (subCmd) {
             case 'join':
             case 'start':
-                if (!channelState(store.getState(), args.channel_id)?.enabled) {
+                if (!callsEnabled(store.getState(), args.channel_id)) {
                     return {error: {message: 'Cannot start or join call: calls are disabled in this channel.'}};
                 }
 
@@ -528,7 +528,7 @@ export default class Plugin {
                 async (channelID) => {
                     try {
                         const resp = await axios.post(`${getPluginPath()}/${currChannelId}`,
-                            {enabled: !channelState(store.getState(), currChannelId).enabled},
+                            {enabled: !callsEnabled(store.getState(), currChannelId)},
                             {headers: {'X-Requested-With': 'XMLHttpRequest'}});
                         store.dispatch({
                             type: RECEIVED_CHANNEL_STATE,

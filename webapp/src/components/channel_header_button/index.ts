@@ -6,7 +6,7 @@ import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels'
 import {
     voiceConnectedUsers,
     connectedChannelID,
-    channelState,
+    callsEnabled,
     isCloudFeatureRestricted,
     isCloudProfessionalOrEnterprise,
     isLimitRestricted,
@@ -16,7 +16,7 @@ import {
 import ChannelHeaderButton from './component';
 
 const mapStateToProps = (state: GlobalState) => ({
-    show: Boolean(channelState(state, getCurrentChannelId(state))?.enabled),
+    show: callsEnabled(state, getCurrentChannelId(state)),
     inCall: Boolean(connectedChannelID(state) && connectedChannelID(state) === getCurrentChannelId(state)),
     hasCall: voiceConnectedUsers(state).length > 0,
     isCloudFeatureRestricted: isCloudFeatureRestricted(state),

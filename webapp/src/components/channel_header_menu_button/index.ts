@@ -3,12 +3,12 @@ import {GlobalState} from '@mattermost/types/store';
 
 import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 
-import {channelState} from '../../selectors';
+import {callsEnabled} from '../../selectors';
 
 import ChannelHeaderMenuButton from './component';
 
 const mapStateToProps = (state: GlobalState) => ({
-    enabled: Boolean(channelState(state, getCurrentChannelId(state))?.enabled),
+    enabled: callsEnabled(state, getCurrentChannelId(state)),
 });
 
 export default connect(mapStateToProps)(ChannelHeaderMenuButton);
