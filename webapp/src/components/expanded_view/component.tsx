@@ -271,8 +271,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 screenStream: stream,
             });
         });
-
         callsClient.on('devicechange', this.setDevices);
+        callsClient.on('initaudio', () => {
+            this.setState({
+                alerts: {
+                    ...this.state.alerts,
+                    missingAudioInputPermissions: {
+                        active: false,
+                        show: false,
+                    },
+                }});
+        });
 
         this.setDevices(callsClient.getAudioDevices());
 
@@ -280,6 +289,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
+            alerts: {
+                ...this.state.alerts,
+                missingAudioInputPermissions: {
+                    ...this.state.alerts.missingAudioInputPermissions,
+                    active: !this.state.alerts.missingAudioInput.active && !callsClient.audioTrack,
+                    show: !this.state.alerts.missingAudioInput.active && !callsClient.audioTrack,
+                },
+            },
             screenStream,
         });
     }
@@ -533,8 +550,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         const noInputDevices = this.state.alerts.missingAudioInput.active;
+        const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
         const isMuted = callsClient.isMuted();
-        const MuteIcon = isMuted && !noInputDevices ? MutedIcon : UnmutedIcon;
+        const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
         const muteButtonText = isMuted ? 'Unmute' : 'Mute';
 
         const isHandRaised = callsClient.isHandRaised;
@@ -648,7 +666,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         style={{width: '28px', height: '28px', fill: isMuted ? '' : 'rgba(61, 184, 135, 1)'}}
                                     />
                                 }
-                                unavailable={noInputDevices}
+                                unavailable={noInputDevices || noAudioPermissions}
                             />
                         </div>
 
