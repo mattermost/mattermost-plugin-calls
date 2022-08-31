@@ -3,7 +3,7 @@ import {EventEmitter} from 'events';
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
-import {CallsClientConfig, RTCStats, AudioDevices} from 'src/types/types';
+import {CallsClientConfig, AudioDevices, CallsClientStats, TrackInfo} from 'src/types/types';
 
 import RTCPeer from './rtcpeer';
 
@@ -33,6 +33,7 @@ export default class CallsClient extends EventEmitter {
     private onDeviceChange: () => void;
     private onBeforeUnload: () => void;
     private closed = false;
+    private initTime = Date.now();
 
     constructor(config: CallsClientConfig) {
         super();
@@ -337,6 +338,11 @@ export default class CallsClient extends EventEmitter {
 
         this.closed = true;
         if (this.peer) {
+            this.getStats().then((stats) => {
+                sessionStorage.setItem('calls_client_stats', JSON.stringify(stats));
+            }).catch((err) => {
+                logErr(err);
+            });
             this.peer.destroy();
             this.peer = null;
         }
@@ -503,16 +509,32 @@ export default class CallsClient extends EventEmitter {
         this.isHandRaised = false;
     }
 
-    public async getStats(): Promise<RTCStats | null> {
+    public async getStats(): Promise<CallsClientStats | null> {
         if (!this.peer) {
             throw new Error('not connected');
         }
 
-        const stats = await this.peer.getStats();
-        if (!stats) {
-            return null;
-        }
+        const tracksInfo : TrackInfo[] = [];
+        this.streams.forEach((stream) => {
+            return stream.getTracks().forEach((track) => {
+                tracksInfo.push({
+                    streamID: stream.id,
+                    id: track.id,
+                    kind: track.kind,
+                    label: track.label,
+                    enabled: track.enabled,
+                    readyState: track.readyState,
+                });
+            });
+        });
 
-        return parseRTCStats(stats);
+        const stats = await this.peer.getStats();
+
+        return {
+            initTime: this.initTime,
+            callID: this.channelID,
+            tracksInfo,
+            rtcStats: stats ? parseRTCStats(stats) : null,
+        };
     }
 }

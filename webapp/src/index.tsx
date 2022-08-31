@@ -16,7 +16,7 @@ import {displayFreeTrial, getCallsConfig} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 
 import {
-    isVoiceEnabled,
+    callsEnabled,
     connectedChannelID,
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
@@ -28,6 +28,7 @@ import {
     allowEnableCalls,
     iceServers,
     needsTURNCredentials,
+    shouldPlayJoinUserSound,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -68,8 +69,7 @@ import {
 import {logErr, logDebug} from './log';
 
 import {
-    VOICE_CHANNEL_ENABLE,
-    VOICE_CHANNEL_DISABLE,
+    RECEIVED_CHANNEL_STATE,
     VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_DISCONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED,
@@ -108,15 +108,17 @@ export default class Plugin {
     }
 
     private registerWebSocketEvents(registry: PluginRegistry, store: Store, followThread: (channelID: string, teamID: string) => Promise<void>) {
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (ev) => {
             store.dispatch({
-                type: VOICE_CHANNEL_ENABLE,
+                type: RECEIVED_CHANNEL_STATE,
+                data: {id: ev.broadcast.channel_id, enabled: true},
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_disable_voice`, (data) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_disable_voice`, (ev) => {
             store.dispatch({
-                type: VOICE_CHANNEL_DISABLE,
+                type: RECEIVED_CHANNEL_STATE,
+                data: {id: ev.broadcast.channel_id, enabled: false},
             });
         });
 
@@ -128,7 +130,7 @@ export default class Plugin {
             if (window.callsClient?.channelID === channelID) {
                 if (userID === currentUserID) {
                     playSound(getPluginStaticPath() + JoinSelfSound);
-                } else if (channelID === connectedChannelID(store.getState())) {
+                } else if (shouldPlayJoinUserSound(store.getState())) {
                     playSound(getPluginStaticPath() + JoinUserSound);
                 }
             }
@@ -323,6 +325,10 @@ export default class Plugin {
             switch (subCmd) {
             case 'join':
             case 'start':
+                if (!callsEnabled(store.getState(), args.channel_id)) {
+                    return {error: {message: 'Cannot start or join call: calls are disabled in this channel.'}};
+                }
+
                 if (subCmd === 'start') {
                     if (voiceConnectedUsersInChannel(store.getState(), args.channel_id).length > 0) {
                         return {error: {message: 'A call is already ongoing in the channel.'}};
@@ -385,17 +391,15 @@ export default class Plugin {
                 }
                 break;
             case 'stats':
-                if (!window.callsClient) {
-                    return {error: {message: 'You\'re not connected to any call'}};
+                if (window.callsClient) {
+                    try {
+                        const stats = await window.callsClient.getStats();
+                        return {message: `/call stats "${JSON.stringify(stats)}"`, args};
+                    } catch (err) {
+                        return {error: {message: err}};
+                    }
                 }
-                try {
-                    const stats = await window.callsClient.getStats();
-                    logDebug(JSON.stringify(stats, null, 2));
-                    return {message: `/call stats "${JSON.stringify(stats)}"`, args};
-                } catch (err) {
-                    return {error: {message: err}};
-                }
-                break;
+                return {message: `/call stats "${sessionStorage.getItem('calls_client_stats') || '{}'}"`, args};
             }
 
             return {message, args};
@@ -541,10 +545,11 @@ export default class Plugin {
                 async (channelID) => {
                     try {
                         const resp = await axios.post(`${getPluginPath()}/${currChannelId}`,
-                            {enabled: !isVoiceEnabled(store.getState())},
+                            {enabled: !callsEnabled(store.getState(), currChannelId)},
                             {headers: {'X-Requested-With': 'XMLHttpRequest'}});
                         store.dispatch({
-                            type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
+                            type: RECEIVED_CHANNEL_STATE,
+                            data: {id: currChannelId, enabled: resp.data.enabled},
                         });
                     } catch (err) {
                         logErr(err);
@@ -618,7 +623,8 @@ export default class Plugin {
             try {
                 const resp = await axios.get(`${getPluginPath()}/${channelID}`);
                 store.dispatch({
-                    type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
+                    type: RECEIVED_CHANNEL_STATE,
+                    data: {id: channelID, enabled: resp.data.enabled},
                 });
                 store.dispatch({
                     type: VOICE_CHANNEL_USERS_CONNECTED,
@@ -672,7 +678,8 @@ export default class Plugin {
             } catch (err) {
                 logErr(err);
                 store.dispatch({
-                    type: VOICE_CHANNEL_DISABLE,
+                    type: RECEIVED_CHANNEL_STATE,
+                    data: {id: channelID, enabled: false},
                 });
             }
         };

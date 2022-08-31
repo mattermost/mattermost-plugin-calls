@@ -17,6 +17,40 @@ test.beforeEach(async ({page, context}) => {
     await devPage.goto();
 });
 
+test.describe('start/join call in channel with calls disabled', () => {
+    test.use({storageState: userState.admin.storageStatePath});
+
+    test('/call start', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.disableCalls();
+
+        await page.locator('#post_textbox').fill('/call start');
+        await page.locator('#post_textbox').press('Enter');
+        await page.locator('#post_textbox').press('Enter');
+        await expect(page.locator('#calls-widget')).toBeHidden();
+        await expect(page.locator('#create_post div.has-error label')).toBeVisible();
+        const text = await page.textContent('#create_post div.has-error label');
+        expect(text).toBe('Cannot start or join call: calls are disabled in this channel.');
+
+        await devPage.enableCalls();
+    });
+
+    test('/call join', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.disableCalls();
+
+        await page.locator('#post_textbox').fill('/call join');
+        await page.locator('#post_textbox').press('Enter');
+        await page.locator('#post_textbox').press('Enter');
+        await expect(page.locator('#calls-widget')).toBeHidden();
+        await expect(page.locator('#create_post div.has-error label')).toBeVisible();
+        const text = await page.textContent('#create_post div.has-error label');
+        expect(text).toBe('Cannot start or join call: calls are disabled in this channel.');
+
+        await devPage.enableCalls();
+    });
+});
+
 test.describe('start new call', () => {
     test.use({storageState: userState.users[0].storageStatePath});
 
