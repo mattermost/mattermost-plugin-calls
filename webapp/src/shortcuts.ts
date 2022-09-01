@@ -5,6 +5,8 @@ export const PARTICIPANTS_LIST_TOGGLE = 'participants-list-toggle';
 export const JOIN_CALL = 'join-call';
 export const LEAVE_CALL = 'leave-call';
 
+export const PUSH_TO_TALK_KEY = 'space';
+
 const globalMappings = {
     [isMac() ? 'meta+shift+s' : 'ctrl+shift+s']: JOIN_CALL,
 };
@@ -20,7 +22,7 @@ const widgetMappings = {
 
 const popoutMappings = {
     ...widgetMappings,
-    space: MUTE_UNMUTE,
+    [PUSH_TO_TALK_KEY]: MUTE_UNMUTE,
 };
 
 export const keyMappings: {[key: string]: {[key: string]: string}} = {

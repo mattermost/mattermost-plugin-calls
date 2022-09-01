@@ -26,6 +26,7 @@ import {
     SHARE_UNSHARE_SCREEN,
     PARTICIPANTS_LIST_TOGGLE,
     LEAVE_CALL,
+    PUSH_TO_TALK_KEY,
     keyToAction,
 } from 'src/shortcuts';
 
@@ -56,6 +57,7 @@ interface State {
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private screenPlayer = React.createRef<HTMLVideoElement>()
+    private pushToTalk = false;
 
     constructor(props: Props) {
         super(props);
@@ -71,6 +73,26 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
+    getCallsClient = () => {
+        return window.opener ? window.opener.callsClient : window.callsClient;
+    }
+
+    handleBlur = () => {
+        if (this.pushToTalk) {
+            this.getCallsClient()?.mute();
+            this.pushToTalk = false;
+            this.forceUpdate();
+        }
+    }
+
+    handleKeyUp = (ev: KeyboardEvent) => {
+        if (keyToAction('popout', ev) === MUTE_UNMUTE && ev.code.toLowerCase() === PUSH_TO_TALK_KEY && this.pushToTalk) {
+            this.getCallsClient()?.mute();
+            this.pushToTalk = false;
+            this.forceUpdate();
+        }
+    }
+
     handleKBShortcuts = (ev: KeyboardEvent) => {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
             return;
@@ -78,6 +100,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         switch (keyToAction('popout', ev)) {
         case MUTE_UNMUTE:
+            if (ev.code.toLowerCase() === PUSH_TO_TALK_KEY) {
+                if (this.pushToTalk) {
+                    return;
+                }
+                this.getCallsClient()?.unmute();
+                this.pushToTalk = true;
+                this.forceUpdate();
+                return;
+            }
+
             this.onMuteToggle();
             break;
         case RAISE_LOWER_HAND:
@@ -97,7 +129,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     onDisconnectClick = () => {
         this.props.hideExpandedView();
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (callsClient) {
             callsClient.disconnect();
             if (window.opener) {
@@ -107,7 +139,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onMuteToggle = () => {
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (callsClient.isMuted()) {
             callsClient.unmute();
         } else {
@@ -116,7 +148,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onShareScreenToggle = async () => {
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (this.props.screenSharingID === this.props.currentUserID) {
             callsClient.unshareScreen();
             this.setState({
@@ -139,7 +171,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onRaiseHandToggle = () => {
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (callsClient.isHandRaised) {
             callsClient.unraiseHand();
         } else {
@@ -168,7 +200,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.screenPlayer.current.srcObject = this.state.screenStream;
         }
 
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (!this.state.screenStream && callsClient?.getLocalScreenStream()) {
             // eslint-disable-next-line react/no-did-update-set-state
             this.setState({screenStream: callsClient.getLocalScreenStream()});
@@ -178,8 +210,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     public componentDidMount() {
         // keyboard shortcuts
         window.addEventListener('keydown', this.handleKBShortcuts, true);
+        window.addEventListener('keyup', this.handleKeyUp, true);
+        window.addEventListener('blur', this.handleBlur, true);
 
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         callsClient.on('remoteScreenStream', (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
@@ -196,6 +230,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     public componentWillUnmount() {
         window.removeEventListener('keydown', this.handleKBShortcuts, true);
+        window.removeEventListener('keyup', this.handleKeyUp, true);
+        window.removeEventListener('blur', this.handleBlur, true);
     }
 
     renderScreenSharingPlayer = () => {
@@ -392,7 +428,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (!callsClient) {
             return null;
         }
