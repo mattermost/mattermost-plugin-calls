@@ -582,6 +582,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 }
                             >
                                 <button
+                                    id='calls-popout-mute-button'
                                     className='button-center-controls'
                                     onClick={this.onMuteToggle}
                                     style={{background: isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}}
