@@ -19,6 +19,7 @@ import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import ParticipantsIcon from '../../components/icons/participants';
 import CallDuration from '../call_widget/call_duration';
+import Shortcut from 'src/components/shortcut';
 
 import {
     MUTE_UNMUTE,
@@ -28,6 +29,7 @@ import {
     LEAVE_CALL,
     PUSH_TO_TALK_KEY,
     keyToAction,
+    reverseKeyMappings,
 } from 'src/shortcuts';
 
 import './component.scss';
@@ -499,6 +501,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         id='show-participants-list'
                                     >
                                         {this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list'}
+                                        <Shortcut shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}/>
                                     </Tooltip>
                                 }
                             >
@@ -506,7 +509,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onParticipantsListToggle}
-                                    style={{background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}}
+                                    style={{background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : '', marginLeft: '0'}}
                                 >
                                     <ParticipantsIcon
                                         style={{width: '24px', height: '24px'}}
@@ -517,8 +520,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
 
                         <div style={style.centerControls}>
-
-                            <div style={style.buttonContainer as CSSProperties}>
+                            <OverlayTrigger
+                                key='tooltip-hand-toggle'
+                                placement='top'
+                                overlay={
+                                    <Tooltip
+                                        id='tooltip-hand-toggle'
+                                    >
+                                        <span>{raiseHandText}</span>
+                                        <Shortcut shortcut={reverseKeyMappings.popout[RAISE_LOWER_HAND][0]}/>
+                                    </Tooltip>
+                                }
+                            >
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onRaiseHandToggle}
@@ -528,15 +541,21 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         style={{width: '28px', height: '28px'}}
                                         fill={isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}
                                     />
-
                                 </button>
-                                <span
-                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                                >{raiseHandText}</span>
-                            </div>
+                            </OverlayTrigger>
 
-                            { (isSharing || !sharingID) &&
-                            <div style={style.buttonContainer as CSSProperties}>
+                            <OverlayTrigger
+                                key='tooltip-screen-toggle'
+                                placement='top'
+                                overlay={
+                                    <Tooltip
+                                        id='tooltip-screen-toggle'
+                                    >
+                                        <span>{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
+                                        <Shortcut shortcut={reverseKeyMappings.popout[SHARE_UNSHARE_SCREEN][0]}/>
+                                    </Tooltip>
+                                }
+                            >
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onShareScreenToggle}
@@ -548,15 +567,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     />
 
                                 </button>
-                                <span
-                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                                >{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
-                            </div>
-                            }
+                            </OverlayTrigger>
 
-                            <div
-                                id='calls-popout-mute-button'
-                                style={style.buttonContainer as CSSProperties}
+                            <OverlayTrigger
+                                key='tooltip-mute-toggle'
+                                placement='top'
+                                overlay={
+                                    <Tooltip
+                                        id='tooltip-mute-toggle'
+                                    >
+                                        <span>{muteButtonText}</span>
+                                        <Shortcut shortcut={reverseKeyMappings.popout[MUTE_UNMUTE][1]}/>
+                                    </Tooltip>
+                                }
                             >
                                 <button
                                     className='button-center-controls'
@@ -568,30 +591,38 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         fill={isMuted ? 'white' : 'rgba(61, 184, 135, 1)'}
                                         stroke={isMuted ? 'rgb(var(--dnd-indicator-rgb))' : ''}
                                     />
-
                                 </button>
-                                <span
-                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                                >{muteButtonText}</span>
-                            </div>
-
+                            </OverlayTrigger>
                         </div>
 
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
-                            <button
-                                className='button-leave'
-                                onClick={this.onDisconnectClick}
+                            <OverlayTrigger
+                                key='tooltip-leave-call'
+                                placement='top'
+                                overlay={
+                                    <Tooltip
+                                        id='tooltip-leave-call'
+                                    >
+                                        <span>{'Leave call'}</span>
+                                        <Shortcut shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}/>
+                                    </Tooltip>
+                                }
                             >
+                                <button
+                                    className='button-leave'
+                                    onClick={this.onDisconnectClick}
+                                >
 
-                                <LeaveCallIcon
-                                    style={{width: '24px', height: '24px'}}
-                                    fill='white'
-                                />
-                                <span
-                                    style={{fontSize: '18px', fontWeight: 600, marginLeft: '8px'}}
-                                >{'Leave'}</span>
+                                    <LeaveCallIcon
+                                        style={{width: '24px', height: '24px'}}
+                                        fill='white'
+                                    />
+                                    <span
+                                        style={{fontSize: '18px', fontWeight: 600, marginLeft: '8px'}}
+                                    >{'Leave'}</span>
 
-                            </button>
+                                </button>
+                            </OverlayTrigger>
                         </div>
                     </div>
                 </div>
@@ -614,7 +645,7 @@ const style = {
         left: 0,
         width: '100%',
         height: '100%',
-        zIndex: 100,
+        zIndex: 1000,
         background: 'rgba(37, 38, 42, 1)',
         color: 'white',
     },
@@ -638,7 +669,7 @@ const style = {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '8px',
+        padding: '16px 8px',
         width: '100%',
     },
     leftControls: {
