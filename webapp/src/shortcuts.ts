@@ -15,8 +15,8 @@ const widgetMappings = {
     [isMac() ? 'meta+shift+space' : 'ctrl+shift+space']: MUTE_UNMUTE,
     [isMac() ? 'meta+shift+y' : 'ctrl+shift+y']: RAISE_LOWER_HAND,
     [isMac() ? 'meta+shift+e' : 'ctrl+shift+e']: SHARE_UNSHARE_SCREEN,
-    [isMac() ? 'meta+shift+p' : 'ctrl+shift+p']: PARTICIPANTS_LIST_TOGGLE,
     'alt+p': PARTICIPANTS_LIST_TOGGLE,
+    [isMac() ? 'meta+shift+p' : 'ctrl+shift+p']: PARTICIPANTS_LIST_TOGGLE,
     [isMac() ? 'meta+shift+l' : 'ctrl+shift+l']: LEAVE_CALL,
 };
 
@@ -30,6 +30,29 @@ export const keyMappings: {[key: string]: {[key: string]: string}} = {
     widget: widgetMappings,
     popout: popoutMappings,
 };
+
+type reverseKeyMap = {
+    [key: string]: {
+        [key: string]: string[],
+    },
+};
+
+export const reverseKeyMappings = (() => {
+    const map : reverseKeyMap = {};
+
+    for (const [scope, mappings] of Object.entries(keyMappings)) {
+        map[scope] = {};
+        for (const [sequence, action] of Object.entries(mappings)) {
+            if (map[scope][action]) {
+                map[scope][action].push(sequence);
+            } else {
+                map[scope][action] = [sequence];
+            }
+        }
+    }
+
+    return map;
+})();
 
 export function keyToAction(scope: string, ev: KeyboardEvent) {
     const key = ev.key.toLowerCase();
@@ -51,7 +74,6 @@ export function keyToAction(scope: string, ev: KeyboardEvent) {
     return action;
 }
 
-function isMac() {
+export function isMac() {
     return navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 }
-

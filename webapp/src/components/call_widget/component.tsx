@@ -23,6 +23,7 @@ import {
     PARTICIPANTS_LIST_TOGGLE,
     LEAVE_CALL,
     keyToAction,
+    reverseKeyMappings,
 } from 'src/shortcuts';
 import {logDebug, logErr} from 'src/log';
 
@@ -40,6 +41,8 @@ import ExpandIcon from '../../components/icons/expand';
 import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import SpeakerIcon from '../../components/icons/speaker_icon';
+
+import Shortcut from 'src/components/shortcut';
 
 import CallDuration from './call_duration';
 
@@ -640,6 +643,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={{display: sharingID && !isSharing ? 'none' : ''}}
                     >
                         {isSharing ? 'Stop presenting' : 'Start presenting'}
+                        <Shortcut shortcut={reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}/>
                     </Tooltip>
                 }
             >
@@ -1251,6 +1255,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overlay={
                                 <Tooltip id='tooltip-leave'>
                                     {'Click to leave call'}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}/>
                                 </Tooltip>
                             }
                         >
@@ -1284,6 +1289,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overlay={
                                 <Tooltip id='tooltip-mute'>
                                     {this.state.showParticipantsList ? 'Hide participants' : 'Show participants'}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}/>
                                 </Tooltip>
                             }
                         >
@@ -1314,6 +1320,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overlay={
                                 <Tooltip id='tooltip-hand'>
                                     {handTooltipText}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}/>
                                 </Tooltip>
                             }
                         >
@@ -1338,6 +1345,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overlay={
                                 <Tooltip id='tooltip-mute'>
                                     {muteTooltipText}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[MUTE_UNMUTE][0]}/>
                                 </Tooltip>
                             }
                         >
