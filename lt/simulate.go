@@ -115,6 +115,9 @@ func randFrom(choices []transition) transition {
 func (u *user) doAction(e event, stopCh chan struct{}) {
 	switch e {
 	case eventJoin:
+		if !u.cfg.simJoinLeave {
+			return
+		}
 		log.Printf("%s: resetting channels and connecting...", u.cfg.username)
 		u.resetChannels()
 		go func() {
@@ -123,6 +126,9 @@ func (u *user) doAction(e event, stopCh chan struct{}) {
 			}
 		}()
 	case eventLeave:
+		if !u.cfg.simJoinLeave {
+			return
+		}
 		log.Printf("%s: leaving call", u.cfg.username)
 		close(u.wsCloseCh)
 	case eventNoop:

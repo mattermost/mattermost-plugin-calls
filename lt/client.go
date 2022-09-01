@@ -59,6 +59,7 @@ type config struct {
 	duration      time.Duration
 	unmuted       bool
 	screenSharing bool
+	simJoinLeave  bool
 }
 
 type user struct {
@@ -609,6 +610,7 @@ func (u *user) AddUserToChannel(channelType model.ChannelType) error {
 
 	if channelType == "O" || channelType == "P" {
 		// join channel
+		log.Printf("<><> adding user to channel: %s\n", u.cfg.channelID)
 		_, _, err = client.AddChannelMember(u.cfg.channelID, user.Id)
 		if err != nil {
 			return err
@@ -672,6 +674,7 @@ func main() {
 	var numUsersPerCall int
 	var simulate bool
 	var simulateInterval string
+	var simulateJoinLeave bool
 
 	flag.StringVar(&teamID, "team", "", "team ID")
 	flag.StringVar(&channelID, "channel", "", "channel ID")
@@ -689,6 +692,7 @@ func main() {
 	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "admin password")
 	flag.BoolVar(&simulate, "sim", false, "simulate behavior")
 	flag.StringVar(&simulateInterval, "sim-interval", "10s", "rough interval between user actions")
+	flag.BoolVar(&simulateJoinLeave, "sim-join-leave", true, "simulate joining and leaving the call")
 
 	flag.Parse()
 
@@ -830,6 +834,7 @@ func main() {
 					duration:      dur,
 					unmuted:       unmuted,
 					screenSharing: screenSharing,
+					simJoinLeave:  simulateJoinLeave,
 				}
 
 				user := newUser(cfg)
