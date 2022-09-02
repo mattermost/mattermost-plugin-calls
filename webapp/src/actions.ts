@@ -139,6 +139,26 @@ export const displayCloudPricing = () => {
     };
 };
 
+export const requestOnPremTrialLicense = async (users: number, termsAccepted: boolean, receiveEmailsAccepted: boolean) => {
+    try {
+        const response = await Client4.doFetchWithResponse(
+            `${Client4.getBaseRoute()}/trial-license`,
+            {
+                method: 'post',
+                body: JSON.stringify({
+                    users,
+                    terms_accepted: termsAccepted,
+                    receive_emails_accepted: receiveEmailsAccepted,
+                }),
+            },
+        );
+        return {data: response};
+    } catch (e) {
+        // In the event that the status code returned is 451, this request has been blocked because it originated from an embargoed country
+        return {error: e.message, data: {status: e.status_code}};
+    }
+};
+
 export const endCall = (channelID: string) => {
     return axios.post(`${getPluginPath()}/calls/${channelID}/end`, null,
         {headers: {'X-Requested-With': 'XMLHttpRequest'}});

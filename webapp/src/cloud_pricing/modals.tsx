@@ -13,6 +13,7 @@ import {Thunk} from 'mattermost-redux/types/actions';
 import GenericModal from 'src/components/generic_modal';
 import {displayCloudPricing, notifyAdminCloudFreeTrial} from 'src/actions';
 import {isCloudTrialCompleted} from 'src/selectors';
+import {VerticalSpacer} from 'src/components/shared';
 
 export const IDUser = 'cloud_free_trial_user';
 export const IDAdmin = 'cloud_free_trial_admin';
@@ -90,8 +91,4 @@ const SizedGenericModal = styled(GenericModal)`
 const FooterContainer = styled.div`
     display: flex;
     justify-content: space-between;
-`;
-
-const VerticalSpacer = styled.div<{ size: number }>`
-    margin-top: ${(props) => props.size}px;
 `;

@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import React from 'react';
 import {FormattedMessage} from 'react-intl';
 
@@ -8,17 +11,11 @@ interface Props {
 const ChannelHeaderMenuButton = (props: Props) => {
     if (props.enabled) {
         return (
-            <FormattedMessage
-                id='button.channel.menu'
-                defaultMessage='Disable Calls'
-            />
+            <FormattedMessage defaultMessage='Disable Calls'/>
         );
     }
     return (
-        <FormattedMessage
-            id='button.channel.menu'
-            defaultMessage='Enable Calls'
-        />
+        <FormattedMessage defaultMessage='Enable Calls'/>
     );
 };
 

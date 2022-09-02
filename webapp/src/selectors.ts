@@ -228,3 +228,15 @@ export const shouldPlayJoinUserSound: (state: GlobalState) => boolean = createSe
         return numUsers < preferences.joinSoundParticipantsThreshold;
     },
 );
+
+export const isOnPremNotEnterprise: (state: GlobalState) => boolean = createSelector(
+    'isOnPremNotEnterprise',
+    isCloud,
+    getLicense,
+    (cloud, license) => {
+        const enterprise = license.SkuShortName === LicenseSkus.E20 || license.SkuShortName === LicenseSkus.Enterprise;
+        return !cloud && !enterprise;
+    },
+);
+
+export const adminStats = (state: GlobalState) => state.entities.admin.analytics;

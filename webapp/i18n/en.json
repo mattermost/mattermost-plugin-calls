@@ -1,3 +1,26 @@
 {
-  "button.channel.menu": "Disable Voice"
+  "/+63eJ": "Set up RTCD Services",
+  "/WMCDd": "Something went wrong!",
+  "0kSG/+": "Notify Admin",
+  "3wS4fn": "Upgrade to use calls in Channels",
+  "47FYwb": "Cancel",
+  "9tBhzB": "Upgrade now",
+  "AvpuWj": "Real-time communication daemon is a service built to offload calls on your own WebRTC services in order to efficiently support scalable and secure deployments. <featureLink>Learn more about this feature</featureLink>.",
+  "CAB3IU": "Looks like something went wrong with your Enterprise trial request. You can try again later or <supportLink>contact support</supportLink> if the error persists.",
+  "CJC2pM": "Calls are a quick, audio-first way of interacting with your colleagues. Upgrade to Mattermost Professional to use calls in channels and group messages.",
+  "EaucLA": "View plans",
+  "H79wnj": "Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. You now have access to <rtcdDocsLink>RTCD services</rtcdDocsLink>, <guestAccountsLink>guest accounts</guestAccountsLink>, <autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and <mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, among many other features. View all features in our <documentationLink>documentation</documentationLink>.",
+  "N2IrpM": "Confirm",
+  "TdTXXf": "Learn more",
+  "Zx9T5i": "Your trial has started!{br}Explore the benefits of Enterprise",
+  "aVENjO": "By selecting <b>Try free for 30 days</b>, I agree to the <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>Privacy Policy</linkPrivacy>, and receiving product emails.",
+  "bvd1gK": "Try channel calls with a free trial",
+  "cLA9Ho": "Try free for 30 days",
+  "cyR7Kh": "Back",
+  "g+KEd+": "Enable Calls",
+  "gZlFBP": "Okay",
+  "hQkROI": "Use your own WebRTC service for calls and media processing",
+  "isWX8N": "Select Notify Admin to send an automatic request to your System Admins to start the trial.",
+  "maWN66": "Calls are a quick, audio-first way of interacting with your colleagues. Get the full calls experience when you start a free, 30-day trial.",
+  "vWE77O": "Disable Calls"
 }
