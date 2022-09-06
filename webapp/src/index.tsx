@@ -399,7 +399,7 @@ export default class Plugin {
                         return {error: {message: err}};
                     }
                 }
-                return {message: `/call stats "${sessionStorage.getItem('calls_client_stats') || '{}'}"`, args};
+                return {message: `/call stats '${sessionStorage.getItem('calls_client_stats') || '{}'}'`, args};
             }
 
             return {message, args};

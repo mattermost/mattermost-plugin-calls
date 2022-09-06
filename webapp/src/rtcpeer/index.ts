@@ -4,6 +4,8 @@ import {
     RTCPeerConfig,
 } from './types';
 
+const rtcConnFailedErr = new Error('rtc connection failed');
+
 export default class RTCPeer extends EventEmitter {
     private pc: RTCPeerConnection | null;
     private senders: {[key: string]: RTCRtpSender};
@@ -19,6 +21,7 @@ export default class RTCPeer extends EventEmitter {
         this.pc.onnegotiationneeded = () => this.onNegotiationNeeded();
         this.pc.onicecandidate = (ev) => this.onICECandidate(ev);
         this.pc.oniceconnectionstatechange = () => this.onICEConnectionStateChange();
+        this.pc.onconnectionstatechange = () => this.onConnectionStateChange();
         this.pc.ontrack = (ev) => this.onTrack(ev);
 
         // We create a data channel for two reasons:
@@ -33,13 +36,21 @@ export default class RTCPeer extends EventEmitter {
         }
     }
 
+    private onConnectionStateChange() {
+        switch (this.pc?.connectionState) {
+        case 'failed':
+            this.emit('close', rtcConnFailedErr);
+            break;
+        }
+    }
+
     private onICEConnectionStateChange() {
         switch (this.pc?.iceConnectionState) {
         case 'connected':
             this.emit('connect');
             break;
         case 'failed':
-            this.emit('error', new Error('rtc connection failed'));
+            this.emit('close', rtcConnFailedErr);
             break;
         case 'closed':
             this.emit('close');
@@ -139,6 +150,7 @@ export default class RTCPeer extends EventEmitter {
         this.pc.onnegotiationneeded = null;
         this.pc.onicecandidate = null;
         this.pc.oniceconnectionstatechange = null;
+        this.pc.onconnectionstatechange = null;
         this.pc.ontrack = null;
         this.pc.close();
         this.pc = null;
