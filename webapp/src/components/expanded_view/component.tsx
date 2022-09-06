@@ -192,7 +192,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const msg = isSharing ? 'You are sharing your screen' : `You are viewing ${getUserDisplayName(profile as UserProfile)}'s screen`;
 
         return (
-            <div css={styles.screenContainer}>
+            <div style={styles.screenContainer}>
                 <video
                     id='screen-player'
                     ref={this.screenPlayer}
@@ -204,7 +204,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     controls={true}
                 />
                 <span
-                    css={{
+                    style={{
                         background: 'black',
                         padding: '4px 8px',
                         borderRadius: '4px',
@@ -235,10 +235,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return (
                 <li
                     key={'participants_profile_' + idx}
-                    css={{display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', margin: '16px'}}
+                    style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', margin: '16px'}}
                 >
 
-                    <div css={{position: 'relative'}}>
+                    <div style={{position: 'relative'}}>
                         <Avatar
                             size={50}
                             fontSize={18}
@@ -247,7 +247,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             url={this.props.pictures[profile.id]}
                         />
                         <div
-                            css={{
+                            style={{
                                 position: 'absolute',
                                 display: 'flex',
                                 justifyContent: 'center',
@@ -267,7 +267,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         </div>
                         <div
-                            css={{
+                            style={{
                                 position: 'absolute',
                                 display: isHandRaised ? 'flex' : 'none',
                                 justifyContent: 'center',
@@ -285,7 +285,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
                     </div>
 
-                    <span css={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
+                    <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
                         {getUserDisplayName(profile)}{profile.id === this.props.currentUserID && ' (you)'}
                     </span>
 
@@ -311,7 +311,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return (
                 <li
                     key={'participants_rhs_profile_' + idx}
-                    css={{display: 'flex', alignItems: 'center', padding: '4px 8px'}}
+                    style={{display: 'flex', alignItems: 'center', padding: '4px 8px'}}
                 >
                     <Avatar
                         size={24}
@@ -319,16 +319,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         border={false}
                         borderGlow={isSpeaking}
                         url={this.props.pictures[profile.id]}
-                        css={{
+                        style={{
                             marginRight: '8px',
                         }}
                     />
-                    <span css={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
+                    <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
                         {getUserDisplayName(profile)}{profile.id === this.props.currentUserID && ' (you)'}
                     </span>
 
                     <div
-                        css={{
+                        style={{
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
@@ -339,14 +339,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         { isHandRaised &&
                             <RaisedHandIcon
                                 fill={'rgba(255, 188, 66, 1)'}
-                                css={{width: '14px', height: '14px'}}
+                                style={{width: '14px', height: '14px'}}
                             />
                         }
 
                         { this.props.screenSharingID === profile.id &&
                         <ScreenIcon
                             fill={'rgb(var(--dnd-indicator-rgb))'}
-                            css={{width: '14px', height: '14px'}}
+                            style={{width: '14px', height: '14px'}}
                         />
                         }
 
@@ -388,24 +388,24 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return (
             <div
                 id='calls-expanded-view'
-                css={styles.root}
+                style={styles.root}
             >
-                <div css={styles.main}>
-                    <div css={{display: 'flex', alignItems: 'center', width: '100%'}}>
-                        <div css={styles.topLeftContainer}>
+                <div style={styles.main}>
+                    <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
+                        <div style={styles.topLeftContainer}>
                             <CallDuration
-                                css={{margin: '4px'}}
+                                style={{margin: '4px'}}
                                 startAt={this.props.callStartAt}
                             />
-                            <span css={{margin: '4px'}}>{'•'}</span>
-                            <span css={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
+                            <span style={{margin: '4px'}}>{'•'}</span>
+                            <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
 
                         </div>
                         {
                             !window.opener &&
                             <button
                                 className='button-close'
-                                css={styles.closeViewButton}
+                                style={styles.closeViewButton}
                                 onClick={this.props.hideExpandedView}
                             >
                                 <CompassIcon icon='arrow-collapse'/>
@@ -416,7 +416,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     { !this.props.screenSharingID &&
                     <ul
                         id='calls-expanded-view-participants-grid'
-                        css={{
+                        style={{
                             ...styles.participants,
                             gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
                         }}
@@ -427,9 +427,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     { this.props.screenSharingID && this.renderScreenSharingPlayer() }
                     <div
                         id='calls-expanded-view-controls'
-                        css={styles.controls}
+                        style={styles.controls}
                     >
-                        <div css={styles.leftControls}>
+                        <div style={styles.leftControls}>
                             <OverlayTrigger
                                 key='show_participants_list'
                                 placement='top'
@@ -445,23 +445,23 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onParticipantsListToggle}
-                                    css={{background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}}
+                                    style={{background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}}
                                 >
                                     <ParticipantsIcon
-                                        css={{width: '24px', height: '24px'}}
+                                        style={{width: '24px', height: '24px'}}
                                         fill={this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white'}
                                     />
                                 </button>
                             </OverlayTrigger>
                         </div>
 
-                        <div css={styles.centerControls}>
+                        <div style={styles.centerControls}>
 
-                            <div css={styles.buttonContainer}>
+                            <div style={styles.buttonContainer}>
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onRaiseHandToggle}
-                                    css={{background: isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
+                                    style={{background: isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
                                 >
                                     <HandIcon
                                         style={{width: '28px', height: '28px'}}
@@ -470,37 +470,37 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                                 </button>
                                 <span
-                                    css={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
                                 >{raiseHandText}</span>
                             </div>
 
                             { (isSharing || !sharingID) &&
-                            <div css={styles.buttonContainer}>
+                            <div style={styles.buttonContainer}>
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onShareScreenToggle}
-                                    css={{background: isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}}
+                                    style={{background: isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}}
                                 >
                                     <ScreenIcon
-                                        css={{width: '28px', height: '28px'}}
+                                        style={{width: '28px', height: '28px'}}
                                         fill={isSharing ? 'rgb(var(--dnd-indicator-rgb))' : 'white'}
                                     />
 
                                 </button>
                                 <span
-                                    css={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
                                 >{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
                             </div>
                             }
 
                             <div
                                 id='calls-popout-mute-button'
-                                css={styles.buttonContainer}
+                                style={styles.buttonContainer}
                             >
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onMuteToggle}
-                                    css={{background: isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}}
+                                    style={{background: isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}}
                                 >
                                     <MuteIcon
                                         style={{width: '28px', height: '28px'}}
@@ -510,39 +510,39 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                                 </button>
                                 <span
-                                    css={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
                                 >{muteButtonText}</span>
                             </div>
 
-                            <div css={styles.buttonContainer}>
+                            <div style={styles.buttonContainer}>
                                 <button
                                     className='button-center-controls'
                                     onClick={this.openThread}
                                 >
-                                    <ProductChannelsIcon // TODO use 'icon-message-text-outline' once released
+                                    <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
                                         size={28}
                                         color={'white'}
                                     />
                                 </button>
                                 <span
-                                    css={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
+                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
                                 >{'Chat'}</span>
                             </div>
 
                         </div>
 
-                        <div css={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
+                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
                             <button
                                 className='button-leave'
                                 onClick={this.onDisconnectClick}
                             >
 
                                 <LeaveCallIcon
-                                    css={{width: '24px', height: '24px'}}
+                                    style={{width: '24px', height: '24px'}}
                                     fill='white'
                                 />
                                 <span
-                                    css={{fontSize: '18px', fontWeight: 600, marginLeft: '8px'}}
+                                    style={{fontSize: '18px', fontWeight: 600, marginLeft: '8px'}}
                                 >{'Leave'}</span>
 
                             </button>
@@ -550,8 +550,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     </div>
                 </div>
                 { this.state.showParticipantsList &&
-                <ul css={styles.rhs}>
-                    <span css={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Participants list'}</span>
+                <ul style={styles.rhs}>
+                    <span style={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Participants list'}</span>
                     { this.renderParticipantsRHSList() }
                 </ul>
                 }
