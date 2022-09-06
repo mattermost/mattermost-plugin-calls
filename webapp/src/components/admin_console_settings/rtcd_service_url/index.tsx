@@ -20,6 +20,7 @@ import {
     OnPremTrialSuccess,
 } from 'src/components/admin_console_settings/rtcd_service_url/modals';
 import {requestOnPremTrialLicense} from 'src/actions';
+import manifest from 'src/manifest';
 
 const RTCDServiceUrl = (props: CustomComponentProps) => {
     const dispatch = useDispatch();
@@ -33,7 +34,7 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
     const rightCol = 'col-sm-8';
 
     // Webapp doesn't pass the placeholder setting.
-    const placeholder = 'https://rtcd.example.com';
+    const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'RTCDServiceURL')?.placeholder || '';
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
