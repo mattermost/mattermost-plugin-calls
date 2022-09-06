@@ -19,6 +19,18 @@ import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import ParticipantsIcon from '../../components/icons/participants';
 import CallDuration from '../call_widget/call_duration';
+import Shortcut from 'src/components/shortcut';
+
+import {
+    MUTE_UNMUTE,
+    RAISE_LOWER_HAND,
+    SHARE_UNSHARE_SCREEN,
+    PARTICIPANTS_LIST_TOGGLE,
+    LEAVE_CALL,
+    PUSH_TO_TALK_KEY,
+    keyToAction,
+    reverseKeyMappings,
+} from 'src/shortcuts';
 
 import './component.scss';
 
@@ -47,6 +59,7 @@ interface State {
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private screenPlayer = React.createRef<HTMLVideoElement>()
+    private pushToTalk = false;
 
     constructor(props: Props) {
         super(props);
@@ -62,9 +75,63 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
+    getCallsClient = () => {
+        return window.opener ? window.opener.callsClient : window.callsClient;
+    }
+
+    handleBlur = () => {
+        if (this.pushToTalk) {
+            this.getCallsClient()?.mute();
+            this.pushToTalk = false;
+            this.forceUpdate();
+        }
+    }
+
+    handleKeyUp = (ev: KeyboardEvent) => {
+        if (keyToAction('popout', ev) === MUTE_UNMUTE && ev.code.toLowerCase() === PUSH_TO_TALK_KEY && this.pushToTalk) {
+            this.getCallsClient()?.mute();
+            this.pushToTalk = false;
+            this.forceUpdate();
+        }
+    }
+
+    handleKBShortcuts = (ev: KeyboardEvent) => {
+        if ((!this.props.show || !window.callsClient) && !window.opener) {
+            return;
+        }
+
+        switch (keyToAction('popout', ev)) {
+        case MUTE_UNMUTE:
+            if (ev.code.toLowerCase() === PUSH_TO_TALK_KEY) {
+                if (this.pushToTalk) {
+                    return;
+                }
+                this.getCallsClient()?.unmute();
+                this.pushToTalk = true;
+                this.forceUpdate();
+                return;
+            }
+
+            this.onMuteToggle();
+            break;
+        case RAISE_LOWER_HAND:
+            this.onRaiseHandToggle();
+            break;
+        case SHARE_UNSHARE_SCREEN:
+            this.onShareScreenToggle();
+            break;
+        case PARTICIPANTS_LIST_TOGGLE:
+            this.onParticipantsListToggle();
+            break;
+        case LEAVE_CALL:
+            this.onDisconnectClick();
+            break;
+        }
+    }
+
     onDisconnectClick = () => {
         this.props.hideExpandedView();
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (callsClient) {
             callsClient.disconnect();
             if (window.opener) {
@@ -74,7 +141,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onMuteToggle = () => {
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (callsClient.isMuted()) {
             callsClient.unmute();
         } else {
@@ -83,7 +150,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onShareScreenToggle = async () => {
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (this.props.screenSharingID === this.props.currentUserID) {
             callsClient.unshareScreen();
             this.setState({
@@ -106,7 +173,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onRaiseHandToggle = () => {
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (callsClient.isHandRaised) {
             callsClient.unraiseHand();
         } else {
@@ -135,7 +202,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.screenPlayer.current.srcObject = this.state.screenStream;
         }
 
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (!this.state.screenStream && callsClient?.getLocalScreenStream()) {
             // eslint-disable-next-line react/no-did-update-set-state
             this.setState({screenStream: callsClient.getLocalScreenStream()});
@@ -143,7 +210,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     public componentDidMount() {
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        // keyboard shortcuts
+        window.addEventListener('keydown', this.handleKBShortcuts, true);
+        window.addEventListener('keyup', this.handleKeyUp, true);
+        window.addEventListener('blur', this.handleBlur, true);
+
+        const callsClient = this.getCallsClient();
         callsClient.on('remoteScreenStream', (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
@@ -156,6 +228,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.setState({
             screenStream,
         });
+    }
+
+    public componentWillUnmount() {
+        window.removeEventListener('keydown', this.handleKBShortcuts, true);
+        window.removeEventListener('keyup', this.handleKeyUp, true);
+        window.removeEventListener('blur', this.handleBlur, true);
     }
 
     renderScreenSharingPlayer = () => {
@@ -352,7 +430,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        const callsClient = this.getCallsClient();
         if (!callsClient) {
             return null;
         }
@@ -423,6 +501,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         id='show-participants-list'
                                     >
                                         {this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list'}
+                                        <Shortcut shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}/>
                                     </Tooltip>
                                 }
                             >
@@ -430,7 +509,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onParticipantsListToggle}
-                                    style={{background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}}
+                                    style={{background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : '', marginLeft: '0'}}
                                 >
                                     <ParticipantsIcon
                                         style={{width: '24px', height: '24px'}}
@@ -441,8 +520,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
 
                         <div style={style.centerControls}>
-
-                            <div style={style.buttonContainer as CSSProperties}>
+                            <OverlayTrigger
+                                key='tooltip-hand-toggle'
+                                placement='top'
+                                overlay={
+                                    <Tooltip
+                                        id='tooltip-hand-toggle'
+                                    >
+                                        <span>{raiseHandText}</span>
+                                        <Shortcut shortcut={reverseKeyMappings.popout[RAISE_LOWER_HAND][0]}/>
+                                    </Tooltip>
+                                }
+                            >
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onRaiseHandToggle}
@@ -452,15 +541,21 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         style={{width: '28px', height: '28px'}}
                                         fill={isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}
                                     />
-
                                 </button>
-                                <span
-                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                                >{raiseHandText}</span>
-                            </div>
+                            </OverlayTrigger>
 
-                            { (isSharing || !sharingID) &&
-                            <div style={style.buttonContainer as CSSProperties}>
+                            <OverlayTrigger
+                                key='tooltip-screen-toggle'
+                                placement='top'
+                                overlay={
+                                    <Tooltip
+                                        id='tooltip-screen-toggle'
+                                    >
+                                        <span>{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
+                                        <Shortcut shortcut={reverseKeyMappings.popout[SHARE_UNSHARE_SCREEN][0]}/>
+                                    </Tooltip>
+                                }
+                            >
                                 <button
                                     className='button-center-controls'
                                     onClick={this.onShareScreenToggle}
@@ -472,17 +567,22 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     />
 
                                 </button>
-                                <span
-                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                                >{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
-                            </div>
-                            }
+                            </OverlayTrigger>
 
-                            <div
-                                id='calls-popout-mute-button'
-                                style={style.buttonContainer as CSSProperties}
+                            <OverlayTrigger
+                                key='tooltip-mute-toggle'
+                                placement='top'
+                                overlay={
+                                    <Tooltip
+                                        id='tooltip-mute-toggle'
+                                    >
+                                        <span>{muteButtonText}</span>
+                                        <Shortcut shortcut={reverseKeyMappings.popout[MUTE_UNMUTE][1]}/>
+                                    </Tooltip>
+                                }
                             >
                                 <button
+                                    id='calls-popout-mute-button'
                                     className='button-center-controls'
                                     onClick={this.onMuteToggle}
                                     style={{background: isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}}
@@ -492,30 +592,38 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         fill={isMuted ? 'white' : 'rgba(61, 184, 135, 1)'}
                                         stroke={isMuted ? 'rgb(var(--dnd-indicator-rgb))' : ''}
                                     />
-
                                 </button>
-                                <span
-                                    style={{fontSize: '14px', fontWeight: 600, marginTop: '12px'}}
-                                >{muteButtonText}</span>
-                            </div>
-
+                            </OverlayTrigger>
                         </div>
 
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
-                            <button
-                                className='button-leave'
-                                onClick={this.onDisconnectClick}
+                            <OverlayTrigger
+                                key='tooltip-leave-call'
+                                placement='top'
+                                overlay={
+                                    <Tooltip
+                                        id='tooltip-leave-call'
+                                    >
+                                        <span>{'Leave call'}</span>
+                                        <Shortcut shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}/>
+                                    </Tooltip>
+                                }
                             >
+                                <button
+                                    className='button-leave'
+                                    onClick={this.onDisconnectClick}
+                                >
 
-                                <LeaveCallIcon
-                                    style={{width: '24px', height: '24px'}}
-                                    fill='white'
-                                />
-                                <span
-                                    style={{fontSize: '18px', fontWeight: 600, marginLeft: '8px'}}
-                                >{'Leave'}</span>
+                                    <LeaveCallIcon
+                                        style={{width: '24px', height: '24px'}}
+                                        fill='white'
+                                    />
+                                    <span
+                                        style={{fontSize: '18px', fontWeight: 600, marginLeft: '8px'}}
+                                    >{'Leave'}</span>
 
-                            </button>
+                                </button>
+                            </OverlayTrigger>
                         </div>
                     </div>
                 </div>
@@ -538,7 +646,7 @@ const style = {
         left: 0,
         width: '100%',
         height: '100%',
-        zIndex: 100,
+        zIndex: 1000,
         background: 'rgba(37, 38, 42, 1)',
         color: 'white',
     },
@@ -562,7 +670,7 @@ const style = {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '8px',
+        padding: '16px 8px',
         width: '100%',
     },
     leftControls: {
