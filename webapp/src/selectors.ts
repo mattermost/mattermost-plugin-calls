@@ -169,21 +169,6 @@ export const isCloudEnterprise: (state: GlobalState) => boolean = createSelector
     (cloud, sku) => cloud && sku === LicenseSkus.Enterprise,
 );
 
-export const isCloudProfessionalOrEnterprise: (state: GlobalState) => boolean = createSelector(
-    'isCloudProfessionalOrEnterprise',
-    isCloudProfessional,
-    isCloudEnterprise,
-    (isProf, isEnt) => isProf || isEnt,
-);
-
-// isCloudFeatureRestricted means: are you restricted from making a call because of your subscription?
-export const isCloudFeatureRestricted: (state: GlobalState) => boolean = createSelector(
-    'isCloudFeatureRestricted',
-    isCloudStarter,
-    getCurrentChannel,
-    (isStarter, channel) => isStarter && !isDMChannel(channel),
-);
-
 const getSubscription = (state: GlobalState) => {
     return state.entities.cloud.subscription;
 };
@@ -194,6 +179,23 @@ export const isCloudTrial: (state: GlobalState) => boolean = createSelector(
     (subscription) => {
         return subscription?.is_free_trial === 'true';
     },
+);
+
+export const isCloudProfessionalOrEnterpriseOrTrial: (state: GlobalState) => boolean = createSelector(
+    'isCloudProfessionalOrEnterprise',
+    isCloudProfessional,
+    isCloudEnterprise,
+    isCloudTrial,
+    (isProf, isEnt, isTrial) => isProf || isEnt || isTrial,
+);
+
+// isCloudFeatureRestricted means: are you restricted from making a call because of your subscription?
+export const isCloudFeatureRestricted: (state: GlobalState) => boolean = createSelector(
+    'isCloudFeatureRestricted',
+    isCloudStarter,
+    isCloudTrial,
+    getCurrentChannel,
+    (isStarter, isTrial, channel) => isStarter && !isTrial && !isDMChannel(channel),
 );
 
 export const isCloudTrialCompleted: (state: GlobalState) => boolean = createSelector(

@@ -192,7 +192,7 @@ func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelSta
 // account cloud and configuration limits
 func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool, error) {
 	// Rules are:
-	// On-prem, Cloud Professional & Cloud Enterprise: DMs 1-1, GMs and Channel calls
+	// On-prem, Cloud Professional & Cloud Enterprise (incl. trial): DMs 1-1, GMs and Channel calls
 	// limited to cfg.MaxCallParticipants people.
 	// Cloud Starter: DMs 1-1 only
 
@@ -202,7 +202,7 @@ func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool,
 	}
 
 	license := p.pluginAPI.System.GetLicense()
-	if !isCloud(license) {
+	if !isCloud(license) || isTrial(license) {
 		return true, nil
 	}
 

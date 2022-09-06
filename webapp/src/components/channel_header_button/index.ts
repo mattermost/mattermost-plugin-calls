@@ -8,7 +8,7 @@ import {
     connectedChannelID,
     callsEnabled,
     isCloudFeatureRestricted,
-    isCloudProfessionalOrEnterprise,
+    isCloudProfessionalOrEnterpriseOrTrial,
     isLimitRestricted,
     maxParticipants,
 } from 'src/selectors';
@@ -22,7 +22,7 @@ const mapStateToProps = (state: GlobalState) => {
         inCall: Boolean(connectedChannelID(state) && connectedChannelID(state) === channel?.id),
         hasCall: voiceConnectedUsers(state).length > 0,
         isCloudFeatureRestricted: isCloudFeatureRestricted(state),
-        isCloudPaid: isCloudProfessionalOrEnterprise(state),
+        isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),
         isLimitRestricted: isLimitRestricted(state),
         maxParticipants: maxParticipants(state),
         isChannelArchived: channel?.delete_at > 0,
