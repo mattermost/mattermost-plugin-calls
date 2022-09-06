@@ -379,16 +379,18 @@ export default class Plugin {
                     window.localStorage.removeItem('calls_experimental_features');
                 }
                 break;
-            case 'stats':
+            case 'stats': {
                 if (window.callsClient) {
                     try {
                         const stats = await window.callsClient.getStats();
-                        return {message: `/call stats "${JSON.stringify(stats)}"`, args};
+                        return {message: `/call stats ${btoa(JSON.stringify(stats))}`, args};
                     } catch (err) {
                         return {error: {message: err}};
                     }
                 }
-                return {message: `/call stats '${sessionStorage.getItem('calls_client_stats') || '{}'}'`, args};
+                const data = sessionStorage.getItem('calls_client_stats') || '{}';
+                return {message: `/call stats ${btoa(data)}`, args};
+            }
             }
 
             return {message, args};
