@@ -60,6 +60,8 @@ const mapStateToProps = (state: GlobalState) => {
 const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     hideExpandedView,
     showScreenSourceModal,
+
+    // TODO import from mattermost-redux once available
     selectThread: (postId: string, channelId: string) => async (innerDispatch: Dispatch) => {
         await innerDispatch(getPost(postId));
         return innerDispatch({
