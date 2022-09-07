@@ -16,6 +16,8 @@ import UnmutedIcon from '../../components/icons/unmuted_icon';
 import ScreenIcon from '../../components/icons/screen_icon';
 import RaisedHandIcon from '../../components/icons/raised_hand';
 
+import {logErr} from 'src/log';
+
 interface Props {
     show: boolean,
     currentUserID: string,
@@ -115,8 +117,6 @@ export default class RecordingView extends React.PureComponent<Props, State> {
         }
 
         if (!this.state.initialized && !prevProps.connected && this.props.connected) {
-            console.log('initializing');
-
             window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
                 const voiceTrack = stream.getAudioTracks()[0];
                 const audioEl = document.createElement('audio');
@@ -124,7 +124,7 @@ export default class RecordingView extends React.PureComponent<Props, State> {
                 audioEl.controls = false;
                 audioEl.autoplay = true;
                 audioEl.style.display = 'none';
-                audioEl.onerror = (err) => console.log(err);
+                audioEl.onerror = (err) => logErr(err);
                 document.body.appendChild(audioEl);
                 voiceTrack.onended = () => {
                     audioEl.remove();

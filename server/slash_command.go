@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -165,18 +166,21 @@ func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 		return nil, fmt.Errorf("Invalid number of arguments provided")
 	}
 
-	if len(fields[2]) < 2 {
+	js, err := base64.StdEncoding.DecodeString(fields[2])
+	if err != nil {
+		return nil, fmt.Errorf("Failed to decode payload: %w", err)
+	}
+
+	if len(js) < 2 {
 		return nil, fmt.Errorf("Invalid stats object")
 	}
 
-	js := fields[2][1 : len(fields[2])-1]
-
-	if js == "{}" {
+	if string(js) == "{}" {
 		return nil, fmt.Errorf("Empty stats object")
 	}
 
 	var buf bytes.Buffer
-	if err := json.Indent(&buf, []byte(js), "", " "); err != nil {
+	if err := json.Indent(&buf, js, "", " "); err != nil {
 		return nil, fmt.Errorf("Failed to indent JSON: %w", err)
 	}
 
