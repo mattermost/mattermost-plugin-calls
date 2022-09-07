@@ -593,30 +593,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         style={style.controls}
                     >
                         <div style={style.leftControls}>
-                            <OverlayTrigger
-                                key='show_participants_list'
-                                placement='top'
-                                overlay={
-                                    <Tooltip
-                                        id='show-participants-list'
-                                    >
-                                        {this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list'}
-                                        <Shortcut shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}/>
-                                    </Tooltip>
-                                }
-                            >
-
-                                <button
-                                    className='button-center-controls'
-                                    onClick={this.onParticipantsListToggle}
-                                    style={{background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : '', marginLeft: '0'}}
-                                >
+                            <ControlsButton
+                                id='calls-popout-participants-button'
+                                onToggle={this.onParticipantsListToggle}
+                                toolTipText={this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list'}
+                                shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
+                                bgColor={this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}
+                                icon={
                                     <ParticipantsIcon
-                                        style={{width: '24px', height: '24px'}}
-                                        fill={this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white'}
+                                        style={{width: '28px', height: '28px', fill: this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white'}}
                                     />
-                                </button>
-                            </OverlayTrigger>
+                                }
+                                margin='0'
+                            />
                         </div>
 
                         <div style={style.centerControls}>
@@ -663,7 +652,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         </div>
 
-                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
+                        <div style={{display: 'flex', justifyContent: 'flex-end', marginRight: '16px', marginLeft: 'auto'}}>
                             <OverlayTrigger
                                 key='tooltip-leave-call'
                                 placement='top'
@@ -741,8 +730,8 @@ const style = {
         width: '100%',
     },
     leftControls: {
-        flex: '1',
         marginLeft: '16px',
+        marginRight: 'auto',
     },
     centerControls: {
         display: 'flex',

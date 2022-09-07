@@ -17,6 +17,7 @@ export type Props = {
     disabled?: boolean,
     iconFill?: string,
     shortcut?: string,
+    margin?: string,
 }
 
 export default function ControlsButton(props: Props) {
@@ -41,6 +42,7 @@ export default function ControlsButton(props: Props) {
         >
             <ButtonContainer
                 id={props.id}
+                margin={props.margin}
             >
                 <Button
                     className='button-center-controls'
@@ -68,13 +70,12 @@ export default function ControlsButton(props: Props) {
     );
 }
 
-const ButtonContainer = styled.div`
+const ButtonContainer = styled.div<{margin?: string}>`
    display: flex;
    flex-direction: column;
    align-items: center;
    justify-content: center;
-   margin: 0 8px;
-   width: 112px;
+   margin: ${({margin}) => margin || '0 16px'};
 `;
 
 const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailable?: boolean}>`
