@@ -28,7 +28,7 @@ export default function UnavailableIconWrapper(props: Props) {
 
 const IconWrapper = styled.div<{unavailable: boolean, margin?: string}>`
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   width: 24px;
   height: 24px;
@@ -52,7 +52,7 @@ const IconWrapper = styled.div<{unavailable: boolean, margin?: string}>`
 const UnavailableIcon = styled.div<{}>`
   position: absolute;
   top: -45%;
-  right: -5%;
+  right: -20%;
   color: var(--dnd-indicator);
   font-size: 12px;
 

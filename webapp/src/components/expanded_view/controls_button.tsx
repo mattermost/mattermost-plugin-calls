@@ -95,7 +95,7 @@ const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailab
 
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
       :hover {
-        background-color: transparent;
+        background: rgba(255, 255, 255, 0.08);
       }
     `}
   }
