@@ -9,3 +9,12 @@ export const {
 
 // @ts-ignore
 export const openPricingModal = global.openPricingModal;
+
+export const {
+    closeRhs,
+    selectRhsPost,
+    getRhsSelectedPostId,
+    getIsRhsOpen,
+
+// @ts-ignore
+} = window.ProductApi;

@@ -8,15 +8,19 @@ import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/use
 
 import {Client4} from 'mattermost-redux/client';
 
-import {getPost} from 'mattermost-redux/actions/posts';
-
-import {Dispatch, Store} from 'src/types/mattermost-webapp';
+import {Dispatch} from 'src/types/mattermost-webapp';
 
 import {UserState} from '../../types/types';
 
 import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from '../../utils';
 import {hideExpandedView, showScreenSourceModal} from '../../actions';
 import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID, voiceChannelRootPost} from '../../selectors';
+
+import {
+    closeRhs,
+    selectRhsPost,
+    getIsRhsOpen,
+} from 'src/webapp_globals';
 
 import ExpandedView from './component';
 
@@ -54,23 +58,15 @@ const mapStateToProps = (state: GlobalState) => {
         channel,
         connectedDMUser,
         threadID,
+        isRhsOpen: getIsRhsOpen(state),
     };
 };
 
-const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
+const mapDispatchToProps = {
     hideExpandedView,
     showScreenSourceModal,
-
-    // TODO import from mattermost-redux once available
-    selectThread: (postId: string, channelId: string) => async (innerDispatch: Dispatch) => {
-        await innerDispatch(getPost(postId));
-        return innerDispatch({
-            type: 'SELECT_POST',
-            postId,
-            channelId,
-            timestamp: Date.now(),
-        });
-    },
-}, dispatch);
+    closeRhs,
+    selectRhsPost,
+};
 
 export default connect(mapStateToProps, mapDispatchToProps)(ExpandedView);

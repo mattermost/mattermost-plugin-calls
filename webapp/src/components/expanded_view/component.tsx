@@ -40,7 +40,9 @@ interface Props {
     callStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
-    selectThread: (postID: string, channelID: string) => void,
+    selectRhsPost: (postID: string) => void,
+    closeRhs: () => void,
+    isRhsOpen: boolean,
     screenSharingID: string,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
@@ -168,8 +170,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     openThread = () => {
-        if (this.props.threadID && this.props.channel) {
-            this.props.selectThread(this.props.threadID, this.props.channel.id);
+        if (this.props.isRhsOpen) {
+            this.props.closeRhs();
+        } else if (this.props.threadID) {
+            this.props.selectRhsPost(this.props.threadID);
         }
     }
 
@@ -555,7 +559,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     { this.renderParticipantsRHSList() }
                 </ul>
                 }
-                <GlobalStyleBackstage/>
+                <HideGlobalsStyle/>
             </div>
         );
     }
@@ -639,8 +643,12 @@ const styles: Record<string, CSSObject> = {
     },
 };
 
-const GlobalStyleBackstage = createGlobalStyle`
-    #root > :not(#calls-expanded-view, .sidebar--right) {
-        display: none;
+const HideGlobalsStyle = createGlobalStyle`
+    #root {
+        > #global-header,
+        > .team-sidebar,
+        > .app-bar {
+            display: none;
+        }
     }
 `;
