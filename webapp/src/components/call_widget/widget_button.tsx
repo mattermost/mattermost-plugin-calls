@@ -5,6 +5,8 @@ import styled, {css} from 'styled-components';
 import CompassIcon from 'src/components/icons/compassIcon';
 import Shortcut from 'src/components/shortcut';
 
+import UnavailableIconWrapper from './unavailable_icon_wrapper';
+
 export type Props = {
     id: string,
     icon: React.ReactNode,
@@ -48,12 +50,10 @@ export default function WidgetButton(props: Props) {
                 isUnavailable={props.unavailable}
                 disabled={props.disabled}
             >
-                { props.unavailable &&
-                <UnavailableIcon>
-                    <CompassIcon icon='close-circle'/>
-                </UnavailableIcon>
-                }
-                {props.icon}
+                <UnavailableIconWrapper
+                    icon={props.icon}
+                    unavailable={Boolean(props.unavailable)}
+                />
             </Button>
         </OverlayTrigger>
     );
@@ -61,37 +61,13 @@ export default function WidgetButton(props: Props) {
 
 const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailable?: boolean}>`
   &&& {
-    position: relative;
     background-color: ${({bgColor}) => bgColor};
-    width: auto;
-    padding: 0 6px;
-
-    svg {
-      ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-        fill: rgba(var(--center-channel-color-rgb), 0.32);
-      `}
-    }
 
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
       :hover {
         background-color: transparent;
       }
     `}
-  }
-`;
-
-const UnavailableIcon = styled.div<{}>`
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  color: var(--dnd-indicator);
-  font-size: 12px;
-
-  &&& {
-    i {
-      border-radius: 50%;
-      background-color: var(--center-channel-bg);
-    }
   }
 `;
 

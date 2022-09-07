@@ -57,6 +57,7 @@ import {AudioInputPermissionsError} from 'src/client';
 import CallDuration from './call_duration';
 import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
+import UnavailableIconWrapper from './unavailable_icon_wrapper';
 
 import './component.scss';
 
@@ -866,6 +867,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const currentDevice = deviceType === 'input' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
         const DeviceIcon = deviceType === 'input' ? UnmutedIcon : SpeakerIcon;
 
+        const noInputDevices = deviceType === 'input' && this.state.devices.inputs?.length === 0;
+        const noAudioPermissions = deviceType === 'input' && this.state.alerts.missingAudioInputPermissions.active;
+        const isDisabled = noInputDevices || noAudioPermissions;
+
+        let label = currentDevice?.label || 'Default';
+        if (noAudioPermissions) {
+            label = 'Missing permissions to audio devices';
+        } else if (noInputDevices) {
+            label = 'Unable to find microphone';
+        }
+
         const onClickHandler = () => {
             if (deviceType === 'input') {
                 this.setState({showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu, showAudioOutputDevicesMenu: false});
@@ -883,32 +895,52 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <button
                         id={`calls-widget-audio-${deviceType}-button`}
                         className='style--none'
-                        style={{display: 'flex', flexDirection: 'column'}}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            color: isDisabled ? changeOpacity(this.props.theme.centerChannelColor, 0.32) : '',
+                        }}
                         onClick={onClickHandler}
+                        disabled={isDisabled}
                     >
-                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%'}}>
-                            <DeviceIcon
-                                style={{width: '14px', height: '14px', marginRight: '8px', fill: changeOpacity(this.props.theme.centerChannelColor, 0.56)}}
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%', padding: '2px 0'}}>
+                            <UnavailableIconWrapper
+                                icon={(
+                                    <DeviceIcon
+                                        style={{
+                                            fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
+                                        }}
+                                    />
+                                )}
+                                unavailable={isDisabled}
+                                margin={'0 8px 0 0'}
                             />
+
                             <span
                                 className='MenuItem__primary-text'
                                 style={{padding: '0'}}
                             >{deviceType === 'input' ? 'Microphone' : 'Audio Output'}</span>
                             <ShowMoreIcon
-                                style={{width: '11px', height: '11px', marginLeft: 'auto', fill: changeOpacity(this.props.theme.centerChannelColor, 0.56)}}
+                                style={{
+                                    width: '11px',
+                                    height: '11px',
+                                    marginLeft: 'auto',
+                                    fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
+                                }}
                             />
                         </div>
                         <span
                             style={{
-                                color: changeOpacity(this.props.theme.centerChannelColor, 0.56),
+                                color: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
                                 fontSize: '12px',
                                 width: '100%',
+                                lineHeight: '16px',
                                 textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
                                 overflow: 'hidden',
+                                whiteSpace: isDisabled ? 'initial' : 'nowrap',
                             }}
                         >
-                            {currentDevice?.label || 'Default'}
+                            {label}
                         </span>
                     </button>
                 </li>
@@ -920,6 +952,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const sharingID = this.props.screenSharingID;
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
+        const isDisabled = Boolean(sharingID !== '' && !isSharing);
+        const noPermissions = this.state.alerts.missingScreenPermissions.active;
 
         return (
             <React.Fragment>
@@ -928,19 +962,44 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     <button
                         id='calls-widget-menu-screenshare'
-                        className='style--none'
+                        className={`style--none ${noPermissions ? 'unavailable' : ''}`}
                         style={{
                             display: 'flex',
-                            color: sharingID !== '' && !isSharing ? changeOpacity(this.props.theme.centerChannelColor, 0.34) : '',
+                            flexDirection: 'column',
+                            color: isDisabled || noPermissions ? changeOpacity(this.props.theme.centerChannelColor, 0.34) : '',
                         }}
-                        disabled={Boolean(sharingID !== '' && !isSharing)}
+                        disabled={isDisabled}
                         onClick={this.onShareScreenToggle}
                     >
-                        <ScreenIcon
-                            style={{width: '16px', height: '16px', marginRight: '8px'}}
-                            fill={isSharing ? 'rgb(var(--dnd-indicator-rgb))' : changeOpacity(this.props.theme.centerChannelColor, 0.64)}
-                        />
-                        <span>{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
+
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%', padding: '2px 0'}}>
+                            <UnavailableIconWrapper
+                                icon={(
+                                    <ScreenIcon
+                                        style={{width: '16px', height: '16px'}}
+                                        fill={isSharing ? 'rgb(var(--dnd-indicator-rgb))' : changeOpacity(this.props.theme.centerChannelColor, 0.64)}
+                                    />
+                                )}
+                                unavailable={noPermissions}
+                                margin={'0 8px 0 0'}
+                            />
+                            <span>{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
+                        </div>
+
+                        { noPermissions &&
+                        <span
+                            style={{
+                                color: changeOpacity(this.props.theme.centerChannelColor, 0.32),
+                                fontSize: '12px',
+                                width: '100%',
+                                lineHeight: '16px',
+                                whiteSpace: 'initial',
+                            }}
+                        >
+                            {'Missing screen share permissions'}
+                        </span>
+                        }
+
                     </button>
                 </li>
                 <li className='MenuGroup menu-divider'/>
