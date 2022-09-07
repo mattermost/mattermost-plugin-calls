@@ -592,7 +592,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         id='calls-expanded-view-controls'
                         style={style.controls}
                     >
-                        <div style={style.leftControls}>
+                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start', marginLeft: '16px'}}>
                             <ControlsButton
                                 id='calls-popout-participants-button'
                                 onToggle={this.onParticipantsListToggle}
@@ -652,7 +652,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         </div>
 
-                        <div style={{display: 'flex', justifyContent: 'flex-end', marginRight: '16px', marginLeft: 'auto'}}>
+                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
                             <OverlayTrigger
                                 key='tooltip-leave-call'
                                 placement='top'
@@ -728,10 +728,6 @@ const style = {
         justifyContent: 'center',
         padding: '16px 8px',
         width: '100%',
-    },
-    leftControls: {
-        marginLeft: '16px',
-        marginRight: 'auto',
     },
     centerControls: {
         display: 'flex',
