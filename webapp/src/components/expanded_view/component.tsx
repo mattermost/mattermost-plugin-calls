@@ -139,6 +139,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onMuteToggle = () => {
+        if (this.pushToTalk) {
+            return;
+        }
         const callsClient = this.getCallsClient();
         if (callsClient.isMuted()) {
             callsClient.unmute();
