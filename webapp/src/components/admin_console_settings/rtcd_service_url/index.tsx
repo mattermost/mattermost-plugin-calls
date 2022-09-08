@@ -85,7 +85,7 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
                         <VerticalSpacer size={8}/>
                         <Text>
                             <FormattedMessage
-                                defaultMessage={'Real-time communication daemon is a service built to offload calls on your own WebRTC services in order to efficiently support scalable and secure deployments. <featureLink>Learn more about this feature</featureLink>.'}
+                                defaultMessage={'Real-time communication daemon is a service built to offload calls onto your own WebRTC services and efficiently support scalable and secure deployments. <featureLink>Learn more about this feature</featureLink>.'}
                                 values={{
                                     featureLink: (text: string) => (
                                         <a

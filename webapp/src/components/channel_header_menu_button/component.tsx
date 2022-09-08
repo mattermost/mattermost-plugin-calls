@@ -11,11 +11,11 @@ interface Props {
 const ChannelHeaderMenuButton = (props: Props) => {
     if (props.enabled) {
         return (
-            <FormattedMessage defaultMessage='Disable Calls'/>
+            <FormattedMessage defaultMessage='Disable calls'/>
         );
     }
     return (
-        <FormattedMessage defaultMessage='Enable Calls'/>
+        <FormattedMessage defaultMessage='Enable calls'/>
     );
 };
 

@@ -1,15 +1,16 @@
 {
-  "/+63eJ": "Set up RTCD Services",
   "/WMCDd": "Something went wrong!",
   "0kSG/+": "Notify Admin",
+  "2n0xcg": "Enable calls",
   "3wS4fn": "Upgrade to use calls in Channels",
   "47FYwb": "Cancel",
+  "7C5R1Z": "Real-time communication daemon is a service built to offload calls onto your own WebRTC services and efficiently support scalable and secure deployments. <featureLink>Learn more about this feature</featureLink>.",
   "9tBhzB": "Upgrade now",
-  "AvpuWj": "Real-time communication daemon is a service built to offload calls on your own WebRTC services in order to efficiently support scalable and secure deployments. <featureLink>Learn more about this feature</featureLink>.",
-  "CAB3IU": "Looks like something went wrong with your Enterprise trial request. You can try again later or <supportLink>contact support</supportLink> if the error persists.",
-  "CJC2pM": "Calls are a quick, audio-first way of interacting with your colleagues. Upgrade to Mattermost Professional to use calls in channels and group messages.",
   "EaucLA": "View plans",
   "H79wnj": "Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. You now have access to <rtcdDocsLink>RTCD services</rtcdDocsLink>, <guestAccountsLink>guest accounts</guestAccountsLink>, <autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and <mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, among many other features. View all features in our <documentationLink>documentation</documentationLink>.",
+  "Igo1xs": "It looks like something went wrong with your Enterprise trial request. You can try again later or <supportLink>contact Support</supportLink> if the error persists.",
+  "KaiRbV": "Calls are a quick, audio-first, way to interact with your team. Get the full calls experience when you start a free, 30-day trial.",
+  "M6lXfS": "Set up RTCD services",
   "N2IrpM": "Confirm",
   "TdTXXf": "Learn more",
   "Zx9T5i": "Your trial has started!{br}Explore the benefits of Enterprise",
@@ -17,10 +18,9 @@
   "bvd1gK": "Try channel calls with a free trial",
   "cLA9Ho": "Try free for 30 days",
   "cyR7Kh": "Back",
-  "g+KEd+": "Enable Calls",
   "gZlFBP": "Okay",
   "hQkROI": "Use your own WebRTC service for calls and media processing",
+  "iWGktR": "Disable calls",
   "isWX8N": "Select Notify Admin to send an automatic request to your System Admins to start the trial.",
-  "maWN66": "Calls are a quick, audio-first way of interacting with your colleagues. Get the full calls experience when you start a free, 30-day trial.",
-  "vWE77O": "Disable Calls"
+  "qpBeaD": "Calls are a quick, audio-first, way of interact with your team. Upgrade to Mattermost Professional to use calls in channels and group messages."
 }

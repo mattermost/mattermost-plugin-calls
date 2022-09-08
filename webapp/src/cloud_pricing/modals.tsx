@@ -38,7 +38,7 @@ export const CloudFreeTrialModalUser = (modalProps: Props) => {
             components={{FooterContainer}}
         >
             <VerticalSpacer size={22}/>
-            <p>{formatMessage({defaultMessage: 'Calls are a quick, audio-first way of interacting with your colleagues. Get the full calls experience when you start a free, 30-day trial.'})}</p>
+            <p>{formatMessage({defaultMessage: 'Calls are a quick, audio-first, way to interact with your team. Get the full calls experience when you start a free, 30-day trial.'})}</p>
             <p>{formatMessage({defaultMessage: 'Select Notify Admin to send an automatic request to your System Admins to start the trial.'})}</p>
         </SizedGenericModal>
     );
@@ -54,13 +54,13 @@ export const CloudFreeTrialModalAdmin = (modalProps: Props) => {
     // So the default is trialNotTaken:
     let headerText = formatMessage({defaultMessage: 'Try channel calls with a free trial'});
     let confirmButtonText = formatMessage({defaultMessage: 'Try free for 30 days'});
-    let bodyText = formatMessage({defaultMessage: 'Calls are a quick, audio-first way of interacting with your colleagues. Get the full calls experience when you start a free, 30-day trial.'});
+    let bodyText = formatMessage({defaultMessage: 'Calls are a quick, audio-first, way to interact with your team. Get the full calls experience when you start a free, 30-day trial.'});
     let confirmThunk: Thunk = displayCloudPricing();
 
     if (trialTaken) {
         headerText = formatMessage({defaultMessage: 'Upgrade to use calls in Channels'});
         confirmButtonText = formatMessage({defaultMessage: 'View plans'});
-        bodyText = formatMessage({defaultMessage: 'Calls are a quick, audio-first way of interacting with your colleagues. Upgrade to Mattermost Professional to use calls in channels and group messages.'});
+        bodyText = formatMessage({defaultMessage: 'Calls are a quick, audio-first, way of interact with your team. Upgrade to Mattermost Professional to use calls in channels and group messages.'});
         confirmThunk = displayCloudPricing();
     }
 

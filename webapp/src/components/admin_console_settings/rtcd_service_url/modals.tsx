@@ -29,7 +29,7 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
         <StyledModal
             id={IDOnPremTrialSuccess}
             {...modalProps}
-            confirmButtonText={formatMessage({defaultMessage: 'Set up RTCD Services'})}
+            confirmButtonText={formatMessage({defaultMessage: 'Set up RTCD services'})}
             handleConfirm={() => navigateToURL('/admin_console/plugins/plugin_com.mattermost.calls')}
             onHide={() => null}
         >
@@ -120,8 +120,8 @@ export const OnPremTrialError = (modalProps: Props) => {
             <VerticalSpacer size={8}/>
             <Body css={'text-align: center'}>
                 <FormattedMessage
-                    defaultMessage={'Looks like something went wrong with your Enterprise trial request. ' +
-                        'You can try again later or <supportLink>contact support</supportLink> if the error persists.'}
+                    defaultMessage={'It looks like something went wrong with your Enterprise trial request. ' +
+                        'You can try again later or <supportLink>contact Support</supportLink> if the error persists.'}
                     values={{
                         supportLink: (text: string) => (
                             <a
