@@ -143,3 +143,19 @@ export const endCall = (channelID: string) => {
     return axios.post(`${getPluginPath()}/calls/${channelID}/end`, null,
         {headers: {'X-Requested-With': 'XMLHttpRequest'}});
 };
+
+export const trackEvent = (event: string, source: string, props?: Record<string, any>) => {
+    if (!props) {
+        props = {};
+    }
+    const eventData = {
+        event,
+        clientType: window.desktop ? 'desktop' : 'web',
+        source,
+        props,
+    };
+    return Client4.doFetch(
+        `${getPluginPath()}/telemetry/track`,
+        {method: 'post', body: JSON.stringify(eventData)},
+    );
+};
