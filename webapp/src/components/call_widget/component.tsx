@@ -16,6 +16,15 @@ import {
     hasExperimentalFlag,
     getPopOutURL,
 } from 'src/utils';
+import {
+    MUTE_UNMUTE,
+    RAISE_LOWER_HAND,
+    SHARE_UNSHARE_SCREEN,
+    PARTICIPANTS_LIST_TOGGLE,
+    LEAVE_CALL,
+    keyToAction,
+    reverseKeyMappings,
+} from 'src/shortcuts';
 import {logDebug, logErr} from 'src/log';
 
 import Avatar from '../avatar/avatar';
@@ -32,6 +41,8 @@ import ExpandIcon from '../../components/icons/expand';
 import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import SpeakerIcon from '../../components/icons/speaker_icon';
+
+import Shortcut from 'src/components/shortcut';
 
 import CallDuration from './call_duration';
 
@@ -239,10 +250,33 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.screenPlayer = React.createRef();
     }
 
+    handleKBShortcuts = (ev: KeyboardEvent) => {
+        switch (keyToAction('widget', ev)) {
+        case MUTE_UNMUTE:
+            this.onMuteToggle();
+            break;
+        case RAISE_LOWER_HAND:
+            this.onRaiseHandToggle();
+            break;
+        case SHARE_UNSHARE_SCREEN:
+            this.onShareScreenToggle();
+            break;
+        case PARTICIPANTS_LIST_TOGGLE:
+            this.onParticipantsButtonClick();
+            break;
+        case LEAVE_CALL:
+            this.onDisconnectClick();
+            break;
+        }
+    }
+
     public componentDidMount() {
         document.addEventListener('mouseup', this.onMouseUp, false);
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
+
+        // keyboard shortcuts
+        document.addEventListener('keydown', this.handleKBShortcuts, true);
 
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
@@ -312,6 +346,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         document.removeEventListener('mouseup', this.onMouseUp, false);
         document.removeEventListener('click', this.closeOnBlur, true);
         document.removeEventListener('keyup', this.keyboardClose, true);
+        document.removeEventListener('keydown', this.handleKBShortcuts, true);
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
@@ -608,6 +643,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={{display: sharingID && !isSharing ? 'none' : ''}}
                     >
                         {isSharing ? 'Stop presenting' : 'Start presenting'}
+                        <Shortcut shortcut={reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}/>
                     </Tooltip>
                 }
             >
@@ -729,6 +765,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 className='Menu'
             >
                 <ul
+                    id='calls-widget-participants-list'
                     className='Menu__content dropdown-menu'
                     style={{width: '100%', minWidth: 'revert', maxWidth: 'revert', maxHeight: '188px', overflow: 'auto', position: 'relative'}}
                 >
@@ -1219,6 +1256,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overlay={
                                 <Tooltip id='tooltip-leave'>
                                     {'Click to leave call'}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}/>
                                 </Tooltip>
                             }
                         >
@@ -1252,6 +1290,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overlay={
                                 <Tooltip id='tooltip-mute'>
                                     {this.state.showParticipantsList ? 'Hide participants' : 'Show participants'}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}/>
                                 </Tooltip>
                             }
                         >
@@ -1283,6 +1322,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overlay={
                                 <Tooltip id='tooltip-hand'>
                                     {handTooltipText}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}/>
                                 </Tooltip>
                             }
                         >
@@ -1307,6 +1347,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overlay={
                                 <Tooltip id='tooltip-mute'>
                                     {muteTooltipText}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[MUTE_UNMUTE][0]}/>
                                 </Tooltip>
                             }
                         >

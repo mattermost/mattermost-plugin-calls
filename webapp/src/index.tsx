@@ -67,6 +67,10 @@ import {
     playSound,
 } from './utils';
 import {logErr, logDebug} from './log';
+import {
+    JOIN_CALL,
+    keyToAction,
+} from './shortcuts';
 
 import {
     RECEIVED_CHANNEL_STATE,
@@ -380,20 +384,38 @@ export default class Plugin {
                     window.localStorage.removeItem('calls_experimental_features');
                 }
                 break;
-            case 'stats':
+            case 'stats': {
                 if (window.callsClient) {
                     try {
                         const stats = await window.callsClient.getStats();
-                        return {message: `/call stats "${JSON.stringify(stats)}"`, args};
+                        return {message: `/call stats ${btoa(JSON.stringify(stats))}`, args};
                     } catch (err) {
                         return {error: {message: err}};
                     }
                 }
-                return {message: `/call stats "${sessionStorage.getItem('calls_client_stats') || '{}'}"`, args};
+                const data = sessionStorage.getItem('calls_client_stats') || '{}';
+                return {message: `/call stats ${btoa(data)}`, args};
+            }
             }
 
             return {message, args};
         });
+
+        const joinCall = (channelID: string, teamID: string) => {
+            if (!connectedChannelID(store.getState())) {
+                connectCall(channelID);
+
+                // following the thread only on join. On call start
+                // this is done in the call_start ws event handler.
+                if (voiceConnectedUsersInChannel(store.getState(), channelID).length > 0) {
+                    followThread(channelID, teamID);
+                }
+            } else if (connectedChannelID(store.getState()) !== channelID) {
+                store.dispatch({
+                    type: SHOW_SWITCH_CALL_MODAL,
+                });
+            }
+        };
 
         let channelHeaderMenuButtonID: string;
         const unregisterChannelHeaderMenuButton = () => {
@@ -437,19 +459,7 @@ export default class Plugin {
                         return;
                     }
 
-                    if (!connectedChannelID(store.getState())) {
-                        connectCall(channel.id);
-
-                        // following the thread only on join. On call start
-                        // this is done in the call_start ws event handler.
-                        if (voiceConnectedUsersInChannel(store.getState(), channel.id).length > 0) {
-                            followThread(channel.id, channel.team_id);
-                        }
-                    } else if (connectedChannelID(store.getState()) !== channel.id) {
-                        store.dispatch({
-                            type: SHOW_SWITCH_CALL_MODAL,
-                        });
-                    }
+                    joinCall(channel.id, channel.team_id);
                 },
             );
         };
@@ -743,6 +753,20 @@ export default class Plugin {
                 joinCallParam = '';
             }
         }));
+
+        const handleKBShortcuts = (ev: KeyboardEvent) => {
+            switch (keyToAction('global', ev)) {
+            case JOIN_CALL:
+                // We don't allow joining a new call from the pop-out window.
+                if (!window.opener) {
+                    joinCall(getCurrentChannelId(store.getState()), getCurrentTeamId(store.getState()));
+                }
+                break;
+            }
+        };
+
+        document.addEventListener('keydown', handleKBShortcuts, true);
+        this.unsubscribers.push(() => document.removeEventListener('keydown', handleKBShortcuts, true));
     }
 
     uninitialize() {
