@@ -27,7 +27,7 @@ import {
     SHARE_UNSHARE_SCREEN,
     PARTICIPANTS_LIST_TOGGLE,
     LEAVE_CALL,
-    PUSH_TO_TALK_KEY,
+    PUSH_TO_TALK,
     keyToAction,
     reverseKeyMappings,
 } from 'src/shortcuts';
@@ -88,7 +88,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     handleKeyUp = (ev: KeyboardEvent) => {
-        if (keyToAction('popout', ev) === MUTE_UNMUTE && ev.code.toLowerCase() === PUSH_TO_TALK_KEY && this.pushToTalk) {
+        if (keyToAction('popout', ev) === PUSH_TO_TALK && this.pushToTalk) {
             this.getCallsClient()?.mute();
             this.pushToTalk = false;
             this.forceUpdate();
@@ -101,17 +101,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         switch (keyToAction('popout', ev)) {
-        case MUTE_UNMUTE:
-            if (ev.code.toLowerCase() === PUSH_TO_TALK_KEY) {
-                if (this.pushToTalk) {
-                    return;
-                }
-                this.getCallsClient()?.unmute();
-                this.pushToTalk = true;
-                this.forceUpdate();
+        case PUSH_TO_TALK:
+            if (this.pushToTalk) {
                 return;
             }
-
+            this.getCallsClient()?.unmute();
+            this.pushToTalk = true;
+            this.forceUpdate();
+            break;
+        case MUTE_UNMUTE:
             this.onMuteToggle();
             break;
         case RAISE_LOWER_HAND:
@@ -141,6 +139,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onMuteToggle = () => {
+        if (this.pushToTalk) {
+            return;
+        }
         const callsClient = this.getCallsClient();
         if (callsClient.isMuted()) {
             callsClient.unmute();
@@ -577,7 +578,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         id='tooltip-mute-toggle'
                                     >
                                         <span>{muteButtonText}</span>
-                                        <Shortcut shortcut={reverseKeyMappings.popout[MUTE_UNMUTE][1]}/>
+                                        <Shortcut shortcut={reverseKeyMappings.popout[MUTE_UNMUTE][0]}/>
                                     </Tooltip>
                                 }
                             >
