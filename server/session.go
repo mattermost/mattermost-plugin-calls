@@ -202,13 +202,6 @@ func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool,
 	}
 
 	license := p.pluginAPI.System.GetLicense()
-
-	if license != nil {
-		p.LogError(fmt.Sprintf("<><> license: %#+v", license))
-	} else {
-		p.LogError("<><> no license")
-	}
-
 	if !isCloud(license) || isTrial(license) {
 		return true, nil
 	}
