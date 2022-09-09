@@ -10,6 +10,7 @@ import {Client4} from 'mattermost-redux/client';
 import {CloudCustomer} from '@mattermost/types/cloud';
 
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {CallsConfig} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
@@ -145,17 +146,23 @@ export const endCall = (channelID: string) => {
 };
 
 export const trackEvent = (event: string, source: string, props?: Record<string, any>) => {
-    if (!props) {
-        props = {};
-    }
-    const eventData = {
-        event,
-        clientType: window.desktop ? 'desktop' : 'web',
-        source,
-        props,
+    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const config = getConfig(getState());
+        if (config.DiagnosticsEnabled !== 'true') {
+            return;
+        }
+        if (!props) {
+            props = {};
+        }
+        const eventData = {
+            event,
+            clientType: window.desktop ? 'desktop' : 'web',
+            source,
+            props,
+        };
+        Client4.doFetch(
+            `${getPluginPath()}/telemetry/track`,
+            {method: 'post', body: JSON.stringify(eventData)},
+        );
     };
-    return Client4.doFetch(
-        `${getPluginPath()}/telemetry/track`,
-        {method: 'post', body: JSON.stringify(eventData)},
-    );
 };
