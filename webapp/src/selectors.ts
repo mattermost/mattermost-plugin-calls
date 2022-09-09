@@ -228,3 +228,5 @@ export const shouldPlayJoinUserSound: (state: GlobalState) => boolean = createSe
         return numUsers < preferences.joinSoundParticipantsThreshold;
     },
 );
+
+export const getClientError = (state: GlobalState) => getPluginState(state).clientErr;

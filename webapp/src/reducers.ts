@@ -40,6 +40,7 @@ import {
     HIDE_END_CALL_MODAL,
     RECEIVED_CHANNEL_STATE,
     RECEIVED_CALLS_USER_PREFERENCES,
+    RECEIVED_CLIENT_ERROR,
 } from './action_types';
 
 interface channelState {
@@ -526,6 +527,20 @@ const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { typ
     }
 };
 
+type clientError = {
+    channelID: string,
+    err: Error,
+}
+
+const clientErr = (state = null, action: { type: string, data: clientError}) => {
+    switch (action.type) {
+    case RECEIVED_CLIENT_ERROR:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     channelState,
     voiceConnectedChannels,
@@ -541,4 +556,5 @@ export default combineReducers({
     voiceChannelRootPost,
     callsConfig,
     callsUserPreferences,
+    clientErr,
 });

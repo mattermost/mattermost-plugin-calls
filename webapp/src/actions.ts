@@ -23,6 +23,11 @@ import {
 } from 'src/cloud_pricing/modals';
 
 import {
+    CallErrorModalID,
+    CallErrorModal,
+} from 'src/components/call_error_modal';
+
+import {
     SHOW_EXPANDED_VIEW,
     HIDE_EXPANDED_VIEW,
     SHOW_SWITCH_CALL_MODAL,
@@ -31,6 +36,7 @@ import {
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_END_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
+    RECEIVED_CLIENT_ERROR,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -142,4 +148,25 @@ export const displayCloudPricing = () => {
 export const endCall = (channelID: string) => {
     return axios.post(`${getPluginPath()}/calls/${channelID}/end`, null,
         {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+};
+
+export const displayCallErrorModal = (channelID: string, err: Error) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: RECEIVED_CLIENT_ERROR,
+        data: {
+            channelID,
+            err,
+        },
+    });
+    dispatch(modals.openModal({
+        modalId: CallErrorModalID,
+        dialogType: CallErrorModal,
+    }));
+};
+
+export const clearClientError = () => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: RECEIVED_CLIENT_ERROR,
+        data: null,
+    });
 };

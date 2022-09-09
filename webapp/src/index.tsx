@@ -12,7 +12,7 @@ import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actio
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
-import {displayFreeTrial, getCallsConfig} from 'src/actions';
+import {displayFreeTrial, getCallsConfig, displayCallErrorModal} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 
 import {
@@ -498,19 +498,23 @@ export default class Plugin {
                 });
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
-                window.callsClient.on('close', () => {
+                window.callsClient.on('close', (err?: Error) => {
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);
                     if (window.callsClient) {
+                        playSound(getPluginStaticPath() + LeaveSelfSound);
+                        if (err) {
+                            store.dispatch(displayCallErrorModal(window.callsClient.channelID, err));
+                        }
                         window.callsClient.destroy();
                         delete window.callsClient;
-                        playSound(getPluginStaticPath() + LeaveSelfSound);
                     }
                 });
 
                 window.callsClient.init(channelID, title).catch((err: Error) => {
-                    delete window.callsClient;
                     logErr(err);
+                    store.dispatch(displayCallErrorModal(window.callsClient.channelID, err));
+                    delete window.callsClient;
                 });
             } catch (err) {
                 delete window.callsClient;
