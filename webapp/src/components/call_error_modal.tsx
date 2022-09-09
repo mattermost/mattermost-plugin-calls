@@ -45,22 +45,23 @@ export const CallErrorModal = (props: Props) => {
         return null;
     };
 
+    const troubleShootingMsg = (
+        <React.Fragment>
+            {' Check the '}
+            <a href='https://docs.mattermost.com/channels/make-calls.html#troubleshooting'>{'troubleshooting section'}</a>
+            {' if the problem persists.'}
+        </React.Fragment>
+    );
+
     const genericMsg = (
         <span>
             {'Looks like something went wrong with calls. You can restart the app and try again.'}
+            {troubleShootingMsg}
         </span>
     );
     const genericHeaderMsg = (
         <span>
             {'Something went wrong with calls'}
-        </span>
-    );
-
-    const troubleShootingMsg = (
-        <span>
-            {' Check the '}
-            <a href='https://docs.mattermost.com/channels/make-calls.html#troubleshooting'>{'troubleshooting section'}</a>
-            {' if the problem persists.'}
         </span>
     );
 
@@ -75,17 +76,15 @@ export const CallErrorModal = (props: Props) => {
             <span>{'Connection failed'}</span>
         );
         msg = (
-            <React.Fragment>
-                <span>
-                    {'There was an error with the connection to the call. Try to '}
-                    <a
-                        href=''
-                        onClick={onRejoinClick}
-                    >{'re-join'}</a>
-                    {' the call.'}
-                </span>
+            <span>
+                {'There was an error with the connection to the call. Try to '}
+                <a
+                    href=''
+                    onClick={onRejoinClick}
+                >{'re-join'}</a>
+                {' the call.'}
                 {troubleShootingMsg}
-            </React.Fragment>
+            </span>
         );
         break;
     case insecureContextErr:
