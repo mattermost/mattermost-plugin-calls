@@ -17,21 +17,27 @@ const (
 	evCallUserJoined  = "call_user_joined"
 	evCallUserLeft    = "call_user_left"
 	evCallNotifyAdmin = "call_notify_admin"
-
-	// client-side events
-	evUserOpenExpandedView       = "user_open_expanded_view"
-	evUserToggleParticipantsList = "user_toggle_participants_list"
 )
 
-var telemetryClientEvents = map[string]struct{}{
-	evUserOpenExpandedView:       {},
-	evUserToggleParticipantsList: {},
-}
+var (
+	telemetryClientTypes  = []string{"web", "mobile", "desktop"}
+	telemetryClientEvents = []string{
+		"user_open_expanded_view",
+		"user_toggle_participants_list",
+	}
+	telemetryClientTypesMap  map[string]struct{}
+	telemetryClientEventsMap map[string]struct{}
+)
 
-var telemetryClientTypes = map[string]struct{}{
-	"web":     {},
-	"mobile":  {},
-	"desktop": {},
+func init() {
+	telemetryClientEventsMap = make(map[string]struct{}, len(telemetryClientEvents))
+	for _, eventType := range telemetryClientEvents {
+		telemetryClientEventsMap[eventType] = struct{}{}
+	}
+	telemetryClientTypesMap = make(map[string]struct{}, len(telemetryClientTypes))
+	for _, clientType := range telemetryClientTypes {
+		telemetryClientTypesMap[clientType] = struct{}{}
+	}
 }
 
 type trackEventRequest struct {
@@ -116,13 +122,13 @@ func (p *Plugin) handleTrackEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, ok := telemetryClientEvents[data.Event]; !ok {
+	if _, ok := telemetryClientEventsMap[data.Event]; !ok {
 		res.Err = "invalid telemetry event"
 		res.Code = http.StatusBadRequest
 		return
 	}
 
-	if _, ok := telemetryClientTypes[data.ClientType]; !ok {
+	if _, ok := telemetryClientTypesMap[data.ClientType]; !ok {
 		res.Err = "invalid client type"
 		res.Code = http.StatusBadRequest
 		return
