@@ -420,6 +420,11 @@ func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string, dialFn rtcd.Dial
 		return cfg, fmt.Errorf("rtcd URL is missing")
 	}
 
+	// Use the telemetry ID if none is explicitly given.
+	if cfg.ClientID == "" {
+		cfg.ClientID = m.ctx.API.GetDiagnosticId()
+	}
+
 	// If no client id has been provided until now we fail with error.
 	if cfg.ClientID == "" {
 		return cfg, fmt.Errorf("client id is missing")
