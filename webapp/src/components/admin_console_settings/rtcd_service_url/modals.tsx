@@ -58,7 +58,7 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                         trialExpirationDate: trialEndDate,
                         rtcdDocsLink: (text: string) => (
                             <a
-                                href='TODO'
+                                href='https://docs.mattermost.com/configure/calls-deployment.html'
                                 target='_blank'
                                 rel='noreferrer'
                             >
@@ -88,7 +88,7 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                         ),
                         documentationLink: (text: string) => (
                             <a
-                                href='TODO'
+                                href='https://docs.mattermost.com/configure/calls-deployment.html'
                                 target='_blank'
                                 rel='noreferrer'
                             >

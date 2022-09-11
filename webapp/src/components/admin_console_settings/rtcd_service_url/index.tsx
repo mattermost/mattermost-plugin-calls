@@ -89,7 +89,7 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
                                 values={{
                                     featureLink: (text: string) => (
                                         <a
-                                            href='TODO'
+                                            href='https://docs.mattermost.com/configure/calls-deployment.html'
                                             target='_blank'
                                             rel='noreferrer'
                                         >
