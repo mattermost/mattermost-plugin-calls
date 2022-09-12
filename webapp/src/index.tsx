@@ -15,6 +15,8 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {displayFreeTrial, getCallsConfig} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 
+import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
+
 import {
     callsEnabled,
     connectedChannelID,
@@ -96,7 +98,6 @@ import {
     SHOW_END_CALL_MODAL,
 } from './action_types';
 
-// eslint-disable-next-line import/no-unresolved
 import {PluginRegistry, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
@@ -484,6 +485,8 @@ export default class Plugin {
         };
 
         registerChannelHeaderMenuButton();
+
+        registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
 
         const connectCall = async (channelID: string, title?: string) => {
             try {
