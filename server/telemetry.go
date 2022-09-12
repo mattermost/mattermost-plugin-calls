@@ -23,7 +23,13 @@ var (
 	telemetryClientTypes  = []string{"web", "mobile", "desktop"}
 	telemetryClientEvents = []string{
 		"user_open_expanded_view",
-		"user_toggle_participants_list",
+		"user_open_participants_list",
+		"user_close_participants_list",
+		"user_share_screen",
+		"user_unshare_screen",
+		"user_raise_hand",
+		"user_lower_hand",
+		"user_open_channel_link",
 	}
 	telemetryClientTypesMap  map[string]struct{}
 	telemetryClientEventsMap map[string]struct{}

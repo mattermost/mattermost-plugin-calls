@@ -13,6 +13,7 @@ import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/user
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {CallsConfig} from 'src/types/types';
+import * as Telemetry from 'src/types/telemetry';
 import {getPluginPath} from 'src/utils';
 
 import {modals, openPricingModal} from 'src/webapp_globals';
@@ -145,7 +146,7 @@ export const endCall = (channelID: string) => {
         {headers: {'X-Requested-With': 'XMLHttpRequest'}});
 };
 
-export const trackEvent = (event: string, source: string, props?: Record<string, any>) => {
+export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
         const config = getConfig(getState());
         if (config.DiagnosticsEnabled !== 'true') {
