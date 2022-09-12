@@ -6,7 +6,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/pprof"
 	"regexp"
@@ -24,6 +23,8 @@ import (
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
 var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
 
+const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
+
 type Call struct {
 	ID              string      `json:"id"`
 	StartAt         int64       `json:"start_at"`
@@ -35,7 +36,7 @@ type Call struct {
 }
 
 type ChannelState struct {
-	ChannelID string `json:"channel_id"`
+	ChannelID string `json:"channel_id,omitempty"`
 	Enabled   bool   `json:"enabled"`
 	Call      *Call  `json:"call,omitempty"`
 }
@@ -317,15 +318,8 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		}
 	}
 
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
 	var info ChannelState
-	if err := json.Unmarshal(data, &info); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
 		res.Err = err.Error()
 		res.Code = http.StatusBadRequest
 		return
@@ -353,7 +347,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 
 	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
-	if _, err := w.Write(data); err != nil {
+	if err := json.NewEncoder(w).Encode(info); err != nil {
 		p.LogError(err.Error())
 	}
 }
@@ -531,6 +525,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if matches := callEndRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handleEndCall(w, r, matches[1])
+			return
+		}
+
+		if r.URL.Path == "/telemetry/track" {
+			p.handleTrackEvent(w, r)
 			return
 		}
 	}

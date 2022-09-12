@@ -11,6 +11,7 @@ import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 
 import {UserState, AudioDevices} from 'src/types/types';
+import * as Telemetry from 'src/types/telemetry';
 import {
     getUserDisplayName,
     hasExperimentalFlag,
@@ -68,6 +69,7 @@ interface Props {
     show: boolean,
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
+    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
 }
 
 interface DraggingState {
@@ -256,13 +258,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.onMuteToggle();
             break;
         case RAISE_LOWER_HAND:
-            this.onRaiseHandToggle();
+            this.onRaiseHandToggle(true);
             break;
         case SHARE_UNSHARE_SCREEN:
-            this.onShareScreenToggle();
+            this.onShareScreenToggle(true);
             break;
         case PARTICIPANTS_LIST_TOGGLE:
-            this.onParticipantsButtonClick();
+            this.onParticipantsButtonClick(true);
             break;
         case LEAVE_CALL:
             this.onDisconnectClick();
@@ -422,11 +424,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     }
 
-    onShareScreenToggle = async () => {
+    onShareScreenToggle = async (fromShortcut?: boolean) => {
         const state = {} as State;
+
         if (this.props.screenSharingID === this.props.currentUserID) {
             window.callsClient.unshareScreen();
             state.screenStream = null;
+            this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else if (!this.props.screenSharingID) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 this.props.showScreenSourceModal();
@@ -434,6 +438,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 const stream = await window.callsClient.shareScreen('', hasExperimentalFlag());
                 state.screenStream = stream;
             }
+            this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
 
         this.setState({
@@ -486,7 +491,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
     }
 
-    onParticipantsButtonClick = () => {
+    onParticipantsButtonClick = (fromShortcut?: boolean) => {
+        const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
+        this.props.trackEvent(event, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
+
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
             showMenu: false,
@@ -566,7 +574,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             borderRadius: '4px',
                             fontWeight: 600,
                         }}
-                        onClick={this.onShareScreenToggle}
+                        onClick={() => this.onShareScreenToggle()}
                     >
                         {'Stop sharing'}
                     </button>
@@ -651,7 +659,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className={`style--none ${!sharingID || isSharing ? 'button-controls' : 'button-controls-disabled'} button-controls--wide`}
                     disabled={sharingID !== '' && !isSharing}
                     style={{background: isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}}
-                    onClick={this.onShareScreenToggle}
+                    onClick={() => this.onShareScreenToggle()}
                 >
                     <ScreenIcon
                         style={{
@@ -902,7 +910,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             color: sharingID !== '' && !isSharing ? changeOpacity(this.props.theme.centerChannelColor, 0.34) : '',
                         }}
                         disabled={Boolean(sharingID !== '' && !isSharing)}
-                        onClick={this.onShareScreenToggle}
+                        onClick={() => this.onShareScreenToggle()}
                     >
                         <ScreenIcon
                             style={{width: '16px', height: '16px', marginRight: '8px'}}
@@ -1114,6 +1122,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
+        this.props.trackEvent(Telemetry.Event.OpenExpandedView, Telemetry.Source.Widget, {initiator: 'button'});
+
         // TODO: remove this as soon as we support opening a window from desktop app.
         if (window.desktop) {
             this.props.showExpandedView();
@@ -1129,9 +1139,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
 
             expandedViewWindow?.addEventListener('beforeunload', () => {
+                this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView);
                 if (!window.callsClient) {
                     return;
                 }
+
                 const localScreenStream = window.callsClient.getLocalScreenStream();
                 if (localScreenStream && localScreenStream.getVideoTracks()[0].id === expandedViewWindow.screenSharingTrackId) {
                     window.callsClient.unshareScreen();
@@ -1140,20 +1152,23 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
-    onRaiseHandToggle = () => {
+    onRaiseHandToggle = (fromShortcut?: boolean) => {
         if (!window.callsClient) {
             return;
         }
         if (window.callsClient.isHandRaised) {
             window.callsClient.unraiseHand();
+            this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
             window.callsClient.raiseHand();
+            this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
     }
 
     onChannelLinkClick = (ev: React.MouseEvent<HTMLElement>) => {
         ev.preventDefault();
         window.postMessage({type: 'browser-history-push-return', message: {pathName: this.props.channelURL}}, window.origin);
+        this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     }
 
     renderChannelName = (hasTeamSidebar: boolean) => {
@@ -1303,7 +1318,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                     color: this.state.showParticipantsList ? 'rgba(28, 88, 217, 1)' : '',
                                     background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.12)' : '',
                                 }}
-                                onClick={this.onParticipantsButtonClick}
+                                onClick={() => this.onParticipantsButtonClick()}
                             >
                                 <ParticipantsIcon
                                     style={{width: '16px', height: '16px', marginRight: '4px'}}
@@ -1328,7 +1343,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         >
                             <button
                                 className='cursor--pointer style--none button-controls'
-                                onClick={this.onRaiseHandToggle}
+                                onClick={() => this.onRaiseHandToggle()}
                                 style={{background: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
                             >
                                 <HandIcon
