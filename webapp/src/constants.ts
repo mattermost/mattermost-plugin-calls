@@ -7,17 +7,23 @@ export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
     missingAudioInput: {
         type: CallAlertType.Error,
         icon: 'microphone',
-        text: 'Unable to find audio input device. Try plugging in the audio input device.',
+        bannerText: 'Unable to find a valid audio input device. Try plugging in an audio input device.',
+        tooltipText: 'No audio input devices',
+        tooltipSubtext: 'Try plugging in an audio input device',
     },
     missingAudioInputPermissions: {
         type: CallAlertType.Error,
         icon: 'microphone',
-        text: 'Allow microphone access to Mattermost.',
+        bannerText: 'Allow microphone access to Mattermost.',
+        tooltipText: 'No audio input permissions',
+        tooltipSubtext: 'Allow microphone access to Mattermost',
     },
     missingScreenPermissions: {
         type: CallAlertType.Error,
         icon: 'monitor',
-        text: 'Allow screen recording access to Mattermost in your system preferences.',
+        bannerText: 'Allow screen recording access to Mattermost in your system preferences.',
+        tooltipText: 'No screen-sharing permissions',
+        tooltipSubtext: 'Allow screen recording access to Mattermost.',
     },
 };
 

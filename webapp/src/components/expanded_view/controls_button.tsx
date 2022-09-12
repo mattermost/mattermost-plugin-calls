@@ -10,8 +10,8 @@ export type Props = {
     icon: React.ReactNode,
     bgColor: string,
     text?: string,
-    toolTipText: string,
-    toolTipSubText?: string,
+    tooltipText: string,
+    tooltipSubtext?: string,
     onToggle?: () => void,
     unavailable?: boolean,
     disabled?: boolean,
@@ -28,11 +28,11 @@ export default function ControlsButton(props: Props) {
             overlay={
                 props.disabled ||
                 <Tooltip id={`tooltip-${props.id}`}>
-                    <div>{props.toolTipText}</div>
-                    {props.toolTipSubText &&
-                    <TooltipSubText>
-                        {props.toolTipSubText}
-                    </TooltipSubText>
+                    <div>{props.tooltipText}</div>
+                    {props.tooltipSubtext &&
+                    <TooltipSubtext>
+                        {props.tooltipSubtext}
+                    </TooltipSubtext>
                     }
                     { props.shortcut &&
                     <Shortcut shortcut={props.shortcut}/>
@@ -126,6 +126,6 @@ const UnavailableIcon = styled.div<{}>`
   }
 `;
 
-const TooltipSubText = styled.div`
+const TooltipSubtext = styled.div`
   opacity: 0.56;
 `;

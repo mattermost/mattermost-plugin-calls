@@ -11,8 +11,8 @@ export type Props = {
     id: string,
     icon: React.ReactNode,
     bgColor: string,
-    toolTipText: string,
-    toolTipSubText?: string,
+    tooltipText: string,
+    tooltipSubtext?: string,
     onToggle?: () => void,
     unavailable?: boolean,
     disabled?: boolean,
@@ -28,11 +28,11 @@ export default function WidgetButton(props: Props) {
             overlay={
                 props.disabled ||
                 <Tooltip id={`tooltip-${props.id}`}>
-                    <div>{props.toolTipText}</div>
-                    {props.toolTipSubText &&
-                    <TooltipSubText>
-                        {props.toolTipSubText}
-                    </TooltipSubText>
+                    <div>{props.tooltipText}</div>
+                    {props.tooltipSubtext &&
+                    <TooltipSubtext>
+                        {props.tooltipSubtext}
+                    </TooltipSubtext>
                     }
                     { props.shortcut &&
                     <Shortcut shortcut={props.shortcut}/>
@@ -71,6 +71,6 @@ const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailab
   }
 `;
 
-const TooltipSubText = styled.div`
+const TooltipSubtext = styled.div`
   opacity: 0.56;
 `;

@@ -119,7 +119,9 @@ export enum CallAlertType {
 export type CallAlertConfig = {
     type: CallAlertType,
     icon: string,
-    text: string,
+    bannerText: string,
+    tooltipText: string,
+    tooltipSubtext: string,
 }
 
 export type CallAlertState = {

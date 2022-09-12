@@ -324,7 +324,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <GlobalBanner
                     {...alertConfig}
                     icon='alert-outline'
-                    body={alertConfig.text}
+                    body={alertConfig.bannerText}
                     onClose={() => {
                         this.setState({
                             alerts: {
@@ -551,18 +551,35 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
+        const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
         const isMuted = callsClient.isMuted();
         const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
-        const muteButtonText = isMuted ? 'Unmute' : 'Mute';
+
+        let muteTooltipText = isMuted ? 'Click to unmute' : 'Click to mute';
+        let muteTooltipSubtext = '';
+        if (noInputDevices) {
+            muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText;
+            muteTooltipSubtext = CallAlertConfigs.missingAudioInput.tooltipSubtext;
+        }
+        if (noAudioPermissions) {
+            muteTooltipText = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
+            muteTooltipSubtext = CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext;
+        }
+
+        const sharingID = this.props.screenSharingID;
+        const currentID = this.props.currentUserID;
+        const isSharing = sharingID === currentID;
+
+        let shareScreenTooltipText = isSharing ? 'Stop presenting' : 'Start presenting';
+        if (noScreenPermissions) {
+            shareScreenTooltipText = CallAlertConfigs.missingScreenPermissions.tooltipText;
+        }
+        const shareScreenTooltipSubtext = noScreenPermissions ? CallAlertConfigs.missingScreenPermissions.tooltipSubtext : '';
 
         const isHandRaised = callsClient.isHandRaised;
         const HandIcon = isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
         const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
         const participantsText = 'Show participants list';
-
-        const sharingID = this.props.screenSharingID;
-        const currentID = this.props.currentUserID;
-        const isSharing = sharingID === currentID;
 
         return (
             <div
@@ -614,7 +631,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <ControlsButton
                                 id='calls-popout-participants-button'
                                 onToggle={this.onParticipantsListToggle}
-                                toolTipText={this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list'}
+                                tooltipText={this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list'}
                                 shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
                                 bgColor={this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}
                                 icon={
@@ -630,7 +647,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <ControlsButton
                                 id='calls-popout-raisehand-button'
                                 onToggle={this.onRaiseHandToggle}
-                                toolTipText={raiseHandText}
+                                tooltipText={raiseHandText}
                                 shortcut={reverseKeyMappings.popout[RAISE_LOWER_HAND][0]}
                                 bgColor={isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
                                 icon={
@@ -643,23 +660,27 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <ControlsButton
                                 id='calls-popout-screenshare-button'
                                 onToggle={this.onShareScreenToggle}
-                                toolTipText={isSharing ? 'Stop presenting' : 'Start presenting'}
-                                shortcut={reverseKeyMappings.popout[SHARE_UNSHARE_SCREEN][0]}
+                                tooltipText={shareScreenTooltipText}
+                                tooltipSubtext={shareScreenTooltipSubtext}
+                                // eslint-disable-next-line no-undefined
+                                shortcut={noScreenPermissions ? undefined : reverseKeyMappings.popout[SHARE_UNSHARE_SCREEN][0]}
                                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
                                 icon={
                                     <ScreenIcon
                                         style={{width: '28px', height: '28px', fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : ''}}
                                     />
                                 }
-                                unavailable={this.state.alerts.missingScreenPermissions.active}
+                                unavailable={noScreenPermissions}
                             />
 
                             <ControlsButton
                                 id='calls-popout-mute-button'
                                 // eslint-disable-next-line no-undefined
                                 onToggle={noInputDevices ? undefined : this.onMuteToggle}
-                                toolTipText={muteButtonText}
-                                shortcut={reverseKeyMappings.popout[MUTE_UNMUTE][1]}
+                                tooltipText={muteTooltipText}
+                                tooltipSubtext={muteTooltipSubtext}
+                                // eslint-disable-next-line no-undefined
+                                shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][1]}
                                 bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
                                 icon={
                                     <MuteIcon

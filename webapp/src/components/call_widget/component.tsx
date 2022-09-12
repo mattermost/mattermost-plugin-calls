@@ -682,14 +682,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             fill = changeOpacity(this.props.theme.centerChannelColor, 0.34);
         }
 
-        const shareScreenTooltipText = isSharing ? 'Stop presenting' : 'Start presenting';
+        const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
+        let shareScreenTooltipText = isSharing ? 'Stop presenting' : 'Start presenting';
+        if (noScreenPermissions) {
+            shareScreenTooltipText = CallAlertConfigs.missingScreenPermissions.tooltipText;
+        }
+        const shareScreenTooltipSubtext = noScreenPermissions ? CallAlertConfigs.missingScreenPermissions.tooltipSubtext : '';
 
         return (
             <WidgetButton
                 id='share-screen'
                 onToggle={this.onShareScreenToggle}
-                toolTipText={shareScreenTooltipText}
-                shortcut={reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}
+                tooltipText={shareScreenTooltipText}
+                tooltipSubtext={shareScreenTooltipSubtext}
+                // eslint-disable-next-line no-undefined
+                shortcut={noScreenPermissions ? undefined : reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
                 icon={<ScreenIcon style={{width: '16px', height: '16px', fill}}/>}
                 unavailable={this.state.alerts.missingScreenPermissions.active}
@@ -873,9 +880,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         let label = currentDevice?.label || 'Default';
         if (noAudioPermissions) {
-            label = 'Missing permissions to audio devices';
+            label = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
         } else if (noInputDevices) {
-            label = 'Unable to find microphone';
+            label = CallAlertConfigs.missingAudioInput.tooltipText;
         }
 
         const onClickHandler = () => {
@@ -996,7 +1003,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 whiteSpace: 'initial',
                             }}
                         >
-                            {'Missing screen share permissions'}
+                            {CallAlertConfigs.missingScreenPermissions.tooltipText}
                         </span>
                         }
 
@@ -1084,7 +1091,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <WidgetBanner
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
-                    body={alertConfig.text}
+                    body={alertConfig.bannerText}
                     onClose={() => {
                         this.setState({
                             alerts: {
@@ -1311,22 +1318,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const noInputDevices = this.state.devices.inputs?.length === 0;
+        const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
         const MuteIcon = window.callsClient.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
         let muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
-        if (noInputDevices) {
-            muteTooltipText = 'No audio input device';
-        }
-        if (noAudioPermissions) {
-            muteTooltipText = 'No permissions';
-        }
         let muteTooltipSubtext = '';
         if (noInputDevices) {
-            muteTooltipSubtext = 'Try replugging your audio input device';
+            muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText;
+            muteTooltipSubtext = CallAlertConfigs.missingAudioInput.tooltipSubtext;
         }
         if (noAudioPermissions) {
-            muteTooltipSubtext = 'Allow access to your microphone';
+            muteTooltipText = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
+            muteTooltipSubtext = CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext;
         }
 
         const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar'));
@@ -1457,7 +1460,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             id='raise-hand'
                             onToggle={this.onRaiseHandToggle}
                             shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
-                            toolTipText={handTooltipText}
+                            tooltipText={handTooltipText}
                             bgColor={window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
                             icon={<HandIcon style={{width: '16px', height: '16px', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}/>}
                         />
@@ -1469,9 +1472,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             id='voice-mute-unmute'
                             // eslint-disable-next-line no-undefined
                             onToggle={noInputDevices ? undefined : this.onMuteToggle}
-                            shortcut={reverseKeyMappings.widget[MUTE_UNMUTE][0]}
-                            toolTipText={muteTooltipText}
-                            toolTipSubText={muteTooltipSubtext}
+                            // eslint-disable-next-line no-undefined
+                            shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
+                            tooltipText={muteTooltipText}
+                            tooltipSubtext={muteTooltipSubtext}
                             bgColor={window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
                             icon={<MuteIcon style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)'}}/>}
                             unavailable={noInputDevices || noAudioPermissions}
