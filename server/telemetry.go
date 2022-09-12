@@ -23,6 +23,7 @@ var (
 	telemetryClientTypes  = []string{"web", "mobile", "desktop"}
 	telemetryClientEvents = []string{
 		"user_open_expanded_view",
+		"user_close_expanded_view",
 		"user_open_participants_list",
 		"user_close_participants_list",
 		"user_share_screen",

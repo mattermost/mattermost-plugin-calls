@@ -1,5 +1,6 @@
 export enum Event {
     OpenExpandedView = 'user_open_expanded_view',
+    CloseExpandedView = 'user_close_expanded_view',
     OpenParticipantsList = 'user_open_participants_list',
     CloseParticipantsList = 'user_close_participants_list',
     ShareScreen = 'user_share_screen',

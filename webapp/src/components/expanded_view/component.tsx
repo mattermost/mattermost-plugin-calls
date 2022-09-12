@@ -196,6 +196,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         });
     }
 
+    onCloseViewClick = () => {
+        this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
+        this.props.hideExpandedView();
+    }
+
     public componentDidUpdate(prevProps: Props, prevState: State) {
         if (window.opener) {
             if (document.title.indexOf('Call') === -1 && this.props.channel) {
@@ -478,7 +483,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <button
                                 className='button-close'
                                 style={style.closeViewButton as CSSProperties}
-                                onClick={this.props.hideExpandedView}
+                                onClick={this.onCloseViewClick}
                             >
                                 <CompassIcon icon='arrow-collapse'/>
                             </button>

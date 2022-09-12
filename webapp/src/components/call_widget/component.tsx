@@ -1139,9 +1139,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
 
             expandedViewWindow?.addEventListener('beforeunload', () => {
+                this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView);
                 if (!window.callsClient) {
                     return;
                 }
+
                 const localScreenStream = window.callsClient.getLocalScreenStream();
                 if (localScreenStream && localScreenStream.getVideoTracks()[0].id === expandedViewWindow.screenSharingTrackId) {
                     window.callsClient.unshareScreen();
