@@ -90,7 +90,7 @@
         {
           "key": "RTCDServiceURL",
           "display_name": "RTCD service URL",
-          "type": "custom",
+          "type": "text",
           "help_text": "(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
           "placeholder": "https://rtcd.example.com"
         }
