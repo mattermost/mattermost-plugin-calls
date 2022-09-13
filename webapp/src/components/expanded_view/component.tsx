@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import React, {CSSProperties} from 'react';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
@@ -7,6 +10,7 @@ import {Channel} from '@mattermost/types/channels';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
 import {UserState} from 'src/types/types';
+import * as Telemetry from 'src/types/telemetry';
 
 import Avatar from '../avatar/avatar';
 
@@ -50,6 +54,7 @@ interface Props {
     screenSharingID: string,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
+    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
 }
 
 interface State {
@@ -113,13 +118,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.onMuteToggle();
             break;
         case RAISE_LOWER_HAND:
-            this.onRaiseHandToggle();
+            this.onRaiseHandToggle(true);
             break;
         case SHARE_UNSHARE_SCREEN:
-            this.onShareScreenToggle();
+            this.onShareScreenToggle(true);
             break;
         case PARTICIPANTS_LIST_TOGGLE:
-            this.onParticipantsListToggle();
+            this.onParticipantsListToggle(true);
             break;
         case LEAVE_CALL:
             this.onDisconnectClick();
@@ -150,13 +155,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
-    onShareScreenToggle = async () => {
+    onShareScreenToggle = async (fromShortcut?: boolean) => {
         const callsClient = this.getCallsClient();
         if (this.props.screenSharingID === this.props.currentUserID) {
             callsClient.unshareScreen();
             this.setState({
                 screenStream: null,
             });
+            this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else if (!this.props.screenSharingID) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 this.props.showScreenSourceModal();
@@ -170,22 +176,32 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     screenStream: stream,
                 });
             }
+            this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
     }
 
-    onRaiseHandToggle = () => {
+    onRaiseHandToggle = (fromShortcut?: boolean) => {
         const callsClient = this.getCallsClient();
         if (callsClient.isHandRaised) {
+            this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
             callsClient.unraiseHand();
         } else {
+            this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
             callsClient.raiseHand();
         }
     }
 
-    onParticipantsListToggle = () => {
+    onParticipantsListToggle = (fromShortcut?: boolean) => {
+        const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
+        this.props.trackEvent(event, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
         });
+    }
+
+    onCloseViewClick = () => {
+        this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
+        this.props.hideExpandedView();
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
@@ -470,7 +486,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <button
                                 className='button-close'
                                 style={style.closeViewButton as CSSProperties}
-                                onClick={this.props.hideExpandedView}
+                                onClick={this.onCloseViewClick}
                             >
                                 <CompassIcon icon='arrow-collapse'/>
                             </button>
@@ -509,7 +525,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                                 <button
                                     className='button-center-controls'
-                                    onClick={this.onParticipantsListToggle}
+                                    onClick={() => this.onParticipantsListToggle()}
                                     style={{background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : '', marginLeft: '0'}}
                                 >
                                     <ParticipantsIcon
@@ -535,7 +551,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             >
                                 <button
                                     className='button-center-controls'
-                                    onClick={this.onRaiseHandToggle}
+                                    onClick={() => this.onRaiseHandToggle()}
                                     style={{background: isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
                                 >
                                     <HandIcon
@@ -559,7 +575,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             >
                                 <button
                                     className='button-center-controls'
-                                    onClick={this.onShareScreenToggle}
+                                    onClick={() => this.onShareScreenToggle()}
                                     style={{background: isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}}
                                 >
                                     <ScreenIcon

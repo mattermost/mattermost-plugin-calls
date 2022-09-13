@@ -10,8 +10,10 @@ import {Client4} from 'mattermost-redux/client';
 import {CloudCustomer} from '@mattermost/types/cloud';
 
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {CallsConfig} from 'src/types/types';
+import * as Telemetry from 'src/types/telemetry';
 import {getPluginPath} from 'src/utils';
 
 import {modals, openPricingModal} from 'src/webapp_globals';
@@ -145,6 +147,26 @@ export const displayCloudPricing = () => {
     };
 };
 
+export const requestOnPremTrialLicense = async (users: number, termsAccepted: boolean, receiveEmailsAccepted: boolean) => {
+    try {
+        const response = await Client4.doFetchWithResponse(
+            `${Client4.getBaseRoute()}/trial-license`,
+            {
+                method: 'post',
+                body: JSON.stringify({
+                    users,
+                    terms_accepted: termsAccepted,
+                    receive_emails_accepted: receiveEmailsAccepted,
+                }),
+            },
+        );
+        return {data: response};
+    } catch (e) {
+        // In the event that the status code returned is 451, this request has been blocked because it originated from an embargoed country
+        return {error: e.message, data: {status: e.status_code}};
+    }
+};
+
 export const endCall = (channelID: string) => {
     return axios.post(`${getPluginPath()}/calls/${channelID}/end`, null,
         {headers: {'X-Requested-With': 'XMLHttpRequest'}});
@@ -169,4 +191,26 @@ export const clearClientError = () => (dispatch: Dispatch<GenericAction>) => {
         type: RECEIVED_CLIENT_ERROR,
         data: null,
     });
+};
+
+export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => {
+    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const config = getConfig(getState());
+        if (config.DiagnosticsEnabled !== 'true') {
+            return;
+        }
+        if (!props) {
+            props = {};
+        }
+        const eventData = {
+            event,
+            clientType: window.desktop ? 'desktop' : 'web',
+            source,
+            props,
+        };
+        Client4.doFetch(
+            `${getPluginPath()}/telemetry/track`,
+            {method: 'post', body: JSON.stringify(eventData)},
+        );
+    };
 };
