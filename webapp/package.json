@@ -51,6 +51,7 @@
     "eslint-plugin-react": "7.24.0",
     "eslint-plugin-react-hooks": "4.3.0",
     "file-loader": "6.2.0",
+    "identity-obj-proxy": "3.0.0",
     "jest": "27.0.6",
     "jest-canvas-mock": "2.3.1",
     "jest-junit": "12.2.0",
@@ -110,7 +111,7 @@
       "jest-junit"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!react-native|react-router|mattermost-webapp)"
+      "node_modules/(?!react-native|react-router|mattermost-webapp|semver-parser)"
     ],
     "setupFiles": [
       "jest-canvas-mock"

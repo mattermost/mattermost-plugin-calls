@@ -170,6 +170,11 @@ endif
 webapp-ci:
 	cd webapp && $(NPM) run build
 
+## Builds the widget on ci -- dependencies are handled by the npm-dependencies step in ci
+.PHONY: widget-ci
+widget-ci:
+	cd widget && $(NPM) run build
+
 ## Generates a tar bundle of the plugin for install.
 .PHONY: bundle
 bundle:
@@ -203,7 +208,7 @@ dist:	apply server webapp widget bundle
 
 ## Builds and bundles the plugin on ci.
 .PHONY: dist-ci
-dist-ci:	apply server-ci webapp-ci bundle
+dist-ci:	apply server-ci webapp-ci widget-ci bundle
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
