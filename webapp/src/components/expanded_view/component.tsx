@@ -18,6 +18,7 @@ import {
 import {
     CallAlertConfigs,
 } from 'src/constants';
+import * as Telemetry from 'src/types/telemetry';
 
 import Avatar from '../avatar/avatar';
 
@@ -64,6 +65,7 @@ interface Props {
     screenSharingID: string,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
+    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
 }
 
 interface State {
@@ -129,13 +131,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.onMuteToggle();
             break;
         case RAISE_LOWER_HAND:
-            this.onRaiseHandToggle();
+            this.onRaiseHandToggle(true);
             break;
         case SHARE_UNSHARE_SCREEN:
-            this.onShareScreenToggle();
+            this.onShareScreenToggle(true);
             break;
         case PARTICIPANTS_LIST_TOGGLE:
-            this.onParticipantsListToggle();
+            this.onParticipantsListToggle(true);
             break;
         case LEAVE_CALL:
             this.onDisconnectClick();
@@ -178,13 +180,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
-    onShareScreenToggle = async () => {
+    onShareScreenToggle = async (fromShortcut?: boolean) => {
         const callsClient = this.getCallsClient();
         if (this.props.screenSharingID === this.props.currentUserID) {
             callsClient.unshareScreen();
             this.setState({
                 screenStream: null,
             });
+            this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else if (!this.props.screenSharingID) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 this.props.showScreenSourceModal();
@@ -219,22 +222,32 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                 this.setState(state);
             }
+            this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
     }
 
-    onRaiseHandToggle = () => {
+    onRaiseHandToggle = (fromShortcut?: boolean) => {
         const callsClient = this.getCallsClient();
         if (callsClient.isHandRaised) {
+            this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
             callsClient.unraiseHand();
         } else {
+            this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
             callsClient.raiseHand();
         }
     }
 
-    onParticipantsListToggle = () => {
+    onParticipantsListToggle = (fromShortcut?: boolean) => {
+        const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
+        this.props.trackEvent(event, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
         });
+    }
+
+    onCloseViewClick = () => {
+        this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
+        this.props.hideExpandedView();
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
@@ -604,7 +617,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <button
                                 className='button-close'
                                 style={style.closeViewButton as CSSProperties}
-                                onClick={this.props.hideExpandedView}
+                                onClick={this.onCloseViewClick}
                             >
                                 <CompassIcon icon='arrow-collapse'/>
                             </button>
@@ -630,7 +643,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start', marginLeft: '16px'}}>
                             <ControlsButton
                                 id='calls-popout-participants-button'
-                                onToggle={this.onParticipantsListToggle}
+                                onToggle={() => this.onParticipantsListToggle()}
                                 tooltipText={this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list'}
                                 shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
                                 bgColor={this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}
@@ -646,7 +659,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <div style={style.centerControls}>
                             <ControlsButton
                                 id='calls-popout-raisehand-button'
-                                onToggle={this.onRaiseHandToggle}
+                                onToggle={() => this.onRaiseHandToggle()}
                                 tooltipText={raiseHandText}
                                 shortcut={reverseKeyMappings.popout[RAISE_LOWER_HAND][0]}
                                 bgColor={isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
@@ -659,7 +672,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                             <ControlsButton
                                 id='calls-popout-screenshare-button'
-                                onToggle={this.onShareScreenToggle}
+                                onToggle={() => this.onShareScreenToggle()}
                                 tooltipText={shareScreenTooltipText}
                                 tooltipSubtext={shareScreenTooltipSubtext}
                                 // eslint-disable-next-line no-undefined
