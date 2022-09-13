@@ -101,10 +101,11 @@ function connectCall(channelID: string, wsURL: string, iceConfigs: RTCIceServer[
                 // Using setTimeout to give the app enough time to play the sound before
                 // closing the widget window.
                 setTimeout(() => {
-                    logDebug('sending leave call message to desktop app');
-                    window.postMessage({type: 'calls-leave-call'}, window.location.origin);
                     window.callsClient.destroy();
                     delete window.callsClient;
+                    ReactDOM.unmountComponentAtNode(document.getElementById('root')!);
+                    logDebug('sending leave call message to desktop app');
+                    window.postMessage({type: 'calls-leave-call'}, window.location.origin);
                 }, 200);
             }
         });
