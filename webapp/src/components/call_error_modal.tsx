@@ -1,5 +1,7 @@
 import React, {ComponentProps} from 'react';
 
+import {Modal} from 'react-bootstrap';
+
 import {useDispatch, useSelector} from 'react-redux';
 
 import styled from 'styled-components';
@@ -117,6 +119,10 @@ export const CallErrorModal = (props: Props) => {
             onHide={() => dispatch(clearClientError())}
             handleConfirm={onConfirm}
             contentPadding={'48px 32px'}
+            components={{
+                Header: Header as any,
+                FooterContainer,
+            }}
         >
             <ColumnContainer>
                 {msg}
@@ -125,19 +131,18 @@ export const CallErrorModal = (props: Props) => {
     );
 };
 
+const Header = styled(Modal.Header)`
+  display: flex;
+  justify-content: center;
+`;
+
+const FooterContainer = styled.div`
+  display: flex;
+  justify-content: center;
+`;
+
 const StyledGenericModal = styled(GenericModal)`
   width: 512px;
-
-  &&& {
-    .modal-header, .modal-footer {
-      display: flex;
-      justify-content: center;
-    }
-
-    .modal-body {
-      text-align: center;
-    }
-  }
 `;
 
 const ColumnContainer = styled.div`
@@ -145,6 +150,7 @@ const ColumnContainer = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
 
   span {
     margin: 8px 0;
