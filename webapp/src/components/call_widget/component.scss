@@ -8,7 +8,6 @@
   border-radius: 4px;
   color: rgba(var(--center-channel-color-rgb), 0.64);
   margin: 0 4px;
-  app-region: no-drag;
 
   &.button-controls--wide {
     width: auto;
@@ -136,4 +135,12 @@ a.calls-channel-link {
 
 #calls-widget .Menu {
   position: static;
+}
+
+#calls-widget button {
+  app-region: no-drag;
+}
+
+#calls-widget button:hover {
+  background: rgba(var(--center-channel-color-rgb), 0.1);
 }

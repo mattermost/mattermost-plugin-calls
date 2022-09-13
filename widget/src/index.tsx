@@ -97,6 +97,9 @@ function connectCall(channelID: string, wsURL: string, iceConfigs: RTCIceServer[
         window.callsClient.on('close', () => {
             if (window.callsClient) {
                 playSound('leave_self');
+
+                // Using setTimeout to give the app enough time to play the sound before
+                // closing the widget window.
                 setTimeout(() => {
                     logDebug('sending leave call message to desktop app');
                     window.postMessage({type: 'calls-leave-call'}, window.location.origin);
@@ -199,9 +202,6 @@ async function init() {
             [storeKey]: reducer,
         },
     });
-
-    // support transparent window
-    document.body.style.background = 'transparent';
 
     const channelID = getCallID();
     if (!channelID) {

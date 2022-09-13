@@ -351,5 +351,5 @@ export async function followThread(store: Store, channelID: string, teamID: stri
 }
 
 export function shouldRenderDesktopWidget() {
- return window.desktop && compareSemVer(window.desktop.version, '5.2.0') >= 0;
+    return window.desktop && compareSemVer(window.desktop.version, '5.2.0') >= 0;
 }

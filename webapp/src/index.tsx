@@ -116,7 +116,7 @@ export default class Plugin {
     }
 
     private registerWebSocketEvents(registry: PluginRegistry, store: Store) {
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (ev) => {
             store.dispatch({
                 type: RECEIVED_CHANNEL_STATE,
                 data: {id: ev.broadcast.channel_id, enabled: true},
@@ -295,7 +295,7 @@ export default class Plugin {
                 // following the thread only on join. On call start
                 // this is done in the call_start ws event handler.
                 if (voiceConnectedUsersInChannel(store.getState(), channelID).length > 0) {
-                    followThread(channelID, teamID);
+                    followThread(store, channelID, teamID);
                 }
             } else if (connectedChannelID(store.getState()) !== channelID) {
                 store.dispatch({

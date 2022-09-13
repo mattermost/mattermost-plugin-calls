@@ -123,7 +123,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
                 userSelect: 'none',
                 color: this.props.theme.centerChannelColor,
-                'app-region': 'drag',
+                appRegion: 'drag',
             },
             topBar: {
                 background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
@@ -1247,6 +1247,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                     <div
                         style={this.style.topBar}
+                        // eslint-disable-next-line no-undefined
                         onMouseDown={this.props.global ? undefined : this.onMouseDown}
                     >
                         <button
