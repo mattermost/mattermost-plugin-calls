@@ -1,4 +1,3 @@
-import {bindActionCreators} from 'redux';
 import {connect} from 'react-redux';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
@@ -7,8 +6,6 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 
 import {Client4} from 'mattermost-redux/client';
-
-import {Dispatch} from 'src/types/mattermost-webapp';
 
 import {UserState} from '../../types/types';
 
