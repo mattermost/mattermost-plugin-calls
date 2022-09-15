@@ -169,7 +169,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         document.body.classList.add('app__body');
     }
 
-    openThread = () => {
+    toggleChat = () => {
         if (this.props.isRhsOpen) {
             this.props.closeRhs();
         } else if (this.props.threadID) {
@@ -521,7 +521,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <div style={styles.buttonContainer}>
                                 <button
                                     className='button-center-controls'
-                                    onClick={this.openThread}
+                                    onClick={this.toggleChat}
                                 >
                                     <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
                                         size={28}
