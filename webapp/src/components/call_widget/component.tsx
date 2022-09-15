@@ -452,6 +452,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
+        // This is needed to prevent a conflict with the accessibility controller on buttons.
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+
         const isMuted = window.callsClient.isMuted();
         if (isMuted) {
             window.callsClient.unmute();
@@ -494,6 +499,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     onParticipantsButtonClick = (fromShortcut?: boolean) => {
         const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
         this.props.trackEvent(event, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
+
+        // This is needed to prevent a conflict with the accessibility controller on buttons.
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
 
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
@@ -1156,6 +1166,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (!window.callsClient) {
             return;
         }
+
+        // This is needed to prevent a conflict with the accessibility controller on buttons.
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+
         if (window.callsClient.isHandRaised) {
             window.callsClient.unraiseHand();
             this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
