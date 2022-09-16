@@ -17,6 +17,7 @@ import {
     getUserDisplayName,
     hasExperimentalFlag,
     getPopOutURL,
+    sendDesktopEvent,
 } from 'src/utils';
 import {
     MUTE_UNMUTE,
@@ -107,6 +108,9 @@ interface State {
 
 export default class CallWidget extends React.PureComponent<Props, State> {
     private node: React.RefObject<HTMLDivElement>;
+    private menuNode: React.RefObject<HTMLDivElement>;
+    private menuResizeObserver: ResizeObserver | null = null;
+    private audioMenuResizeObserver: ResizeObserver | null = null;
     private screenPlayer = React.createRef<HTMLVideoElement>()
 
     private genStyle = () => {
@@ -257,6 +261,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEls: [],
         };
         this.node = React.createRef();
+        this.menuNode = React.createRef();
         this.screenPlayer = React.createRef();
     }
 
@@ -281,7 +286,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentDidMount() {
-        if (!this.props.global) {
+        if (this.props.global) {
+            this.menuResizeObserver = new ResizeObserver((entries) => {
+                if (entries.length === 0) {
+                    return;
+                }
+                sendDesktopEvent('calls-widget-resize', {
+                    element: 'calls-widget-menu',
+                    height: Math.round(entries[0].contentRect.height),
+                    width: Math.round(entries[0].contentRect.width),
+                });
+            });
+            this.menuResizeObserver.observe(this.menuNode.current!);
+        } else {
             document.addEventListener('mouseup', this.onMouseUp, false);
         }
         document.addEventListener('click', this.closeOnBlur, true);
@@ -358,6 +375,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (!this.props.global) {
             document.removeEventListener('mouseup', this.onMouseUp, false);
         }
+
+        if (this.menuResizeObserver) {
+            this.menuResizeObserver.disconnect();
+        }
+
         document.removeEventListener('click', this.closeOnBlur, true);
         document.removeEventListener('keyup', this.keyboardClose, true);
         document.removeEventListener('keydown', this.handleKBShortcuts, true);
@@ -801,6 +823,32 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
+    audioDevicesMenuRefCb = (el: HTMLUListElement) => {
+        if (this.audioMenuResizeObserver) {
+            this.audioMenuResizeObserver.disconnect();
+        }
+
+        if (el) {
+            this.audioMenuResizeObserver = new ResizeObserver((entries) => {
+                if (entries.length === 0) {
+                    return;
+                }
+                sendDesktopEvent('calls-widget-resize', {
+                    element: 'calls-widget-audio-menu',
+                    width: Math.round(entries[0].contentRect.width),
+                    height: Math.round(entries[0].contentRect.height),
+                });
+            });
+            this.audioMenuResizeObserver.observe(el);
+        } else {
+            sendDesktopEvent('calls-widget-resize', {
+                element: 'calls-widget-audio-menu',
+                width: 0,
+                height: 0,
+            });
+        }
+    }
+
     renderAudioDevicesMenu = (deviceType: string) => {
         if (deviceType === 'input' && !this.state.showAudioInputDevicesMenu) {
             return null;
@@ -819,6 +867,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     id={`calls-widget-audio-${deviceType}s-menu`}
                     className='Menu__content dropdown-menu'
                     style={this.style.audioInputsOutputsMenu}
+                    // eslint-disable-next-line no-undefined
+                    ref={this.props.global ? this.audioDevicesMenuRefCb : undefined}
                 >
                     {
                         devices.map((device: any, idx: number) => {
@@ -1238,7 +1288,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 ref={this.node}
             >
                 <div style={this.style.status as CSSProperties}>
-                    <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%'}}>
+                    <div
+                        ref={this.menuNode}
+                        style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%'}}
+                    >
                         {this.renderNotificationBar()}
                         {this.renderScreenSharingPanel()}
                         {this.renderParticipantsList()}

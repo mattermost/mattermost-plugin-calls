@@ -6,7 +6,7 @@ import {Channel} from '@mattermost/types/channels';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
-import {hasExperimentalFlag} from '../../utils';
+import {hasExperimentalFlag, sendDesktopEvent} from '../../utils';
 
 import CompassIcon from '../../components/icons/compassIcon';
 
@@ -175,19 +175,13 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
     componentDidUpdate(prevProps: Props) {
         if (!prevProps.show && this.props.show) {
             // Send a message to the desktop app to get the sources needed
-            window.postMessage(
-                {
-                    type: 'get-desktop-sources',
-                    message: {
-                        types: ['window', 'screen'],
-                        thumbnailSize: {
-                            width: 400,
-                            height: 400,
-                        },
-                    },
+            sendDesktopEvent('get-desktop-sources', {
+                types: ['window', 'screen'],
+                thumbnailSize: {
+                    width: 400,
+                    height: 400,
                 },
-                window.location.origin,
-            );
+            });
         }
     }
 

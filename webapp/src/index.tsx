@@ -78,6 +78,7 @@ import {
     playSound,
     followThread,
     shouldRenderDesktopWidget,
+    sendDesktopEvent,
 } from './utils';
 import {logErr, logDebug} from './log';
 import {
@@ -358,16 +359,10 @@ export default class Plugin {
         const connectCall = async (channelID: string, title?: string) => {
             if (shouldRenderDesktopWidget()) {
                 logDebug('sending join call message to desktop app');
-                window.postMessage(
-                    {
-                        type: 'calls-join-call',
-                        message: {
-                            channelID,
-                            title,
-                        },
-                    },
-                    window.location.origin,
-                );
+                sendDesktopEvent('calls-join-call', {
+                    callID: channelID,
+                    title,
+                });
                 return;
             }
 

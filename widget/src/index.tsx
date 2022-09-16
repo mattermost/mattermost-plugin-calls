@@ -37,6 +37,7 @@ import {
     getPluginPath,
     getProfilesByIds,
     playSound,
+    sendDesktopEvent,
 } from 'plugin/utils';
 
 import {
@@ -105,7 +106,7 @@ function connectCall(channelID: string, wsURL: string, iceConfigs: RTCIceServer[
                     delete window.callsClient;
                     ReactDOM.unmountComponentAtNode(document.getElementById('root')!);
                     logDebug('sending leave call message to desktop app');
-                    window.postMessage({type: 'calls-leave-call'}, window.location.origin);
+                    sendDesktopEvent('calls-leave-call');
                 }, 200);
             }
         });
