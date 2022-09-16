@@ -34,7 +34,7 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
     const rightCol = 'col-sm-8';
 
     // Webapp doesn't pass the placeholder setting.
-    const placeholder = manifest.settings_schema?.settings.find((e: Record<string, any>) => e.key === 'RTCDServiceURL')?.placeholder || '';
+    const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'RTCDServiceURL')?.placeholder || '';
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);

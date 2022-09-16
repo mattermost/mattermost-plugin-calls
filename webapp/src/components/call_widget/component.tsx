@@ -936,7 +936,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
-    renderMenu = (hasTeamSidebar: boolean) => {
+    renderMenu = (widerWidget: boolean) => {
         if (!this.state.showMenu) {
             return null;
         }
@@ -948,7 +948,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='Menu__content dropdown-menu'
                     style={this.style.dotsMenu as CSSProperties}
                 >
-                    {!hasTeamSidebar && this.renderScreenSharingMenuItem()}
+                    {!widerWidget && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
                 </ul>
@@ -1183,7 +1183,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     }
 
-    renderChannelName = (hasTeamSidebar: boolean) => {
+    renderChannelName = (widerWidget: boolean) => {
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
@@ -1202,7 +1202,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            maxWidth: hasTeamSidebar ? '22ch' : '12ch',
+                            maxWidth: widerWidget ? '22ch' : '12ch',
                         }}
                     >
                         {this.props.channelDisplayName}
@@ -1220,8 +1220,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const MuteIcon = window.callsClient.isMuted() ? MutedIcon : UnmutedIcon;
         const muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
 
-        const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
-        const mainWidth = hasTeamSidebar ? '280px' : '216px';
+        const widerWidget = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
+        const mainWidth = widerWidget ? '280px' : '216px';
 
         const ShowIcon = window.desktop ? ExpandIcon : PopOutIcon;
 
@@ -1242,7 +1242,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         {this.renderNotificationBar()}
                         {this.renderScreenSharingPanel()}
                         {this.renderParticipantsList()}
-                        {this.renderMenu(hasTeamSidebar)}
+                        {this.renderMenu(widerWidget)}
                     </div>
 
                     <div
@@ -1265,11 +1265,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={this.style.profiles}>
                             {this.renderProfiles()}
                         </div>
-                        <div style={{width: hasTeamSidebar ? '200px' : '136px'}}>
+                        <div style={{width: widerWidget ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 <CallDuration startAt={this.props.callStartAt}/>
-                                {this.renderChannelName(hasTeamSidebar)}
+                                {this.renderChannelName(widerWidget)}
                             </div>
                         </div>
                     </div>
@@ -1367,7 +1367,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </OverlayTrigger>
                         }
 
-                        {(hasTeamSidebar || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
+                        {(widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <OverlayTrigger
                             key='mute'
