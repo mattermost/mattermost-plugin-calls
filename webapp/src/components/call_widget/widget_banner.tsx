@@ -53,7 +53,7 @@ const Banner = styled.div<{color: string, bgColor: string}>`
   }
 `;
 
-const Body = styled.span<{}>`
+const Body = styled.span`
   font-style: normal;
   font-weight: 600;
   font-size: 11px;

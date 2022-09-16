@@ -61,17 +61,17 @@ const Banner = styled.div<{color: string, bgColor: string}>`
   }
 `;
 
-const Body = styled.span<{}>`
+const Body = styled.span`
   font-weight: 600;
   line-height: 20px;
 `;
 
-const CloseButton = styled.button<{}>`
+const CloseButton = styled.button`
   cursor: pointer;
   margin-left: auto;
   opacity: 0.56;
 `;
 
-const Icon = styled.div<{}>`
+const Icon = styled.div`
   margin-left: auto;
 `;

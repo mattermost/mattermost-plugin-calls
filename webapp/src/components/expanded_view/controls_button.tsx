@@ -109,7 +109,7 @@ const ButtonIcon = styled.div`
   position: relative;
 `;
 
-const UnavailableIcon = styled.div<{}>`
+const UnavailableIcon = styled.div`
   position: absolute;
   top: -6px;
   right: -6px;

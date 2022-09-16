@@ -49,7 +49,7 @@ const IconWrapper = styled.div<{unavailable: boolean, margin?: string}>`
   }
 `;
 
-const UnavailableIcon = styled.div<{}>`
+const UnavailableIcon = styled.div`
   position: absolute;
   top: -45%;
   right: -20%;
