@@ -60,6 +60,7 @@ const Body = styled.span`
   line-height: 16px;
   letter-spacing: 0.02em;
   margin: 0 4px;
+  flex: 1;
 `;
 
 const Icon = styled.div<{isClose?: boolean}>`
