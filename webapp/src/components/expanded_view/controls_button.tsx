@@ -79,26 +79,24 @@ const ButtonContainer = styled.div<{margin?: string}>`
 `;
 
 const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailable?: boolean}>`
-  &&& {
-    background-color: ${({bgColor}) => bgColor};
+  background-color: ${({bgColor}) => bgColor};
 
+  ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
+    background-color: rgba(255, 255, 255, 0.08);
+  `}
+
+  svg {
+    fill: white;
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-      background-color: rgba(255, 255, 255, 0.08);
-   `}
-
-    svg {
-      fill: white;
-      ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-        fill: rgba(255, 255, 255, 0.32);
-      `}
-    }
-
-    ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-      :hover {
-        background: rgba(255, 255, 255, 0.08);
-      }
+      fill: rgba(255, 255, 255, 0.32);
     `}
   }
+
+  ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
+    :hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+  `}
 `;
 
 const ButtonText = styled.span`
@@ -118,11 +116,9 @@ const UnavailableIcon = styled.div<{}>`
   color: var(--dnd-indicator);
   font-size: 14px;
 
-  &&& {
-    i {
-      border-radius: 50%;
-      background-color: rgb(54, 55, 59);
-    }
+  i {
+    border-radius: 50%;
+    background-color: rgb(54, 55, 59);
   }
 `;
 
