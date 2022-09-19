@@ -57,7 +57,6 @@
     "luxon": "2.3.1",
     "mattermost-webapp": "github:mattermost/mattermost-webapp#6dcac2993000139f19c1b018f7fa6b9266973918",
     "process": "0.11.10",
-    "react-dom": "17.0.2",
     "react-intl": "5.20.12",
     "redux-thunk": "2.4.1",
     "sass-loader": "12.1.0",
