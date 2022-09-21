@@ -2,9 +2,9 @@ module github.com/mattermost/mattermost-plugin-calls
 
 go 1.17
 
-replace github.com/mattermost/mattermost-server/v6 => github.com/mattermost/mattermost-server/v6 v6.0.0-20220613202234-182ae1234a49
+// replace github.com/mattermost/mattermost-server/v6 => github.com/mattermost/mattermost-server/v6 v6.0.0-20220613202234-182ae1234a49
 
-replace github.com/mattermost/focalboard/server => /users/marianunez/git/focalboard/server
+// replace github.com/mattermost/focalboard/server => /users/marianunez/git/focalboard/server
 
 require (
 	github.com/gorilla/websocket v1.5.0 // indirect
@@ -13,13 +13,12 @@ require (
 	github.com/pion/rtcp v1.2.9 // indirect
 	github.com/pion/webrtc/v3 v3.1.40 // indirect
 	github.com/prometheus/client_golang v1.12.1
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.8.0
 )
 
 require (
-	github.com/mattermost/focalboard/server v0.10.0
 	github.com/mattermost/logr/v2 v2.0.15
-	github.com/mattermost/mattermost-plugin-api v0.0.27
+	github.com/mattermost/mattermost-plugin-api v0.0.29-0.20220801143717-73008cfda2fb
 	github.com/mattermost/rtcd v0.5.1
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
@@ -46,23 +45,24 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/graph-gophers/graphql-go v1.4.0 // indirect
-	github.com/hashicorp/go-hclog v1.2.0 // indirect
+	github.com/hashicorp/go-hclog v1.2.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/yamux v0.0.0-20211028200310-0bc27b27de87 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.15.3 // indirect
-	github.com/klauspost/cpuid/v2 v2.0.12 // indirect
+	github.com/klauspost/compress v1.15.6 // indirect
+	github.com/klauspost/cpuid/v2 v2.0.13 // indirect
 	github.com/krolaw/zipstream v0.0.0-20180621105154-0a2661891f94 // indirect
-	github.com/lib/pq v1.10.5 // indirect
+	github.com/lib/pq v1.10.6 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/mattermost/focalboard/server v0.0.0-20220919151000-d45a5c7ec490 // indirect
 	github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 // indirect
 	github.com/mattermost/ldap v0.0.0-20201202150706-ee0e6284187d // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
-	github.com/minio/minio-go/v7 v7.0.26 // indirect
+	github.com/minio/minio-go/v7 v7.0.28 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
@@ -90,7 +90,7 @@ require (
 	github.com/plar/go-adaptive-radix-tree v1.0.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
-	github.com/prometheus/common v0.32.1 // indirect
+	github.com/prometheus/common v0.33.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rs/xid v1.4.0 // indirect
 	github.com/segmentio/backo-go v0.0.0-20200129164019-23eae7c10bd3 // indirect
@@ -111,16 +111,16 @@ require (
 	github.com/wiggin77/srslog v1.0.1 // indirect
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	github.com/yuin/goldmark v1.4.12 // indirect
-	golang.org/x/crypto v0.0.0-20220517005047-85d78b3ac167 // indirect
+	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/exp v0.0.0-20200908183739-ae8ad444f925 // indirect
-	golang.org/x/net v0.0.0-20220516155154-20f960328961 // indirect
-	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a // indirect
+	golang.org/x/net v0.0.0-20220614195744-fb05da6f9022 // indirect
+	golang.org/x/sys v0.0.0-20220614162138-6c1b26c55098 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20220505152158-f39f71e6c8f3 // indirect
-	google.golang.org/grpc v1.46.0 // indirect
+	google.golang.org/genproto v0.0.0-20220614165028-45ed7f3ff16e // indirect
+	google.golang.org/grpc v1.47.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
-	gopkg.in/ini.v1 v1.66.4 // indirect
+	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

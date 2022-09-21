@@ -14,7 +14,6 @@ import (
 
 	"github.com/mattermost/rtcd/service/rtc"
 
-	fbClient "github.com/mattermost/focalboard/server/client"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -160,8 +159,11 @@ func (p *Plugin) OnActivate() error {
 		token = string(rawToken)
 	}
 
-	client := fbClient.NewClient("http://localhost:8065/plugins/focalboard", token)
-	p.fbStore = NewFocalboardStore(p.API, client)
+	siteUrl := p.pluginAPI.Configuration.GetConfig().ServiceSettings.SiteURL
+	url := *siteUrl + "/plugins/focalboard"
+
+	//client := fbClient.NewClient("http://localhost:8065/plugins/focalboard", token)
+	p.fbStore = NewFocalboardStore(p.API, url)
 
 	p.LogDebug("activated", "ClusterID", status.ClusterId)
 

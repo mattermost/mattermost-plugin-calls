@@ -5,7 +5,6 @@ import (
 	"math"
 	"sort"
 
-	fbClient "github.com/mattermost/focalboard/server/client"
 	fbModel "github.com/mattermost/focalboard/server/model"
 	"github.com/pkg/errors"
 
@@ -30,14 +29,14 @@ type FocalboardStore interface {
 }
 
 type focalboardStore struct {
-	client *fbClient.Client
-	api    plugin.API
+	url string
+	api plugin.API
 }
 
-func NewFocalboardStore(api plugin.API, client *fbClient.Client) FocalboardStore {
+func NewFocalboardStore(api plugin.API, url string) FocalboardStore {
 	return &focalboardStore{
-		api:    api,
-		client: client,
+		api: api,
+		url: url,
 	}
 }
 
