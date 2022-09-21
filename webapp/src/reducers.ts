@@ -40,6 +40,7 @@ import {
     HIDE_END_CALL_MODAL,
     RECEIVED_CHANNEL_STATE,
     RECEIVED_CALLS_USER_PREFERENCES,
+    VOICE_CHANNEL_USER_REACTION,
 } from './action_types';
 
 interface channelState {
@@ -211,9 +212,37 @@ interface usersStatusesAction {
         channelID: string,
         userID: string,
         raised_hand?: number,
+        reaction?: {emoji: string, timestamp: number},
         states: { [userID: string]: UserState },
     },
 }
+
+interface userReactionsState {
+    [channelID: string]: {
+        reactions: {emoji: string, timestamp: number, userID: string}[],
+    }
+}
+
+const queueReactions = (state: {emoji: string, timestamp: number, userID: string}[], reaction: {emoji: string, timestamp: number}, userID: string) => {
+    const result = [...state];
+    result.push({...reaction, userID});
+    if (result.length > 8) { // TODO: random size, this should probably be configurable
+        result.shift();
+    }
+    return result;
+};
+
+const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAction) => {
+    switch (action.type) {
+    case VOICE_CHANNEL_USER_REACTION:
+        if (action.data.reaction) {
+            return queueReactions(state[action.data.channelID].reactions, action.data.reaction, action.data.userID);
+        }
+        return state;
+    default:
+        return state;
+    }
+};
 
 const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatusesAction) => {
     switch (action.type) {
@@ -386,6 +415,17 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
                 },
             },
         };
+    case VOICE_CHANNEL_USER_REACTION:
+        return {
+            ...state,
+            [action.data.channelID]: {
+                ...state[action.data.channelID],
+                [action.data.userID]: {
+                    ...state[action.data.channelID][action.data.userID],
+                    reaction: action.data.reaction,
+                },
+            },
+        };
     default:
         return state;
     }
@@ -531,6 +571,7 @@ export default combineReducers({
     voiceConnectedChannels,
     connectedChannelID,
     voiceConnectedProfiles,
+    reactionStatus,
     voiceUsersStatuses,
     voiceChannelCalls,
     voiceChannelScreenSharingID,

@@ -94,6 +94,7 @@ import {
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
     SHOW_END_CALL_MODAL,
+    VOICE_CHANNEL_USER_REACTION,
 } from './action_types';
 
 import {PluginRegistry, Store} from './types/mattermost-webapp';
@@ -287,6 +288,18 @@ export default class Plugin {
                     channelID: ev.broadcast.channel_id,
                     userID: ev.data.userID,
                     raised_hand: ev.data.raised_hand,
+                },
+            });
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_reaction`, (ev) => {
+            store.dispatch({
+                type: VOICE_CHANNEL_USER_REACTION,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                    userID: ev.data.userID,
+                    emoji: ev.data.emoji,
+                    timestamp: ev.data.timestamp,
                 },
             });
         });
