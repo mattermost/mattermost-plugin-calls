@@ -6,6 +6,8 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/mattermost/mattermost-server/v6/shared/mlog"
+	"log"
 	"runtime"
 	"strings"
 
@@ -53,6 +55,31 @@ func (p *Plugin) LogError(msg string, keyValuePairs ...interface{}) {
 
 type logger struct {
 	p *Plugin
+}
+
+func (l *logger) Trace(s string, field ...mlog.Field) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *logger) Fatal(s string, field ...mlog.Field) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *logger) With(fields ...mlog.Field) *mlog.Logger {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *logger) Flush() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *logger) StdLogger(level mlog.Level) *log.Logger {
+	//TODO implement me
+	panic("implement me")
 }
 
 func newLogger(p *Plugin) *logger {

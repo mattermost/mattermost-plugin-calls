@@ -2,17 +2,9 @@ module github.com/mattermost/mattermost-plugin-calls
 
 go 1.17
 
-// replace github.com/mattermost/mattermost-server/v6 => github.com/mattermost/mattermost-server/v6 v6.0.0-20220613202234-182ae1234a49
-
-// replace github.com/mattermost/focalboard/server => /users/marianunez/git/focalboard/server
-
-replace github.com/mattermost/focalboard/server => /users/chris/go/src/github.com/mattermost/focalboard/server
-
-// exclude github.com/dyatlov/go-opengraph/opengraph v0.0.0-20220524092352-606d7b1e5f8a
-
 require (
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/mattermost/mattermost-server/v6 v6.0.0-20220921101533-ad0705bbca5f
+	github.com/mattermost/mattermost-server/v6 v6.4.0
 	github.com/pion/ice/v2 v2.2.6 // indirect
 	github.com/pion/rtcp v1.2.9 // indirect
 	github.com/pion/webrtc/v3 v3.1.40 // indirect
@@ -21,9 +13,9 @@ require (
 )
 
 require (
-	github.com/mattermost/focalboard/server v0.0.0-00010101000000-000000000000
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.0.29-0.20220801143717-73008cfda2fb
+	github.com/mattermost/rtcd v0.6.12-0.20220921192724-5c4b06f29d03
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65
@@ -60,6 +52,7 @@ require (
 	github.com/krolaw/zipstream v0.0.0-20180621105154-0a2661891f94 // indirect
 	github.com/lib/pq v1.10.6 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/mattermost/focalboard v0.16.1-0.20220921175905-975bb3cd83b9 // indirect
 	github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 // indirect
 	github.com/mattermost/ldap v0.0.0-20201202150706-ee0e6284187d // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

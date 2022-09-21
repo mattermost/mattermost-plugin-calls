@@ -1113,6 +1113,8 @@ github.com/markbates/oncer v0.0.0-20181203154359-bf2de49a0be2/go.mod h1:Ld9puTsI
 github.com/markbates/pkger v0.15.1/go.mod h1:0JoVlrol20BSywW79rN3kdFFsE5xYM+rSCQDXbLhiuI=
 github.com/markbates/safe v1.0.1/go.mod h1:nAqgmRi7cY2nqMc92/bSEeQA+R4OheNU2T1kNSCBdG0=
 github.com/marstr/guid v1.1.0/go.mod h1:74gB1z2wpxxInTG6yaqA7KrtM0NZ+RbrcqDvYHefzho=
+github.com/mattermost/focalboard v0.16.1-0.20220921175905-975bb3cd83b9 h1:+mUwknSE+cA9XbgGtx+Iy87k8NnDJiwJO523BOtqp+A=
+github.com/mattermost/focalboard v0.16.1-0.20220921175905-975bb3cd83b9/go.mod h1:CxabkaCDVd1q1V4ui0aLFUbKAbxEUTgx9JWKmEBYw84=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 h1:Khvh6waxG1cHc4Cz5ef9n3XVCxRWpAKUtqg9PJl5+y8=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404/go.mod h1:RyS7FDNQlzF1PsjbJWHRI35exqaKGSO9qD4iv8QjE34=
 github.com/mattermost/gorp v1.6.2-0.20210714143452-8b50f5209a7f/go.mod h1:QCQ3U0M9T/BlAdjKFJo0I1oe/YAgbyjNdhU8bpOLafk=
@@ -1135,6 +1137,8 @@ github.com/mattermost/morph v0.0.0-20220804124441-62627668af80/go.mod h1:xo0ljDk
 github.com/mattermost/rsc v0.0.0-20160330161541-bbaefb05eaa0/go.mod h1:nV5bfVpT//+B1RPD2JvRnxbkLmJEYXmRaaVl15fsXjs=
 github.com/mattermost/rtcd v0.6.10 h1:C4L6m7oFz+4ugUmr9aSID0wYczzV4dmCdJxnWyziPtQ=
 github.com/mattermost/rtcd v0.6.10/go.mod h1:cwe9aU2yJTXW5L9zKhm/B+rM4VlR9Bqvj8khrn191+M=
+github.com/mattermost/rtcd v0.6.12-0.20220921192724-5c4b06f29d03 h1:DPE4kbHeJBk/cluiBTCXw25CMU4sah4O+EJMcKInREY=
+github.com/mattermost/rtcd v0.6.12-0.20220921192724-5c4b06f29d03/go.mod h1:yjt6RX85R/P9x0aW85BCkK3adD5k9CgogIBRRCQUBbs=
 github.com/mattermost/squirrel v0.2.0/go.mod h1:NPPtk+CdpWre4GxMGoOpzEVFVc0ZoEFyJBZGCtn9nSU=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-colorable v0.1.1/go.mod h1:FuOcm+DKB9mbwrcAfNl7/TZVBZ6rcnceauSikq3lYCQ=
