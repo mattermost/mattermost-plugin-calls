@@ -5,11 +5,15 @@ import {combineReducers} from 'redux';
 import {UserProfile} from '@mattermost/types/users';
 
 import {Checklist, ChecklistItemsFilter, emptyChecklist} from './types/checklist';
-import {CallsConfigDefault, CallsConfig, UserState} from './types/types';
+import {
+    CallsConfigDefault,
+    CallsConfig,
+    UserState,
+    CallsUserPreferences,
+    CallsUserPreferencesDefault,
+} from './types/types';
 
 import {
-    VOICE_CHANNEL_ENABLE,
-    VOICE_CHANNEL_DISABLE,
     VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_DISCONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED,
@@ -39,6 +43,8 @@ import {
     RECEIVED_CALLS_CONFIG,
     SHOW_END_CALL_MODAL,
     HIDE_END_CALL_MODAL,
+    RECEIVED_CHANNEL_STATE,
+    RECEIVED_CALLS_USER_PREFERENCES,
     SET_CHECKLIST_ITEMS_FILTER,
     SetChecklistCollapsedState,
     SetAllChecklistsCollapsedState,
@@ -53,14 +59,22 @@ import {
     SetChecklistItem,
 } from './action_types';
 
-const isVoiceEnabled = (state = false, action: { type: string }) => {
+interface channelState {
+    id: string,
+    enabled: boolean,
+}
+
+interface channelStateAction {
+    type: string,
+    data: channelState,
+}
+
+const channelState = (state: {[channelID: string]: channelState} = {}, action: channelStateAction) => {
     switch (action.type) {
-    case VOICE_CHANNEL_UNINIT:
-        return false;
-    case VOICE_CHANNEL_ENABLE:
-        return true;
-    case VOICE_CHANNEL_DISABLE:
-        return false;
+    case RECEIVED_CHANNEL_STATE:
+        return {
+            [action.data.id]: action.data,
+        };
     default:
         return state;
     }
@@ -95,6 +109,13 @@ const voiceConnectedProfiles = (state: connectedProfilesState = {}, action: conn
                 ...state,
                 [action.data.channelID]: [action.data.profile],
             };
+        }
+
+        // avoid duplicates
+        for (const profile of state[action.data.channelID]) {
+            if (profile.id === action.data.profile?.id) {
+                return state;
+            }
         }
         return {
             ...state,
@@ -173,13 +194,15 @@ const connectedChannelID = (state: string | null = null, action: { type: string,
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return null;
-    case VOICE_CHANNEL_USER_CONNECTED:
-        if (action.data.currentUserID === action.data.userID) {
+    case VOICE_CHANNEL_USER_CONNECTED: {
+        const callsClient = window.callsClient || window.opener?.callsClient;
+        if (action.data.currentUserID === action.data.userID && callsClient?.channelID === action.data.channelID) {
             return action.data.channelID;
         }
         return state;
+    }
     case VOICE_CHANNEL_USER_DISCONNECTED:
-        if (action.data.currentUserID === action.data.userID) {
+        if (action.data.currentUserID === action.data.userID && state === action.data.channelID) {
             return null;
         }
         return state;
@@ -527,6 +550,15 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
     }
 };
 
+const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { type: string, data: CallsUserPreferences}) => {
+    switch (action.type) {
+    case RECEIVED_CALLS_USER_PREFERENCES:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 const checklistsByChannel = (state: Record<string, Checklist> = {}, action: SetChecklist | SetChecklistItem) => {
     switch (action.type) {
     case SET_CHECKLIST: {
@@ -613,7 +645,7 @@ const checklistCollapsedState = (
 };
 
 export default combineReducers({
-    isVoiceEnabled,
+    channelState,
     voiceConnectedChannels,
     connectedChannelID,
     voiceConnectedProfiles,
@@ -627,6 +659,7 @@ export default combineReducers({
     screenSourceModal,
     voiceChannelRootPost,
     callsConfig,
+    callsUserPreferences,
     checklistItemsFilterByChannel,
     checklistCollapsedState,
     checklistsByChannel,

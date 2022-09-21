@@ -124,3 +124,7 @@ func isCloud(license *model.License) bool {
 func isCloudStarter(license *model.License) bool {
 	return license != nil && license.SkuShortName == "starter"
 }
+
+func isTrial(license *model.License) bool {
+	return license != nil && license.IsTrial
+}

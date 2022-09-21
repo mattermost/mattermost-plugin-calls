@@ -1,14 +1,15 @@
 import {EventEmitter} from 'events';
-import SimplePeer from 'simple-peer';
 
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
-import {CallsClientConfig, RTCStats} from 'src/types/types';
+import {CallsClientConfig, AudioDevices, CallsClientStats, TrackInfo} from 'src/types/types';
+
+import RTCPeer from './rtcpeer';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';
-import WebSocketClient from './websocket';
+import {WebSocketClient, wsReconnectionTimeoutErr} from './websocket';
 import VoiceActivityDetector from './vad';
 
 import {parseRTCStats} from './rtc_stats';
@@ -16,7 +17,7 @@ import {parseRTCStats} from './rtc_stats';
 export default class CallsClient extends EventEmitter {
     public channelID: string;
     private readonly config: CallsClientConfig;
-    private peer: SimplePeer.Instance | null;
+    private peer: RTCPeer | null;
     private ws: WebSocketClient | null;
     private localScreenTrack: any;
     private remoteScreenTrack: any;
@@ -26,10 +27,13 @@ export default class CallsClient extends EventEmitter {
     private voiceTrackAdded: boolean;
     private streams: MediaStream[];
     private stream: MediaStream | null;
-    private audioDevices: { inputs: MediaDeviceInfo[]; outputs: MediaDeviceInfo[]; };
+    private audioDevices: AudioDevices;
     private audioTrack: MediaStreamTrack | null;
     public isHandRaised: boolean;
     private onDeviceChange: () => void;
+    private onBeforeUnload: () => void;
+    private closed = false;
+    private initTime = Date.now();
 
     constructor(config: CallsClientConfig) {
         super();
@@ -48,6 +52,11 @@ export default class CallsClient extends EventEmitter {
         this.onDeviceChange = () => {
             this.updateDevices();
         };
+        this.onBeforeUnload = () => {
+            logDebug('unload');
+            this.disconnect();
+        };
+        window.addEventListener('beforeunload', this.onBeforeUnload);
     }
 
     private initVAD(inputStream: MediaStream) {
@@ -75,6 +84,7 @@ export default class CallsClient extends EventEmitter {
             inputs: devices.filter((device) => device.kind === 'audioinput'),
             outputs: devices.filter((device) => device.kind === 'audiooutput'),
         };
+        this.emit('devicechange', this.audioDevices);
     }
 
     public async init(channelID: string, title?: string) {
@@ -139,57 +149,71 @@ export default class CallsClient extends EventEmitter {
         const ws = new WebSocketClient(this.config.wsURL);
         this.ws = ws;
 
-        ws.on('error', (ev) => {
-            logErr('ws error', ev);
-            this.disconnect();
+        ws.on('error', (err) => {
+            logErr('ws error', err);
+            if (err === wsReconnectionTimeoutErr) {
+                this.ws = null;
+                this.disconnect();
+            }
         });
 
         ws.on('close', (code?: number) => {
             logDebug(`ws close: ${code}`);
-            this.ws = null;
-            this.disconnect();
         });
 
-        ws.on('open', (connID: string) => {
-            logDebug('ws open, sending join msg');
-            ws.send('join', {
-                channelID,
-                title,
-            });
+        ws.on('open', (originalConnID: string, prevConnID: string, isReconnect: boolean) => {
+            if (isReconnect) {
+                logDebug('ws reconnect, sending reconnect msg');
+                ws.send('reconnect', {
+                    channelID,
+                    originalConnID,
+                    prevConnID,
+                });
+            } else {
+                logDebug('ws open, sending join msg');
+                ws.send('join', {
+                    channelID,
+                    title,
+                });
+            }
         });
 
         ws.on('join', async () => {
             logDebug('join ack received, initializing connection');
-            const iceServers = this.config.iceServers?.length > 0 ? [{urls: this.config.iceServers}] : [];
-            const peer = new SimplePeer({
-                initiator: true,
-                trickle: true,
-                config: {iceServers},
-            }) as SimplePeer.Instance;
+
+            const peer = new RTCPeer({
+                iceServers: this.config.iceServers || [],
+            });
 
             this.peer = peer;
-            peer.on('signal', (data) => {
-                logDebug(`local signal: ${JSON.stringify(data)}`);
-                if (data.type === 'offer' || data.type === 'answer') {
-                    if (!ws) {
-                        return;
-                    }
-                    ws.send('sdp', {
-                        data: deflate(JSON.stringify(data)),
-                    }, true);
-                } else if (data.type === 'candidate') {
-                    if (!ws) {
-                        return;
-                    }
-                    ws.send('ice', {
-                        data: JSON.stringify(data.candidate),
-                    });
-                }
+
+            peer.on('offer', (sdp) => {
+                logDebug(`local signal: ${JSON.stringify(sdp)}`);
+                ws.send('sdp', {
+                    data: deflate(JSON.stringify(sdp)),
+                }, true);
             });
+
+            peer.on('answer', (sdp) => {
+                logDebug(`local signal: ${JSON.stringify(sdp)}`);
+                ws.send('sdp', {
+                    data: deflate(JSON.stringify(sdp)),
+                }, true);
+            });
+
+            peer.on('candidate', (candidate) => {
+                ws.send('ice', {
+                    data: JSON.stringify(candidate),
+                });
+            });
+
             peer.on('error', (err) => {
                 logErr('peer error', err);
-                this.disconnect();
+                if (!this.closed) {
+                    this.disconnect();
+                }
             });
+
             peer.on('stream', (remoteStream) => {
                 logDebug('new remote stream received', remoteStream);
                 logDebug('remote tracks', remoteStream.getTracks());
@@ -203,13 +227,21 @@ export default class CallsClient extends EventEmitter {
                     this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
                 }
             });
+
             peer.on('connect', () => {
                 logDebug('rtc connected');
                 this.emit('connect');
             });
+
+            peer.on('close', () => {
+                logDebug('rtc closed');
+                if (!this.closed) {
+                    this.disconnect();
+                }
+            });
         });
 
-        ws.on('message', ({data}) => {
+        ws.on('message', async ({data}) => {
             const msg = JSON.parse(data);
             if (!msg) {
                 return;
@@ -226,7 +258,7 @@ export default class CallsClient extends EventEmitter {
                     }
                 }
                 if (this.peer) {
-                    this.peer.signal(data);
+                    await this.peer.signal(data);
                 }
             }
         });
@@ -239,11 +271,9 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('connect');
         this.removeAllListeners('remoteVoiceStream');
         this.removeAllListeners('remoteScreenStream');
+        this.removeAllListeners('devicechange');
+        window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
-    }
-
-    public getAudioDevices() {
-        return this.audioDevices;
     }
 
     public async setAudioInputDevice(device: MediaDeviceInfo) {
@@ -280,7 +310,7 @@ export default class CallsClient extends EventEmitter {
         newTrack.enabled = isEnabled;
         if (isEnabled) {
             if (this.voiceTrackAdded) {
-                this.peer.replaceTrack(this.audioTrack, newTrack, this.stream);
+                this.peer.replaceTrack(this.audioTrack.id, newTrack);
             } else {
                 this.peer.addTrack(newTrack, this.stream);
             }
@@ -299,7 +329,20 @@ export default class CallsClient extends EventEmitter {
     }
 
     public disconnect() {
+        logDebug('disconnect');
+
+        if (this.closed) {
+            logErr('client already disconnected');
+            return;
+        }
+
+        this.closed = true;
         if (this.peer) {
+            this.getStats().then((stats) => {
+                sessionStorage.setItem('calls_client_stats', JSON.stringify(stats));
+            }).catch((err) => {
+                logErr(err);
+            });
             this.peer.destroy();
             this.peer = null;
         }
@@ -317,7 +360,7 @@ export default class CallsClient extends EventEmitter {
         });
 
         if (this.ws) {
-            logDebug('disconnect');
+            this.ws.send('leave');
             this.ws.close();
             this.ws = null;
         }
@@ -342,7 +385,7 @@ export default class CallsClient extends EventEmitter {
         }
 
         // @ts-ignore: we actually mean (and need) to pass null here
-        this.peer.replaceTrack(this.audioTrack, null, this.stream);
+        this.peer.replaceTrack(this.audioTrack.id, null);
         this.audioTrack.enabled = false;
 
         if (this.ws) {
@@ -360,7 +403,7 @@ export default class CallsClient extends EventEmitter {
         }
 
         if (this.voiceTrackAdded) {
-            this.peer.replaceTrack(this.audioTrack, this.audioTrack, this.stream);
+            this.peer.replaceTrack(this.audioTrack.id, this.audioTrack);
         } else {
             this.peer.addTrack(this.audioTrack, this.stream);
             this.voiceTrackAdded = true;
@@ -414,7 +457,7 @@ export default class CallsClient extends EventEmitter {
             }
 
             // @ts-ignore: we actually mean to pass null here
-            this.peer.replaceTrack(screenTrack, null, screenStream);
+            this.peer.replaceTrack(screenTrack.id, null);
             this.ws.send('screen_off');
         };
 
@@ -466,17 +509,32 @@ export default class CallsClient extends EventEmitter {
         this.isHandRaised = false;
     }
 
-    public async getStats(): Promise<RTCStats | null> {
-        // @ts-ignore
-        // eslint-disable-next-line no-underscore-dangle
-        if (!this.peer || !this.peer._pc) {
+    public async getStats(): Promise<CallsClientStats | null> {
+        if (!this.peer) {
             throw new Error('not connected');
         }
 
-        // @ts-ignore
-        // eslint-disable-next-line no-underscore-dangle
-        const stats = await this.peer._pc.getStats(null);
+        const tracksInfo : TrackInfo[] = [];
+        this.streams.forEach((stream) => {
+            return stream.getTracks().forEach((track) => {
+                tracksInfo.push({
+                    streamID: stream.id,
+                    id: track.id,
+                    kind: track.kind,
+                    label: track.label,
+                    enabled: track.enabled,
+                    readyState: track.readyState,
+                });
+            });
+        });
 
-        return parseRTCStats(stats);
+        const stats = await this.peer.getStats();
+
+        return {
+            initTime: this.initTime,
+            callID: this.channelID,
+            tracksInfo,
+            rtcStats: stats ? parseRTCStats(stats) : null,
+        };
     }
 }

@@ -3,6 +3,7 @@ import {EventEmitter} from 'events';
 import {logDebug} from './log';
 
 export default class VoiceActivityDetector extends EventEmitter {
+    private audioContext: AudioContext;
     private inputStream: MediaStream;
     private sourceNode: MediaStreamAudioSourceNode;
     private analyserNode: AnalyserNode;
@@ -14,6 +15,7 @@ export default class VoiceActivityDetector extends EventEmitter {
     constructor(audioContext: AudioContext, stream: MediaStream) {
         super();
 
+        this.audioContext = audioContext;
         this.inputStream = stream;
 
         const config = {
@@ -134,6 +136,7 @@ export default class VoiceActivityDetector extends EventEmitter {
         this.inputStream.getTracks().forEach((track) => {
             track.stop();
         });
+        this.audioContext.close();
     }
 }
 

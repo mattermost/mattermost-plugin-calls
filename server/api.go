@@ -6,12 +6,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/pprof"
 	"regexp"
 	"strings"
 	"time"
+
+	"golang.org/x/time/rate"
+
+	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
@@ -22,6 +25,8 @@ var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
 var agendaGetRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)$`)
 var agendaUpdateRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)\/item$`)
 var agendaAddRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)\/item$`)
+
+const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
 type Call struct {
 	ID              string      `json:"id"`
@@ -34,7 +39,7 @@ type Call struct {
 }
 
 type ChannelState struct {
-	ChannelID string `json:"channel_id"`
+	ChannelID string `json:"channel_id,omitempty"`
 	Enabled   bool   `json:"enabled"`
 	Call      *Call  `json:"call,omitempty"`
 }
@@ -116,7 +121,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
 
 	var page int
-	var channels []ChannelState
+	channels := []ChannelState{}
 	channelMembers := map[string]*model.ChannelMember{}
 	perPage := 200
 
@@ -240,6 +245,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 		return
 	}
 
+	p.metrics.IncWebSocketEvent("out", "call_end")
 	p.API.PublishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	go func() {
@@ -315,15 +321,8 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		}
 	}
 
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
 	var info ChannelState
-	if err := json.Unmarshal(data, &info); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
 		res.Err = err.Error()
 		res.Code = http.StatusBadRequest
 		return
@@ -351,7 +350,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 
 	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
-	if _, err := w.Write(data); err != nil {
+	if err := json.NewEncoder(w).Encode(info); err != nil {
 		p.LogError(err.Error())
 	}
 }
@@ -380,6 +379,44 @@ func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
 	res.Code = http.StatusNotFound
 }
 
+func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleGetTURNCredentials", &res, w, r)
+
+	cfg := p.getConfiguration()
+	if cfg.TURNStaticAuthSecret == "" {
+		res.Err = "TURNStaticAuthSecret should be set"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	turnServers := cfg.ICEServersConfigs.getTURNConfigsForCredentials()
+	if len(turnServers) == 0 {
+		res.Err = "No TURN server was configured"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	user, appErr := p.API.GetUser(r.Header.Get("Mattermost-User-Id"))
+	if appErr != nil {
+		res.Err = appErr.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	configs, err := rtc.GenTURNConfigs(turnServers, user.Username, cfg.TURNStaticAuthSecret, *cfg.TURNCredentialsExpirationMinutes)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(configs); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
 // handleConfig returns the client configuration, and cloud license information
 // that isn't exposed to clients yet on the webapp
 func (p *Plugin) handleConfig(w http.ResponseWriter) error {
@@ -401,6 +438,24 @@ func (p *Plugin) handleConfig(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(ret); err != nil {
 		return fmt.Errorf("error encoding config: %w", err)
+	}
+
+	return nil
+}
+
+func (p *Plugin) checkAPIRateLimits(userID string) error {
+	p.apiLimitersMut.RLock()
+	limiter := p.apiLimiters[userID]
+	p.apiLimitersMut.RUnlock()
+	if limiter == nil {
+		limiter = rate.NewLimiter(1, 10)
+		p.apiLimitersMut.Lock()
+		p.apiLimiters[userID] = limiter
+		p.apiLimitersMut.Unlock()
+	}
+
+	if !limiter.Allow() {
+		return fmt.Errorf(`{"message": "too many requests", "status_code": %d}`, http.StatusTooManyRequests)
 	}
 
 	return nil
@@ -552,8 +607,14 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if r.Header.Get("Mattermost-User-Id") == "" {
+	userID := r.Header.Get("Mattermost-User-Id")
+	if userID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := p.checkAPIRateLimits(userID); err != nil {
+		http.Error(w, err.Error(), http.StatusTooManyRequests)
 		return
 	}
 
@@ -572,6 +633,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if r.URL.Path == "/channels" {
 			p.handleGetAllChannels(w, r)
+			return
+		}
+
+		if r.URL.Path == "/turn-credentials" {
+			p.handleGetTURNCredentials(w, r)
 			return
 		}
 
@@ -614,6 +680,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if matches := agendaAddRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handleAddAgendaItem(w, r, matches[1])
+			return
+		}
+
+		if r.URL.Path == "/telemetry/track" {
+			p.handleTrackEvent(w, r)
 			return
 		}
 	}

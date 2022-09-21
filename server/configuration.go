@@ -4,12 +4,15 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 )
@@ -33,13 +36,23 @@ type configuration struct {
 	// The URL to a running RTCD service instance that should host the calls.
 	// When set (non empty) all calls will be handled by the external service.
 	RTCDServiceURL string
+	// The secret key used to generate TURN short-lived authentication credentials
+	TURNStaticAuthSecret string
+	// The number of minutes that the generated TURN credentials will be valid for.
+	TURNCredentialsExpirationMinutes *int
+	// When set to true it will pass and use configured TURN candidates to server
+	// initiated connections.
+	ServerSideTURN *bool
 
 	clientConfig
 }
 
 type clientConfig struct {
-	// A comma separated list of ICE servers URLs (STUN/TURN) to use.
+	// **DEPRECATED: use ICEServersConfigs** A comma separated list of ICE servers URLs (STUN/TURN) to use.
 	ICEServers ICEServers
+
+	// A list of ICE server configurations to use.
+	ICEServersConfigs ICEServersConfigs
 	// When set to true, it allows channel admins to enable or disable calls in their channels.
 	// It also allows participants of DMs/GMs to enable or disable calls.
 	AllowEnableCalls *bool
@@ -48,9 +61,31 @@ type clientConfig struct {
 	// The maximum number of participants that can join a call. The zero value
 	// means unlimited.
 	MaxCallParticipants *int
+	// Used to signal the client whether or not to generate TURN credentials. This is a client only option, generated server side.
+	NeedsTURNCredentials *bool
 }
 
 type ICEServers []string
+type ICEServersConfigs rtc.ICEServers
+
+func (cfgs *ICEServersConfigs) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+	unquoted, err := strconv.Unquote(string(data))
+	if err != nil {
+		return err
+	}
+	if unquoted == "" {
+		return nil
+	}
+
+	var dst []rtc.ICEServerConfig
+	err = json.Unmarshal([]byte(unquoted), &dst)
+	*cfgs = dst
+
+	return err
+}
 
 func (is *ICEServers) UnmarshalJSON(data []byte) error {
 	*is = []string{}
@@ -111,10 +146,12 @@ func (pr PortsRange) IsValid() error {
 
 func (c *configuration) getClientConfig() clientConfig {
 	return clientConfig{
-		AllowEnableCalls:    c.AllowEnableCalls,
-		DefaultEnabled:      c.DefaultEnabled,
-		ICEServers:          c.ICEServers,
-		MaxCallParticipants: c.MaxCallParticipants,
+		AllowEnableCalls:     c.AllowEnableCalls,
+		DefaultEnabled:       c.DefaultEnabled,
+		ICEServers:           c.ICEServers,
+		ICEServersConfigs:    c.getICEServers(true),
+		MaxCallParticipants:  c.MaxCallParticipants,
+		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
 	}
 }
 
@@ -132,6 +169,12 @@ func (c *configuration) SetDefaults() {
 	if c.MaxCallParticipants == nil {
 		c.MaxCallParticipants = new(int)
 	}
+	if c.TURNCredentialsExpirationMinutes == nil {
+		c.TURNCredentialsExpirationMinutes = model.NewInt(1440)
+	}
+	if c.ServerSideTURN == nil {
+		c.ServerSideTURN = new(bool)
+	}
 }
 
 func (c *configuration) IsValid() error {
@@ -147,6 +190,10 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("MaxCallParticipants is not valid")
 	}
 
+	if c.TURNCredentialsExpirationMinutes != nil && *c.TURNCredentialsExpirationMinutes < 0 {
+		return fmt.Errorf("TURNCredentialsExpirationMinutes is not valid")
+	}
+
 	return nil
 }
 
@@ -156,6 +203,7 @@ func (c *configuration) Clone() *configuration {
 
 	cfg.ICEHostOverride = c.ICEHostOverride
 	cfg.RTCDServiceURL = c.RTCDServiceURL
+	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)
@@ -172,13 +220,24 @@ func (c *configuration) Clone() *configuration {
 
 	if c.ICEServers != nil {
 		cfg.ICEServers = make(ICEServers, len(c.ICEServers))
-		for i, u := range c.ICEServers {
-			cfg.ICEServers[i] = u
-		}
+		copy(cfg.ICEServers, c.ICEServers)
+	}
+
+	if c.ICEServersConfigs != nil {
+		cfg.ICEServersConfigs = make([]rtc.ICEServerConfig, len(c.ICEServersConfigs))
+		copy(cfg.ICEServersConfigs, c.ICEServersConfigs)
 	}
 
 	if c.MaxCallParticipants != nil {
 		cfg.MaxCallParticipants = model.NewInt(*c.MaxCallParticipants)
+	}
+
+	if c.TURNCredentialsExpirationMinutes != nil {
+		cfg.TURNCredentialsExpirationMinutes = model.NewInt(*c.TURNCredentialsExpirationMinutes)
+	}
+
+	if c.ServerSideTURN != nil {
+		cfg.ServerSideTURN = model.NewBool(*c.ServerSideTURN)
 	}
 
 	return &cfg
@@ -287,7 +346,52 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	}
 }
 
-func (p *Plugin) isHAEnabled() bool {
+func (p *Plugin) isSingleHandler() bool {
 	cfg := p.API.GetConfig()
-	return cfg != nil && cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
+	pluginCfg := p.getConfiguration()
+
+	if cfg == nil || pluginCfg == nil || p.licenseChecker == nil {
+		return false
+	}
+
+	rtcdURL := pluginCfg.getRTCDURL()
+	hasRTCD := rtcdURL != "" && p.licenseChecker.RTCDAllowed()
+
+	if hasRTCD {
+		return false
+	}
+
+	isHA := cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
+	hasEnvVar := os.Getenv("MM_CALLS_IS_HANDLER") != ""
+
+	return !isHA || (isHA && hasEnvVar)
+}
+
+func (c *configuration) getICEServers(forClient bool) ICEServersConfigs {
+	var iceServers ICEServersConfigs
+
+	for _, cfg := range c.ICEServersConfigs {
+		if forClient && cfg.IsTURN() && cfg.Username == "" && cfg.Credential == "" {
+			continue
+		}
+		iceServers = append(iceServers, cfg)
+	}
+
+	if len(c.ICEServers) > 0 {
+		iceServers = append(iceServers, rtc.ICEServerConfig{
+			URLs: c.ICEServers,
+		})
+	}
+
+	return iceServers
+}
+
+func (cfgs ICEServersConfigs) getTURNConfigsForCredentials() []rtc.ICEServerConfig {
+	var configs []rtc.ICEServerConfig
+	for _, cfg := range cfgs {
+		if cfg.IsTURN() && cfg.Username == "" && cfg.Credential == "" {
+			configs = append(configs, cfg)
+		}
+	}
+	return configs
 }

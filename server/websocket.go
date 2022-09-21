@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	rtcd "github.com/mattermost/rtcd/service"
@@ -32,6 +32,7 @@ const (
 	wsEventUserUnraiseHand  = "user_unraise_hand"
 	wsEventJoin             = "join"
 	wsEventError            = "error"
+	wsReconnectionTimeout   = 10 * time.Second
 )
 
 func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, handlerID string) error {
@@ -78,7 +79,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 
 	if handlerID != p.nodeID {
 		if err := p.sendClusterMessage(clusterMessage{
-			ConnID:        us.connID,
+			ConnID:        us.originalConnID,
 			UserID:        us.userID,
 			ChannelID:     us.channelID,
 			SenderID:      p.nodeID,
@@ -88,7 +89,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 	} else {
 		rtcMsg := rtc.Message{
-			SessionID: us.connID,
+			SessionID: us.originalConnID,
 			Type:      msgType,
 			Data:      msg.Data,
 		}
@@ -113,7 +114,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if handlerID != p.nodeID {
 			// need to relay signaling.
 			if err := p.sendClusterMessage(clusterMessage{
-				ConnID:        us.connID,
+				ConnID:        us.originalConnID,
 				UserID:        us.userID,
 				ChannelID:     us.channelID,
 				SenderID:      p.nodeID,
@@ -123,7 +124,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 		} else {
 			rtcMsg := rtc.Message{
-				SessionID: us.connID,
+				SessionID: us.originalConnID,
 				Type:      rtc.SDPMessage,
 				Data:      msg.Data,
 			}
@@ -136,7 +137,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		p.LogDebug("candidate!")
 		if handlerID == p.nodeID {
 			rtcMsg := rtc.Message{
-				SessionID: us.connID,
+				SessionID: us.originalConnID,
 				Type:      rtc.ICEMessage,
 				Data:      msg.Data,
 			}
@@ -147,7 +148,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		} else {
 			// need to relay signaling.
 			if err := p.sendClusterMessage(clusterMessage{
-				ConnID:        us.connID,
+				ConnID:        us.originalConnID,
 				UserID:        us.userID,
 				ChannelID:     us.channelID,
 				SenderID:      p.nodeID,
@@ -160,7 +161,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if handlerID != p.nodeID {
 			// need to relay track event.
 			if err := p.sendClusterMessage(clusterMessage{
-				ConnID:        us.connID,
+				ConnID:        us.originalConnID,
 				UserID:        us.userID,
 				ChannelID:     us.channelID,
 				SenderID:      p.nodeID,
@@ -175,7 +176,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 
 			rtcMsg := rtc.Message{
-				SessionID: us.connID,
+				SessionID: us.originalConnID,
 				Type:      msgType,
 				Data:      msg.Data,
 			}
@@ -265,17 +266,13 @@ func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 	p.mut.RLock()
 	us := p.sessions[connID]
 	p.mut.RUnlock()
-
 	if us != nil {
-		go func() {
-			p.LogDebug("closing channel for session", "userID", userID, "connID", connID, "channelID", us.channelID)
+		if atomic.CompareAndSwapInt32(&us.wsClosed, 0, 1) {
+			p.LogDebug("closing ws channel for session", "userID", userID, "connID", connID, "channelID", us.channelID)
 			close(us.wsCloseCh)
-			<-us.doneCh
-			p.LogDebug("done, removing session", "userID", userID, "connID", connID, "channelID", us.channelID)
-			p.mut.Lock()
-			delete(p.sessions, connID)
-			p.mut.Unlock()
-		}()
+		} else {
+			p.LogError("ws channel already closed", "userID", userID, "connID", connID, "channelID", us.channelID)
+		}
 	}
 }
 
@@ -287,7 +284,13 @@ func (p *Plugin) wsReader(us *session, handlerID string) {
 				return
 			}
 			p.handleClientMsg(us, msg, handlerID)
+		case <-us.wsReconnectCh:
+			return
+		case <-us.leaveCh:
+			return
 		case <-us.wsCloseCh:
+			return
+		case <-us.rtcCloseCh:
 			return
 		}
 	}
@@ -330,6 +333,56 @@ func (p *Plugin) wsWriter() {
 	}
 }
 
+func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) error {
+	p.LogDebug("handleLeave", "userID", userID, "connID", connID, "channelID", channelID)
+
+	select {
+	case <-us.wsReconnectCh:
+		p.LogDebug("reconnected, returning", "userID", userID, "connID", connID, "channelID", channelID)
+		return nil
+	case <-us.leaveCh:
+		p.LogDebug("user left call", "userID", userID, "connID", connID, "channelID", us.channelID)
+	case <-us.rtcCloseCh:
+		p.LogDebug("rtc connection was closed", "userID", userID, "connID", connID, "channelID", us.channelID)
+		return nil
+	case <-time.After(wsReconnectionTimeout):
+		p.LogDebug("timeout waiting for reconnection", "userID", userID, "connID", connID, "channelID", channelID)
+	}
+
+	state, err := p.kvGetChannelState(channelID)
+	if err != nil {
+		return err
+	} else if state != nil && state.Call != nil && state.Call.ScreenSharingID == userID {
+		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}
+
+	handlerID, err := p.getHandlerID()
+	if err != nil {
+		p.LogError(err.Error())
+	}
+	if handlerID == "" && state != nil {
+		handlerID = state.NodeID
+	}
+
+	if err := p.closeRTCSession(userID, us.originalConnID, channelID, handlerID); err != nil {
+		p.LogError(err.Error())
+	}
+
+	if err := p.removeSession(us); err != nil {
+		p.LogError(err.Error())
+	}
+
+	if state != nil && state.Call != nil {
+		p.track(evCallUserLeft, map[string]interface{}{
+			"ParticipantID": userID,
+			"ChannelID":     channelID,
+			"CallID":        state.Call.ID,
+		})
+	}
+
+	return nil
+}
+
 func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
 
@@ -340,19 +393,9 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	if appErr != nil {
 		return appErr
 	}
-
-	p.mut.Lock()
-	if _, exists := p.sessions[connID]; exists {
-		p.mut.Unlock()
-		p.LogDebug("session already exists", "userID", userID, "connID", connID, "channelID", channelID)
-		return fmt.Errorf("session already exists")
+	if channel.DeleteAt > 0 {
+		return fmt.Errorf("cannot join call in archived channel")
 	}
-	us := newUserSession(userID, channelID, connID)
-	p.sessions[connID] = us
-	p.mut.Unlock()
-	defer func() {
-		close(us.doneCh)
-	}()
 
 	state, err := p.addUserSession(userID, connID, channel)
 	if err != nil {
@@ -382,6 +425,67 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
+	handlerID, err := p.getHandlerID()
+	if err != nil {
+		p.LogError(err.Error())
+	}
+	if handlerID == "" {
+		handlerID = state.NodeID
+	}
+	p.LogDebug("got handlerID", "handlerID", handlerID)
+
+	us := newUserSession(userID, channelID, connID, p.rtcdManager == nil && handlerID == p.nodeID)
+	p.mut.Lock()
+	p.sessions[connID] = us
+	p.mut.Unlock()
+	defer func() {
+		if err := p.handleLeave(us, userID, connID, channelID); err != nil {
+			p.LogError(err.Error())
+		}
+	}()
+
+	if p.rtcdManager != nil {
+		msg := rtcd.ClientMessage{
+			Type: rtcd.ClientMessageJoin,
+			Data: map[string]string{
+				"callID":    channelID,
+				"userID":    userID,
+				"sessionID": connID,
+			},
+		}
+		if err := p.rtcdManager.Send(msg, channelID); err != nil {
+			return fmt.Errorf("failed to send client join message: %w", err)
+		}
+	} else {
+		if handlerID == p.nodeID {
+			cfg := rtc.SessionConfig{
+				GroupID:   "default",
+				CallID:    channelID,
+				UserID:    userID,
+				SessionID: connID,
+			}
+			p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID)
+			if err = p.rtcServer.InitSession(cfg, func() error {
+				if atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
+					close(us.rtcCloseCh)
+					return p.removeSession(us)
+				}
+				return nil
+			}); err != nil {
+				return fmt.Errorf("failed to init session: %w", err)
+			}
+		} else {
+			if err := p.sendClusterMessage(clusterMessage{
+				ConnID:    connID,
+				UserID:    userID,
+				ChannelID: channelID,
+				SenderID:  p.nodeID,
+			}, clusterMessageTypeConnect, handlerID); err != nil {
+				return fmt.Errorf("failed to send connect message: %w", err)
+			}
+		}
+	}
+
 	// send successful join response
 	p.metrics.IncWebSocketEvent("out", "join")
 	p.API.PublishWebSocketEvent(wsEventJoin, map[string]interface{}{
@@ -399,105 +503,82 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 		"CallID":        state.Call.ID,
 	})
 
-	handlerID, err := p.getHandlerID()
-	p.LogDebug("got handlerID", "handlerID", handlerID)
-	if err != nil {
-		p.LogError(err.Error())
-	}
-	if handlerID == "" {
-		handlerID = state.NodeID
+	p.wsReader(us, handlerID)
+
+	return nil
+}
+
+func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prevConnID string) error {
+	p.LogDebug("handleReconnect", "userID", userID, "connID", connID, "channelID", channelID,
+		"originalConnID", originalConnID, "prevConnID", prevConnID)
+
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+		return fmt.Errorf("forbidden")
 	}
 
-	var wg sync.WaitGroup
+	state, err := p.kvGetChannelState(channelID)
+	if err != nil {
+		return err
+	} else if state == nil || state.Call == nil {
+		return fmt.Errorf("call state not found")
+	} else if _, ok := state.Call.Sessions[originalConnID]; !ok {
+		return fmt.Errorf("session not found in call state")
+	}
+
+	var rtc bool
+	p.mut.Lock()
+	us := p.sessions[connID]
+	if us != nil {
+		rtc = us.rtc
+		if atomic.CompareAndSwapInt32(&us.wsReconnected, 0, 1) {
+			p.LogDebug("closing reconnectCh", "userID", userID, "connID", connID, "channelID", channelID,
+				"originalConnID", originalConnID)
+			close(us.wsReconnectCh)
+		} else {
+			p.mut.Unlock()
+			return fmt.Errorf("session already reconnected")
+		}
+	} else {
+		p.LogDebug("session not found", "connID", connID)
+	}
+
+	us = newUserSession(userID, channelID, connID, rtc)
+	us.originalConnID = originalConnID
+	p.sessions[connID] = us
+	p.mut.Unlock()
+
+	if err := p.sendClusterMessage(clusterMessage{
+		ConnID:   prevConnID,
+		UserID:   userID,
+		SenderID: p.nodeID,
+	}, clusterMessageTypeReconnect, ""); err != nil {
+		p.LogError(err.Error())
+	}
+
 	if p.rtcdManager != nil {
 		msg := rtcd.ClientMessage{
-			Type: rtcd.ClientMessageJoin,
+			Type: rtcd.ClientMessageReconnect,
 			Data: map[string]string{
-				"callID":    channelID,
-				"userID":    userID,
-				"sessionID": connID,
+				"sessionID": originalConnID,
 			},
 		}
 		if err := p.rtcdManager.Send(msg, channelID); err != nil {
-			p.LogError(fmt.Errorf("failed to send client message: %w", err).Error())
-		}
-	} else {
-		if handlerID == p.nodeID {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				cfg := rtc.SessionConfig{
-					GroupID:   "default",
-					CallID:    channelID,
-					UserID:    userID,
-					SessionID: connID,
-				}
-				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID)
-				if err = p.rtcServer.InitSession(cfg, nil); err != nil {
-					p.LogError(err.Error(), "connID", connID)
-				}
-			}()
-		} else {
-			if err := p.sendClusterMessage(clusterMessage{
-				ConnID:    connID,
-				UserID:    userID,
-				ChannelID: channelID,
-				SenderID:  p.nodeID,
-			}, clusterMessageTypeConnect, handlerID); err != nil {
-				p.LogError(err.Error())
-			}
+			return fmt.Errorf("failed to send client reconnect message: %w", err)
 		}
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		p.wsReader(us, handlerID)
-	}()
-
-	select {
-	case <-p.stopCh:
-		p.LogDebug("stop received, exiting")
-	case <-us.wsCloseCh:
-		p.LogDebug("done", "userID", userID, "connID", connID, "channelID", channelID)
-	}
-
-	if state, err := p.kvGetChannelState(channelID); err != nil {
-		p.LogError(err.Error())
-	} else if state != nil && state.Call != nil && state.Call.ScreenSharingID == userID {
-		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-	}
-
-	if err := p.closeRTCSession(userID, connID, channelID, handlerID); err != nil {
+	handlerID, err := p.getHandlerID()
+	if err != nil {
 		p.LogError(err.Error())
 	}
+	if handlerID == "" && state != nil {
+		handlerID = state.NodeID
+	}
 
-	wg.Wait()
+	p.wsReader(us, handlerID)
 
-	p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
-		"userID": userID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-	p.track(evCallUserLeft, map[string]interface{}{
-		"ParticipantID": userID,
-		"ChannelID":     channelID,
-		"CallID":        state.Call.ID,
-	})
-
-	p.LogDebug("removing session from state", "userID", userID)
-	if currState, prevState, err := p.removeUserSession(userID, connID, channelID); err != nil {
+	if err := p.handleLeave(us, userID, connID, channelID); err != nil {
 		p.LogError(err.Error())
-	} else if currState.Call == nil && prevState.Call != nil {
-		// call has ended
-		if dur, err := p.updateCallThreadEnded(prevState.Call.ThreadID); err != nil {
-			p.LogError(err.Error())
-		} else {
-			p.track(evCallEnded, map[string]interface{}{
-				"ChannelID":    channelID,
-				"CallID":       prevState.Call.ID,
-				"Duration":     dur,
-				"Participants": prevState.Call.Stats.Participants,
-			})
-		}
 	}
 
 	return nil
@@ -511,7 +592,9 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	us := p.sessions[connID]
 	p.mut.RUnlock()
 
-	if msg.Type != clientMessageTypeJoin && us == nil {
+	if msg.Type != clientMessageTypeJoin &&
+		msg.Type != clientMessageTypeLeave &&
+		msg.Type != clientMessageTypeReconnect && us == nil {
 		return
 	}
 
@@ -527,12 +610,13 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("missing channelID")
 			return
 		}
+
 		// Title is optional, so if it's not present,
 		// it will be an empty string.
 		title, _ := req.Data["title"].(string)
 		go func() {
 			if err := p.handleJoin(userID, connID, channelID, title); err != nil {
-				p.LogError(err.Error())
+				p.LogError(err.Error(), "userID", userID, "connID", connID, "channelID", channelID)
 				p.metrics.IncWebSocketEvent("out", "error")
 				p.API.PublishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
@@ -541,6 +625,49 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 				return
 			}
 		}()
+		return
+	case clientMessageTypeReconnect:
+		p.metrics.IncWebSocketEvent("in", "reconnect")
+
+		channelID, _ := req.Data["channelID"].(string)
+		if channelID == "" {
+			p.LogError("missing channelID")
+			return
+		}
+		originalConnID, _ := req.Data["originalConnID"].(string)
+		if originalConnID == "" {
+			p.LogError("missing originalConnID")
+			return
+		}
+		prevConnID, _ := req.Data["prevConnID"].(string)
+		if prevConnID == "" {
+			p.LogError("missing prevConnID")
+			return
+		}
+
+		go func() {
+			if err := p.handleReconnect(userID, connID, channelID, originalConnID, prevConnID); err != nil {
+				p.LogError(err.Error(), "userID", userID, "connID", connID,
+					"originalConnID", originalConnID, "prevConnID", prevConnID, "channelID", channelID)
+			}
+		}()
+		return
+	case clientMessageTypeLeave:
+		p.metrics.IncWebSocketEvent("in", "leave")
+		p.LogDebug("leave message", "userID", userID, "connID", connID)
+
+		if us != nil && atomic.CompareAndSwapInt32(&us.left, 0, 1) {
+			close(us.leaveCh)
+		}
+
+		if err := p.sendClusterMessage(clusterMessage{
+			ConnID:   connID,
+			UserID:   userID,
+			SenderID: p.nodeID,
+		}, clusterMessageTypeLeave, ""); err != nil {
+			p.LogError(err.Error())
+		}
+
 		return
 	case clientMessageTypeSDP:
 		msgData, ok := req.Data["data"].([]byte)
@@ -572,6 +699,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 }
 
 func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID string) error {
+	p.LogDebug("closeRTCSession", "userID", userID, "connID", connID, "channelID", channelID)
 	if p.rtcServer != nil {
 		if handlerID == p.nodeID {
 			if err := p.rtcServer.CloseSession(connID); err != nil {

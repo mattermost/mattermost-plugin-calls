@@ -1,6 +1,7 @@
 import React from 'react';
 import axios from 'axios';
 
+import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
@@ -14,8 +15,10 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {displayFreeTrial, getCallsConfig} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 
+import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
+
 import {
-    isVoiceEnabled,
+    callsEnabled,
     connectedChannelID,
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
@@ -26,6 +29,8 @@ import {
     voiceChannelRootPost,
     allowEnableCalls,
     iceServers,
+    needsTURNCredentials,
+    shouldPlayJoinUserSound,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -60,12 +65,16 @@ import {
     isDMChannel,
     getUserIdFromDM,
     getWSConnectionURL,
+    playSound,
 } from './utils';
 import {logErr, logDebug} from './log';
+import {
+    JOIN_CALL,
+    keyToAction,
+} from './shortcuts';
 
 import {
-    VOICE_CHANNEL_ENABLE,
-    VOICE_CHANNEL_DISABLE,
+    RECEIVED_CHANNEL_STATE,
     VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_DISCONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED,
@@ -88,7 +97,6 @@ import {
     SHOW_END_CALL_MODAL,
 } from './action_types';
 
-// eslint-disable-next-line import/no-unresolved
 import {PluginRegistry, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
@@ -104,15 +112,17 @@ export default class Plugin {
     }
 
     private registerWebSocketEvents(registry: PluginRegistry, store: Store, followThread: (channelID: string, teamID: string) => Promise<void>) {
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (data) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (ev) => {
             store.dispatch({
-                type: VOICE_CHANNEL_ENABLE,
+                type: RECEIVED_CHANNEL_STATE,
+                data: {id: ev.broadcast.channel_id, enabled: true},
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_disable_voice`, (data) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_disable_voice`, (ev) => {
             store.dispatch({
-                type: VOICE_CHANNEL_DISABLE,
+                type: RECEIVED_CHANNEL_STATE,
+                data: {id: ev.broadcast.channel_id, enabled: false},
             });
         });
 
@@ -121,13 +131,11 @@ export default class Plugin {
             const channelID = ev.broadcast.channel_id;
             const currentUserID = getCurrentUserId(store.getState());
 
-            if (window.callsClient) {
+            if (window.callsClient?.channelID === channelID) {
                 if (userID === currentUserID) {
-                    const audio = new Audio(getPluginStaticPath() + JoinSelfSound);
-                    audio.play();
-                } else if (channelID === connectedChannelID(store.getState())) {
-                    const audio = new Audio(getPluginStaticPath() + JoinUserSound);
-                    audio.play();
+                    playSound(getPluginStaticPath() + JoinSelfSound);
+                } else if (shouldPlayJoinUserSound(store.getState())) {
+                    playSound(getPluginStaticPath() + JoinUserSound);
                 }
             }
 
@@ -286,6 +294,11 @@ export default class Plugin {
     }
 
     public async initialize(registry: PluginRegistry, store: Store): Promise<void> {
+        // Setting the base URL if present, in case MM is running under a subpath.
+        if (window.basename) {
+            Client4.setUrl(window.basename);
+        }
+
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
@@ -317,6 +330,10 @@ export default class Plugin {
             switch (subCmd) {
             case 'join':
             case 'start':
+                if (!callsEnabled(store.getState(), args.channel_id)) {
+                    return {error: {message: 'Cannot start or join call: calls are disabled in this channel.'}};
+                }
+
                 if (subCmd === 'start') {
                     if (voiceConnectedUsersInChannel(store.getState(), args.channel_id).length > 0) {
                         return {error: {message: 'A call is already ongoing in the channel.'}};
@@ -369,21 +386,38 @@ export default class Plugin {
                     window.localStorage.removeItem('calls_experimental_features');
                 }
                 break;
-            case 'stats':
-                if (!window.callsClient) {
-                    return {error: {message: 'You\'re not connected to any call'}};
+            case 'stats': {
+                if (window.callsClient) {
+                    try {
+                        const stats = await window.callsClient.getStats();
+                        return {message: `/call stats ${btoa(JSON.stringify(stats))}`, args};
+                    } catch (err) {
+                        return {error: {message: err}};
+                    }
                 }
-                try {
-                    const stats = await window.callsClient.getStats();
-                    logDebug(JSON.stringify(stats, null, 2));
-                    return {message: `/call stats "${JSON.stringify(stats)}"`, args};
-                } catch (err) {
-                    return {error: {message: err}};
-                }
+                const data = sessionStorage.getItem('calls_client_stats') || '{}';
+                return {message: `/call stats ${btoa(data)}`, args};
+            }
             }
 
             return {message, args};
         });
+
+        const joinCall = (channelID: string, teamID: string) => {
+            if (!connectedChannelID(store.getState())) {
+                connectCall(channelID);
+
+                // following the thread only on join. On call start
+                // this is done in the call_start ws event handler.
+                if (voiceConnectedUsersInChannel(store.getState(), channelID).length > 0) {
+                    followThread(channelID, teamID);
+                }
+            } else if (connectedChannelID(store.getState()) !== channelID) {
+                store.dispatch({
+                    type: SHOW_SWITCH_CALL_MODAL,
+                });
+            }
+        };
 
         let channelHeaderMenuButtonID: string;
         const unregisterChannelHeaderMenuButton = () => {
@@ -427,19 +461,7 @@ export default class Plugin {
                         return;
                     }
 
-                    if (!connectedChannelID(store.getState())) {
-                        connectCall(channel.id);
-
-                        // following the thread only on join. On call start
-                        // this is done in the call_start ws event handler.
-                        if (voiceConnectedUsersInChannel(store.getState(), channel.id).length > 0) {
-                            followThread(channel.id, channel.team_id);
-                        }
-                    } else if (connectedChannelID(store.getState()) !== channel.id) {
-                        store.dispatch({
-                            type: SHOW_SWITCH_CALL_MODAL,
-                        });
-                    }
+                    joinCall(channel.id, channel.team_id);
                 },
             );
         };
@@ -455,6 +477,8 @@ export default class Plugin {
 
         registerChannelHeaderMenuButton();
 
+        registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
+
         const connectCall = async (channelID: string, title?: string) => {
             try {
                 if (window.callsClient) {
@@ -462,9 +486,20 @@ export default class Plugin {
                     return;
                 }
 
+                const iceConfigs = [...iceServers(store.getState())];
+                if (needsTURNCredentials(store.getState())) {
+                    logDebug('turn credentials needed');
+                    try {
+                        const resp = await axios.get(`${getPluginPath()}/turn-credentials`);
+                        iceConfigs.push(...resp.data);
+                    } catch (err) {
+                        logErr(err);
+                    }
+                }
+
                 window.callsClient = new CallsClient({
                     wsURL: getWSConnectionURL(getConfig(store.getState())),
-                    iceServers: iceServers(store.getState()),
+                    iceServers: iceConfigs,
                 });
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
@@ -474,9 +509,7 @@ export default class Plugin {
                     if (window.callsClient) {
                         window.callsClient.destroy();
                         delete window.callsClient;
-                        const sound = getPluginStaticPath() + LeaveSelfSound;
-                        const audio = new Audio(sound);
-                        audio.play();
+                        playSound(getPluginStaticPath() + LeaveSelfSound);
                     }
                 });
 
@@ -510,10 +543,11 @@ export default class Plugin {
                 async (channelID) => {
                     try {
                         const resp = await axios.post(`${getPluginPath()}/${currChannelId}`,
-                            {enabled: !isVoiceEnabled(store.getState())},
+                            {enabled: !callsEnabled(store.getState(), currChannelId)},
                             {headers: {'X-Requested-With': 'XMLHttpRequest'}});
                         store.dispatch({
-                            type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
+                            type: RECEIVED_CHANNEL_STATE,
+                            data: {id: currChannelId, enabled: resp.data.enabled},
                         });
                     } catch (err) {
                         logErr(err);
@@ -587,7 +621,8 @@ export default class Plugin {
             try {
                 const resp = await axios.get(`${getPluginPath()}/${channelID}`);
                 store.dispatch({
-                    type: resp.data.enabled ? VOICE_CHANNEL_ENABLE : VOICE_CHANNEL_DISABLE,
+                    type: RECEIVED_CHANNEL_STATE,
+                    data: {id: channelID, enabled: resp.data.enabled},
                 });
                 store.dispatch({
                     type: VOICE_CHANNEL_USERS_CONNECTED,
@@ -641,7 +676,8 @@ export default class Plugin {
             } catch (err) {
                 logErr(err);
                 store.dispatch({
-                    type: VOICE_CHANNEL_DISABLE,
+                    type: RECEIVED_CHANNEL_STATE,
+                    data: {id: channelID, enabled: false},
                 });
             }
         };
@@ -719,6 +755,20 @@ export default class Plugin {
                 joinCallParam = '';
             }
         }));
+
+        const handleKBShortcuts = (ev: KeyboardEvent) => {
+            switch (keyToAction('global', ev)) {
+            case JOIN_CALL:
+                // We don't allow joining a new call from the pop-out window.
+                if (!window.opener) {
+                    joinCall(getCurrentChannelId(store.getState()), getCurrentTeamId(store.getState()));
+                }
+                break;
+            }
+        };
+
+        document.addEventListener('keydown', handleKBShortcuts, true);
+        this.unsubscribers.push(() => document.removeEventListener('keydown', handleKBShortcuts, true));
     }
 
     uninitialize() {

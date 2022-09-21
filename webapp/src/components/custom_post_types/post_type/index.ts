@@ -9,7 +9,7 @@ import {
     voiceConnectedChannels,
     voiceConnectedProfilesInChannel,
     connectedChannelID,
-    isCloudProfessionalOrEnterprise,
+    isCloudProfessionalOrEnterpriseOrTrial,
     maxParticipants,
 } from 'src/selectors';
 import {showNextStepsModal, showSwitchCallModal} from 'src/actions';
@@ -39,7 +39,7 @@ const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
         connectedID: connectedChannelID(state) || '',
         pictures,
         profiles,
-        isCloudPaid: isCloudProfessionalOrEnterprise(state),
+        isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),
         maxParticipants: maxParticipants(state),
     };
 };

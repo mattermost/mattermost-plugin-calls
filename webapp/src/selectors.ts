@@ -1,18 +1,19 @@
+import {getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {GlobalState} from '@mattermost/types/store';
+
+import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {createSelector} from 'reselect';
 
-import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import {LicenseSkus} from '@mattermost/types/general';
 
 import {getUsers} from 'mattermost-redux/selectors/entities/common';
-import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {sortByUsername} from 'mattermost-redux/utils/user_utils';
-import {getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 
 import {isDMChannel} from 'src/utils';
 
-import {CallsConfig} from 'src/types/types';
+import {CallsConfig, CallsUserPreferences} from 'src/types/types';
 import {ChecklistItemsFilterDefault, ChecklistItemsFilter, emptyChecklist, Checklist} from 'src/types/checklist';
 
 import {pluginId} from './manifest';
@@ -20,7 +21,6 @@ import {pluginId} from './manifest';
 //@ts-ignore GlobalState is not complete
 const getPluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
 
-export const isVoiceEnabled = (state: GlobalState) => getPluginState(state).isVoiceEnabled;
 export const voiceConnectedChannels = (state: GlobalState) => getPluginState(state).voiceConnectedChannels;
 export const voiceConnectedUsers = (state: GlobalState) => {
     const currentChannelID = getCurrentChannelId(state);
@@ -46,6 +46,13 @@ export const voiceConnectedUsersInChannel = (state: GlobalState, channelID: stri
 };
 
 export const connectedChannelID = (state: GlobalState) => getPluginState(state).connectedChannelID;
+
+const numUsersInConnectedChannel: (state: GlobalState) => number = createSelector(
+    'numUsersInConnectedChannel',
+    connectedChannelID,
+    voiceConnectedChannels,
+    (channelID, channels) => channels[channelID]?.length || 0,
+);
 
 export const voiceConnectedProfiles = (state: GlobalState) => {
     if (!getPluginState(state).voiceConnectedProfiles) {
@@ -101,10 +108,10 @@ const callsConfig = (state: GlobalState): CallsConfig => {
     return getPluginState(state).callsConfig;
 };
 
-export const iceServers: (state: GlobalState) => string[] = createSelector(
+export const iceServers: (state: GlobalState) => RTCIceServer[] = createSelector(
     'iceServers',
     callsConfig,
-    (config) => config.ICEServers,
+    (config) => config.ICEServersConfigs || [],
 );
 
 export const allowEnableCalls: (state: GlobalState) => boolean = createSelector(
@@ -117,6 +124,12 @@ export const maxParticipants: (state: GlobalState) => number = createSelector(
     'maxParticipants',
     callsConfig,
     (config) => config.MaxCallParticipants,
+);
+
+export const needsTURNCredentials: (state: GlobalState) => boolean = createSelector(
+    'maxParticipants',
+    callsConfig,
+    (config) => config.NeedsTURNCredentials,
 );
 
 export const isLimitRestricted: (state: GlobalState) => boolean = createSelector(
@@ -166,21 +179,6 @@ export const isCloudEnterprise: (state: GlobalState) => boolean = createSelector
     (cloud, sku) => cloud && sku === LicenseSkus.Enterprise,
 );
 
-export const isCloudProfessionalOrEnterprise: (state: GlobalState) => boolean = createSelector(
-    'isCloudProfessionalOrEnterprise',
-    isCloudProfessional,
-    isCloudEnterprise,
-    (isProf, isEnt) => isProf || isEnt,
-);
-
-// isCloudFeatureRestricted means: are you restricted from making a call because of your subscription?
-export const isCloudFeatureRestricted: (state: GlobalState) => boolean = createSelector(
-    'isCloudFeatureRestricted',
-    isCloudStarter,
-    getCurrentChannel,
-    (isStarter, channel) => isStarter && !isDMChannel(channel),
-);
-
 const getSubscription = (state: GlobalState) => {
     return state.entities.cloud.subscription;
 };
@@ -191,6 +189,23 @@ export const isCloudTrial: (state: GlobalState) => boolean = createSelector(
     (subscription) => {
         return subscription?.is_free_trial === 'true';
     },
+);
+
+export const isCloudProfessionalOrEnterpriseOrTrial: (state: GlobalState) => boolean = createSelector(
+    'isCloudProfessionalOrEnterprise',
+    isCloudProfessional,
+    isCloudEnterprise,
+    isCloudTrial,
+    (isProf, isEnt, isTrial) => isProf || isEnt || isTrial,
+);
+
+// isCloudFeatureRestricted means: are you restricted from making a call because of your subscription?
+export const isCloudFeatureRestricted: (state: GlobalState) => boolean = createSelector(
+    'isCloudFeatureRestricted',
+    isCloudStarter,
+    isCloudTrial,
+    getCurrentChannel,
+    (isStarter, isTrial, channel) => isStarter && !isTrial && !isDMChannel(channel),
 );
 
 export const isCloudTrialCompleted: (state: GlobalState) => boolean = createSelector(
@@ -208,6 +223,35 @@ export const isCloudTrialNeverStarted: (state: GlobalState) => boolean = createS
         return subscription?.trial_end_at === 0;
     },
 );
+
+export const channelState = (state: GlobalState, channelID: string) => getPluginState(state).channelState[channelID];
+
+export const callsEnabled = (state: GlobalState, channelID: string) => Boolean(channelState(state, channelID)?.enabled);
+
+export const callsUserPreferences = (state: GlobalState): CallsUserPreferences => {
+    return getPluginState(state).callsUserPreferences;
+};
+
+export const shouldPlayJoinUserSound: (state: GlobalState) => boolean = createSelector(
+    'shouldPlayJoinUserSound',
+    numUsersInConnectedChannel,
+    callsUserPreferences,
+    (numUsers, preferences) => {
+        return numUsers < preferences.joinSoundParticipantsThreshold;
+    },
+);
+
+export const isOnPremNotEnterprise: (state: GlobalState) => boolean = createSelector(
+    'isOnPremNotEnterprise',
+    isCloud,
+    getLicense,
+    (cloud, license) => {
+        const enterprise = license.SkuShortName === LicenseSkus.E20 || license.SkuShortName === LicenseSkus.Enterprise;
+        return !cloud && !enterprise;
+    },
+);
+
+export const adminStats = (state: GlobalState) => state.entities.admin.analytics;
 
 export const currentChecklistItemsFilter = (state: GlobalState): ChecklistItemsFilter => {
     const channelId = getCurrentChannelId(state);

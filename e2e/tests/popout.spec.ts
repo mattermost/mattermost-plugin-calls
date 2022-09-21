@@ -6,7 +6,7 @@ import {userState} from '../constants';
 test.describe('popout window', () => {
     test.use({storageState: userState.users[4].storageStatePath});
 
-    test('popout opens unmuted', async ({page, context}) => {
+    test('popout opens muted', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
         await devPage.startCall();
@@ -20,9 +20,8 @@ test.describe('popout window', () => {
         expect(await popOut.locator('#calls-expanded-view-controls').screenshot()).toMatchSnapshot('expanded-view-controls.png');
         await expect(popOut.locator('#calls-popout-mute-button')).toBeVisible();
         const text = await popOut.textContent('#calls-popout-mute-button');
-        expect(text).toBe('Unmute');
 
-        await devPage.leaveCall();
+        await popOut.locator('.button-leave').click();
     });
 
     test('window title matches', async ({page, context}) => {
@@ -39,7 +38,7 @@ test.describe('popout window', () => {
         await expect(popOut).toHaveTitle(`Call - calls${idx}`);
         await expect(page).not.toHaveTitle(`Call - calls${idx}`);
 
-        await devPage.leaveCall();
+        await popOut.locator('.button-leave').click();
     });
 });
 

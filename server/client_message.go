@@ -9,11 +9,13 @@ import (
 
 type clientMessage struct {
 	Type string          `json:"type"`
-	Data json.RawMessage `json:"data"`
+	Data json.RawMessage `json:"data,omitempty"`
 }
 
 const (
 	clientMessageTypeJoin        = "join"
+	clientMessageTypeLeave       = "leave"
+	clientMessageTypeReconnect   = "reconnect"
 	clientMessageTypeSDP         = "sdp"
 	clientMessageTypeICE         = "ice"
 	clientMessageTypeMute        = "mute"

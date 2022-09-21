@@ -1,0 +1,4 @@
+include:
+  - project: qa/calls-e2e-testing
+    ref: main
+    file: private.yml

@@ -1,28 +1,32 @@
 import {connect} from 'react-redux';
 import {GlobalState} from '@mattermost/types/store';
 
-import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
 
 import {
     voiceConnectedUsers,
     connectedChannelID,
-    isVoiceEnabled,
+    callsEnabled,
     isCloudFeatureRestricted,
-    isCloudProfessionalOrEnterprise,
+    isCloudProfessionalOrEnterpriseOrTrial,
     isLimitRestricted,
     maxParticipants,
 } from 'src/selectors';
 
 import ChannelHeaderButton from './component';
 
-const mapStateToProps = (state: GlobalState) => ({
-    show: isVoiceEnabled(state),
-    inCall: Boolean(connectedChannelID(state) && connectedChannelID(state) === getCurrentChannelId(state)),
-    hasCall: voiceConnectedUsers(state).length > 0,
-    isCloudFeatureRestricted: isCloudFeatureRestricted(state),
-    isCloudPaid: isCloudProfessionalOrEnterprise(state),
-    isLimitRestricted: isLimitRestricted(state),
-    maxParticipants: maxParticipants(state),
-});
+const mapStateToProps = (state: GlobalState) => {
+    const channel = getCurrentChannel(state);
+    return {
+        show: callsEnabled(state, channel?.id),
+        inCall: Boolean(connectedChannelID(state) && connectedChannelID(state) === channel?.id),
+        hasCall: voiceConnectedUsers(state).length > 0,
+        isCloudFeatureRestricted: isCloudFeatureRestricted(state),
+        isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),
+        isLimitRestricted: isLimitRestricted(state),
+        maxParticipants: maxParticipants(state),
+        isChannelArchived: channel?.delete_at > 0,
+    };
+};
 
 export default connect(mapStateToProps)(ChannelHeaderButton);

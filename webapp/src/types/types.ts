@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 export type UserState = {
     voice: boolean;
     unmuted: boolean;
@@ -56,21 +59,54 @@ export type RTCRemoteOutboundStats = {
 
 export type CallsConfig = {
     ICEServers: string[],
+    ICEServersConfigs: RTCIceServer[],
     AllowEnableCalls: boolean,
     DefaultEnabled: boolean,
     MaxCallParticipants: number,
+    NeedsTURNCredentials: boolean,
     sku_short_name: string,
 }
 
 export const CallsConfigDefault = {
     ICEServers: [],
+    ICEServersConfigs: [],
     AllowEnableCalls: false,
     DefaultEnabled: false,
     MaxCallParticipants: 0,
+    NeedsTURNCredentials: false,
     sku_short_name: '',
 } as CallsConfig;
 
 export type CallsClientConfig = {
     wsURL: string,
-    iceServers: string[],
+    iceServers: RTCIceServer[],
 }
+
+export type AudioDevices = {
+    inputs: MediaDeviceInfo[],
+    outputs: MediaDeviceInfo[],
+}
+
+export type TrackInfo = {
+    id: string,
+    streamID: string,
+    kind: string,
+    label: string,
+    enabled: boolean,
+    readyState: MediaStreamTrackState,
+}
+
+export type CallsClientStats = {
+    initTime: number,
+    callID: string,
+    tracksInfo: TrackInfo[],
+    rtcStats: RTCStats | null,
+}
+
+export type CallsUserPreferences = {
+    joinSoundParticipantsThreshold: number,
+}
+
+export const CallsUserPreferencesDefault = {
+    joinSoundParticipantsThreshold: 8,
+};

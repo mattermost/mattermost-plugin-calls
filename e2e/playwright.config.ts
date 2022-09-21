@@ -9,7 +9,9 @@ const config: PlaywrightTestConfig = {
     timeout: 60 * 1000,
     expect: {
         timeout: 30 * 1000,
-        toMatchSnapshot: {threshold: 0.2},
+        toMatchSnapshot: {
+            maxDiffPixelRatio: 0.05,
+        },
     },
     reportSlowTests: {
         max: 5,
@@ -25,7 +27,17 @@ const config: PlaywrightTestConfig = {
             ],
         },
     },
-    projects: [
+    projects: process.env.CI ? [
+        {
+            name: 'chromium',
+            use: {
+                ...devices['Desktop Chrome'],
+            },
+        },
+        {
+            name: 'webkit',
+        },
+    ] : [
         {
             name: 'chromium',
             use: {
@@ -33,5 +45,10 @@ const config: PlaywrightTestConfig = {
             },
         },
     ],
+    reporter: process.env.CI ? [
+        ['html', {open: 'never'}],
+        ['json', {outputFile: 'pw-results.json'}],
+        ['list'],
+    ] : 'list',
 };
 export default config;
