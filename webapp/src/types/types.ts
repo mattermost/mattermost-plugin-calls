@@ -5,7 +5,7 @@ export type UserState = {
     voice: boolean;
     unmuted: boolean;
     raised_hand: number;
-    reaction: {emoji: string, timestamp: number};
+    reaction?: {emoji: string, timestamp: number};
 }
 
 export type RTCStats = {
