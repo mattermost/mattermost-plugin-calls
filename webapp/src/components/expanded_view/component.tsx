@@ -5,6 +5,8 @@ import React, {CSSProperties} from 'react';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
+import {Client4} from 'mattermost-redux/client';
+
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 
@@ -51,6 +53,7 @@ interface Props {
     callStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
+    getEmoji: (emojiId: string) => void,
     screenSharingID: string,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
@@ -143,6 +146,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
+
+    getEmoji = async (emojiID: string) => {
+        return Client4.getEmojiRoute(emojiID) + '/image';
+    }
+
     onMuteToggle = () => {
         if (this.pushToTalk) {
             return;
@@ -227,6 +235,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     public componentDidMount() {
+        console.log(this.getEmoji('Smiley'));
         // keyboard shortcuts
         window.addEventListener('keydown', this.handleKBShortcuts, true);
         window.addEventListener('keyup', this.handleKeyUp, true);
@@ -362,6 +371,38 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             }}
                         >
                             {'✋'}
+                        </div>
+                        <div
+                            style={{
+                                position: 'absolute',
+                                display: !isHandRaised ? 'flex' : 'none',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                top: -5,
+                                right: -10,
+                                background: 'rgba(37, 38, 42, 1)',
+                                borderRadius: '30px',
+                                width: '28px',
+                                height: '28px'
+                            }}
+                        >
+                        </div>
+                        <div
+                            style={{
+                                position: 'absolute',
+                                display: !isHandRaised ? 'flex' : 'none',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                top: -5,
+                                right: -10,
+                                background: 'rgba(50, 50, 50, 1)',
+                                borderRadius: '30px',
+                                width: '25px',
+                                height: '25px',
+                                fontSize: '12px',
+                            }}
+                        >
+                            {'🎉'}
                         </div>
                     </div>
 
