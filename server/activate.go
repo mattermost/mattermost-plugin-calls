@@ -171,7 +171,6 @@ func (p *Plugin) OnActivate() error {
 	siteUrl := p.pluginAPI.Configuration.GetConfig().ServiceSettings.SiteURL
 	url := *siteUrl + "/plugins/focalboard"
 
-	//client := fbClient.NewClient("http://localhost:8065/plugins/focalboard", token)
 	p.fbStore = NewFocalboardStore(p.API, url)
 
 	p.LogDebug("activated", "ClusterID", status.ClusterId)

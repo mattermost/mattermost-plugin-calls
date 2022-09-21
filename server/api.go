@@ -6,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/pprof"
 	"regexp"
@@ -489,7 +490,7 @@ func (p *Plugin) handleGetAgenda(w http.ResponseWriter, r *http.Request, channel
 		Items: []*AgendaItem{},
 	}
 
-	blocks, err := p.fbStore.GetUpnextCards(channelID)
+	blocks, err := p.fbStore.GetUpnextCards(userID, channelID)
 	if err != nil {
 		http.Error(w, "unable to get cards for agenda", http.StatusInternalServerError)
 		return
@@ -537,7 +538,7 @@ func (p *Plugin) handleUpdateAgendaItem(w http.ResponseWriter, r *http.Request, 
 		status = StatusUpNext
 	}
 
-	err = p.fbStore.UpdateCardStatus(item.ID, channelID, status)
+	err = p.fbStore.UpdateCardStatus(userID, item.ID, channelID, status)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

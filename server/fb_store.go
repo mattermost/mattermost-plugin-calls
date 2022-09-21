@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 
+	fbClient "github.com/mattermost/focalboard/server/client"
 	fbModel "github.com/mattermost/focalboard/server/model"
 	"github.com/pkg/errors"
 
@@ -24,8 +25,8 @@ const (
 type FocalboardStore interface {
 	GetBoard(channelID string, creatorUserID string) (*fbModel.Board, error)
 	AddCard(userID string, channelID string, title string) (*fbModel.Block, error)
-	GetUpnextCards(channelID string) ([]fbModel.Block, error)
-	UpdateCardStatus(cardID, channelID, status string) error
+	GetUpnextCards(userID string, channelID string) ([]fbModel.Block, error)
+	UpdateCardStatus(userID string, cardID, channelID, status string) error
 }
 
 type focalboardStore struct {
@@ -38,6 +39,18 @@ func NewFocalboardStore(api plugin.API, url string) FocalboardStore {
 		api: api,
 		url: url,
 	}
+}
+
+func (l *focalboardStore) getClient(userId string) (*fbClient.Client, error) {
+	accessToken, appErr := l.api.CreateUserAccessToken(&model.UserAccessToken{
+		UserId:      userId,
+		Description: "For calls plugin access to focalboard REST API"})
+
+	if appErr != nil {
+		return nil, errors.Wrap(appErr, "failed to create access token for user")
+	}
+
+	return fbClient.NewClient(l.url, accessToken.Token), nil
 }
 
 func channelToBoardKey(channelID string) string {
@@ -111,6 +124,11 @@ func (l *focalboardStore) GetBoard(channelID string, creatorUserID string) (*fbM
 
 func (l *focalboardStore) getOrCreateBoardForChannel(channelID string, creatorUserID string) (*fbModel.Board, error) {
 	boardID, err := l.getBoardIDForChannel(channelID)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := l.getClient(creatorUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +238,7 @@ func (l *focalboardStore) getOrCreateBoardForChannel(channelID string, creatorUs
 
 		boardsAndBlocks := &fbModel.BoardsAndBlocks{Boards: []*fbModel.Board{board}, Blocks: []fbModel.Block{block}}
 
-		boardsAndBlocks, resp := l.client.CreateBoardsAndBlocks(boardsAndBlocks)
+		boardsAndBlocks, resp := client.CreateBoardsAndBlocks(boardsAndBlocks)
 		if resp.Error != nil {
 			fmt.Println(resp.StatusCode)
 			return nil, errors.Wrap(resp.Error, "unable to create board")
@@ -241,7 +259,7 @@ func (l *focalboardStore) getOrCreateBoardForChannel(channelID string, creatorUs
 			SchemeAdmin: true,
 		}
 
-		_, resp = l.client.AddMemberToBoard(member)
+		_, resp = client.AddMemberToBoard(member)
 		if resp.Error != nil {
 			return nil, errors.Wrap(resp.Error, "unable to add user to board")
 		}
@@ -254,7 +272,7 @@ func (l *focalboardStore) getOrCreateBoardForChannel(channelID string, creatorUs
 		return board, nil
 	}
 
-	board, resp := l.client.GetBoard(boardID, "")
+	board, resp := client.GetBoard(boardID, "")
 	if resp.Error != nil {
 		return nil, errors.Wrap(resp.Error, "unable to get board by id")
 	}
@@ -262,7 +280,7 @@ func (l *focalboardStore) getOrCreateBoardForChannel(channelID string, creatorUs
 	return board, nil
 }
 
-func (l *focalboardStore) getBoardForChannel(channelID string) (*fbModel.Board, error) {
+func (l *focalboardStore) getBoardForChannel(userID, channelID string) (*fbModel.Board, error) {
 	boardID, err := l.getBoardIDForChannel(channelID)
 	if err != nil {
 		return nil, err
@@ -272,7 +290,12 @@ func (l *focalboardStore) getBoardForChannel(channelID string) (*fbModel.Board, 
 		return nil, nil
 	}
 
-	board, resp := l.client.GetBoard(boardID, "")
+	client, err := l.getClient(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	board, resp := client.GetBoard(boardID, "")
 	if resp.Error != nil {
 		return nil, errors.Wrap(resp.Error, "unable to get board by id")
 	}
@@ -280,8 +303,13 @@ func (l *focalboardStore) getBoardForChannel(channelID string) (*fbModel.Board, 
 	return board, nil
 }
 
-func (l *focalboardStore) getBlock(boardID, blockID string) (*fbModel.Block, error) {
-	blocks, resp := l.client.GetAllBlocksForBoard(boardID)
+func (l *focalboardStore) getBlock(userID, boardID, blockID string) (*fbModel.Block, error) {
+	client, err := l.getClient(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	blocks, resp := client.GetAllBlocksForBoard(boardID)
 	if resp.Error != nil {
 		return nil, errors.Wrap(resp.Error, "unable to get blocks")
 	}
@@ -337,7 +365,12 @@ func (l *focalboardStore) AddCard(userID string, channelID string, title string)
 		DeleteAt: 0,
 	}
 
-	blocks, resp := l.client.InsertBlocks(board.ID, []fbModel.Block{card})
+	client, err := l.getClient(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	blocks, resp := client.InsertBlocks(board.ID, []fbModel.Block{card}, false)
 	if resp.Error != nil {
 		return nil, resp.Error
 	}
@@ -349,8 +382,13 @@ func (l *focalboardStore) AddCard(userID string, channelID string, title string)
 	return &blocks[0], nil
 }
 
-func (l *focalboardStore) GetUpnextCards(channelID string) ([]fbModel.Block, error) {
-	board, err := l.getBoardForChannel(channelID)
+func (l *focalboardStore) GetUpnextCards(userID, channelID string) ([]fbModel.Block, error) {
+	client, err := l.getClient(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	board, err := l.getBoardForChannel(userID, channelID)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +397,7 @@ func (l *focalboardStore) GetUpnextCards(channelID string) ([]fbModel.Block, err
 		return nil, nil
 	}
 
-	blocks, resp := l.client.GetAllBlocksForBoard(board.ID)
+	blocks, resp := client.GetAllBlocksForBoard(board.ID)
 	if resp.Error != nil {
 		return nil, errors.Wrap(resp.Error, "unable to get blocks for board")
 	}
@@ -408,8 +446,8 @@ func (l *focalboardStore) GetUpnextCards(channelID string) ([]fbModel.Block, err
 	return upNextCards, nil
 }
 
-func (l *focalboardStore) UpdateCardStatus(cardID, channelID, status string) error {
-	board, err := l.getBoardForChannel(channelID)
+func (l *focalboardStore) UpdateCardStatus(userID, cardID, channelID, status string) error {
+	board, err := l.getBoardForChannel(userID, channelID)
 	if err != nil {
 		return errors.Wrap(err, "unable to get board")
 	}
@@ -418,7 +456,7 @@ func (l *focalboardStore) UpdateCardStatus(cardID, channelID, status string) err
 		return errors.New("unable to find board")
 	}
 
-	block, err := l.getBlock(board.ID, cardID)
+	block, err := l.getBlock(userID, board.ID, cardID)
 	if err != nil {
 		return errors.Wrap(err, "unable to get block to update status")
 	}
@@ -450,7 +488,12 @@ func (l *focalboardStore) UpdateCardStatus(cardID, channelID, status string) err
 		},
 	}
 
-	_, resp := l.client.PatchBlock(board.ID, block.ID, patch)
+	client, err := l.getClient(userID)
+	if err != nil {
+		return err
+	}
+
+	_, resp := client.PatchBlock(board.ID, block.ID, patch, false)
 	if resp.Error != nil {
 		return errors.Wrap(err, "unable to patch block")
 	}
