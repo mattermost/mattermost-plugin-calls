@@ -113,7 +113,7 @@ export const CallsUserPreferencesDefault = {
 };
 
 export type EmojiData = {
-    id: string;
+    name: string;
     skin?: string;
     unified: string;
 }

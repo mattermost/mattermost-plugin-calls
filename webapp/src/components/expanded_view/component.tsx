@@ -122,7 +122,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const emojiData = {
             name: ev.id,
             skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : undefined,
-            unified: ev.unified,
+            unified: ev.unified.toUpperCase(),
         };
         callsClient.sendUserReaction(emojiData);
     }
@@ -613,7 +613,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         <Tooltip
                                             id='tooltip-emoji-picker'
                                         >
-                                            <span>{'Make a reaction'}</span>
+                                            <span>{'Add Reaction'}</span>
                                             <Shortcut shortcut={reverseKeyMappings.popout[MAKE_REACTION][0]}/>
                                         </Tooltip>
                                     }
