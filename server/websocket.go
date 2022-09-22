@@ -254,22 +254,31 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"raised_hand": ts,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeReaction:
+		now := time.Now().UnixMilli()
 		evType := wsEventUserReact
 
-		var emoji struct {
-			Name string `json:"name"`
-			Skin int    `json:"skin"`
-		}
+		var emoji emoji
 		if err := json.Unmarshal(msg.Data, &emoji); err != nil {
 			p.LogError(err.Error())
 		}
 
+		newReaction := timestampedReaction{
+			Timestamp: now,
+			Emoji:     emoji,
+			UserID:    us.userID,
+		}
+
 		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
-			"userID":     us.userID,
-			"emoji_name": emoji.Name,
-			"emoji_skin": emoji.Skin,
-			"timestamp":  time.Now().UnixMilli(),
+			"timestamp":  newReaction.Timestamp,
+			"emoji_name": newReaction.Emoji.Name,
+			"emoji_skin": newReaction.Emoji.Skin,
+			"userID":     newReaction.UserID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+
+		p.kvSetAtomicChannelState(us.channelID, func(state *channelState) (*channelState, error) {
+			state.Call.Reactions = append(state.Call.Reactions, newReaction)
+			return state, nil
+		})
 	default:
 		p.LogError("invalid client message", "type", msg.Type)
 		return

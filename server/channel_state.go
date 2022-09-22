@@ -17,6 +17,17 @@ type callStats struct {
 	Participants int `json:"participants"`
 }
 
+type emoji struct {
+	Name string `json:"name"`
+	Skin int    `json:"skin"`
+}
+
+type timestampedReaction struct {
+	Timestamp int64  `json:"timestamp"`
+	Emoji     emoji  `json:"emoji"`
+	UserID    string `json:"user_id"`
+}
+
 type callState struct {
 	ID              string                `json:"id"`
 	StartAt         int64                 `json:"create_at"`
@@ -29,6 +40,8 @@ type callState struct {
 	ScreenStreamID  string                `json:"screen_stream_id"`
 	Stats           callStats             `json:"stats"`
 	RTCDHost        string                `json:"rtcd_host"`
+	// Order is not guaranteed; use the Timestamp value to sort them if needed
+	Reactions []timestampedReaction `json:"reactions"`
 }
 
 type channelState struct {
