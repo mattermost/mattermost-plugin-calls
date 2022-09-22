@@ -322,7 +322,8 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64, tit
 	}
 
 	// Gets or creates it not existing an Agenda board for this channel
-	p.fbStore.GetBoard(channelID, userID)
+	// TODO: this is causing nil panic, need to work on it.
+	//p.fbStore.GetBoard(channelID, userID)
 
 	return createdPost.Id, nil
 }
