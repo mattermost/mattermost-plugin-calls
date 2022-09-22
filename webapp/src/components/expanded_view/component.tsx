@@ -1,9 +1,12 @@
+/* eslint-disable max-lines */
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {CSSProperties} from 'react';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
 
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
@@ -21,6 +24,7 @@ import UnmutedIcon from '../../components/icons/unmuted_icon';
 import ScreenIcon from '../../components/icons/screen_icon';
 import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
+import SmileyIcon from '../../components/icons/smiley_icon';
 import ParticipantsIcon from '../../components/icons/participants';
 import CallDuration from '../call_widget/call_duration';
 import Shortcut from 'src/components/shortcut';
@@ -34,9 +38,14 @@ import {
     PUSH_TO_TALK,
     keyToAction,
     reverseKeyMappings,
+    MAKE_REACTION,
 } from 'src/shortcuts';
 
 import './component.scss';
+
+const EMOJI_VERSION = 13;
+
+const EMOJI_SKINTONE_MAP = new Map([[1, ''], [2, '1F3FB'], [3, '1F3FC'], [4, '1F3FD'], [5, '1F3FE'], [6, '1F3FF']]);
 
 interface Props {
     show: boolean,
@@ -60,6 +69,7 @@ interface Props {
 interface State {
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
+    showEmojiPicker: boolean
 }
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
@@ -72,6 +82,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.state = {
             screenStream: null,
             showParticipantsList: false,
+            showEmojiPicker: false,
         };
 
         if (window.opener) {
@@ -100,6 +111,22 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
+    toggleEmojiPicker = () => {
+        this.setState((prevState) => ({
+            showEmojiPicker: !prevState.showEmojiPicker,
+        }));
+    }
+
+    handleUserPicksEmoji = (ev: any) => {
+        const callsClient = this.getCallsClient();
+        const emojiData = {
+            name: ev.id,
+            skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : null,
+            unified: ev.unified.toUpperCase(),
+        };
+        callsClient.sendUserReaction(emojiData);
+    }
+
     handleKBShortcuts = (ev: KeyboardEvent) => {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
             return;
@@ -119,6 +146,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             break;
         case RAISE_LOWER_HAND:
             this.onRaiseHandToggle(true);
+            break;
+        case MAKE_REACTION:
+            this.toggleEmojiPicker();
             break;
         case SHARE_UNSHARE_SCREEN:
             this.onShareScreenToggle(true);
@@ -189,6 +219,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
             callsClient.raiseHand();
         }
+    }
+
+    renderEmojiPicker = () => {
+        return this.state.showEmojiPicker ? (
+            <div style={style.emojiPickerContainer as CSSProperties}>
+                <Picker
+                    data={data}
+                    emojiVersion={EMOJI_VERSION}
+                    skinTonePosition='search'
+                    onEmojiSelect={this.handleUserPicksEmoji}
+                />
+            </div>
+        ) : null;
     }
 
     onParticipantsListToggle = (fromShortcut?: boolean) => {
@@ -561,6 +604,34 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 </button>
                             </OverlayTrigger>
 
+                            <div style={{position: 'relative'}}>
+                                {this.renderEmojiPicker()}
+                                <OverlayTrigger
+                                    key='tooltip-emoji-picker'
+                                    placement='top'
+                                    overlay={
+                                        <Tooltip
+                                            id='tooltip-emoji-picker'
+                                        >
+                                            <span>{'Add Reaction'}</span>
+                                            <Shortcut shortcut={reverseKeyMappings.popout[MAKE_REACTION][0]}/>
+                                        </Tooltip>
+                                    }
+                                >
+
+                                    <button
+                                        className='button-center-controls'
+                                        onClick={this.toggleEmojiPicker}
+                                        style={{background: this.state.showEmojiPicker ? '#FFFFFF' : '', position: 'relative'}}
+                                    >
+                                        <SmileyIcon
+                                            style={{width: '28px', height: '28px'}}
+                                            fill={this.state.showEmojiPicker ? '#3F4350' : '#FFFFFF'}
+                                        />
+                                    </button>
+                                </OverlayTrigger>
+                            </div>
+
                             <OverlayTrigger
                                 key='tooltip-screen-toggle'
                                 placement='top'
@@ -732,5 +803,10 @@ const style = {
         margin: 0,
         padding: 0,
         overflow: 'auto',
+    },
+    emojiPickerContainer: {
+        position: 'absolute',
+        top: '-445px',
+        left: '-75px',
     },
 };
