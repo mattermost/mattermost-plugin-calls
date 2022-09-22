@@ -325,7 +325,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 isHandRaised = Boolean(status.raised_hand > 0);
             }
 
-            const emojiURL = this.getEmojiURL("woozy_face")
+            const emojiURL = this.getEmojiURL("woozy_face");
 
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
@@ -380,21 +380,25 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         >
                             {'✋'}
                         </div>
-                        <div style={style.reactionBackground}/>
-                        <div style={style.reactionContainer}>
-                            <span
-                                className='emoticon'
-                                title={emojiURL}
-                                style={{
-                                    backgroundImage: 'url(' + emojiURL + ')',
-                                    width: '18px',
-                                    minWidth: '18px',
-                                    height: '18px',
-                                    minHeight: '18px'
-                                }}
-                            >
-                            </span>
-                        </div>
+                        {!isHandRaised &&
+                        <>
+                            <div style={style.reactionBackground}/>
+                            <div style={style.reactionContainer}>
+                                <span
+                                    className='emoticon'
+                                    title={emojiURL}
+                                    style={{
+                                        backgroundImage: 'url(' + emojiURL + ')',
+                                        width: '18px',
+                                        minWidth: '18px',
+                                        height: '18px',
+                                        minHeight: '18px'
+                                    }}
+                                >
+                                </span>
+                            </div>
+                        </>
+                        }
                         {/* <div
                             style={{
                                 position: 'absolute',
@@ -783,7 +787,7 @@ const style = {
     },
     reactionBackground: {
         position: 'absolute',
-        display: !isHandRaised ? 'flex' : 'none',
+        display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         top: -7,
@@ -795,7 +799,7 @@ const style = {
     },
     reactionContainer: {
         position: 'absolute',
-        display: !isHandRaised ? 'flex' : 'none',
+        display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         top: -5,
