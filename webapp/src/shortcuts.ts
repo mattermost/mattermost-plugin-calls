@@ -14,7 +14,7 @@ const globalMappings = {
 const widgetMappings = {
     [isMac() ? 'meta+shift+space' : 'ctrl+shift+space']: MUTE_UNMUTE,
     [isMac() ? 'meta+shift+y' : 'ctrl+shift+y']: RAISE_LOWER_HAND,
-    [isMac() ? 'meta+shift+r' : 'ctrl+shift+r']: MAKE_REACTION,
+    [isMac() ? 'meta+shift+x' : 'ctrl+shift+x']: MAKE_REACTION,
     [isMac() ? 'meta+shift+e' : 'ctrl+shift+e']: SHARE_UNSHARE_SCREEN,
     'alt+p': PARTICIPANTS_LIST_TOGGLE,
     [isMac() ? 'meta+shift+p' : 'ctrl+shift+p']: PARTICIPANTS_LIST_TOGGLE,
