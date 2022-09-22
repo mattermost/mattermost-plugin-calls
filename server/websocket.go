@@ -257,18 +257,20 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		evType := wsEventUserReact
 
 		var emoji struct {
-			Name string `json:"name"`
-			Skin int    `json:"skin"`
+			Name    string `json:"name"`
+			Skin    string `json:"skin"`
+			Unified string `json:"unified"`
 		}
 		if err := json.Unmarshal(msg.Data, &emoji); err != nil {
 			p.LogError(err.Error())
 		}
 
 		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
-			"userID":     us.userID,
-			"emoji_name": emoji.Name,
-			"emoji_skin": emoji.Skin,
-			"timestamp":  time.Now().UnixMilli(),
+			"userID":        us.userID,
+			"emoji_name":    emoji.Name,
+			"emoji_skin":    emoji.Skin,
+			"emoji_unified": emoji.Unified,
+			"timestamp":     time.Now().UnixMilli(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 	default:
 		p.LogError("invalid client message", "type", msg.Type)

@@ -272,7 +272,8 @@ export default class CallsClient extends EventEmitter {
                 this.ws?.send('reaction', {
                     data: JSON.stringify({
                         name: emojis[count],
-                        skin: count,
+                        skin: '1F3BF',
+                        unified: '14CBD-1F3BF',
                     }),
                 });
 
