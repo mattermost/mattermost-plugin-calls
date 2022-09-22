@@ -111,3 +111,9 @@ export type CallsUserPreferences = {
 export const CallsUserPreferencesDefault = {
     joinSoundParticipantsThreshold: 8,
 };
+
+export type EmojiData = {
+    name: string;
+    skin?: string;
+    unified: string;
+}

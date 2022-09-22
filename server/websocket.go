@@ -30,6 +30,7 @@ const (
 	wsEventCallEnd          = "call_end"
 	wsEventUserRaiseHand    = "user_raise_hand"
 	wsEventUserUnraiseHand  = "user_unraise_hand"
+	wsEventUserReact        = "user_reaction"
 	wsEventJoin             = "join"
 	wsEventError            = "error"
 	wsReconnectionTimeout   = 10 * time.Second
@@ -252,6 +253,25 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"userID":      us.userID,
 			"raised_hand": ts,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+	case clientMessageTypeReaction:
+		evType := wsEventUserReact
+
+		var emoji struct {
+			Name    string `json:"name"`
+			Skin    string `json:"skin"`
+			Unified string `json:"unified"`
+		}
+		if err := json.Unmarshal(msg.Data, &emoji); err != nil {
+			p.LogError(err.Error())
+		}
+
+		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
+			"userID":        us.userID,
+			"emoji_name":    emoji.Name,
+			"emoji_skin":    emoji.Skin,
+			"emoji_unified": emoji.Unified,
+			"timestamp":     time.Now().UnixMilli(),
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 	default:
 		p.LogError("invalid client message", "type", msg.Type)
 		return
@@ -688,6 +708,14 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 		msg.Data = []byte(msgData)
+	case clientMessageTypeReaction:
+		msgData, ok := req.Data["data"].(string)
+		if !ok {
+			p.LogError("invalid or missing data")
+			return
+		}
+		msg.Data = []byte(msgData)
+
 	}
 
 	select {
