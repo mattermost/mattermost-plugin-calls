@@ -749,6 +749,7 @@ const style = {
         width: '100%',
     },
     leftControls: {
+        display: 'flex',
         flex: '1',
         marginLeft: '16px',
     },

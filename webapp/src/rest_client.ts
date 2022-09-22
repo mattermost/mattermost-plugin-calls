@@ -5,7 +5,7 @@ import {Client4} from 'mattermost-redux/client';
 import {ClientError} from 'mattermost-redux/client/client4';
 
 import {pluginId} from './manifest';
-import {Checklist, ChecklistItem, emptyChecklistItem} from './types/checklist';
+import {Checklist, ChecklistItem, emptyChecklist, emptyChecklistItem} from './types/checklist';
 
 let siteURL = '';
 let basePath = '';
@@ -32,25 +32,30 @@ export const getApiUrl = (): string => {
 };
 
 export async function fetchAgendaForChannel(channelId: string): Promise<Checklist> {
-    let data = await doGet(`${apiUrl}/agenda/${channelId}`);
-    if (!data) {
-        data = {title: `Agenda for ${channelId}`, items: []} as Checklist;
-    }
+    // FIXME
+    //let data = await doGet(`${apiUrl}/agenda/${channelId}`);
+    // if (!data) {
+    //     data = {title: `Agenda for ${channelId}`, items: []} as Checklist;
+    // }
 
-    return data as Checklist;
+    //return data as Checklist;
+
+    return emptyChecklist();
 }
 
 export async function updateAgendaItem(channelId: string, item: ChecklistItem) {
-    await doPut(`${apiUrl}/agenda/${channelId}/item`, JSON.stringify(item));
+    // FIXME
+    //await doPut(`${apiUrl}/agenda/${channelId}/item`, JSON.stringify(item));
 }
 
 export async function addAgendaItem(channelId: string, item: ChecklistItem): Promise<ChecklistItem> {
-    let data = await doPost(`${apiUrl}/agenda/${channelId}/item`, JSON.stringify(item));
-    if (!data) {
-        data = emptyChecklistItem();
-    }
-
-    return data as ChecklistItem;
+    // FIXME
+    // let data = await doPost(`${apiUrl}/agenda/${channelId}/item`, JSON.stringify(item));
+    // if (!data) {
+    //     data = emptyChecklistItem();
+    // }
+    //
+    // return data as ChecklistItem;
 }
 
 export const doGet = async <TData = any>(url: string) => {
