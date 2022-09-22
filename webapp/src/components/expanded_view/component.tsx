@@ -406,23 +406,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 stroke={isMuted ? '#C4C4C4' : ''}
                             />
                         </div>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                display: isHandRaised ? 'flex' : 'none',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                top: 0,
-                                right: 0,
-                                background: 'rgba(50, 50, 50, 1)',
-                                borderRadius: '30px',
-                                width: '20px',
-                                height: '20px',
-                                fontSize: '12px',
-                            }}
-                        >
-                            {'✋'}
-                        </div>
+                        {isHandRaised &&
+                        <>
+                            <div style={style.reactionBackground}/>
+                            <div style={style.handRaisedContainer}>
+                                {'🤚'}
+                            </div>
+                        </>
+                        }
                         {!isHandRaised &&
                         <>
                             <div style={style.reactionBackground}/>
@@ -870,4 +861,17 @@ const style = {
         height: '25px',
         fontSize: '12px',
     },
+    handRaisedContainer: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -5,
+        right: -10,
+        background: 'rgba(255, 255, 255, 1)',
+        borderRadius: '30px',
+        width: '25px',
+        height: '25px',
+        fontSize: '18px',
+    }
 };
