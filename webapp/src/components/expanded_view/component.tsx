@@ -442,22 +442,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </div>
                         </>
                         }
-                        {/* <div
-                            style={{
-                                position: 'absolute',
-                                display: !isHandRaised ? 'flex' : 'none',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                top: -5,
-                                right: -10,
-                                background: 'rgba(50, 50, 50, 1)',
-                                borderRadius: '30px',
-                                width: '25px',
-                                height: '25px',
-                                fontSize: '12px',
-                            }}
-                        >
-                        </div> */}
                     </div>
 
                     <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
