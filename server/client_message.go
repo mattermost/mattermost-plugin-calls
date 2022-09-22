@@ -26,6 +26,7 @@ const (
 	clientMessageTypeScreenOff   = "screen_off"
 	clientMessageTypeRaiseHand   = "raise_hand"
 	clientMessageTypeUnraiseHand = "unraise_hand"
+	clientMessageTypeReaction    = "reaction"
 )
 
 func (m *clientMessage) ToJSON() ([]byte, error) {
