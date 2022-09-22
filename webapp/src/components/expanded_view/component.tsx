@@ -47,6 +47,7 @@ import {
 } from 'src/shortcuts';
 
 import './component.scss';
+import { autocompleteChannels } from 'mattermost-webapp/packages/mattermost-redux/src/actions/channels';
 
 const EMOJI_VERSION = 13;
 
@@ -126,7 +127,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const callsClient = this.getCallsClient();
         const emojiData = {
             name: ev.id,
-            skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : null,
+            skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : "",
             unified: ev.unified.toUpperCase(),
         };
         callsClient.sendUserReaction(emojiData);
@@ -367,7 +368,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 isHandRaised = Boolean(status.raised_hand > 0);
             }
 
-            const emojiURL = this.getEmojiURL("woozy_face")
+            const emojiURL = this.getEmojiURL("woozy_face");
 
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
@@ -422,7 +423,26 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         >
                             {'✋'}
                         </div>
-                        <div
+                        {!isHandRaised &&
+                        <>
+                            <div style={style.reactionBackground}/>
+                            <div style={style.reactionContainer}>
+                                <span
+                                    className='emoticon'
+                                    title={emojiURL}
+                                    style={{
+                                        backgroundImage: 'url(' + emojiURL + ')',
+                                        width: '18px',
+                                        minWidth: '18px',
+                                        height: '18px',
+                                        minHeight: '18px'
+                                    }}
+                                >
+                                </span>
+                            </div>
+                        </>
+                        }
+                        {/* <div
                             style={{
                                 position: 'absolute',
                                 display: !isHandRaised ? 'flex' : 'none',
@@ -437,14 +457,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 fontSize: '12px',
                             }}
                         >
-                            <span
-                                className='emoticon'
-                                title={emojiURL}
-                                style={{backgroundImage: 'url(' + emojiURL + ')', width: '18px', minWidth: '18px', height: '18px', minHeight: '18px'}}
-                            >
-                                tada
-                            </span>
-                        </div>
+                        </div> */}
                     </div>
 
                     <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
@@ -847,5 +860,30 @@ const style = {
         position: 'absolute',
         top: '-445px',
         left: '-75px',
+    },
+    reactionBackground: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -7,
+        right: -12,
+        background: 'rgba(37, 38, 42, 1)',
+        borderRadius: '30px',
+        width: '30px',
+        height: '30px',
+    },
+    reactionContainer: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -5,
+        right: -10,
+        background: 'rgba(50, 50, 50, 1)',
+        borderRadius: '30px',
+        width: '25px',
+        height: '25px',
+        fontSize: '12px',
     },
 };
