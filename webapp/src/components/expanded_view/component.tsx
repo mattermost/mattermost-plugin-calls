@@ -18,7 +18,7 @@ import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} f
 import {UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 
-import {Emojis, EmojiIndicesByAlias} from 'src/emoji';
+import {Emojis, EmojiIndicesByAlias, EmojiIndicesByUnicode} from 'src/emoji';
 
 import Avatar from '../avatar/avatar';
 
@@ -47,7 +47,6 @@ import {
 } from 'src/shortcuts';
 
 import './component.scss';
-import { autocompleteChannels } from 'mattermost-webapp/packages/mattermost-redux/src/actions/channels';
 
 const EMOJI_VERSION = 13;
 
@@ -127,7 +126,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const callsClient = this.getCallsClient();
         const emojiData = {
             name: ev.id,
-            skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : "",
+            skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : null,
             unified: ev.unified.toUpperCase(),
         };
         callsClient.sendUserReaction(emojiData);
@@ -179,11 +178,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
-
-    getEmojiURL = (name: string) => {
-        const index = EmojiIndicesByAlias.get(name);
+    getEmojiURL = (reaction: {emoji_name: string, emoji_skin: string, emoji_unified: string}) => {
+        const {
+            emoji_unified,
+        } = reaction;
+        const index = EmojiIndicesByUnicode.get(emoji_unified.toLowerCase());
         if (!index) {
-            return "";
+            return '';
         }
         return getEmojiImageUrl(Emojis[index]);
     }
@@ -362,13 +363,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             let isMuted = true;
             let isSpeaking = false;
             let isHandRaised = false;
+            let hasReaction = false;
+            let emojiURL = '';
             if (status) {
                 isMuted = !status.unmuted;
                 isSpeaking = Boolean(status.voice);
                 isHandRaised = Boolean(status.raised_hand > 0);
-            }
+                hasReaction = Boolean(status.reaction);
 
-            const emojiURL = this.getEmojiURL("woozy_face");
+                if (status.reaction) {
+                    emojiURL = this.getEmojiURL(status.reaction);
+                }
+            }
 
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
@@ -423,25 +429,25 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         >
                             {'✋'}
                         </div>
-                        {!isHandRaised &&
-                        <>
-                            <div style={style.reactionBackground}/>
-                            <div style={style.reactionContainer}>
-                                <span
-                                    className='emoticon'
-                                    title={emojiURL}
-                                    style={{
-                                        backgroundImage: 'url(' + emojiURL + ')',
-                                        width: '18px',
-                                        minWidth: '18px',
-                                        height: '18px',
-                                        minHeight: '18px'
-                                    }}
-                                >
-                                </span>
-                            </div>
-                        </>
-                        }
+                        {!isHandRaised && hasReaction ?
+                            <>
+                                <div style={style.reactionBackground}/>
+                                <div style={style.reactionContainer}>
+                                    <span
+                                        className='emoticon'
+                                        title={status?.reaction?.emoji_name}
+                                        style={{
+                                            backgroundImage: 'url(' + emojiURL + ')',
+                                            width: '18px',
+                                            minWidth: '18px',
+                                            height: '18px',
+                                            minHeight: '18px',
+                                        }}
+                                    >
+                                        {status?.reaction?.emoji_name}
+                                    </span>
+                                </div>
+                            </> : null}
                     </div>
 
                     <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>

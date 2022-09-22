@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 import emojis from './emoji.json';
 
 import spriteSheet from 'images/emoji-sheets/apple-sheet.png';
