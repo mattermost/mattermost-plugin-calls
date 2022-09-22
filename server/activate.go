@@ -143,6 +143,7 @@ func (p *Plugin) OnActivate() error {
 		Username:    "calls",
 		DisplayName: "Calls Plugin Bot",
 		Description: "Created by the Calls plugin.",
+		OwnerId:     "calls",
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to ensure calls bot")
