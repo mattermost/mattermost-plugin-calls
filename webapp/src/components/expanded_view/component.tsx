@@ -6,6 +6,7 @@ import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import {Client4} from 'mattermost-redux/client';
+import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
 
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
@@ -13,6 +14,8 @@ import {Channel} from '@mattermost/types/channels';
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
 import {UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
+
+import {Emojis, EmojiIndicesByAlias} from 'src/emoji';
 
 import Avatar from '../avatar/avatar';
 
@@ -54,7 +57,6 @@ interface Props {
     callStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
-    getEmoji: (emojiId: string) => void,
     screenSharingID: string,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
@@ -148,8 +150,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
 
-    getEmoji = async (emojiID: string) => {
-        return Client4.getEmojiRoute(emojiID) + '/image';
+    getEmojiURL = (name: string) => {
+        const index = EmojiIndicesByAlias.get(name);
+        if (!index) {
+            return "";
+        }
+        return getEmojiImageUrl(Emojis[index]);
     }
 
     onMuteToggle = () => {
@@ -236,7 +242,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     public componentDidMount() {
-        console.log(this.getEmoji('Smiley'));
         // keyboard shortcuts
         window.addEventListener('keydown', this.handleKBShortcuts, true);
         window.addEventListener('keyup', this.handleKeyUp, true);
@@ -320,6 +325,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 isHandRaised = Boolean(status.raised_hand > 0);
             }
 
+            const emojiURL = this.getEmojiURL("woozy_face")
+
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
             return (
@@ -375,8 +382,35 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
                         <div style={style.reactionBackground}/>
                         <div style={style.reactionContainer}>
-                            {'🎉'}
+                            <span
+                                className='emoticon'
+                                title={emojiURL}
+                                style={{
+                                    backgroundImage: 'url(' + emojiURL + ')',
+                                    width: '18px',
+                                    minWidth: '18px',
+                                    height: '18px',
+                                    minHeight: '18px'
+                                }}
+                            >
+                            </span>
                         </div>
+                        {/* <div
+                            style={{
+                                position: 'absolute',
+                                display: !isHandRaised ? 'flex' : 'none',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                top: -5,
+                                right: -10,
+                                background: 'rgba(50, 50, 50, 1)',
+                                borderRadius: '30px',
+                                width: '25px',
+                                height: '25px',
+                                fontSize: '12px',
+                            }}
+                        >
+                        </div> */}
                     </div>
 
                     <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
