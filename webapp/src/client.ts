@@ -512,7 +512,7 @@ export default class CallsClient extends EventEmitter {
     public sendUserReaction(data: EmojiData) {
         if (this.ws) {
             this.ws.send('reaction', {
-                data,
+                data: JSON.stringify(data),
             });
         }
     }
