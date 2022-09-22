@@ -39,6 +39,7 @@ import {
 } from 'src/shortcuts';
 
 import './component.scss';
+import { autocompleteChannels } from 'mattermost-webapp/packages/mattermost-redux/src/actions/channels';
 
 interface Props {
     show: boolean,
@@ -372,36 +373,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         >
                             {'✋'}
                         </div>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                display: !isHandRaised ? 'flex' : 'none',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                top: -5,
-                                right: -10,
-                                background: 'rgba(37, 38, 42, 1)',
-                                borderRadius: '30px',
-                                width: '28px',
-                                height: '28px'
-                            }}
-                        >
-                        </div>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                display: !isHandRaised ? 'flex' : 'none',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                top: -5,
-                                right: -10,
-                                background: 'rgba(50, 50, 50, 1)',
-                                borderRadius: '30px',
-                                width: '25px',
-                                height: '25px',
-                                fontSize: '12px',
-                            }}
-                        >
+                        <div style={style.reactionBackground}/>
+                        <div style={style.reactionContainer}>
                             {'🎉'}
                         </div>
                     </div>
@@ -773,5 +746,30 @@ const style = {
         margin: 0,
         padding: 0,
         overflow: 'auto',
+    },
+    reactionBackground: {
+        position: 'absolute',
+        display: !isHandRaised ? 'flex' : 'none',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -7,
+        right: -12,
+        background: 'rgba(37, 38, 42, 1)',
+        borderRadius: '30px',
+        width: '30px',
+        height: '30px',
+    },
+    reactionContainer: {
+        position: 'absolute',
+        display: !isHandRaised ? 'flex' : 'none',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -5,
+        right: -10,
+        background: 'rgba(50, 50, 50, 1)',
+        borderRadius: '30px',
+        width: '25px',
+        height: '25px',
+        fontSize: '12px',
     },
 };
