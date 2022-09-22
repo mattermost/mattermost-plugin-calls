@@ -44,6 +44,9 @@ import {
 import './component.scss';
 
 const EMOJI_VERSION = 13;
+
+const EMOJI_SKINTONE_MAP = new Map([[1, ""], [2, "1F3FB"], [3, "1F3FC"], [4, "1F3FD"], [5, "1F3FE"], [6, "1F3FF"]]);
+
 interface Props {
     show: boolean,
     currentUserID: string,
@@ -116,13 +119,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     handleUserPicksEmoji = (ev: any) => {
         const callsClient = this.getCallsClient();
-        callsClient.sendUserReaction({
-            id: ev.id,
-            skin: ev?.skin,
-            name: ev.name,
-            shortcodes: ev.shortcodes,
+        const emojiData = {
+            name: ev.id,
+            skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : undefined,
             unified: ev.unified,
-        });
+        };
+        callsClient.sendUserReaction(emojiData);
     }
 
     handleKBShortcuts = (ev: KeyboardEvent) => {

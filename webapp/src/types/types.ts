@@ -114,8 +114,6 @@ export const CallsUserPreferencesDefault = {
 
 export type EmojiData = {
     id: string;
-    skin?: number;
-    name: string;
-    shortcodes: string;
+    skin?: string;
     unified: string;
 }
