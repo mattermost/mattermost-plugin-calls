@@ -3,7 +3,7 @@ import {EventEmitter} from 'events';
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
-import {CallsClientConfig, AudioDevices, CallsClientStats, TrackInfo} from 'src/types/types';
+import {CallsClientConfig, AudioDevices, CallsClientStats, TrackInfo, EmojiData} from 'src/types/types';
 
 import RTCPeer from './rtcpeer';
 
@@ -507,6 +507,14 @@ export default class CallsClient extends EventEmitter {
             this.ws.send('unraise_hand');
         }
         this.isHandRaised = false;
+    }
+
+    public sendUserReaction(data: EmojiData) {
+        if (this.ws) {
+            this.ws.send('reaction', {
+                data,
+            });
+        }
     }
 
     public async getStats(): Promise<CallsClientStats | null> {

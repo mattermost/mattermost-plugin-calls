@@ -1,5 +1,6 @@
 export const MUTE_UNMUTE = 'mute-unmute';
 export const RAISE_LOWER_HAND = 'raise-lower-hand';
+export const MAKE_REACTION = 'make-reaction';
 export const SHARE_UNSHARE_SCREEN = 'share-unshare-screen';
 export const PARTICIPANTS_LIST_TOGGLE = 'participants-list-toggle';
 export const JOIN_CALL = 'join-call';
@@ -13,6 +14,7 @@ const globalMappings = {
 const widgetMappings = {
     [isMac() ? 'meta+shift+space' : 'ctrl+shift+space']: MUTE_UNMUTE,
     [isMac() ? 'meta+shift+y' : 'ctrl+shift+y']: RAISE_LOWER_HAND,
+    [isMac() ? 'meta+shift+r' : 'ctrl+shift+r']: MAKE_REACTION,
     [isMac() ? 'meta+shift+e' : 'ctrl+shift+e']: SHARE_UNSHARE_SCREEN,
     'alt+p': PARTICIPANTS_LIST_TOGGLE,
     [isMac() ? 'meta+shift+p' : 'ctrl+shift+p']: PARTICIPANTS_LIST_TOGGLE,
