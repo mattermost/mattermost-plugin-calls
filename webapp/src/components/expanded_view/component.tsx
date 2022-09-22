@@ -414,16 +414,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
                         {isHandRaised &&
                         <>
-                            <div style={style.reactionBackground}/>
-                            <div style={style.handRaisedContainer}>
+                            <div style={style.reactionBackground as CSSProperties}/>
+                            <div style={style.handRaisedContainer as CSSProperties}>
                                 {'🤚'}
                             </div>
                         </>
                         }
                         {!isHandRaised && hasReaction ?
                             <>
-                                <div style={style.reactionBackground}/>
-                                <div style={style.reactionContainer}>
+                                <div style={style.reactionBackground as CSSProperties}/>
+                                <div style={style.reactionContainer as CSSProperties}>
                                     <span
                                         className='emoticon'
                                         title={status?.reaction?.emoji_name}
@@ -879,5 +879,5 @@ const style = {
         width: '25px',
         height: '25px',
         fontSize: '18px',
-    }
+    },
 };
