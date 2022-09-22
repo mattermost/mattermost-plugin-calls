@@ -203,7 +203,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onParticipantsListToggle = (fromShortcut?: boolean) => {
-        const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
+        const event = this.state.rhsState === RHSState.Participants ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
         this.props.trackEvent(event, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         if (this.state.rhsState === RHSState.Participants) {
             this.setState({rhsState: RHSState.Closed});
