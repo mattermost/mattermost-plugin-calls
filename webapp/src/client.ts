@@ -271,7 +271,8 @@ export default class CallsClient extends EventEmitter {
             this.intervalID = window.setInterval(() => {
                 this.ws?.send('reaction', {
                     data: JSON.stringify({
-                        emoji: emojis[count],
+                        name: emojis[count],
+                        skin: count,
                     }),
                 });
 
