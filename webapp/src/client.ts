@@ -34,7 +34,6 @@ export default class CallsClient extends EventEmitter {
     private onBeforeUnload: () => void;
     private closed = false;
     private initTime = Date.now();
-    private intervalID = 0; // TODO: Remove the following block when the actual events are being sent by the emoji picker
 
     constructor(config: CallsClientConfig) {
         super();
@@ -264,26 +263,6 @@ export default class CallsClient extends EventEmitter {
             }
         });
 
-        // TODO: Remove the following block when the actual events are being sent by the emoji picker
-        {
-            let count = 0;
-            const emojis = ['thumbsup', 'thumbsdown', 'heart', 'heart_eyes', 'see_no_evil', 'parrot', 'screwdriver'];
-            this.intervalID = window.setInterval(() => {
-                this.ws?.send('reaction', {
-                    data: JSON.stringify({
-                        name: emojis[count],
-                        skin: '1F3BF',
-                        unified: '14CBD-1F3BF',
-                    }),
-                });
-
-                count++;
-                if (count >= emojis.length) {
-                    count = 0;
-                }
-            }, 500);
-        }
-
         return this;
     }
 
@@ -295,7 +274,6 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('devicechange');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
-        clearInterval(this.intervalID);
     }
 
     public async setAudioInputDevice(device: MediaDeviceInfo) {
