@@ -16,7 +16,7 @@ import {UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 
 import Avatar from '../avatar/avatar';
-
+import {ReactionStream} from '../reaction_stream/reaction_stream';
 import CompassIcon from '../../components/icons/compassIcon';
 import LeaveCallIcon from '../../components/icons/leave_call_icon';
 import MutedIcon from '../../components/icons/muted_icon';
@@ -57,6 +57,7 @@ interface Props {
     statuses: {
         [key: string]: UserState,
     },
+    reactions: {emoji_name: string, emoji_unified: string, emoji_skin?: string, timestamp: number, userID: string}[],
     callStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
@@ -514,7 +515,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 style={style.root as CSSProperties}
             >
                 <div style={style.main as CSSProperties}>
-                    <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
+                    <div style={{display: 'flex', width: '100%'}}>
                         <div style={style.topLeftContainer as CSSProperties}>
                             <CallDuration
                                 style={{margin: '4px'}}
@@ -535,17 +536,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </button>
                         }
                     </div>
-
                     { !this.props.screenSharingID &&
-                    <ul
-                        id='calls-expanded-view-participants-grid'
-                        style={{
-                            ...style.participants,
-                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
-                        }}
-                    >
-                        { this.renderParticipants() }
-                    </ul>
+                        <div style={{flex: 1, display: 'flex', flexDirection: 'row'}}>
+                            <ReactionStream reactions={this.props.reactions}/>
+                            <ul
+                                id='calls-expanded-view-participants-grid'
+                                style={{
+                                    ...style.participants,
+                                    gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                                }}
+                            >
+                                { this.renderParticipants() }
+                            </ul>
+                        </div>
                     }
                     { this.props.screenSharingID && this.renderScreenSharingPlayer() }
                     <div
@@ -741,7 +744,6 @@ const style = {
     main: {
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
         flex: '1',
     },
     closeViewButton: {

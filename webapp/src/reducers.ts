@@ -212,21 +212,21 @@ interface usersStatusesAction {
         channelID: string,
         userID: string,
         raised_hand?: number,
-        reaction?: {emoji: string, timestamp: number},
+        reaction?: {emoji_name: string, emoji_unified: string, emoji_skin?: string, timestamp: number},
         states: { [userID: string]: UserState },
     },
 }
 
 interface userReactionsState {
     [channelID: string]: {
-        reactions: {emoji: string, timestamp: number, userID: string}[],
+        reactions: {emoji_name: string, emoji_unified: string, emoji_skin?: string, timestamp: number, userID: string}[],
     }
 }
 
-const queueReactions = (state: {emoji: string, timestamp: number, userID: string}[], reaction: {emoji: string, timestamp: number}, userID: string) => {
+const queueReactions = (state: {emoji_name: string, emoji_unified: string, emoji_skin?: string, timestamp: number, userID: string}[], reaction: {emoji_name: string, emoji_unified: string, emoji_skin?: string, timestamp: number}, userID: string) => {
     const result = [...state];
     result.push({...reaction, userID});
-    if (result.length > 8) { // TODO: random size, this should probably be configurable
+    if (result.length > 50) { // TODO: random size, this should probably be configurable
         result.shift();
     }
     return result;
@@ -236,7 +236,20 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
     switch (action.type) {
     case VOICE_CHANNEL_USER_REACTION:
         if (action.data.reaction) {
-            return queueReactions(state[action.data.channelID].reactions, action.data.reaction, action.data.userID);
+            console.log('adding data to queue');
+            console.log(action.data);
+            if (state[action.data.channelID]) {
+                return {...state,
+                    [action.data.channelID]: {
+                        reactions: queueReactions(state[action.data.channelID].reactions, action.data.reaction, action.data.userID),
+                    },
+                };
+            }
+            return {...state,
+                [action.data.channelID]: {
+                    reactions: [{...action.data.reaction, userID: action.data.userID}],
+                },
+            };
         }
         return state;
     default:

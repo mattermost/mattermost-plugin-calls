@@ -12,7 +12,7 @@ import {UserState} from '../../types/types';
 
 import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from '../../utils';
 import {hideExpandedView, showScreenSourceModal, trackEvent} from '../../actions';
-import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID} from '../../selectors';
+import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID, voiceReactions} from '../../selectors';
 
 import ExpandedView from './component';
 
@@ -26,6 +26,7 @@ const mapStateToProps = (state: GlobalState) => {
 
     const statuses = voiceUsersStatuses(state);
     const profiles = sortedProfiles(voiceConnectedProfiles(state), statuses);
+    const reactions = voiceReactions(state);
 
     const pictures: {[key: string]: string} = {};
     for (let i = 0; i < profiles.length; i++) {
@@ -44,6 +45,7 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         pictures,
         statuses,
+        reactions,
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         screenSharingID,
         channel,
