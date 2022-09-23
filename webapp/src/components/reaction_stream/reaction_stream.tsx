@@ -4,7 +4,6 @@
 import React from 'react';
 import styled from 'styled-components';
 
-import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
 import {UserProfile} from '@mattermost/types/lib/users';
 
 import {Emoji} from '../emoji/emoji';
@@ -18,9 +17,8 @@ type Props = {
 };
 
 const ReactionStreamList = styled.div`
-    position='absolute';
-    left=0;
-    bottom=100px;
+    align-self: flex-end;
+    height: 75vh;
     display: flex;
     flex-direction: column-reverse;
     margin-left: 10px;
@@ -33,11 +31,11 @@ const ReactionChip = styled.div`
     flex-direction: row;
     align-items: flex-end;
     padding: 2px 10px;
-    gap: 4px;
+    gap: 2px;
     height: 23px;
     background: rgba(221, 223, 228, 0.08);
     border-radius: 12px;
-    margin: 2px
+    margin: 4px 0;
     width: fit-content;
 `;
 
@@ -51,7 +49,7 @@ export const ReactionStream = (props: Props) => {
         // emojis should be a separate component that is reused both here and in the extended view
         // getEmojiURL should be memoized as people tend to react similarly and this would speed up the process.
         const emoji = (<Emoji emoji={reaction.emoji}/>);
-        const user = reaction.user_id === props.currentUserID ? 'you' : getUserDisplayName(props.profiles[reaction.user_id]) || 'someone';
+        const user = reaction.user_id === props.currentUserID ? 'You' : getUserDisplayName(props.profiles[reaction.user_id]) || 'Someone';
         return (
             <ReactionChip key={reaction.timestamp + reaction.user_id}>
                 <span>{emoji}</span>
