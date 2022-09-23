@@ -95,6 +95,7 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     SHOW_END_CALL_MODAL,
     VOICE_CHANNEL_USER_REACTION,
+    VOICE_CHANNEL_USER_REACTION_TIMEOUT,
 } from './action_types';
 
 import {PluginRegistry, Store} from './types/mattermost-webapp';
@@ -293,21 +294,32 @@ export default class Plugin {
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_reaction`, (ev) => {
+            const reaction = {
+                emoji: {
+                    name: ev.data.emoji_name,
+                    skin: ev.data.emoji_skin,
+                    unified: ev.data.emoji_unified,
+                },
+                timestamp: ev.data.timestamp,
+            };
             store.dispatch({
                 type: VOICE_CHANNEL_USER_REACTION,
                 data: {
                     userID: ev.data.userID,
+                    reaction,
                     channelID: ev.broadcast.channel_id,
-                    reaction: {
-                        emoji: {
-                            name: ev.data.emoji_name,
-                            skin: ev.data.emoji_skin,
-                            unified: ev.data.emoji_unified,
-                        },
-                        timestamp: ev.data.timestamp,
-                    },
                 },
             });
+            setTimeout(() => {
+                store.dispatch({
+                    type: VOICE_CHANNEL_USER_REACTION_TIMEOUT,
+                    data: {
+                        channelID: ev.broadcast.channel_id,
+                        userID: ev.data.userID,
+                        reaction,
+                    },
+                });
+            }, 5000); // TODO: This time was randomly chosen; see if it should be configurable or at least a little better informed
         });
     }
 
