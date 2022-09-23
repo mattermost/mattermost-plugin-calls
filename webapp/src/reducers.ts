@@ -8,6 +8,8 @@ import {
     UserState,
     CallsUserPreferences,
     CallsUserPreferencesDefault,
+    Reaction,
+    ReactionWithUser,
 } from './types/types';
 
 import {
@@ -212,20 +214,20 @@ interface usersStatusesAction {
         channelID: string,
         userID: string,
         raised_hand?: number,
-        reaction?: {emoji_name: string, emoji_skin: string, emoji_unified: string, timestamp: number},
+        reaction?: Reaction,
         states: { [userID: string]: UserState },
     },
 }
 
 interface userReactionsState {
     [channelID: string]: {
-        reactions: {emoji_name: string, emoji_skin: string, emoji_unified: string, timestamp: number, userID: string}[],
+        reactions: ReactionWithUser[],
     }
 }
 
-const queueReactions = (state: {emoji_name: string, emoji_skin: string, emoji_unified: string, timestamp: number, userID: string}[], reaction: {emoji_name: string, emoji_skin: string, emoji_unified: string, timestamp: number}, userID: string) => {
+const queueReactions = (state: ReactionWithUser[], reaction: ReactionWithUser) => {
     const result = [...state];
-    result.push({...reaction, userID});
+    result.push(reaction);
     if (result.length > 8) { // TODO: random size, this should probably be configurable
         result.shift();
     }
@@ -247,7 +249,7 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
                     },
                 };
             }
-            return queueReactions(state[action.data.channelID].reactions, action.data.reaction, action.data.userID);
+            return queueReactions(state[action.data.channelID].reactions, {...action.data.reaction, user_id: action.data.userID});
         }
         return state;
     default:

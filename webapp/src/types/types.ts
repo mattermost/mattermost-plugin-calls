@@ -5,7 +5,7 @@ export type UserState = {
     voice: boolean;
     unmuted: boolean;
     raised_hand: number;
-    reaction?: {emoji_name: string, emoji_skin: string, emoji_unified: string, timestamp: number};
+    reaction?: Reaction;
 }
 
 export type RTCStats = {
@@ -116,4 +116,13 @@ export type EmojiData = {
     name: string;
     skin?: string;
     unified: string;
+}
+
+export type Reaction = {
+    emoji: EmojiData;
+    timestamp: number;
+}
+
+export type ReactionWithUser = Reaction & {
+    user_id: string;
 }

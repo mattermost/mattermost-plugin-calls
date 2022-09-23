@@ -15,7 +15,7 @@ import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
-import {UserState} from 'src/types/types';
+import {EmojiData, UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 
 import {Emojis, EmojiIndicesByAlias, EmojiIndicesByUnicode} from 'src/emoji';
@@ -178,11 +178,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
-    getEmojiURL = (reaction: {emoji_name: string, emoji_skin: string, emoji_unified: string}) => {
-        const {
-            emoji_unified,
-        } = reaction;
-        const index = EmojiIndicesByUnicode.get(emoji_unified.toLowerCase());
+    getEmojiURL = (emoji: EmojiData) => {
+        const index = EmojiIndicesByUnicode.get(emoji.unified.toLowerCase());
         if (!index) {
             return '';
         }
@@ -372,7 +369,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 hasReaction = Boolean(status.reaction);
 
                 if (status.reaction) {
-                    emojiURL = this.getEmojiURL(status.reaction);
+                    emojiURL = this.getEmojiURL(status.reaction.emoji);
                 }
             }
 
@@ -426,7 +423,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <div style={style.reactionContainer as CSSProperties}>
                                 <span
                                     className='emoticon'
-                                    title={status?.reaction?.emoji_name}
+                                    title={status?.reaction?.emoji.name}
                                     style={{
                                         backgroundImage: 'url(' + emojiURL + ')',
                                         width: '18px',
@@ -435,7 +432,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         minHeight: '18px',
                                     }}
                                 >
-                                    {status?.reaction?.emoji_name}
+                                    {status?.reaction?.emoji.name}
                                 </span>
                             </div>
                         </>

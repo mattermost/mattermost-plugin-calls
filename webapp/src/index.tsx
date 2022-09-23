@@ -299,9 +299,11 @@ export default class Plugin {
                     channelID: ev.broadcast.channel_id,
                     userID: ev.data.userID,
                     reaction: {
-                        emoji_name: ev.data.emoji_name,
-                        emoji_skin: ev.data.emoji_skin,
-                        emoji_unified: ev.data.emoji_unified,
+                        emoji: {
+                            name: ev.data.emoji_name,
+                            skin: ev.data.emoji_skin,
+                            unified: ev.data.emoji_unified,
+                        },
                         timestamp: ev.data.timestamp,
                     },
                 },
