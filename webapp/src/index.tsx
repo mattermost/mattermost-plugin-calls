@@ -296,14 +296,16 @@ export default class Plugin {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_REACTION,
                 data: {
-                    reaction: {
-                        emoji_name: ev.data.emoji_name,
-                        emoji_unified: ev.data.emoji_unified,
-                        emoji_skin: ev.data.emoji_skin,
-                        timestamp: ev.data.timestamp,
-                    },
                     userID: ev.data.userID,
                     channelID: ev.broadcast.channel_id,
+                    reaction: {
+                        emoji: {
+                            name: ev.data.emoji_name,
+                            skin: ev.data.emoji_skin,
+                            unified: ev.data.emoji_unified,
+                        },
+                        timestamp: ev.data.timestamp,
+                    },
                 },
             });
         });

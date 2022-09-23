@@ -8,6 +8,8 @@ import {
     UserState,
     CallsUserPreferences,
     CallsUserPreferencesDefault,
+    Reaction,
+    ReactionWithUser,
 } from './types/types';
 
 import {
@@ -212,20 +214,20 @@ interface usersStatusesAction {
         channelID: string,
         userID: string,
         raised_hand?: number,
-        reaction?: {emoji_name: string, emoji_unified: string, emoji_skin?: string, timestamp: number},
+        reaction?: Reaction,
         states: { [userID: string]: UserState },
     },
 }
 
 interface userReactionsState {
     [channelID: string]: {
-        reactions: {emoji_name: string, emoji_unified: string, emoji_skin?: string, timestamp: number, userID: string}[],
+        reactions: ReactionWithUser[],
     }
 }
 
-const queueReactions = (state: {emoji_name: string, emoji_unified: string, emoji_skin?: string, timestamp: number, userID: string}[], reaction: {emoji_name: string, emoji_unified: string, emoji_skin?: string, timestamp: number}, userID: string) => {
-    const result = [...state];
-    result.push({...reaction, userID});
+const queueReactions = (state: ReactionWithUser[], reaction: ReactionWithUser) => {
+    const result = state.length ? [...state] : [];
+    result.push(reaction);
     if (result.length > 50) { // TODO: random size, this should probably be configurable
         result.shift();
     }
@@ -236,20 +238,18 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
     switch (action.type) {
     case VOICE_CHANNEL_USER_REACTION:
         if (action.data.reaction) {
-            console.log('adding data to queue');
-            console.log(action.data);
-            if (state[action.data.channelID]) {
-                return {...state,
+            if (!state[action.data.channelID]) {
+                return {
+                    ...state,
                     [action.data.channelID]: {
-                        reactions: queueReactions(state[action.data.channelID].reactions, action.data.reaction, action.data.userID),
+                        reactions: [{
+                            ...action.data.reaction,
+                            userID: action.data.userID,
+                        }],
                     },
                 };
             }
-            return {...state,
-                [action.data.channelID]: {
-                    reactions: [{...action.data.reaction, userID: action.data.userID}],
-                },
-            };
+            return queueReactions(state[action.data.channelID].reactions, {...action.data.reaction, user_id: action.data.userID});
         }
         return state;
     default:
@@ -429,6 +429,19 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
             },
         };
     case VOICE_CHANNEL_USER_REACTION:
+        if (!state[action.data.channelID]) {
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    [action.data.userID]: {
+                        voice: false,
+                        unmuted: false,
+                        raised_hand: 0,
+                        reaction: action.data.reaction,
+                    },
+                },
+            };
+        }
         return {
             ...state,
             [action.data.channelID]: {
