@@ -301,7 +301,6 @@ export default class Plugin {
                     unified: ev.data.emoji_unified,
                 },
                 timestamp: ev.data.timestamp,
-                seq: ev.seq,
             };
             store.dispatch({
                 type: VOICE_CHANNEL_USER_REACTION,

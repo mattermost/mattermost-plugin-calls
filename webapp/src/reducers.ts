@@ -235,8 +235,8 @@ const queueReactions = (state: ReactionWithUser[], reaction: ReactionWithUser) =
     return result;
 };
 
-const removeReaction = (state: ReactionWithUser[], reactionSeq: number) => {
-    return state.filter((r) => r.seq !== reactionSeq);
+const removeReaction = (state: ReactionWithUser[], reaction: ReactionWithUser) => {
+    return state.filter((r) => r.user_id !== reaction.user_id || r.timestamp !== reaction.timestamp);
 };
 
 const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAction) => {
@@ -261,7 +261,7 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
         if (!state[action.data.channelID]?.reactions || !action.data.reaction) {
             return state;
         }
-        return removeReaction(state[action.data.channelID].reactions, action.data.reaction.seq);
+        return removeReaction(state[action.data.channelID].reactions, {...action.data.reaction, user_id: action.data.userID});
     default:
         return state;
     }
@@ -469,7 +469,7 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
         if (!action.data.reaction) {
             return state;
         }
-        if (state[action.data.channelID][action.data.userID].reaction?.seq !== action.data.reaction.seq) {
+        if (state[action.data.channelID][action.data.userID].reaction?.timestamp !== action.data.reaction.timestamp) {
             return state;
         }
         return {
