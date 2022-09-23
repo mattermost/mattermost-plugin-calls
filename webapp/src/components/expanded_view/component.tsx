@@ -420,25 +420,26 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </div>
                         </>
                         }
-                        {!isHandRaised && hasReaction ?
-                            <>
-                                <div style={style.reactionBackground as CSSProperties}/>
-                                <div style={style.reactionContainer as CSSProperties}>
-                                    <span
-                                        className='emoticon'
-                                        title={status?.reaction?.emoji_name}
-                                        style={{
-                                            backgroundImage: 'url(' + emojiURL + ')',
-                                            width: '18px',
-                                            minWidth: '18px',
-                                            height: '18px',
-                                            minHeight: '18px',
-                                        }}
-                                    >
-                                        {status?.reaction?.emoji_name}
-                                    </span>
-                                </div>
-                            </> : null}
+                        {!isHandRaised && hasReaction &&
+                        <>
+                            <div style={style.reactionBackground as CSSProperties}/>
+                            <div style={style.reactionContainer as CSSProperties}>
+                                <span
+                                    className='emoticon'
+                                    title={status?.reaction?.emoji_name}
+                                    style={{
+                                        backgroundImage: 'url(' + emojiURL + ')',
+                                        width: '18px',
+                                        minWidth: '18px',
+                                        height: '18px',
+                                        minHeight: '18px',
+                                    }}
+                                >
+                                    {status?.reaction?.emoji_name}
+                                </span>
+                            </div>
+                        </>
+                        }
                     </div>
 
                     <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
