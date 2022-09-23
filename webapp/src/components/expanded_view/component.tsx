@@ -20,6 +20,7 @@ import {Emojis, EmojiIndicesByUnicode} from 'src/emoji';
 
 import Avatar from '../avatar/avatar';
 import {ReactionStream} from '../reaction_stream/reaction_stream';
+import {Emoji} from '../emoji/emoji';
 import CompassIcon from '../../components/icons/compassIcon';
 import LeaveCallIcon from '../../components/icons/leave_call_icon';
 import MutedIcon from '../../components/icons/muted_icon';
@@ -416,23 +417,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </div>
                         </>
                         }
-                        {!isHandRaised && hasReaction &&
+                        {!isHandRaised && hasReaction && status.reaction &&
                         <>
                             <div style={style.reactionBackground as CSSProperties}/>
                             <div style={style.reactionContainer as CSSProperties}>
-                                <span
-                                    className='emoticon'
-                                    title={status?.reaction?.emoji.name}
-                                    style={{
-                                        backgroundImage: 'url(' + emojiURL + ')',
-                                        width: '18px',
-                                        minWidth: '18px',
-                                        height: '18px',
-                                        minHeight: '18px',
-                                    }}
-                                >
-                                    {status?.reaction?.emoji.name}
-                                </span>
+                                <Emoji emoji={status.reaction.emoji}/>
                             </div>
                         </>
                         }

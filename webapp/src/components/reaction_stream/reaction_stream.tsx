@@ -7,8 +7,8 @@ import styled from 'styled-components';
 import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
 import {UserProfile} from '@mattermost/types/lib/users';
 
-import {ReactionWithUser, EmojiData} from 'src/types/types';
-import {Emojis, EmojiIndicesByUnicode} from 'src/emoji';
+import {Emoji} from '../emoji/emoji';
+import {ReactionWithUser} from 'src/types/types';
 import {getUserDisplayName} from 'src/utils';
 
 type Props = {
@@ -20,7 +20,6 @@ type Props = {
 const ReactionStreamList = styled.div`
     position='absolute';
     left=0;
-    height: 75%;
     bottom=100px;
     display: flex;
     flex-direction: column-reverse;
@@ -41,14 +40,6 @@ const ReactionChip = styled.div`
     margin: 2px
 `;
 
-const getEmojiURL = (emoji: EmojiData) => {
-    const index = EmojiIndicesByUnicode.get(emoji.unified.toLowerCase());
-    if (typeof index === 'undefined') {
-        return '';
-    }
-    return getEmojiImageUrl(Emojis[index]);
-};
-
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = (props: Props) => {
     const reversed = [...props.reactions];
@@ -59,20 +50,7 @@ export const ReactionStream = (props: Props) => {
     const elements = reversed.map((reaction) => {
         // emojis should be a separate component that is reused both here and in the extended view
         // getEmojiURL should be memoized as people tend to react similarly and this would speed up the process.
-        const emoji = (
-            <span
-                className='emoticon'
-                title={reaction.emoji.name}
-                style={{
-                    backgroundImage: `url(${getEmojiURL(reaction.emoji)})`,
-                    width: '18px',
-                    minWidth: '18px',
-                    height: '18px',
-                    minHeight: '18px',
-                }}
-            >
-                {reaction.emoji.name}
-            </span>);
+        const emoji = (<Emoji emoji={reaction.emoji}/>);
         const user = reaction.user_id === props.currentUserID ? 'you' : getUserDisplayName(props.profiles[reaction.user_id]) || 'someone';
         return (
             <ReactionChip key={reaction.timestamp + reaction.user_id}><span>{emoji}</span>&nbsp;<span>{user}</span></ReactionChip>
