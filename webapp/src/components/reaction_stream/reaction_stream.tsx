@@ -14,6 +14,7 @@ type Props = {
     reactions: ReactionWithUser[],
     currentUserID: string,
     profiles: {[key: string]: UserProfile;},
+    handsup: string[],
 };
 
 const ReactionStreamList = styled.div`
@@ -58,6 +59,14 @@ export const ReactionStream = (props: Props) => {
             </ReactionChip>
         );
     });
+    if (props.handsup?.length) {
+        const handsupelement = genEmoji({name: 'hand', skin: '', unified: '270B'});
+        const first = props.handsup[0] === props.currentUserID ? 'You' : getUserDisplayName(props.profiles[props.handsup[0]]);
+
+        // maybe we can consider having 1, 2 or more participants as a stretch
+        const participants = props.handsup?.length > 1 ? `${first} & ${props.handsup?.length - 1} others` : first;
+        elements.push(<ReactionChip key={'hands'}><span>{handsupelement}</span>&nbsp;<span>{participants}</span></ReactionChip>);
+    }
     return (
         <ReactionStreamList>
             {elements}

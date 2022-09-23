@@ -532,6 +532,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.props.profiles.forEach((profile) => {
             profileMap[profile.id] = profile;
         });
+        const handsup: string[] = [];
+        for (const [id, member] of Object.entries(this.props.statuses)) {
+            if (member.raised_hand) {
+                handsup.push(id);
+            }
+        }
 
         return (
             <div
@@ -566,6 +572,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 reactions={this.props.reactions}
                                 currentUserID={this.props.currentUserID}
                                 profiles={profileMap}
+                                handsup={handsup}
                             />
                             <ul
                                 id='calls-expanded-view-participants-grid'
