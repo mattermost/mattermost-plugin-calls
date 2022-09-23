@@ -53,8 +53,6 @@ const getEmojiURL = (emoji: EmojiData) => {
 export const ReactionStream = (props: Props) => {
     const reversed = [...props.reactions];
 
-    // temporary push items to mimic a raised hands
-    //reversed.push({emoji: {name: 'raised-hand', unified: 's1', skin: ''}, timestamp: 1, user_id: 'ut3kxffbi7fxzfbz9igmc3ejte'});
 
     // add hands up into reversed
     reversed.reverse();
