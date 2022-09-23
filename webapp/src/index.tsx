@@ -298,8 +298,14 @@ export default class Plugin {
                 data: {
                     channelID: ev.broadcast.channel_id,
                     userID: ev.data.userID,
-                    emoji: ev.data.emoji,
-                    timestamp: ev.data.timestamp,
+                    reaction: {
+                        emoji: {
+                            name: ev.data.emoji_name,
+                            skin: ev.data.emoji_skin,
+                            unified: ev.data.emoji_unified,
+                        },
+                        timestamp: ev.data.timestamp,
+                    },
                 },
             });
         });

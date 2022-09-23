@@ -8,12 +8,16 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 
+import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
+
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
-import {UserState} from 'src/types/types';
+import {EmojiData, UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
+
+import {Emojis, EmojiIndicesByUnicode} from 'src/emoji';
 
 import Avatar from '../avatar/avatar';
 
@@ -171,6 +175,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 window.close();
             }
         }
+    }
+
+    getEmojiURL = (emoji: EmojiData) => {
+        const index = EmojiIndicesByUnicode.get(emoji.unified.toLowerCase());
+        if (!index) {
+            return '';
+        }
+        return getEmojiImageUrl(Emojis[index]);
     }
 
     onMuteToggle = () => {
@@ -347,10 +359,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             let isMuted = true;
             let isSpeaking = false;
             let isHandRaised = false;
+            let hasReaction = false;
+            let emojiURL = '';
             if (status) {
                 isMuted = !status.unmuted;
                 isSpeaking = Boolean(status.voice);
                 isHandRaised = Boolean(status.raised_hand > 0);
+                hasReaction = Boolean(status.reaction);
+
+                if (status.reaction) {
+                    emojiURL = this.getEmojiURL(status.reaction.emoji);
+                }
             }
 
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
@@ -389,23 +408,34 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 stroke={isMuted ? '#C4C4C4' : ''}
                             />
                         </div>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                display: isHandRaised ? 'flex' : 'none',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                top: 0,
-                                right: 0,
-                                background: 'rgba(50, 50, 50, 1)',
-                                borderRadius: '30px',
-                                width: '20px',
-                                height: '20px',
-                                fontSize: '12px',
-                            }}
-                        >
-                            {'✋'}
-                        </div>
+                        {isHandRaised &&
+                        <>
+                            <div style={style.reactionBackground as CSSProperties}/>
+                            <div style={style.handRaisedContainer as CSSProperties}>
+                                {'🤚'}
+                            </div>
+                        </>
+                        }
+                        {!isHandRaised && hasReaction &&
+                        <>
+                            <div style={style.reactionBackground as CSSProperties}/>
+                            <div style={style.reactionContainer as CSSProperties}>
+                                <span
+                                    className='emoticon'
+                                    title={status?.reaction?.emoji.name}
+                                    style={{
+                                        backgroundImage: 'url(' + emojiURL + ')',
+                                        width: '18px',
+                                        minWidth: '18px',
+                                        height: '18px',
+                                        minHeight: '18px',
+                                    }}
+                                >
+                                    {status?.reaction?.emoji.name}
+                                </span>
+                            </div>
+                        </>
+                        }
                     </div>
 
                     <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
@@ -808,5 +838,43 @@ const style = {
         position: 'absolute',
         top: '-445px',
         left: '-75px',
+    },
+    reactionBackground: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -7,
+        right: -12,
+        background: 'rgba(37, 38, 42, 1)',
+        borderRadius: '30px',
+        width: '30px',
+        height: '30px',
+    },
+    reactionContainer: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -5,
+        right: -10,
+        background: 'rgba(50, 50, 50, 1)',
+        borderRadius: '30px',
+        width: '25px',
+        height: '25px',
+        fontSize: '12px',
+    },
+    handRaisedContainer: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -5,
+        right: -10,
+        background: 'rgba(255, 255, 255, 1)',
+        borderRadius: '30px',
+        width: '25px',
+        height: '25px',
+        fontSize: '18px',
     },
 };
