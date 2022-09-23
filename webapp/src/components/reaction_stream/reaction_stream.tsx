@@ -20,6 +20,7 @@ type Props = {
 const ReactionStreamList = styled.div`
     position='absolute';
     left=0;
+    height: 75%;
     bottom=100px;
     display: flex;
     flex-direction: column-reverse;
@@ -34,7 +35,6 @@ const ReactionChip = styled.div`
     align-items: flex-end;
     padding: 4px 6px;
     gap: 4px;
-    width: 94px;
     height: 23px;
     background: rgba(221, 223, 228, 0.08);
     border-radius: 12px;
