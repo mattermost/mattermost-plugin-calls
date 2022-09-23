@@ -14,6 +14,7 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {displayFreeTrial, getCallsConfig} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
+import {voiceUserStatus} from 'src/selectors';
 
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 
@@ -302,15 +303,13 @@ export default class Plugin {
                 },
                 timestamp: ev.data.timestamp,
             };
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_REACTION,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                    reaction,
-                },
-            });
-            setTimeout(() => {
+
+            // Clear the previous timeout of the users's reaction, if any
+            const userState = voiceUserStatus(store.getState(), ev.broadcast.channel_id, ev.data.userID);
+            clearTimeout(userState?.reaction?.timeoutID);
+
+            // Schedule a new timeout for the reaction received
+            const timeoutID = setTimeout(() => {
                 store.dispatch({
                     type: VOICE_CHANNEL_USER_REACTION_TIMEOUT,
                     data: {
@@ -320,6 +319,16 @@ export default class Plugin {
                     },
                 });
             }, 5000); // TODO: This time was randomly chosen; see if it should be configurable or at least a little better informed
+
+            // Dispatch the reaction received along with the ID of its corresponding timeout action
+            store.dispatch({
+                type: VOICE_CHANNEL_USER_REACTION,
+                data: {
+                    channelID: ev.broadcast.channel_id,
+                    userID: ev.data.userID,
+                    reaction: {...reaction, timeoutID},
+                },
+            });
         });
     }
 

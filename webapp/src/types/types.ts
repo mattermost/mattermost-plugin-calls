@@ -121,6 +121,7 @@ export type EmojiData = {
 export type Reaction = {
     emoji: EmojiData;
     timestamp: number;
+    timeoutID?: number;
 }
 
 export type ReactionWithUser = Reaction & {

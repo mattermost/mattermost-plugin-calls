@@ -66,6 +66,10 @@ export const voiceUsersStatuses = (state: GlobalState) => {
     return getPluginState(state).voiceUsersStatuses[connectedChannelID(state)] || {};
 };
 
+export const voiceUserStatus = (state: GlobalState, channelID: string, userID: string) => {
+    return getPluginState(state).voiceUsersStatuses[channelID]?.[userID] || {};
+};
+
 export const voiceChannelCallStartAt = (state: GlobalState, channelID: string) => {
     return getPluginState(state).voiceChannelCalls[channelID]?.startAt;
 };
