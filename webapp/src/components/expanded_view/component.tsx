@@ -5,7 +5,6 @@
 import React, {CSSProperties} from 'react';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 
 import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
@@ -47,7 +46,7 @@ import {
 
 import './component.scss';
 
-const EMOJI_VERSION = 13;
+const EMOJI_VERSION = '13';
 
 const EMOJI_SKINTONE_MAP = new Map([[1, ''], [2, '1F3FB'], [3, '1F3FC'], [4, '1F3FD'], [5, '1F3FE'], [6, '1F3FF']]);
 
@@ -179,7 +178,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     getEmojiURL = (emoji: EmojiData) => {
         const index = EmojiIndicesByUnicode.get(emoji.unified.toLowerCase());
-        if (!index) {
+        if (typeof index === 'undefined') {
             return '';
         }
         return getEmojiImageUrl(Emojis[index]);
@@ -237,7 +236,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return this.state.showEmojiPicker ? (
             <div style={style.emojiPickerContainer as CSSProperties}>
                 <Picker
-                    data={data}
                     emojiVersion={EMOJI_VERSION}
                     skinTonePosition='search'
                     onEmojiSelect={this.handleUserPicksEmoji}
