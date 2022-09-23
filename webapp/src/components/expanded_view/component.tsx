@@ -8,7 +8,6 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 
-import {Client4} from 'mattermost-redux/client';
 import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
 
 import {UserProfile} from '@mattermost/types/users';
@@ -18,7 +17,7 @@ import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} f
 import {EmojiData, UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 
-import {Emojis, EmojiIndicesByAlias, EmojiIndicesByUnicode} from 'src/emoji';
+import {Emojis, EmojiIndicesByUnicode} from 'src/emoji';
 
 import Avatar from '../avatar/avatar';
 
