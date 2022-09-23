@@ -35,7 +35,7 @@ func (p *Plugin) handleGetAgenda(w http.ResponseWriter, r *http.Request, token s
 		Items: []*AgendaItem{},
 	}
 
-	blocks, err := p.fbStore.GetUpnextCards(userID, token, channelID)
+	blocks, err := p.fbStore.GetUpnextCards(token, channelID)
 	if err != nil {
 		http.Error(w, "unable to get cards for agenda: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -83,7 +83,7 @@ func (p *Plugin) handleUpdateAgendaItem(w http.ResponseWriter, r *http.Request, 
 		status = StatusUpNext
 	}
 
-	err = p.fbStore.UpdateCardStatus(userID, token, item.ID, channelID, status)
+	err = p.fbStore.UpdateCardStatus(token, item.ID, channelID, status)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

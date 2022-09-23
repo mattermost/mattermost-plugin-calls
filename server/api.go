@@ -514,7 +514,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		if matches := agendaGetRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			session, err := p.pluginAPI.Session.Get(c.SessionId)
 			if err != nil {
-				p.handleErrorWithCode(w, http.StatusInternalServerError, "could not get session token", err)
+				p.handleErrorWithCode(w, http.StatusInternalServerError, "could not get session", err)
 			}
 			p.handleGetAgenda(w, r, session.Token, matches[1])
 			return
@@ -525,9 +525,9 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		if matches := agendaUpdateRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			session, err := p.pluginAPI.Session.Get(c.SessionId)
 			if err != nil {
-				p.handleErrorWithCode(w, http.StatusInternalServerError, "could not get session token", err)
+				p.handleErrorWithCode(w, http.StatusInternalServerError, "could not get session", err)
 			}
-			p.handleUpdateAgendaItem(w, r, session.Id, matches[1])
+			p.handleUpdateAgendaItem(w, r, session.Token, matches[1])
 			return
 		}
 	}
@@ -554,9 +554,9 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		if matches := agendaAddRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			session, err := p.pluginAPI.Session.Get(c.SessionId)
 			if err != nil {
-				p.handleErrorWithCode(w, http.StatusInternalServerError, "could not get session token", err)
+				p.handleErrorWithCode(w, http.StatusInternalServerError, "could not get session", err)
 			}
-			p.handleAddAgendaItem(w, r, session.Id, matches[1])
+			p.handleAddAgendaItem(w, r, session.Token, matches[1])
 			return
 		}
 
