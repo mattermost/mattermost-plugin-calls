@@ -229,6 +229,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     emojiVersion={EMOJI_VERSION}
                     skinTonePosition='search'
                     onEmojiSelect={this.handleUserPicksEmoji}
+                    onClickOutside={this.toggleEmojiPicker}
                 />
             </div>
         ) : null;
@@ -621,7 +622,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                                     <button
                                         className='button-center-controls'
-                                        onClick={this.toggleEmojiPicker}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            this.toggleEmojiPicker();
+                                        }}
                                         style={{background: this.state.showEmojiPicker ? '#FFFFFF' : '', position: 'relative'}}
                                     >
                                         <SmileyIcon
