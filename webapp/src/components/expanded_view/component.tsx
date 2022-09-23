@@ -13,7 +13,7 @@ import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
-import {EmojiData, UserState} from 'src/types/types';
+import {EmojiData, ReactionWithUser, UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 
 import {Emojis, EmojiIndicesByUnicode} from 'src/emoji';
@@ -60,7 +60,7 @@ interface Props {
     statuses: {
         [key: string]: UserState,
     },
-    reactions: {emoji_name: string, emoji_unified: string, emoji_skin?: string, timestamp: number, userID: string}[],
+    reactions: ReactionWithUser[],
     callStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
@@ -538,6 +538,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
 
+        // building the list here causes a bug tht if a user leaves and recently reacted it will show as blank
+        const profileMap: {[key: string]: UserProfile;} = {};
+        this.props.profiles.forEach((profile) => {
+            profileMap[profile.id] = profile;
+        });
+
         return (
             <div
                 id='calls-expanded-view'
@@ -567,7 +573,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     </div>
                     { !this.props.screenSharingID &&
                         <div style={{flex: 1, display: 'flex', flexDirection: 'row'}}>
-                            <ReactionStream reactions={this.props.reactions}/>
+                            <ReactionStream
+                                reactions={this.props.reactions}
+                                currentUserID={this.props.currentUserID}
+                                profiles={profileMap}
+                            />
                             <ul
                                 id='calls-expanded-view-participants-grid'
                                 style={{
