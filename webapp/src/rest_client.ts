@@ -31,16 +31,13 @@ export const getApiUrl = (): string => {
     return apiUrl;
 };
 
-export async function fetchAgendaForChannel(channelId: string): Promise<Checklist> {
-    // FIXME
-    //let data = await doGet(`${apiUrl}/agenda/${channelId}`);
-    // if (!data) {
-    //     data = {title: `Agenda for ${channelId}`, items: []} as Checklist;
-    // }
+export async function fetchAgendaForChannel(channelId: string): Promise<Checklist | null> {
+    const data = await doGet<Checklist>(`${apiUrl}/agenda/${channelId}`);
+    if (!data) {
+        return null;
+    }
 
-    //return data as Checklist;
-
-    return emptyChecklist();
+    return data;
 }
 
 export async function updateAgendaItem(channelId: string, item: ChecklistItem) {

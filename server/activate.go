@@ -67,6 +67,10 @@ func (p *Plugin) OnActivate() error {
 		}
 	}
 
+	if err := p.setupFBIntegration(); err != nil {
+		return err
+	}
+
 	if rtcdURL := cfg.getRTCDURL(); rtcdURL != "" && p.licenseChecker.RTCDAllowed() {
 		rtcdManager, err := p.newRTCDClientManager(rtcdURL)
 		if err != nil {
@@ -139,8 +143,14 @@ func (p *Plugin) OnActivate() error {
 	go p.clusterEventsHandler()
 	go p.wsWriter()
 
-	botID, err := pluginAPIClient.Bot.EnsureBot(&model.Bot{
-		Username:    "calls",
+	p.LogDebug("activated", "ClusterID", status.ClusterId)
+
+	return nil
+}
+
+func (p *Plugin) setupFBIntegration() error {
+	botID, err := p.pluginAPI.Bot.EnsureBot(&model.Bot{
+		Username:    "calls-bot",
 		DisplayName: "Calls Plugin Bot",
 		Description: "Created by the Calls plugin.",
 		OwnerId:     "calls",
@@ -174,7 +184,7 @@ func (p *Plugin) OnActivate() error {
 
 	p.fbStore = NewFocalboardStore(p.API, url)
 
-	p.LogDebug("activated", "ClusterID", status.ClusterId)
+	p.LogDebug("<><> focalboard integration activated", "focalboard url", url)
 
 	return nil
 }

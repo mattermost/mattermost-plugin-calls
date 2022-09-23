@@ -8,6 +8,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	fbModel "github.com/mattermost/focalboard/server/model"
+	"github.com/pkg/errors"
 	"strings"
 
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -138,6 +140,138 @@ func (p *Plugin) handleEndCallCommand(userID, channelID string) (*model.CommandR
 	return &model.CommandResponse{}, nil
 }
 
+func (p *Plugin) makeBoard(args *model.CommandArgs) error {
+	channel, appErr := p.API.GetChannel(args.ChannelId)
+	if appErr != nil {
+		return errors.Wrap(appErr, "unable to get current Channel")
+	}
+	if channel == nil {
+		return errors.Wrap(appErr, "unable to get current Channel")
+	}
+
+	now := model.GetMillis()
+
+	createdByProp := map[string]interface{}{
+		"id":      model.NewId(),
+		"name":    "Created By",
+		"type":    "person",
+		"options": []interface{}{},
+	}
+
+	board := &fbModel.Board{
+		ID:        model.NewId(),
+		TeamID:    channel.TeamId,
+		ChannelID: channel.Id,
+		Type:      fbModel.BoardTypeOpen,
+		Title:     "Meeting Agenda",
+		CreatedBy: args.UserId,
+		Properties: map[string]interface{}{
+			"agenda-" + channel.Id: "",
+		},
+		CardProperties: []map[string]interface{}{
+			createdByProp,
+			{
+				"id":      model.NewId(),
+				"name":    "Created At",
+				"type":    "createdTime",
+				"options": []interface{}{},
+			},
+			{
+				"id":   model.NewId(),
+				"name": "Status",
+				"type": "select",
+				"options": []map[string]interface{}{
+					{
+						"id":    model.NewId(),
+						"value": StatusUpNext,
+						"color": "propColorGray",
+					},
+					{
+						"id":    model.NewId(),
+						"value": StatusRevisit,
+						"color": "propColorYellow",
+					},
+					{
+						"id":    model.NewId(),
+						"value": StatusDone,
+						"color": "propColorGreen",
+					},
+				},
+			},
+			{
+				"id":      model.NewId(),
+				"name":    "Post ID",
+				"type":    "text",
+				"options": []interface{}{},
+			},
+		},
+		CreateAt: now,
+		UpdateAt: now,
+		DeleteAt: 0,
+	}
+
+	block := fbModel.Block{
+		ID:       model.NewId(),
+		Type:     fbModel.TypeView,
+		BoardID:  board.ID,
+		ParentID: board.ID,
+		Schema:   1,
+		Fields: map[string]interface{}{
+			"viewType":           fbModel.TypeBoard,
+			"sortOptions":        []interface{}{},
+			"visiblePropertyIds": []interface{}{createdByProp["id"].(string)},
+			"visibleOptionIds":   []interface{}{},
+			"hiddenOptionIds":    []interface{}{},
+			"collapsedOptionIds": []interface{}{},
+			"filter": map[string]interface{}{
+				"operation": "and",
+				"filters":   []interface{}{},
+			},
+			"cardOrder":          []interface{}{},
+			"columnWidths":       map[string]interface{}{},
+			"columnCalculations": map[string]interface{}{},
+			"kanbanCalculations": map[string]interface{}{},
+			"defaultTemplateId":  "",
+		},
+		Title:    "All",
+		CreateAt: now,
+		UpdateAt: now,
+		DeleteAt: 0,
+	}
+
+	boardsAndBlocks := &fbModel.BoardsAndBlocks{Boards: []*fbModel.Board{board}, Blocks: []fbModel.Block{block}}
+
+	client := p.fbStore.GetClient(args.Session.Token)
+
+	boardsAndBlocks, resp := client.CreateBoardsAndBlocks(boardsAndBlocks)
+	if resp.Error != nil {
+		fmt.Println(resp.StatusCode)
+		return errors.Wrap(resp.Error, "unable to create board")
+	}
+	fmt.Println(resp.StatusCode)
+	if boardsAndBlocks == nil {
+		return errors.New("no boards or blocks returned")
+	}
+	if len(boardsAndBlocks.Boards) == 0 {
+		return errors.New("no board returned")
+	}
+
+	board = boardsAndBlocks.Boards[0]
+
+	member := &fbModel.BoardMember{
+		BoardID:     board.ID,
+		UserID:      args.UserId,
+		SchemeAdmin: true,
+	}
+
+	_, resp = client.AddMemberToBoard(member)
+	if resp.Error != nil {
+		return errors.Wrap(resp.Error, "unable to add user to board")
+	}
+
+	return nil
+}
+
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
@@ -157,6 +291,20 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	subCmd := fields[1]
+
+	if subCmd == "makeboard" {
+		err := p.makeBoard(args)
+		if err != nil {
+			return &model.CommandResponse{
+				ResponseType: model.CommandResponseTypeEphemeral,
+				Text:         "error:" + err.Error(),
+			}, nil
+		}
+		return &model.CommandResponse{
+			ResponseType: model.CommandResponseTypeEphemeral,
+			Text:         "made board...?",
+		}, nil
+	}
 
 	if subCmd == linkCommandTrigger {
 		resp, err := p.handleLinkCommand(args)
