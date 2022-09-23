@@ -53,7 +53,11 @@ export const ReactionStream = (props: Props) => {
         const emoji = (<Emoji emoji={reaction.emoji}/>);
         const user = reaction.user_id === props.currentUserID ? 'you' : getUserDisplayName(props.profiles[reaction.user_id]) || 'someone';
         return (
-            <ReactionChip key={reaction.timestamp + reaction.user_id}><span>{emoji}</span>&nbsp;<span>{user}</span></ReactionChip>
+            <ReactionChip key={reaction.timestamp + reaction.user_id}>
+                <span>{emoji}</span>
+                &nbsp;
+                <span>{user}</span>
+            </ReactionChip>
         );
     });
     return (
