@@ -27,7 +27,11 @@ const ReactionStreamList = styled.div`
     mask: linear-gradient(#0000, #0003, #000f);
 `;
 
-const ReactionChip = styled.div`
+interface chipProps {
+    highlight?: boolean;
+}
+
+const ReactionChip = styled.div<chipProps>`
     display: flex;
     flex-direction: row;
     align-items: flex-end;
@@ -38,15 +42,19 @@ const ReactionChip = styled.div`
     border-radius: 12px;
     margin: 4px 0;
     width: fit-content;
+
+    ${(props) => props.highlight && `
+        background: #FFBC1F;
+        color: #090A0B;
+  `}
 `;
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = (props: Props) => {
     const reversed = [...props.reactions];
 
-    // add hands up into reversed
     reversed.reverse();
-    const elements = reversed.map((reaction) => {
+    const reactions = reversed.map((reaction) => {
         // emojis should be a separate component that is reused both here and in the extended view
         // getEmojiURL should be memoized as people tend to react similarly and this would speed up the process.
         const emoji = (<Emoji emoji={reaction.emoji}/>);
@@ -59,14 +67,28 @@ export const ReactionStream = (props: Props) => {
             </ReactionChip>
         );
     });
+
+    // add hands up
+    let elements = [];
     if (props.handsup?.length) {
-        const handsupelement = genEmoji({name: 'hand', skin: '', unified: '270B'});
+        const handsupElement = (<Emoji emoji={{name: 'hand', skin: '', unified: '270B'}}/>);
         const first = props.handsup[0] === props.currentUserID ? 'You' : getUserDisplayName(props.profiles[props.handsup[0]]);
 
         // maybe we can consider having 1, 2 or more participants as a stretch
         const participants = props.handsup?.length > 1 ? `${first} & ${props.handsup?.length - 1} others` : first;
-        elements.push(<ReactionChip key={'hands'}><span>{handsupelement}</span>&nbsp;<span>{participants}</span></ReactionChip>);
+        elements.push(
+            <ReactionChip
+                key={'hands'}
+                highlight={true}
+            >
+                <span>{handsupElement}</span>
+                &nbsp;
+                <span>{`${participants} raised a hand`}</span>
+            </ReactionChip>);
     }
+
+    elements = [...elements, ...reactions];
+
     return (
         <ReactionStreamList>
             {elements}
