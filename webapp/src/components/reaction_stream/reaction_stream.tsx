@@ -32,18 +32,18 @@ const ReactionChip = styled.div`
     display: flex;
     flex-direction: row;
     align-items: flex-end;
-    padding: 4px 6px;
+    padding: 2px 10px;
     gap: 4px;
     height: 23px;
     background: rgba(221, 223, 228, 0.08);
     border-radius: 12px;
     margin: 2px
+    width: fit-content;
 `;
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = (props: Props) => {
     const reversed = [...props.reactions];
-
 
     // add hands up into reversed
     reversed.reverse();
