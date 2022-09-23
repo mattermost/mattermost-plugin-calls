@@ -1,34 +1,55 @@
 /* eslint-disable max-lines */
 
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 
 import ChecklistList from 'src/components/checklist/checklist_list';
+import {fetchAgendaForChannel} from 'src/rest_client';
 
-import {Checklist, ChecklistItem} from 'src/types/checklist';
+import {Checklist, ChecklistItem, emptyChecklist} from 'src/types/checklist';
 
 interface Props {
     channelId: string,
-    checklist: Checklist,
-    getAgendaForChannel: (channelId: string) => void,
-    updateAgendaItemForChannel: (channelId: string, item: ChecklistItem) => void,
-    addAgendaItemToChannel: (channelId: string, item: ChecklistItem) => void,
 }
 
-export default class ExpandedView extends React.PureComponent<Props> {
-    public componentDidMount() {
-        const {channelId, getAgendaForChannel} = this.props;
-        getAgendaForChannel(channelId);
-    }
+const Agenda = (props: Props) => {
+    const [checklist, updateChecklist] = useState(emptyChecklist());
 
-    render() {
-        const {channelId, checklist, updateAgendaItemForChannel, addAgendaItemToChannel} = this.props;
-        return (
-            <ChecklistList
-                checklists={[checklist]}
-                onChecklistsUpdated={() => console.log('checklists updated')}
-                onUpdateChecklistItem={(item: ChecklistItem) => updateAgendaItemForChannel(channelId, item)}
-                onAddChecklistItem={(item: ChecklistItem) => addAgendaItemToChannel(channelId, item)}
-            />
-        );
-    }
-}
+    useEffect(() => {
+        async function getAgenda() {
+            console.log(props.channelId);
+            updateChecklist(await fetchAgendaForChannel(props.channelId) || emptyChecklist());
+        }
+        getAgenda();
+    }, [props.channelId]);
+
+    const onUpdateChecklistItem = (newItem: ChecklistItem, index: number) => {
+        const newChecklistItems = [...checklist.items];
+        newChecklistItems[index] = newItem;
+        const newChecklist = {...checklist};
+        newChecklist.items = newChecklistItems;
+        updateChecklist(newChecklist);
+
+        //props.onUpdateChecklist(newChecklist);
+    };
+
+    const onAddChecklistItem = (newItem: ChecklistItem) => {
+        const newChecklistItems = [...checklist.items];
+        newChecklistItems.push(newItem);
+        const newChecklist = {...checklist};
+        newChecklist.items = newChecklistItems;
+        updateChecklist(newChecklist);
+
+        //props.onUpdateChecklist(newChecklist);
+    };
+
+    return (
+        <ChecklistList
+            checklists={[checklist]}
+            onChecklistsUpdated={(...params) => console.log(params)}
+            onUpdateChecklistItem={onUpdateChecklistItem}
+            onAddChecklistItem={onAddChecklistItem}
+        />
+    );
+};
+
+export default Agenda;

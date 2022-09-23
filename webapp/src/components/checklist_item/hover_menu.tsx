@@ -64,11 +64,6 @@ const ChecklistItemHoverMenu = (props: Props) => {
                     onSelectedChange={props.onAssigneeChange}
                 />
             }
-            <DueDateHoverMenuButton
-                date={props.due_date}
-                mode={referenceID ? Mode.DateTimeValue : Mode.DurationValue}
-                onSelectedChange={(value) => props.onDueDateChange(value, referenceID)}
-            />
             <ChecklistHoverMenuButton
                 data-testid='hover-menu-edit-button'
                 title={formatMessage({defaultMessage: 'Edit'})}

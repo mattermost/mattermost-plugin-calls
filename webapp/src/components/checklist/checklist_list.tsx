@@ -46,7 +46,7 @@ interface Props {
     finished?: boolean;
     archived?: boolean;
     onChecklistsUpdated: (newChecklists: Checklist[]) => void;
-    onUpdateChecklistItem: (item: ChecklistItem) => void;
+    onUpdateChecklistItem: (item: ChecklistItem, index: number) => void;
     onAddChecklistItem: (item: ChecklistItem) => void;
 }
 

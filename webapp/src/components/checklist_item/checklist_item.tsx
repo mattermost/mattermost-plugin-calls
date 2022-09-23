@@ -163,7 +163,6 @@ export const ChecklistItem = (props: ChecklistItemProps): React.ReactElement => 
             />
         );
     };
-    */
 
     const renderDueDate = (): null | React.ReactNode => {
         const isTaskOpenOrInProgress = props.checklistItem.state === ChecklistItemState.Open || props.checklistItem.state === ChecklistItemState.InProgress;
@@ -179,7 +178,7 @@ export const ChecklistItem = (props: ChecklistItemProps): React.ReactElement => 
                 onSelectedChange={onDueDateChange}
             />
         );
-    };
+    };*/
 
     const renderRow = (): null | React.ReactNode => {
         if (!assigneeID && !command && !dueDate && !isEditing) {
@@ -188,7 +187,6 @@ export const ChecklistItem = (props: ChecklistItemProps): React.ReactElement => 
         return (
             <Row>
                 {renderAssignTo()}
-                {renderDueDate()}
             </Row>
         );
     };
@@ -221,6 +219,7 @@ export const ChecklistItem = (props: ChecklistItemProps): React.ReactElement => 
                         onDueDateChange={onDueDateChange}
                         onDuplicateChecklistItem={props.onDuplicateChecklistItem}
                         onDeleteChecklistItem={props.onDeleteChecklistItem}
+                        allowDelete={true}
                     />
                 }
                 <DragButton

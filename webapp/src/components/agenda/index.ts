@@ -23,5 +23,5 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     addAgendaItemToChannel,
 }, dispatch);
 
-export default connect(mapStateToProps, mapDispatchToProps)(Agenda);
+export default Agenda;
 

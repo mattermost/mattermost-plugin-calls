@@ -702,7 +702,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     }
                     {this.state.rhsState === RHSState.Agenda &&
                         <>
-                            <span style={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Agenda'}</span>
+                            <span style={{position: 'sticky', top: '0', background: 'var(--center-channel-bg)', fontWeight: 600, padding: '8px'}}>{'Agenda'}</span>
                             <AgendaComponent channelId={this.props.channel.id}/>
                         </>
                     }
