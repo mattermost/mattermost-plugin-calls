@@ -305,9 +305,9 @@ export default class Plugin {
             store.dispatch({
                 type: VOICE_CHANNEL_USER_REACTION,
                 data: {
-                    channelID: ev.broadcast.channel_id,
                     userID: ev.data.userID,
                     reaction,
+                    channelID: ev.broadcast.channel_id,
                 },
             });
             setTimeout(() => {

@@ -13,13 +13,14 @@ import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
-import {EmojiData, UserState} from 'src/types/types';
+import {EmojiData, ReactionWithUser, UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 
 import {Emojis, EmojiIndicesByUnicode} from 'src/emoji';
 
 import Avatar from '../avatar/avatar';
-
+import {ReactionStream} from '../reaction_stream/reaction_stream';
+import {Emoji} from '../emoji/emoji';
 import CompassIcon from '../../components/icons/compassIcon';
 import LeaveCallIcon from '../../components/icons/leave_call_icon';
 import MutedIcon from '../../components/icons/muted_icon';
@@ -60,6 +61,7 @@ interface Props {
     statuses: {
         [key: string]: UserState,
     },
+    reactions: ReactionWithUser[],
     callStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
@@ -415,23 +417,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </div>
                         </>
                         }
-                        {!isHandRaised && hasReaction &&
+                        {!isHandRaised && hasReaction && status.reaction &&
                         <>
                             <div style={style.reactionBackground as CSSProperties}/>
                             <div style={style.reactionContainer as CSSProperties}>
-                                <span
-                                    className='emoticon'
-                                    title={status?.reaction?.emoji.name}
-                                    style={{
-                                        backgroundImage: 'url(' + emojiURL + ')',
-                                        width: '18px',
-                                        minWidth: '18px',
-                                        height: '18px',
-                                        minHeight: '18px',
-                                    }}
-                                >
-                                    {status?.reaction?.emoji.name}
-                                </span>
+                                <Emoji emoji={status.reaction.emoji}/>
                             </div>
                         </>
                         }
@@ -537,13 +527,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
 
+        // building the list here causes a bug tht if a user leaves and recently reacted it will show as blank
+        const profileMap: {[key: string]: UserProfile;} = {};
+        this.props.profiles.forEach((profile) => {
+            profileMap[profile.id] = profile;
+        });
+
         return (
             <div
                 id='calls-expanded-view'
                 style={style.root as CSSProperties}
             >
                 <div style={style.main as CSSProperties}>
-                    <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
+                    <div style={{display: 'flex', width: '100%'}}>
                         <div style={style.topLeftContainer as CSSProperties}>
                             <CallDuration
                                 style={{margin: '4px'}}
@@ -564,17 +560,23 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </button>
                         }
                     </div>
-
                     { !this.props.screenSharingID &&
-                    <ul
-                        id='calls-expanded-view-participants-grid'
-                        style={{
-                            ...style.participants,
-                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
-                        }}
-                    >
-                        { this.renderParticipants() }
-                    </ul>
+                        <div style={{flex: 1, display: 'flex', flexDirection: 'row'}}>
+                            <ReactionStream
+                                reactions={this.props.reactions}
+                                currentUserID={this.props.currentUserID}
+                                profiles={profileMap}
+                            />
+                            <ul
+                                id='calls-expanded-view-participants-grid'
+                                style={{
+                                    ...style.participants,
+                                    gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                                }}
+                            >
+                                { this.renderParticipants() }
+                            </ul>
+                        </div>
                     }
                     { this.props.screenSharingID && this.renderScreenSharingPlayer() }
                     <div
@@ -773,7 +775,6 @@ const style = {
     main: {
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
         flex: '1',
     },
     closeViewButton: {

@@ -227,9 +227,9 @@ interface userReactionsState {
 }
 
 const queueReactions = (state: ReactionWithUser[], reaction: ReactionWithUser) => {
-    const result = [...state];
+    const result = state?.length ? [...state] : [];
     result.push(reaction);
-    if (result.length > 8) { // TODO: random size, this should probably be configurable
+    if (result.length > 50) { // TODO: random size, this should probably be configurable
         result.shift();
     }
     return result;
@@ -249,12 +249,17 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
                     [action.data.channelID]: {
                         reactions: [{
                             ...action.data.reaction,
-                            userID: action.data.userID,
+                            user_id: action.data.userID,
                         }],
                     },
                 };
             }
-            return queueReactions(state[action.data.channelID].reactions, {...action.data.reaction, user_id: action.data.userID});
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    reactions: queueReactions(state[action.data.channelID].reactions, {...action.data.reaction, user_id: action.data.userID}),
+                },
+            };
         }
         return state;
     case VOICE_CHANNEL_USER_REACTION_TIMEOUT:
