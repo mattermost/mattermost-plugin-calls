@@ -3,7 +3,7 @@
 import React, {useEffect, useState} from 'react';
 
 import ChecklistList from 'src/components/checklist/checklist_list';
-import {fetchAgendaForChannel} from 'src/rest_client';
+import {addAgendaItem, fetchAgendaForChannel, updateAgendaItem} from 'src/rest_client';
 
 import {Checklist, ChecklistItem, emptyChecklist} from 'src/types/checklist';
 
@@ -11,35 +11,38 @@ interface Props {
     channelId: string,
 }
 
-const Agenda = (props: Props) => {
-    const [checklist, updateChecklist] = useState(emptyChecklist());
+const Agenda = ({channelId}: Props) => {
+    const [checklist, setChecklist] = useState(emptyChecklist());
 
     useEffect(() => {
         async function getAgenda() {
-            console.log(props.channelId);
-            updateChecklist(await fetchAgendaForChannel(props.channelId) || emptyChecklist());
+            console.log(channelId, 'getting agenda');
+            setChecklist(await fetchAgendaForChannel(channelId) || emptyChecklist());
         }
         getAgenda();
-    }, [props.channelId]);
+    }, [channelId]);
 
-    const onUpdateChecklistItem = (newItem: ChecklistItem, index: number) => {
+    const onUpdateChecklistItem = async (newItem: ChecklistItem, index: number) => {
+        const item = await updateAgendaItem(channelId, newItem);
+        if (!item) {
+            console.log('<><> no checklist item returned');
+            return;
+        }
         const newChecklistItems = [...checklist.items];
-        newChecklistItems[index] = newItem;
+        newChecklistItems[index] = item;
         const newChecklist = {...checklist};
         newChecklist.items = newChecklistItems;
-        updateChecklist(newChecklist);
-
-        //props.onUpdateChecklist(newChecklist);
+        setChecklist(newChecklist);
     };
 
-    const onAddChecklistItem = (newItem: ChecklistItem) => {
+    const onAddChecklistItem = async (newItem: ChecklistItem) => {
+        const itemWithId = await addAgendaItem(channelId, newItem);
+
         const newChecklistItems = [...checklist.items];
-        newChecklistItems.push(newItem);
+        newChecklistItems.push(itemWithId);
         const newChecklist = {...checklist};
         newChecklist.items = newChecklistItems;
-        updateChecklist(newChecklist);
-
-        //props.onUpdateChecklist(newChecklist);
+        setChecklist(newChecklist);
     };
 
     return (

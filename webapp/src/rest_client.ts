@@ -41,18 +41,16 @@ export async function fetchAgendaForChannel(channelId: string): Promise<Checklis
 }
 
 export async function updateAgendaItem(channelId: string, item: ChecklistItem) {
-    // FIXME
-    //await doPut(`${apiUrl}/agenda/${channelId}/item`, JSON.stringify(item));
+    return doPut<ChecklistItem>(`${apiUrl}/agenda/${channelId}/item`, JSON.stringify(item));
 }
 
 export async function addAgendaItem(channelId: string, item: ChecklistItem): Promise<ChecklistItem> {
-    // FIXME
-    // let data = await doPost(`${apiUrl}/agenda/${channelId}/item`, JSON.stringify(item));
-    // if (!data) {
-    //     data = emptyChecklistItem();
-    // }
-    //
-    // return data as ChecklistItem;
+    let data = await doPost<ChecklistItem>(`${apiUrl}/agenda/${channelId}/item`, JSON.stringify(item));
+    if (!data) {
+        data = emptyChecklistItem();
+    }
+
+    return data;
 }
 
 export const doGet = async <TData = any>(url: string) => {

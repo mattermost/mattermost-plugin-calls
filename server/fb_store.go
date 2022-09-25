@@ -141,7 +141,6 @@ func (s *focalboardStore) AddCard(userID string, token string, channelID string,
 		return nil, errors.New("status card property not found on board")
 	}
 
-	creator := userID
 	optionTitle := StatusUpNext
 
 	statusOption := getPropertyOptionByValue(statusProp, optionTitle)
@@ -160,12 +159,12 @@ func (s *focalboardStore) AddCard(userID string, token string, channelID string,
 		BoardID:   board.ID,
 		Type:      fbModel.TypeCard,
 		Title:     title,
-		CreatedBy: creator,
+		CreatedBy: userID,
 		Fields: map[string]interface{}{
 			"icon": "📋",
 			"properties": map[string]interface{}{
 				statusProp["id"].(string):    statusOption["id"],
-				createdByProp["id"].(string): creator,
+				createdByProp["id"].(string): userID,
 			},
 		},
 		CreateAt: now,

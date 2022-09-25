@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"github.com/mattermost/mattermost-server/v6/model"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -63,15 +62,9 @@ func (p *Plugin) handleUpdateAgendaItem(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	var item AgendaItem
-	if err := json.Unmarshal(data, &item); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&item); err != nil {
+		p.handleError(w, err)
 		return
 	}
 
@@ -83,9 +76,9 @@ func (p *Plugin) handleUpdateAgendaItem(w http.ResponseWriter, r *http.Request, 
 		status = StatusUpNext
 	}
 
-	err = p.fbStore.UpdateCardStatus(token, item.ID, channelID, status)
+	err := p.fbStore.UpdateCardStatus(token, item.ID, channelID, status)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		p.handleError(w, err)
 		return
 	}
 
@@ -93,13 +86,13 @@ func (p *Plugin) handleUpdateAgendaItem(w http.ResponseWriter, r *http.Request, 
 	res.Code = http.StatusOK
 	resBytes, err := json.Marshal(res)
 	if err != nil {
-		p.LogError(err.Error())
-		http.Error(w, "", http.StatusInternalServerError)
+		p.handleError(w, err)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if _, err := w.Write(resBytes); err != nil {
-		p.LogError(err.Error())
+		p.handleError(w, err)
 	}
 }
 
@@ -110,22 +103,15 @@ func (p *Plugin) handleAddAgendaItem(w http.ResponseWriter, r *http.Request, tok
 		return
 	}
 
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	var item AgendaItem
-	if err := json.Unmarshal(data, &item); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&item); err != nil {
+		p.handleError(w, err)
 		return
 	}
 
-	// FIXME we were passing item.ID, but not anymore? figure why
 	block, err := p.fbStore.AddCard(userID, token, channelID, item.Title)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		p.handleError(w, err)
 		return
 	}
 
@@ -133,12 +119,12 @@ func (p *Plugin) handleAddAgendaItem(w http.ResponseWriter, r *http.Request, tok
 
 	resBytes, err := json.Marshal(item)
 	if err != nil {
-		p.LogError(err.Error())
-		http.Error(w, "", http.StatusInternalServerError)
+		p.handleError(w, err)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if _, err := w.Write(resBytes); err != nil {
-		p.LogError(err.Error())
+		p.handleError(w, err)
 	}
 }
