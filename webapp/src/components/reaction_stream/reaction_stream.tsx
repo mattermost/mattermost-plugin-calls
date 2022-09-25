@@ -70,12 +70,27 @@ export const ReactionStream = (props: Props) => {
 
     // add hands up
     let elements = [];
+    const getName = (user_id: string) => {
+        return user_id === props.currentUserID ? 'You' : getUserDisplayName(props.profiles[user_id]);
+    };
+    let participants: string;
     if (props.handsup?.length) {
+        switch (props.handsup?.length) {
+        case 1:
+            participants = `${getName(props.handsup[0])}`;
+            break;
+        case 2:
+            participants = `${getName(props.handsup[0])} & ${getName(props.handsup[1])}`;
+            break;
+        case 3:
+            participants = `${getName(props.handsup[0])}, ${getName(props.handsup[1])} & ${getName(props.handsup[2])}`;
+            break;
+        default:
+            participants = `${getName(props.handsup[0])}, ${getName(props.handsup[1])} & ${props.handsup?.length - 2} others`;
+            break;
+        }
         const handsupElement = (<Emoji emoji={{name: 'hand', skin: '', unified: '270B'}}/>);
-        const first = props.handsup[0] === props.currentUserID ? 'You' : getUserDisplayName(props.profiles[props.handsup[0]]);
 
-        // maybe we can consider having 1, 2 or more participants as a stretch
-        const participants = props.handsup?.length > 1 ? `${first} & ${props.handsup?.length - 1} others` : first;
         elements.push(
             <ReactionChip
                 key={'hands'}
