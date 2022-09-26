@@ -567,7 +567,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         }
                     </div>
                     { !this.props.screenSharingID &&
-                        <div style={{flex: 1, display: 'flex', flexDirection: 'row'}}>
+                        <div style={{flex: 1, display: 'flex'}}>
                             <ReactionStream
                                 reactions={this.props.reactions}
                                 currentUserID={this.props.currentUserID}
