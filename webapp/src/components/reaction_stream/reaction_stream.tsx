@@ -18,6 +18,7 @@ type Props = {
 };
 
 const ReactionStreamList = styled.div`
+    position: absolute;
     align-self: flex-end;
     height: 75vh;
     display: flex;
