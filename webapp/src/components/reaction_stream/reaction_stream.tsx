@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import styled from 'styled-components';
 
 import {UserProfile} from '@mattermost/types/lib/users';
@@ -18,7 +18,7 @@ type Props = {
 
 const ReactionStreamList = styled.div`
     align-self: flex-end;
-    height: 75vh;
+    height: 40vh;
     display: flex;
     flex-direction: column-reverse;
     margin-left: 10px;
@@ -39,17 +39,34 @@ const ReactionChip = styled.div`
     width: fit-content;
 `;
 
+function usePreviousProps(value: any) {
+    const ref = useRef();
+    useEffect(() => {
+        ref.current = value;
+    });
+    return ref.current;
+}
+
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = (props: Props) => {
     const [activeAnimation, setActiveAnimation] = useState(false);
+
+    const {reactions} = props;
+    const prev = usePreviousProps({reactions}) || {reactions: []};
+    const runAnimations = () => {
+        if (reactions.length > prev.reactions.length) {
+            setActiveAnimation(true);
+        }
+    };
 
     useEffect(() => {
         setActiveAnimation(false);
         return () => {
             setTimeout(() => {
-                setActiveAnimation(true);
+                runAnimations();
             }, 10);
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.reactions]);
 
     const reversed = [...props.reactions];

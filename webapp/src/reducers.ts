@@ -235,8 +235,8 @@ const queueReactions = (state: ReactionWithUser[], reaction: ReactionWithUser) =
     return result;
 };
 
-const removeReaction = (state: ReactionWithUser[], reaction: ReactionWithUser) => {
-    return state.filter((r) => r.user_id !== reaction.user_id || r.timestamp > reaction.timestamp);
+const removeReaction = (reactions: ReactionWithUser[], reaction: ReactionWithUser) => {
+    return reactions.filter((r) => r.user_id !== reaction.user_id || r.timestamp > reaction.timestamp);
 };
 
 const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAction) => {
@@ -266,7 +266,12 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
         if (!state[action.data.channelID]?.reactions || !action.data.reaction) {
             return state;
         }
-        return removeReaction(state[action.data.channelID].reactions, {...action.data.reaction, user_id: action.data.userID});
+        return {
+            ...state,
+            [action.data.channelID]: {
+                reactions: removeReaction(state[action.data.channelID].reactions, {...action.data.reaction, user_id: action.data.userID}),
+            },
+        };
     default:
         return state;
     }
