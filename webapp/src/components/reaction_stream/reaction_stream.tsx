@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import styled from 'styled-components';
 
 import {UserProfile} from '@mattermost/types/lib/users';
@@ -41,6 +41,17 @@ const ReactionChip = styled.div`
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = (props: Props) => {
+    const [activeAnimation, setActiveAnimation] = useState(false);
+
+    useEffect(() => {
+        setActiveAnimation(false);
+        return () => {
+            setTimeout(() => {
+                setActiveAnimation(true);
+            }, 10);
+        };
+    }, [props.reactions]);
+
     const reversed = [...props.reactions];
 
     // add hands up into reversed
@@ -51,7 +62,12 @@ export const ReactionStream = (props: Props) => {
         const emoji = (<Emoji emoji={reaction.emoji}/>);
         const user = reaction.user_id === props.currentUserID ? 'You' : getUserDisplayName(props.profiles[reaction.user_id]) || 'Someone';
         return (
-            <ReactionChip key={reaction.timestamp + reaction.user_id}>
+            <ReactionChip
+                key={reaction.timestamp + reaction.user_id}
+                style={activeAnimation ? {
+                    transform: 'translate(0, -23px)', transition: 'transform 1s',
+                } : {}}
+            >
                 <span>{emoji}</span>
                 &nbsp;
                 <span>{user}</span>
