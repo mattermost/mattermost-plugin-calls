@@ -130,6 +130,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
                 userSelect: 'none',
                 color: this.props.theme.centerChannelColor,
+                transformStyle: 'preserve-3d',
             },
             topBar: {
                 background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
@@ -165,6 +166,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 width: '100%',
+                transformStyle: 'preserve-3d',
             },
             callInfo: {
                 display: 'flex',
@@ -1365,7 +1367,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 ref={this.node}
             >
                 <div style={this.style.status as CSSProperties}>
-                    <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%'}}>
+                    <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%', transform: 'translateZ(-10px)'}}>
                         {this.renderNotificationBar()}
                         {this.renderAlertBanners()}
                         {this.renderScreenSharingPanel()}
