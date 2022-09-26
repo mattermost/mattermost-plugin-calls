@@ -64,7 +64,7 @@ export const ReactionStream = (props: Props) => {
         return () => {
             setTimeout(() => {
                 runAnimations();
-            }, 10);
+            }, 100);
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.reactions]);
