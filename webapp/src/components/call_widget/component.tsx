@@ -467,7 +467,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else if (!this.props.screenSharingID) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
-                this.props.showScreenSourceModal();
+                if (this.props.global) {
+                    sendDesktopEvent('desktop-sources-modal-request');
+                } else {
+                    this.props.showScreenSourceModal();
+                }
             } else {
                 const stream = await window.callsClient.shareScreen('', hasExperimentalFlag());
                 state.screenStream = stream;
@@ -1187,7 +1191,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.props.trackEvent(Telemetry.Event.OpenExpandedView, Telemetry.Source.Widget, {initiator: 'button'});
 
         // TODO: remove this as soon as we support opening a window from desktop app.
-        if (window.desktop) {
+        if (window.desktop && !this.props.global) {
             this.props.showExpandedView();
         } else {
             const expandedViewWindow = window.open(
@@ -1273,7 +1277,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const widerWidget = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
         const mainWidth = widerWidget ? '280px' : '216px';
 
-        const ShowIcon = window.desktop ? ExpandIcon : PopOutIcon;
+        const ShowIcon = window.desktop && !this.props.global ? ExpandIcon : PopOutIcon;
 
         const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
         const handTooltipText = window.callsClient.isHandRaised ? 'Click to lower hand' : 'Click to raise hand';

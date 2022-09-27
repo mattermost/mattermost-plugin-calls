@@ -8,7 +8,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 
-import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
+import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
 import {UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 
@@ -166,6 +166,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         } else if (!this.props.screenSharingID) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 this.props.showScreenSourceModal();
+            } else if (shouldRenderDesktopWidget()) {
+                sendDesktopEvent('desktop-sources-modal-request');
             } else {
                 const stream = await getScreenStream('', hasExperimentalFlag());
                 if (window.opener && stream) {

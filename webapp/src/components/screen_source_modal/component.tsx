@@ -1,19 +1,18 @@
 import React, {CSSProperties} from 'react';
-import ReactDOM from 'react-dom';
-import PropTypes from 'prop-types';
 
 import {Channel} from '@mattermost/types/channels';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {Theme} from 'mattermost-redux/types/themes';
 
-import {hasExperimentalFlag, sendDesktopEvent} from '../../utils';
+import {hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from '../../utils';
 
 import CompassIcon from '../../components/icons/compassIcon';
 
 import './component.scss';
 
 interface Props {
-    theme: any,
+    theme: Theme,
     connectedChannel: Channel,
     show: boolean,
     hideScreenSourceModal: () => void,
@@ -154,7 +153,14 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
     }
 
     private shareScreen = () => {
-        window.callsClient.shareScreen(this.state.selected, hasExperimentalFlag());
+        if (shouldRenderDesktopWidget()) {
+            sendDesktopEvent('calls-widget-share-screen', {
+                sourceID: this.state.selected,
+                withAudio: hasExperimentalFlag(),
+            });
+        } else {
+            window.callsClient.shareScreen(this.state.selected, hasExperimentalFlag());
+        }
         this.hide();
     }
 

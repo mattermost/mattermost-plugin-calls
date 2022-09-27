@@ -351,15 +351,17 @@ export async function followThread(store: Store, channelID: string, teamID: stri
 }
 
 export function shouldRenderDesktopWidget() {
-    return window.desktop && compareSemVer(window.desktop.version, '5.2.0') >= 0;
+    const win = window.opener ? window.opener : window;
+    return win.desktop && compareSemVer(win.desktop.version, '5.2.0') >= 0;
 }
 
-export function sendDesktopEvent(event: string, data: any) {
-    window.postMessage(
+export function sendDesktopEvent(event: string, data?: any) {
+    const win = window.opener ? window.opener : window;
+    win.postMessage(
         {
             type: event,
             message: data,
         },
-        window.location.origin,
+        win.location.origin,
     );
 }
