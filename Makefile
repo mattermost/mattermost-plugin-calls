@@ -195,7 +195,7 @@ ifneq ($(HAS_WEBAPP),)
 	mkdir -p dist/$(PLUGIN_ID)/webapp
 	cp -r webapp/dist dist/$(PLUGIN_ID)/webapp/
 	## We remove the assets directory since files are redundant and loaded from webapp.
-	rm -fr widget/dist/files
+	rm -fr widget/dist/files/*.png
 	cp -r widget/dist dist/$(PLUGIN_ID)/webapp/dist/widget
 endif
 	cd dist && tar -cvzf $(BUNDLE_NAME) $(PLUGIN_ID)

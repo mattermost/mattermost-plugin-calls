@@ -325,11 +325,13 @@ export function playSound(name: string) {
         return;
     }
 
-    // A hack to make the standalone widget re-use the sound files included
-    // from here.
-    src = src.replace('/static', '');
+    if (src.indexOf('/static') === 0) {
+        src = `${window.basename || ''}${src}`;
+    } else {
+        src = getPluginStaticPath() + src;
+    }
 
-    const audio = new Audio(getPluginStaticPath() + src);
+    const audio = new Audio(src);
     audio.play();
     audio.onended = () => {
         audio.src = '';

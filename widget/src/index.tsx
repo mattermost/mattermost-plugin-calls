@@ -305,12 +305,12 @@ async function init() {
             return;
         }
         switch (ev.data?.type) {
-            case 'register-desktop':
-                window.desktop = ev.data.message;
-                break;
-            case 'calls-widget-share-screen':
-                window.callsClient?.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
-                break;
+        case 'register-desktop':
+            window.desktop = ev.data.message;
+            break;
+        case 'calls-widget-share-screen':
+            window.callsClient?.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
+            break;
         }
     });
     sendDesktopEvent('get-app-version');

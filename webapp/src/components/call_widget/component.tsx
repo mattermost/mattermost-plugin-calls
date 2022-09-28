@@ -1233,7 +1233,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     onChannelLinkClick = (ev: React.MouseEvent<HTMLElement>) => {
         ev.preventDefault();
-        window.postMessage({type: 'browser-history-push-return', message: {pathName: this.props.channelURL}}, window.origin);
+        const message = {pathName: this.props.channelURL};
+        if (this.props.global) {
+            sendDesktopEvent('calls-widget-channel-link-click', message);
+        } else {
+            window.postMessage({type: 'browser-history-push-return', message}, window.origin);
+        }
         this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     }
 
@@ -1246,6 +1251,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     href={this.props.channelURL}
                     onClick={this.onChannelLinkClick}
                     className='calls-channel-link'
+                    style={{appRegion: 'no-drag'} as CSSProperties}
                 >
                     {isOpenChannel(this.props.channel) && <CompassIcon icon='globe'/>}
                     {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
