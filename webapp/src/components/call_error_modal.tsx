@@ -101,7 +101,7 @@ export const CallErrorModal = (props: Props) => {
         );
         msg = (
             <span>
-                {'Looks like you are not on a secure connection. Calls require an HTTPs connection to work. Check out the documentation for more information.'}
+                {'You need to be using an HTTPS connection to make calls. Visit the documentation for more information.'}
             </span>
         );
         modalProps.showCancel = true;
