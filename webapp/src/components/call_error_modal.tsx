@@ -96,7 +96,7 @@ export const CallErrorModal = (props: Props) => {
                     width={150}
                     height={150}
                 />
-                <span>{'Calls can't be initiated in an insecure context'}</span>
+                <span>{'Calls can\'t be initiated in an insecure context'}</span>
             </ColumnContainer>
         );
         msg = (
