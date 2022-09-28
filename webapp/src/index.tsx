@@ -18,6 +18,21 @@ import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_t
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 
 import {
+    handleUserConnected,
+    handleUserDisconnected,
+    handleCallStart,
+    handleCallEnd,
+    handleUserMuted,
+    handleUserUnmuted,
+    handleUserScreenOn,
+    handleUserScreenOff,
+    handleUserVoiceOn,
+    handleUserVoiceOff,
+    handleUserRaisedHand,
+    handleUserUnraisedHand,
+} from './websocket_handlers';
+
+import {
     callsEnabled,
     connectedChannelID,
     voiceConnectedUsers,
@@ -49,10 +64,6 @@ import SwitchCallModal from './components/switch_call_modal';
 import ScreenSourceModal from './components/screen_source_modal';
 import EndCallModal from './components/end_call_modal';
 
-import JoinUserSound from './sounds/join_user.mp3';
-import JoinSelfSound from './sounds/join_self.mp3';
-import LeaveSelfSound from './sounds/leave_self.mp3';
-
 import reducer from './reducers';
 
 import {
@@ -65,6 +76,8 @@ import {
     getUserIdFromDM,
     getWSConnectionURL,
     playSound,
+    followThread,
+    shouldRenderDesktopWidget,
 } from './utils';
 import {logErr, logDebug} from './log';
 import {
@@ -75,21 +88,13 @@ import {
 import {
     RECEIVED_CHANNEL_STATE,
     VOICE_CHANNEL_USER_CONNECTED,
-    VOICE_CHANNEL_USER_DISCONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
     VOICE_CHANNEL_PROFILES_CONNECTED,
     VOICE_CHANNEL_PROFILE_CONNECTED,
-    VOICE_CHANNEL_USER_MUTED,
-    VOICE_CHANNEL_USER_UNMUTED,
-    VOICE_CHANNEL_USER_VOICE_OFF,
-    VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_CALL_START,
-    VOICE_CHANNEL_CALL_END,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USER_SCREEN_OFF,
-    VOICE_CHANNEL_USER_RAISE_HAND,
-    VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
@@ -110,7 +115,7 @@ export default class Plugin {
         this.unsubscribers.push(() => registry.unregisterReconnectHandler(handler));
     }
 
-    private registerWebSocketEvents(registry: PluginRegistry, store: Store, followThread: (channelID: string, teamID: string) => Promise<void>) {
+    private registerWebSocketEvents(registry: PluginRegistry, store: Store) {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (ev) => {
             store.dispatch({
                 type: RECEIVED_CHANNEL_STATE,
@@ -125,170 +130,52 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_connected`, async (ev) => {
-            const userID = ev.data.userID;
-            const channelID = ev.broadcast.channel_id;
-            const currentUserID = getCurrentUserId(store.getState());
-
-            if (window.callsClient?.channelID === channelID) {
-                if (userID === currentUserID) {
-                    playSound(getPluginStaticPath() + JoinSelfSound);
-                } else if (shouldPlayJoinUserSound(store.getState())) {
-                    playSound(getPluginStaticPath() + JoinUserSound);
-                }
-            }
-
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_CONNECTED,
-                data: {
-                    channelID,
-                    userID,
-                    currentUserID,
-                },
-            });
-
-            try {
-                store.dispatch({
-                    type: VOICE_CHANNEL_PROFILE_CONNECTED,
-                    data: {
-                        profile: (await getProfilesByIds(store.getState(), [ev.data.userID]))[0],
-                        channelID: ev.broadcast.channel_id,
-                    },
-                });
-            } catch (err) {
-                logErr(err);
-            }
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_connected`, (ev) => {
+            handleUserConnected(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_disconnected`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_DISCONNECTED,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                    currentUserID: getCurrentUserId(store.getState()),
-                },
-            });
+            handleUserDisconnected(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_muted`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_MUTED,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                },
-            });
+            handleUserMuted(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unmuted`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_UNMUTED,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                },
-            });
+            handleUserUnmuted(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_voice_on`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_VOICE_ON,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                },
-            });
+            handleUserVoiceOn(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_voice_off`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_VOICE_OFF,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                },
-            });
+            handleUserVoiceOff(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_start`, (ev) => {
-            const channelID = ev.broadcast.channel_id;
-
-            store.dispatch({
-                type: VOICE_CHANNEL_CALL_START,
-                data: {
-                    channelID,
-                    startAt: ev.data.start_at,
-                    ownerID: ev.data.owner_id,
-                },
-            });
-            store.dispatch({
-                type: VOICE_CHANNEL_ROOT_POST,
-                data: {
-                    channelID,
-                    rootPost: ev.data.thread_id,
-                },
-            });
-
-            if (window.callsClient?.channelID === channelID) {
-                const channel = getChannel(store.getState(), channelID);
-                if (channel) {
-                    followThread(channel.id, channel.team_id);
-                }
-            }
+            handleCallStart(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_end`, (ev) => {
-            if (connectedChannelID(store.getState()) === ev.broadcast.channel_id && window.callsClient) {
-                window.callsClient.disconnect();
-            }
-            store.dispatch({
-                type: VOICE_CHANNEL_CALL_END,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                },
-            });
+            handleCallEnd(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_on`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_SCREEN_ON,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                },
-            });
+            handleUserScreenOn(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_off`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_SCREEN_OFF,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                },
-            });
+            handleUserScreenOff(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_raise_hand`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_RAISE_HAND,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                    raised_hand: ev.data.raised_hand,
-                },
-            });
+            handleUserRaisedHand(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unraise_hand`, (ev) => {
-            store.dispatch({
-                type: VOICE_CHANNEL_USER_UNRAISE_HAND,
-                data: {
-                    channelID: ev.broadcast.channel_id,
-                    userID: ev.data.userID,
-                    raised_hand: ev.data.raised_hand,
-                },
-            });
+            handleUserUnraisedHand(store, ev);
         });
     }
 
@@ -343,7 +230,7 @@ export default class Plugin {
                         title = fields.slice(2).join(' ');
                     }
                     connectCall(args.channel_id, title);
-                    followThread(args.channel_id, args.team_id);
+                    followThread(store, args.channel_id, args.team_id);
                     return {};
                 }
                 return {error: {message: 'You\'re already connected to a call in the current channel.'}};
@@ -408,7 +295,7 @@ export default class Plugin {
                 // following the thread only on join. On call start
                 // this is done in the call_start ws event handler.
                 if (voiceConnectedUsersInChannel(store.getState(), channelID).length > 0) {
-                    followThread(channelID, teamID);
+                    followThread(store, channelID, teamID);
                 }
             } else if (connectedChannelID(store.getState()) !== channelID) {
                 store.dispatch({
@@ -464,20 +351,26 @@ export default class Plugin {
             );
         };
 
-        const followThread = async (channelID: string, teamID: string) => {
-            const threadID = voiceChannelRootPost(store.getState(), channelID);
-            if (threadID) {
-                store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
-            } else {
-                logErr('Unable to follow call\'s thread, not registered in store');
-            }
-        };
-
         registerChannelHeaderMenuButton();
 
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
 
         const connectCall = async (channelID: string, title?: string) => {
+            if (shouldRenderDesktopWidget()) {
+                logDebug('sending join call message to desktop app');
+                window.postMessage(
+                    {
+                        type: 'calls-join-call',
+                        message: {
+                            channelID,
+                            title,
+                        },
+                    },
+                    window.location.origin,
+                );
+                return;
+            }
+
             try {
                 if (window.callsClient) {
                     logErr('calls client is already initialized');
@@ -507,7 +400,7 @@ export default class Plugin {
                     if (window.callsClient) {
                         window.callsClient.destroy();
                         delete window.callsClient;
-                        playSound(getPluginStaticPath() + LeaveSelfSound);
+                        playSound('leave_self');
                     }
                 });
 
@@ -526,7 +419,7 @@ export default class Plugin {
             }
             if (ev.data && ev.data.type === 'connectCall') {
                 connectCall(ev.data.channelID);
-                followThread(ev.data.channelID, getCurrentTeamId(store.getState()));
+                followThread(store, ev.data.channelID, getCurrentTeamId(store.getState()));
             }
         };
         window.addEventListener('message', windowEventHandler);
@@ -719,7 +612,7 @@ export default class Plugin {
             });
         });
 
-        this.registerWebSocketEvents(registry, store, followThread);
+        this.registerWebSocketEvents(registry, store);
         this.registerReconnectHandler(registry, store, () => {
             logDebug('websocket reconnect handler');
             if (!window.callsClient) {

@@ -9,6 +9,7 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
+import {Theme} from 'mattermost-redux/types/themes';
 
 import {UserState, AudioDevices} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
@@ -50,7 +51,8 @@ import CallDuration from './call_duration';
 import './component.scss';
 
 interface Props {
-    theme: any,
+    store: any,
+    theme: Theme,
     currentUserID: string,
     channel: Channel,
     team: Team,
@@ -70,6 +72,11 @@ interface Props {
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    global?: true,
+    position?: {
+        bottom: number,
+        left: number,
+    },
 }
 
 interface DraggingState {
@@ -109,13 +116,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 background: this.props.theme.centerChannelBg,
                 borderRadius: '8px',
                 display: 'flex',
-                bottom: '12px',
-                left: '12px',
+                bottom: `${this.props.position ? this.props.position.bottom : 12}px`,
+                left: `${this.props.position ? this.props.position.left : 12}px`,
                 lineHeight: '16px',
                 zIndex: '1000',
                 border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
                 userSelect: 'none',
                 color: this.props.theme.centerChannelColor,
+                appRegion: 'drag',
             },
             topBar: {
                 background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
@@ -273,7 +281,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentDidMount() {
-        document.addEventListener('mouseup', this.onMouseUp, false);
+        if (!this.props.global) {
+            document.addEventListener('mouseup', this.onMouseUp, false);
+        }
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
 
@@ -345,7 +355,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentWillUnmount() {
-        document.removeEventListener('mouseup', this.onMouseUp, false);
+        if (!this.props.global) {
+            document.removeEventListener('mouseup', this.onMouseUp, false);
+        }
         document.removeEventListener('click', this.closeOnBlur, true);
         document.removeEventListener('keyup', this.keyboardClose, true);
         document.removeEventListener('keydown', this.handleKBShortcuts, true);
@@ -924,7 +936,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
-    renderMenu = (hasTeamSidebar: boolean) => {
+    renderMenu = (widerWidget: boolean) => {
         if (!this.state.showMenu) {
             return null;
         }
@@ -936,7 +948,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='Menu__content dropdown-menu'
                     style={this.style.dotsMenu as CSSProperties}
                 >
-                    {!hasTeamSidebar && this.renderScreenSharingMenuItem()}
+                    {!widerWidget && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
                 </ul>
@@ -1171,7 +1183,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     }
 
-    renderChannelName = (hasTeamSidebar: boolean) => {
+    renderChannelName = (widerWidget: boolean) => {
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
@@ -1190,7 +1202,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            maxWidth: hasTeamSidebar ? '22ch' : '12ch',
+                            maxWidth: widerWidget ? '22ch' : '12ch',
                         }}
                     >
                         {this.props.channelDisplayName}
@@ -1208,8 +1220,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const MuteIcon = window.callsClient.isMuted() ? MutedIcon : UnmutedIcon;
         const muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
 
-        const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar'));
-        const mainWidth = hasTeamSidebar ? '280px' : '216px';
+        const widerWidget = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
+        const mainWidth = widerWidget ? '280px' : '216px';
 
         const ShowIcon = window.desktop ? ExpandIcon : PopOutIcon;
 
@@ -1230,12 +1242,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         {this.renderNotificationBar()}
                         {this.renderScreenSharingPanel()}
                         {this.renderParticipantsList()}
-                        {this.renderMenu(hasTeamSidebar)}
+                        {this.renderMenu(widerWidget)}
                     </div>
 
                     <div
                         style={this.style.topBar}
-                        onMouseDown={this.onMouseDown}
+                        // eslint-disable-next-line no-undefined
+                        onMouseDown={this.props.global ? undefined : this.onMouseDown}
                     >
                         <button
                             id='calls-widget-expand-button'
@@ -1252,11 +1265,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={this.style.profiles}>
                             {this.renderProfiles()}
                         </div>
-                        <div style={{width: hasTeamSidebar ? '200px' : '136px'}}>
+                        <div style={{width: widerWidget ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 <CallDuration startAt={this.props.callStartAt}/>
-                                {this.renderChannelName(hasTeamSidebar)}
+                                {this.renderChannelName(widerWidget)}
                             </div>
                         </div>
                     </div>
@@ -1354,7 +1367,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </OverlayTrigger>
                         }
 
-                        {(hasTeamSidebar || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
+                        {(widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <OverlayTrigger
                             key='mute'

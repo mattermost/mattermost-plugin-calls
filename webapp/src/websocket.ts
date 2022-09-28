@@ -85,6 +85,7 @@ export class WebSocketClient extends EventEmitter {
                         logDebug('ws: setting original conn id');
                         this.originalConnID = this.connID;
                     }
+                    this.emit('event', msg);
                 }
                 if (!isReconnect) {
                     this.emit('open', this.originalConnID, this.connID, false);
@@ -94,6 +95,8 @@ export class WebSocketClient extends EventEmitter {
                 logWarn('ws message received while waiting for hello');
                 return;
             }
+
+            this.emit('event', msg);
 
             if (msg.data.connID !== this.connID && msg.data.connID !== this.originalConnID) {
                 return;
@@ -137,6 +140,13 @@ export class WebSocketClient extends EventEmitter {
             this.serverSeqNo = 0;
             this.connID = '';
             this.originalConnID = '';
+
+            this.removeAllListeners('open');
+            this.removeAllListeners('event');
+            this.removeAllListeners('join');
+            this.removeAllListeners('close');
+            this.removeAllListeners('error');
+            this.removeAllListeners('message');
         } else {
             this.emit('close', code);
 

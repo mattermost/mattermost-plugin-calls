@@ -14,3 +14,4 @@ export const userState = {
         };
     }),
 };
+export const pluginID = 'com.mattermost.calls';

@@ -1,13 +1,18 @@
+import {compareSemVer} from 'semver-parser';
+
 import {
     getCurrentRelativeTeamUrl,
     getCurrentTeamId,
     getTeam,
 } from 'mattermost-redux/selectors/entities/teams';
 
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+
 import {Client4} from 'mattermost-redux/client';
 
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
+import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
 import {Team} from '@mattermost/types/teams';
 import {Channel, ChannelMembership} from '@mattermost/types/channels';
@@ -19,7 +24,17 @@ import {ClientConfig} from '@mattermost/types/config';
 import {UserState} from './types/types';
 
 import {pluginId} from './manifest';
-import {logErr} from './log';
+import {logErr, logDebug} from './log';
+
+import {
+    voiceChannelRootPost,
+} from './selectors';
+
+import {Store} from './types/mattermost-webapp';
+
+import LeaveSelfSound from './sounds/leave_self.mp3';
+import JoinUserSound from './sounds/join_user.mp3';
+import JoinSelfSound from './sounds/join_self.mp3';
 
 export function getPluginStaticPath() {
     return `${window.basename || ''}/static/plugins/${pluginId}`;
@@ -293,11 +308,48 @@ export function getUsersList(profiles: UserProfile[]) {
     return list + ' and ' + getUserDisplayName(profiles[profiles.length - 1]);
 }
 
-export function playSound(src: string) {
-    const audio = new Audio(src);
+export function playSound(name: string) {
+    let src = '';
+    switch (name) {
+    case 'leave_self':
+        src = LeaveSelfSound;
+        break;
+    case 'join_self':
+        src = JoinSelfSound;
+        break;
+    case 'join_user':
+        src = JoinUserSound;
+        break;
+    default:
+        logErr(`sound ${name} not found`);
+        return;
+    }
+
+    // A hack to make the standalone widget re-use the sound files included
+    // from here.
+    src = src.replace('/static', '');
+
+    const audio = new Audio(getPluginStaticPath() + src);
     audio.play();
     audio.onended = () => {
         audio.src = '';
         audio.remove();
     };
+}
+
+export async function followThread(store: Store, channelID: string, teamID: string) {
+    if (!teamID) {
+        logDebug('followThread: no team for channel');
+        return;
+    }
+    const threadID = voiceChannelRootPost(store.getState(), channelID);
+    if (threadID) {
+        store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
+    } else {
+        logErr('Unable to follow call\'s thread, not registered in store');
+    }
+}
+
+export function shouldRenderDesktopWidget() {
+    return window.desktop && compareSemVer(window.desktop.version, '5.2.0') >= 0;
 }
