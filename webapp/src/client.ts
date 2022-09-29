@@ -16,6 +16,9 @@ import {parseRTCStats} from './rtc_stats';
 
 export const AudioInputPermissionsError = new Error('missing audio input permissions');
 export const AudioInputMissingError = new Error('no audio input available');
+export const rtcPeerErr = new Error('rtc peer error');
+export const rtcPeerCloseErr = new Error('rtc peer close');
+export const insecureContextErr = new Error('insecure context');
 
 export default class CallsClient extends EventEmitter {
     public channelID: string;
@@ -163,6 +166,11 @@ export default class CallsClient extends EventEmitter {
 
     public async init(channelID: string, title?: string) {
         this.channelID = channelID;
+
+        if (!window.isSecureContext) {
+            throw insecureContextErr;
+        }
+
         await this.updateDevices();
         navigator.mediaDevices.addEventListener('devicechange', this.onDeviceChange);
 
@@ -179,7 +187,7 @@ export default class CallsClient extends EventEmitter {
             logErr('ws error', err);
             if (err === wsReconnectionTimeoutErr) {
                 this.ws = null;
-                this.disconnect();
+                this.disconnect(wsReconnectionTimeoutErr);
             }
         });
 
@@ -236,7 +244,7 @@ export default class CallsClient extends EventEmitter {
             peer.on('error', (err) => {
                 logErr('peer error', err);
                 if (!this.closed) {
-                    this.disconnect();
+                    this.disconnect(rtcPeerErr);
                 }
             });
 
@@ -262,7 +270,7 @@ export default class CallsClient extends EventEmitter {
             peer.on('close', () => {
                 logDebug('rtc closed');
                 if (!this.closed) {
-                    this.disconnect();
+                    this.disconnect(rtcPeerCloseErr);
                 }
             });
         });
@@ -354,7 +362,7 @@ export default class CallsClient extends EventEmitter {
         this.currentAudioOutputDevice = device;
     }
 
-    public disconnect() {
+    public disconnect(err?: Error) {
         logDebug('disconnect');
 
         if (this.closed) {
@@ -366,8 +374,8 @@ export default class CallsClient extends EventEmitter {
         if (this.peer) {
             this.getStats().then((stats) => {
                 sessionStorage.setItem('calls_client_stats', JSON.stringify(stats));
-            }).catch((err) => {
-                logErr(err);
+            }).catch((statsErr) => {
+                logErr(statsErr);
             });
             this.peer.destroy();
             this.peer = null;
@@ -391,7 +399,7 @@ export default class CallsClient extends EventEmitter {
             this.ws = null;
         }
 
-        this.emit('close');
+        this.emit('close', err);
     }
 
     public isMuted() {
