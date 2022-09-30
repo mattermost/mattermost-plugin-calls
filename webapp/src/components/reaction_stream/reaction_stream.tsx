@@ -8,7 +8,7 @@ import {UserProfile} from '@mattermost/types/lib/users';
 
 import {Emoji} from '../emoji/emoji';
 import {ReactionWithUser} from 'src/types/types';
-import {getUserDisplayName} from 'src/utils';
+import {getUserDisplayName, hasExperimentalFlag} from 'src/utils';
 
 type Props = {
     reactions: ReactionWithUser[],
@@ -52,6 +52,9 @@ const ReactionChip = styled.div<chipProps>`
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = (props: Props) => {
+    if (!hasExperimentalFlag()) {
+        return null;
+    }
     const reversed = [...props.reactions];
 
     reversed.reverse();

@@ -419,7 +419,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </div>
                         </>
                         }
-                        {!isHandRaised && hasReaction && status.reaction &&
+                        {!hasExperimentalFlag() && !isHandRaised && hasReaction && status.reaction &&
                         <>
                             <div style={style.reactionBackground as CSSProperties}/>
                             <div style={style.reactionContainer as CSSProperties}>
@@ -541,6 +541,43 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
+        // render the emoji reactions only if the experimental flag is active
+        let emojiReactions;
+        if (hasExperimentalFlag()) {
+            emojiReactions = (
+                <div style={{position: 'relative'}}>
+                    {this.renderEmojiPicker()}
+                    <OverlayTrigger
+                        key='tooltip-emoji-picker'
+                        placement='top'
+                        overlay={
+                            <Tooltip
+                                id='tooltip-emoji-picker'
+                            >
+                                <span>{'Add Reaction'}</span>
+                                <Shortcut shortcut={reverseKeyMappings.popout[MAKE_REACTION][0]}/>
+                            </Tooltip>
+                        }
+                    >
+
+                        <button
+                            className='button-center-controls'
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                this.toggleEmojiPicker();
+                            }}
+                            style={{background: this.state.showEmojiPicker ? '#FFFFFF' : '', position: 'relative'}}
+                        >
+                            <SmileyIcon
+                                style={{width: '28px', height: '28px'}}
+                                fill={this.state.showEmojiPicker ? '#3F4350' : '#FFFFFF'}
+                            />
+                        </button>
+                    </OverlayTrigger>
+                </div>
+            );
+        }
+
         return (
             <div
                 id='calls-expanded-view'
@@ -644,36 +681,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 </button>
                             </OverlayTrigger>
 
-                            <div style={{position: 'relative'}}>
-                                {this.renderEmojiPicker()}
-                                <OverlayTrigger
-                                    key='tooltip-emoji-picker'
-                                    placement='top'
-                                    overlay={
-                                        <Tooltip
-                                            id='tooltip-emoji-picker'
-                                        >
-                                            <span>{'Add Reaction'}</span>
-                                            <Shortcut shortcut={reverseKeyMappings.popout[MAKE_REACTION][0]}/>
-                                        </Tooltip>
-                                    }
-                                >
-
-                                    <button
-                                        className='button-center-controls'
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            this.toggleEmojiPicker();
-                                        }}
-                                        style={{background: this.state.showEmojiPicker ? '#FFFFFF' : '', position: 'relative'}}
-                                    >
-                                        <SmileyIcon
-                                            style={{width: '28px', height: '28px'}}
-                                            fill={this.state.showEmojiPicker ? '#3F4350' : '#FFFFFF'}
-                                        />
-                                    </button>
-                                </OverlayTrigger>
-                            </div>
+                            {emojiReactions}
 
                             <OverlayTrigger
                                 key='tooltip-screen-toggle'
