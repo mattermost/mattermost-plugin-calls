@@ -419,7 +419,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </div>
                         </>
                         }
-                        {!hasExperimentalFlag() && !isHandRaised && hasReaction && status.reaction &&
+                        {hasExperimentalFlag() && !isHandRaised && hasReaction && status.reaction &&
                         <>
                             <div style={style.reactionBackground as CSSProperties}/>
                             <div style={style.reactionContainer as CSSProperties}>
