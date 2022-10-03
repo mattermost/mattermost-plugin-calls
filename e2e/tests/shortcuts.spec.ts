@@ -123,4 +123,43 @@ test.describe('keyboard shortcuts', () => {
 
         await devPage.leaveCall();
     });
+
+    test('accessibility conflict', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        // unmute
+        const muteButton = page.locator('#voice-mute-unmute');
+        await expect(muteButton).toBeVisible();
+        await muteButton.click();
+
+        // open participants list
+        await page.keyboard.press('Alt+P');
+
+        const participantsList = page.locator('#calls-widget-participants-list');
+        await expect(participantsList).toBeVisible();
+
+        // should not mute
+        await page.keyboard.press('Space');
+        await expect(participantsList).toBeVisible();
+        let isMuted = await page.evaluate(() => {
+            return window.callsClient.isMuted();
+        });
+        if (isMuted) {
+            test.fail();
+            return;
+        }
+
+        // mute
+        await page.keyboard.press('Control+Shift+Space');
+
+        isMuted = await page.evaluate(() => {
+            return window.callsClient.isMuted();
+        });
+        if (!isMuted) {
+            test.fail();
+            return;
+        }
+    });
 });
