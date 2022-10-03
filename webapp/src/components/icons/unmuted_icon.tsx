@@ -13,6 +13,7 @@ export default function UnmutedIcon(props: Props) {
     return (
         <svg
             {...props}
+            fill={props.fill || 'currentColor'}
             width='12px'
             height='15px'
             viewBox='0 0 12 15'
