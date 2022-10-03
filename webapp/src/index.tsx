@@ -12,7 +12,7 @@ import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actio
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
-import {displayFreeTrial, getCallsConfig} from 'src/actions';
+import {displayFreeTrial, getCallsConfig, showScreenSourceModal} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
@@ -78,6 +78,7 @@ import {
     playSound,
     followThread,
     shouldRenderDesktopWidget,
+    sendDesktopEvent,
 } from './utils';
 import {logErr, logDebug} from './log';
 import {
@@ -358,16 +359,10 @@ export default class Plugin {
         const connectCall = async (channelID: string, title?: string) => {
             if (shouldRenderDesktopWidget()) {
                 logDebug('sending join call message to desktop app');
-                window.postMessage(
-                    {
-                        type: 'calls-join-call',
-                        message: {
-                            channelID,
-                            title,
-                        },
-                    },
-                    window.location.origin,
-                );
+                sendDesktopEvent('calls-join-call', {
+                    callID: channelID,
+                    title,
+                });
                 return;
             }
 
@@ -417,9 +412,11 @@ export default class Plugin {
             if (ev.origin !== window.origin) {
                 return;
             }
-            if (ev.data && ev.data.type === 'connectCall') {
+            if (ev.data?.type === 'connectCall') {
                 connectCall(ev.data.channelID);
                 followThread(store, ev.data.channelID, getCurrentTeamId(store.getState()));
+            } else if (ev.data?.type === 'desktop-sources-modal-request') {
+                store.dispatch(showScreenSourceModal());
             }
         };
         window.addEventListener('message', windowEventHandler);

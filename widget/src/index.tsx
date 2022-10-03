@@ -37,6 +37,7 @@ import {
     getPluginPath,
     getProfilesByIds,
     playSound,
+    sendDesktopEvent,
 } from 'plugin/utils';
 
 import {
@@ -105,7 +106,7 @@ function connectCall(channelID: string, wsURL: string, iceConfigs: RTCIceServer[
                     delete window.callsClient;
                     ReactDOM.unmountComponentAtNode(document.getElementById('root')!);
                     logDebug('sending leave call message to desktop app');
-                    window.postMessage({type: 'calls-leave-call'}, window.location.origin);
+                    sendDesktopEvent('calls-leave-call');
                 }, 200);
             }
         });
@@ -298,6 +299,21 @@ async function init() {
 
     const theme = getTheme(store.getState());
     applyTheme(theme);
+
+    window.addEventListener('message', (ev: MessageEvent) => {
+        if (ev.origin !== window.origin) {
+            return;
+        }
+        switch (ev.data?.type) {
+        case 'register-desktop':
+            window.desktop = ev.data.message;
+            break;
+        case 'calls-widget-share-screen':
+            window.callsClient?.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
+            break;
+        }
+    });
+    sendDesktopEvent('get-app-version');
 
     ReactDOM.render(
         <CallWidget
