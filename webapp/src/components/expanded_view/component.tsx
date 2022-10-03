@@ -329,6 +329,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         return (
             <div style={style.screenContainer as CSSProperties}>
+                <ReactionStream style={{left: '0'}}/>
                 <video
                     id='screen-player'
                     ref={this.screenPlayer}
@@ -568,12 +569,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     </div>
                     { !this.props.screenSharingID &&
                         <div style={{flex: 1, display: 'flex'}}>
-                            <ReactionStream
-                                reactions={this.props.reactions}
-                                currentUserID={this.props.currentUserID}
-                                profiles={profileMap}
-                                handsup={handsup}
-                            />
+                            <ReactionStream/>
                             <ul
                                 id='calls-expanded-view-participants-grid'
                                 style={{

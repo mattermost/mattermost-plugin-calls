@@ -2,22 +2,32 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import styled from 'styled-components';
+import styled, {CSSProperties} from 'styled-components';
+import {useSelector} from 'react-redux';
 
 import {UserProfile} from '@mattermost/types/lib/users';
 
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+
+import {GlobalState} from '@mattermost/types/lib/store';
+
+import {connectedChannelID, voiceChannelScreenSharingID, voiceConnectedProfiles, voiceReactions, voiceUsersStatuses} from 'src/selectors';
+
 import {Emoji} from '../emoji/emoji';
-import {ReactionWithUser} from 'src/types/types';
+import {UserState} from 'src/types/types';
 import {getUserDisplayName} from 'src/utils';
+import {alphaSortProfiles, stateSortProfiles} from '../../utils';
+
+interface streamListStyleProps {
+    left?: string;
+}
 
 type Props = {
-    reactions: ReactionWithUser[],
-    currentUserID: string,
-    profiles: {[key: string]: UserProfile;},
-    handsup: string[],
+    style?: streamListStyleProps;
 };
 
-const ReactionStreamList = styled.div`
+const ReactionStreamList = styled.div<streamListStyleProps>`
     position: absolute;
     align-self: flex-end;
     height: 75vh;
@@ -26,6 +36,7 @@ const ReactionStreamList = styled.div`
     margin-left: 10px;
     -webkit-mask: linear-gradient(#0000, #000);
     mask: linear-gradient(#0000, #0003, #000f);
+    left: ${(props) => (props.left ? props.left : '')}
 `;
 
 interface chipProps {
@@ -52,14 +63,42 @@ const ReactionChip = styled.div<chipProps>`
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = (props: Props) => {
-    const reversed = [...props.reactions];
+    const vReactions = useSelector(voiceReactions);
+    const currentUserID = useSelector(getCurrentUserId);
+
+    const statuses = useSelector(voiceUsersStatuses);
+    const vConnectedProfiles = useSelector(voiceConnectedProfiles);
+
+    const cChannelID = useSelector(connectedChannelID);
+    const channel = useSelector((state: GlobalState) => getChannel(state, cChannelID));
+
+    const screenSharingID = useSelector((state: GlobalState) => voiceChannelScreenSharingID(state, channel?.id)) || '';
+
+    const sortedProfiles = (profiles: UserProfile[], sta: {[key: string]: UserState}) => {
+        return [...profiles].sort(alphaSortProfiles(profiles)).sort(stateSortProfiles(profiles, sta, screenSharingID));
+    };
+    const profiles = sortedProfiles(vConnectedProfiles, statuses);
+
+    // building the list here causes a bug tht if a user leaves and recently reacted it will show as blank
+    const profileMap: {[key: string]: UserProfile;} = {};
+    profiles.forEach((profile) => {
+        profileMap[profile.id] = profile;
+    });
+    const handsup: string[] = [];
+    for (const [id, member] of Object.entries(statuses)) {
+        if (member.raised_hand) {
+            handsup.push(id);
+        }
+    }
+
+    const reversed = [...vReactions];
 
     reversed.reverse();
     const reactions = reversed.map((reaction) => {
         // emojis should be a separate component that is reused both here and in the extended view
         // getEmojiURL should be memoized as people tend to react similarly and this would speed up the process.
         const emoji = (<Emoji emoji={reaction.emoji}/>);
-        const user = reaction.user_id === props.currentUserID ? 'You' : getUserDisplayName(props.profiles[reaction.user_id]) || 'Someone';
+        const user = reaction.user_id === currentUserID ? 'You' : getUserDisplayName(profiles[reaction.user_id]) || 'Someone';
         return (
             <ReactionChip key={reaction.timestamp + reaction.user_id}>
                 <span>{emoji}</span>
@@ -72,22 +111,22 @@ export const ReactionStream = (props: Props) => {
     // add hands up
     let elements = [];
     const getName = (user_id: string) => {
-        return user_id === props.currentUserID ? 'You' : getUserDisplayName(props.profiles[user_id]);
+        return user_id === currentUserID ? 'You' : getUserDisplayName(profiles[user_id]);
     };
     let participants: string;
-    if (props.handsup?.length) {
-        switch (props.handsup?.length) {
+    if (handsup?.length) {
+        switch (handsup?.length) {
         case 1:
-            participants = `${getName(props.handsup[0])}`;
+            participants = `${getName(handsup[0])}`;
             break;
         case 2:
-            participants = `${getName(props.handsup[0])} & ${getName(props.handsup[1])}`;
+            participants = `${getName(handsup[0])} & ${getName(handsup[1])}`;
             break;
         case 3:
-            participants = `${getName(props.handsup[0])}, ${getName(props.handsup[1])} & ${getName(props.handsup[2])}`;
+            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${getName(handsup[2])}`;
             break;
         default:
-            participants = `${getName(props.handsup[0])}, ${getName(props.handsup[1])} & ${props.handsup?.length - 2} others`;
+            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${handsup?.length - 2} others`;
             break;
         }
         const handsupElement = (<Emoji emoji={{name: 'hand', skin: '', unified: '270B'}}/>);
@@ -106,7 +145,7 @@ export const ReactionStream = (props: Props) => {
     elements = [...elements, ...reactions];
 
     return (
-        <ReactionStreamList>
+        <ReactionStreamList left={props?.style?.left}>
             {elements}
         </ReactionStreamList>
     );
