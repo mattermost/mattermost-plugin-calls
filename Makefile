@@ -112,21 +112,15 @@ endif
 endif
 endif
 
-## Builds the server on ci -- only build for linux-amd64, freebsd-amd64 and openbsd-amd64 (for now)
+## Builds the server on ci -- only build for linux-amd64, linux-arm64, freebsd-amd64 and openbsd-amd64 (for now)
 .PHONY: server-ci
 server-ci:
 ifneq ($(HAS_SERVER),)
 	mkdir -p server/dist;
-ifeq ($(MM_DEBUG),)
 	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-linux-amd64;
+	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-linux-arm64;
 	cd server && env CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-freebsd-amd64;
 	cd server && env CGO_ENABLED=0 GOOS=openbsd GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-openbsd-amd64;
-else
-	$(info DEBUG mode is on; to disable, unset MM_DEBUG)
-	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -gcflags "all=-N -l" -trimpath -o dist/plugin-linux-amd64;
-	cd server && env CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -gcflags "all=-N -l" -trimpath -o dist/plugin-freebsd-amd64;
-	cd server && env CGO_ENABLED=0 GOOS=openbsd GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -gcflags "all=-N -l" -trimpath -o dist/plugin-openbsd-amd64;
-endif
 endif
 
 ## Ensures NPM dependencies are installed without having to run this all the time.
@@ -294,11 +288,7 @@ test-e2e-update-snapshots:
 .PHONY: i18n-extract
 i18n-extract:
 ifneq ($(HAS_WEBAPP),)
-ifeq ($(HAS_MM_UTILITIES),)
-	@echo "You must clone github.com/mattermost/mattermost-utilities repo in .. to use this command"
-else
-	cd $(MM_UTILITIES_DIR) && npm install && npm run babel && node mmjstool/build/index.js i18n extract-webapp --webapp-dir $(PWD)/webapp
-endif
+	cd webapp && $(NPM) run extract
 endif
 
 ## Disable the plugin.

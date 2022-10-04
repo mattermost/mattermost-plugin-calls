@@ -10,14 +10,14 @@ import {Client4} from 'mattermost-redux/client';
 import {UserState} from '../../types/types';
 
 import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from '../../utils';
-import {hideExpandedView, showScreenSourceModal} from '../../actions';
-import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID, voiceChannelRootPost} from '../../selectors';
 
 import {
     closeRhs,
     selectRhsPost,
     getIsRhsOpen,
 } from 'src/webapp_globals';
+import {hideExpandedView, showScreenSourceModal, trackEvent} from '../../actions';
+import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID, voiceChannelRootPost} from '../../selectors';
 
 import ExpandedView from './component';
 
@@ -64,6 +64,7 @@ const mapDispatchToProps = {
     showScreenSourceModal,
     closeRhs,
     selectRhsPost,
+    trackEvent,
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(ExpandedView);

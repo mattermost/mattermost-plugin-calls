@@ -15,6 +15,7 @@ interface Props {
     isCloudPaid: boolean,
     isLimitRestricted: boolean,
     maxParticipants: number,
+    isChannelArchived: boolean,
 }
 
 const ChannelHeaderDropdownButton = ({
@@ -25,11 +26,12 @@ const ChannelHeaderDropdownButton = ({
     isCloudPaid,
     isLimitRestricted,
     maxParticipants,
+    isChannelArchived,
 }: Props) => {
     if (!show) {
         return null;
     }
-    const restricted = isLimitRestricted || isCloudFeatureRestricted;
+    const restricted = isLimitRestricted || isCloudFeatureRestricted || isChannelArchived;
     const isCloudLimitRestricted = isCloudPaid && isLimitRestricted;
     const withUpsellIcon = isCloudFeatureRestricted || (isCloudLimitRestricted && !inCall);
 
@@ -53,6 +55,22 @@ const ChannelHeaderDropdownButton = ({
             }
         </CallButton>
     );
+
+    if (isChannelArchived) {
+        return (
+            <OverlayTrigger
+                placement='bottom'
+                rootClose={true}
+                overlay={
+                    <Tooltip id='tooltip-limit-header'>
+                        {'Calls are not available in archived channels.'}
+                    </Tooltip>
+                }
+            >
+                {button}
+            </OverlayTrigger>
+        );
+    }
 
     if (isCloudFeatureRestricted) {
         return (
