@@ -55,7 +55,7 @@ const mapStateToProps = (state: GlobalState) => {
         channel,
         connectedDMUser,
         threadID,
-        isRhsOpen: getIsRhsOpen(state),
+        isRhsOpen: getIsRhsOpen?.(state),
     };
 };
 

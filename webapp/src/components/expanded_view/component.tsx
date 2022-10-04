@@ -64,9 +64,9 @@ interface Props {
     callStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
-    selectRhsPost: (postID: string) => void,
-    closeRhs: () => void,
-    isRhsOpen: boolean,
+    selectRhsPost?: (postID: string) => void,
+    closeRhs?: () => void,
+    isRhsOpen?: boolean,
     screenSharingID: string,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
@@ -324,9 +324,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     toggleChat = () => {
         if (this.props.isRhsOpen) {
-            this.props.closeRhs();
+            this.props.closeRhs?.();
         } else if (this.props.threadID) {
-            this.props.selectRhsPost(this.props.threadID);
+            this.props.selectRhsPost?.(this.props.threadID);
         }
     }
 
@@ -613,10 +613,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const chatToolTipText = this.props.isRhsOpen ? 'Click to close chat' : 'Click to open chat';
         const chatToolTipSubtext = '';
 
+        const globalRhsSupported = typeof this.props.isRhsOpen === 'boolean';
+
         return (
             <div
                 id='calls-expanded-view'
-                style={styles.root}
+                style={globalRhsSupported ? styles.root : {
+                    ...styles.root,
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                }}
             >
                 <div style={styles.main}>
                     { this.renderAlertBanner() }
@@ -721,22 +728,24 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 }
                                 unavailable={noInputDevices || noAudioPermissions}
                             />
-                            <ControlsButton
-                                id='calls-popout-chat-button'
-                                onToggle={this.toggleChat}
-                                tooltipText={chatToolTipText}
-                                tooltipSubtext={chatToolTipSubtext}
-                                // eslint-disable-next-line no-undefined
-                                shortcut={undefined}
-                                bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
-                                icon={
-                                    <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
-                                        size={28}
-                                        color={'white'}
-                                    />
-                                }
-                                unavailable={noInputDevices || noAudioPermissions}
-                            />
+                            {globalRhsSupported && (
+                                <ControlsButton
+                                    id='calls-popout-chat-button'
+                                    onToggle={this.toggleChat}
+                                    tooltipText={chatToolTipText}
+                                    tooltipSubtext={chatToolTipSubtext}
+                                    // eslint-disable-next-line no-undefined
+                                    shortcut={undefined}
+                                    bgColor={''}
+                                    icon={
+                                        <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
+                                            size={28}
+                                            color={'white'}
+                                        />
+                                    }
+                                    unavailable={noInputDevices || noAudioPermissions}
+                                />
+                            )}
                         </div>
 
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
@@ -776,7 +785,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     { this.renderParticipantsRHSList() }
                 </ul>
                 }
-                <ExpandedViewGlobalsStyle/>
+                {globalRhsSupported && <ExpandedViewGlobalsStyle/>}
             </div>
         );
     }
