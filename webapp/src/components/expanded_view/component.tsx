@@ -527,17 +527,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
 
+        const handsup: string[] = [];
+
         // building the list here causes a bug tht if a user leaves and recently reacted it will show as blank
         const profileMap: {[key: string]: UserProfile;} = {};
         this.props.profiles.forEach((profile) => {
             profileMap[profile.id] = profile;
-        });
-        const handsup: string[] = [];
-        for (const [id, member] of Object.entries(this.props.statuses)) {
-            if (member.raised_hand) {
-                handsup.push(id);
+            if (this.props.statuses[profile.id]?.raised_hand) {
+                handsup.push(profile.id);
             }
-        }
+        });
 
         return (
             <div

@@ -45,7 +45,7 @@ const ReactionChip = styled.div<chipProps>`
     width: fit-content;
 
     ${(props) => props.highlight && `
-        background: #FFBC1F;
+        background: #FFFFFF;
         color: #090A0B;
   `}
 `;
