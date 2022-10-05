@@ -26,8 +26,10 @@ export default function ControlsButton(props: Props) {
             key={props.id}
             placement='top'
             overlay={
-                props.disabled ||
-                <Tooltip id={`tooltip-${props.id}`}>
+                <StyledTooltip
+                    id={`tooltip-${props.id}`}
+                    isDisabled={props.disabled}
+                >
                     <div>{props.tooltipText}</div>
                     {props.tooltipSubtext &&
                     <TooltipSubtext>
@@ -37,7 +39,7 @@ export default function ControlsButton(props: Props) {
                     { props.shortcut &&
                     <Shortcut shortcut={props.shortcut}/>
                     }
-                </Tooltip>
+                </StyledTooltip>
             }
         >
             <ButtonContainer
@@ -124,4 +126,10 @@ const UnavailableIcon = styled.div`
 
 const TooltipSubtext = styled.div`
   opacity: 0.56;
+`;
+
+const StyledTooltip = styled(Tooltip)<{isDisabled?: boolean}>`
+  ${({isDisabled}) => isDisabled && css`
+      display: none;
+  `}
 `;

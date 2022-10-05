@@ -684,6 +684,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     />
                                 }
                                 unavailable={noScreenPermissions}
+                                disabled={sharingID !== '' && !isSharing}
                             />
 
                             <ControlsButton
