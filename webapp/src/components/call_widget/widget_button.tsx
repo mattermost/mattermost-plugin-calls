@@ -1,9 +1,10 @@
 import React from 'react';
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+import {OverlayTrigger} from 'react-bootstrap';
 import styled, {css} from 'styled-components';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 import Shortcut from 'src/components/shortcut';
+import {StyledTooltip} from 'src/components/shared';
 
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 
@@ -28,7 +29,7 @@ export default function WidgetButton(props: Props) {
             overlay={
                 <StyledTooltip
                     id={`tooltip-${props.id}`}
-                    isDisabled={props.disabled}
+                    $isDisabled={props.disabled}
                 >
                     <div>{props.tooltipText}</div>
                     {props.tooltipSubtext &&
@@ -75,10 +76,4 @@ const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailab
 
 const TooltipSubtext = styled.div`
   opacity: 0.56;
-`;
-
-const StyledTooltip = styled(Tooltip)<{isDisabled?: boolean}>`
-  ${({isDisabled}) => isDisabled && css`
-      display: none;
-  `}
 `;
