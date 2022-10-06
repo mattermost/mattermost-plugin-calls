@@ -66,6 +66,7 @@ interface Props {
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    allowScreenSharing: boolean,
 }
 
 interface State {
@@ -684,7 +685,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     />
                                 }
                                 unavailable={noScreenPermissions}
-                                disabled={sharingID !== '' && !isSharing}
+                                disabled={(sharingID !== '' && !isSharing) || !this.props.allowScreenSharing}
                             />
 
                             <ControlsButton

@@ -63,6 +63,8 @@ type clientConfig struct {
 	MaxCallParticipants *int
 	// Used to signal the client whether or not to generate TURN credentials. This is a client only option, generated server side.
 	NeedsTURNCredentials *bool
+	// When set to true it allows calls participants to share their screen.
+	AllowScreenSharing *bool
 }
 
 type ICEServers []string
@@ -152,6 +154,7 @@ func (c *configuration) getClientConfig() clientConfig {
 		ICEServersConfigs:    c.getICEServers(true),
 		MaxCallParticipants:  c.MaxCallParticipants,
 		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
+		AllowScreenSharing:   c.AllowScreenSharing,
 	}
 }
 
@@ -174,6 +177,10 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.ServerSideTURN == nil {
 		c.ServerSideTURN = new(bool)
+	}
+	if c.AllowScreenSharing == nil {
+		c.AllowScreenSharing = new(bool)
+		*c.AllowScreenSharing = true
 	}
 }
 
@@ -238,6 +245,10 @@ func (c *configuration) Clone() *configuration {
 
 	if c.ServerSideTURN != nil {
 		cfg.ServerSideTURN = model.NewBool(*c.ServerSideTURN)
+	}
+
+	if c.AllowScreenSharing != nil {
+		cfg.AllowScreenSharing = model.NewBool(*c.AllowScreenSharing)
 	}
 
 	return &cfg

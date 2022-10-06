@@ -87,6 +87,14 @@
           "default": false,
           "help_text": "(Optional) When set to true it will pass and use configured TURN candidates to server initiated connections."
         },
+
+        {
+          "key": "AllowScreenSharing",
+          "display_name": "Allow screen sharing",
+          "type": "bool",
+          "default": true,
+          "help_text": "When set to true it allows calls participants to share their screen."
+        },
         {
           "key": "RTCDServiceURL",
           "display_name": "RTCD service URL",

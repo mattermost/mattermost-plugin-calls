@@ -12,7 +12,15 @@ import {UserState} from '../../types/types';
 
 import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from '../../utils';
 import {hideExpandedView, showScreenSourceModal, trackEvent} from '../../actions';
-import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID} from '../../selectors';
+import {
+    expandedView,
+    voiceChannelCallStartAt,
+    connectedChannelID,
+    voiceConnectedProfiles,
+    voiceUsersStatuses,
+    voiceChannelScreenSharingID,
+    allowScreenSharing,
+} from '../../selectors';
 
 import ExpandedView from './component';
 
@@ -48,6 +56,7 @@ const mapStateToProps = (state: GlobalState) => {
         screenSharingID,
         channel,
         connectedDMUser,
+        allowScreenSharing: allowScreenSharing(state),
     };
 };
 

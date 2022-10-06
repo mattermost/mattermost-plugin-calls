@@ -83,6 +83,7 @@ interface Props {
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    allowScreenSharing: boolean,
 }
 
 interface DraggingState {
@@ -720,7 +721,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
                 icon={<ScreenIcon style={{width: '16px', height: '16px', fill}}/>}
                 unavailable={this.state.alerts.missingScreenPermissions.active}
-                disabled={sharingID !== '' && !isSharing}
+                disabled={(sharingID !== '' && !isSharing) || !this.props.allowScreenSharing}
             />
         );
     }
@@ -979,7 +980,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const sharingID = this.props.screenSharingID;
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
-        const isDisabled = Boolean(sharingID !== '' && !isSharing);
+        const isDisabled = Boolean(sharingID !== '' && !isSharing) || !this.props.allowScreenSharing;
         const noPermissions = this.state.alerts.missingScreenPermissions.active;
 
         return (
