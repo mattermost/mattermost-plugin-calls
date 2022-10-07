@@ -61,12 +61,16 @@ const ReactionChip = styled.div<chipProps>`
   `}
 `;
 
+type VoiceUserStatuses = {
+    [key: string]: UserState,
+};
+
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = (props: Props) => {
     const vReactions = useSelector(voiceReactions);
     const currentUserID = useSelector(getCurrentUserId);
 
-    const statuses = useSelector(voiceUsersStatuses);
+    const statuses = useSelector(voiceUsersStatuses) as VoiceUserStatuses;
     const vConnectedProfiles = useSelector(voiceConnectedProfiles);
 
     const cChannelID = useSelector(connectedChannelID);
@@ -98,7 +102,7 @@ export const ReactionStream = (props: Props) => {
         // emojis should be a separate component that is reused both here and in the extended view
         // getEmojiURL should be memoized as people tend to react similarly and this would speed up the process.
         const emoji = (<Emoji emoji={reaction.emoji}/>);
-        const user = reaction.user_id === currentUserID ? 'You' : getUserDisplayName(profiles[reaction.user_id]) || 'Someone';
+        const user = reaction.user_id === currentUserID ? 'You' : getUserDisplayName(profileMap[reaction.user_id]) || 'Someone';
         return (
             <ReactionChip key={reaction.timestamp + reaction.user_id}>
                 <span>{emoji}</span>
@@ -111,7 +115,7 @@ export const ReactionStream = (props: Props) => {
     // add hands up
     let elements = [];
     const getName = (user_id: string) => {
-        return user_id === currentUserID ? 'You' : getUserDisplayName(profiles[user_id]);
+        return user_id === currentUserID ? 'You' : getUserDisplayName(profileMap[user_id]);
     };
     let participants: string;
     if (handsup?.length) {
