@@ -1,5 +1,3 @@
-/* eslint-disable max-lines */
-
 import {combineReducers} from 'redux';
 
 import {UserProfile} from '@mattermost/types/users';
@@ -45,6 +43,7 @@ import {
     HIDE_END_CALL_MODAL,
     RECEIVED_CHANNEL_STATE,
     RECEIVED_CALLS_USER_PREFERENCES,
+    RECEIVED_CLIENT_ERROR,
     SET_CHECKLIST_ITEMS_FILTER,
     SetChecklistCollapsedState,
     SetAllChecklistsCollapsedState,
@@ -559,6 +558,21 @@ const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { typ
     }
 };
 
+type clientError = {
+    channelID: string,
+    err: Error,
+}
+
+const clientErr = (state = null, action: { type: string, data: clientError}) => {
+    switch (action.type) {
+    case RECEIVED_CLIENT_ERROR:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
+// TODO: needed?
 const checklistsByChannel = (state: Record<string, Checklist> = {}, action: SetChecklist | SetChecklistItem) => {
     switch (action.type) {
     case SET_CHECKLIST: {
@@ -660,6 +674,7 @@ export default combineReducers({
     voiceChannelRootPost,
     callsConfig,
     callsUserPreferences,
+    clientErr,
     checklistItemsFilterByChannel,
     checklistCollapsedState,
     checklistsByChannel,

@@ -110,3 +110,40 @@ export type CallsUserPreferences = {
 export const CallsUserPreferencesDefault = {
     joinSoundParticipantsThreshold: 8,
 };
+
+export enum CallAlertType {
+    Error = 'error',
+    Warning = 'warning',
+}
+
+export type CallAlertConfig = {
+    type: CallAlertType,
+    icon: string,
+    bannerText: string,
+    tooltipText: string,
+    tooltipSubtext: string,
+}
+
+export type CallAlertState = {
+    active: boolean,
+    show: boolean,
+}
+
+export type CallAlertStates = {
+    [key: string]: CallAlertState,
+}
+
+export const CallAlertStatesDefault = {
+    missingAudioInput: {
+        active: false,
+        show: false,
+    },
+    missingAudioInputPermissions: {
+        active: false,
+        show: false,
+    },
+    missingScreenPermissions: {
+        active: false,
+        show: false,
+    },
+};

@@ -241,6 +241,8 @@ export const shouldPlayJoinUserSound: (state: GlobalState) => boolean = createSe
     },
 );
 
+export const getClientError = (state: GlobalState) => getPluginState(state).clientErr;
+
 export const isOnPremNotEnterprise: (state: GlobalState) => boolean = createSelector(
     'isOnPremNotEnterprise',
     isCloud,

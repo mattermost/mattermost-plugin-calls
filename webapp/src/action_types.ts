@@ -35,6 +35,9 @@ export const RECEIVED_CALLS_CONFIG = pluginId + '_received_calls_config';
 export const RECEIVED_CHANNEL_STATE = pluginId + 'received_channel_state';
 export const RECEIVED_CALLS_USER_PREFERENCES = pluginId + '_received_calls_user_preferences';
 
+export const RECEIVED_CLIENT_ERROR = pluginId + '_received_client_error';
+
+// TODO: used?
 export const SET_EACH_CHECKLIST_COLLAPSED_STATE = pluginId + '_set_every_checklist_collapsed_state';
 export const SET_CHECKLIST_COLLAPSED_STATE = pluginId + '_set_checklist_collapsed_state';
 export const SET_ALL_CHECKLISTS_COLLAPSED_STATE = pluginId + '_set_all_checklists_collapsed_state';
