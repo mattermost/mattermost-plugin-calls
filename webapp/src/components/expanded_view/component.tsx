@@ -165,7 +165,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     active: devices.inputs.length === 0,
                     show: devices.inputs.length === 0,
                 },
-            }});
+            },
+        });
     }
 
     onDisconnectClick = () => {
@@ -318,7 +319,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         active: false,
                         show: false,
                     },
-                }});
+                },
+            });
         });
 
         this.setDevices(callsClient.getAudioDevices());
@@ -346,7 +348,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     shouldRenderAlertBanner = () => {
-        return Object.entries(this.state.alerts).filter(kv => kv[1].show).length > 0;
+        return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
     }
 
     renderAlertBanner = () => {
@@ -450,7 +452,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return (
                 <li
                     key={'participants_profile_' + idx}
-                    style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', margin: '16px'}}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        margin: '16px',
+                    }}
                 >
 
                     <div style={{position: 'relative'}}>
@@ -551,18 +559,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             gap: '4px',
                         }}
                     >
-                        { isHandRaised &&
+                        {isHandRaised &&
                             <RaisedHandIcon
                                 fill={'rgba(255, 188, 66, 1)'}
                                 style={{width: '14px', height: '14px'}}
                             />
                         }
 
-                        { this.props.screenSharingID === profile.id &&
-                        <ScreenIcon
-                            fill={'rgb(var(--dnd-indicator-rgb))'}
-                            style={{width: '14px', height: '14px'}}
-                        />
+                        {this.props.screenSharingID === profile.id &&
+                            <ScreenIcon
+                                fill={'rgb(var(--dnd-indicator-rgb))'}
+                                style={{width: '14px', height: '14px'}}
+                            />
                         }
 
                         <MuteIcon
@@ -625,7 +633,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 style={style.root as CSSProperties}
             >
                 <div style={style.main as CSSProperties}>
-                    { this.renderAlertBanner() }
+                    {this.renderAlertBanner()}
 
                     <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
                         <div style={style.topLeftContainer as CSSProperties}>
@@ -649,18 +657,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         }
                     </div>
 
-                    { !this.props.screenSharingID &&
-                    <ul
-                        id='calls-expanded-view-participants-grid'
-                        style={{
-                            ...style.participants,
-                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
-                        }}
-                    >
-                        { this.renderParticipants() }
-                    </ul>
+                    {!this.props.screenSharingID &&
+                        <ul
+                            id='calls-expanded-view-participants-grid'
+                            style={{
+                                ...style.participants,
+                                gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                            }}
+                        >
+                            {this.renderParticipants()}
+                        </ul>
                     }
-                    { this.props.screenSharingID && this.renderScreenSharingPlayer() }
+                    {this.props.screenSharingID && this.renderScreenSharingPlayer()}
                     <div
                         id='calls-expanded-view-controls'
                         style={style.controls}
@@ -674,36 +682,31 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 bgColor={this.state.rhsState === RHSState.Participants ? 'rgba(28, 88, 217, 0.32)' : ''}
                                 icon={
                                     <ParticipantsIcon
-                                        style={{width: '28px', height: '28px', fill: this.state.rhsState === RHSState.Participants ? 'rgb(28, 88, 217)' : 'white'}}
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            fill: this.state.rhsState === RHSState.Participants ? 'rgb(28, 88, 217)' : 'white',
+                                        }}
                                     />
                                 }
                                 margin='0'
                             />
+                            <ControlsButton
+                                id='calls-show-agenda-button'
+                                onToggle={this.onAgendaToggle}
+                                tooltipText={this.state.rhsState === RHSState.Agenda ? 'Hide agenda' : 'Show agenda'}
+                                bgColor={this.state.rhsState === RHSState.Agenda ? 'rgba(28, 88, 217, 0.32)' : ''}
+                                icon={
+                                    <ShowMoreIcon
+                                        style={{
+                                            width: '24px',
+                                            height: '24px',
+                                            fill: this.state.rhsState === RHSState.Agenda ? 'rgb(28, 88, 217)' : 'white',
+                                        }}
+                                    />
+                                }
+                            />
                         </div>
-                        {/* TODO: fix this show agenda to be like above */}
-                        <OverlayTrigger
-                            key='show_agenda'
-                            placement='top'
-                            overlay={
-                                <Tooltip
-                                    id='show-agenda'
-                                >
-                                    {this.state.rhsState === RHSState.Agenda ? 'Hide agenda' : 'Show agenda'}
-                                </Tooltip>
-                            }
-                        >
-
-                            <button
-                                className='button-center-controls'
-                                onClick={this.onAgendaToggle}
-                                style={{background: this.state.rhsState === RHSState.Agenda ? 'rgba(28, 88, 217, 0.32)' : ''}}
-                            >
-                                <ShowMoreIcon
-                                    style={{width: '24px', height: '24px'}}
-                                    fill={this.state.rhsState === RHSState.Agenda ? 'rgb(28, 88, 217)' : 'white'}
-                                />
-                            </button>
-                        </OverlayTrigger>
 
                         <div style={style.centerControls}>
                             <ControlsButton
@@ -714,7 +717,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 bgColor={isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
                                 icon={
                                     <HandIcon
-                                        style={{width: '28px', height: '28px', fill: isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}}
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            fill: isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white',
+                                        }}
                                     />
                                 }
                             />
@@ -729,7 +736,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
                                 icon={
                                     <ScreenIcon
-                                        style={{width: '28px', height: '28px', fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : ''}}
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : '',
+                                        }}
                                     />
                                 }
                                 unavailable={noScreenPermissions}
@@ -747,7 +758,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
                                 icon={
                                     <MuteIcon
-                                        style={{width: '28px', height: '28px', fill: isMuted ? '' : 'rgba(61, 184, 135, 1)'}}
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            fill: isMuted ? '' : 'rgba(61, 184, 135, 1)',
+                                        }}
                                     />
                                 }
                                 unavailable={noInputDevices || noAudioPermissions}
@@ -785,21 +800,41 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
                     </div>
                 </div>
-                { this.state.rhsState !== RHSState.Closed &&
-                <ul style={style.rhs as CSSProperties}>
-                    {this.state.rhsState === RHSState.Participants &&
-                        <>
-                            <span style={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Participants list'}</span>
-                            {this.renderParticipantsRHSList()}
-                        </>
-                    }
-                    {this.state.rhsState === RHSState.Agenda &&
-                        <>
-                            <span style={{position: 'sticky', top: '0', background: 'var(--center-channel-bg)', fontWeight: 600, padding: '8px'}}>{'Agenda'}</span>
-                            <AgendaComponent channelId={this.props.channel.id}/>
-                        </>
-                    }
-                </ul>
+                {this.state.rhsState !== RHSState.Closed &&
+                    <ul style={style.rhs as CSSProperties}>
+                        {this.state.rhsState === RHSState.Participants &&
+                            <>
+                                <span
+                                    style={{
+                                        position: 'sticky',
+                                        top: '0',
+                                        background: 'inherit',
+                                        fontWeight: 600,
+                                        padding: '8px',
+                                    }}
+                                >
+                                    {'Participants list'}
+                                </span>
+                                {this.renderParticipantsRHSList()}
+                            </>
+                        }
+                        {this.state.rhsState === RHSState.Agenda &&
+                            <>
+                                <span
+                                    style={{
+                                        position: 'sticky',
+                                        top: '0',
+                                        background: 'var(--center-channel-bg)',
+                                        fontWeight: 600,
+                                        padding: '8px',
+                                    }}
+                                >
+                                    {'Agenda'}
+                                </span>
+                                <AgendaComponent channelId={this.props.channel.id}/>
+                            </>
+                        }
+                    </ul>
                 }
             </div>
         );

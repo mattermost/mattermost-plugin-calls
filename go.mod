@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/mattermost/focalboard/server v0.0.0-20221007172821-25d29e403411
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.0.29-0.20220801143717-73008cfda2fb
 	github.com/mattermost/rtcd v0.6.12-0.20220921192724-5c4b06f29d03
@@ -41,7 +42,6 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
-	github.com/graph-gophers/graphql-go v1.4.0 // indirect
 	github.com/hashicorp/go-hclog v1.2.2 // indirect
 	github.com/hashicorp/go-plugin v1.4.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -52,7 +52,6 @@ require (
 	github.com/krolaw/zipstream v0.0.0-20180621105154-0a2661891f94 // indirect
 	github.com/lib/pq v1.10.6 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
-	github.com/mattermost/focalboard v0.16.1-0.20220921175905-975bb3cd83b9 // indirect
 	github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 // indirect
 	github.com/mattermost/ldap v0.0.0-20201202150706-ee0e6284187d // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

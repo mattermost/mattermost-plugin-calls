@@ -52,7 +52,7 @@ apply:
 .PHONY: gomod-check
 gomod-check:
 	@echo Checking go mod files consistency
-	go mod tidy -v && git --no-pager diff --exit-code go.mod go.sum || (echo "Please run \"go mod tidy\" and commit the changes in go.mod and go.sum." && exit 1)
+	go mod tidy -v -compat=1.17 && git --no-pager diff --exit-code go.mod go.sum || (echo "Please run \"go mod tidy\" and commit the changes in go.mod and go.sum." && exit 1)
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style

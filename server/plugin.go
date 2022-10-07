@@ -22,11 +22,6 @@ import (
 	"github.com/mattermost/mattermost-server/v6/plugin"
 )
 
-const (
-	// BotTokenKey is the KV store key for the bot's access token, used for the Focalboard API
-	BotTokenKey = "bot_token"
-)
-
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
 type Plugin struct {
 	plugin.MattermostPlugin

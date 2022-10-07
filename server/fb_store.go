@@ -14,9 +14,6 @@ import (
 )
 
 const (
-	// StoreBoardToUserKey is the key used to map a chanel ID to a board ID
-	StorChannelToBoardKey = "channel_to_board"
-
 	StatusUpNext  = "Up Next"
 	StatusDone    = "Done"
 	StatusRevisit = "Revisit"
