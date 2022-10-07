@@ -46,8 +46,8 @@ export const ChecklistItemsFilterDefault: ChecklistItemsFilter = {
 
 export function emptyChecklist(): Checklist {
     return {
-        title: 'Default checklist',
-        items: [emptyChecklistItem()],
+        title: '',
+        items: [],
     };
 }
 

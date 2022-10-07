@@ -16,13 +16,14 @@ const Agenda = ({channelId}: Props) => {
 
     useEffect(() => {
         async function getAgenda() {
-            console.log(channelId, 'getting agenda');
+            console.log(channelId, '<><> getting agenda');
             setChecklist(await fetchAgendaForChannel(channelId) || emptyChecklist());
         }
         getAgenda();
     }, [channelId]);
 
     const onUpdateChecklistItem = async (newItem: ChecklistItem, index: number) => {
+        console.log(channelId, '<><> onUpdateChecklistItem', newItem, index);
         const item = await updateAgendaItem(channelId, newItem);
         if (!item) {
             console.log('<><> no checklist item returned');
@@ -36,6 +37,7 @@ const Agenda = ({channelId}: Props) => {
     };
 
     const onAddChecklistItem = async (newItem: ChecklistItem) => {
+        console.log(channelId, '<><> onAddChecklistItem', newItem);
         const itemWithId = await addAgendaItem(channelId, newItem);
 
         const newChecklistItems = [...checklist.items];
@@ -48,7 +50,7 @@ const Agenda = ({channelId}: Props) => {
     return (
         <ChecklistList
             checklists={[checklist]}
-            onChecklistsUpdated={(...params) => console.log(params)}
+            onChecklistsUpdated={(...params) => console.log('<><> onChecklistsUpdated', params)}
             onUpdateChecklistItem={onUpdateChecklistItem}
             onAddChecklistItem={onAddChecklistItem}
         />

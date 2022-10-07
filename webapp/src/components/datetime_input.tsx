@@ -69,7 +69,7 @@ type Props = {
         durationResults: Duration[],
         mode: Mode,
     ) => Option[] | null;
-    disabled?:boolean;
+    disabled?: boolean;
 } & Partial<ComponentProps<typeof StyledSelect>>;
 
 const DateTimeInput = ({
