@@ -17,4 +17,4 @@ export const {
     getIsRhsOpen,
 
 // @ts-ignore
-} = window.ProductApi;
+} = global.ProductApi ?? {};
