@@ -53,6 +53,22 @@ export async function addAgendaItem(channelId: string, item: ChecklistItem): Pro
     return data;
 }
 
+export async function reorderItems(channelId: string, ids: string[]): Promise<boolean> {
+    const data = await doPut<{success: boolean}>(`${apiUrl}/agenda/${channelId}/reorder`, JSON.stringify(ids));
+    if (!data) {
+        return false;
+    }
+    return data.success;
+}
+
+export async function deleteItem(channelId: string, id: string): Promise<boolean> {
+    const data = await doDelete<{success: boolean}>(`${apiUrl}/agenda/${channelId}/item/${id}`, JSON.stringify(id));
+    if (!data) {
+        return false;
+    }
+    return data.success;
+}
+
 export const doGet = async <TData = any>(url: string) => {
     const {data} = await doFetchWithResponse<TData>(url, {method: 'get'});
 

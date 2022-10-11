@@ -3,22 +3,15 @@ module github.com/mattermost/mattermost-plugin-calls
 go 1.17
 
 require (
-	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/mattermost/mattermost-server/v6 v6.4.0
-	github.com/pion/ice/v2 v2.2.6 // indirect
-	github.com/pion/rtcp v1.2.9 // indirect
-	github.com/pion/webrtc/v3 v3.1.40 // indirect
-	github.com/prometheus/client_golang v1.13.0
-	github.com/stretchr/testify v1.8.0
-)
-
-require (
-	github.com/mattermost/focalboard/server v0.0.0-20221007172821-25d29e403411
+	github.com/mattermost/focalboard/server v0.0.0-20221007202724-b1fd48faacff
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.0.29-0.20220801143717-73008cfda2fb
-	github.com/mattermost/rtcd v0.6.12-0.20220921192724-5c4b06f29d03
+	github.com/mattermost/mattermost-server/v6 v6.4.0
+	github.com/mattermost/rtcd v0.6.11
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.13.0
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
+	github.com/stretchr/testify v1.8.0
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65
 )
 
@@ -31,7 +24,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
-	github.com/dyatlov/go-opengraph v0.0.0-20210112100619-dae8665a5b09 // indirect
+	github.com/dyatlov/go-opengraph/opengraph v0.0.0-20220524092352-606d7b1e5f8a // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
@@ -42,6 +35,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/go-hclog v1.2.2 // indirect
 	github.com/hashicorp/go-plugin v1.4.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -70,10 +64,12 @@ require (
 	github.com/philhofer/fwd v1.1.1 // indirect
 	github.com/pion/datachannel v1.5.2 // indirect
 	github.com/pion/dtls/v2 v2.1.5 // indirect
+	github.com/pion/ice/v2 v2.2.6 // indirect
 	github.com/pion/interceptor v0.1.11 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/mdns v0.0.5 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
+	github.com/pion/rtcp v1.2.9 // indirect
 	github.com/pion/rtp v1.7.13 // indirect
 	github.com/pion/sctp v1.8.2 // indirect
 	github.com/pion/sdp/v3 v3.0.5 // indirect
@@ -82,6 +78,7 @@ require (
 	github.com/pion/transport v0.13.0 // indirect
 	github.com/pion/turn/v2 v2.0.8 // indirect
 	github.com/pion/udp v0.1.1 // indirect
+	github.com/pion/webrtc/v3 v3.1.40 // indirect
 	github.com/plar/go-adaptive-radix-tree v1.0.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect

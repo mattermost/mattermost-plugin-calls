@@ -19,7 +19,6 @@ interface Props {
     cancelAddingItem: () => void;
     onUpdateChecklistItem?: (newItem: ChecklistItemType, referenceID?: string) => void;
     onAddChecklistItem?: (newItem: ChecklistItemType, referenceID?: string) => void;
-    onDuplicateChecklistItem?: (referenceID?: string) => void;
     onDeleteChecklistItem?: (referenceID?: string) => void;
 }
 
@@ -43,7 +42,6 @@ const DraggableChecklistItem = (props: Props) => {
                     cancelAddingItem={props.cancelAddingItem}
                     onUpdateChecklistItem={props.onUpdateChecklistItem}
                     onAddChecklistItem={props.onAddChecklistItem}
-                    onDuplicateChecklistItem={props.onDuplicateChecklistItem}
                     onDeleteChecklistItem={props.onDeleteChecklistItem}
                 />
             )}

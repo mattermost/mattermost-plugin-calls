@@ -56,75 +56,155 @@ func (p *Plugin) handleGetAgenda(w http.ResponseWriter, r *http.Request, token s
 }
 
 func (p *Plugin) handleUpdateAgendaItem(w http.ResponseWriter, r *http.Request, token string, channelID string) {
+	var res httpResponse
+	defer p.httpAudit("handleUpdateAgendaItem", &res, w, r)
+
 	userID := r.Header.Get("Mattermost-User-Id")
 	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		res.Err = "Forbidden"
+		res.Code = http.StatusForbidden
 		return
 	}
 
 	var item AgendaItem
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&item); err != nil {
-		p.handleError(w, err)
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
-	status := ""
-	switch item.State {
-	case "closed":
-		status = StatusDone
-	default:
-		status = StatusUpNext
-	}
-
-	err := p.fbStore.UpdateCardStatus(token, item.ID, channelID, status)
+	oldItem, err := p.fbStore.GetAgendaItem(token, channelID, item.ID)
 	if err != nil {
-		p.handleError(w, err)
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
-	var res httpResponse
-	res.Code = http.StatusOK
-	resBytes, err := json.Marshal(res)
-	if err != nil {
-		p.handleError(w, err)
-		return
+	// Has status been updated?
+	// ASSUMPTION: We're only handling UpNext -> Done or Done -> UpNext transitions at the moment.
+	if oldItem.State == StatusUpNext && item.State == "closed" {
+		err = p.fbStore.UpdateCardStatus(token, channelID, item.ID, StatusDone)
+		if err != nil {
+			res.Err = err.Error()
+			res.Code = http.StatusInternalServerError
+			return
+		}
+	}
+
+	if oldItem.State == StatusDone && item.State == "" {
+		err = p.fbStore.UpdateCardStatus(token, channelID, item.ID, StatusUpNext)
+		if err != nil {
+			res.Err = err.Error()
+			res.Code = http.StatusInternalServerError
+			return
+		}
+	}
+
+	if oldItem.Title != item.Title {
+		err = p.fbStore.UpdateCardTitle(token, channelID, item.ID, item.Title)
+		if err != nil {
+			res.Err = err.Error()
+			res.Code = http.StatusInternalServerError
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(resBytes); err != nil {
-		p.handleError(w, err)
+	if err := json.NewEncoder(w).Encode(item); err != nil {
+		p.LogError(err.Error())
 	}
 }
 
 func (p *Plugin) handleAddAgendaItem(w http.ResponseWriter, r *http.Request, token string, channelID string) {
+	var res httpResponse
+	defer p.httpAudit("handleAddAgendaItem", &res, w, r)
+
 	userID := r.Header.Get("Mattermost-User-Id")
 	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		res.Err = "Forbidden"
+		res.Code = http.StatusForbidden
 		return
 	}
 
 	var item AgendaItem
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&item); err != nil {
-		p.handleError(w, err)
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
 	block, err := p.fbStore.AddCard(userID, token, channelID, item.Title)
 	if err != nil {
-		p.handleError(w, err)
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
 	item.ID = block.ID
 
-	resBytes, err := json.Marshal(item)
-	if err != nil {
-		p.handleError(w, err)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(item); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
+func (p *Plugin) handleReorderItems(w http.ResponseWriter, r *http.Request, token string, channelID string) {
+	var res httpResponse
+	defer p.httpAudit("handleAddAgendaItem", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+		res.Err = "Forbidden"
+		res.Code = http.StatusForbidden
 		return
 	}
 
+	var newItemOrder []string
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&newItemOrder); err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	if err := p.fbStore.UpdateCardOrder(token, channelID, newItemOrder); err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	result := map[string]bool{
+		"success": true,
+	}
 	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(resBytes); err != nil {
-		p.handleError(w, err)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		p.LogError(err.Error())
+
+	}
+}
+
+func (p *Plugin) handleDeleteAgendaItem(w http.ResponseWriter, r *http.Request, token string, channelID string, itemID string) {
+	var res httpResponse
+	defer p.httpAudit("handleAddAgendaItem", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+		res.Err = "Forbidden"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	if err := p.fbStore.DeleteCard(token, channelID, itemID); err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	result := map[string]bool{
+		"success": true,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		p.LogError(err.Error())
+
 	}
 }

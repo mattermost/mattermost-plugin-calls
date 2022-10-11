@@ -48,9 +48,20 @@ interface Props {
     onChecklistsUpdated: (newChecklists: Checklist[]) => void;
     onUpdateChecklistItem: (item: ChecklistItem, index: number) => void;
     onAddChecklistItem: (item: ChecklistItem) => void;
+    onDeleteChecklistItem: (id: string, newChecklist: Checklist) => void;
 }
 
-const ChecklistList = ({checklists, extra, referenceID, finished, archived, onChecklistsUpdated, onUpdateChecklistItem, onAddChecklistItem}: Props) => {
+const ChecklistList = ({
+    checklists,
+    extra,
+    referenceID,
+    finished,
+    archived,
+    onChecklistsUpdated,
+    onUpdateChecklistItem,
+    onAddChecklistItem,
+    onDeleteChecklistItem,
+}: Props) => {
     const dispatch = useDispatch();
     const {formatMessage} = useIntl();
     const channelId = useSelector(getCurrentChannelId);
@@ -256,9 +267,10 @@ const ChecklistList = ({checklists, extra, referenceID, finished, archived, onCh
                                                     checklist={checklist}
                                                     checklistIndex={checklistIndex}
                                                     allowAddItem={true}
-                                                    onUpdateChecklist={(newChecklist: Checklist) => onUpdateChecklist(checklistIndex, newChecklist)}
+                                                    onUpdateChecklist={(id: string, newChecklist: Checklist) => onUpdateChecklist(checklistIndex, newChecklist)}
                                                     onUpdateChecklistItem={onUpdateChecklistItem}
                                                     onAddChecklistItem={onAddChecklistItem}
+                                                    onDeleteChecklistItem={onDeleteChecklistItem}
                                                 />
                                             </CollapsibleChecklist>
                                         );

@@ -31,9 +31,10 @@ interface Props {
     allowAddItem?: boolean;
     checklist: Checklist;
     checklistIndex: number;
-    onUpdateChecklist: (newChecklist: Checklist) => void;
+    onUpdateChecklist: (id: string, newChecklist: Checklist) => void;
     onUpdateChecklistItem: (newItem: ChecklistItem, index: number) => void;
     onAddChecklistItem: (newItem: ChecklistItem) => void;
+    onDeleteChecklistItem: (id: string, newChecklist: Checklist) => void;
 }
 
 const GenericChecklist = (props: Props) => {
@@ -102,21 +103,23 @@ const GenericChecklist = (props: Props) => {
         props.onUpdateChecklist(newChecklist);
     };*/
 
-    const onDuplicateChecklistItem = (index: number) => {
-        const newChecklistItems = [...props.checklist.items];
-        const duplicate = {...newChecklistItems[index]};
-        newChecklistItems.push(duplicate);
-        const newChecklist = {...props.checklist};
-        newChecklist.items = newChecklistItems;
-        props.onUpdateChecklist(newChecklist);
-    };
+    // const onDuplicateChecklistItem = (index: number) => {
+    //     const id = props.checklist.items[index].id;
+    //     const newChecklistItems = [...props.checklist.items];
+    //     const duplicate = {...newChecklistItems[index]};
+    //     newChecklistItems.push(duplicate);
+    //     const newChecklist = {...props.checklist};
+    //     newChecklist.items = newChecklistItems;
+    //     props.onUpdateChecklist(id, newChecklist);
+    // };
 
     const onDeleteChecklistItem = (index: number) => {
+        const id = props.checklist.items[index].id;
         const newChecklistItems = [...props.checklist.items];
         newChecklistItems.splice(index, 1);
         const newChecklist = {...props.checklist};
         newChecklist.items = newChecklistItems;
-        props.onUpdateChecklist(newChecklist);
+        props.onDeleteChecklistItem(id, newChecklist);
     };
 
     const keys = generateKeys(props.checklist.items.map((item) => props.referenceID + item.title));
@@ -153,7 +156,6 @@ const GenericChecklist = (props: Props) => {
                                         setAddingItem(false);
                                     }}
                                     onUpdateChecklistItem={(newItem: ChecklistItem) => props.onUpdateChecklistItem(newItem, index)}
-                                    onDuplicateChecklistItem={() => onDuplicateChecklistItem(index)}
                                     onDeleteChecklistItem={() => onDeleteChecklistItem(index)}
                                 />
                             );
@@ -203,7 +205,7 @@ const IconWrapper = styled.div`
 const ChecklistContainer = styled.div`
     background-color: var(--center-channel-bg);
     border-radius: 0 0 4px 4px;
-    border:  1px solid rgba(var(--center-channel-color-rgb), 0.08);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
     border-top: 0;
     padding: 8px 0px;
 `;

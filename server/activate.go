@@ -150,8 +150,6 @@ func (p *Plugin) setupFBIntegration() error {
 
 	p.fbStore = NewFocalboardStore(p.API, url)
 
-	p.LogDebug("<><> focalboard integration activated", "focalboard url", url)
-
 	return nil
 }
 

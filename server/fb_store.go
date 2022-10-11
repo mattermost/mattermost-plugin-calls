@@ -20,11 +20,15 @@ const (
 )
 
 type FocalboardStore interface {
+	GetClient(token string) *fbClient.Client
 	GetBoardForChannel(token string, channelID string) (*fbModel.Board, error)
+	GetAgendaItem(token string, channelID string, cardID string) (*AgendaItem, error)
 	AddCard(userID string, token string, channelID string, title string) (*fbModel.Block, error)
 	GetUpnextCards(token string, channelID string) ([]fbModel.Block, error)
-	UpdateCardStatus(token string, cardID, channelID, status string) error
-	GetClient(token string) *fbClient.Client
+	UpdateCardStatus(token string, channelID string, cardID string, status string) error
+	UpdateCardTitle(token string, channelID string, cardID string, title string) error
+	UpdateCardOrder(token string, channelID string, itemIDs []string) error
+	DeleteCard(token string, channelID string, itemID string) error
 }
 
 type focalboardStore struct {
@@ -125,6 +129,51 @@ func (s *focalboardStore) getBlock(token, boardID, blockID string) (*fbModel.Blo
 		}
 	}
 	return nil, nil
+}
+
+func (s *focalboardStore) GetAgendaItem(token string, channelID string, cardID string) (*AgendaItem, error) {
+	board, err := s.GetBoardForChannel(token, channelID)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get board")
+	} else if board == nil {
+		return nil, errors.New("unable to find board")
+	}
+
+	block, err := s.getBlock(token, board.ID, cardID)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get card")
+	} else if block == nil {
+		return nil, errors.New("unable to find card")
+	}
+
+	statusProp := getCardPropertyByName(board, "Status")
+	if statusProp == nil {
+		return nil, errors.New("status card property not found on board")
+	}
+
+	upNextOption := getPropertyOptionByValue(statusProp, StatusUpNext)
+	if upNextOption == nil {
+		return nil, errors.New("to do option not found on status card property")
+	}
+	doneOption := getPropertyOptionByValue(statusProp, StatusDone)
+	if doneOption == nil {
+		return nil, errors.New("done option not found on status card property")
+	}
+	statusID := getPropertyValueForCard(block, statusProp["id"].(string))
+
+	status := ""
+	switch *statusID {
+	case upNextOption["id"].(string):
+		status = StatusUpNext
+	case doneOption["id"].(string):
+		status = StatusDone
+	}
+
+	return &AgendaItem{
+		ID:    block.ID,
+		Title: block.Title,
+		State: status,
+	}, nil
 }
 
 func (s *focalboardStore) AddCard(userID string, token string, channelID string, title string) (*fbModel.Block, error) {
@@ -244,7 +293,7 @@ func (s *focalboardStore) GetUpnextCards(token, channelID string) ([]fbModel.Blo
 	return upNextCards, nil
 }
 
-func (s *focalboardStore) UpdateCardStatus(token, cardID, channelID, status string) error {
+func (s *focalboardStore) UpdateCardStatus(token, channelID, cardID, status string) error {
 	board, err := s.GetBoardForChannel(token, channelID)
 	if err != nil {
 		return errors.Wrap(err, "unable to get board")
@@ -296,6 +345,102 @@ func (s *focalboardStore) UpdateCardStatus(token, cardID, channelID, status stri
 	return nil
 }
 
+func (s *focalboardStore) UpdateCardTitle(token string, channelID string, cardID string, title string) error {
+	board, err := s.GetBoardForChannel(token, channelID)
+	if err != nil {
+		return errors.Wrap(err, "unable to get board")
+	}
+
+	if board == nil {
+		return errors.New("unable to find board")
+	}
+
+	block, err := s.getBlock(token, board.ID, cardID)
+	if err != nil {
+		return errors.Wrap(err, "unable to get block to update status")
+	}
+	if block == nil {
+		return errors.New("unable to find block to update")
+	}
+
+	client := s.GetClient(token)
+
+	success, resp := client.PatchBlock(board.ID, block.ID, &fbModel.BlockPatch{Title: &title}, false)
+	if resp.Error != nil {
+		return errors.Wrap(err, "unable to patch block")
+	} else if !success {
+		return errors.New("patch block was unsuccessful")
+	}
+
+	return nil
+}
+
+func (s *focalboardStore) UpdateCardOrder(token string, channelID string, itemIDs []string) error {
+	board, err := s.GetBoardForChannel(token, channelID)
+	if err != nil {
+		return errors.Wrap(err, "unable to get board")
+	}
+
+	if board == nil {
+		return errors.New("unable to find board")
+	}
+
+	client := s.GetClient(token)
+	blocks, resp := client.GetAllBlocksForBoard(board.ID)
+	if resp.Error != nil {
+		return errors.Wrap(resp.Error, "unable to get blocks for board")
+	}
+
+	view := fbModel.Block{}
+	for _, b := range blocks {
+		// FIXME: Is this a correct assumption, that the default view will always be titled "All"?
+		if b.Type == fbModel.TypeView && b.Title == "All" {
+			view = b
+			break
+		}
+	}
+
+	if view.ID == "" {
+		return errors.New("unable to find default board view with title All")
+	}
+
+	cardOrder := view.Fields["cardOrder"].([]interface{})
+
+	newCardOrder := append(itemIDs, filter(cardOrder, itemIDs)...)
+	patch := &fbModel.BlockPatch{
+		UpdatedFields: map[string]interface{}{
+			"cardOrder": newCardOrder,
+		},
+	}
+
+	_, resp = client.PatchBlock(board.ID, view.ID, patch, false)
+	if resp.Error != nil {
+		return errors.Wrap(err, "unable to patch block")
+	}
+
+	return nil
+}
+
+func (s *focalboardStore) DeleteCard(token string, channelID string, itemID string) error {
+	board, err := s.GetBoardForChannel(token, channelID)
+	if err != nil {
+		return errors.Wrap(err, "unable to get board")
+	}
+
+	if board == nil {
+		return errors.New("unable to find board")
+	}
+
+	client := s.GetClient(token)
+
+	_, resp := client.DeleteBlock(board.ID, itemID, false)
+	if resp.Error != nil {
+		return errors.Wrap(err, "unable to delete block")
+	}
+
+	return nil
+}
+
 func indexForSorting(strSlice []string, str string) int {
 	for i := range strSlice {
 		if strSlice[i] == str {
@@ -303,4 +448,20 @@ func indexForSorting(strSlice []string, str string) int {
 		}
 	}
 	return math.MaxInt
+}
+
+// Yes, this could be more efficient, but it's not a hot path and likely not many ids.
+func filter(original []interface{}, remove []string) []string {
+	rem := make(map[string]bool, len(remove))
+	for _, s := range remove {
+		rem[s] = true
+	}
+	var ret []string
+	for _, o := range original {
+		s := o.(string)
+		if !rem[s] {
+			ret = append(ret, s)
+		}
+	}
+	return ret
 }

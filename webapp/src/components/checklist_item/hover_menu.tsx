@@ -34,7 +34,6 @@ export interface Props {
     onAssigneeChange: (userType?: string, user?: UserProfile) => void;
     due_date: number;
     onDueDateChange: (value?: DateTimeOption | undefined | null, referenceID?: string) => void;
-    onDuplicateChecklistItem?: (referenceID?: string) => void;
     onDeleteChecklistItem?: (referenceID?: string) => void;
 }
 
@@ -79,14 +78,6 @@ const ChecklistItemHoverMenu = (props: Props) => {
                 placement='bottom-end'
                 title={formatMessage({defaultMessage: 'More'})}
             >
-                <StyledDropdownMenuItem
-                    onClick={() => {
-                        props.onDuplicateChecklistItem?.(referenceID);
-                    }}
-                >
-                    <DropdownIcon className='icon-content-copy icon-16'/>
-                    {formatMessage({defaultMessage: 'Duplicate task'})}
-                </StyledDropdownMenuItem>
                 {props.allowSkipping &&
                     <StyledDropdownMenuItem
                         onClick={() => {

@@ -25,6 +25,8 @@ var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
 var agendaGetRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)$`)
 var agendaUpdateRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)\/item$`)
 var agendaAddRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)\/item$`)
+var agendaDeleteRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)\/item\/([a-z0-9]+)$`)
+var agendaReorderRE = regexp.MustCompile(`^\/agenda\/([a-z0-9]+)\/reorder$`)
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
@@ -530,6 +532,15 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 			p.handleUpdateAgendaItem(w, r, session.Token, matches[1])
 			return
 		}
+
+		if matches := agendaReorderRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			session, err := p.pluginAPI.Session.Get(c.SessionId)
+			if err != nil {
+				p.handleErrorWithCode(w, http.StatusInternalServerError, "could not get session", err)
+			}
+			p.handleReorderItems(w, r, session.Token, matches[1])
+			return
+		}
 	}
 
 	if r.Method == http.MethodPost {
@@ -564,6 +575,18 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 			p.handleTrackEvent(w, r)
 			return
 		}
+	}
+
+	if r.Method == http.MethodDelete {
+		if matches := agendaDeleteRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
+			session, err := p.pluginAPI.Session.Get(c.SessionId)
+			if err != nil {
+				p.handleErrorWithCode(w, http.StatusInternalServerError, "could not get session", err)
+			}
+			p.handleDeleteAgendaItem(w, r, session.Token, matches[1], matches[2])
+			return
+		}
+
 	}
 
 	http.NotFound(w, r)

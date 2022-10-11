@@ -3,7 +3,7 @@
 import React, {useEffect, useState} from 'react';
 
 import ChecklistList from 'src/components/checklist/checklist_list';
-import {addAgendaItem, fetchAgendaForChannel, updateAgendaItem} from 'src/rest_client';
+import {addAgendaItem, deleteItem, fetchAgendaForChannel, reorderItems, updateAgendaItem} from 'src/rest_client';
 
 import {Checklist, ChecklistItem, emptyChecklist} from 'src/types/checklist';
 
@@ -16,17 +16,16 @@ const Agenda = ({channelId}: Props) => {
 
     useEffect(() => {
         async function getAgenda() {
-            console.log(channelId, '<><> getting agenda');
-            setChecklist(await fetchAgendaForChannel(channelId) || emptyChecklist());
+            const agenda = await fetchAgendaForChannel(channelId) || emptyChecklist();
+            setChecklist(agenda);
         }
+
         getAgenda();
     }, [channelId]);
 
     const onUpdateChecklistItem = async (newItem: ChecklistItem, index: number) => {
-        console.log(channelId, '<><> onUpdateChecklistItem', newItem, index);
         const item = await updateAgendaItem(channelId, newItem);
         if (!item) {
-            console.log('<><> no checklist item returned');
             return;
         }
         const newChecklistItems = [...checklist.items];
@@ -37,7 +36,6 @@ const Agenda = ({channelId}: Props) => {
     };
 
     const onAddChecklistItem = async (newItem: ChecklistItem) => {
-        console.log(channelId, '<><> onAddChecklistItem', newItem);
         const itemWithId = await addAgendaItem(channelId, newItem);
 
         const newChecklistItems = [...checklist.items];
@@ -47,12 +45,29 @@ const Agenda = ({channelId}: Props) => {
         setChecklist(newChecklist);
     };
 
+    const onChecklistReordered = async (newChecklist: Checklist) => {
+        const ids = newChecklist.items.map((i) => i.id);
+
+        const success = await reorderItems(channelId, ids);
+        if (success) {
+            setChecklist(newChecklist);
+        }
+    };
+
+    const onDeleteChecklistItem = async (id: string, newChecklist: Checklist) => {
+        const success = await deleteItem(channelId, id);
+        if (success) {
+            setChecklist(newChecklist);
+        }
+    };
+
     return (
         <ChecklistList
             checklists={[checklist]}
-            onChecklistsUpdated={(...params) => console.log('<><> onChecklistsUpdated', params)}
+            onChecklistsUpdated={(newChecklists) => onChecklistReordered(newChecklists[0])}
             onUpdateChecklistItem={onUpdateChecklistItem}
             onAddChecklistItem={onAddChecklistItem}
+            onDeleteChecklistItem={onDeleteChecklistItem}
         />
     );
 };
