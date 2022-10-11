@@ -36,7 +36,7 @@ const ReactionStreamList = styled.div<streamListStyleProps>`
     margin-left: 10px;
     -webkit-mask: linear-gradient(#0000, #000);
     mask: linear-gradient(#0000, #0003, #000f);
-    left: ${(props) => (props.left ? props.left : '')}
+    ${(props) => props.left && `left: ${props.left};`}
 `;
 
 interface chipProps {
@@ -61,16 +61,12 @@ const ReactionChip = styled.div<chipProps>`
   `}
 `;
 
-type VoiceUserStatuses = {
-    [key: string]: UserState,
-};
-
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = (props: Props) => {
     const vReactions = useSelector(voiceReactions);
     const currentUserID = useSelector(getCurrentUserId);
 
-    const statuses = useSelector(voiceUsersStatuses) as VoiceUserStatuses;
+    const statuses = useSelector(voiceUsersStatuses);
     const vConnectedProfiles = useSelector(voiceConnectedProfiles);
 
     const cChannelID = useSelector(connectedChannelID);
@@ -85,7 +81,6 @@ export const ReactionStream = (props: Props) => {
 
     const handsup: string[] = [];
 
-    // building the list here causes a bug tht if a user leaves and recently reacted it will show as blank
     const profileMap: {[key: string]: UserProfile;} = {};
     profiles.forEach((profile) => {
         profileMap[profile.id] = profile;
