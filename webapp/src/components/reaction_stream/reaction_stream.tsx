@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import styled, {CSSProperties} from 'styled-components';
+import styled from 'styled-components';
 import {useSelector} from 'react-redux';
 
 import {UserProfile} from '@mattermost/types/lib/users';
@@ -56,7 +56,7 @@ const ReactionChip = styled.div<chipProps>`
     width: fit-content;
 
     ${(props) => props.highlight && `
-        background: #FFBC1F;
+        background: #FFFFFF;
         color: #090A0B;
   `}
 `;
@@ -83,17 +83,16 @@ export const ReactionStream = (props: Props) => {
     };
     const profiles = sortedProfiles(vConnectedProfiles, statuses);
 
+    const handsup: string[] = [];
+
     // building the list here causes a bug tht if a user leaves and recently reacted it will show as blank
     const profileMap: {[key: string]: UserProfile;} = {};
     profiles.forEach((profile) => {
         profileMap[profile.id] = profile;
-    });
-    const handsup: string[] = [];
-    for (const [id, member] of Object.entries(statuses)) {
-        if (member.raised_hand) {
-            handsup.push(id);
+        if (statuses[profile.id]?.raised_hand) {
+            handsup.push(profile.id);
         }
-    }
+    });
 
     const reversed = [...vReactions];
 
