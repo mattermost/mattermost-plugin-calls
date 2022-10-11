@@ -86,6 +86,7 @@ const DateTimeInput = ({
     const {locale, formatMessage} = useIntl();
 
     const updateOptions = useMemo(() => debounce((query: string) => {
+        // eslint-disable-next-line max-nested-callbacks
         const datetimes = parseDateTimes(locale, query)?.map(({start}) => DateTime.fromJSDate(start.date()));
         const duration = parse(locale, query, Mode.DurationValue);
         setOptions(makeOptions(query, datetimes, duration ? [duration] : [], mode) || null);

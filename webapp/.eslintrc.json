@@ -102,7 +102,7 @@
       "all"
     ],
     "dot-location": [
-      2,
+      1,
       "object"
     ],
     "dot-notation": 2,
@@ -197,7 +197,7 @@
       }
     ],
     "max-nested-callbacks": [
-      2,
+      1,
       {
         "max": 2
       }
@@ -349,7 +349,7 @@
       }
     ],
     "no-undef-init": 2,
-    "no-undefined": 2,
+    "no-undefined": 1,
     "no-underscore-dangle": 2,
     "no-unexpected-multiline": 2,
     "no-unmodified-loop-condition": 2,
