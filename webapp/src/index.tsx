@@ -319,7 +319,7 @@ export default class Plugin {
                         reaction,
                     },
                 });
-            }, 5000); // TODO: This time was randomly chosen; see if it should be configurable or at least a little better informed
+            }, 10000); // TODO: This time was randomly chosen; see if it should be configurable or at least a little better informed
         });
     }
 

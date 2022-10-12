@@ -242,6 +242,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     skinTonePosition='search'
                     onEmojiSelect={this.handleUserPicksEmoji}
                     onClickOutside={this.toggleEmojiPicker}
+                    autoFocus={true}
+                    perLine={12}
                 />
             </div>
         ) : null;
