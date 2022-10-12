@@ -5,6 +5,7 @@ export type UserState = {
     voice: boolean;
     unmuted: boolean;
     raised_hand: number;
+    reaction?: Reaction;
 }
 
 export type RTCStats = {
@@ -147,3 +148,18 @@ export const CallAlertStatesDefault = {
         show: false,
     },
 };
+
+export type EmojiData = {
+    name: string;
+    skin?: string;
+    unified: string;
+}
+
+export type Reaction = {
+    emoji: EmojiData;
+    timestamp: number;
+}
+
+export type ReactionWithUser = Reaction & {
+    user_id: string;
+}

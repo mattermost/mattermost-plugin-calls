@@ -1,9 +1,13 @@
+/* eslint-disable max-lines */
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {CSSProperties} from 'react';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+import Picker from '@emoji-mart/react';
+
+import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
 
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
@@ -14,14 +18,19 @@ import {
     AudioDevices,
     CallAlertStates,
     CallAlertStatesDefault,
+    EmojiData,
+    ReactionWithUser,
 } from 'src/types/types';
 import {
     CallAlertConfigs,
 } from 'src/constants';
 import * as Telemetry from 'src/types/telemetry';
 
-import Avatar from '../avatar/avatar';
+import {Emojis, EmojiIndicesByUnicode} from 'src/emoji';
 
+import Avatar from '../avatar/avatar';
+import {ReactionStream} from '../reaction_stream/reaction_stream';
+import {Emoji} from '../emoji/emoji';
 import CompassIcon from '../../components/icons/compassIcon';
 import LeaveCallIcon from '../../components/icons/leave_call_icon';
 import MutedIcon from '../../components/icons/muted_icon';
@@ -29,6 +38,7 @@ import UnmutedIcon from '../../components/icons/unmuted_icon';
 import ScreenIcon from '../../components/icons/screen_icon';
 import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
+import SmileyIcon from '../../components/icons/smiley_icon';
 import ParticipantsIcon from '../../components/icons/participants';
 import CallDuration from '../call_widget/call_duration';
 import Shortcut from 'src/components/shortcut';
@@ -42,12 +52,17 @@ import {
     PUSH_TO_TALK,
     keyToAction,
     reverseKeyMappings,
+    MAKE_REACTION,
 } from 'src/shortcuts';
 
 import GlobalBanner from './global_banner';
 import ControlsButton from './controls_button';
 
 import './component.scss';
+
+const EMOJI_VERSION = '13';
+
+const EMOJI_SKINTONE_MAP = new Map([[1, ''], [2, '1F3FB'], [3, '1F3FC'], [4, '1F3FD'], [5, '1F3FE'], [6, '1F3FF']]);
 
 interface Props {
     show: boolean,
@@ -59,6 +74,7 @@ interface Props {
     statuses: {
         [key: string]: UserState,
     },
+    reactions: ReactionWithUser[],
     callStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
@@ -72,6 +88,7 @@ interface State {
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
     alerts: CallAlertStates,
+    showEmojiPicker: boolean
 }
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
@@ -85,6 +102,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             screenStream: null,
             showParticipantsList: false,
             alerts: CallAlertStatesDefault,
+            showEmojiPicker: false,
         };
 
         if (window.opener) {
@@ -113,6 +131,22 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
+    toggleEmojiPicker = () => {
+        this.setState((prevState) => ({
+            showEmojiPicker: !prevState.showEmojiPicker,
+        }));
+    }
+
+    handleUserPicksEmoji = (ev: any) => {
+        const callsClient = this.getCallsClient();
+        const emojiData = {
+            name: ev.id,
+            skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : null,
+            unified: ev.unified.toUpperCase(),
+        };
+        callsClient.sendUserReaction(emojiData);
+    }
+
     handleKBShortcuts = (ev: KeyboardEvent) => {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
             return;
@@ -132,6 +166,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             break;
         case RAISE_LOWER_HAND:
             this.onRaiseHandToggle(true);
+            break;
+        case MAKE_REACTION:
+            this.toggleEmojiPicker();
             break;
         case SHARE_UNSHARE_SCREEN:
             this.onShareScreenToggle(true);
@@ -166,6 +203,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 window.close();
             }
         }
+    }
+
+    getEmojiURL = (emoji: EmojiData) => {
+        const index = EmojiIndicesByUnicode.get(emoji.unified.toLowerCase());
+        if (typeof index === 'undefined') {
+            return '';
+        }
+        return getEmojiImageUrl(Emojis[index]);
     }
 
     onMuteToggle = () => {
@@ -235,6 +280,21 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
             callsClient.raiseHand();
         }
+    }
+
+    renderEmojiPicker = () => {
+        return this.state.showEmojiPicker ? (
+            <div style={style.emojiPickerContainer as CSSProperties}>
+                <Picker
+                    emojiVersion={EMOJI_VERSION}
+                    skinTonePosition='search'
+                    onEmojiSelect={this.handleUserPicksEmoji}
+                    onClickOutside={this.toggleEmojiPicker}
+                    autoFocus={true}
+                    perLine={12}
+                />
+            </div>
+        ) : null;
     }
 
     onParticipantsListToggle = (fromShortcut?: boolean) => {
@@ -383,6 +443,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     maxHeight: `calc(100% - ${this.shouldRenderAlertBanner() ? 240 : 200}px)`,
                 } as CSSProperties}
             >
+                <ReactionStream style={{left: '0'}}/>
                 <video
                     id='screen-player'
                     ref={this.screenPlayer}
@@ -414,10 +475,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             let isMuted = true;
             let isSpeaking = false;
             let isHandRaised = false;
+            let hasReaction = false;
+            let emojiURL = '';
             if (status) {
                 isMuted = !status.unmuted;
                 isSpeaking = Boolean(status.voice);
                 isHandRaised = Boolean(status.raised_hand > 0);
+                hasReaction = Boolean(status.reaction);
+
+                if (status.reaction) {
+                    emojiURL = this.getEmojiURL(status.reaction.emoji);
+                }
             }
 
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
@@ -456,23 +524,22 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 stroke={isMuted ? '#C4C4C4' : ''}
                             />
                         </div>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                display: isHandRaised ? 'flex' : 'none',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                top: 0,
-                                right: 0,
-                                background: 'rgba(50, 50, 50, 1)',
-                                borderRadius: '30px',
-                                width: '20px',
-                                height: '20px',
-                                fontSize: '12px',
-                            }}
-                        >
-                            {'✋'}
-                        </div>
+                        {isHandRaised &&
+                        <>
+                            <div style={style.reactionBackground as CSSProperties}/>
+                            <div style={style.handRaisedContainer as CSSProperties}>
+                                {'🤚'}
+                            </div>
+                        </>
+                        }
+                        {!isHandRaised && hasReaction && status.reaction &&
+                        <>
+                            <div style={style.reactionBackground as CSSProperties}/>
+                            <div style={style.reactionContainer as CSSProperties}>
+                                <Emoji emoji={status.reaction.emoji}/>
+                            </div>
+                        </>
+                        }
                     </div>
 
                     <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
@@ -594,6 +661,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
         const participantsText = 'Show participants list';
 
+        const handsup: string[] = [];
+
+        // building the list here causes a bug tht if a user leaves and recently reacted it will show as blank
+        const profileMap: {[key: string]: UserProfile;} = {};
+        this.props.profiles.forEach((profile) => {
+            profileMap[profile.id] = profile;
+            if (this.props.statuses[profile.id]?.raised_hand) {
+                handsup.push(profile.id);
+            }
+        });
+
         return (
             <div
                 id='calls-expanded-view'
@@ -623,17 +701,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </button>
                         }
                     </div>
-
                     { !this.props.screenSharingID &&
-                    <ul
-                        id='calls-expanded-view-participants-grid'
-                        style={{
-                            ...style.participants,
-                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
-                        }}
-                    >
-                        { this.renderParticipants() }
-                    </ul>
+                        <div style={{flex: 1, display: 'flex'}}>
+                            <ReactionStream/>
+                            <ul
+                                id='calls-expanded-view-participants-grid'
+                                style={{
+                                    ...style.participants,
+                                    gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                                }}
+                            >
+                                { this.renderParticipants() }
+                            </ul>
+                        </div>
                     }
                     { this.props.screenSharingID && this.renderScreenSharingPlayer() }
                     <div
@@ -669,6 +749,37 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     />
                                 }
                             />
+
+                            <div style={{position: 'relative'}}>
+                                {this.renderEmojiPicker()}
+                                <OverlayTrigger
+                                    key='tooltip-emoji-picker'
+                                    placement='top'
+                                    overlay={
+                                        <Tooltip
+                                            id='tooltip-emoji-picker'
+                                        >
+                                            <span>{'Add Reaction'}</span>
+                                            <Shortcut shortcut={reverseKeyMappings.popout[MAKE_REACTION][0]}/>
+                                        </Tooltip>
+                                    }
+                                >
+
+                                    <button
+                                        className='button-center-controls'
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            this.toggleEmojiPicker();
+                                        }}
+                                        style={{background: this.state.showEmojiPicker ? '#FFFFFF' : '', position: 'relative'}}
+                                    >
+                                        <SmileyIcon
+                                            style={{width: '28px', height: '28px'}}
+                                            fill={this.state.showEmojiPicker ? '#3F4350' : '#FFFFFF'}
+                                        />
+                                    </button>
+                                </OverlayTrigger>
+                            </div>
 
                             <ControlsButton
                                 id='calls-popout-screenshare-button'
@@ -761,7 +872,6 @@ const style = {
     main: {
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
         flex: '1',
     },
     closeViewButton: {
@@ -810,5 +920,48 @@ const style = {
         margin: 0,
         padding: 0,
         overflow: 'auto',
+    },
+    emojiPickerContainer: {
+        position: 'absolute',
+        top: '-445px',
+        left: '-75px',
+    },
+    reactionBackground: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -7,
+        right: -12,
+        background: 'rgba(37, 38, 42, 1)',
+        borderRadius: '30px',
+        width: '30px',
+        height: '30px',
+    },
+    reactionContainer: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -5,
+        right: -10,
+        background: 'rgba(50, 50, 50, 1)',
+        borderRadius: '30px',
+        width: '25px',
+        height: '25px',
+        fontSize: '12px',
+    },
+    handRaisedContainer: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -5,
+        right: -10,
+        background: 'rgba(255, 255, 255, 1)',
+        borderRadius: '30px',
+        width: '25px',
+        height: '25px',
+        fontSize: '18px',
     },
 };
