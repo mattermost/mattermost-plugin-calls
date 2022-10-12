@@ -861,8 +861,13 @@ const ExpandedViewGlobalsStyle = createGlobalStyle`
     #root {
         > #global-header,
         > .team-sidebar,
-        > .app-bar {
+        > .app-bar,
+        > #channel_view .channel__wrap,
+        > #SidebarContainer {
             display: none;
+        }
+        .channel-view-inner {
+            padding: 0;
         }
     }
     #sidebar-right {
