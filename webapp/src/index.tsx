@@ -734,6 +734,11 @@ export default class Plugin {
 
         let configRetrieved = false;
         const onActivate = async () => {
+            if (!getCurrentUserId(store.getState())) {
+                // not logged in, returning.
+                return;
+            }
+
             const res = await store.dispatch(getCallsConfig());
 
             // @ts-ignore

@@ -1,9 +1,10 @@
 import React from 'react';
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+import {OverlayTrigger} from 'react-bootstrap';
 import styled, {css} from 'styled-components';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 import Shortcut from 'src/components/shortcut';
+import {StyledTooltip} from 'src/components/shared';
 
 export type Props = {
     id: string,
@@ -26,8 +27,10 @@ export default function ControlsButton(props: Props) {
             key={props.id}
             placement='top'
             overlay={
-                props.disabled ||
-                <Tooltip id={`tooltip-${props.id}`}>
+                <StyledTooltip
+                    id={`tooltip-${props.id}`}
+                    $isDisabled={props.disabled}
+                >
                     <div>{props.tooltipText}</div>
                     {props.tooltipSubtext &&
                     <TooltipSubtext>
@@ -37,7 +40,7 @@ export default function ControlsButton(props: Props) {
                     { props.shortcut &&
                     <Shortcut shortcut={props.shortcut}/>
                     }
-                </Tooltip>
+                </StyledTooltip>
             }
         >
             <ButtonContainer
