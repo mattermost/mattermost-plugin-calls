@@ -45,6 +45,7 @@ interface Props {
     referenceID?: string;
     finished?: boolean;
     archived?: boolean;
+    includeAddChecklist?: boolean;
     onChecklistsUpdated: (newChecklists: Checklist[]) => void;
     onUpdateChecklistItem: (item: ChecklistItem, index: number) => void;
     onAddChecklistItem: (item: ChecklistItem) => void;
@@ -61,6 +62,7 @@ const ChecklistList = ({
     onUpdateChecklistItem,
     onAddChecklistItem,
     onDeleteChecklistItem,
+    includeAddChecklist,
 }: Props) => {
     const dispatch = useDispatch();
     const {formatMessage} = useIntl();
@@ -287,7 +289,7 @@ const ChecklistList = ({
                         </ChecklistsContainer>
                     )}
                 </Droppable>
-                {!finished && addChecklist}
+                {!finished && includeAddChecklist && addChecklist}
             </DragDropContext>
         </>
     );

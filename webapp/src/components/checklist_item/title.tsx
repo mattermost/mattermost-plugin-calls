@@ -80,7 +80,7 @@ const ChecklistItemTitle = (props: TitleProps) => {
             clickable={props.clickable}
         >
             {props.value ? (
-                <RenderedTitle onClick={((e) => handleFormattedTextClick(e, relativeTeamUrl))}>
+                <RenderedTitle>
                     {props.skipped ? <StrikeThrough data-cy={'skipped'}>{titleText}</StrikeThrough> : titleText}
                 </RenderedTitle>
             ) : (

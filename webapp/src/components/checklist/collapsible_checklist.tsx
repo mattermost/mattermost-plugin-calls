@@ -154,7 +154,7 @@ const CollapsibleChecklist = ({
                     <Icon className={icon}/>
                     {titleComp}
                     {renderTitleHelpText()}
-                    {renderHoverMenu()}
+                    {/*renderHoverMenu()*/}
                 </Horizontal>
                 <ProgressBackground>
                     <ProgressLine width={percentage}/>

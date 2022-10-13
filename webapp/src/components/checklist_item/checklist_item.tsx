@@ -244,14 +244,14 @@ export const ChecklistItem = (props: ChecklistItemProps): React.ReactElement => 
                     />
                 </ChecklistItemTitleWrapper>
             </CheckboxContainer>
-            {(descValue || isEditing) &&
+            {/*(descValue || isEditing) &&
                 <ChecklistItemDescription
                     editingItem={isEditing}
                     showDescription={showDescription}
                     onEdit={setDescValue}
                     value={descValue}
                 />
-            }
+            */}
             {renderRow()}
             {isEditing &&
                 <CancelSaveButtons

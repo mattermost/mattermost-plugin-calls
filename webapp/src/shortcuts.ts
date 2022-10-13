@@ -65,7 +65,7 @@ export function keyToAction(scope: string, ev: KeyboardEvent) {
     // layouts but also fallback on checking ev.code if the mapping is not found.
     const action = keyMappings[scope][mapKey] || keyMappings[scope][mapCode];
 
-    if (action) {
+    if (action && scope !== 'popout') {
         ev.preventDefault();
         ev.stopImmediatePropagation();
     }
