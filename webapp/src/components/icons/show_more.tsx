@@ -2,28 +2,22 @@
 // See LICENSE.txt for license information.
 
 import React, {CSSProperties} from 'react';
+import styled from 'styled-components';
 
 type Props = {
-    className?: string,
-    fill?: string,
     style?: CSSProperties,
 }
 
+const Icon = styled.i`
+	font-size: 23px;
+`;
+
 export default function ShowMore(props: Props) {
     return (
-        <svg
+        <Icon
             style={props.style}
-            className={props.className}
-            fill={props.fill}
-            width='16px'
-            height='16px'
-            viewBox='0 0 16 16'
-            role='img'
-        >
-            <path
-                d='M0.444 8.43805L3.882 5.00005L0.444 1.56205L1.506 0.500048L6.006 5.00005L1.506 9.50005L0.444 8.43805Z'
-            />
-        </svg>
+            className={'CompassIcon icon-format-list-numbered LogoIcon'}
+        />
     );
 }
 
