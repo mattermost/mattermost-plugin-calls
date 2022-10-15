@@ -569,7 +569,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         }
                     </div>
                     { !this.props.screenSharingID &&
-                        <div style={{flex: 1, display: 'flex'}}>
+                        <div style={{flex: 1, display: 'flex', overflow: 'auto'}}>
                             <ReactionStream/>
                             <ul
                                 id='calls-expanded-view-participants-grid'
