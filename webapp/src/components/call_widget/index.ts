@@ -71,7 +71,7 @@ const mapStateToProps = (state: GlobalState) => {
     return {
         currentUserID,
         channel,
-        team: getTeam(state, channel?.team_id),
+        team: channel?.team_id ? getTeam(state, channel.team_id) : getTeam(state, getCurrentTeamId(state)),
         channelURL,
         channelDisplayName,
         profiles,

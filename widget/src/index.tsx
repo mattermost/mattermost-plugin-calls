@@ -7,10 +7,10 @@ import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redu
 import {getMe} from 'mattermost-redux/actions/users';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
-import {getTeam as getTeamAction} from 'mattermost-redux/actions/teams';
+import {getTeam as getTeamAction, getMyTeams, selectTeam} from 'mattermost-redux/actions/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getTeam} from 'mattermost-redux/selectors/entities/teams';
+import {getTeam, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
@@ -215,6 +215,7 @@ async function init() {
     await Promise.all([
         getMe()(store.dispatch, store.getState),
         getMyPreferences()(store.dispatch, store.getState),
+        getMyTeams()(store.dispatch, store.getState),
         getChannelAction(channelID)(store.dispatch, store.getState),
     ]);
 
@@ -228,6 +229,8 @@ async function init() {
         await getTeamAction(channel.team_id)(store.dispatch, store.getState);
     } else {
         await getChannelMembers(channel.id)(store.dispatch, store.getState);
+        const teams = getTeams(store.getState());
+        await selectTeam(Object.values(teams)[0])(store.dispatch, store.getState);
     }
 
     await Promise.all([
