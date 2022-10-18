@@ -79,6 +79,7 @@ import {
     followThread,
     shouldRenderDesktopWidget,
     sendDesktopEvent,
+    getChannelURL,
 } from './utils';
 import {logErr, logDebug} from './log';
 import {
@@ -362,6 +363,7 @@ export default class Plugin {
                 sendDesktopEvent('calls-join-call', {
                     callID: channelID,
                     title,
+                    channelURL: getChannelURL(store.getState(), getChannel(store.getState(), channelID), getCurrentTeamId(store.getState())),
                 });
                 return;
             }

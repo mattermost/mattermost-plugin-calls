@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 
 import {Client4} from 'mattermost-redux/client';
 import configureStore from 'mattermost-redux/store';
-import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
+import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redux/actions/channels';
 import {getMe} from 'mattermost-redux/actions/users';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
@@ -226,6 +226,8 @@ async function init() {
 
     if (isOpenChannel(channel) || isPrivateChannel(channel)) {
         await getTeamAction(channel.team_id)(store.dispatch, store.getState);
+    } else {
+        await getChannelMembers(channel.id)(store.dispatch, store.getState);
     }
 
     await Promise.all([
