@@ -325,9 +325,7 @@ export function playSound(name: string) {
         return;
     }
 
-    if (src.indexOf('/static') === 0) {
-        src = `${window.basename || ''}${src}`;
-    } else {
+    if (src.indexOf('/') === 0) {
         src = getPluginStaticPath() + src;
     }
 

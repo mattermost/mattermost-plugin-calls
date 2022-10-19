@@ -83,6 +83,11 @@ function getCallID() {
     return params.get('call_id');
 }
 
+function setBasename() {
+    const params = new URLSearchParams(window.location.search);
+    window.basename = decodeURIComponent(params.get('basename') || '');
+}
+
 function connectCall(channelID: string, wsURL: string, iceConfigs: RTCIceServer[], wsEventHandler: (ev: any) => void) {
     try {
         if (window.callsClient) {
@@ -209,6 +214,13 @@ async function init() {
     if (!channelID) {
         logErr('invalid call id');
         return;
+    }
+
+    setBasename();
+
+    // Setting the base URL if present, in case MM is running under a subpath.
+    if (window.basename) {
+        Client4.setUrl(window.basename);
     }
 
     // initialize some basic state.
