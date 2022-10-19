@@ -1194,10 +1194,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (window.desktop && !this.props.global) {
             this.props.showExpandedView();
         } else {
+            let features = 'resizable=yes';
+            if (this.props.global) {
+                features += ',frame=false';
+            }
             const expandedViewWindow = window.open(
                 getPopOutURL(this.props.team, this.props.channel),
                 'ExpandedView',
-                'resizable=yes',
+                features,
             );
 
             this.setState({
