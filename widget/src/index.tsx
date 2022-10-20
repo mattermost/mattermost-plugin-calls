@@ -85,7 +85,7 @@ function getCallID() {
 
 function getCallTitle() {
     const params = new URLSearchParams(window.location.search);
-    return params.get('title');
+    return params.get('title') || '';
 }
 
 function setBasename() {

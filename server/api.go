@@ -285,7 +285,7 @@ func (p *Plugin) handleServeWidget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	widgetPath := filepath.Join(bundlePath, "webapp/dist/widget/")
+	widgetPath := filepath.Join(bundlePath, "widget/dist/")
 
 	http.StripPrefix("/widget/", http.FileServer(http.Dir(widgetPath))).ServeHTTP(w, r)
 }
