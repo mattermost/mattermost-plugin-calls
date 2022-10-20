@@ -83,12 +83,19 @@ function getCallID() {
     return params.get('call_id');
 }
 
-function setBasename() {
+function getCallTitle() {
     const params = new URLSearchParams(window.location.search);
-    window.basename = decodeURIComponent(params.get('basename') || '');
+    return params.get('title');
 }
 
-function connectCall(channelID: string, wsURL: string, iceConfigs: RTCIceServer[], wsEventHandler: (ev: any) => void) {
+function setBasename() {
+    const idx = window.location.pathname.indexOf('/plugins/');
+    if (idx > 0) {
+        window.basename = window.location.pathname.slice(0, idx);
+    }
+}
+
+function connectCall(channelID: string, callTitle: string, wsURL: string, iceConfigs: RTCIceServer[], wsEventHandler: (ev: any) => void) {
     try {
         if (window.callsClient) {
             logErr('calls client is already initialized');
@@ -116,7 +123,7 @@ function connectCall(channelID: string, wsURL: string, iceConfigs: RTCIceServer[
             }
         });
 
-        window.callsClient.init(channelID).then(() => {
+        window.callsClient.init(channelID, callTitle).then(() => {
             window.callsClient.ws.on('event', wsEventHandler);
         }).catch((err: Error) => {
             delete window.callsClient;
@@ -201,6 +208,8 @@ async function fetchChannelData(store: Store, channelID: string) {
 }
 
 async function init() {
+    setBasename();
+
     const initStartTime = performance.now();
 
     const storeKey = `plugins-${pluginId}`;
@@ -216,7 +225,7 @@ async function init() {
         return;
     }
 
-    setBasename();
+    const callTitle = getCallTitle();
 
     // Setting the base URL if present, in case MM is running under a subpath.
     if (window.basename) {
@@ -260,7 +269,7 @@ async function init() {
         iceConfigs.push(...configs);
     }
 
-    connectCall(channelID, getWSConnectionURL(getConfig(store.getState())), iceConfigs, (ev) => {
+    connectCall(channelID, callTitle, getWSConnectionURL(getConfig(store.getState())), iceConfigs, (ev) => {
         switch (ev.event) {
         case 'hello':
             setServerVersion(ev.data.server_version)(store.dispatch, store.getState);
