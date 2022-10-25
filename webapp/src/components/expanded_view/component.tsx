@@ -651,7 +651,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         let chatToolTipText = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID ? 'Click to close chat' : 'Click to open chat';
         const chatToolTipSubtext = '';
-        const chatDisabled = Boolean(this.props.channel.team_id) && this.props.channel.team_id !== this.props.currentTeamID;
+        const chatDisabled = Boolean(this.props.channel?.team_id) && this.props.channel.team_id !== this.props.currentTeamID;
         if (chatDisabled) {
             chatToolTipText = `Chat unavailable: different team selected. Click here to switch back to ${this.props.channelDisplayName} in ${this.props.channelTeam.display_name}.`;
         }
