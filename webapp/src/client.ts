@@ -9,7 +9,7 @@ import RTCPeer from './rtcpeer';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';
-import {WebSocketClient, wsReconnectionTimeoutErr} from './websocket';
+import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 import VoiceActivityDetector from './vad';
 
 import {parseRTCStats} from './rtc_stats';
@@ -183,11 +183,19 @@ export default class CallsClient extends EventEmitter {
         const ws = new WebSocketClient(this.config.wsURL);
         this.ws = ws;
 
-        ws.on('error', (err) => {
+        ws.on('error', (err: WebSocketError) => {
             logErr('ws error', err);
-            if (err === wsReconnectionTimeoutErr) {
+            switch (err.type) {
+            case WebSocketErrorType.Native:
+                break;
+            case WebSocketErrorType.ReconnectTimeout:
                 this.ws = null;
-                this.disconnect(wsReconnectionTimeoutErr);
+                this.disconnect(err);
+                break;
+            case WebSocketErrorType.Join:
+                this.disconnect(err);
+                break;
+            default:
             }
         });
 
