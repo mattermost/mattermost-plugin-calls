@@ -4,8 +4,13 @@ import {UserProfile} from '@mattermost/types/users';
 
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 
 import {Client4} from 'mattermost-redux/client';
+
+import {compose} from 'redux';
+
+import {withRouter} from 'react-router-dom';
 
 import {UserState} from '../../types/types';
 
@@ -15,14 +20,27 @@ import {
     closeRhs,
     selectRhsPost,
     getIsRhsOpen,
+    getRhsSelectedPostId,
 } from 'src/webapp_globals';
 import {hideExpandedView, showScreenSourceModal, trackEvent} from '../../actions';
-import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID, voiceChannelRootPost} from '../../selectors';
+import {
+    expandedView,
+    voiceChannelCallStartAt,
+    connectedChannelID,
+    voiceConnectedProfiles,
+    voiceUsersStatuses,
+    voiceChannelScreenSharingID,
+    voiceChannelRootPost,
+    getChannelUrlAndDisplayName,
+} from '../../selectors';
 
 import ExpandedView from './component';
 
 const mapStateToProps = (state: GlobalState) => {
+    const currentUserID = getCurrentUserId(state);
+    const currentTeamID = getCurrentTeamId(state);
     const channel = getChannel(state, connectedChannelID(state));
+    const channelTeam = getTeam(state, channel?.team_id);
     const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
     const threadID = voiceChannelRootPost(state, channel?.id);
 
@@ -40,21 +58,28 @@ const mapStateToProps = (state: GlobalState) => {
 
     let connectedDMUser;
     if (channel && isDMChannel(channel)) {
-        const otherID = getUserIdFromDM(channel.name, getCurrentUserId(state));
+        const otherID = getUserIdFromDM(channel.name, currentUserID);
         connectedDMUser = getUser(state, otherID);
     }
 
+    const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
+
     return {
         show: expandedView(state),
-        currentUserID: getCurrentUserId(state),
+        currentUserID,
+        currentTeamID,
         profiles,
         pictures,
         statuses,
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         screenSharingID,
         channel,
+        channelTeam,
+        channelURL,
+        channelDisplayName,
         connectedDMUser,
         threadID,
+        rhsSelectedThreadID: getRhsSelectedPostId?.(state),
         isRhsOpen: getIsRhsOpen?.(state),
     };
 };
@@ -67,4 +92,7 @@ const mapDispatchToProps = {
     trackEvent,
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(ExpandedView);
+export default compose<ExpandedView>(
+    withRouter,
+    connect(mapStateToProps, mapDispatchToProps),
+)(ExpandedView);

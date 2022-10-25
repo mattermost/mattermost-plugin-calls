@@ -3,14 +3,20 @@ import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import {UserProfile} from '@mattermost/types/users';
+import {Team} from '@mattermost/types/teams';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 
-import {createGlobalStyle, CSSObject} from 'styled-components';
+import {createGlobalStyle, css, CSSObject} from 'styled-components';
 
 import {ProductChannelsIcon} from '@mattermost/compass-icons/components';
 
+import {RouteComponentProps} from 'react-router-dom';
+
+import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
+
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
+
 import {
     UserState,
     AudioDevices,
@@ -51,9 +57,10 @@ import ControlsButton from './controls_button';
 
 import './component.scss';
 
-interface Props {
+interface Props extends RouteComponentProps {
     show: boolean,
     currentUserID: string,
+    currentTeamID: string,
     profiles: UserProfile[],
     pictures: {
         [key: string]: string,
@@ -69,8 +76,13 @@ interface Props {
     isRhsOpen?: boolean,
     screenSharingID: string,
     channel: Channel,
+    channelTeam: Team,
+    channelURL: string;
+    channelDisplayName: string;
+
     connectedDMUser: UserProfile | undefined,
     threadID: Post['id'];
+    rhsSelectedThreadID?: string;
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
 }
 
@@ -84,6 +96,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private screenPlayer = React.createRef<HTMLVideoElement>()
     private pushToTalk = false;
 
+    #unlockNavigation?: () => void;
+
     constructor(props: Props) {
         super(props);
         this.screenPlayer = React.createRef();
@@ -96,6 +110,22 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (window.opener) {
             const callsClient = window.opener.callsClient;
             callsClient.on('close', () => window.close());
+
+            // don't allow navigation in expanded window e.g. permalinks in rhs
+            this.#unlockNavigation = props.history.block(() => {
+                return false;
+            });
+        } else if (window.desktop) {
+            // TODO: remove this as soon as we support opening a window from desktop app.
+            props.history.listen((_, action) => {
+                if (action === 'REPLACE') {
+                    // don't hide expanded view when location is replaced e.g. permalink/id is quietly removed after permalink nav occurred
+                    return;
+                }
+
+                // navigation changed, hide expanded view e.g. a permalink was clicked in rhs
+                this.props.hideExpandedView();
+            });
         }
     }
 
@@ -319,13 +349,21 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             screenStream,
         });
 
-        document.body.classList.add('app__body');
+        if (window.opener) {
+            // core styling for rhs in expanded window
+            document.body.classList.add('app__body');
+        }
     }
 
-    toggleChat = () => {
-        if (this.props.isRhsOpen) {
+    toggleChat = async () => {
+        if (this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID) {
+            // close rhs
             this.props.closeRhs?.();
+        } else if (this.props.channel.team_id && this.props.channel.team_id !== this.props.currentTeamID) {
+            // go to call thread in channels
+            this.props.history.push(`/${this.props.channelTeam.name}/pl/${this.props.threadID}`);
         } else if (this.props.threadID) {
+            // open thread
             this.props.selectRhsPost?.(this.props.threadID);
         }
     }
@@ -334,6 +372,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.removeEventListener('keydown', this.handleKBShortcuts, true);
         window.removeEventListener('keyup', this.handleKeyUp, true);
         window.removeEventListener('blur', this.handleBlur, true);
+        this.#unlockNavigation?.();
     }
 
     shouldRenderAlertBanner = () => {
@@ -610,8 +649,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
         const participantsText = 'Show participants list';
 
-        const chatToolTipText = this.props.isRhsOpen ? 'Click to close chat' : 'Click to open chat';
+        let chatToolTipText = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID ? 'Click to close chat' : 'Click to open chat';
         const chatToolTipSubtext = '';
+        const chatDisabled = Boolean(this.props.channel.team_id) && this.props.channel.team_id !== this.props.currentTeamID;
+        if (chatDisabled) {
+            chatToolTipText = `Chat unavailable: different team selected. Click here to switch back to ${this.props.channelDisplayName} in ${this.props.channelTeam.display_name}.`;
+        }
 
         const globalRhsSupported = typeof this.props.isRhsOpen === 'boolean';
 
@@ -744,7 +787,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                             color={'white'}
                                         />
                                     }
-                                    unavailable={noInputDevices || noAudioPermissions}
+                                    unavailable={chatDisabled}
                                 />
                             )}
                         </div>
@@ -786,7 +829,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     { this.renderParticipantsRHSList() }
                 </ul>
                 }
-                {globalRhsSupported && <ExpandedViewGlobalsStyle/>}
+                {globalRhsSupported && <ExpandedViewGlobalsStyle callThreadSelected={this.props.rhsSelectedThreadID === this.props.threadID}/>}
             </div>
         );
     }
@@ -858,7 +901,7 @@ const styles: Record<string, CSSObject> = {
     },
 };
 
-const ExpandedViewGlobalsStyle = createGlobalStyle`
+const ExpandedViewGlobalsStyle = createGlobalStyle<{callThreadSelected: boolean}>`
     #root {
         > #global-header,
         > .team-sidebar,
@@ -867,9 +910,19 @@ const ExpandedViewGlobalsStyle = createGlobalStyle`
         > #SidebarContainer {
             display: none;
         }
+        #sidebar-right #sbrSearchFormContainer {
+            // mobile search not supported in expanded view or expanded window
+            // TODO move to hideMobileSearchBarInRHS prop of Search component in mattermost-webapp
+            display: none;
+        }
         .channel-view-inner {
             padding: 0;
         }
+        ${({callThreadSelected}) => !callThreadSelected && css`
+            .sidebar--right {
+                display: none;
+            }
+        `}
     }
     #sidebar-right {
         z-index: 1001;
