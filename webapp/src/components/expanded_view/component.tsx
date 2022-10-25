@@ -763,7 +763,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 tooltipText={muteTooltipText}
                                 tooltipSubtext={muteTooltipSubtext}
                                 // eslint-disable-next-line no-undefined
-                                shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][1]}
+                                shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
                                 bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
                                 icon={
                                     <MuteIcon
