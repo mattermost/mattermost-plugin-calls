@@ -92,7 +92,7 @@ const mapDispatchToProps = {
     trackEvent,
 };
 
-export default compose<ExpandedView>(
+export default compose<typeof ExpandedView>(
     withRouter,
     connect(mapStateToProps, mapDispatchToProps),
 )(ExpandedView);
