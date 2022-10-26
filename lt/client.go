@@ -265,13 +265,7 @@ func (u *user) initRTC() error {
 	log.Printf("%s: setting up RTC connection", u.cfg.username)
 
 	peerConnConfig := webrtc.Configuration{
-		ICEServers: []webrtc.ICEServer{
-			{
-				URLs: []string{
-					"stun:calls.test.mattermost.com:3478",
-				},
-			},
-		},
+		ICEServers:   []webrtc.ICEServer{},
 		SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 	}
 
@@ -281,12 +275,36 @@ func (u *user) initRTC() error {
 	}
 	u.pc = pc
 
+	gatherCh := make(chan struct{}, 1)
 	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
+		if c == nil {
+			log.Printf("%s: end of candidates", u.cfg.username)
+			select {
+			case gatherCh <- struct{}{}:
+			default:
+			}
+			return
+		}
+
 		log.Printf("%s: ice: %v", u.cfg.username, c)
+
+		data, err := json.Marshal(c.ToJSON())
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+
+		select {
+		case u.wsSendCh <- wsMsg{"custom_com.mattermost.calls_ice", map[string]interface{}{
+			"data": string(data),
+		}, false}:
+		default:
+			log.Fatalf("failed to send ice ws message")
+		}
 	})
 
 	pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		if connectionState == webrtc.ICEConnectionStateConnected {
+			log.Printf("%s: rtc connected", u.cfg.username)
 			close(u.connectedCh)
 		}
 
@@ -356,8 +374,10 @@ func (u *user) initRTC() error {
 	select {
 	case u.wsSendCh <- wsMsg{"custom_com.mattermost.calls_sdp", data, true}:
 	default:
-		log.Printf("failed to send ws message")
+		log.Fatalf("failed to send sdp ws message")
 	}
+
+	<-gatherCh
 
 	close(u.initCh)
 
@@ -382,7 +402,7 @@ func (u *user) handleSignal(ev *model.WebSocketEvent) {
 			Type: webrtc.SDPTypeAnswer,
 			SDP:  data["sdp"].(string),
 		}); err != nil {
-			log.Printf("%s: SetRemoteDescription failed: %s", u.cfg.username, err.Error())
+			log.Fatalf("%s: SetRemoteDescription failed: %s", u.cfg.username, err.Error())
 		}
 
 		go func() {
@@ -399,7 +419,7 @@ func (u *user) handleSignal(ev *model.WebSocketEvent) {
 			Type: webrtc.SDPTypeOffer,
 			SDP:  data["sdp"].(string),
 		}); err != nil {
-			log.Printf("%s: SetRemoteDescription failed: %s", u.cfg.username, err.Error())
+			log.Fatalf("%s: SetRemoteDescription failed: %s", u.cfg.username, err.Error())
 		}
 
 		sdp, err := u.pc.CreateAnswer(nil)
@@ -776,7 +796,7 @@ func main() {
 			go func(idx int, channelID string, channelType model.ChannelType, unmuted, screenSharing bool) {
 				username := fmt.Sprintf("%s%d", userPrefix, idx)
 				if unmuted {
-					log.Printf("%s: going to transmit screen", username)
+					log.Printf("%s: going to transmit voice", username)
 				}
 				if screenSharing {
 					log.Printf("%s: going to transmit screen", username)
