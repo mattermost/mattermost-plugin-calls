@@ -267,8 +267,8 @@ export const getChannelUrlAndDisplayName = (state: GlobalState, channel: Channel
             const otherUser = users[otherUserID];
             channelDisplayName = displayUsername(otherUser, teammateNameDisplaySetting, false);
         } else if (isGroupChannel(channel)) {
-            const userIdsInChannel = getUserIdsInChannels(state)[channel.id];
-            channelDisplayName = getGroupDisplayNameFromUserIds(userIdsInChannel, users, currentUserID, teammateNameDisplaySetting);
+            const userIdsInChannel = getUserIdsInChannels(state)?.[channel.id];
+            channelDisplayName = userIdsInChannel && getGroupDisplayNameFromUserIds(userIdsInChannel, users, currentUserID, teammateNameDisplaySetting);
         } else {
             channelDisplayName = channel.display_name;
         }
