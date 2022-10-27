@@ -668,6 +668,7 @@ const style = {
         zIndex: 1000,
         background: 'rgba(37, 38, 42, 1)',
         color: 'white',
+        appRegion: 'drag',
     },
     main: {
         display: 'flex',
