@@ -432,6 +432,7 @@ export default class CallsClient extends EventEmitter {
         }
 
         logDebug('replacing track to peer', null);
+
         // @ts-ignore: we actually mean (and need) to pass null here
         this.peer.replaceTrack(this.audioTrack.id, null);
         this.audioTrack.enabled = false;
@@ -460,10 +461,10 @@ export default class CallsClient extends EventEmitter {
         }
 
         if (this.voiceTrackAdded) {
-            logDebug('replacing track to peer', this.audioTrack.id);
+            logDebug('replacing track to peer', this.audioTrack!.id);
             this.peer.replaceTrack(this.audioTrack!.id, this.audioTrack!);
         } else {
-            logDebug('adding track to peer', this.audioTrack.id, this.stream.id);
+            logDebug('adding track to peer', this.audioTrack!.id, this.stream!.id);
             this.peer.addTrack(this.audioTrack!, this.stream!);
             this.voiceTrackAdded = true;
         }
@@ -520,7 +521,7 @@ export default class CallsClient extends EventEmitter {
             this.ws.send('screen_off');
         };
 
-        logDebug('adding stream to peer', screenStream.id)
+        logDebug('adding stream to peer', screenStream.id);
         this.peer.addStream(screenStream);
 
         this.ws.send('screen_on', {
