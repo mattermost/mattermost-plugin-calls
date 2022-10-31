@@ -8,7 +8,25 @@ import {logDebug, logInfo, logWarn, logErr} from './log';
 const wsMinReconnectRetryTimeMs = 1000; // 1 second
 const wsReconnectionTimeout = 30000; // 30 seconds
 const wsReconnectTimeIncrement = 500; // 0.5 seconds
-export const wsReconnectionTimeoutErr = new Error('max disconnected time reached');
+
+export enum WebSocketErrorType {
+    Native,
+    Join,
+    ReconnectTimeout,
+}
+
+export class WebSocketError extends Error {
+    public type: WebSocketErrorType;
+
+    constructor(type: WebSocketErrorType, message: string) {
+        super(message);
+
+        this.type = type;
+
+        // needed since we are extending a built-in class
+        Object.setPrototypeOf(this, WebSocketError.prototype);
+    }
+}
 
 export class WebSocketClient extends EventEmitter {
     private ws: WebSocket | null = null;
@@ -45,8 +63,8 @@ export class WebSocketClient extends EventEmitter {
             };
         }
 
-        this.ws.onerror = (err) => {
-            this.emit('error', err);
+        this.ws.onerror = () => {
+            this.emit('error', new WebSocketError(WebSocketErrorType.Native, 'websocket error'));
         };
 
         this.ws.onclose = ({code}) => {
@@ -107,7 +125,7 @@ export class WebSocketClient extends EventEmitter {
             }
 
             if (msg.event === this.eventPrefix + '_error') {
-                this.emit('error', msg.data);
+                this.emit('error', new WebSocketError(WebSocketErrorType.Join, msg.data.data));
             }
 
             if (msg.event === this.eventPrefix + '_signal') {
@@ -157,7 +175,7 @@ export class WebSocketClient extends EventEmitter {
 
             if ((now - this.lastDisconnect) >= wsReconnectionTimeout) {
                 this.closed = true;
-                this.emit('error', wsReconnectionTimeoutErr);
+                this.emit('error', new WebSocketError(WebSocketErrorType.ReconnectTimeout, 'max disconnected time reached'));
                 return;
             }
 
