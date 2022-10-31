@@ -12,7 +12,7 @@ test.describe('global widget', () => {
         const resp = await request.get(`${baseURL}/api/v4/teams/name/${defaultTeam}/channels/name/${channelName}`);
         const channel = await resp.json();
 
-        await page.goto(`${baseURL}/static/plugins/${pluginID}/widget/widget.html?call_id=${channel.id}`);
+        await page.goto(`${baseURL}/plugins/${pluginID}/widget/widget.html?call_id=${channel.id}`);
         await expect(page.locator('#calls-widget')).toBeVisible();
         await expect(page.locator('#calls-widget-leave-button')).toBeVisible();
         await page.locator('#calls-widget-leave-button').click();
