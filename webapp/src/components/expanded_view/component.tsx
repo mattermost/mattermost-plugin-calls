@@ -8,8 +8,6 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 
-import {UserState} from 'src/types/types';
-
 import {
     getUserDisplayName,
     getScreenStream,
@@ -701,7 +699,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 disabled={sharingID !== '' && !isSharing}
                             />
 
-                            <ControlsButtont
+                            <ControlsButton
                                 id='calls-popout-mute-button'
                                 // eslint-disable-next-line no-undefined
                                 onToggle={noInputDevices ? undefined : this.onMuteToggle}

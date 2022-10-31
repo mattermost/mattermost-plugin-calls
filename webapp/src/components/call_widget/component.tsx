@@ -1457,12 +1457,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 ref={this.node}
             >
 
-                <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%', zIndex: -1}}>
+                <div 
+                    ref={this.menuNode}
+                    style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%', zIndex: -1}}
+                >
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
                     {this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
-                    {this.renderMenu(hasTeamSidebar)}
+                    {this.renderMenu(widerWidget)}
                 </div>
 
                 <div style={this.style.status as CSSProperties}>

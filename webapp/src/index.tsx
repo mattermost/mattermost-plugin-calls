@@ -395,7 +395,6 @@ export default class Plugin {
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);
                     if (window.callsClient) {
-                        playSound(getPluginStaticPath() + LeaveSelfSound);
                         if (err) {
                             store.dispatch(displayCallErrorModal(window.callsClient.channelID, err));
                         }
