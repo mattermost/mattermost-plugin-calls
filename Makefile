@@ -56,14 +56,14 @@ gomod-check:
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: apply golangci-lint webapp/node_modules widget/node_modules gomod-check
+check-style: apply golangci-lint webapp/node_modules standalone/node_modules gomod-check
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && npm run lint
 	cd webapp && npm run check-types
-	cd widget && npm run lint
-	cd widget && npm run check-types
+	cd standalone && npm run lint
+	cd standalone && npm run check-types
 endif
 
 golangci-lint: ## Run golangci-lint on codebase
@@ -133,9 +133,9 @@ ifneq ($(HAS_WEBAPP),)
 	touch $@
 endif
 
-widget/node_modules: $(wildcard widget/package.json)
+standalone/node_modules: $(wildcard standalone/package.json)
 ifneq ($(HAS_WEBAPP),)
-	cd widget && $(NPM) install
+	cd standalone && $(NPM) install
 	touch $@
 endif
 
@@ -150,13 +150,13 @@ else
 endif
 endif
 
-## Builds the widget
-.PHONY: widget
-widget: widget/node_modules
+## Builds the standalone apps.
+.PHONY: standalone
+standalone: standalone/node_modules
 ifeq ($(MM_DEBUG),)
-	cd widget && $(NPM) run build;
+	cd standalone && $(NPM) run build;
 else
-	cd widget && $(NPM) run debug;
+	cd standalone && $(NPM) run debug;
 endif
 
 ## Builds the webapp on ci -- dependencies are handled by the npm-dependencies step in ci
@@ -164,10 +164,10 @@ endif
 webapp-ci:
 	cd webapp && $(NPM) run build
 
-## Builds the widget on ci -- dependencies are handled by the npm-dependencies step in ci
-.PHONY: widget-ci
-widget-ci:
-	cd widget && $(NPM) run build
+## Builds the standalone apps on ci -- dependencies are handled by the npm-dependencies step in ci
+.PHONY: standalone-ci
+standalone-ci:
+	cd standalone && $(NPM) run build
 
 ## Generates a tar bundle of the plugin for install.
 .PHONY: bundle
@@ -188,10 +188,9 @@ endif
 ifneq ($(HAS_WEBAPP),)
 	mkdir -p dist/$(PLUGIN_ID)/webapp
 	cp -r webapp/dist dist/$(PLUGIN_ID)/webapp/
-	## We remove the assets directory since files are redundant and loaded from webapp.
-	rm -fr widget/dist/files/*.png
-	mkdir dist/$(PLUGIN_ID)/widget
-	cp -r widget/dist dist/$(PLUGIN_ID)/widget/dist
+	rm -fr standalone/dist/files/*.png
+	mkdir dist/$(PLUGIN_ID)/standalone
+	cp -r standalone/dist dist/$(PLUGIN_ID)/standalone/dist
 endif
 	cd dist && tar -cvzf $(BUNDLE_NAME) $(PLUGIN_ID)
 
@@ -199,11 +198,11 @@ endif
 
 ## Builds and bundles the plugin.
 .PHONY: dist
-dist:	apply server webapp widget bundle
+dist:	apply server webapp standalone bundle
 
 ## Builds and bundles the plugin on ci.
 .PHONY: dist-ci
-dist-ci:	apply server-ci webapp-ci widget-ci bundle
+dist-ci:	apply server-ci webapp-ci standalone-ci bundle
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
@@ -270,7 +269,7 @@ gotestsum:
 
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
-test: apply webapp/node_modules widget/node_modules gotestsum
+test: apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/...
 endif
@@ -284,7 +283,7 @@ endif
 ## Runs any lints and unit tests defined for the server and webapp, if they exist, optimized
 ## for a CI environment.
 .PHONY: test-ci
-test-ci: apply webapp/node_modules widget/node_modules gotestsum
+test-ci: apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./...
 endif
@@ -294,7 +293,7 @@ endif
 
 ## Creates a coverage report for the server code.
 .PHONY: coverage
-coverage: apply webapp/node_modules widget/node_modules
+coverage: apply webapp/node_modules standalone/node_modules
 ifneq ($(HAS_SERVER),)
 	$(GO) test $(GO_TEST_FLAGS) -coverprofile=server/coverage.txt ./server/...
 	$(GO) tool cover -html=server/coverage.txt
@@ -354,8 +353,8 @@ ifneq ($(HAS_WEBAPP),)
 	rm -fr webapp/junit.xml
 	rm -fr webapp/dist
 	rm -fr webapp/node_modules
-	rm -fr widget/dist
-	rm -fr widget/node_modules
+	rm -fr standalone/dist
+	rm -fr standalone/node_modules
 endif
 	rm -fr build/bin/
 	rm -fr e2e/tests-results/

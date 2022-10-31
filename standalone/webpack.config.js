@@ -30,6 +30,7 @@ const plugins = [
         meta: {
             'Content-Security-Policy': {'http-equiv': 'Content-Security-Policy', content: contentSecurity},
         },
+        chunks: ['widget'],
     }),
 ];
 
@@ -55,14 +56,14 @@ if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
 }
 
 module.exports = {
-    entry: [
-        './src/index.tsx',
-    ],
+    entry: {
+        widget: './src/widget.tsx',
+    },
     output: {
         devtoolNamespace: PLUGIN_ID,
         path: path.join(__dirname, '/dist'),
         publicPath: 'auto',
-        filename: 'widget.[contenthash].js',
+        filename: '[name].[contenthash].js',
         clean: true,
     },
     resolve: {
