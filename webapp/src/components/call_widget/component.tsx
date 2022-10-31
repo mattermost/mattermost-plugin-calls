@@ -1457,7 +1457,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 ref={this.node}
             >
 
-                <div 
+                <div
                     ref={this.menuNode}
                     style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%', zIndex: -1}}
                 >
