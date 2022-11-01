@@ -9,7 +9,7 @@ import {Client4} from 'mattermost-redux/client';
 
 import {CloudCustomer} from '@mattermost/types/cloud';
 
-import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {getPost} from 'mattermost-redux/selectors/entities/posts';
@@ -19,7 +19,7 @@ import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
 
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 
-import {isCollapsedThreadsEnabled} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/preferences';
+import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
 
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
@@ -28,7 +28,6 @@ import * as Telemetry from 'src/types/telemetry';
 import {getPluginPath} from 'src/utils';
 
 import {modals, openPricingModal} from 'src/webapp_globals';
-import {getCurrentUserId} from '../../../mattermost-mobile/app/mm-redux/selectors/entities/common';
 import {
     CloudFreeTrialModalAdmin,
     CloudFreeTrialModalUser,
