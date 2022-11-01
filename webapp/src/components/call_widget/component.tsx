@@ -302,6 +302,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEl.autoplay = true;
             audioEl.style.display = 'none';
             audioEl.onerror = (err) => logErr(err);
+            audioEl.id = voiceTrack.id;
 
             const deviceID = window.callsClient.currentAudioOutputDevice?.deviceId;
             if (deviceID) {
