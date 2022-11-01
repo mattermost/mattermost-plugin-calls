@@ -12,11 +12,23 @@ import {CloudCustomer} from '@mattermost/types/cloud';
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
+import {getPost} from 'mattermost-redux/selectors/entities/posts';
+import {getPost as fetchPost} from 'mattermost-redux/actions/posts';
+
+import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
+
+import {getThread} from 'mattermost-redux/selectors/entities/threads';
+
+import {isCollapsedThreadsEnabled} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/preferences';
+
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+
 import {CallsConfig} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 import {getPluginPath} from 'src/utils';
 
 import {modals, openPricingModal} from 'src/webapp_globals';
+import {getCurrentUserId} from '../../../mattermost-mobile/app/mm-redux/selectors/entities/common';
 import {
     CloudFreeTrialModalAdmin,
     CloudFreeTrialModalUser,
@@ -214,3 +226,17 @@ export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, pro
         );
     };
 };
+
+export function prefetchThread(postId: string) {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const state = getState();
+        const teamId = getCurrentTeamId(state);
+        const currentUserId = getCurrentUserId(state);
+        const post = getPost(state, postId) ?? (await dispatch(fetchPost(postId))).data;
+        if (post) {
+            const thread = getThread(getState(), postId) ?? (await dispatch(fetchThread(currentUserId, teamId, postId, isCollapsedThreadsEnabled(state)))).data;
+            return {data: thread};
+        }
+        return {data: null};
+    };
+}

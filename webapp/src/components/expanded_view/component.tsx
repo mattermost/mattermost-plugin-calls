@@ -7,15 +7,14 @@ import {Team} from '@mattermost/types/teams';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 
-import {createGlobalStyle, css, CSSObject} from 'styled-components';
+import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
 
 import {ProductChannelsIcon} from '@mattermost/compass-icons/components';
 
 import {RouteComponentProps} from 'react-router-dom';
 
-import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
-
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
+import {applyOnyx} from 'src/css_utils';
 
 import {
     UserState,
@@ -72,6 +71,7 @@ interface Props extends RouteComponentProps {
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
     selectRhsPost?: (postID: string) => void,
+    prefetchThread: (postId: string) => void,
     closeRhs?: () => void,
     isRhsOpen?: boolean,
     screenSharingID: string,
@@ -82,6 +82,8 @@ interface Props extends RouteComponentProps {
 
     connectedDMUser: UserProfile | undefined,
     threadID: Post['id'];
+    threadUnreadReplies: number | undefined;
+    threadUnreadMentions: number | undefined;
     rhsSelectedThreadID?: string;
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
 }
@@ -94,6 +96,7 @@ interface State {
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private screenPlayer = React.createRef<HTMLVideoElement>()
+    private expandedRootRef = React.createRef<HTMLDivElement>()
     private pushToTalk = false;
 
     #unlockNavigation?: () => void;
@@ -142,6 +145,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     handleKeyUp = (ev: KeyboardEvent) => {
+        if (isActiveElementInteractable() && !this.expandedRootRef.current?.contains(document.activeElement)) {
+            return;
+        }
+
         if (keyToAction('popout', ev) === PUSH_TO_TALK && this.pushToTalk) {
             this.getCallsClient()?.mute();
             this.pushToTalk = false;
@@ -151,6 +158,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
+            return;
+        }
+
+        if (isActiveElementInteractable() && !this.expandedRootRef.current?.contains(document.activeElement)) {
             return;
         }
 
@@ -295,6 +306,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     document.title = `Call - ${this.props.channel.display_name}`;
                 }
             }
+
+            if (this.props.selectRhsPost) {
+                // global rhs supported
+
+                if (this.props.threadID && !prevProps.threadID) {
+                    // prefetch to get initial unreads
+                    this.props.prefetchThread(this.props.threadID);
+                }
+            }
         }
 
         if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer?.current.srcObject !== this.state.screenStream) {
@@ -352,6 +372,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (window.opener) {
             // core styling for rhs in expanded window
             document.body.classList.add('app__body');
+            applyOnyx();
+
+            if (this.props.selectRhsPost) {
+                // global rhs supported
+
+                if (this.props.threadID) {
+                    // prefetch to get initial unreads
+                    this.props.prefetchThread(this.props.threadID);
+                }
+            }
         }
     }
 
@@ -656,10 +686,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             chatToolTipText = `Chat unavailable: different team selected. Click here to switch back to ${this.props.channelDisplayName} in ${this.props.channelTeam.display_name}.`;
         }
 
-        const globalRhsSupported = typeof this.props.isRhsOpen === 'boolean';
+        const globalRhsSupported = Boolean(this.props.selectRhsPost);
+
+        const isChatUnread = Boolean(this.props.threadUnreadReplies);
 
         return (
             <div
+                ref={this.expandedRootRef}
                 id='calls-expanded-view'
                 style={globalRhsSupported ? styles.root : {
                     ...styles.root,
@@ -782,10 +815,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     shortcut={undefined}
                                     bgColor={''}
                                     icon={
-                                        <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
-                                            size={28}
-                                            color={'white'}
-                                        />
+                                        <div css={{position: 'relative'}}>
+                                            <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
+                                                size={28}
+                                                color={'white'}
+                                            />
+                                            {!chatDisabled && isChatUnread && (
+                                                <UnreadIndicator mentions={this.props.threadUnreadMentions}/>
+                                            )}
+                                        </div>
                                     }
                                     unavailable={chatDisabled}
                                 />
@@ -834,6 +872,45 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         );
     }
 }
+
+const isActiveElementInteractable = () => {
+    return document.activeElement && ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName);
+};
+
+const UnreadIndicator = ({mentions}: {mentions?: number}) => {
+    return (
+        <UnreadDot>{mentions && mentions > 99 ? '99+' : mentions || null}</UnreadDot>
+    );
+};
+
+const UnreadDot = styled.span`
+    position: absolute;
+    z-index: 1;
+    top: 0px;
+    right: -1px;
+    width: 8px;
+    height: 8px;
+    background: var(--mention-bg);
+    border-radius: 9px;
+    box-shadow: 0 0 0 2px rgb(37 38 42);
+    color: white;
+    &:not(:empty) {
+        top: -7px;
+        right: -8px;
+        width: auto;
+        min-width: 20px;
+        height: auto;
+        padding: 0 6px;
+        border-radius: 8px;
+        font-size: 11px;
+        -webkit-font-smoothing: subpixel-antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-weight: 700;
+        letter-spacing: 0;
+        line-height: 16px;
+        text-align: center;
+    }
+`;
 
 const styles: Record<string, CSSObject> = {
     root: {

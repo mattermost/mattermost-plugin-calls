@@ -8,9 +8,9 @@ import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/tea
 
 import {Client4} from 'mattermost-redux/client';
 
-import {compose} from 'redux';
-
 import {withRouter} from 'react-router-dom';
+
+import {getThread} from 'mattermost-redux/selectors/entities/threads';
 
 import {UserState} from '../../types/types';
 
@@ -22,7 +22,7 @@ import {
     getIsRhsOpen,
     getRhsSelectedPostId,
 } from 'src/webapp_globals';
-import {hideExpandedView, showScreenSourceModal, trackEvent} from '../../actions';
+import {hideExpandedView, prefetchThread, showScreenSourceModal, trackEvent} from '../../actions';
 import {
     expandedView,
     voiceChannelCallStartAt,
@@ -64,6 +64,8 @@ const mapStateToProps = (state: GlobalState) => {
 
     const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
 
+    const thread = getThread(state, threadID);
+
     return {
         show: expandedView(state),
         currentUserID,
@@ -79,6 +81,8 @@ const mapStateToProps = (state: GlobalState) => {
         channelDisplayName,
         connectedDMUser,
         threadID,
+        threadUnreadReplies: thread?.unread_replies,
+        threadUnreadMentions: thread?.unread_mentions,
         rhsSelectedThreadID: getRhsSelectedPostId?.(state),
         isRhsOpen: getIsRhsOpen?.(state),
     };
@@ -89,10 +93,8 @@ const mapDispatchToProps = {
     showScreenSourceModal,
     closeRhs,
     selectRhsPost,
+    prefetchThread,
     trackEvent,
 };
 
-export default compose<typeof ExpandedView>(
-    withRouter,
-    connect(mapStateToProps, mapDispatchToProps),
-)(ExpandedView);
+export default withRouter(connect(mapStateToProps, mapDispatchToProps)(ExpandedView));
