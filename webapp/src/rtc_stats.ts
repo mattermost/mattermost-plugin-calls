@@ -17,6 +17,8 @@ export function parseRTCStats(reports: RTCStatsReport): RTCStats {
         switch (report.type) {
         case 'inbound-rtp':
             stats[report.ssrc].local.in = {
+
+                // @ts-ignore: mid is missing current version, we need bump some dependencies to fix this.
                 mid: report.mid,
                 kind: report.kind,
                 trackIdentifier: report.trackIdentifier,
@@ -32,6 +34,8 @@ export function parseRTCStats(reports: RTCStatsReport): RTCStats {
             break;
         case 'outbound-rtp':
             stats[report.ssrc].local.out = {
+
+                // @ts-ignore: mid is missing in current version, we need bump some dependencies to fix this.
                 mid: report.mid,
                 kind: report.kind,
                 packetsSent: report.packetsSent,
