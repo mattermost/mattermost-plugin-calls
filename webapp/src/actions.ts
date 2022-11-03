@@ -12,9 +12,6 @@ import {CloudCustomer} from '@mattermost/types/cloud';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
-import {getPost} from 'mattermost-redux/selectors/entities/posts';
-import {getPost as fetchPost} from 'mattermost-redux/actions/posts';
-
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
 
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
@@ -231,11 +228,9 @@ export function prefetchThread(postId: string) {
         const state = getState();
         const teamId = getCurrentTeamId(state);
         const currentUserId = getCurrentUserId(state);
-        const post = getPost(state, postId) ?? (await dispatch(fetchPost(postId))).data;
-        if (post) {
-            const thread = getThread(getState(), postId) ?? (await dispatch(fetchThread(currentUserId, teamId, postId, isCollapsedThreadsEnabled(state)))).data;
-            return {data: thread};
-        }
-        return {data: null};
+
+        const thread = getThread(state, postId) ?? (await dispatch(fetchThread(currentUserId, teamId, postId, isCollapsedThreadsEnabled(state)))).data;
+
+        return {data: thread};
     };
 }
