@@ -1,3 +1,8 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+// these css utilities are exclusively for use in expanded-window to force dark theme Onyx so that RHS styling matches.
+
 import {
     changeOpacity,
     blendColors,
@@ -5,7 +10,8 @@ import {
 import cssVars from 'css-vars-ponyfill';
 import {Preferences} from 'mattermost-redux/constants';
 
-import {LinkHTMLAttributes} from 'react';
+// @ts-ignore
+import monokaiCSS from '!!highlight.js/styles/monokai.css?inline';
 
 // TODO use applyTheme from mattermost-redux or other exported utility library when/if it becomes available
 export function applyOnyx() {
@@ -188,7 +194,7 @@ export function applyOnyx() {
         changeCss('.app__body .mention--highlight .mention-link > a, .app__body .mention--highlight > a, .app__body .search-highlight > a', 'color: inherit');
     }
 
-    updateCodeTheme(theme.codeTheme);
+    applyMonokaiCodeTheme();
 
     cssVars({
         variables: {
@@ -378,26 +384,9 @@ function changeColor(colourIn: string, amt: number): string {
     return rgb;
 }
 
-function updateCodeTheme(cssPath: string) {
+function applyMonokaiCodeTheme() {
     const link: HTMLLinkElement = document.querySelector('link.code_theme')!;
-    if (link && cssPath !== (link.attributes as LinkHTMLAttributes<HTMLLinkElement>).href) {
-        changeCss('code.hljs', 'visibility: hidden');
-
-        const xmlHTTP = new XMLHttpRequest();
-
-        xmlHTTP.open('GET', cssPath, true);
-        xmlHTTP.onload = function onLoad() {
-            link.href = cssPath;
-
-            if (window.navigator?.userAgent?.includes('Firefox')) {
-                link.addEventListener('load', () => {
-                    changeCss('code.hljs', 'visibility: visible');
-                }, {once: true});
-            } else {
-                changeCss('code.hljs', 'visibility: visible');
-            }
-        };
-
-        xmlHTTP.send();
+    if (link) {
+        link.href = monokaiCSS;
     }
 }
