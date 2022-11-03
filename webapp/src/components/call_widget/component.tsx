@@ -363,6 +363,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient.on('connect', () => {
+            if (this.props.global) {
+                sendDesktopEvent('calls-joined-call', {
+                    callID: window.callsClient?.channelID,
+                });
+            }
+
             if (isDirectChannel(this.props.channel) || isGroupChannel(this.props.channel)) {
                 // FIXME (MM-46048) - HACK
                 // There's a race condition between unmuting and receiving existing tracks from other participants.

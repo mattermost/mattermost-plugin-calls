@@ -101,6 +101,7 @@ import {
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
     SHOW_END_CALL_MODAL,
+    DESKTOP_WIDGET_CONNECTED,
 } from './action_types';
 
 import {PluginRegistry, Store} from './types/mattermost-webapp';
@@ -237,9 +238,14 @@ export default class Plugin {
                 }
                 return {error: {message: 'You\'re already connected to a call in the current channel.'}};
             case 'leave':
-                if (connectedID && args.channel_id === connectedID && window.callsClient) {
-                    window.callsClient.disconnect();
-                    return {};
+                if (connectedID && args.channel_id === connectedID) {
+                    if (window.callsClient) {
+                        window.callsClient.disconnect();
+                        return {};
+                    } else if (shouldRenderDesktopWidget()) {
+                        sendDesktopEvent('calls-leave-call', {callID: args.channel_id});
+                        return {};
+                    }
                 }
                 return {error: {message: 'You\'re not connected to a call in the current channel.'}};
             case 'end':
@@ -423,6 +429,11 @@ export default class Plugin {
                 followThread(store, ev.data.channelID, getCurrentTeamId(store.getState()));
             } else if (ev.data?.type === 'desktop-sources-modal-request') {
                 store.dispatch(showScreenSourceModal());
+            } else if (ev.data?.type === 'calls-joined-call') {
+                store.dispatch({
+                    type: DESKTOP_WIDGET_CONNECTED,
+                    data: {channelID: ev.data.message.callID},
+                });
             }
         };
         window.addEventListener('message', windowEventHandler);
