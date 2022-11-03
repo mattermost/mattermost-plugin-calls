@@ -277,7 +277,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleServeWidget(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
 	bundlePath, err := p.API.GetBundlePath()
 	if err != nil {
 		p.LogError(err.Error())
@@ -285,9 +285,9 @@ func (p *Plugin) handleServeWidget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	widgetPath := filepath.Join(bundlePath, "widget/dist/")
+	standalonePath := filepath.Join(bundlePath, "standalone/dist/")
 
-	http.StripPrefix("/widget/", http.FileServer(http.Dir(widgetPath))).ServeHTTP(w, r)
+	http.StripPrefix("/standalone/", http.FileServer(http.Dir(standalonePath))).ServeHTTP(w, r)
 }
 
 func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
@@ -489,8 +489,8 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if strings.HasPrefix(r.URL.Path, "/widget/") {
-		p.handleServeWidget(w, r)
+	if strings.HasPrefix(r.URL.Path, "/standalone/") {
+		p.handleServeStandalone(w, r)
 		return
 	}
 

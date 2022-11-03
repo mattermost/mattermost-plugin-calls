@@ -1,6 +1,3 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-
 import {Client4} from 'mattermost-redux/client';
 import configureStore from 'mattermost-redux/store';
 import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redux/actions/channels';
@@ -16,9 +13,9 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 
 import {Store} from 'plugin/types/mattermost-webapp';
+import {Theme} from 'mattermost-redux/types/themes';
 
 import {pluginId} from 'plugin/manifest';
-import CallWidget from 'plugin/components/call_widget';
 import CallsClient from 'plugin/client';
 import reducer from 'plugin/reducers';
 import {
@@ -36,8 +33,6 @@ import {
     getWSConnectionURL,
     getPluginPath,
     getProfilesByIds,
-    playSound,
-    sendDesktopEvent,
 } from 'plugin/utils';
 
 import {
@@ -65,6 +60,12 @@ import {
     handleUserUnraisedHand,
 } from 'plugin/websocket_handlers';
 
+import {
+    getCallID,
+    getCallTitle,
+    getToken,
+} from './common';
+
 import {applyTheme} from './theme_utils';
 
 import {ChannelState} from './types/calls';
@@ -78,16 +79,6 @@ import 'mattermost-webapp/components/widgets/menu/menu_wrapper.scss';
 import 'mattermost-webapp/components/widgets/menu/menu_items/menu_item.scss';
 import '@mattermost/compass-icons/css/compass-icons.css';
 
-function getCallID() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('call_id');
-}
-
-function getCallTitle() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('title') || '';
-}
-
 function setBasename() {
     const idx = window.location.pathname.indexOf('/plugins/');
     if (idx > 0) {
@@ -95,7 +86,7 @@ function setBasename() {
     }
 }
 
-function connectCall(channelID: string, callTitle: string, wsURL: string, iceConfigs: RTCIceServer[], wsEventHandler: (ev: any) => void) {
+function connectCall(channelID: string, callTitle: string, wsURL: string, iceConfigs: RTCIceServer[], wsEventHandler: (ev: any) => void, closeCb?: () => void) {
     try {
         if (window.callsClient) {
             logErr('calls client is already initialized');
@@ -105,21 +96,12 @@ function connectCall(channelID: string, callTitle: string, wsURL: string, iceCon
         window.callsClient = new CallsClient({
             wsURL,
             iceServers: iceConfigs,
+            authToken: getToken(),
         });
 
         window.callsClient.on('close', () => {
-            if (window.callsClient) {
-                playSound('leave_self');
-
-                // Using setTimeout to give the app enough time to play the sound before
-                // closing the widget window.
-                setTimeout(() => {
-                    window.callsClient.destroy();
-                    delete window.callsClient;
-                    ReactDOM.unmountComponentAtNode(document.getElementById('root')!);
-                    logDebug('sending leave call message to desktop app');
-                    sendDesktopEvent('calls-leave-call');
-                }, 200);
+            if (closeCb) {
+                closeCb();
             }
         });
 
@@ -207,9 +189,8 @@ async function fetchChannelData(store: Store, channelID: string) {
     }
 }
 
-async function init() {
+export default async function init(name: string, initCb: (store: Store, theme: Theme) => void, closeCb?: () => void) {
     setBasename();
-
     const initStartTime = performance.now();
 
     const storeKey = `plugins-${pluginId}`;
@@ -231,6 +212,7 @@ async function init() {
     if (window.basename) {
         Client4.setUrl(window.basename);
     }
+    Client4.setToken(getToken());
 
     // initialize some basic state.
     await Promise.all([
@@ -312,7 +294,7 @@ async function init() {
             break;
         default:
         }
-    });
+    }, closeCb);
 
     await store.dispatch({
         type: VOICE_CHANNEL_USER_CONNECTED,
@@ -326,32 +308,9 @@ async function init() {
     const theme = getTheme(store.getState());
     applyTheme(theme);
 
-    window.addEventListener('message', (ev: MessageEvent) => {
-        if (ev.origin !== window.origin) {
-            return;
-        }
-        switch (ev.data?.type) {
-        case 'register-desktop':
-            window.desktop = ev.data.message;
-            break;
-        case 'calls-widget-share-screen':
-            window.callsClient?.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
-            break;
-        }
-    });
-    sendDesktopEvent('get-app-version');
+    await initCb(store, theme);
 
-    ReactDOM.render(
-        <CallWidget
-            store={store}
-            theme={theme}
-            global={true}
-            position={{bottom: 0, left: 0}}
-        />,
-        document.getElementById('root'),
-    );
-
-    logDebug(`global widget init completed in ${Math.round(performance.now() - initStartTime)}ms`);
+    logDebug(`${name} init completed in ${Math.round(performance.now() - initStartTime)}ms`);
 }
 
 declare global {
@@ -382,5 +341,3 @@ declare global {
         [P in keyof T]?: DeepPartial<T[P]>;
     }
 }
-
-init();
