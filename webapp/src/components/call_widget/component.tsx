@@ -253,7 +253,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
-        if (!this.state.showMenu) {
+        if (!this.props.show) {
             return;
         }
         switch (keyToAction('widget', ev)) {
