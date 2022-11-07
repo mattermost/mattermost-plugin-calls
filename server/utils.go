@@ -8,6 +8,7 @@ import (
 	"compress/zlib"
 	"fmt"
 	"io"
+	"math"
 	"net/url"
 	"time"
 )
@@ -89,4 +90,8 @@ func parseURL(u string) (string, string, string, error) {
 	parsed.User = nil
 
 	return parsed.String(), clientID, authKey, nil
+}
+
+func secondsSinceTimestamp(ts int64) int64 {
+	return int64(math.Round(time.Since(time.Unix(ts, 0)).Seconds()))
 }

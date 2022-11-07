@@ -14,7 +14,8 @@ type userState struct {
 }
 
 type callStats struct {
-	Participants int `json:"participants"`
+	Participants   int   `json:"participants"`
+	ScreenDuration int64 `json:"screen_duration"`
 }
 
 type callState struct {
@@ -27,6 +28,7 @@ type callState struct {
 	ThreadID        string                `json:"thread_id"`
 	ScreenSharingID string                `json:"screen_sharing_id"`
 	ScreenStreamID  string                `json:"screen_stream_id"`
+	ScreenStartAt   int64                 `json:"screen_start_at"`
 	Stats           callStats             `json:"stats"`
 	RTCDHost        string                `json:"rtcd_host"`
 }
