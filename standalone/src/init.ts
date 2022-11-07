@@ -4,7 +4,6 @@ import {getMe} from 'mattermost-redux/actions/users';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
 import {getTeam as getTeamAction, getMyTeams, selectTeam} from 'mattermost-redux/actions/teams';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTeam, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
@@ -18,7 +17,6 @@ import {pluginId} from 'plugin/manifest';
 import CallsClient from 'plugin/client';
 import reducer from 'plugin/reducers';
 import {
-    VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_ROOT_POST,
     VOICE_CHANNEL_PROFILES_CONNECTED,
@@ -305,15 +303,6 @@ export default async function init(cfg: InitConfig) {
             cfg.wsHandler(store, ev);
         }
     }, cfg.closeCb);
-
-    await store.dispatch({
-        type: VOICE_CHANNEL_USER_CONNECTED,
-        data: {
-            channelID: channel.id,
-            userID: getCurrentUserId(store.getState()),
-            currentUserID: getCurrentUserId(store.getState()),
-        },
-    });
 
     const theme = getTheme(store.getState());
     applyTheme(theme);

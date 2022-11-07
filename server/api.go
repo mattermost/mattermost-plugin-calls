@@ -79,7 +79,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 	if state != nil {
 		info.Enabled = state.Enabled
 		if state.Call != nil {
-			users, states := state.Call.getUsersAndStates()
+			users, states := state.Call.getUsersAndStates(p.getBotID())
 			info.Call = &Call{
 				ID:              state.Call.ID,
 				StartAt:         state.Call.StartAt,
@@ -167,7 +167,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 				Enabled:   state.Enabled,
 			}
 			if state.Call != nil {
-				users, states := state.Call.getUsersAndStates()
+				users, states := state.Call.getUsersAndStates(p.getBotID())
 				info.Call = &Call{
 					ID:              state.Call.ID,
 					StartAt:         state.Call.StartAt,

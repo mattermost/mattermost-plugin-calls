@@ -11,24 +11,29 @@ import {Client4} from 'mattermost-redux/client';
 import {UserState} from 'plugin/types/types';
 
 import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from 'plugin/utils';
-import {expandedView, voiceChannelCallStartAt, connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelScreenSharingID} from 'plugin/selectors';
+import {
+    voiceChannelCallStartAt,
+    voiceConnectedProfilesInChannel,
+    voiceUsersStatusesInChannel,
+    voiceChannelScreenSharingID,
+} from 'plugin/selectors';
 
 import {callProfileImages} from 'src/recording/selectors';
 
 import RecordingView from './component';
 
 const mapStateToProps = (state: GlobalState) => {
-    const channel = getChannel(state, connectedChannelID(state));
-    const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
+    const channelID = window.callsClient?.channelID;
+    const screenSharingID = voiceChannelScreenSharingID(state, channelID) || '';
 
     const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
         return [...profiles].sort(alphaSortProfiles(profiles)).sort(stateSortProfiles(profiles, statuses, screenSharingID));
     };
 
-    const statuses = voiceUsersStatuses(state);
-    const profiles = sortedProfiles(voiceConnectedProfiles(state), statuses);
+    const statuses = voiceUsersStatusesInChannel(state, channelID);
+    const profiles = sortedProfiles(voiceConnectedProfilesInChannel(state, channelID), statuses);
 
-    const profileImages = callProfileImages(state, channel?.id);
+    const profileImages = callProfileImages(state, channelID);
     const pictures: {[key: string]: string} = {};
 
     if (profileImages) {
@@ -41,9 +46,9 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         pictures,
         statuses,
-        callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
+        callStartAt: voiceChannelCallStartAt(state, channelID) || 0,
         screenSharingID,
-        channel,
+        channel: getChannel(state, channelID),
     };
 };
 

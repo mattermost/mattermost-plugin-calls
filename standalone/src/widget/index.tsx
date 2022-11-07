@@ -7,6 +7,7 @@ import {Theme} from 'mattermost-redux/types/themes';
 import {getTeam as getTeamAction, getMyTeams, selectTeam} from 'mattermost-redux/actions/teams';
 import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redux/actions/channels';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {getTeam, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
@@ -21,11 +22,24 @@ import {
     logErr,
 } from 'plugin/log';
 
+import {
+    VOICE_CHANNEL_USER_CONNECTED,
+} from 'plugin/action_types';
+
 import CallWidget from 'plugin/components/call_widget';
 
 import init from '../init';
 
-function initWidget(store: Store, theme: Theme) {
+async function initWidget(store: Store, theme: Theme, channelID: string) {
+    await store.dispatch({
+        type: VOICE_CHANNEL_USER_CONNECTED,
+        data: {
+            channelID,
+            userID: getCurrentUserId(store.getState()),
+            currentUserID: getCurrentUserId(store.getState()),
+        },
+    });
+
     window.addEventListener('message', (ev: MessageEvent) => {
         if (ev.origin !== window.origin) {
             return;

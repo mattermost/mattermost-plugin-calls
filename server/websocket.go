@@ -36,9 +36,15 @@ const (
 )
 
 func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *model.WebsocketBroadcast) {
+	botID := p.getBotID()
+	// We don't want to expose to the client that the bot is in a call.
+	if (ev == wsEventUserConnected || ev == wsEventUserDisconnected) && data["userID"] == botID {
+		return
+	}
+
 	// If broadcasting to a channel we need to also send to the bot since they
 	// won't be in the channel.
-	if botID := p.getBotID(); botID != "" && broadcast != nil && broadcast.ChannelId != "" {
+	if botID != "" && broadcast != nil && broadcast.ChannelId != "" {
 		data["channelID"] = broadcast.ChannelId
 		p.API.PublishWebSocketEvent(ev, data, &model.WebsocketBroadcast{
 			UserId: botID,

@@ -39,11 +39,15 @@ type channelState struct {
 	Call    *callState `json:"call,omitempty"`
 }
 
-func (cs *callState) getUsersAndStates() ([]string, []userState) {
+func (cs *callState) getUsersAndStates(botID string) ([]string, []userState) {
 	var i int
 	users := make([]string, len(cs.Users))
 	states := make([]userState, len(cs.Users))
 	for id, state := range cs.Users {
+		// We don't want to expose to the client that the bot is in a call.
+		if id == botID {
+			continue
+		}
 		users[i] = id
 		states[i] = *state
 		i++
