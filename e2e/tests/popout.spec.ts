@@ -26,7 +26,7 @@ test.describe('popout window', () => {
 
     test('popout opens in a DM channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM('user-1');
+        await devPage.gotoDM(userState.users[0].username);
         await devPage.startCall();
 
         const [popOut, _] = await Promise.all([
@@ -83,7 +83,7 @@ test.describe('popout window', () => {
 
     test('supports chat in a DM channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM('user-1');
+        await devPage.gotoDM(userState.users[0].username);
         await devPage.startCall();
 
         const [popOut, _] = await Promise.all([
