@@ -41,6 +41,7 @@ import {
     RECEIVED_CHANNEL_STATE,
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CLIENT_ERROR,
+    DESKTOP_WIDGET_CONNECTED,
 } from './action_types';
 
 interface channelState {
@@ -178,6 +179,8 @@ const connectedChannelID = (state: string | null = null, action: { type: string,
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return null;
+    case DESKTOP_WIDGET_CONNECTED:
+        return action.data.channelID;
     case VOICE_CHANNEL_USER_CONNECTED: {
         const callsClient = window.callsClient || window.opener?.callsClient;
         if (action.data.currentUserID === action.data.userID && callsClient?.channelID === action.data.channelID) {
