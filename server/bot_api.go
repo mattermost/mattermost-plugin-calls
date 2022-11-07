@@ -52,6 +52,11 @@ func (p *Plugin) handleGetUserImage(w http.ResponseWriter, r *http.Request, user
 }
 
 func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
+	if !p.licenseChecker.RecordingsAllowed() {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
 	if !p.isBotSession(r) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
