@@ -55,7 +55,7 @@ func (p *Plugin) handleGetVersion(w http.ResponseWriter, r *http.Request) {
 
 func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	userID := r.Header.Get("Mattermost-User-Id")
-	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+	if !p.isBotSession(r) && !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -244,7 +244,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 	}
 
 	p.metrics.IncWebSocketEvent("out", "call_end")
-	p.API.PublishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	go func() {
 		// We wait a few seconds for the call to end cleanly. If this doesn't
@@ -359,7 +359,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		evType = "channel_disable_voice"
 	}
 
-	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	p.publishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	if err := json.NewEncoder(w).Encode(info); err != nil {
 		p.LogError(err.Error())
@@ -483,14 +483,14 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	userID := r.Header.Get("Mattermost-User-Id")
-	if userID == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	if strings.HasPrefix(r.URL.Path, "/standalone/") {
+		p.handleServeStandalone(w, r)
 		return
 	}
 
-	if strings.HasPrefix(r.URL.Path, "/standalone/") {
-		p.handleServeStandalone(w, r)
+	userID := r.Header.Get("Mattermost-User-Id")
+	if userID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -501,6 +501,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	if strings.HasPrefix(r.URL.Path, "/debug") {
 		p.handleDebug(w, r)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/bot") {
+		p.handleBotAPI(w, r)
 		return
 	}
 

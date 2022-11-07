@@ -35,6 +35,26 @@ const (
 	wsReconnectionTimeout   = 10 * time.Second
 )
 
+func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *model.WebsocketBroadcast) {
+	// If broadcasting to a channel we need to also send to the bot since they
+	// won't be in the channel.
+	if botID := p.getBotID(); botID != "" && broadcast != nil && broadcast.ChannelId != "" {
+		data["channelID"] = broadcast.ChannelId
+		p.API.PublishWebSocketEvent(ev, data, &model.WebsocketBroadcast{
+			UserId: botID,
+		})
+		if broadcast.OmitUsers == nil {
+			broadcast.OmitUsers = map[string]bool{
+				botID: true,
+			}
+		} else {
+			broadcast.OmitUsers[botID] = true
+		}
+	}
+
+	p.API.PublishWebSocketEvent(ev, data, broadcast)
+}
+
 func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, handlerID string) error {
 	if cfg := p.getConfiguration(); cfg == nil || cfg.AllowScreenSharing == nil || !*cfg.AllowScreenSharing {
 		return fmt.Errorf("screen sharing is not allowed")
@@ -108,7 +128,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 	}
 
-	p.API.PublishWebSocketEvent(wsMsgType, map[string]interface{}{
+	p.publishWebSocketEvent(wsMsgType, map[string]interface{}{
 		"userID": us.userID,
 	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 
@@ -215,7 +235,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if msg.Type == clientMessageTypeMute {
 			evType = wsEventUserMuted
 		}
-		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
+		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID": us.userID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeVoiceOn, clientMessageTypeVoiceOff:
@@ -223,7 +243,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if msg.Type == clientMessageTypeVoiceOn {
 			evType = wsEventUserVoiceOn
 		}
-		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
+		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID": us.userID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
@@ -257,7 +277,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			p.LogError(err.Error())
 		}
 
-		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
+		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":      us.userID,
 			"raised_hand": ts,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
@@ -332,7 +352,7 @@ func (p *Plugin) wsWriter() {
 				continue
 			}
 			p.metrics.IncWebSocketEvent("out", "signal")
-			p.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
+			p.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 				"data":   string(msg.Data),
 				"connID": msg.SessionID,
 			}, &model.WebsocketBroadcast{UserId: us.userID, ReliableClusterSend: true})
@@ -362,7 +382,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 	if err != nil {
 		return err
 	} else if state != nil && state.Call != nil && state.Call.ScreenSharingID == userID {
-		p.API.PublishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		p.publishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
 	handlerID, err := p.getHandlerID()
@@ -395,7 +415,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
 
-	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+	if !p.isBot(userID) && !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
 		return fmt.Errorf("forbidden")
 	}
 	channel, appErr := p.API.GetChannel(channelID)
@@ -426,7 +446,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 		}
 
 		// TODO: send all the info attached to a call.
-		p.API.PublishWebSocketEvent(wsEventCallStart, map[string]interface{}{
+		p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
 			"channelID": channelID,
 			"start_at":  state.Call.StartAt,
 			"thread_id": threadID,
@@ -497,11 +517,11 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 
 	// send successful join response
 	p.metrics.IncWebSocketEvent("out", "join")
-	p.API.PublishWebSocketEvent(wsEventJoin, map[string]interface{}{
+	p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
 		"connID": connID,
 	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 	p.metrics.IncWebSocketEvent("out", "user_connected")
-	p.API.PublishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
+	p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	p.metrics.IncWebSocketConn(channelID)
@@ -521,7 +541,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 	p.LogDebug("handleReconnect", "userID", userID, "connID", connID, "channelID", channelID,
 		"originalConnID", originalConnID, "prevConnID", prevConnID)
 
-	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+	if !p.isBot(userID) && !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
 		return fmt.Errorf("forbidden")
 	}
 
@@ -627,7 +647,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			if err := p.handleJoin(userID, connID, channelID, title); err != nil {
 				p.LogError(err.Error(), "userID", userID, "connID", connID, "channelID", channelID)
 				p.metrics.IncWebSocketEvent("out", "error")
-				p.API.PublishWebSocketEvent(wsEventError, map[string]interface{}{
+				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
 					"connID": connID,
 				}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})

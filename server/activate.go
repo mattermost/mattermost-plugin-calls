@@ -13,7 +13,32 @@ import (
 	"github.com/mattermost/rtcd/service/rtc"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-server/v6/model"
 )
+
+func (p *Plugin) createBotSession() (*model.Session, error) {
+	botID, err := p.pluginAPI.Bot.EnsureBot(&model.Bot{
+		Username:    "calls",
+		DisplayName: "Calls",
+		Description: "Calls Bot",
+		OwnerId:     manifest.Id,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	session := &model.Session{
+		UserId:    botID,
+		ExpiresAt: 0,
+	}
+
+	session, err = p.pluginAPI.Session.Create(session)
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
 
 func (p *Plugin) OnActivate() error {
 	p.LogDebug("activating")
@@ -38,6 +63,16 @@ func (p *Plugin) OnActivate() error {
 		p.LogError(err.Error())
 		return err
 	}
+
+	// TODO: decide whether we should call this only if the recording feature is enabled.
+	session, err := p.createBotSession()
+	if err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+	p.botSession = session
+	p.LogDebug(fmt.Sprintf("%+v", session))
+	p.LogDebug("bot session", "token", session.Token)
 
 	status, appErr := p.API.GetPluginStatus(manifest.Id)
 	if appErr != nil {
@@ -168,6 +203,12 @@ func (p *Plugin) OnDeactivate() error {
 
 	if err := p.uninitTelemetry(); err != nil {
 		p.LogError(err.Error())
+	}
+
+	if p.botSession != nil {
+		if err := p.API.RevokeSession(p.botSession.Id); err != nil {
+			p.LogError(err.Error())
+		}
 	}
 
 	return nil
