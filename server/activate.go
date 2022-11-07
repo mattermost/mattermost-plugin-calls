@@ -95,8 +95,6 @@ func (p *Plugin) OnActivate() error {
 			return err
 		}
 		p.botSession = session
-		p.LogDebug(fmt.Sprintf("%+v", session))
-		p.LogDebug("bot session", "token", session.Token)
 	}
 
 	if rtcdURL := cfg.getRTCDURL(); rtcdURL != "" && p.licenseChecker.RTCDAllowed() {
