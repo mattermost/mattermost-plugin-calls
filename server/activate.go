@@ -64,17 +64,6 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
-	if p.licenseChecker.RecordingsAllowed() {
-		session, err := p.createBotSession()
-		if err != nil {
-			p.LogError(err.Error())
-			return err
-		}
-		p.botSession = session
-		p.LogDebug(fmt.Sprintf("%+v", session))
-		p.LogDebug("bot session", "token", session.Token)
-	}
-
 	status, appErr := p.API.GetPluginStatus(manifest.Id)
 	if appErr != nil {
 		p.LogError(appErr.Error())
@@ -97,6 +86,17 @@ func (p *Plugin) OnActivate() error {
 			p.LogError(err.Error())
 			return err
 		}
+	}
+
+	if p.licenseChecker.RecordingsAllowed() && cfg.recordingsEnabled() {
+		session, err := p.createBotSession()
+		if err != nil {
+			p.LogError(err.Error())
+			return err
+		}
+		p.botSession = session
+		p.LogDebug(fmt.Sprintf("%+v", session))
+		p.LogDebug("bot session", "token", session.Token)
 	}
 
 	if rtcdURL := cfg.getRTCDURL(); rtcdURL != "" && p.licenseChecker.RTCDAllowed() {

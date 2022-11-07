@@ -65,6 +65,8 @@ type clientConfig struct {
 	NeedsTURNCredentials *bool
 	// When set to true it allows call participants to share their screen.
 	AllowScreenSharing *bool
+	// When set to true it enables the call recordings functionality
+	EnableRecordings *bool
 }
 
 type ICEServers []string
@@ -155,6 +157,7 @@ func (c *configuration) getClientConfig() clientConfig {
 		MaxCallParticipants:  c.MaxCallParticipants,
 		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
 		AllowScreenSharing:   c.AllowScreenSharing,
+		EnableRecordings:     c.EnableRecordings,
 	}
 }
 
@@ -181,6 +184,9 @@ func (c *configuration) SetDefaults() {
 	if c.AllowScreenSharing == nil {
 		c.AllowScreenSharing = new(bool)
 		*c.AllowScreenSharing = true
+	}
+	if c.EnableRecordings == nil {
+		c.EnableRecordings = new(bool)
 	}
 }
 
@@ -251,6 +257,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.AllowScreenSharing = model.NewBool(*c.AllowScreenSharing)
 	}
 
+	if c.EnableRecordings != nil {
+		cfg.EnableRecordings = model.NewBool(*c.EnableRecordings)
+	}
+
 	return &cfg
 }
 
@@ -259,6 +269,13 @@ func (c *configuration) getRTCDURL() string {
 		return url
 	}
 	return c.RTCDServiceURL
+}
+
+func (c *configuration) recordingsEnabled() bool {
+	if c.EnableRecordings != nil && *c.EnableRecordings {
+		return true
+	}
+	return false
 }
 
 // getConfiguration retrieves the active configuration under lock, making it safe to use
