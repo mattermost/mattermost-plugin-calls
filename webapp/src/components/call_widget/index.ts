@@ -10,8 +10,6 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {Client4} from 'mattermost-redux/client';
 
-import {withRouter} from 'react-router-dom';
-
 import {UserState} from '../../types/types';
 
 import {showExpandedView, showScreenSourceModal, trackEvent} from '../../actions';
@@ -50,7 +48,7 @@ const mapStateToProps = (state: GlobalState) => {
     return {
         currentUserID,
         channel,
-        team: getTeam(state, channel?.team_id ?? getCurrentTeamId(state)),
+        team: getTeam(state, channel?.team_id || getCurrentTeamId(state)),
         channelURL,
         channelDisplayName,
         profiles,
