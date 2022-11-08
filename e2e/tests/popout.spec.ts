@@ -24,6 +24,19 @@ test.describe('popout window', () => {
         await popOut.locator('.button-leave').click();
     });
 
+    test('popout opens in a DM channel', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.gotoDM(userState.users[0].username);
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+        await popOut.locator('.button-leave').click();
+    });
+
     test('window title matches', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
@@ -37,6 +50,60 @@ test.describe('popout window', () => {
         const idx = parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2;
         await expect(popOut).toHaveTitle(`Call - calls${idx}`);
         await expect(page).not.toHaveTitle(`Call - calls${idx}`);
+
+        await popOut.locator('.button-leave').click();
+    });
+
+    test('supports chat', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.goto();
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+
+        await popOut.click('#calls-popout-chat-button button');
+
+        await expect(popOut.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
+
+        const replyTextbox = popOut.locator('#reply_textbox');
+        const msg = 'Hello World, first call thread reply';
+        await replyTextbox.type(msg);
+        await replyTextbox.press('Enter');
+        await expect(popOut.locator(`text=${msg}`)).toBeVisible();
+
+        await popOut.click('#calls-popout-chat-button button');
+        await expect(popOut.locator('#sidebar-right')).not.toBeVisible();
+
+        await popOut.locator('.button-leave').click();
+    });
+
+    test('supports chat in a DM channel', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.gotoDM(userState.users[0].username);
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+
+        await popOut.click('#calls-popout-chat-button button');
+
+        await expect(popOut.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
+
+        const replyTextbox = popOut.locator('#reply_textbox');
+        const msg = 'Hello World, first call thread reply';
+        await replyTextbox.type(msg);
+        await replyTextbox.press('Enter');
+        await expect(popOut.locator(`text=${msg}`)).toBeVisible();
+
+        await popOut.click('#calls-popout-chat-button button');
+        await expect(popOut.locator('#sidebar-right')).not.toBeVisible();
 
         await popOut.locator('.button-leave').click();
     });

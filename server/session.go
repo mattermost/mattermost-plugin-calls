@@ -153,6 +153,10 @@ func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelSta
 		if state.Call.ScreenSharingID == userID {
 			state.Call.ScreenSharingID = ""
 			state.Call.ScreenStreamID = ""
+			if state.Call.ScreenStartAt > 0 {
+				state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
+				state.Call.ScreenStartAt = 0
+			}
 		}
 
 		if _, ok := state.Call.Users[userID]; !ok {
@@ -164,6 +168,9 @@ func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelSta
 		delete(state.Call.Sessions, connID)
 
 		if len(state.Call.Users) == 0 {
+			if state.Call.ScreenStartAt > 0 {
+				state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
+			}
 			state.Call = nil
 			state.NodeID = ""
 		}
@@ -236,10 +243,11 @@ func (p *Plugin) removeSession(us *session) error {
 			return err
 		}
 		p.track(evCallEnded, map[string]interface{}{
-			"ChannelID":    us.channelID,
-			"CallID":       prevState.Call.ID,
-			"Duration":     dur,
-			"Participants": prevState.Call.Stats.Participants,
+			"ChannelID":      us.channelID,
+			"CallID":         prevState.Call.ID,
+			"Duration":       dur,
+			"Participants":   prevState.Call.Stats.Participants,
+			"ScreenDuration": prevState.Call.Stats.ScreenDuration,
 		})
 	}
 	return nil

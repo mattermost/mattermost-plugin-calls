@@ -121,17 +121,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return {
             main: {
                 position: 'fixed',
-                background: this.props.theme.centerChannelBg,
-                borderRadius: '8px',
                 display: 'flex',
                 bottom: '12px',
                 left: '12px',
                 lineHeight: '16px',
                 zIndex: '1000',
-                border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
                 userSelect: 'none',
                 color: this.props.theme.centerChannelColor,
-                transformStyle: 'preserve-3d',
             },
             topBar: {
                 background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
@@ -167,7 +163,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 width: '100%',
-                transformStyle: 'preserve-3d',
+                background: this.props.theme.centerChannelBg,
+                border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
+                borderRadius: '8px',
             },
             callInfo: {
                 display: 'flex',
@@ -256,6 +254,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
+        if (!this.props.show) {
+            return;
+        }
         switch (keyToAction('widget', ev)) {
         case MUTE_UNMUTE:
             this.onMuteToggle();
@@ -302,6 +303,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEl.autoplay = true;
             audioEl.style.display = 'none';
             audioEl.onerror = (err) => logErr(err);
+            audioEl.id = voiceTrack.id;
 
             const deviceID = window.callsClient.currentAudioOutputDevice?.deviceId;
             if (deviceID) {
@@ -1383,15 +1385,16 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }}
                 ref={this.node}
             >
-                <div style={this.style.status as CSSProperties}>
-                    <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%', transform: 'translateZ(-10px)'}}>
-                        {this.renderNotificationBar()}
-                        {this.renderAlertBanners()}
-                        {this.renderScreenSharingPanel()}
-                        {this.renderParticipantsList()}
-                        {this.renderMenu(hasTeamSidebar)}
-                    </div>
 
+                <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%', zIndex: -1}}>
+                    {this.renderNotificationBar()}
+                    {this.renderAlertBanners()}
+                    {this.renderScreenSharingPanel()}
+                    {this.renderParticipantsList()}
+                    {this.renderMenu(hasTeamSidebar)}
+                </div>
+
+                <div style={this.style.status as CSSProperties}>
                     <div
                         style={this.style.topBar}
                         onMouseDown={this.onMouseDown}

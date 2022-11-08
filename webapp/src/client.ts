@@ -9,7 +9,7 @@ import RTCPeer from './rtcpeer';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';
-import {WebSocketClient, wsReconnectionTimeoutErr} from './websocket';
+import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 import VoiceActivityDetector from './vad';
 
 import {parseRTCStats} from './rtc_stats';
@@ -183,11 +183,19 @@ export default class CallsClient extends EventEmitter {
         const ws = new WebSocketClient(this.config.wsURL);
         this.ws = ws;
 
-        ws.on('error', (err) => {
+        ws.on('error', (err: WebSocketError) => {
             logErr('ws error', err);
-            if (err === wsReconnectionTimeoutErr) {
+            switch (err.type) {
+            case WebSocketErrorType.Native:
+                break;
+            case WebSocketErrorType.ReconnectTimeout:
                 this.ws = null;
-                this.disconnect(wsReconnectionTimeoutErr);
+                this.disconnect(err);
+                break;
+            case WebSocketErrorType.Join:
+                this.disconnect(err);
+                break;
+            default:
             }
         });
 
@@ -230,6 +238,7 @@ export default class CallsClient extends EventEmitter {
 
             peer.on('answer', (sdp) => {
                 logDebug(`local signal: ${JSON.stringify(sdp)}`);
+
                 ws.send('sdp', {
                     data: deflate(JSON.stringify(sdp)),
                 }, true);
@@ -249,8 +258,10 @@ export default class CallsClient extends EventEmitter {
             });
 
             peer.on('stream', (remoteStream) => {
-                logDebug('new remote stream received', remoteStream);
-                logDebug('remote tracks', remoteStream.getTracks());
+                logDebug('new remote stream received', remoteStream.id);
+                for (const track of remoteStream.getTracks()) {
+                    logDebug('remote track', track.kind, track.id);
+                }
 
                 this.streams.push(remoteStream);
 
@@ -344,8 +355,10 @@ export default class CallsClient extends EventEmitter {
         newTrack.enabled = isEnabled;
         if (isEnabled) {
             if (this.voiceTrackAdded) {
+                logDebug('replacing track to peer', newTrack.id);
                 this.peer.replaceTrack(this.audioTrack.id, newTrack);
             } else {
+                logDebug('adding track to peer', newTrack.id, this.stream.id);
                 this.peer.addTrack(newTrack, this.stream);
             }
         } else {
@@ -418,6 +431,8 @@ export default class CallsClient extends EventEmitter {
             this.voiceDetector.stop();
         }
 
+        logDebug('replacing track to peer', null);
+
         // @ts-ignore: we actually mean (and need) to pass null here
         this.peer.replaceTrack(this.audioTrack.id, null);
         this.audioTrack.enabled = false;
@@ -446,8 +461,10 @@ export default class CallsClient extends EventEmitter {
         }
 
         if (this.voiceTrackAdded) {
+            logDebug('replacing track to peer', this.audioTrack!.id);
             this.peer.replaceTrack(this.audioTrack!.id, this.audioTrack!);
         } else {
+            logDebug('adding track to peer', this.audioTrack!.id, this.stream!.id);
             this.peer.addTrack(this.audioTrack!, this.stream!);
             this.voiceTrackAdded = true;
         }
@@ -504,6 +521,7 @@ export default class CallsClient extends EventEmitter {
             this.ws.send('screen_off');
         };
 
+        logDebug('adding stream to peer', screenStream.id);
         this.peer.addStream(screenStream);
 
         this.ws.send('screen_on', {

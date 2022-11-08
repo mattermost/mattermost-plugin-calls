@@ -1,14 +1,21 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
-// See LICENSE.txt for license information.
-
-import React, {CSSProperties} from 'react';
+import React from 'react';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import {UserProfile} from '@mattermost/types/users';
+import {Team} from '@mattermost/types/teams';
 import {Channel} from '@mattermost/types/channels';
+import {Post} from '@mattermost/types/posts';
+
+import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
+
+import {ProductChannelsIcon} from '@mattermost/compass-icons/components';
+
+import {RouteComponentProps} from 'react-router-dom';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
+import {applyOnyx} from 'src/css_utils';
+
 import {
     UserState,
     AudioDevices,
@@ -49,9 +56,10 @@ import ControlsButton from './controls_button';
 
 import './component.scss';
 
-interface Props {
+interface Props extends RouteComponentProps {
     show: boolean,
     currentUserID: string,
+    currentTeamID: string,
     profiles: UserProfile[],
     pictures: {
         [key: string]: string,
@@ -62,9 +70,21 @@ interface Props {
     callStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
+    selectRhsPost?: (postID: string) => void,
+    prefetchThread: (postId: string) => void,
+    closeRhs?: () => void,
+    isRhsOpen?: boolean,
     screenSharingID: string,
     channel: Channel,
+    channelTeam: Team,
+    channelURL: string;
+    channelDisplayName: string;
+
     connectedDMUser: UserProfile | undefined,
+    threadID: Post['id'];
+    threadUnreadReplies: number | undefined;
+    threadUnreadMentions: number | undefined;
+    rhsSelectedThreadID?: string;
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
     allowScreenSharing: boolean,
 }
@@ -77,7 +97,10 @@ interface State {
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private screenPlayer = React.createRef<HTMLVideoElement>()
+    private expandedRootRef = React.createRef<HTMLDivElement>()
     private pushToTalk = false;
+
+    #unlockNavigation?: () => void;
 
     constructor(props: Props) {
         super(props);
@@ -91,6 +114,22 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (window.opener) {
             const callsClient = window.opener.callsClient;
             callsClient.on('close', () => window.close());
+
+            // don't allow navigation in expanded window e.g. permalinks in rhs
+            this.#unlockNavigation = props.history.block(() => {
+                return false;
+            });
+        } else if (window.desktop) {
+            // TODO: remove this as soon as we support opening a window from desktop app.
+            props.history.listen((_, action) => {
+                if (action === 'REPLACE') {
+                    // don't hide expanded view when location is replaced e.g. permalink/id is quietly removed after permalink nav occurred
+                    return;
+                }
+
+                // navigation changed, hide expanded view e.g. a permalink was clicked in rhs
+                this.props.hideExpandedView();
+            });
         }
     }
 
@@ -107,6 +146,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     handleKeyUp = (ev: KeyboardEvent) => {
+        if (isActiveElementInteractable() && !this.expandedRootRef.current?.contains(document.activeElement)) {
+            return;
+        }
+
         if (keyToAction('popout', ev) === PUSH_TO_TALK && this.pushToTalk) {
             this.getCallsClient()?.mute();
             this.pushToTalk = false;
@@ -116,6 +159,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
+            return;
+        }
+
+        if (isActiveElementInteractable() && !this.expandedRootRef.current?.contains(document.activeElement)) {
             return;
         }
 
@@ -260,6 +307,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     document.title = `Call - ${this.props.channel.display_name}`;
                 }
             }
+
+            if (this.props.selectRhsPost) {
+                // global rhs supported
+
+                if (this.props.threadID && !prevProps.threadID) {
+                    // prefetch to get initial unreads
+                    this.props.prefetchThread(this.props.threadID);
+                }
+            }
         }
 
         if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer?.current.srcObject !== this.state.screenStream) {
@@ -313,16 +369,45 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             },
             screenStream,
         });
+
+        if (window.opener) {
+            // core styling for rhs in expanded window
+            document.body.classList.add('app__body');
+            applyOnyx();
+
+            if (this.props.selectRhsPost) {
+                // global rhs supported
+
+                if (this.props.threadID) {
+                    // prefetch to get initial unreads
+                    this.props.prefetchThread(this.props.threadID);
+                }
+            }
+        }
+    }
+
+    toggleChat = async () => {
+        if (this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID) {
+            // close rhs
+            this.props.closeRhs?.();
+        } else if (this.props.channel.team_id && this.props.channel.team_id !== this.props.currentTeamID) {
+            // go to call thread in channels
+            this.props.history.push(`/${this.props.channelTeam.name}/pl/${this.props.threadID}`);
+        } else if (this.props.threadID) {
+            // open thread
+            this.props.selectRhsPost?.(this.props.threadID);
+        }
     }
 
     public componentWillUnmount() {
         window.removeEventListener('keydown', this.handleKBShortcuts, true);
         window.removeEventListener('keyup', this.handleKeyUp, true);
         window.removeEventListener('blur', this.handleBlur, true);
+        this.#unlockNavigation?.();
     }
 
     shouldRenderAlertBanner = () => {
-        return Object.entries(this.state.alerts).filter(kv => kv[1].show).length > 0;
+        return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
     }
 
     renderAlertBanner = () => {
@@ -378,11 +463,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return (
             <div
                 style={{
-                    ...style.screenContainer,
+                    ...styles.screenContainer,
 
                     // Account for when we display an alert banner.
                     maxHeight: `calc(100% - ${this.shouldRenderAlertBanner() ? 240 : 200}px)`,
-                } as CSSProperties}
+                }}
             >
                 <video
                     id='screen-player'
@@ -595,16 +680,33 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
         const participantsText = 'Show participants list';
 
+        let chatToolTipText = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID ? 'Click to close chat' : 'Click to open chat';
+        const chatToolTipSubtext = '';
+        const chatDisabled = Boolean(this.props.channel?.team_id) && this.props.channel.team_id !== this.props.currentTeamID;
+        if (chatDisabled) {
+            chatToolTipText = `Chat unavailable: different team selected. Click here to switch back to ${this.props.channelDisplayName} in ${this.props.channelTeam.display_name}.`;
+        }
+
+        const globalRhsSupported = Boolean(this.props.selectRhsPost);
+
+        const isChatUnread = Boolean(this.props.threadUnreadReplies);
+
         return (
             <div
+                ref={this.expandedRootRef}
                 id='calls-expanded-view'
-                style={style.root as CSSProperties}
+                style={globalRhsSupported ? styles.root : {
+                    ...styles.root,
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                }}
             >
-                <div style={style.main as CSSProperties}>
+                <div style={styles.main}>
                     { this.renderAlertBanner() }
 
                     <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
-                        <div style={style.topLeftContainer as CSSProperties}>
+                        <div style={styles.topLeftContainer}>
                             <CallDuration
                                 style={{margin: '4px'}}
                                 startAt={this.props.callStartAt}
@@ -617,7 +719,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             !window.opener &&
                             <button
                                 className='button-close'
-                                style={style.closeViewButton as CSSProperties}
+                                style={styles.closeViewButton}
                                 onClick={this.onCloseViewClick}
                             >
                                 <CompassIcon icon='arrow-collapse'/>
@@ -629,7 +731,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <ul
                         id='calls-expanded-view-participants-grid'
                         style={{
-                            ...style.participants,
+                            ...styles.participants,
                             gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
                         }}
                     >
@@ -639,7 +741,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     { this.props.screenSharingID && this.renderScreenSharingPlayer() }
                     <div
                         id='calls-expanded-view-controls'
-                        style={style.controls}
+                        style={styles.controls}
                     >
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start', marginLeft: '16px'}}>
                             <ControlsButton
@@ -657,7 +759,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         </div>
 
-                        <div style={style.centerControls}>
+                        <div style={styles.centerControls}>
                             <ControlsButton
                                 id='calls-popout-raisehand-button'
                                 onToggle={() => this.onRaiseHandToggle()}
@@ -695,7 +797,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 tooltipText={muteTooltipText}
                                 tooltipSubtext={muteTooltipSubtext}
                                 // eslint-disable-next-line no-undefined
-                                shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][1]}
+                                shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
                                 bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
                                 icon={
                                     <MuteIcon
@@ -704,6 +806,29 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 }
                                 unavailable={noInputDevices || noAudioPermissions}
                             />
+                            {globalRhsSupported && (
+                                <ControlsButton
+                                    id='calls-popout-chat-button'
+                                    onToggle={this.toggleChat}
+                                    tooltipText={chatToolTipText}
+                                    tooltipSubtext={chatToolTipSubtext}
+                                    // eslint-disable-next-line no-undefined
+                                    shortcut={undefined}
+                                    bgColor={''}
+                                    icon={
+                                        <div css={{position: 'relative'}}>
+                                            <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
+                                                size={28}
+                                                color={'white'}
+                                            />
+                                            {!chatDisabled && isChatUnread && (
+                                                <UnreadIndicator mentions={this.props.threadUnreadMentions}/>
+                                            )}
+                                        </div>
+                                    }
+                                    unavailable={chatDisabled}
+                                />
+                            )}
                         </div>
 
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
@@ -738,27 +863,66 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     </div>
                 </div>
                 { this.state.showParticipantsList &&
-                <ul style={style.rhs as CSSProperties}>
+                <ul style={styles.rhs}>
                     <span style={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Participants list'}</span>
                     { this.renderParticipantsRHSList() }
                 </ul>
                 }
+                {globalRhsSupported && <ExpandedViewGlobalsStyle callThreadSelected={this.props.rhsSelectedThreadID === this.props.threadID}/>}
             </div>
         );
     }
 }
 
-const style = {
+const isActiveElementInteractable = () => {
+    return document.activeElement && ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName);
+};
+
+const UnreadIndicator = ({mentions}: {mentions?: number}) => {
+    return (
+        <UnreadDot>{mentions && mentions > 99 ? '99+' : mentions || null}</UnreadDot>
+    );
+};
+
+const UnreadDot = styled.span`
+    position: absolute;
+    z-index: 1;
+    top: 0px;
+    right: -1px;
+    width: 8px;
+    height: 8px;
+    background: var(--mention-bg);
+    border-radius: 9px;
+    box-shadow: 0 0 0 2px rgb(37 38 42);
+    color: white;
+    &:not(:empty) {
+        top: -7px;
+        right: -8px;
+        width: auto;
+        min-width: 20px;
+        height: auto;
+        padding: 0 6px;
+        border-radius: 8px;
+        font-size: 11px;
+        -webkit-font-smoothing: subpixel-antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-weight: 700;
+        letter-spacing: 0;
+        line-height: 16px;
+        text-align: center;
+    }
+`;
+
+const styles: Record<string, CSSObject> = {
     root: {
-        position: 'absolute',
         display: 'flex',
-        top: 0,
-        left: 0,
         width: '100%',
         height: '100%',
         zIndex: 1000,
         background: 'rgba(37, 38, 42, 1)',
         color: 'white',
+        gridArea: 'center',
+        overflow: 'auto',
     },
     main: {
         display: 'flex',
@@ -814,3 +978,31 @@ const style = {
         overflow: 'auto',
     },
 };
+
+const ExpandedViewGlobalsStyle = createGlobalStyle<{callThreadSelected: boolean}>`
+    #root {
+        > #global-header,
+        > .team-sidebar,
+        > .app-bar,
+        > #channel_view .channel__wrap,
+        > #SidebarContainer {
+            display: none;
+        }
+        #sidebar-right #sbrSearchFormContainer {
+            // mobile search not supported in expanded view or expanded window
+            // TODO move to hideMobileSearchBarInRHS prop of Search component in mattermost-webapp
+            display: none;
+        }
+        .channel-view-inner {
+            padding: 0;
+        }
+        ${({callThreadSelected}) => !callThreadSelected && css`
+            .sidebar--right {
+                display: none;
+            }
+        `}
+    }
+    #sidebar-right {
+        z-index: 1001;
+    }
+`;

@@ -93,10 +93,15 @@ module.exports = {
                     },
                 ],
             },
+            {
+                resourceQuery: /inline/,
+                type: 'asset/inline',
+            },
         ],
     },
     externals: {
         react: 'React',
+        'react-dom': 'ReactDOM',
         redux: 'Redux',
         luxon: 'Luxon',
         'react-redux': 'ReactRedux',
