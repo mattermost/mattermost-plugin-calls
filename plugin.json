@@ -93,7 +93,7 @@
           "display_name": "Allow screen sharing",
           "type": "bool",
           "default": true,
-          "help_text": "When set to true it allows calls participants to share their screen."
+          "help_text": "When set to true it allows call participants to share their screen."
         },
         {
           "key": "RTCDServiceURL",

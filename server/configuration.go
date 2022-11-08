@@ -63,7 +63,7 @@ type clientConfig struct {
 	MaxCallParticipants *int
 	// Used to signal the client whether or not to generate TURN credentials. This is a client only option, generated server side.
 	NeedsTURNCredentials *bool
-	// When set to true it allows calls participants to share their screen.
+	// When set to true it allows call participants to share their screen.
 	AllowScreenSharing *bool
 }
 

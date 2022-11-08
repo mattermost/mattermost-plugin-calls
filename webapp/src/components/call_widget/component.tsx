@@ -460,6 +460,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
+        if (!this.props.allowScreenSharing) {
+            return;
+        }
         const state = {} as State;
 
         if (this.props.screenSharingID === this.props.currentUserID) {
@@ -723,7 +726,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
                 icon={<ScreenIcon style={{width: '16px', height: '16px', fill}}/>}
                 unavailable={this.state.alerts.missingScreenPermissions.active}
-                disabled={(sharingID !== '' && !isSharing) || !this.props.allowScreenSharing}
+                disabled={sharingID !== '' && !isSharing}
             />
         );
     }
@@ -982,7 +985,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const sharingID = this.props.screenSharingID;
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
-        const isDisabled = Boolean(sharingID !== '' && !isSharing) || !this.props.allowScreenSharing;
+        const isDisabled = Boolean(sharingID !== '' && !isSharing);
         const noPermissions = this.state.alerts.missingScreenPermissions.active;
 
         return (
@@ -1049,7 +1052,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='Menu__content dropdown-menu'
                     style={this.style.dotsMenu as CSSProperties}
                 >
-                    {!hasTeamSidebar && this.renderScreenSharingMenuItem()}
+                    {this.props.allowScreenSharing && !hasTeamSidebar && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
                 </ul>
@@ -1389,7 +1392,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%', zIndex: -1}}>
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
-                    {this.renderScreenSharingPanel()}
+                    {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
                     {this.renderMenu(hasTeamSidebar)}
                 </div>
@@ -1503,7 +1506,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         />
                         }
 
-                        {(hasTeamSidebar || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
+                        {this.props.allowScreenSharing && (hasTeamSidebar || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <WidgetButton
                             id='voice-mute-unmute'
