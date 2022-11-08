@@ -9,10 +9,16 @@ import RTCPeer from './rtcpeer';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';
-import {WebSocketClient, wsReconnectionTimeoutErr} from './websocket';
+import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 import VoiceActivityDetector from './vad';
 
 import {parseRTCStats} from './rtc_stats';
+
+export const AudioInputPermissionsError = new Error('missing audio input permissions');
+export const AudioInputMissingError = new Error('no audio input available');
+export const rtcPeerErr = new Error('rtc peer error');
+export const rtcPeerCloseErr = new Error('rtc peer close');
+export const insecureContextErr = new Error('insecure context');
 
 export default class CallsClient extends EventEmitter {
     public channelID: string;
@@ -79,19 +85,20 @@ export default class CallsClient extends EventEmitter {
 
     private async updateDevices() {
         logDebug('a/v device change detected');
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        this.audioDevices = {
-            inputs: devices.filter((device) => device.kind === 'audioinput'),
-            outputs: devices.filter((device) => device.kind === 'audiooutput'),
-        };
-        this.emit('devicechange', this.audioDevices);
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            this.audioDevices = {
+                inputs: devices.filter((device) => device.kind === 'audioinput'),
+                outputs: devices.filter((device) => device.kind === 'audiooutput'),
+            };
+            this.emit('devicechange', this.audioDevices);
+        } catch (err) {
+            logErr(err);
+        }
     }
 
-    public async init(channelID: string, title?: string) {
-        this.channelID = channelID;
-        await this.updateDevices();
-        navigator.mediaDevices.addEventListener('devicechange', this.onDeviceChange);
-
+    private async initAudio() {
         const audioOptions = {
             autoGainControl: true,
             echoCancellation: true,
@@ -131,29 +138,64 @@ export default class CallsClient extends EventEmitter {
             }
         }
 
-        this.stream = await navigator.mediaDevices.getUserMedia({
-            video: false,
-            audio: audioOptions,
-        });
+        try {
+            this.stream = await navigator.mediaDevices.getUserMedia({
+                video: false,
+                audio: audioOptions,
+            });
 
-        // updating the devices again cause some browsers (e.g Firefox) will
-        // return empty labels unless permissions were previously granted.
+            // updating the devices again cause some browsers (e.g Firefox) will
+            // return empty labels unless permissions were previously granted.
+            await this.updateDevices();
+
+            this.audioTrack = this.stream.getAudioTracks()[0];
+            this.streams.push(this.stream);
+
+            this.initVAD(this.stream);
+            this.audioTrack.enabled = false;
+
+            this.emit('initaudio');
+        } catch (err) {
+            logErr(err);
+            if (this.audioDevices.inputs.length > 0) {
+                throw AudioInputPermissionsError;
+            }
+            throw AudioInputMissingError;
+        }
+    }
+
+    public async init(channelID: string, title?: string) {
+        this.channelID = channelID;
+
+        if (!window.isSecureContext) {
+            throw insecureContextErr;
+        }
+
         await this.updateDevices();
+        navigator.mediaDevices.addEventListener('devicechange', this.onDeviceChange);
 
-        this.audioTrack = this.stream.getAudioTracks()[0];
-        this.streams.push(this.stream);
-
-        this.initVAD(this.stream);
-        this.audioTrack.enabled = false;
+        try {
+            await this.initAudio();
+        } catch (err) {
+            this.emit('error', err);
+        }
 
         const ws = new WebSocketClient(this.config.wsURL);
         this.ws = ws;
 
-        ws.on('error', (err) => {
+        ws.on('error', (err: WebSocketError) => {
             logErr('ws error', err);
-            if (err === wsReconnectionTimeoutErr) {
+            switch (err.type) {
+            case WebSocketErrorType.Native:
+                break;
+            case WebSocketErrorType.ReconnectTimeout:
                 this.ws = null;
-                this.disconnect();
+                this.disconnect(err);
+                break;
+            case WebSocketErrorType.Join:
+                this.disconnect(err);
+                break;
+            default:
             }
         });
 
@@ -196,6 +238,7 @@ export default class CallsClient extends EventEmitter {
 
             peer.on('answer', (sdp) => {
                 logDebug(`local signal: ${JSON.stringify(sdp)}`);
+
                 ws.send('sdp', {
                     data: deflate(JSON.stringify(sdp)),
                 }, true);
@@ -210,13 +253,15 @@ export default class CallsClient extends EventEmitter {
             peer.on('error', (err) => {
                 logErr('peer error', err);
                 if (!this.closed) {
-                    this.disconnect();
+                    this.disconnect(rtcPeerErr);
                 }
             });
 
             peer.on('stream', (remoteStream) => {
-                logDebug('new remote stream received', remoteStream);
-                logDebug('remote tracks', remoteStream.getTracks());
+                logDebug('new remote stream received', remoteStream.id);
+                for (const track of remoteStream.getTracks()) {
+                    logDebug('remote track', track.kind, track.id);
+                }
 
                 this.streams.push(remoteStream);
 
@@ -236,7 +281,7 @@ export default class CallsClient extends EventEmitter {
             peer.on('close', () => {
                 logDebug('rtc closed');
                 if (!this.closed) {
-                    this.disconnect();
+                    this.disconnect(rtcPeerCloseErr);
                 }
             });
         });
@@ -262,8 +307,6 @@ export default class CallsClient extends EventEmitter {
                 }
             }
         });
-
-        return this;
     }
 
     public destroy() {
@@ -272,6 +315,8 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('remoteVoiceStream');
         this.removeAllListeners('remoteScreenStream');
         this.removeAllListeners('devicechange');
+        this.removeAllListeners('error');
+        this.removeAllListeners('initaudio');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
     }
@@ -310,8 +355,10 @@ export default class CallsClient extends EventEmitter {
         newTrack.enabled = isEnabled;
         if (isEnabled) {
             if (this.voiceTrackAdded) {
+                logDebug('replacing track to peer', newTrack.id);
                 this.peer.replaceTrack(this.audioTrack.id, newTrack);
             } else {
+                logDebug('adding track to peer', newTrack.id, this.stream.id);
                 this.peer.addTrack(newTrack, this.stream);
             }
         } else {
@@ -328,7 +375,7 @@ export default class CallsClient extends EventEmitter {
         this.currentAudioOutputDevice = device;
     }
 
-    public disconnect() {
+    public disconnect(err?: Error) {
         logDebug('disconnect');
 
         if (this.closed) {
@@ -340,8 +387,8 @@ export default class CallsClient extends EventEmitter {
         if (this.peer) {
             this.getStats().then((stats) => {
                 sessionStorage.setItem('calls_client_stats', JSON.stringify(stats));
-            }).catch((err) => {
-                logErr(err);
+            }).catch((statsErr) => {
+                logErr(statsErr);
             });
             this.peer.destroy();
             this.peer = null;
@@ -365,7 +412,7 @@ export default class CallsClient extends EventEmitter {
             this.ws = null;
         }
 
-        this.emit('close');
+        this.emit('close', err);
     }
 
     public isMuted() {
@@ -384,6 +431,8 @@ export default class CallsClient extends EventEmitter {
             this.voiceDetector.stop();
         }
 
+        logDebug('replacing track to peer', null);
+
         // @ts-ignore: we actually mean (and need) to pass null here
         this.peer.replaceTrack(this.audioTrack.id, null);
         this.audioTrack.enabled = false;
@@ -393,9 +442,18 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
-    public unmute() {
-        if (!this.peer || !this.audioTrack || !this.stream) {
+    public async unmute() {
+        if (!this.peer) {
             return;
+        }
+
+        if (!this.audioTrack) {
+            try {
+                await this.initAudio();
+            } catch (err) {
+                this.emit('error', err);
+                return;
+            }
         }
 
         if (this.voiceDetector) {
@@ -403,12 +461,14 @@ export default class CallsClient extends EventEmitter {
         }
 
         if (this.voiceTrackAdded) {
-            this.peer.replaceTrack(this.audioTrack.id, this.audioTrack);
+            logDebug('replacing track to peer', this.audioTrack!.id);
+            this.peer.replaceTrack(this.audioTrack!.id, this.audioTrack!);
         } else {
-            this.peer.addTrack(this.audioTrack, this.stream);
+            logDebug('adding track to peer', this.audioTrack!.id, this.stream!.id);
+            this.peer.addTrack(this.audioTrack!, this.stream!);
             this.voiceTrackAdded = true;
         }
-        this.audioTrack.enabled = true;
+        this.audioTrack!.enabled = true;
         if (this.ws) {
             this.ws.send('unmute');
         }
@@ -461,6 +521,7 @@ export default class CallsClient extends EventEmitter {
             this.ws.send('screen_off');
         };
 
+        logDebug('adding stream to peer', screenStream.id);
         this.peer.addStream(screenStream);
 
         this.ws.send('screen_on', {
@@ -544,5 +605,9 @@ export default class CallsClient extends EventEmitter {
             tracksInfo,
             rtcStats: stats ? parseRTCStats(stats) : null,
         };
+    }
+
+    public getAudioDevices() {
+        return this.audioDevices;
     }
 }

@@ -15,7 +15,7 @@ const MutedIcon: React.FC<Props> = (props: Props) => (
     <svg
         style={props.style}
         className={props.className}
-        fill={props.fill}
+        fill={props.fill || 'currentColor'}
         width='14px'
         height='15px'
         viewBox='0 0 14 15'
@@ -28,7 +28,7 @@ const MutedIcon: React.FC<Props> = (props: Props) => (
             y1='1'
             x2='12'
             y2='14'
-            stroke={props.stroke || 'currentColor'}
+            stroke={props.stroke || 'var(--dnd-indicator)'}
             strokeWidth={props.strokeWidth || 1.5}
         />
     </svg>

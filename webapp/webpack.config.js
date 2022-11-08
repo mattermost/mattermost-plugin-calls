@@ -93,6 +93,10 @@ module.exports = {
                     },
                 ],
             },
+            {
+                resourceQuery: /inline/,
+                type: 'asset/inline',
+            },
         ],
     },
     externals: {

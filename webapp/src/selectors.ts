@@ -1,12 +1,19 @@
 import {getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {GlobalState} from '@mattermost/types/store';
 
+import {getCurrentUserId, getUsers, getUserIdsInChannels} from 'mattermost-redux/selectors/entities/users';
+import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {createSelector} from 'reselect';
 
 import {LicenseSkus} from '@mattermost/types/general';
+import {Channel} from '@mattermost/types/channels';
 
-import {isDMChannel} from 'src/utils';
+import {getGroupDisplayNameFromUserIds, getUserIdFromChannelName, isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
+
+import {displayUsername} from 'mattermost-redux/utils/user_utils';
+
+import {getChannelURL, isDMChannel} from 'src/utils';
 
 import {CallsConfig, CallsUserPreferences} from 'src/types/types';
 
@@ -121,7 +128,7 @@ export const maxParticipants: (state: GlobalState) => number = createSelector(
 );
 
 export const needsTURNCredentials: (state: GlobalState) => boolean = createSelector(
-    'maxParticipants',
+    'needsTURNCredentials',
     callsConfig,
     (config) => config.NeedsTURNCredentials,
 );
@@ -131,6 +138,12 @@ export const isLimitRestricted: (state: GlobalState) => boolean = createSelector
     numCurrentVoiceConnectedUsers,
     maxParticipants,
     (numCurrentUsers, max) => max > 0 && numCurrentUsers >= max,
+);
+
+export const allowScreenSharing: (state: GlobalState) => boolean = createSelector(
+    'allowScreenSharing',
+    callsConfig,
+    (config) => config.AllowScreenSharing,
 );
 
 export const endCallModal = (state: GlobalState) => {
@@ -235,6 +248,8 @@ export const shouldPlayJoinUserSound: (state: GlobalState) => boolean = createSe
     },
 );
 
+export const getClientError = (state: GlobalState) => getPluginState(state).clientErr;
+
 export const isOnPremNotEnterprise: (state: GlobalState) => boolean = createSelector(
     'isOnPremNotEnterprise',
     isCloud,
@@ -246,3 +261,27 @@ export const isOnPremNotEnterprise: (state: GlobalState) => boolean = createSele
 );
 
 export const adminStats = (state: GlobalState) => state.entities.admin.analytics;
+
+export const getChannelUrlAndDisplayName = (state: GlobalState, channel: Channel) => {
+    const currentUserID = getCurrentUserId(state);
+    const teammateNameDisplaySetting = getTeammateNameDisplaySetting(state);
+    const users = getUsers(state);
+
+    let channelURL = '';
+    let channelDisplayName = '';
+    if (channel) {
+        channelURL = getChannelURL(state, channel, channel.team_id);
+
+        if (isDirectChannel(channel)) {
+            const otherUserID = getUserIdFromChannelName(currentUserID, channel.name);
+            const otherUser = users[otherUserID];
+            channelDisplayName = displayUsername(otherUser, teammateNameDisplaySetting, false);
+        } else if (isGroupChannel(channel)) {
+            const userIdsInChannel = getUserIdsInChannels(state)?.[channel.id];
+            channelDisplayName = userIdsInChannel && getGroupDisplayNameFromUserIds(userIdsInChannel, users, currentUserID, teammateNameDisplaySetting);
+        } else {
+            channelDisplayName = channel.display_name;
+        }
+    }
+    return {channelURL, channelDisplayName};
+};

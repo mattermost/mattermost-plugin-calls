@@ -9,8 +9,16 @@ import {Client4} from 'mattermost-redux/client';
 
 import {CloudCustomer} from '@mattermost/types/cloud';
 
-import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
+
+import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
+
+import {getThread} from 'mattermost-redux/selectors/entities/threads';
+
+import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
+
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
 import {CallsConfig} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
@@ -25,6 +33,11 @@ import {
 } from 'src/cloud_pricing/modals';
 
 import {
+    CallErrorModalID,
+    CallErrorModal,
+} from 'src/components/call_error_modal';
+
+import {
     SHOW_EXPANDED_VIEW,
     HIDE_EXPANDED_VIEW,
     SHOW_SWITCH_CALL_MODAL,
@@ -33,6 +46,7 @@ import {
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_END_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
+    RECEIVED_CLIENT_ERROR,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -166,6 +180,27 @@ export const endCall = (channelID: string) => {
         {headers: {'X-Requested-With': 'XMLHttpRequest'}});
 };
 
+export const displayCallErrorModal = (channelID: string, err: Error) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: RECEIVED_CLIENT_ERROR,
+        data: {
+            channelID,
+            err,
+        },
+    });
+    dispatch(modals.openModal({
+        modalId: CallErrorModalID,
+        dialogType: CallErrorModal,
+    }));
+};
+
+export const clearClientError = () => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: RECEIVED_CLIENT_ERROR,
+        data: null,
+    });
+};
+
 export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
         const config = getConfig(getState());
@@ -187,3 +222,15 @@ export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, pro
         );
     };
 };
+
+export function prefetchThread(postId: string) {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const state = getState();
+        const teamId = getCurrentTeamId(state);
+        const currentUserId = getCurrentUserId(state);
+
+        const thread = getThread(state, postId) ?? (await dispatch(fetchThread(currentUserId, teamId, postId, isCollapsedThreadsEnabled(state)))).data;
+
+        return {data: thread};
+    };
+}

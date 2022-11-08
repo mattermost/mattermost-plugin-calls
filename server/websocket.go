@@ -37,6 +37,10 @@ const (
 )
 
 func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, handlerID string) error {
+	if cfg := p.getConfiguration(); cfg == nil || cfg.AllowScreenSharing == nil || !*cfg.AllowScreenSharing {
+		return fmt.Errorf("screen sharing is not allowed")
+	}
+
 	data := map[string]string{}
 	if msg.Type == clientMessageTypeScreenOn {
 		if err := json.Unmarshal(msg.Data, &data); err != nil {
@@ -58,12 +62,17 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 			}
 			state.Call.ScreenSharingID = us.userID
 			state.Call.ScreenStreamID = data["screenStreamID"]
+			state.Call.ScreenStartAt = time.Now().Unix()
 		} else {
 			if state.Call.ScreenSharingID != us.userID {
 				return nil, fmt.Errorf("cannot stop screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
 			}
 			state.Call.ScreenSharingID = ""
 			state.Call.ScreenStreamID = ""
+			if state.Call.ScreenStartAt > 0 {
+				state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
+				state.Call.ScreenStartAt = 0
+			}
 		}
 
 		return state, nil

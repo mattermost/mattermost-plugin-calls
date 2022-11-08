@@ -65,18 +65,20 @@ export type CallsConfig = {
     DefaultEnabled: boolean,
     MaxCallParticipants: number,
     NeedsTURNCredentials: boolean,
+    AllowScreenSharing: boolean,
     sku_short_name: string,
 }
 
-export const CallsConfigDefault = {
+export const CallsConfigDefault: CallsConfig = {
     ICEServers: [],
     ICEServersConfigs: [],
     AllowEnableCalls: false,
     DefaultEnabled: false,
     MaxCallParticipants: 0,
     NeedsTURNCredentials: false,
+    AllowScreenSharing: true,
     sku_short_name: '',
-} as CallsConfig;
+};
 
 export type CallsClientConfig = {
     wsURL: string,
@@ -110,6 +112,43 @@ export type CallsUserPreferences = {
 
 export const CallsUserPreferencesDefault = {
     joinSoundParticipantsThreshold: 8,
+};
+
+export enum CallAlertType {
+    Error = 'error',
+    Warning = 'warning',
+}
+
+export type CallAlertConfig = {
+    type: CallAlertType,
+    icon: string,
+    bannerText: string,
+    tooltipText: string,
+    tooltipSubtext: string,
+}
+
+export type CallAlertState = {
+    active: boolean,
+    show: boolean,
+}
+
+export type CallAlertStates = {
+    [key: string]: CallAlertState,
+}
+
+export const CallAlertStatesDefault = {
+    missingAudioInput: {
+        active: false,
+        show: false,
+    },
+    missingAudioInputPermissions: {
+        active: false,
+        show: false,
+    },
+    missingScreenPermissions: {
+        active: false,
+        show: false,
+    },
 };
 
 export type EmojiData = {

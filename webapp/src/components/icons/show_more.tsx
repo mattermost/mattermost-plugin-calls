@@ -20,8 +20,6 @@ export default function ShowMore(props: Props) {
         >
             <path
                 d='M0.444 8.43805L3.882 5.00005L0.444 1.56205L1.506 0.500048L6.006 5.00005L1.506 9.50005L0.444 8.43805Z'
-                fill='#3D3C40'
-                fillOpacity='0.56'
             />
         </svg>
     );
