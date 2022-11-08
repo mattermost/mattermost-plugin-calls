@@ -36,6 +36,10 @@ const (
 )
 
 func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, handlerID string) error {
+	if cfg := p.getConfiguration(); cfg == nil || cfg.AllowScreenSharing == nil || !*cfg.AllowScreenSharing {
+		return fmt.Errorf("screen sharing is not allowed")
+	}
+
 	data := map[string]string{}
 	if msg.Type == clientMessageTypeScreenOn {
 		if err := json.Unmarshal(msg.Data, &data); err != nil {

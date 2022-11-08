@@ -64,6 +64,7 @@ export type CallsConfig = {
     DefaultEnabled: boolean,
     MaxCallParticipants: number,
     NeedsTURNCredentials: boolean,
+    AllowScreenSharing: boolean,
     sku_short_name: string,
 }
 
@@ -74,6 +75,7 @@ export const CallsConfigDefault: CallsConfig = {
     DefaultEnabled: false,
     MaxCallParticipants: 0,
     NeedsTURNCredentials: false,
+    AllowScreenSharing: true,
     sku_short_name: '',
 };
 

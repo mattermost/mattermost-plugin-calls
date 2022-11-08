@@ -14,7 +14,16 @@ import {UserState} from '../../types/types';
 
 import {showExpandedView, showScreenSourceModal, trackEvent} from '../../actions';
 
-import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelCallStartAt, voiceChannelScreenSharingID, expandedView, getChannelUrlAndDisplayName} from '../../selectors';
+import {
+    connectedChannelID,
+    voiceConnectedProfiles,
+    voiceUsersStatuses,
+    voiceChannelCallStartAt,
+    voiceChannelScreenSharingID,
+    expandedView,
+    getChannelUrlAndDisplayName,
+    allowScreenSharing,
+} from '../../selectors';
 
 import {alphaSortProfiles, stateSortProfiles} from '../../utils';
 
@@ -57,6 +66,7 @@ const mapStateToProps = (state: GlobalState) => {
         statuses: voiceUsersStatuses(state) || {},
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         screenSharingID,
+        allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),
     };
 };

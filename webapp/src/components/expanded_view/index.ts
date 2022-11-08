@@ -32,6 +32,7 @@ import {
     voiceChannelScreenSharingID,
     voiceChannelRootPost,
     getChannelUrlAndDisplayName,
+    allowScreenSharing,
 } from '../../selectors';
 
 import ExpandedView from './component';
@@ -85,6 +86,7 @@ const mapStateToProps = (state: GlobalState) => {
         threadUnreadMentions: thread?.unread_mentions,
         rhsSelectedThreadID: getRhsSelectedPostId?.(state),
         isRhsOpen: getIsRhsOpen?.(state),
+        allowScreenSharing: allowScreenSharing(state),
     };
 };
 

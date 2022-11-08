@@ -124,7 +124,7 @@ export const maxParticipants: (state: GlobalState) => number = createSelector(
 );
 
 export const needsTURNCredentials: (state: GlobalState) => boolean = createSelector(
-    'maxParticipants',
+    'needsTURNCredentials',
     callsConfig,
     (config) => config.NeedsTURNCredentials,
 );
@@ -134,6 +134,12 @@ export const isLimitRestricted: (state: GlobalState) => boolean = createSelector
     numCurrentVoiceConnectedUsers,
     maxParticipants,
     (numCurrentUsers, max) => max > 0 && numCurrentUsers >= max,
+);
+
+export const allowScreenSharing: (state: GlobalState) => boolean = createSelector(
+    'allowScreenSharing',
+    callsConfig,
+    (config) => config.AllowScreenSharing,
 );
 
 export const endCallModal = (state: GlobalState) => {
