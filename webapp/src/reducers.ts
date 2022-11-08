@@ -56,7 +56,7 @@ interface channelStateAction {
     data: channelState,
 }
 
-const channelState = (state: {[channelID: string]: channelState} = {}, action: channelStateAction) => {
+const channelState = (state: { [channelID: string]: channelState } = {}, action: channelStateAction) => {
     switch (action.type) {
     case RECEIVED_CHANNEL_STATE:
         return {
@@ -257,7 +257,12 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
             return {
                 ...state,
                 [action.data.channelID]: {
-                    reactions: queueReactions(state[action.data.channelID].reactions, {...action.data.reaction, user_id: action.data.userID}),
+                    reactions: queueReactions(
+                        state[action.data.channelID].reactions,
+                        {
+                            ...action.data.reaction,
+                            user_id: action.data.userID,
+                        }),
                 },
             };
         }
@@ -269,7 +274,12 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
         return {
             ...state,
             [action.data.channelID]: {
-                reactions: removeReaction(state[action.data.channelID].reactions, {...action.data.reaction, user_id: action.data.userID}),
+                reactions: removeReaction(
+                    state[action.data.channelID].reactions,
+                    {
+                        ...action.data.reaction,
+                        user_id: action.data.userID,
+                    }),
             },
         };
     default:
@@ -507,7 +517,7 @@ interface callStartAction {
     data: callState,
 }
 
-const voiceChannelCalls = (state: {[channelID: string]: callState} = {}, action: callStartAction) => {
+const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, action: callStartAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
@@ -622,7 +632,7 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
     }
 };
 
-const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { type: string, data: CallsUserPreferences}) => {
+const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { type: string, data: CallsUserPreferences }) => {
     switch (action.type) {
     case RECEIVED_CALLS_USER_PREFERENCES:
         return action.data;
