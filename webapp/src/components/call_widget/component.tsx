@@ -266,6 +266,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
+        if (!this.props.show) {
+            return;
+        }
         switch (keyToAction('widget', ev)) {
         case MUTE_UNMUTE:
             this.onMuteToggle();
@@ -326,6 +329,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEl.autoplay = true;
             audioEl.style.display = 'none';
             audioEl.onerror = (err) => logErr(err);
+            audioEl.id = voiceTrack.id;
 
             const deviceID = window.callsClient.currentAudioOutputDevice?.deviceId;
             if (deviceID) {
