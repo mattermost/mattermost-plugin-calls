@@ -18,10 +18,28 @@ import {VerticalSpacer} from 'src/components/shared';
 export const IDUser = 'cloud_free_trial_user';
 export const IDAdmin = 'cloud_free_trial_admin';
 
+// @ts-ignore
+const useNotifyAdmin = window.useNotifyAdmin;
+
 type Props = Partial<ComponentProps<typeof GenericModal>>;
+
+export enum PaidLicenseSkus {
+    Professional = 'professional',
+    Enterprise = 'enterprise',
+}
+
+// CallsPaidFeatures must be a subset of mattermost-webapp/utils/constants -> PaidFeatures
+export const CallsPaidFeatures = {
+    START_CALL: 'mattermost.feature.start_call',
+};
 
 export const CloudFreeTrialModalUser = (modalProps: Props) => {
     const {formatMessage} = useIntl();
+    const [, notify] = useNotifyAdmin({}, {
+        trial_notification: false,
+        required_plan: PaidLicenseSkus.Professional,
+        required_feature: CallsPaidFeatures.START_CALL,
+    });
 
     return (
         <SizedGenericModal
@@ -30,8 +48,9 @@ export const CloudFreeTrialModalUser = (modalProps: Props) => {
             modalHeaderText={formatMessage({defaultMessage: 'Try channel calls with a free trial'})}
             confirmButtonText={formatMessage({defaultMessage: 'Notify Admin'})}
             cancelButtonText={formatMessage({defaultMessage: 'Back'})}
-            handleConfirm={() => {
-                notifyAdminCloudFreeTrial();
+            handleConfirm={(e) => {
+                notifyAdminCloudFreeTrial(); // this is instant notification
+                notify(e, 'calls_cloud_free_trial_modal'); // this will come as part of a summary at the end of a 14 day notification cycle
             }}
             showCancel={true}
             onHide={() => null}

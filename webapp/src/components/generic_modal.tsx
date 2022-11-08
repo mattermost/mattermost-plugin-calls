@@ -17,7 +17,7 @@ type Props = {
     show?: boolean;
     showCancel?: boolean;
     handleCancel?: (() => void) | null;
-    handleConfirm?: (() => void) | null;
+    handleConfirm?: ((e?:any) => void) | null;
     confirmButtonText?: React.ReactNode;
     confirmButtonClassName?: string;
     cancelButtonText?: React.ReactNode;
@@ -70,7 +70,7 @@ export default class GenericModal extends React.PureComponent<Props, State> {
             this.onHide();
         }
 
-        this.props.handleConfirm?.();
+        this.props.handleConfirm?.(event);
     };
 
     render() {
