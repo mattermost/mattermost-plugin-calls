@@ -137,7 +137,7 @@ export const isLimitRestricted: (state: GlobalState) => boolean = createSelector
 );
 
 export const allowScreenSharing: (state: GlobalState) => boolean = createSelector(
-    'maxParticipants',
+    'allowScreenSharing',
     callsConfig,
     (config) => config.AllowScreenSharing,
 );
