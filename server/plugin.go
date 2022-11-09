@@ -50,6 +50,8 @@ type Plugin struct {
 	// TODO: consider moving this to a dedicated API object.
 	apiLimiters    map[string]*rate.Limiter
 	apiLimitersMut sync.RWMutex
+
+	botSession *model.Session
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
