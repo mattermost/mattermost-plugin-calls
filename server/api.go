@@ -55,7 +55,9 @@ func (p *Plugin) handleGetVersion(w http.ResponseWriter, r *http.Request) {
 
 func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	userID := r.Header.Get("Mattermost-User-Id")
-	if !p.isBotSession(r) && !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+	// We should go through only if the user has permissions to the requested channel
+	// or if the user is the Calls bot.
+	if !(p.isBotSession(r) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}

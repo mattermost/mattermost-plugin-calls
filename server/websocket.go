@@ -421,7 +421,9 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
 
-	if !p.isBot(userID) && !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+	// We should go through only if the user has permissions to the requested channel
+	// or if the user is the Calls bot.
+	if !(p.isBot(userID) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost)) {
 		return fmt.Errorf("forbidden")
 	}
 	channel, appErr := p.API.GetChannel(channelID)
