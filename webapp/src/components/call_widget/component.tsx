@@ -35,6 +35,7 @@ import {
 } from 'src/shortcuts';
 import {
     CallAlertConfigs,
+    CallRecordingDisclaimerStrings,
 } from 'src/constants';
 
 import {logDebug, logErr} from 'src/log';
@@ -119,6 +120,7 @@ interface State {
     showUsersJoined: string[],
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
+    recDisclaimerDismissedAt: number,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -260,6 +262,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showUsersJoined: [],
             audioEls: [],
             alerts: CallAlertStatesDefault,
+            recDisclaimerDismissedAt: 0,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -1176,6 +1179,28 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
+    renderRecordingDisclaimer = () => {
+        if (this.state.recDisclaimerDismissedAt) {
+            return null;
+        }
+
+        const isHost = true;
+
+        return (
+            <WidgetBanner
+                key={'widget_banner_recording_disclaimer'}
+                type='info'
+                icon='video-outline'
+                iconFill='rgb(var(--dnd-indicator-rgb))'
+                iconColor='rgb(var(--dnd-indicator-rgb))'
+                header={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header}
+                body={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body}
+                confirmText={isHost ? 'Dismiss' : 'Understood'}
+                onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
+            />
+        );
+    }
+
     renderAlertBanners = () => {
         return Object.entries(this.state.alerts).map((keyVal) => {
             const [alertID, alertState] = keyVal;
@@ -1189,7 +1214,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <WidgetBanner
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
-                    body={alertConfig.bannerText}
+                    header={alertConfig.bannerText}
                     onClose={() => {
                         this.setState({
                             alerts: {
@@ -1477,6 +1502,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
+                    {this.renderRecordingDisclaimer()}
                     {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
                     {this.renderMenu(widerWidget)}

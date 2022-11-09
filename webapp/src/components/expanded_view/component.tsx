@@ -32,6 +32,7 @@ import {
 
 import {
     CallAlertConfigs,
+    CallRecordingDisclaimerStrings,
 } from 'src/constants';
 
 import * as Telemetry from 'src/types/telemetry';
@@ -62,6 +63,7 @@ import {
 
 import GlobalBanner from './global_banner';
 import ControlsButton from './controls_button';
+import InCallPrompt from './in_call_prompt';
 
 import './component.scss';
 
@@ -102,6 +104,7 @@ interface State {
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
     alerts: CallAlertStates,
+    recDisclaimerDismissedAt: number,
 }
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
@@ -118,6 +121,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             screenStream: null,
             showParticipantsList: false,
             alerts: CallAlertStatesDefault,
+            recDisclaimerDismissedAt: 0,
         };
 
         if (window.opener) {
@@ -422,6 +426,26 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     shouldRenderAlertBanner = () => {
         return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
+    }
+
+    renderRecordingDisclaimer = () => {
+        if (this.state.recDisclaimerDismissedAt) {
+            return null;
+        }
+
+        const isHost = false;
+
+        return (
+            <InCallPrompt
+                icon='video-outline'
+                iconFill='rgb(var(--dnd-indicator-rgb))'
+                iconColor='rgb(var(--dnd-indicator-rgb))'
+                header={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header}
+                body={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body}
+                confirmText={isHost ? 'Dismiss' : 'Understood'}
+                onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
+            />
+        );
     }
 
     renderAlertBanner = () => {
@@ -885,6 +909,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 </ul>
                 }
                 {globalRhsSupported && <ExpandedViewGlobalsStyle callThreadSelected={this.props.rhsSelectedThreadID === this.props.threadID}/>}
+
+                { this.renderRecordingDisclaimer() }
             </div>
         );
     }
@@ -935,7 +961,7 @@ const styles: Record<string, CSSObject> = {
         width: '100%',
         height: '100%',
         zIndex: 1000,
-        background: 'rgba(37, 38, 42, 1)',
+        background: '#1E1E1E',
         color: 'white',
         appRegion: 'drag',
         gridArea: 'center',

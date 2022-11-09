@@ -1,0 +1,111 @@
+import React from 'react';
+import styled, {css} from 'styled-components';
+
+import CompassIcon from 'src/components/icons/compassIcon';
+
+export type Props = {
+    icon: string,
+    iconFill?: string,
+    iconColor?: string,
+    body: string,
+    header: string,
+    confirmText: string,
+    onClose?: () => void,
+}
+
+export default function InCallPrompt(props: Props) {
+    return (
+        <Prompt>
+            <Icon
+                fill={props.iconFill}
+                color={props.iconColor}
+            >
+                <CompassIcon icon={props.icon}/>
+            </Icon>
+
+            <Main>
+                <Header>
+                    {props.header}
+                </Header>
+                <Body>
+                    {props.body}
+                </Body>
+                <Footer>
+                    { props.confirmText && props.onClose &&
+                        <ConfirmButton
+                            className='cursor--pointer style--none'
+                            onClick={props.onClose}
+                        >
+                            {props.confirmText}
+                        </ConfirmButton>
+                    }
+                </Footer>
+            </Main>
+
+            { props.onClose &&
+            <span>
+                <CloseButton onClick={props.onClose}>
+                    <CompassIcon icon='close'/>
+                </CloseButton>
+            </span>
+            }
+        </Prompt>
+    );
+}
+
+const Prompt = styled.div`
+  display: flex;
+  position: absolute;
+  bottom: 100px;
+  margin: 0 24px;
+  background: rgba(221, 223, 228, 0.08);
+  border: 1px solid rgba(61, 60, 64, 0.16);
+  box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  padding: 24px 22px;
+  max-width: 480px;
+`;
+
+const Main = styled.div`
+  display: flex;
+  flex-direction: column;
+  padding-left: 10px;
+  padding-right: 5px;
+`;
+
+const Header = styled.div`
+  font-weight: 600;
+`;
+
+const Body = styled.div`
+  margin-top: 8px;
+  margin-bottom: 12px;
+`;
+
+const Footer = styled.div`
+`;
+
+const ConfirmButton = styled.button`
+  color: var(--button-bg);
+  font-weight: 600;
+
+  :hover {
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+  }
+`;
+
+const Icon = styled.div<{fill?: string, color?: string}>`
+  font-size: 18px;
+  line-height: 18px;
+  fill: ${({fill}) => (fill || 'currentColor')};
+  color: ${({color}) => (color || 'currentColor')};
+`;
+
+const CloseButton = styled(Icon)`
+  cursor: pointer;
+  color: rgba(221, 223, 228, 0.56);
+
+  :hover {
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+  }
+`;
