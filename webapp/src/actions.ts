@@ -9,8 +9,16 @@ import {Client4} from 'mattermost-redux/client';
 
 import {CloudCustomer} from '@mattermost/types/cloud';
 
-import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
+
+import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
+
+import {getThread} from 'mattermost-redux/selectors/entities/threads';
+
+import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
+
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
 import {CallsConfig} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
@@ -214,3 +222,15 @@ export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, pro
         );
     };
 };
+
+export function prefetchThread(postId: string) {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const state = getState();
+        const teamId = getCurrentTeamId(state);
+        const currentUserId = getCurrentUserId(state);
+
+        const thread = getThread(state, postId) ?? (await dispatch(fetchThread(currentUserId, teamId, postId, isCollapsedThreadsEnabled(state)))).data;
+
+        return {data: thread};
+    };
+}

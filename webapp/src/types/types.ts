@@ -64,18 +64,20 @@ export type CallsConfig = {
     DefaultEnabled: boolean,
     MaxCallParticipants: number,
     NeedsTURNCredentials: boolean,
+    AllowScreenSharing: boolean,
     sku_short_name: string,
 }
 
-export const CallsConfigDefault = {
+export const CallsConfigDefault: CallsConfig = {
     ICEServers: [],
     ICEServersConfigs: [],
     AllowEnableCalls: false,
     DefaultEnabled: false,
     MaxCallParticipants: 0,
     NeedsTURNCredentials: false,
+    AllowScreenSharing: true,
     sku_short_name: '',
-} as CallsConfig;
+};
 
 export type CallsClientConfig = {
     wsURL: string,
