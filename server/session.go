@@ -221,7 +221,7 @@ func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool,
 }
 
 func (p *Plugin) removeSession(us *session) error {
-	p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
+	p.publishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
 		"userID": us.userID,
 	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 

@@ -1,11 +1,9 @@
 import {Client4} from 'mattermost-redux/client';
 import configureStore from 'mattermost-redux/store';
-import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redux/actions/channels';
 import {getMe} from 'mattermost-redux/actions/users';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
 import {getTeam as getTeamAction, getMyTeams, selectTeam} from 'mattermost-redux/actions/teams';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTeam, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
@@ -19,7 +17,6 @@ import {pluginId} from 'plugin/manifest';
 import CallsClient from 'plugin/client';
 import reducer from 'plugin/reducers';
 import {
-    VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_ROOT_POST,
     VOICE_CHANNEL_PROFILES_CONNECTED,
@@ -189,16 +186,29 @@ async function fetchChannelData(store: Store, channelID: string) {
     }
 }
 
-export default async function init(name: string, initCb: (store: Store, theme: Theme) => void, closeCb?: () => void) {
+type InitConfig = {
+    name: string,
+    initCb: (store: Store, theme: Theme, channelID: string) => void,
+    closeCb?: () => void,
+    reducer?: any,
+    wsHandler?: (store: Store, ev: any) => void,
+    initStore?: (store: Store, channelID: string) => Promise<void>,
+};
+
+export default async function init(cfg: InitConfig) {
     setBasename();
     const initStartTime = performance.now();
 
     const storeKey = `plugins-${pluginId}`;
-    const store = configureStore({
+    const storeConfig = {
         appReducers: {
             [storeKey]: reducer,
         },
-    });
+    };
+    if (cfg.reducer) {
+        storeConfig.appReducers[`${storeKey}-${cfg.name}`] = cfg.reducer;
+    }
+    const store = configureStore(storeConfig);
 
     const channelID = getCallID();
     if (!channelID) {
@@ -219,21 +229,15 @@ export default async function init(name: string, initCb: (store: Store, theme: T
         getMe()(store.dispatch, store.getState),
         getMyPreferences()(store.dispatch, store.getState),
         getMyTeams()(store.dispatch, store.getState),
-        getChannelAction(channelID)(store.dispatch, store.getState),
     ]);
+    if (cfg.initStore) {
+        await cfg.initStore(store, channelID);
+    }
 
     const channel = getChannel(store.getState(), channelID);
     if (!channel) {
         logErr('channel not found');
         return;
-    }
-
-    if (isOpenChannel(channel) || isPrivateChannel(channel)) {
-        await getTeamAction(channel.team_id)(store.dispatch, store.getState);
-    } else {
-        await getChannelMembers(channel.id)(store.dispatch, store.getState);
-        const teams = getTeams(store.getState());
-        await selectTeam(Object.values(teams)[0])(store.dispatch, store.getState);
     }
 
     await Promise.all([
@@ -294,23 +298,18 @@ export default async function init(name: string, initCb: (store: Store, theme: T
             break;
         default:
         }
-    }, closeCb);
 
-    await store.dispatch({
-        type: VOICE_CHANNEL_USER_CONNECTED,
-        data: {
-            channelID: channel.id,
-            userID: getCurrentUserId(store.getState()),
-            currentUserID: getCurrentUserId(store.getState()),
-        },
-    });
+        if (cfg.wsHandler) {
+            cfg.wsHandler(store, ev);
+        }
+    }, cfg.closeCb);
 
     const theme = getTheme(store.getState());
     applyTheme(theme);
 
-    await initCb(store, theme);
+    await cfg.initCb(store, theme, channelID);
 
-    logDebug(`${name} init completed in ${Math.round(performance.now() - initStartTime)}ms`);
+    logDebug(`${cfg.name} init completed in ${Math.round(performance.now() - initStartTime)}ms`);
 }
 
 declare global {

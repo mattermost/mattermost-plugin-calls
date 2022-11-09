@@ -23,7 +23,7 @@ const plugins = [
     }),
     new HtmlWebpackPlugin({
         title: 'Calls Widget',
-        template: path.join(__dirname, '/src/widget.html'),
+        template: path.join(__dirname, '/src/widget/index.html'),
         filename: 'widget.html',
         publicPath: '',
         inject: 'head',
@@ -31,6 +31,17 @@ const plugins = [
             'Content-Security-Policy': {'http-equiv': 'Content-Security-Policy', content: contentSecurity},
         },
         chunks: ['widget'],
+    }),
+    new HtmlWebpackPlugin({
+        title: 'Calls Recording',
+        template: path.join(__dirname, '/src/recording/index.html'),
+        filename: 'recording.html',
+        publicPath: '',
+        inject: 'head',
+        meta: {
+            'Content-Security-Policy': {'http-equiv': 'Content-Security-Policy', content: contentSecurity},
+        },
+        chunks: ['recording'],
     }),
 ];
 
@@ -57,7 +68,8 @@ if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
 
 module.exports = {
     entry: {
-        widget: './src/widget.tsx',
+        widget: './src/widget/index.tsx',
+        recording: './src/recording/index.tsx',
     },
     output: {
         devtoolNamespace: PLUGIN_ID,

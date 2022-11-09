@@ -101,6 +101,13 @@
           "type": "text",
           "help_text": "(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
           "placeholder": "https://rtcd.example.com"
+        },
+        {
+          "key": "EnableRecordings",
+          "display_name": "Enable call recordings (Beta)",
+          "type": "bool",
+          "default": false,
+          "help_text": "(Optional) When set to true it enables the call recordings functionality."
         }
         ]
     }
