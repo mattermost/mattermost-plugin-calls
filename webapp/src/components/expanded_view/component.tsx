@@ -5,8 +5,12 @@ import React, {CSSProperties} from 'react';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
+import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
+
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
+
+import styled from 'styled-components';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
 import {
@@ -73,6 +77,23 @@ interface State {
     showParticipantsList: boolean,
     alerts: CallAlertStates,
 }
+
+const StyledMediaController = styled(MediaController)`
+	height: 100%;
+	background-color: transparent;
+`;
+
+const StyledMediaControlBar = styled(MediaControlBar)`
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-end;
+	background-color: rgba(0, 0, 0, 0.5);
+`;
+
+const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
+	font-size: 18px;
+	background-color: transparent;
+`;
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private screenPlayer = React.createRef<HTMLVideoElement>()
@@ -321,7 +342,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     shouldRenderAlertBanner = () => {
-        return Object.entries(this.state.alerts).filter(kv => kv[1].show).length > 0;
+        return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
     }
 
     renderAlertBanner = () => {
@@ -383,16 +404,31 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     maxHeight: `calc(100% - ${this.shouldRenderAlertBanner() ? 240 : 200}px)`,
                 } as CSSProperties}
             >
-                <video
-                    id='screen-player'
-                    ref={this.screenPlayer}
-                    width='100%'
-                    height='100%'
-                    muted={true}
-                    autoPlay={true}
-                    onClick={(ev) => ev.preventDefault()}
-                    controls={false}
-                />
+                <StyledMediaController
+                    gesturesDisabled={true}
+                >
+                    <video
+                        id='screen-player'
+                        slot='media'
+                        ref={this.screenPlayer}
+                        muted={true}
+                        autoPlay={true}
+                        onClick={(ev) => ev.preventDefault()}
+                        controls={false}
+                    />
+                    <StyledMediaControlBar>
+                        <StyledMediaFullscreenButton>
+                            <CompassIcon
+                                slot='enter'
+                                icon='arrow-expand-all'
+                            />
+                            <CompassIcon
+                                slot='exit'
+                                icon='arrow-collapse'
+                            />
+                        </StyledMediaFullscreenButton>
+                    </StyledMediaControlBar>
+                </StyledMediaController>
                 <span
                     style={{
                         background: 'black',
