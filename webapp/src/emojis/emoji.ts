@@ -1,6 +1,6 @@
 /* eslint-disable */
 
-import emojis from './emoji.json';
+import emojis from 'src/emojis/emoji.json';
 
 import spriteSheet from 'images/emoji-sheets/apple-sheet.png';
 
@@ -12,7 +12,7 @@ export const EmojiIndicesByUnicode = new Map([["1f600",0],["1f603",1],["1f604",2
 
 export const CategoryNames = ["recent","smileys-emotion","people-body","animals-nature","food-drink","travel-places","activities","objects","symbols","flags","custom"];
 
-export const CategoryMessage = new Map([[["smileys-emotion","Smileys & Emotion"],["people-body","People & Body"],["component","Component"],["animals-nature","Animals & Nature"],["food-drink","Food & Drink"],["travel-places","Travel & Places"],["activities","Activities"],["objects","Objects"],["symbols","Symbols"],["flags","Flags"],["custom","Custom"],["recent","Recently Used"],["searchResults","Search Results"]]]);
+export const CategoryMessage = new Map([["smileys-emotion","Smileys & Emotion"],["people-body","People & Body"],["component","Component"],["animals-nature","Animals & Nature"],["food-drink","Food & Drink"],["travel-places","Travel & Places"],["activities","Activities"],["objects","Objects"],["symbols","Symbols"],["flags","Flags"],["custom","Custom"],["recent","Recently Used"],["searchResults","Search Results"]]);
 
 export const ComponentCategory = 'Component';
 

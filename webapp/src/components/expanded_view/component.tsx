@@ -36,7 +36,7 @@ import {
 } from 'src/constants';
 import * as Telemetry from 'src/types/telemetry';
 
-import {Emojis, EmojiIndicesByUnicode} from 'src/emoji';
+import {Emojis, EmojiIndicesByUnicode} from 'src/emojis/emoji';
 
 import Avatar from '../avatar/avatar';
 import {ReactionStream} from '../reaction_stream/reaction_stream';
@@ -339,7 +339,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     renderEmojiPicker = () => {
         return this.state.showEmojiPicker ? (
-            <div style={style.emojiPickerContainer as CSSProperties}>
+            <div style={styles.emojiPickerContainer}>
                 <Picker
                     emojiVersion={EMOJI_VERSION}
                     skinTonePosition='search'
@@ -619,16 +619,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
                         {isHandRaised &&
                         <>
-                            <div style={style.reactionBackground as CSSProperties}/>
-                            <div style={style.handRaisedContainer as CSSProperties}>
+                            <div style={styles.reactionBackground}/>
+                            <div style={styles.handRaisedContainer}>
                                 {'🤚'}
                             </div>
                         </>
                         }
                         {!isHandRaised && hasReaction && status.reaction &&
                         <>
-                            <div style={style.reactionBackground as CSSProperties}/>
-                            <div style={style.reactionContainer as CSSProperties}>
+                            <div style={styles.reactionBackground}/>
+                            <div style={styles.reactionContainer}>
                                 <Emoji emoji={status.reaction.emoji}/>
                             </div>
                         </>
@@ -791,7 +791,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <div style={styles.main}>
                     { this.renderAlertBanner() }
 
-                    // TODO: removed from below, needed?:  alignItems: 'center',
+                    {/*// TODO: removed from below, needed?:  alignItems: 'center',*/}
                     <div style={{display: 'flex', width: '100%'}}>
                         <div style={styles.topLeftContainer}>
                             <CallDuration
@@ -863,7 +863,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 }
                             />
 
-                            // TODO: make the below a ControlsButton component
+                            {/*// TODO: make the below a ControlsButton component*/}
                             <div style={{position: 'relative'}}>
                                 {this.renderEmojiPicker()}
                                 <OverlayTrigger
