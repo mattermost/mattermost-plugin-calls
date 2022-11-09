@@ -18,6 +18,7 @@ import {
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
+    VOICE_CHANNEL_CALL_HOST,
 } from './action_types';
 
 import {
@@ -55,6 +56,7 @@ export function handleCallStart(store: Store, ev: any) {
             channelID,
             startAt: ev.data.start_at,
             ownerID: ev.data.owner_id,
+            hostID: ev.data.host_id,
         },
     });
     store.dispatch({
@@ -206,6 +208,18 @@ export function handleUserUnraisedHand(store: Store, ev: any) {
             channelID,
             userID: ev.data.userID,
             raised_hand: ev.data.raised_hand,
+        },
+    });
+}
+
+export function handleCallHostChanged(store: Store, ev: any) {
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
+
+    store.dispatch({
+        type: VOICE_CHANNEL_CALL_HOST,
+        data: {
+            channelID,
+            hostID: ev.data.hostID,
         },
     });
 }

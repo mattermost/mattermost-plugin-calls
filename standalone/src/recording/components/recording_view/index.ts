@@ -16,6 +16,7 @@ import {
     voiceConnectedProfilesInChannel,
     voiceUsersStatusesInChannel,
     voiceChannelScreenSharingID,
+    voiceChannelCallHostID,
 } from 'plugin/selectors';
 
 import {callProfileImages} from 'src/recording/selectors';
@@ -47,6 +48,7 @@ const mapStateToProps = (state: GlobalState) => {
         pictures,
         statuses,
         callStartAt: voiceChannelCallStartAt(state, channelID) || 0,
+        callHostID: voiceChannelCallHostID(state, channelID) || '',
         screenSharingID,
         channel: getChannel(state, channelID),
     };

@@ -131,7 +131,9 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 			return nil, fmt.Errorf("user cannot join because of limits")
 		}
 
-		state.Call.Users[userID] = &userState{}
+		state.Call.Users[userID] = &userState{
+			JoinAt: time.Now().UnixMilli(),
+		}
 		state.Call.Sessions[connID] = struct{}{}
 		if len(state.Call.Users) > state.Call.Stats.Participants {
 			state.Call.Stats.Participants = len(state.Call.Users)

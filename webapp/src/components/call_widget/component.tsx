@@ -82,6 +82,7 @@ interface Props {
         [key: string]: UserState,
     },
     callStartAt: number,
+    callHostID: string,
     screenSharingID: string,
     show: boolean,
     showExpandedView: () => void,
@@ -1184,7 +1185,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const isHost = true;
+        const isHost = this.props.callHostID === this.props.currentUserID;
 
         return (
             <WidgetBanner

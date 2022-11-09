@@ -29,6 +29,7 @@ import {
     VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
+    VOICE_CHANNEL_CALL_HOST,
     SHOW_EXPANDED_VIEW,
     HIDE_EXPANDED_VIEW,
     SHOW_SWITCH_CALL_MODAL,
@@ -397,19 +398,28 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
 
 interface callState {
     channelID: string,
-    startAt: number,
-    ownerID: string,
+    startAt?: number,
+    ownerID?: string,
+    hostID: string,
 }
 
-interface callStartAction {
+interface callStateAction {
     type: string,
     data: callState,
 }
 
-const voiceChannelCalls = (state: {[channelID: string]: callState} = {}, action: callStartAction) => {
+const voiceChannelCalls = (state: {[channelID: string]: callState} = {}, action: callStateAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
+    case VOICE_CHANNEL_CALL_HOST:
+        return {
+            ...state,
+            [action.data.channelID]: {
+                ...state[action.data.channelID],
+                hostID: action.data.hostID,
+            },
+        };
     case VOICE_CHANNEL_CALL_START:
         return {
             ...state,
@@ -417,6 +427,7 @@ const voiceChannelCalls = (state: {[channelID: string]: callState} = {}, action:
                 channelID: action.data.channelID,
                 startAt: action.data.startAt,
                 ownerID: action.data.ownerID,
+                hostID: action.data.hostID,
             },
         };
     default:

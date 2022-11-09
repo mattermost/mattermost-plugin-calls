@@ -23,6 +23,7 @@ import Avatar from 'plugin/components/avatar/avatar';
 import MutedIcon from 'plugin/components/icons/muted_icon';
 import UnmutedIcon from 'plugin/components/icons/unmuted_icon';
 import ScreenIcon from 'plugin/components/icons/screen_icon';
+import CallParticipant from 'plugin/components/expanded_view/call_participant';
 
 import Timestamp from './timestamp';
 
@@ -36,6 +37,7 @@ interface Props {
         [key: string]: UserState,
     },
     callStartAt: number,
+    callHostID: string,
     screenSharingID: string,
     channel: Channel,
 }
@@ -161,63 +163,15 @@ export default class RecordingView extends React.PureComponent<Props, State> {
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
             return (
-                <li
+                <CallParticipant
                     key={'participants_profile_' + idx}
-                    style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', margin: '16px'}}
-                >
-
-                    <div style={{position: 'relative'}}>
-                        <Avatar
-                            size={50}
-                            fontSize={18}
-                            border={false}
-                            borderGlow={isSpeaking}
-                            url={this.props.pictures[profile.id]}
-                        />
-                        <div
-                            style={{
-                                position: 'absolute',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                bottom: 0,
-                                right: 0,
-                                background: 'rgba(50, 50, 50, 1)',
-                                borderRadius: '30px',
-                                width: '20px',
-                                height: '20px',
-                            }}
-                        >
-                            <MuteIcon
-                                fill={isMuted ? '#C4C4C4' : '#3DB887'}
-                                style={{width: '14px', height: '14px'}}
-                                stroke={isMuted ? '#C4C4C4' : ''}
-                            />
-                        </div>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                display: isHandRaised ? 'flex' : 'none',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                top: 0,
-                                right: 0,
-                                background: 'rgba(50, 50, 50, 1)',
-                                borderRadius: '30px',
-                                width: '20px',
-                                height: '20px',
-                                fontSize: '12px',
-                            }}
-                        >
-                            {'✋'}
-                        </div>
-                    </div>
-
-                    <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
-                        {getUserDisplayName(profile)}
-                    </span>
-
-                </li>
+                    name={getUserDisplayName(profile)}
+                    pictureURL={this.props.pictures[profile.id]}
+                    isMuted={isMuted}
+                    isSpeaking={isSpeaking}
+                    isHandRaised={isHandRaised}
+                    isHost={profile.id === this.props.callHostID}
+                />
             );
         });
     }
@@ -280,7 +234,7 @@ export default class RecordingView extends React.PureComponent<Props, State> {
                         id='calls-recording-view-participants-grid'
                         style={{
                             ...style.participants,
-                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 10)}, 1fr)`,
                         }}
                     >
                         { this.renderParticipants() }

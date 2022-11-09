@@ -30,6 +30,7 @@ import {
     handleUserVoiceOff,
     handleUserRaisedHand,
     handleUserUnraisedHand,
+    handleCallHostChanged,
 } from './websocket_handlers';
 
 import {
@@ -102,6 +103,7 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     SHOW_END_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
+    VOICE_CHANNEL_CALL_HOST,
 } from './action_types';
 
 import {PluginRegistry, Store} from './types/mattermost-webapp';
@@ -179,6 +181,10 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unraise_hand`, (ev) => {
             handleUserUnraisedHand(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_host_changed`, (ev) => {
+            handleCallHostChanged(store, ev);
         });
     }
 
@@ -479,6 +485,7 @@ export default class Plugin {
                                 channelID: resp.data[i].channel_id,
                                 startAt: resp.data[i].call?.start_at,
                                 ownerID: resp.data[i].call?.owner_id,
+                                hostID: resp.data[i].call?.host_id,
                             },
                         });
                     }
@@ -542,6 +549,15 @@ export default class Plugin {
                         data: {
                             channelID,
                             rootPost: resp.data.call?.thread_id,
+                        },
+                    });
+                }
+                if (resp.data.call?.host_id) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_CALL_HOST,
+                        data: {
+                            channelID,
+                            hostID: resp.data.call?.host_id,
                         },
                     });
                 }

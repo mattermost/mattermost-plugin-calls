@@ -18,6 +18,7 @@ export const VOICE_CHANNEL_UNINIT = pluginId + '_voice_channel_uninit';
 export const VOICE_CHANNEL_USER_RAISE_HAND = pluginId + '_voice_channel_user_raise_hand';
 export const VOICE_CHANNEL_USER_UNRAISE_HAND = pluginId + '_voice_channel_user_unraise_hand';
 export const VOICE_CHANNEL_ROOT_POST = pluginId + '_voice_channel_root_post';
+export const VOICE_CHANNEL_CALL_HOST = pluginId + '_voice_channel_call_host';
 
 export const SHOW_EXPANDED_VIEW = pluginId + '_show_expanded_view';
 export const HIDE_EXPANDED_VIEW = pluginId + '_hide_expanded_view';

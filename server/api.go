@@ -461,6 +461,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	if strings.HasPrefix(r.URL.Path, "/bot") {
+		p.handleBotAPI(w, r)
+		return
+	}
+
 	if err := p.checkAPIRateLimits(userID); err != nil {
 		http.Error(w, err.Error(), http.StatusTooManyRequests)
 		return
@@ -468,11 +473,6 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	if strings.HasPrefix(r.URL.Path, "/debug") {
 		p.handleDebug(w, r)
-		return
-	}
-
-	if strings.HasPrefix(r.URL.Path, "/bot") {
-		p.handleBotAPI(w, r)
 		return
 	}
 
