@@ -32,6 +32,7 @@ const (
 	wsEventUserUnraiseHand  = "user_unraise_hand"
 	wsEventJoin             = "join"
 	wsEventError            = "error"
+	wsEventCallHostChanged  = "call_host_changed"
 	wsReconnectionTimeout   = 10 * time.Second
 )
 
@@ -46,6 +47,7 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 	// won't be in the channel.
 	if botID != "" && broadcast != nil && broadcast.ChannelId != "" {
 		data["channelID"] = broadcast.ChannelId
+		p.metrics.IncWebSocketEvent("out", ev)
 		p.API.PublishWebSocketEvent(ev, data, &model.WebsocketBroadcast{
 			UserId: botID,
 		})
@@ -58,6 +60,7 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 		}
 	}
 
+	p.metrics.IncWebSocketEvent("out", ev)
 	p.API.PublishWebSocketEvent(ev, data, broadcast)
 }
 
@@ -357,7 +360,6 @@ func (p *Plugin) wsWriter() {
 				p.LogError("session should not be nil")
 				continue
 			}
-			p.metrics.IncWebSocketEvent("out", "signal")
 			p.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 				"data":   string(msg.Data),
 				"connID": msg.SessionID,
@@ -434,7 +436,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 		return fmt.Errorf("cannot join call in archived channel")
 	}
 
-	state, err := p.addUserSession(userID, connID, channel)
+	state, prevState, err := p.addUserSession(userID, connID, channel)
 	if err != nil {
 		return fmt.Errorf("failed to add user session: %w", err)
 	} else if state.Call == nil {
@@ -459,6 +461,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 			"start_at":  state.Call.StartAt,
 			"thread_id": threadID,
 			"owner_id":  state.Call.OwnerID,
+			"host_id":   state.Call.HostID,
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
@@ -524,11 +527,9 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	}
 
 	// send successful join response
-	p.metrics.IncWebSocketEvent("out", "join")
 	p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
 		"connID": connID,
 	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
-	p.metrics.IncWebSocketEvent("out", "user_connected")
 	p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
@@ -539,6 +540,12 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 		"ChannelID":     channelID,
 		"CallID":        state.Call.ID,
 	})
+
+	if prevState.Call != nil && state.Call.HostID != prevState.Call.HostID {
+		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
+			"hostID": state.Call.HostID,
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}
 
 	p.wsReader(us, handlerID)
 
@@ -654,7 +661,6 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		go func() {
 			if err := p.handleJoin(userID, connID, channelID, title); err != nil {
 				p.LogError(err.Error(), "userID", userID, "connID", connID, "channelID", channelID)
-				p.metrics.IncWebSocketEvent("out", "error")
 				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
 					"connID": connID,
@@ -664,8 +670,6 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		}()
 		return
 	case clientMessageTypeReconnect:
-		p.metrics.IncWebSocketEvent("in", "reconnect")
-
 		channelID, _ := req.Data["channelID"].(string)
 		if channelID == "" {
 			p.LogError("missing channelID")

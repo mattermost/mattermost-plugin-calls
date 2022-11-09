@@ -26,22 +26,6 @@ var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
-type Call struct {
-	ID              string      `json:"id"`
-	StartAt         int64       `json:"start_at"`
-	Users           []string    `json:"users"`
-	States          []userState `json:"states,omitempty"`
-	ThreadID        string      `json:"thread_id"`
-	ScreenSharingID string      `json:"screen_sharing_id"`
-	OwnerID         string      `json:"owner_id"`
-}
-
-type ChannelState struct {
-	ChannelID string `json:"channel_id,omitempty"`
-	Enabled   bool   `json:"enabled"`
-	Call      *Call  `json:"call,omitempty"`
-}
-
 func (p *Plugin) handleGetVersion(w http.ResponseWriter, r *http.Request) {
 	info := map[string]interface{}{
 		"version": manifest.Version,
@@ -81,16 +65,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 	if state != nil {
 		info.Enabled = state.Enabled
 		if state.Call != nil {
-			users, states := state.Call.getUsersAndStates(p.getBotID())
-			info.Call = &Call{
-				ID:              state.Call.ID,
-				StartAt:         state.Call.StartAt,
-				Users:           users,
-				States:          states,
-				ThreadID:        state.Call.ThreadID,
-				ScreenSharingID: state.Call.ScreenSharingID,
-				OwnerID:         state.Call.OwnerID,
-			}
+			info.Call = state.Call.getClientState(p.getBotID())
 		}
 	}
 
@@ -169,16 +144,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 				Enabled:   state.Enabled,
 			}
 			if state.Call != nil {
-				users, states := state.Call.getUsersAndStates(p.getBotID())
-				info.Call = &Call{
-					ID:              state.Call.ID,
-					StartAt:         state.Call.StartAt,
-					Users:           users,
-					States:          states,
-					ThreadID:        state.Call.ThreadID,
-					ScreenSharingID: state.Call.ScreenSharingID,
-					OwnerID:         state.Call.OwnerID,
-				}
+				info.Call = state.Call.getClientState(p.getBotID())
 			}
 			channels = append(channels, info)
 		}
@@ -245,7 +211,6 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 		return
 	}
 
-	p.metrics.IncWebSocketEvent("out", "call_end")
 	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	go func() {

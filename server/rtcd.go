@@ -535,7 +535,6 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 		return fmt.Errorf("unexpected data type %T", msg.Data)
 	}
 	m.ctx.LogDebug("relaying ws message", "sessionID", rtcMsg.SessionID, "userID", rtcMsg.UserID)
-	m.ctx.metrics.IncWebSocketEvent("out", "signal")
 	m.ctx.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 		"data":   string(rtcMsg.Data),
 		"connID": rtcMsg.SessionID,
