@@ -46,6 +46,23 @@ commands:
           paths:
             - ./webapp/node_modules
 
+  npm-dependencies-standalone:
+    description: "Get JavaScript dependencies"
+    steps:
+      - restore_cache:
+          name: Restore npm cache
+          key: v2-npm-{{ checksum "./standalone/package-lock.json" }}-{{ arch }}
+      - run:
+          name: Getting JavaScript dependencies
+          command: |
+            cd standalone
+            NODE_ENV=development npm ci --ignore-scripts --no-save
+      - save_cache:
+          name: Save npm cache
+          key: v2-npm-{{ checksum "./standalone/package-lock.json" }}-{{ arch }}
+          paths:
+            - ./standalone/node_modules
+
   install-golangci-lint:
     description: Install golangci-lint
     parameters:
@@ -95,6 +112,7 @@ jobs:
       - *restore_cache
       - install-node-npm
       - npm-dependencies
+      - npm-dependencies-standalone
       - run:
           name: Checking code style
           command: make check-style
@@ -123,6 +141,7 @@ jobs:
       - *restore_cache
       - install-node-npm
       - npm-dependencies
+      - npm-dependencies-standalone
       - run: make test
       - *save_cache
 
@@ -133,6 +152,7 @@ jobs:
       - checkout
       - install-node-npm
       - npm-dependencies
+      - npm-dependencies-standalone
       - run:
           name: Building Plugin Bundle
           command: make dist-ci

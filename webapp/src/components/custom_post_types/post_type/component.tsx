@@ -13,6 +13,11 @@ import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import ConnectedProfiles from 'src/components/connected_profiles';
 import {Header, SubHeader} from 'src/components/shared';
 
+import {
+    shouldRenderDesktopWidget,
+    sendDesktopEvent,
+} from 'src/utils';
+
 interface Props {
     post: Post,
     connectedID: string,
@@ -43,6 +48,8 @@ const PostType = ({
     const onLeaveButtonClick = () => {
         if (window.callsClient) {
             window.callsClient.disconnect();
+        } else if (shouldRenderDesktopWidget()) {
+            sendDesktopEvent('calls-leave-call', {callID: post.channel_id});
         }
     };
 
