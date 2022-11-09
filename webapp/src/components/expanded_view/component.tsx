@@ -95,6 +95,7 @@ interface Props extends RouteComponentProps {
     threadUnreadMentions: number | undefined;
     rhsSelectedThreadID?: string;
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    allowScreenSharing: boolean,
 }
 
 interface State {
@@ -237,6 +238,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
+        if (!this.props.allowScreenSharing) {
+            return;
+        }
         const callsClient = this.getCallsClient();
         if (this.props.screenSharingID === this.props.currentUserID) {
             callsClient.unshareScreen();
@@ -783,6 +787,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 }
                             />
 
+                            { this.props.allowScreenSharing &&
                             <ControlsButton
                                 id='calls-popout-screenshare-button'
                                 onToggle={() => this.onShareScreenToggle()}
@@ -799,6 +804,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 unavailable={noScreenPermissions}
                                 disabled={sharingID !== '' && !isSharing}
                             />
+                            }
 
                             <ControlsButton
                                 id='calls-popout-mute-button'

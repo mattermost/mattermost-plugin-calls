@@ -86,6 +86,7 @@ interface Props {
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    allowScreenSharing: boolean,
     global?: true,
     position?: {
         bottom: number,
@@ -499,6 +500,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
+        if (!this.props.allowScreenSharing) {
+            return;
+        }
         const state = {} as State;
 
         if (this.props.screenSharingID === this.props.currentUserID) {
@@ -1120,7 +1124,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='Menu__content dropdown-menu'
                     style={this.style.dotsMenu as CSSProperties}
                 >
-                    {!widerWidget && this.renderScreenSharingMenuItem()}
+                    {this.props.allowScreenSharing && !widerWidget && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
                 </ul>
@@ -1473,7 +1477,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
-                    {this.renderScreenSharingPanel()}
+                    {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
                     {this.renderMenu(widerWidget)}
                 </div>
@@ -1588,7 +1592,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         />
                         }
 
-                        {(widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
+                        {this.props.allowScreenSharing && (widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <WidgetButton
                             id='voice-mute-unmute'
