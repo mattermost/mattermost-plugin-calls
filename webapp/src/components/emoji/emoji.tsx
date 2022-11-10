@@ -20,23 +20,24 @@ const getEmojiURL = (emoji: EmojiData) => {
     return getEmojiImageUrl(Emojis[index]);
 };
 
-export const Emoji = (props: Props) => {
-    if (props.emoji) {
-        return (
-            <span
-                className='emoticon'
-                title={props.emoji.name}
-                style={{
-                    backgroundImage: `url(${getEmojiURL(props.emoji)})`,
-                    width: '18px',
-                    minWidth: '18px',
-                    height: '18px',
-                    minHeight: '18px',
-                }}
-            >
-                {props.emoji.name}
-            </span>
-        );
+export const Emoji = ({emoji}: Props) => {
+    if (!emoji) {
+        return null;
     }
-    return null;
+
+    return (
+        <span
+            className='emoticon'
+            title={emoji.name}
+            style={{
+                backgroundImage: `url(${getEmojiURL(emoji)})`,
+                width: '18px',
+                minWidth: '18px',
+                height: '18px',
+                minHeight: '18px',
+            }}
+        >
+            {emoji.name}
+        </span>
+    );
 };

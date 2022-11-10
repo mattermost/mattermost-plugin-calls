@@ -204,7 +204,7 @@ const connectedChannelID = (state: string | null = null, action: { type: string,
     }
 };
 
-interface usersStatusesState {
+export interface UsersStatusesState {
     [channelID: string]: {
         [userID: string]: UserState,
     },
@@ -230,7 +230,7 @@ interface userReactionsState {
 const queueReactions = (state: ReactionWithUser[], reaction: ReactionWithUser) => {
     const result = state?.length ? [...state] : [];
     result.push(reaction);
-    if (result.length > 50) { // TODO: random size, this should probably be configurable
+    if (result.length > 50) {
         result.shift();
     }
     return result;
@@ -288,7 +288,7 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
     }
 };
 
-const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatusesAction) => {
+const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatusesAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};

@@ -5,97 +5,37 @@ import React from 'react';
 import styled from 'styled-components';
 import {useSelector} from 'react-redux';
 
-import {UserProfile} from '@mattermost/types/lib/users';
-
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 
-import {GlobalState} from '@mattermost/types/lib/store';
-
-import {connectedChannelID, voiceChannelScreenSharingID, voiceConnectedProfiles, voiceReactions, voiceUsersStatuses} from 'src/selectors';
-
-import {Emoji} from '../emoji/emoji';
-import {UserState} from 'src/types/types';
+import {
+    idToProfileInChannel,
+    voiceReactions,
+    voiceUsersStatuses,
+} from 'src/selectors';
+import {Emoji} from 'src/components/emoji/emoji';
 import {getUserDisplayName} from 'src/utils';
-import {alphaSortProfiles, stateSortProfiles} from '../../utils';
-
-interface streamListStyleProps {
-    left?: string;
-}
 
 type Props = {
     style?: streamListStyleProps;
 };
 
-const ReactionStreamList = styled.div<streamListStyleProps>`
-    position: absolute;
-    align-self: flex-end;
-    height: 75vh;
-    display: flex;
-    flex-direction: column-reverse;
-    margin-left: 10px;
-    -webkit-mask: linear-gradient(#0000, #000);
-    mask: linear-gradient(#0000, #0003, #000f);
-    ${(props) => props.left && `left: ${props.left};`}
-`;
-
-interface chipProps {
-    highlight?: boolean;
-}
-
-const ReactionChip = styled.div<chipProps>`
-    display: flex;
-    flex-direction: row;
-    align-items: flex-end;
-    padding: 2px 10px;
-    gap: 2px;
-    height: 23px;
-    background: rgba(221, 223, 228, 0.08);
-    border-radius: 12px;
-    margin: 4px 0;
-    width: fit-content;
-
-    ${(props) => props.highlight && `
-        background: #FFFFFF;
-        color: #090A0B;
-  `}
-`;
-
 // add a list of reactions, on top of that add the hands up as the top element
+// TODO: bug: users who have left will have 'Someone' as their name.
 export const ReactionStream = (props: Props) => {
     const vReactions = useSelector(voiceReactions);
     const currentUserID = useSelector(getCurrentUserId);
 
     const statuses = useSelector(voiceUsersStatuses);
-    const vConnectedProfiles = useSelector(voiceConnectedProfiles);
+    const profileMap = useSelector(idToProfileInChannel);
 
-    const cChannelID = useSelector(connectedChannelID);
-    const channel = useSelector((state: GlobalState) => getChannel(state, cChannelID));
+    const handsup = Object.keys(statuses)
+        .flatMap((id) => (statuses[id]?.raised_hand ? [{...statuses[id], id}] : []))
+        .sort((a, b) => a.raised_hand - b.raised_hand)
+        .map((u) => u.id);
 
-    const screenSharingID = useSelector((state: GlobalState) => voiceChannelScreenSharingID(state, channel?.id)) || '';
-
-    const sortedProfiles = (profiles: UserProfile[], sta: {[key: string]: UserState}) => {
-        return [...profiles].sort(alphaSortProfiles(profiles)).sort(stateSortProfiles(profiles, sta, screenSharingID));
-    };
-    const profiles = sortedProfiles(vConnectedProfiles, statuses);
-
-    const handsup: string[] = [];
-
-    const profileMap: {[key: string]: UserProfile;} = {};
-    profiles.forEach((profile) => {
-        profileMap[profile.id] = profile;
-        if (statuses[profile.id]?.raised_hand) {
-            handsup.push(profile.id);
-        }
-    });
-
-    const reversed = [...vReactions];
-
-    reversed.reverse();
+    const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
-        // emojis should be a separate component that is reused both here and in the extended view
-        // getEmojiURL should be memoized as people tend to react similarly and this would speed up the process.
-        const emoji = (<Emoji emoji={reaction.emoji}/>);
+        const emoji = <Emoji emoji={reaction.emoji}/>;
         const user = reaction.user_id === currentUserID ? 'You' : getUserDisplayName(profileMap[reaction.user_id]) || 'Someone';
         return (
             <ReactionChip key={reaction.timestamp + reaction.user_id}>
@@ -148,3 +88,42 @@ export const ReactionStream = (props: Props) => {
         </ReactionStreamList>
     );
 };
+
+interface streamListStyleProps {
+    left?: string;
+}
+
+const ReactionStreamList = styled.div<streamListStyleProps>`
+    position: absolute;
+    align-self: flex-end;
+    height: 75vh;
+    display: flex;
+    flex-direction: column-reverse;
+    margin-left: 10px;
+    -webkit-mask: -webkit-gradient(#0000, #000);
+    mask: linear-gradient(#0000, #0003, #000f);
+    ${(props) => props.left && `left: ${props.left};`}
+`;
+
+interface chipProps {
+    highlight?: boolean;
+}
+
+const ReactionChip = styled.div<chipProps>`
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    padding: 2px 10px;
+    gap: 2px;
+    height: 23px;
+    color: black;
+    background: rgba(221, 223, 228, 0.48);
+    border-radius: 12px;
+    margin: 4px 0;
+    width: fit-content;
+
+    ${(props) => props.highlight && `
+        background: #FFFFFF;
+        color: #090A0B;
+  `}
+`;

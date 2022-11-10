@@ -302,6 +302,7 @@ export default class Plugin {
                 },
                 timestamp: ev.data.timestamp,
             };
+            const profiles =
             store.dispatch({
                 type: VOICE_CHANNEL_USER_REACTION,
                 data: {
@@ -319,7 +320,7 @@ export default class Plugin {
                         reaction,
                     },
                 });
-            }, 10000); // TODO: This time was randomly chosen; see if it should be configurable or at least a little better informed
+            }, 10000);
         });
     }
 

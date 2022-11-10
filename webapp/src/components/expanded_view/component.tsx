@@ -5,27 +5,18 @@
 import React from 'react';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-import Picker from '@emoji-mart/react';
-
-import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
-
 import {UserProfile} from '@mattermost/types/users';
 import {Team} from '@mattermost/types/teams';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
-
-import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
-
 import {ProductChannelsIcon} from '@mattermost/compass-icons/components';
 
+import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
 import {RouteComponentProps} from 'react-router-dom';
 
 import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
-
 import {
-    EmojiData,
-    ReactionWithUser,
     UserState,
     AudioDevices,
     CallAlertStates,
@@ -35,24 +26,19 @@ import {
     CallAlertConfigs,
 } from 'src/constants';
 import * as Telemetry from 'src/types/telemetry';
-
-import {Emojis, EmojiIndicesByUnicode} from 'src/emojis/emoji';
-
-import Avatar from '../avatar/avatar';
-import {ReactionStream} from '../reaction_stream/reaction_stream';
-import {Emoji} from '../emoji/emoji';
-import CompassIcon from '../../components/icons/compassIcon';
-import LeaveCallIcon from '../../components/icons/leave_call_icon';
-import MutedIcon from '../../components/icons/muted_icon';
-import UnmutedIcon from '../../components/icons/unmuted_icon';
-import ScreenIcon from '../../components/icons/screen_icon';
-import RaisedHandIcon from '../../components/icons/raised_hand';
-import UnraisedHandIcon from '../../components/icons/unraised_hand';
-import SmileyIcon from '../../components/icons/smiley_icon';
-import ParticipantsIcon from '../../components/icons/participants';
-import CallDuration from '../call_widget/call_duration';
+import Avatar from 'src/components/avatar/avatar';
+import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
+import {Emoji} from 'src/components/emoji/emoji';
+import CompassIcon from 'src/components/icons/compassIcon';
+import LeaveCallIcon from 'src/components/icons/leave_call_icon';
+import MutedIcon from 'src/components/icons/muted_icon';
+import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import ScreenIcon from 'src/components/icons/screen_icon';
+import RaisedHandIcon from 'src/components/icons/raised_hand';
+import UnraisedHandIcon from 'src/components/icons/unraised_hand';
+import ParticipantsIcon from 'src/components/icons/participants';
+import CallDuration from 'src/components/call_widget/call_duration';
 import Shortcut from 'src/components/shortcut';
-
 import {
     MUTE_UNMUTE,
     RAISE_LOWER_HAND,
@@ -67,12 +53,8 @@ import {
 
 import GlobalBanner from './global_banner';
 import ControlsButton from './controls_button';
-
 import './component.scss';
-
-const EMOJI_VERSION = '13';
-
-const EMOJI_SKINTONE_MAP = new Map([[1, ''], [2, '1F3FB'], [3, '1F3FC'], [4, '1F3FD'], [5, '1F3FE'], [6, '1F3FF']]);
+import {EmojiButton, EmojiButtonRef} from './emoji_button';
 
 interface Props extends RouteComponentProps {
     show: boolean,
@@ -85,7 +67,6 @@ interface Props extends RouteComponentProps {
     statuses: {
         [key: string]: UserState,
     },
-    reactions: ReactionWithUser[],
     callStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
@@ -112,12 +93,12 @@ interface State {
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
     alerts: CallAlertStates,
-    showEmojiPicker: boolean
 }
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
-    private screenPlayer = React.createRef<HTMLVideoElement>()
-    private expandedRootRef = React.createRef<HTMLDivElement>()
+    private readonly screenPlayer = React.createRef<HTMLVideoElement>();
+    private expandedRootRef = React.createRef<HTMLDivElement>();
+    private emojiButtonRef = React.createRef<EmojiButtonRef>();
     private pushToTalk = false;
 
     #unlockNavigation?: () => void;
@@ -129,7 +110,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             screenStream: null,
             showParticipantsList: false,
             alerts: CallAlertStatesDefault,
-            showEmojiPicker: false,
         };
 
         if (window.opener) {
@@ -178,22 +158,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
-    toggleEmojiPicker = () => {
-        this.setState((prevState) => ({
-            showEmojiPicker: !prevState.showEmojiPicker,
-        }));
-    }
-
-    handleUserPicksEmoji = (ev: any) => {
-        const callsClient = this.getCallsClient();
-        const emojiData = {
-            name: ev.id,
-            skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : null,
-            unified: ev.unified.toUpperCase(),
-        };
-        callsClient.sendUserReaction(emojiData);
-    }
-
     handleKBShortcuts = (ev: KeyboardEvent) => {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
             return;
@@ -219,7 +183,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.onRaiseHandToggle(true);
             break;
         case MAKE_REACTION:
-            this.toggleEmojiPicker();
+            this.emojiButtonRef.current?.toggle();
             break;
         case SHARE_UNSHARE_SCREEN:
             this.onShareScreenToggle(true);
@@ -242,7 +206,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     active: devices.inputs.length === 0,
                     show: devices.inputs.length === 0,
                 },
-            }});
+            },
+        });
     }
 
     onDisconnectClick = () => {
@@ -254,15 +219,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 window.close();
             }
         }
-    }
-
-    // TODO: can be outside component?
-    getEmojiURL = (emoji: EmojiData) => {
-        const index = EmojiIndicesByUnicode.get(emoji.unified.toLowerCase());
-        if (typeof index === 'undefined') {
-            return '';
-        }
-        return getEmojiImageUrl(Emojis[index]);
     }
 
     onMuteToggle = () => {
@@ -337,21 +293,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
-    renderEmojiPicker = () => {
-        return this.state.showEmojiPicker ? (
-            <div style={styles.emojiPickerContainer}>
-                <Picker
-                    emojiVersion={EMOJI_VERSION}
-                    skinTonePosition='search'
-                    onEmojiSelect={this.handleUserPicksEmoji}
-                    onClickOutside={this.toggleEmojiPicker}
-                    autoFocus={true}
-                    perLine={12}
-                />
-            </div>
-        ) : null;
-    }
-
     onParticipantsListToggle = (fromShortcut?: boolean) => {
         const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
         this.props.trackEvent(event, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
@@ -417,7 +358,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         active: false,
                         show: false,
                     },
-                }});
+                },
+            });
         });
 
         this.setDevices(callsClient.getAudioDevices());
@@ -569,16 +511,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             let isSpeaking = false;
             let isHandRaised = false;
             let hasReaction = false;
-            let emojiURL = '';
             if (status) {
                 isMuted = !status.unmuted;
                 isSpeaking = Boolean(status.voice);
                 isHandRaised = Boolean(status.raised_hand > 0);
                 hasReaction = Boolean(status.reaction);
-
-                if (status.reaction) {
-                    emojiURL = this.getEmojiURL(status.reaction.emoji);
-                }
             }
 
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
@@ -586,7 +523,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return (
                 <li
                     key={'participants_profile_' + idx}
-                    style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', margin: '16px'}}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        margin: '16px',
+                    }}
                 >
 
                     <div style={{position: 'relative'}}>
@@ -618,20 +561,20 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         </div>
                         {isHandRaised &&
-                        <>
-                            <div style={styles.reactionBackground}/>
-                            <div style={styles.handRaisedContainer}>
-                                {'🤚'}
-                            </div>
-                        </>
+                            <>
+                                <div style={styles.reactionBackground}/>
+                                <div style={styles.handRaisedContainer}>
+                                    {'🤚'}
+                                </div>
+                            </>
                         }
                         {!isHandRaised && hasReaction && status.reaction &&
-                        <>
-                            <div style={styles.reactionBackground}/>
-                            <div style={styles.reactionContainer}>
-                                <Emoji emoji={status.reaction.emoji}/>
-                            </div>
-                        </>
+                            <>
+                                <div style={styles.reactionBackground}/>
+                                <div style={styles.reactionContainer}>
+                                    <Emoji emoji={status.reaction.emoji}/>
+                                </div>
+                            </>
                         }
                     </div>
 
@@ -686,18 +629,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             gap: '4px',
                         }}
                     >
-                        { isHandRaised &&
+                        {isHandRaised &&
                             <RaisedHandIcon
                                 fill={'rgba(255, 188, 66, 1)'}
                                 style={{width: '14px', height: '14px'}}
                             />
                         }
 
-                        { this.props.screenSharingID === profile.id &&
-                        <ScreenIcon
-                            fill={'rgb(var(--dnd-indicator-rgb))'}
-                            style={{width: '14px', height: '14px'}}
-                        />
+                        {this.props.screenSharingID === profile.id &&
+                            <ScreenIcon
+                                fill={'rgb(var(--dnd-indicator-rgb))'}
+                                style={{width: '14px', height: '14px'}}
+                            />
                         }
 
                         <MuteIcon
@@ -752,7 +695,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isHandRaised = callsClient.isHandRaised;
         const HandIcon = isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
         const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
-        const participantsText = 'Show participants list';
+        const participantsText = this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list';
 
         let chatToolTipText = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID ? 'Click to close chat' : 'Click to open chat';
         const chatToolTipSubtext = '';
@@ -764,18 +707,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const globalRhsSupported = Boolean(this.props.selectRhsPost);
 
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
-
-        const handsup: string[] = [];
-
-        // TODO: is this fixed?
-        // building the list here causes a bug tht if a user leaves and recently reacted it will show as blank
-        const profileMap: {[key: string]: UserProfile;} = {};
-        this.props.profiles.forEach((profile) => {
-            profileMap[profile.id] = profile;
-            if (this.props.statuses[profile.id]?.raised_hand) {
-                handsup.push(profile.id);
-            }
-        });
 
         return (
             <div
@@ -789,7 +720,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 }}
             >
                 <div style={styles.main}>
-                    { this.renderAlertBanner() }
+                    {this.renderAlertBanner()}
 
                     {/*// TODO: removed from below, needed?:  alignItems: 'center',*/}
                     <div style={{display: 'flex', width: '100%'}}>
@@ -814,7 +745,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         }
                     </div>
 
-                    { !this.props.screenSharingID &&
+                    {!this.props.screenSharingID &&
                         <div style={{flex: 1, display: 'flex', overflow: 'auto'}}>
                             <ReactionStream/>
                             <ul
@@ -824,11 +755,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
                                 }}
                             >
-                                { this.renderParticipants() }
+                                {this.renderParticipants()}
                             </ul>
                         </div>
                     }
-                    { this.props.screenSharingID && this.renderScreenSharingPlayer() }
+                    {this.props.screenSharingID && this.renderScreenSharingPlayer()}
                     <div
                         id='calls-expanded-view-controls'
                         style={styles.controls}
@@ -837,12 +768,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <ControlsButton
                                 id='calls-popout-participants-button'
                                 onToggle={() => this.onParticipantsListToggle()}
-                                tooltipText={this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list'}
+                                tooltipText={participantsText}
                                 shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
                                 bgColor={this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}
                                 icon={
                                     <ParticipantsIcon
-                                        style={{width: '28px', height: '28px', fill: this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white'}}
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            fill: this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white',
+                                        }}
                                     />
                                 }
                                 margin='0'
@@ -858,60 +793,38 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 bgColor={isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
                                 icon={
                                     <HandIcon
-                                        style={{width: '28px', height: '28px', fill: isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}}
-                                    />
-                                }
-                            />
-
-                            {/*// TODO: make the below a ControlsButton component*/}
-                            <div style={{position: 'relative'}}>
-                                {this.renderEmojiPicker()}
-                                <OverlayTrigger
-                                    key='tooltip-emoji-picker'
-                                    placement='top'
-                                    overlay={
-                                        <Tooltip
-                                            id='tooltip-emoji-picker'
-                                        >
-                                            <span>{'Add Reaction'}</span>
-                                            <Shortcut shortcut={reverseKeyMappings.popout[MAKE_REACTION][0]}/>
-                                        </Tooltip>
-                                    }
-                                >
-
-                                    <button
-                                        className='button-center-controls'
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            this.toggleEmojiPicker();
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            fill: isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white',
                                         }}
-                                        style={{background: this.state.showEmojiPicker ? '#FFFFFF' : '', position: 'relative'}}
-                                    >
-                                        <SmileyIcon
-                                            style={{width: '28px', height: '28px'}}
-                                            fill={this.state.showEmojiPicker ? '#3F4350' : '#FFFFFF'}
-                                        />
-                                    </button>
-                                </OverlayTrigger>
-                            </div>
-
-                            { this.props.allowScreenSharing &&
-                            <ControlsButton
-                                id='calls-popout-screenshare-button'
-                                onToggle={() => this.onShareScreenToggle()}
-                                tooltipText={shareScreenTooltipText}
-                                tooltipSubtext={shareScreenTooltipSubtext}
-                                // eslint-disable-next-line no-undefined
-                                shortcut={noScreenPermissions ? undefined : reverseKeyMappings.popout[SHARE_UNSHARE_SCREEN][0]}
-                                bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
-                                icon={
-                                    <ScreenIcon
-                                        style={{width: '28px', height: '28px', fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : ''}}
                                     />
                                 }
-                                unavailable={noScreenPermissions}
-                                disabled={sharingID !== '' && !isSharing}
                             />
+
+                            <EmojiButton ref={this.emojiButtonRef}/>
+
+                            {this.props.allowScreenSharing &&
+                                <ControlsButton
+                                    id='calls-popout-screenshare-button'
+                                    onToggle={() => this.onShareScreenToggle()}
+                                    tooltipText={shareScreenTooltipText}
+                                    tooltipSubtext={shareScreenTooltipSubtext}
+                                    // eslint-disable-next-line no-undefined
+                                    shortcut={noScreenPermissions ? undefined : reverseKeyMappings.popout[SHARE_UNSHARE_SCREEN][0]}
+                                    bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                                    icon={
+                                        <ScreenIcon
+                                            style={{
+                                                width: '28px',
+                                                height: '28px',
+                                                fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : '',
+                                            }}
+                                        />
+                                    }
+                                    unavailable={noScreenPermissions}
+                                    disabled={sharingID !== '' && !isSharing}
+                                />
                             }
 
                             <ControlsButton
@@ -925,7 +838,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
                                 icon={
                                     <MuteIcon
-                                        style={{width: '28px', height: '28px', fill: isMuted ? '' : 'rgba(61, 184, 135, 1)'}}
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            fill: isMuted ? '' : 'rgba(61, 184, 135, 1)',
+                                        }}
                                     />
                                 }
                                 unavailable={noInputDevices || noAudioPermissions}
@@ -986,13 +903,25 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
                     </div>
                 </div>
-                { this.state.showParticipantsList &&
-                <ul style={styles.rhs}>
-                    <span style={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Participants list'}</span>
-                    { this.renderParticipantsRHSList() }
-                </ul>
+                {this.state.showParticipantsList &&
+                    <ul style={styles.rhs}>
+                        <span
+                            style={{
+                                position: 'sticky',
+                                top: '0',
+                                background: 'inherit',
+                                fontWeight: 600,
+                                padding: '8px',
+                            }}
+                        >{'Participants list'}</span>
+                        {this.renderParticipantsRHSList()}
+                    </ul>
                 }
-                {globalRhsSupported && <ExpandedViewGlobalsStyle callThreadSelected={this.props.rhsSelectedThreadID === this.props.threadID}/>}
+                {globalRhsSupported &&
+                    <ExpandedViewGlobalsStyle
+                        callThreadSelected={this.props.rhsSelectedThreadID === this.props.threadID}
+                    />
+                }
             </div>
         );
     }
@@ -1002,7 +931,7 @@ const isActiveElementInteractable = () => {
     return document.activeElement && ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName);
 };
 
-const UnreadIndicator = ({mentions}: {mentions?: number}) => {
+const UnreadIndicator = ({mentions}: { mentions?: number }) => {
     return (
         <UnreadDot>{mentions && mentions > 99 ? '99+' : mentions || null}</UnreadDot>
     );
@@ -1019,6 +948,7 @@ const UnreadDot = styled.span`
     border-radius: 9px;
     box-shadow: 0 0 0 2px rgb(37 38 42);
     color: white;
+
     &:not(:empty) {
         top: -7px;
         right: -8px;
@@ -1100,11 +1030,6 @@ const styles: Record<string, CSSObject> = {
         padding: 0,
         overflow: 'auto',
     },
-    emojiPickerContainer: {
-        position: 'absolute',
-        top: '-445px',
-        left: '-75px',
-    },
     reactionBackground: {
         position: 'absolute',
         display: 'flex',
@@ -1145,7 +1070,7 @@ const styles: Record<string, CSSObject> = {
     },
 };
 
-const ExpandedViewGlobalsStyle = createGlobalStyle<{callThreadSelected: boolean}>`
+const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean }>`
     #root {
         > #global-header,
         > .team-sidebar,
@@ -1154,20 +1079,24 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{callThreadSelected: boolean}
         > #SidebarContainer {
             display: none;
         }
+
         #sidebar-right #sbrSearchFormContainer {
             // mobile search not supported in expanded view or expanded window
             // TODO move to hideMobileSearchBarInRHS prop of Search component in mattermost-webapp
             display: none;
         }
+
         .channel-view-inner {
             padding: 0;
         }
+
         ${({callThreadSelected}) => !callThreadSelected && css`
             .sidebar--right {
                 display: none;
             }
         `}
     }
+
     #sidebar-right {
         z-index: 1001;
     }

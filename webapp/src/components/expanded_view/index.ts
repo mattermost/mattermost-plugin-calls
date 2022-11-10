@@ -12,9 +12,9 @@ import {withRouter} from 'react-router-dom';
 
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 
-import {UserState} from '../../types/types';
+import {UserState} from 'src/types/types';
 
-import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from '../../utils';
+import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from 'src/utils';
 
 import {
     closeRhs,
@@ -22,19 +22,18 @@ import {
     getIsRhsOpen,
     getRhsSelectedPostId,
 } from 'src/webapp_globals';
-import {hideExpandedView, prefetchThread, showScreenSourceModal, trackEvent} from '../../actions';
+import {hideExpandedView, prefetchThread, showScreenSourceModal, trackEvent} from 'src/actions';
 import {
     expandedView,
     voiceChannelCallStartAt,
     connectedChannelID,
-    voiceConnectedProfiles,
     voiceUsersStatuses,
     voiceChannelScreenSharingID,
     voiceChannelRootPost,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
-    voiceReactions,
-} from '../../selectors';
+    voiceConnectedProfiles,
+} from 'src/selectors';
 
 import ExpandedView from './component';
 
@@ -52,7 +51,6 @@ const mapStateToProps = (state: GlobalState) => {
 
     const statuses = voiceUsersStatuses(state);
     const profiles = sortedProfiles(voiceConnectedProfiles(state), statuses);
-    const reactions = voiceReactions(state);
 
     const pictures: { [key: string]: string } = {};
     for (let i = 0; i < profiles.length; i++) {
@@ -76,7 +74,6 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         pictures,
         statuses,
-        reactions,
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         screenSharingID,
         channel,
