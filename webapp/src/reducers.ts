@@ -9,7 +9,6 @@ import {
     CallsUserPreferences,
     CallsUserPreferencesDefault,
     Reaction,
-    ReactionWithUser,
 } from './types/types';
 
 import {
@@ -223,11 +222,11 @@ interface usersStatusesAction {
 
 interface userReactionsState {
     [channelID: string]: {
-        reactions: ReactionWithUser[],
+        reactions: Reaction[],
     }
 }
 
-const queueReactions = (state: ReactionWithUser[], reaction: ReactionWithUser) => {
+const queueReactions = (state: Reaction[], reaction: Reaction) => {
     const result = state?.length ? [...state] : [];
     result.push(reaction);
     if (result.length > 50) {
@@ -236,7 +235,7 @@ const queueReactions = (state: ReactionWithUser[], reaction: ReactionWithUser) =
     return result;
 };
 
-const removeReaction = (reactions: ReactionWithUser[], reaction: ReactionWithUser) => {
+const removeReaction = (reactions: Reaction[], reaction: Reaction) => {
     return reactions.filter((r) => r.user_id !== reaction.user_id || r.timestamp > reaction.timestamp);
 };
 
@@ -247,23 +246,13 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
             if (!state[action.data.channelID]) {
                 return {
                     ...state,
-                    [action.data.channelID]: {
-                        reactions: [{
-                            ...action.data.reaction,
-                            user_id: action.data.userID,
-                        }],
-                    },
+                    [action.data.channelID]: {reactions: [action.data.reaction]},
                 };
             }
             return {
                 ...state,
                 [action.data.channelID]: {
-                    reactions: queueReactions(
-                        state[action.data.channelID].reactions,
-                        {
-                            ...action.data.reaction,
-                            user_id: action.data.userID,
-                        }),
+                    reactions: queueReactions(state[action.data.channelID].reactions, action.data.reaction),
                 },
             };
         }
@@ -647,7 +636,7 @@ type clientError = {
     err: Error,
 }
 
-const clientErr = (state = null, action: { type: string, data: clientError}) => {
+const clientErr = (state = null, action: { type: string, data: clientError }) => {
     switch (action.type) {
     case RECEIVED_CLIENT_ERROR:
         return action.data;

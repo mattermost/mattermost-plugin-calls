@@ -14,8 +14,8 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {displayFreeTrial, getCallsConfig, displayCallErrorModal} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
-
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
+import {Reaction} from 'src/types/types';
 
 import {
     callsEnabled,
@@ -31,6 +31,7 @@ import {
     iceServers,
     needsTURNCredentials,
     shouldPlayJoinUserSound,
+    idToProfileInChannel,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -65,6 +66,7 @@ import {
     getUserIdFromDM,
     getWSConnectionURL,
     playSound,
+    getUserDisplayName,
 } from './utils';
 import {logErr, logDebug} from './log';
 import {
@@ -294,21 +296,26 @@ export default class Plugin {
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_reaction`, (ev) => {
-            const reaction = {
+            // Note: reactions will not respond to displayname preferences, but they're only on screen for a short time
+            // anyway, so that's ok. (cf. other competitor's displayname doesn't update at all during an entire call).
+            const profiles = idToProfileInChannel(store.getState(), ev.broadcast.channel_id);
+            const displayName = getUserDisplayName(profiles[ev.data.userID]);
+            const reaction: Reaction = {
                 emoji: {
                     name: ev.data.emoji_name,
                     skin: ev.data.emoji_skin,
                     unified: ev.data.emoji_unified,
                 },
                 timestamp: ev.data.timestamp,
+                user_id: ev.data.userID,
+                displayName,
             };
-            const profiles =
             store.dispatch({
                 type: VOICE_CHANNEL_USER_REACTION,
                 data: {
+                    channelID: ev.broadcast.channel_id,
                     userID: ev.data.userID,
                     reaction,
-                    channelID: ev.broadcast.channel_id,
                 },
             });
             setTimeout(() => {

@@ -8,7 +8,7 @@ import {useSelector} from 'react-redux';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {
-    idToProfileInChannel,
+    idToProfileInCurrentChannel,
     voiceReactions,
     voiceUsersStatuses,
 } from 'src/selectors';
@@ -20,13 +20,12 @@ type Props = {
 };
 
 // add a list of reactions, on top of that add the hands up as the top element
-// TODO: bug: users who have left will have 'Someone' as their name.
 export const ReactionStream = (props: Props) => {
     const vReactions = useSelector(voiceReactions);
     const currentUserID = useSelector(getCurrentUserId);
 
     const statuses = useSelector(voiceUsersStatuses);
-    const profileMap = useSelector(idToProfileInChannel);
+    const profileMap = useSelector(idToProfileInCurrentChannel);
 
     const handsup = Object.keys(statuses)
         .flatMap((id) => (statuses[id]?.raised_hand ? [{...statuses[id], id}] : []))
@@ -36,7 +35,7 @@ export const ReactionStream = (props: Props) => {
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
         const emoji = <Emoji emoji={reaction.emoji}/>;
-        const user = reaction.user_id === currentUserID ? 'You' : getUserDisplayName(profileMap[reaction.user_id]) || 'Someone';
+        const user = reaction.user_id === currentUserID ? 'You' : reaction.displayName || 'Someone';
         return (
             <ReactionChip key={reaction.timestamp + reaction.user_id}>
                 <span>{emoji}</span>

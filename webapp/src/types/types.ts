@@ -160,8 +160,6 @@ export type EmojiData = {
 export type Reaction = {
     emoji: EmojiData;
     timestamp: number;
-}
-
-export type ReactionWithUser = Reaction & {
     user_id: string;
+    displayName: string;
 }
