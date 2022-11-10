@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/pprof"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -276,6 +277,19 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 	res.Msg = "success"
 }
 
+func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
+	bundlePath, err := p.API.GetBundlePath()
+	if err != nil {
+		p.LogError(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	standalonePath := filepath.Join(bundlePath, "standalone/dist/")
+
+	http.StripPrefix("/standalone/", http.FileServer(http.Dir(standalonePath))).ServeHTTP(w, r)
+}
+
 func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	var res httpResponse
 	defer p.httpAudit("handlePostChannel", &res, w, r)
@@ -472,6 +486,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	userID := r.Header.Get("Mattermost-User-Id")
 	if userID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/standalone/") {
+		p.handleServeStandalone(w, r)
 		return
 	}
 

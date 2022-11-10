@@ -81,6 +81,7 @@ export const CallsConfigDefault: CallsConfig = {
 
 export type CallsClientConfig = {
     wsURL: string,
+    authToken?: string,
     iceServers: RTCIceServer[],
 }
 

@@ -34,3 +34,5 @@ export const RECEIVED_CALLS_USER_PREFERENCES = pluginId + '_received_calls_user_
 
 export const RECEIVED_CLIENT_ERROR = pluginId + '_received_client_error';
 
+export const DESKTOP_WIDGET_CONNECTED = pluginId + '_desktop_widget_connected';
+
