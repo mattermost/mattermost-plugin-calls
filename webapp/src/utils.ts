@@ -149,6 +149,7 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
 
         if (!stateA) {
             stateA = {
+                id: elA.id,
                 voice: false,
                 unmuted: false,
                 raised_hand: 0,
@@ -156,6 +157,7 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
         }
         if (!stateB) {
             stateB = {
+                id: elB.id,
                 voice: false,
                 unmuted: false,
                 raised_hand: 0,

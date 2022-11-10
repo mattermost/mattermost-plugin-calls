@@ -97,8 +97,8 @@ interface State {
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private readonly screenPlayer = React.createRef<HTMLVideoElement>();
+    private readonly emojiButtonRef: React.RefObject<EmojiButtonRef>;
     private expandedRootRef = React.createRef<HTMLDivElement>();
-    private emojiButtonRef = React.createRef<EmojiButtonRef>();
     private pushToTalk = false;
 
     #unlockNavigation?: () => void;
@@ -106,6 +106,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     constructor(props: Props) {
         super(props);
         this.screenPlayer = React.createRef();
+        this.emojiButtonRef = React.createRef();
         this.state = {
             screenStream: null,
             showParticipantsList: false,
@@ -478,7 +479,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     maxHeight: `calc(100% - ${this.shouldRenderAlertBanner() ? 240 : 200}px)`,
                 }}
             >
-                <ReactionStream style={{left: '0'}}/>
+                <ReactionStream forceLeft={true}/>
                 <video
                     id='screen-player'
                     ref={this.screenPlayer}
@@ -722,7 +723,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <div style={styles.main}>
                     {this.renderAlertBanner()}
 
-                    {/*// TODO: removed from below, needed?:  alignItems: 'center',*/}
                     <div style={{display: 'flex', width: '100%'}}>
                         <div style={styles.topLeftContainer}>
                             <CallDuration

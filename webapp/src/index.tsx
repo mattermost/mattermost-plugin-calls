@@ -701,11 +701,12 @@ export default class Plugin {
                     });
                 }
 
+                // TODO: we should use types here, could cause trouble in the future.
                 const userStates = {} as any;
                 const users = resp.data.call?.users || [];
                 const states = resp.data.call?.states || [];
                 for (let i = 0; i < users.length; i++) {
-                    userStates[users[i]] = states[i];
+                    userStates[users[i]] = {...states[i], id: users[i]};
                 }
                 store.dispatch({
                     type: VOICE_CHANNEL_USERS_CONNECTED_STATES,

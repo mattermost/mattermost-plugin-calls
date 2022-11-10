@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 export type UserState = {
+    id: string;
     voice: boolean;
     unmuted: boolean;
     raised_hand: number;

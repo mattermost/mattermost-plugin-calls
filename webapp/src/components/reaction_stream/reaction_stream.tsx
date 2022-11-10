@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import styled from 'styled-components';
+import styled, {css} from 'styled-components';
 import {useSelector} from 'react-redux';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
@@ -15,12 +15,12 @@ import {
 import {Emoji} from 'src/components/emoji/emoji';
 import {getUserDisplayName} from 'src/utils';
 
-type Props = {
-    style?: streamListStyleProps;
-};
+interface Props {
+    forceLeft?: boolean;
+}
 
 // add a list of reactions, on top of that add the hands up as the top element
-export const ReactionStream = (props: Props) => {
+export const ReactionStream = ({forceLeft}: Props) => {
     const vReactions = useSelector(voiceReactions);
     const currentUserID = useSelector(getCurrentUserId);
 
@@ -28,7 +28,7 @@ export const ReactionStream = (props: Props) => {
     const profileMap = useSelector(idToProfileInCurrentChannel);
 
     const handsup = Object.keys(statuses)
-        .flatMap((id) => (statuses[id]?.raised_hand ? [{...statuses[id], id}] : []))
+        .flatMap((id) => (statuses[id]?.raised_hand ? [statuses[id]] : []))
         .sort((a, b) => a.raised_hand - b.raised_hand)
         .map((u) => u.id);
 
@@ -82,14 +82,14 @@ export const ReactionStream = (props: Props) => {
     elements = [...elements, ...reactions];
 
     return (
-        <ReactionStreamList left={props?.style?.left}>
+        <ReactionStreamList forceLeft={forceLeft}>
             {elements}
         </ReactionStreamList>
     );
 };
 
 interface streamListStyleProps {
-    left?: string;
+    forceLeft?: boolean;
 }
 
 const ReactionStreamList = styled.div<streamListStyleProps>`
@@ -101,7 +101,9 @@ const ReactionStreamList = styled.div<streamListStyleProps>`
     margin-left: 10px;
     -webkit-mask: -webkit-gradient(#0000, #000);
     mask: linear-gradient(#0000, #0003, #000f);
-    ${(props) => props.left && `left: ${props.left};`}
+    ${(props) => props.forceLeft && css`
+        left: 0;
+    `}
 `;
 
 interface chipProps {

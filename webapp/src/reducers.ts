@@ -288,6 +288,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 [action.data.channelID]: {
                     ...state[action.data.channelID],
                     [action.data.userID]: {
+                        id: action.data.userID,
                         unmuted: false,
                         voice: false,
                         raised_hand: 0,
@@ -316,6 +317,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 ...state,
                 [action.data.channelID]: {
                     [action.data.userID]: {
+                        id: action.data.userID,
                         unmuted: false,
                         voice: false,
                         raised_hand: 0,
@@ -339,6 +341,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 ...state,
                 [action.data.channelID]: {
                     [action.data.userID]: {
+                        id: action.data.userID,
                         unmuted: true,
                         voice: false,
                         raised_hand: 0,
@@ -362,6 +365,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 ...state,
                 [action.data.channelID]: {
                     [action.data.userID]: {
+                        id: action.data.userID,
                         unmuted: false,
                         voice: true,
                         raised_hand: 0,
@@ -385,6 +389,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 ...state,
                 [action.data.channelID]: {
                     [action.data.userID]: {
+                        id: action.data.userID,
                         unmuted: false,
                         voice: false,
                         raised_hand: 0,
@@ -408,6 +413,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 ...state,
                 [action.data.channelID]: {
                     [action.data.userID]: {
+                        id: action.data.userID,
                         unmuted: false,
                         voice: false,
                         raised_hand: action.data.raised_hand,
@@ -431,6 +437,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 ...state,
                 [action.data.channelID]: {
                     [action.data.userID]: {
+                        id: action.data.userID,
                         voice: false,
                         unmuted: false,
                         raised_hand: action.data.raised_hand,
@@ -454,6 +461,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 ...state,
                 [action.data.channelID]: {
                     [action.data.userID]: {
+                        id: action.data.userID,
                         voice: false,
                         unmuted: false,
                         raised_hand: 0,

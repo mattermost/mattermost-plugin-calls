@@ -720,7 +720,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	case clientMessageTypeReaction:
 		msgData, ok := req.Data["data"].(string)
 		if !ok {
-			p.LogError("invalid or missing data")
+			p.LogError("invalid or missing reaction data")
 			return
 		}
 		msg.Data = []byte(msgData)

@@ -18,7 +18,7 @@ import {
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import {getChannelURL, isDMChannel} from 'src/utils';
-import {CallsConfig, CallsUserPreferences, Reaction} from 'src/types/types';
+import {CallsConfig, CallsUserPreferences, Reaction, UserState} from 'src/types/types';
 
 import {pluginId} from './manifest';
 
@@ -89,7 +89,7 @@ export const idToProfileInChannel: (state: GlobalState, channelId: string) => { 
         (profiles) => makeIdToProfile(profiles),
     );
 
-export const voiceUsersStatuses = (state: GlobalState) => {
+export const voiceUsersStatuses: (state: GlobalState) => { [id: string]: UserState } = (state: GlobalState) => {
     return pluginState(state).voiceUsersStatuses[connectedChannelID(state)] || {};
 };
 
