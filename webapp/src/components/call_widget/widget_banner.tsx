@@ -5,7 +5,7 @@ import CompassIcon from 'src/components/icons/compassIcon';
 
 type Props = {
     type: string,
-    icon: string,
+    icon: string | React.ReactNode,
     iconFill?: string,
     iconColor?: string,
     body?: string | React.ReactNode,
@@ -42,37 +42,47 @@ export default function WidgetBanner(props: Props) {
             fadeIn={!closing}
             onAnimationEnd={onAnimationEnd}
         >
-            <Header>
-                <Icon
-                    fill={props.iconFill}
-                    color={props.iconColor}
-                >
+            <Icon
+                fill={props.iconFill}
+                color={props.iconColor}
+            >
+                { typeof props.icon === 'string' &&
                     <CompassIcon icon={props.icon}/>
-                </Icon>
-                <HeaderText>{props.header}</HeaderText>
-                { props.onClose &&
+                }
+
+                { typeof props.icon !== 'string' &&
+                    props.icon
+                }
+            </Icon>
+
+            <Main>
+                <Header>
+                    <HeaderText>{props.header}</HeaderText>
+                </Header>
+                <Body>
+                    { props.body &&
+                    <BodyText>{props.body}</BodyText>
+                    }
+                </Body>
+                { props.confirmText && props.onClose &&
+                    <Footer>
+                        <ConfirmButton
+                            className='cursor--pointer style--none'
+                            onClick={() => setClosing(true)}
+                        >
+                            {props.confirmText}
+                        </ConfirmButton>
+                    </Footer>
+                }
+            </Main>
+
+            { props.onClose &&
                 <CloseButton
                     onClick={() => setClosing(true)}
                 >
                     <CompassIcon icon='close'/>
                 </CloseButton>
-                }
-            </Header>
-            <Body>
-                { props.body &&
-                <BodyText>{props.body}</BodyText>
-                }
-            </Body>
-            <Footer>
-                { props.confirmText && props.onClose &&
-                <ConfirmButton
-                    className='cursor--pointer style--none'
-                    onClick={() => setClosing(true)}
-                >
-                    {props.confirmText}
-                </ConfirmButton>
-                }
-            </Footer>
+            }
         </Banner>
     );
 }
@@ -101,7 +111,6 @@ const Banner = styled.div<{color: string, bgColor: string, fadeIn: boolean}>`
   }
 
   display: flex;
-  flex-direction: column;
   align-items: flex-start;
   width: 100%;
   background-color: ${({bgColor}) => bgColor};
@@ -114,58 +123,63 @@ const Banner = styled.div<{color: string, bgColor: string, fadeIn: boolean}>`
   a, a:hover, a:visited {
     color: ${({color}) => color};
   }
+`;
+
+const Main = styled.div`
+  display: flex;
+  flex-direction: column;
 
   font-style: normal;
   font-size: 11px;
   line-height: 16px;
   letter-spacing: 0.02em;
+  margin: 0 4px;
 `;
 
 const Header = styled.div`
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   width: 100%;
 `;
 
 const HeaderText = styled.span`
   flex: 1;
-  margin: 0 4px;
   font-weight: 600;
 `;
 
 const Body = styled.div`
   display: flex;
   align-items: flex-start;
+  margin-top: 4px;
 `;
 
 const BodyText = styled.div`
   flex: 1;
   font-weight: 400;
-  margin: 4px 16px;
 `;
 
 const Footer = styled.div`
   display: flex;
   align-items: flex-start;
+  margin-top: 8px;
 `;
 
 const ConfirmButton = styled.button`
   color: var(--button-bg);
-  margin: 4px 16px;
   font-weight: 600;
 `;
 
 const Icon = styled.div<{fill?: string, color?: string}>`
-  margin-left: -5px;
   font-size: 12px;
-  line-height: 16px;
+  line-height: 12px;
   fill: ${({fill}) => (fill || 'currentColor')};
   color: ${({color}) => (color || 'currentColor')};
+  margin-top: 4px;
 `;
 
 const CloseButton = styled(Icon)`
   cursor: pointer;
-  margin-right: -5px;
+  margin-top: 4px;
 
   :hover {
     background: rgba(var(--center-channel-color-rgb), 0.08);

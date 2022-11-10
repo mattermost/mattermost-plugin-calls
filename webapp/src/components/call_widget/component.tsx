@@ -11,6 +11,8 @@ import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {Theme} from 'mattermost-redux/types/themes';
 
+import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
+
 import {
     UserState,
     AudioDevices,
@@ -1191,7 +1193,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <WidgetBanner
                 key={'widget_banner_recording_disclaimer'}
                 type='info'
-                icon='video-outline'
+                icon={(
+                    <RecordCircleOutlineIcon
+                        size={12}
+                    />)}
                 iconFill='rgb(var(--dnd-indicator-rgb))'
                 iconColor='rgb(var(--dnd-indicator-rgb))'
                 header={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header}

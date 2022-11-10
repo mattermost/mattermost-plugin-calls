@@ -9,7 +9,7 @@ import {Post} from '@mattermost/types/posts';
 
 import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
 
-import {ProductChannelsIcon} from '@mattermost/compass-icons/components';
+import {ProductChannelsIcon, RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
 
 import {RouteComponentProps} from 'react-router-dom';
 
@@ -92,12 +92,11 @@ interface Props extends RouteComponentProps {
     channelTeam: Team,
     channelURL: string;
     channelDisplayName: string;
-
     connectedDMUser: UserProfile | undefined,
-    threadID: Post['id'];
-    threadUnreadReplies: number | undefined;
-    threadUnreadMentions: number | undefined;
-    rhsSelectedThreadID?: string;
+    threadID: Post['id'],
+    threadUnreadReplies: number | undefined,
+    threadUnreadMentions: number | undefined,
+    rhsSelectedThreadID?: string,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
     allowScreenSharing: boolean,
 }
@@ -439,7 +438,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         return (
             <InCallPrompt
-                icon='video-outline'
+                icon={(
+                    <RecordCircleOutlineIcon
+                        size={18}
+                    />)}
                 iconFill='rgb(var(--dnd-indicator-rgb))'
                 iconColor='rgb(var(--dnd-indicator-rgb))'
                 header={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header}

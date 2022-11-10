@@ -4,7 +4,7 @@ import styled, {css} from 'styled-components';
 import CompassIcon from 'src/components/icons/compassIcon';
 
 export type Props = {
-    icon: string,
+    icon: string | React.ReactNode,
     iconFill?: string,
     iconColor?: string,
     body: string,
@@ -20,7 +20,13 @@ export default function InCallPrompt(props: Props) {
                 fill={props.iconFill}
                 color={props.iconColor}
             >
+                { typeof props.icon === 'string' &&
                 <CompassIcon icon={props.icon}/>
+                }
+
+                { typeof props.icon !== 'string' &&
+                  props.icon
+                }
             </Icon>
 
             <Main>
@@ -75,6 +81,7 @@ const Main = styled.div`
 
 const Header = styled.div`
   font-weight: 600;
+  line-height: 18px;
 `;
 
 const Body = styled.div`
