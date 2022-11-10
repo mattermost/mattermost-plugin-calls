@@ -85,6 +85,7 @@ interface Props {
     },
     callStartAt: number,
     callHostID: string,
+    callRecordingStartAt: number,
     screenSharingID: string,
     show: boolean,
     showExpandedView: () => void,
@@ -1183,7 +1184,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     renderRecordingDisclaimer = () => {
-        if (this.state.recDisclaimerDismissedAt) {
+        if (!this.props.callRecordingStartAt ||
+            this.state.recDisclaimerDismissedAt > this.props.callRecordingStartAt) {
             return null;
         }
 

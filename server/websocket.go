@@ -17,23 +17,25 @@ import (
 )
 
 const (
-	wsEventSignal           = "signal"
-	wsEventUserConnected    = "user_connected"
-	wsEventUserDisconnected = "user_disconnected"
-	wsEventUserMuted        = "user_muted"
-	wsEventUserUnmuted      = "user_unmuted"
-	wsEventUserVoiceOn      = "user_voice_on"
-	wsEventUserVoiceOff     = "user_voice_off"
-	wsEventUserScreenOn     = "user_screen_on"
-	wsEventUserScreenOff    = "user_screen_off"
-	wsEventCallStart        = "call_start"
-	wsEventCallEnd          = "call_end"
-	wsEventUserRaiseHand    = "user_raise_hand"
-	wsEventUserUnraiseHand  = "user_unraise_hand"
-	wsEventJoin             = "join"
-	wsEventError            = "error"
-	wsEventCallHostChanged  = "call_host_changed"
-	wsReconnectionTimeout   = 10 * time.Second
+	wsEventSignal             = "signal"
+	wsEventUserConnected      = "user_connected"
+	wsEventUserDisconnected   = "user_disconnected"
+	wsEventUserMuted          = "user_muted"
+	wsEventUserUnmuted        = "user_unmuted"
+	wsEventUserVoiceOn        = "user_voice_on"
+	wsEventUserVoiceOff       = "user_voice_off"
+	wsEventUserScreenOn       = "user_screen_on"
+	wsEventUserScreenOff      = "user_screen_off"
+	wsEventCallStart          = "call_start"
+	wsEventCallEnd            = "call_end"
+	wsEventUserRaiseHand      = "user_raise_hand"
+	wsEventUserUnraiseHand    = "user_unraise_hand"
+	wsEventJoin               = "join"
+	wsEventError              = "error"
+	wsEventCallHostChanged    = "call_host_changed"
+	wsEventCallRecordingStart = "call_recording_start"
+	wsEventCallRecordingEnd   = "call_recording_end"
+	wsReconnectionTimeout     = 10 * time.Second
 )
 
 func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *model.WebsocketBroadcast) {
@@ -544,6 +546,13 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	if prevState.Call != nil && state.Call.HostID != prevState.Call.HostID {
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 			"hostID": state.Call.HostID,
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}
+
+	if userID == p.getBotID() && state.Call.Recording != nil {
+		p.publishWebSocketEvent(wsEventCallRecordingStart, map[string]interface{}{
+			"callID":  channelID,
+			"startAt": state.Call.Recording.StartAt,
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 

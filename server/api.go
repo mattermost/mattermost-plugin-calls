@@ -523,6 +523,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 			p.handleTrackEvent(w, r)
 			return
 		}
+
+		if matches := callRecordingActionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
+			p.handleRecordingAction(w, r, matches[1], matches[2])
+			return
+		}
 	}
 
 	http.NotFound(w, r)

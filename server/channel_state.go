@@ -8,6 +8,14 @@ import (
 	"fmt"
 )
 
+type recordingState struct {
+	ID        string `json:"id"`
+	CreatorID string `json:"creator_id"`
+	InitAt    int64  `json:"init_at"`
+	StartAt   int64  `json:"start_at"`
+	EndAt     int64  `json:"end_at"`
+}
+
 type userState struct {
 	Unmuted    bool  `json:"unmuted"`
 	RaisedHand int64 `json:"raised_hand"`
@@ -33,6 +41,7 @@ type callState struct {
 	Stats           callStats             `json:"stats"`
 	RTCDHost        string                `json:"rtcd_host"`
 	HostID          string                `json:"host_id"`
+	Recording       *recordingState       `json:"recording,omitempty"`
 }
 
 type channelState struct {
@@ -47,14 +56,15 @@ type UserState struct {
 }
 
 type CallState struct {
-	ID              string      `json:"id"`
-	StartAt         int64       `json:"start_at"`
-	Users           []string    `json:"users"`
-	States          []UserState `json:"states,omitempty"`
-	ThreadID        string      `json:"thread_id"`
-	ScreenSharingID string      `json:"screen_sharing_id"`
-	OwnerID         string      `json:"owner_id"`
-	HostID          string      `json:"host_id"`
+	ID              string          `json:"id"`
+	StartAt         int64           `json:"start_at"`
+	Users           []string        `json:"users"`
+	States          []UserState     `json:"states,omitempty"`
+	ThreadID        string          `json:"thread_id"`
+	ScreenSharingID string          `json:"screen_sharing_id"`
+	OwnerID         string          `json:"owner_id"`
+	HostID          string          `json:"host_id"`
+	Recording       *recordingState `json:"recording,omitempty"`
 }
 
 type ChannelState struct {
@@ -73,8 +83,8 @@ func (cs *callState) Clone() *callState {
 	if cs.Users != nil {
 		newState.Users = make(map[string]*userState, len(cs.Users))
 		for id, state := range cs.Users {
-			us := *state
-			newState.Users[id] = &us
+			newState.Users[id] = &userState{}
+			*newState.Users[id] = *state
 		}
 	}
 
@@ -83,6 +93,11 @@ func (cs *callState) Clone() *callState {
 		for id := range cs.Sessions {
 			newState.Sessions[id] = struct{}{}
 		}
+	}
+
+	if cs.Recording != nil {
+		newState.Recording = &recordingState{}
+		*newState.Recording = *cs.Recording
 	}
 
 	return &newState
@@ -136,6 +151,7 @@ func (cs *callState) getClientState(botID string) *CallState {
 		ScreenSharingID: cs.ScreenSharingID,
 		OwnerID:         cs.OwnerID,
 		HostID:          cs.HostID,
+		Recording:       cs.Recording,
 	}
 }
 

@@ -111,10 +111,6 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 			}
 		}
 
-		if state.Call.HostID == "" && userID != botID {
-			state.Call.HostID = userID
-		}
-
 		if state.Call.EndAt > 0 {
 			return nil, fmt.Errorf("call has ended")
 		}
@@ -129,6 +125,15 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 				p.LogError("joinAllowed failed", "error", err.Error())
 			}
 			return nil, fmt.Errorf("user cannot join because of limits")
+		}
+
+		// When the bot joins the call it means the recording has started.
+		if state.Call.Recording != nil && userID == botID {
+			state.Call.Recording.StartAt = time.Now().UnixMilli()
+		}
+
+		if state.Call.HostID == "" && userID != botID {
+			state.Call.HostID = userID
 		}
 
 		state.Call.Users[userID] = &userState{

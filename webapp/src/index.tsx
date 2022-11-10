@@ -31,6 +31,8 @@ import {
     handleUserRaisedHand,
     handleUserUnraisedHand,
     handleCallHostChanged,
+    handleCallRecordingStart,
+    handleCallRecordingEnd,
 } from './websocket_handlers';
 
 import {
@@ -104,6 +106,7 @@ import {
     SHOW_END_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
     VOICE_CHANNEL_CALL_HOST,
+    VOICE_CHANNEL_CALL_RECORDING_START,
 } from './action_types';
 
 import {PluginRegistry, Store} from './types/mattermost-webapp';
@@ -185,6 +188,14 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_host_changed`, (ev) => {
             handleCallHostChanged(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_start`, (ev) => {
+            handleCallRecordingStart(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_end`, (ev) => {
+            handleCallRecordingEnd(store, ev);
         });
     }
 
@@ -567,6 +578,15 @@ export default class Plugin {
                         data: {
                             profiles: await getProfilesByIds(store.getState(), resp.data.call?.users),
                             channelID,
+                        },
+                    });
+                }
+                if (resp.data.call?.recording?.start_at) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_CALL_RECORDING_START,
+                        data: {
+                            callID: channelID,
+                            startAt: resp.data.call?.recording?.start_at,
                         },
                     });
                 }

@@ -93,6 +93,10 @@ export const voiceChannelScreenSharingID = (state: GlobalState, channelID: strin
     return getPluginState(state).voiceChannelScreenSharingID[channelID];
 };
 
+export const callRecording = (state: GlobalState, callID: string) => {
+    return getPluginState(state).callsRecordings[callID];
+};
+
 export const expandedView = (state: GlobalState) => {
     return getPluginState(state).expandedView;
 };

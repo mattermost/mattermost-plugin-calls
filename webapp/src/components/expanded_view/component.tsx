@@ -81,6 +81,7 @@ interface Props extends RouteComponentProps {
     },
     callStartAt: number,
     callHostID: string,
+    callRecordingStartAt: number,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
     selectRhsPost?: (postID: string) => void,
@@ -430,7 +431,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     renderRecordingDisclaimer = () => {
-        if (this.state.recDisclaimerDismissedAt) {
+        if (!this.props.callRecordingStartAt ||
+            this.state.recDisclaimerDismissedAt > this.props.callRecordingStartAt) {
             return null;
         }
 

@@ -19,6 +19,8 @@ import {
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_CALL_HOST,
+    VOICE_CHANNEL_CALL_RECORDING_START,
+    VOICE_CHANNEL_CALL_RECORDING_END,
 } from './action_types';
 
 import {
@@ -220,6 +222,25 @@ export function handleCallHostChanged(store: Store, ev: any) {
         data: {
             channelID,
             hostID: ev.data.hostID,
+        },
+    });
+}
+
+export function handleCallRecordingStart(store: Store, ev: any) {
+    store.dispatch({
+        type: VOICE_CHANNEL_CALL_RECORDING_START,
+        data: {
+            callID: ev.data.callID,
+            startAt: ev.data.startAt,
+        },
+    });
+}
+
+export function handleCallRecordingEnd(store: Store, ev: any) {
+    store.dispatch({
+        type: VOICE_CHANNEL_CALL_RECORDING_END,
+        data: {
+            callID: ev.data.callID,
         },
     });
 }

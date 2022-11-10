@@ -34,6 +34,7 @@ import {
     getChannelUrlAndDisplayName,
     allowScreenSharing,
     voiceChannelCallHostID,
+    callRecording,
 } from '../../selectors';
 
 import ExpandedView from './component';
@@ -77,6 +78,7 @@ const mapStateToProps = (state: GlobalState) => {
         statuses,
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         callHostID: voiceChannelCallHostID(state, channel?.id) || '',
+        callRecordingStartAt: callRecording(state, channel?.id)?.startAt || 0,
         screenSharingID,
         channel,
         channelTeam,

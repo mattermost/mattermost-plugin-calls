@@ -236,6 +236,10 @@ func TestChannelStateClone(t *testing.T) {
 					"userC": {},
 					"userB": {},
 				},
+				Recording: &recordingState{
+					InitAt:  1100,
+					StartAt: 1200,
+				},
 			},
 		}
 
@@ -253,6 +257,10 @@ func TestChannelStateClone(t *testing.T) {
 
 		require.Condition(t, func() bool {
 			return !samePointer(t, cs.Call.Sessions, cloned.Call.Sessions)
+		})
+
+		require.Condition(t, func() bool {
+			return !samePointer(t, cs.Call.Recording, cloned.Call.Recording)
 		})
 
 		require.Condition(t, func() bool {
