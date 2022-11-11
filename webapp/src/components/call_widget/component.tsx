@@ -436,14 +436,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             screenStream = window.callsClient.getLocalScreenStream();
         }
 
-        const wasRendering = Boolean(prevProps.screenSharingID && prevState.screenStream && prevProps.show);
-        const shouldRender = Boolean(this.props.screenSharingID && screenStream);
-
-        if (!this.state.screenStream && screenStream) {
+        const hasScreenTrackChanged = screenStream && this.state.screenStream && this.state.screenStream.getVideoTracks()[0].id !== screenStream.getVideoTracks()[0].id;
+        if ((screenStream && !this.state.screenStream) || hasScreenTrackChanged) {
             // eslint-disable-next-line react/no-did-update-set-state
             this.setState({screenStream});
-        } else if (!wasRendering && shouldRender && this.screenPlayer.current) {
-            this.screenPlayer.current.srcObject = screenStream;
+        }
+
+        if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer?.current.srcObject !== this.state.screenStream) {
+            this.screenPlayer.current.srcObject = this.state.screenStream;
         }
 
         let profiles;
