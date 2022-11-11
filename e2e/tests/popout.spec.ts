@@ -2,6 +2,7 @@ import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
+import {getChannelNameForTest} from '../utils';
 
 test.describe('popout window', () => {
     test.use({storageState: userState.users[4].storageStatePath});
@@ -47,9 +48,8 @@ test.describe('popout window', () => {
             page.click('#calls-widget-expand-button'),
         ]);
         await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
-        const idx = parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2;
-        await expect(popOut).toHaveTitle(`Call - calls${idx}`);
-        await expect(page).not.toHaveTitle(`Call - calls${idx}`);
+        await expect(popOut).toHaveTitle(`Call - ${getChannelNameForTest()}`);
+        await expect(page).not.toHaveTitle(`Call - ${getChannelNameForTest()}`);
 
         await popOut.locator('.button-leave').click();
     });

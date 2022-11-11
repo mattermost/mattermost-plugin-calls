@@ -180,7 +180,7 @@ export default class CallsClient extends EventEmitter {
             this.emit('error', err);
         }
 
-        const ws = new WebSocketClient(this.config.wsURL);
+        const ws = new WebSocketClient(this.config.wsURL, this.config.authToken);
         this.ws = ws;
 
         ws.on('error', (err: WebSocketError) => {

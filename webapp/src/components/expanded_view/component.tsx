@@ -14,7 +14,14 @@ import {ProductChannelsIcon} from '@mattermost/compass-icons/components';
 import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
 import {RouteComponentProps} from 'react-router-dom';
 
-import {getUserDisplayName, getScreenStream, isDMChannel, hasExperimentalFlag} from 'src/utils';
+import {
+    getUserDisplayName,
+    getScreenStream,
+    isDMChannel,
+    hasExperimentalFlag,
+    sendDesktopEvent,
+    shouldRenderDesktopWidget,
+} from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
 import {
     UserState,
@@ -22,9 +29,11 @@ import {
     CallAlertStates,
     CallAlertStatesDefault,
 } from 'src/types/types';
+
 import {
     CallAlertConfigs,
 } from 'src/constants';
+
 import * as Telemetry from 'src/types/telemetry';
 import Avatar from 'src/components/avatar/avatar';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
@@ -247,6 +256,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         } else if (!this.props.screenSharingID) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 this.props.showScreenSourceModal();
+            } else if (shouldRenderDesktopWidget()) {
+                sendDesktopEvent('desktop-sources-modal-request');
             } else {
                 const state = {} as State;
                 const stream = await getScreenStream('', hasExperimentalFlag());
@@ -958,6 +969,7 @@ const styles: Record<string, CSSObject> = {
         zIndex: 1000,
         background: 'rgba(37, 38, 42, 1)',
         color: 'white',
+        appRegion: 'drag',
         gridArea: 'center',
         overflow: 'auto',
     },

@@ -2,6 +2,8 @@ import {expect, Page} from '@playwright/test';
 
 import {baseURL, defaultTeam} from './constants';
 
+import {getChannelNameForTest} from './utils';
+
 export default class PlaywrightDevPage {
     readonly page: Page;
 
@@ -10,9 +12,7 @@ export default class PlaywrightDevPage {
     }
 
     async goto() {
-        const idx = parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2;
-        const channel = `calls${idx}`;
-        await this.page.goto(`${baseURL}/${defaultTeam}/channels/${channel}`);
+        await this.page.goto(`${baseURL}/${defaultTeam}/channels/${getChannelNameForTest()}`);
     }
 
     async gotoDM(username: string) {
