@@ -81,14 +81,7 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     };
 
     const toggleShowPicker = () => setShowPicker((prev) => !prev);
-    const toggleReactions = () => {
-        setShowBar((prev) => {
-            if (prev) {
-                setShowPicker(false);
-            }
-            return !prev;
-        });
-    };
+    const toggleReactions = () => setShowBar((prev) => !prev);
 
     return (
         <div style={{position: 'relative'}}>
@@ -98,10 +91,10 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                         emojiVersion={EMOJI_VERSION}
                         skinTonePosition='search'
                         onEmojiSelect={handleUserPicksEmoji}
-                        onClickOutside={toggleReactions}
+                        onClickOutside={toggleShowPicker}
                         autoFocus={true}
                         perLine={9}
-                        emojiButtonSize={34}
+                        emojiButtonSize={35}
                         emojiSize={24}
                         previewPosition={'none'}
                     />
@@ -167,11 +160,14 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                 onToggle={toggleReactions}
                 tooltipText={addReactionText}
                 shortcut={reverseKeyMappings.popout[MAKE_REACTION][0]}
-                bgColor={showBar ? 'rgba(255, 255, 255, 0.56)' : ''}
+                bgColor={showBar ? '#DDDFE4' : ''}
                 icon={
                     <SmileyIcon
-                        style={{width: '28px', height: '28px'}}
-                        fill={showPicker ? '#3F4350' : '#FFFFFF'}
+                        style={{
+                            width: '28px',
+                            height: '28px',
+                            fill: showBar ? '#090A0B' : '#FFFFFF',
+                        }}
                     />
                 }
             />
@@ -199,7 +195,7 @@ const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
 const PickerContainer = styled.div`
     position: absolute;
     top: -496px;
-    left: -83px;
+    left: -129px;
 
     // style the emoji selector
     &&&&&& {
@@ -212,9 +208,9 @@ const PickerContainer = styled.div`
 
 const Bar = styled.div`
     position: absolute;
-    min-width: 334px; // to match the emoji picker
+    min-width: 343px; // to match the emoji picker
     top: -56px;
-    left: -84px;
+    left: -130px;
     display: flex;
     justify-content: center;
     background: #090A0B;
@@ -254,7 +250,7 @@ const HandText = styled.span`
 
 const DividerLine = styled.div`
     width: 0;
-    margin: 0 4px;
+    margin: 0 2px 0 4px;
     height: 32px;
     border: 1px solid rgba(221, 223, 228, 0.16);
 `;
@@ -266,15 +262,15 @@ const QuickSelectButton = styled.button<{ active?: boolean }>`
     align-items: center;
     border-radius: 4px;
     background: none;
-    //width: 25px;
-    //height: 25px;
     font-size: 18px;
+    margin-left: 2px;
 
     :hover {
         background: rgba(255, 255, 255, 0.24);
     }
 
     ${({active}) => (active && css`
-        background: rgba(255, 255, 255, 0.24);
+        background: rgba(255, 255, 255, 0.92);
+        color: #1C58D9;
     `)}
 `;
