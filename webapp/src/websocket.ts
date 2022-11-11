@@ -31,6 +31,7 @@ export class WebSocketError extends Error {
 export class WebSocketClient extends EventEmitter {
     private ws: WebSocket | null = null;
     private wsURL: string;
+    private authToken: string;
     private seqNo = 1;
     private serverSeqNo = 0;
     private connID = '';
@@ -40,9 +41,10 @@ export class WebSocketClient extends EventEmitter {
     private reconnectRetryTime = wsMinReconnectRetryTimeMs;
     private closed = false;
 
-    constructor(wsURL: string) {
+    constructor(wsURL: string, authToken?: string) {
         super();
         this.wsURL = wsURL;
+        this.authToken = authToken || '';
         this.init(false);
     }
 
@@ -54,14 +56,21 @@ export class WebSocketClient extends EventEmitter {
 
         this.ws = new WebSocket(`${this.wsURL}?connection_id=${this.connID}&sequence_number=${this.serverSeqNo}`);
 
-        if (isReconnect) {
-            this.ws.onopen = () => {
+        this.ws.onopen = () => {
+            if (this.authToken) {
+                this.ws?.send(JSON.stringify({
+                    action: 'authentication_challenge',
+                    seq: this.seqNo++,
+                    data: {token: this.authToken},
+                }));
+            }
+            if (isReconnect) {
                 logDebug('ws: reconnected');
                 this.lastDisconnect = 0;
                 this.reconnectRetryTime = wsMinReconnectRetryTimeMs;
                 this.emit('open', this.originalConnID, this.connID, true);
-            };
-        }
+            }
+        };
 
         this.ws.onerror = () => {
             this.emit('error', new WebSocketError(WebSocketErrorType.Native, 'websocket error'));
@@ -103,6 +112,8 @@ export class WebSocketClient extends EventEmitter {
                         logDebug('ws: setting original conn id');
                         this.originalConnID = this.connID;
                     }
+
+                    this.emit('event', msg);
                 }
                 if (!isReconnect) {
                     this.emit('open', this.originalConnID, this.connID, false);
@@ -112,6 +123,8 @@ export class WebSocketClient extends EventEmitter {
                 logWarn('ws message received while waiting for hello');
                 return;
             }
+
+            this.emit('event', msg);
 
             if (msg.data.connID !== this.connID && msg.data.connID !== this.originalConnID) {
                 return;
@@ -155,6 +168,13 @@ export class WebSocketClient extends EventEmitter {
             this.serverSeqNo = 0;
             this.connID = '';
             this.originalConnID = '';
+
+            this.removeAllListeners('open');
+            this.removeAllListeners('event');
+            this.removeAllListeners('join');
+            this.removeAllListeners('close');
+            this.removeAllListeners('error');
+            this.removeAllListeners('message');
         } else {
             this.emit('close', code);
 

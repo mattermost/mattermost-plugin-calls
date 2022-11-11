@@ -9,6 +9,7 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
+import {Theme} from 'mattermost-redux/types/themes';
 
 import {
     UserState,
@@ -21,6 +22,7 @@ import {
     getUserDisplayName,
     hasExperimentalFlag,
     getPopOutURL,
+    sendDesktopEvent,
 } from 'src/utils';
 import {
     MUTE_UNMUTE,
@@ -63,7 +65,8 @@ import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import './component.scss';
 
 interface Props {
-    theme: any,
+    store: any,
+    theme: Theme,
     currentUserID: string,
     channel: Channel,
     team: Team,
@@ -83,6 +86,12 @@ interface Props {
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    allowScreenSharing: boolean,
+    global?: true,
+    position?: {
+        bottom: number,
+        left: number,
+    },
 }
 
 interface DraggingState {
@@ -114,6 +123,9 @@ interface State {
 
 export default class CallWidget extends React.PureComponent<Props, State> {
     private node: React.RefObject<HTMLDivElement>;
+    private menuNode: React.RefObject<HTMLDivElement>;
+    private menuResizeObserver: ResizeObserver | null = null;
+    private audioMenuResizeObserver: ResizeObserver | null = null;
     private screenPlayer = React.createRef<HTMLVideoElement>()
 
     private genStyle = () => {
@@ -121,12 +133,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             main: {
                 position: 'fixed',
                 display: 'flex',
-                bottom: '12px',
-                left: '12px',
+                bottom: `${this.props.position ? this.props.position.bottom : 12}px`,
+                left: `${this.props.position ? this.props.position.left : 12}px`,
                 lineHeight: '16px',
                 zIndex: '1000',
                 userSelect: 'none',
                 color: this.props.theme.centerChannelColor,
+                appRegion: 'drag',
             },
             topBar: {
                 background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
@@ -249,10 +262,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             alerts: CallAlertStatesDefault,
         };
         this.node = React.createRef();
+        this.menuNode = React.createRef();
         this.screenPlayer = React.createRef();
     }
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
+        if (!this.props.show) {
+            return;
+        }
         switch (keyToAction('widget', ev)) {
         case MUTE_UNMUTE:
             this.onMuteToggle();
@@ -273,7 +290,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentDidMount() {
-        document.addEventListener('mouseup', this.onMouseUp, false);
+        if (this.props.global) {
+            this.menuResizeObserver = new ResizeObserver((entries) => {
+                if (entries.length === 0) {
+                    return;
+                }
+                sendDesktopEvent('calls-widget-resize', {
+                    element: 'calls-widget-menu',
+                    height: Math.round(entries[0].contentRect.height),
+                    width: Math.round(entries[0].contentRect.width),
+                });
+            });
+            this.menuResizeObserver.observe(this.menuNode.current!);
+        } else {
+            document.addEventListener('mouseup', this.onMouseUp, false);
+        }
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
 
@@ -337,6 +368,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient.on('connect', () => {
+            if (this.props.global) {
+                sendDesktopEvent('calls-joined-call', {
+                    callID: window.callsClient?.channelID,
+                });
+            }
+
             if (isDirectChannel(this.props.channel) || isGroupChannel(this.props.channel)) {
                 // FIXME (MM-46048) - HACK
                 // There's a race condition between unmuting and receiving existing tracks from other participants.
@@ -376,7 +413,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentWillUnmount() {
-        document.removeEventListener('mouseup', this.onMouseUp, false);
+        if (!this.props.global) {
+            document.removeEventListener('mouseup', this.onMouseUp, false);
+        }
+
+        if (this.menuResizeObserver) {
+            this.menuResizeObserver.disconnect();
+        }
+
         document.removeEventListener('click', this.closeOnBlur, true);
         document.removeEventListener('keyup', this.keyboardClose, true);
         document.removeEventListener('keydown', this.handleKBShortcuts, true);
@@ -456,6 +500,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
+        if (!this.props.allowScreenSharing) {
+            return;
+        }
         const state = {} as State;
 
         if (this.props.screenSharingID === this.props.currentUserID) {
@@ -464,7 +511,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else if (!this.props.screenSharingID) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
-                this.props.showScreenSourceModal();
+                if (this.props.global) {
+                    sendDesktopEvent('desktop-sources-modal-request');
+                } else {
+                    this.props.showScreenSourceModal();
+                }
             } else {
                 const stream = await window.callsClient.shareScreen('', hasExperimentalFlag());
                 if (stream) {
@@ -840,6 +891,32 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
+    audioDevicesMenuRefCb = (el: HTMLUListElement) => {
+        if (this.audioMenuResizeObserver) {
+            this.audioMenuResizeObserver.disconnect();
+        }
+
+        if (el) {
+            this.audioMenuResizeObserver = new ResizeObserver((entries) => {
+                if (entries.length === 0) {
+                    return;
+                }
+                sendDesktopEvent('calls-widget-resize', {
+                    element: 'calls-widget-audio-menu',
+                    width: Math.round(entries[0].contentRect.width),
+                    height: Math.round(entries[0].contentRect.height),
+                });
+            });
+            this.audioMenuResizeObserver.observe(el);
+        } else {
+            sendDesktopEvent('calls-widget-resize', {
+                element: 'calls-widget-audio-menu',
+                width: 0,
+                height: 0,
+            });
+        }
+    }
+
     renderAudioDevicesMenu = (deviceType: string) => {
         if (deviceType === 'input' && !this.state.showAudioInputDevicesMenu) {
             return null;
@@ -858,6 +935,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     id={`calls-widget-audio-${deviceType}s-menu`}
                     className='Menu__content dropdown-menu'
                     style={this.style.audioInputsOutputsMenu}
+                    // eslint-disable-next-line no-undefined
+                    ref={this.props.global ? this.audioDevicesMenuRefCb : undefined}
                 >
                     {
                         devices.map((device: any, idx: number) => {
@@ -1033,7 +1112,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
-    renderMenu = (hasTeamSidebar: boolean) => {
+    renderMenu = (widerWidget: boolean) => {
         if (!this.state.showMenu) {
             return null;
         }
@@ -1045,7 +1124,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='Menu__content dropdown-menu'
                     style={this.style.dotsMenu as CSSProperties}
                 >
-                    {!hasTeamSidebar && this.renderScreenSharingMenuItem()}
+                    {this.props.allowScreenSharing && !widerWidget && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
                 </ul>
@@ -1264,13 +1343,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.props.trackEvent(Telemetry.Event.OpenExpandedView, Telemetry.Source.Widget, {initiator: 'button'});
 
         // TODO: remove this as soon as we support opening a window from desktop app.
-        if (window.desktop) {
+        if (window.desktop && !this.props.global) {
             this.props.showExpandedView();
         } else {
+            let features = 'resizable=yes';
+            if (this.props.global) {
+                features += ',frame=false';
+            }
             const expandedViewWindow = window.open(
                 getPopOutURL(this.props.team, this.props.channel),
                 'ExpandedView',
-                'resizable=yes',
+                features,
             );
 
             this.setState({
@@ -1312,11 +1395,16 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     onChannelLinkClick = (ev: React.MouseEvent<HTMLElement>) => {
         ev.preventDefault();
-        window.postMessage({type: 'browser-history-push-return', message: {pathName: this.props.channelURL}}, window.origin);
+        const message = {pathName: this.props.channelURL};
+        if (this.props.global) {
+            sendDesktopEvent('calls-widget-channel-link-click', message);
+        } else {
+            window.postMessage({type: 'browser-history-push-return', message}, window.origin);
+        }
         this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     }
 
-    renderChannelName = (hasTeamSidebar: boolean) => {
+    renderChannelName = (widerWidget: boolean) => {
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
@@ -1325,6 +1413,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     href={this.props.channelURL}
                     onClick={this.onChannelLinkClick}
                     className='calls-channel-link'
+                    style={{appRegion: 'no-drag'} as CSSProperties}
                 >
                     {isOpenChannel(this.props.channel) && <CompassIcon icon='globe'/>}
                     {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
@@ -1335,7 +1424,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            maxWidth: hasTeamSidebar ? '22ch' : '12ch',
+                            maxWidth: widerWidget ? '22ch' : '12ch',
                         }}
                     >
                         {this.props.channelDisplayName}
@@ -1364,10 +1453,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             muteTooltipSubtext = CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext;
         }
 
-        const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar'));
-        const mainWidth = hasTeamSidebar ? '280px' : '216px';
+        const widerWidget = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
+        const mainWidth = widerWidget ? '280px' : '216px';
 
-        const ShowIcon = window.desktop ? ExpandIcon : PopOutIcon;
+        const ShowIcon = window.desktop && !this.props.global ? ExpandIcon : PopOutIcon;
 
         const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
         const handTooltipText = window.callsClient.isHandRaised ? 'Click to lower hand' : 'Click to raise hand';
@@ -1382,18 +1471,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 ref={this.node}
             >
 
-                <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%', zIndex: -1}}>
+                <div
+                    ref={this.menuNode}
+                    style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%', zIndex: -1}}
+                >
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
-                    {this.renderScreenSharingPanel()}
+                    {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
-                    {this.renderMenu(hasTeamSidebar)}
+                    {this.renderMenu(widerWidget)}
                 </div>
 
                 <div style={this.style.status as CSSProperties}>
                     <div
                         style={this.style.topBar}
-                        onMouseDown={this.onMouseDown}
+                        // eslint-disable-next-line no-undefined
+                        onMouseDown={this.props.global ? undefined : this.onMouseDown}
                     >
                         <button
                             id='calls-widget-expand-button'
@@ -1410,11 +1503,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={this.style.profiles}>
                             {this.renderProfiles()}
                         </div>
-                        <div style={{width: hasTeamSidebar ? '200px' : '136px'}}>
+                        <div style={{width: widerWidget ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 <CallDuration startAt={this.props.callStartAt}/>
-                                {this.renderChannelName(hasTeamSidebar)}
+                                {this.renderChannelName(widerWidget)}
                             </div>
                         </div>
                     </div>
@@ -1499,7 +1592,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         />
                         }
 
-                        {(hasTeamSidebar || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
+                        {this.props.allowScreenSharing && (widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <WidgetButton
                             id='voice-mute-unmute'
