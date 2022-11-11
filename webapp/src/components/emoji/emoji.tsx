@@ -8,8 +8,31 @@ import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
 import {EmojiData} from 'src/types/types';
 import {Emojis, EmojiIndicesByUnicode} from 'src/emojis/emoji';
 
-type Props = {
-    emoji?: EmojiData,
+interface Props {
+    emoji?: EmojiData;
+    size?: number;
+}
+
+export const Emoji = ({emoji, size}: Props) => {
+    if (!emoji) {
+        return null;
+    }
+    const sizePx = size ? `${size}px` : null;
+    return (
+        <span
+            className='emoticon'
+            title={emoji.name}
+            style={{
+                backgroundImage: `url(${getEmojiURL(emoji)})`,
+                width: sizePx || '18px',
+                minWidth: sizePx || '18px',
+                height: sizePx || '18px',
+                minHeight: sizePx || '18px',
+            }}
+        >
+            {emoji.name}
+        </span>
+    );
 };
 
 const getEmojiURL = (emoji: EmojiData) => {
@@ -18,26 +41,4 @@ const getEmojiURL = (emoji: EmojiData) => {
         return '';
     }
     return getEmojiImageUrl(Emojis[index]);
-};
-
-export const Emoji = ({emoji}: Props) => {
-    if (!emoji) {
-        return null;
-    }
-
-    return (
-        <span
-            className='emoticon'
-            title={emoji.name}
-            style={{
-                backgroundImage: `url(${getEmojiURL(emoji)})`,
-                width: '18px',
-                minWidth: '18px',
-                height: '18px',
-                minHeight: '18px',
-            }}
-        >
-            {emoji.name}
-        </span>
-    );
 };

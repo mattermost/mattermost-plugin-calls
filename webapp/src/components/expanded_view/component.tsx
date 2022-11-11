@@ -35,7 +35,6 @@ import MutedIcon from 'src/components/icons/muted_icon';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
-import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import ParticipantsIcon from 'src/components/icons/participants';
 import CallDuration from 'src/components/call_widget/call_duration';
 import Shortcut from 'src/components/shortcut';
@@ -54,7 +53,7 @@ import {
 import GlobalBanner from './global_banner';
 import ControlsButton from './controls_button';
 import './component.scss';
-import {EmojiButton, EmojiButtonRef} from './emoji_button';
+import {ReactionButton, ReactionButtonRef} from './reaction_button';
 
 interface Props extends RouteComponentProps {
     show: boolean,
@@ -97,7 +96,7 @@ interface State {
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private readonly screenPlayer = React.createRef<HTMLVideoElement>();
-    private readonly emojiButtonRef: React.RefObject<EmojiButtonRef>;
+    private readonly emojiButtonRef: React.RefObject<ReactionButtonRef>;
     private expandedRootRef = React.createRef<HTMLDivElement>();
     private pushToTalk = false;
 
@@ -693,9 +692,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
         const shareScreenTooltipSubtext = noScreenPermissions ? CallAlertConfigs.missingScreenPermissions.tooltipSubtext : '';
 
-        const isHandRaised = callsClient.isHandRaised;
-        const HandIcon = isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
-        const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
         const participantsText = this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list';
 
         let chatToolTipText = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID ? 'Click to close chat' : 'Click to open chat';
@@ -786,23 +782,25 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                         <div style={styles.centerControls}>
                             <ControlsButton
-                                id='calls-popout-raisehand-button'
-                                onToggle={() => this.onRaiseHandToggle()}
-                                tooltipText={raiseHandText}
-                                shortcut={reverseKeyMappings.popout[RAISE_LOWER_HAND][0]}
-                                bgColor={isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
+                                id='calls-popout-mute-button'
+                                // eslint-disable-next-line no-undefined
+                                onToggle={noInputDevices ? undefined : this.onMuteToggle}
+                                tooltipText={muteTooltipText}
+                                tooltipSubtext={muteTooltipSubtext}
+                                // eslint-disable-next-line no-undefined
+                                shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
+                                bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
                                 icon={
-                                    <HandIcon
+                                    <MuteIcon
                                         style={{
                                             width: '28px',
                                             height: '28px',
-                                            fill: isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white',
+                                            fill: isMuted ? '' : 'rgba(61, 184, 135, 1)',
                                         }}
                                     />
                                 }
+                                unavailable={noInputDevices || noAudioPermissions}
                             />
-
-                            <EmojiButton ref={this.emojiButtonRef}/>
 
                             {this.props.allowScreenSharing &&
                                 <ControlsButton
@@ -827,26 +825,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 />
                             }
 
-                            <ControlsButton
-                                id='calls-popout-mute-button'
-                                // eslint-disable-next-line no-undefined
-                                onToggle={noInputDevices ? undefined : this.onMuteToggle}
-                                tooltipText={muteTooltipText}
-                                tooltipSubtext={muteTooltipSubtext}
-                                // eslint-disable-next-line no-undefined
-                                shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
-                                bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
-                                icon={
-                                    <MuteIcon
-                                        style={{
-                                            width: '28px',
-                                            height: '28px',
-                                            fill: isMuted ? '' : 'rgba(61, 184, 135, 1)',
-                                        }}
-                                    />
-                                }
-                                unavailable={noInputDevices || noAudioPermissions}
+                            <ReactionButton
+                                ref={this.emojiButtonRef}
+                                trackEvent={this.props.trackEvent}
                             />
+
                             {globalRhsSupported && (
                                 <ControlsButton
                                     id='calls-popout-chat-button'

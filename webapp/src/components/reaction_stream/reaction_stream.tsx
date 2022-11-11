@@ -66,7 +66,7 @@ export const ReactionStream = ({forceLeft}: Props) => {
             participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${handsup?.length - 2} others`;
             break;
         }
-        const handsupElement = (<Emoji emoji={{name: 'hand', skin: '', unified: '270B'}}/>);
+        const handsupElement = <Emoji emoji={{name: 'hand', skin: '', unified: '270B'}}/>;
 
         elements.push(
             <ReactionChip
