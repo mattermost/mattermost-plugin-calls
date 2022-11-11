@@ -30,7 +30,7 @@ const (
 	wsEventCallEnd          = "call_end"
 	wsEventUserRaiseHand    = "user_raise_hand"
 	wsEventUserUnraiseHand  = "user_unraise_hand"
-	wsEventUserReact        = "user_reaction"
+	wsEventUserReact        = "user_react"
 	wsEventJoin             = "join"
 	wsEventError            = "error"
 	wsReconnectionTimeout   = 10 * time.Second
@@ -262,7 +262,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"userID":      us.userID,
 			"raised_hand": ts,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
-	case clientMessageTypeReaction:
+	case clientMessageTypeReact:
 		evType := wsEventUserReact
 
 		var emoji struct {
@@ -717,7 +717,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 		msg.Data = []byte(msgData)
-	case clientMessageTypeReaction:
+	case clientMessageTypeReact:
 		msgData, ok := req.Data["data"].(string)
 		if !ok {
 			p.LogError("invalid or missing reaction data")

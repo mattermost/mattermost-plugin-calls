@@ -104,8 +104,8 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     SHOW_END_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
-    VOICE_CHANNEL_USER_REACTION,
-    VOICE_CHANNEL_USER_REACTION_TIMEOUT,
+    VOICE_CHANNEL_USER_REACT,
+    VOICE_CHANNEL_USER_REACT_TIMEOUT,
 } from './action_types';
 
 import {PluginRegistry, Store} from './types/mattermost-webapp';
@@ -185,7 +185,7 @@ export default class Plugin {
             handleUserUnraisedHand(store, ev);
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_reaction`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_react`, (ev) => {
             handleUserReaction(store, ev);
         });
     }

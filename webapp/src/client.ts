@@ -557,25 +557,19 @@ export default class CallsClient extends EventEmitter {
     }
 
     public raiseHand() {
-        if (this.ws) {
-            this.ws.send('raise_hand');
-        }
+        this.ws?.send('raise_hand');
         this.isHandRaised = true;
     }
 
     public unraiseHand() {
-        if (this.ws) {
-            this.ws.send('unraise_hand');
-        }
+        this.ws?.send('unraise_hand');
         this.isHandRaised = false;
     }
 
     public sendUserReaction(data: EmojiData) {
-        if (this.ws) {
-            this.ws.send('reaction', {
-                data: JSON.stringify(data),
-            });
-        }
+        this.ws?.send('react', {
+            data: JSON.stringify(data),
+        });
     }
 
     public async getStats(): Promise<CallsClientStats | null> {

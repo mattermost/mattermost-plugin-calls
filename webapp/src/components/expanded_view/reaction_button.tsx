@@ -97,6 +97,7 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                         emojiButtonSize={35}
                         emojiSize={24}
                         previewPosition={'none'}
+                        maxFrequentRows={1}
                     />
                 </PickerContainer>
             }

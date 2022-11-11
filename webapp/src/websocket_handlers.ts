@@ -3,6 +3,8 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 
 import {Reaction} from 'src/types/types';
 
+import {REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
+
 import {Store} from './types/mattermost-webapp';
 
 import {
@@ -20,8 +22,8 @@ import {
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
-    VOICE_CHANNEL_USER_REACTION,
-    VOICE_CHANNEL_USER_REACTION_TIMEOUT,
+    VOICE_CHANNEL_USER_REACT,
+    VOICE_CHANNEL_USER_REACT_TIMEOUT,
 } from './action_types';
 
 import {
@@ -219,7 +221,7 @@ export function handleUserReaction(store: Store, ev: any) {
         displayName,
     };
     store.dispatch({
-        type: VOICE_CHANNEL_USER_REACTION,
+        type: VOICE_CHANNEL_USER_REACT,
         data: {
             channelID: ev.broadcast.channel_id,
             userID: ev.data.userID,
@@ -228,12 +230,12 @@ export function handleUserReaction(store: Store, ev: any) {
     });
     setTimeout(() => {
         store.dispatch({
-            type: VOICE_CHANNEL_USER_REACTION_TIMEOUT,
+            type: VOICE_CHANNEL_USER_REACT_TIMEOUT,
             data: {
                 channelID: ev.broadcast.channel_id,
                 userID: ev.data.userID,
                 reaction,
             },
         });
-    }, 10000);
+    }, REACTION_TIMEOUT_IN_REACTION_STREAM);
 }

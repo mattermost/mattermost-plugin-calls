@@ -2,6 +2,8 @@ import {combineReducers} from 'redux';
 
 import {UserProfile} from '@mattermost/types/users';
 
+import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
+
 import {
     CallsConfigDefault,
     CallsConfig,
@@ -43,8 +45,8 @@ import {
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CLIENT_ERROR,
     DESKTOP_WIDGET_CONNECTED,
-    VOICE_CHANNEL_USER_REACTION,
-    VOICE_CHANNEL_USER_REACTION_TIMEOUT,
+    VOICE_CHANNEL_USER_REACT,
+    VOICE_CHANNEL_USER_REACT_TIMEOUT,
 } from './action_types';
 
 interface channelState {
@@ -232,7 +234,7 @@ interface userReactionsState {
 const queueReactions = (state: Reaction[], reaction: Reaction) => {
     const result = state?.length ? [...state] : [];
     result.push(reaction);
-    if (result.length > 50) {
+    if (result.length > MAX_NUM_REACTIONS_IN_REACTION_STREAM) {
         result.shift();
     }
     return result;
@@ -244,7 +246,7 @@ const removeReaction = (reactions: Reaction[], reaction: Reaction) => {
 
 const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAction) => {
     switch (action.type) {
-    case VOICE_CHANNEL_USER_REACTION:
+    case VOICE_CHANNEL_USER_REACT:
         if (action.data.reaction) {
             if (!state[action.data.channelID]) {
                 return {
@@ -260,7 +262,7 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
             };
         }
         return state;
-    case VOICE_CHANNEL_USER_REACTION_TIMEOUT:
+    case VOICE_CHANNEL_USER_REACT_TIMEOUT:
         if (!state[action.data.channelID]?.reactions || !action.data.reaction) {
             return state;
         }
@@ -458,7 +460,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 },
             },
         };
-    case VOICE_CHANNEL_USER_REACTION:
+    case VOICE_CHANNEL_USER_REACT:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -483,7 +485,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 },
             },
         };
-    case VOICE_CHANNEL_USER_REACTION_TIMEOUT: {
+    case VOICE_CHANNEL_USER_REACT_TIMEOUT: {
         const storedReaction = state[action.data.channelID]?.[action.data.userID]?.reaction;
         if (!storedReaction || !action.data.reaction) {
             return state;
