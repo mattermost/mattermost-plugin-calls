@@ -332,12 +332,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer?.current.srcObject !== this.state.screenStream) {
+        if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer.current?.srcObject !== this.state.screenStream) {
             this.screenPlayer.current.srcObject = this.state.screenStream;
         }
 
         const localScreenStream = this.getCallsClient()?.getLocalScreenStream();
-        if (localScreenStream && (!this.state.screenStream || this.state.screenStream.getVideoTracks()[0].id !== localScreenStream.getVideoTracks()[0].id)) {
+        if (localScreenStream && this.state.screenStream?.getVideoTracks()[0].id !== localScreenStream.getVideoTracks()[0].id) {
             // eslint-disable-next-line react/no-did-update-set-state
             this.setState({screenStream: localScreenStream});
         }
