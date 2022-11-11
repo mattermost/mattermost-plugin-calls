@@ -81,14 +81,20 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 		return
 	}
 
-	if action == "stop" {
-		p.publishWebSocketEvent(wsEventCallRecordingEnd, map[string]interface{}{
-			"callID": callID,
+	if action == "start" {
+		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			"callID":   callID,
+			"recState": recState.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	} else if action == "stop" {
+		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			"callID":   callID,
+			"recState": recState.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(&recState); err != nil {
+	if err := json.NewEncoder(w).Encode(recState.getClientState()); err != nil {
 		p.LogError(err.Error())
 	}
 }

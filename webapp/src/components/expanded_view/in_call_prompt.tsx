@@ -9,7 +9,7 @@ export type Props = {
     iconColor?: string,
     body: string,
     header: string,
-    confirmText: string,
+    confirmText?: string,
     onClose?: () => void,
 }
 

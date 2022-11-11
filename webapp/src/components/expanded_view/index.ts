@@ -22,7 +22,12 @@ import {
     getIsRhsOpen,
     getRhsSelectedPostId,
 } from 'src/webapp_globals';
-import {hideExpandedView, prefetchThread, showScreenSourceModal, trackEvent} from '../../actions';
+import {
+    hideExpandedView,
+    prefetchThread,
+    showScreenSourceModal,
+    trackEvent,
+} from '../../actions';
 import {
     expandedView,
     voiceChannelCallStartAt,
@@ -78,7 +83,7 @@ const mapStateToProps = (state: GlobalState) => {
         statuses,
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         callHostID: voiceChannelCallHostID(state, channel?.id) || '',
-        callRecordingStartAt: callRecording(state, channel?.id)?.startAt || 0,
+        callRecording: callRecording(state, channel?.id),
         screenSharingID,
         channel,
         channelTeam,

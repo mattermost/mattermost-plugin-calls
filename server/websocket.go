@@ -33,8 +33,7 @@ const (
 	wsEventJoin               = "join"
 	wsEventError              = "error"
 	wsEventCallHostChanged    = "call_host_changed"
-	wsEventCallRecordingStart = "call_recording_start"
-	wsEventCallRecordingEnd   = "call_recording_end"
+	wsEventCallRecordingState = "call_recording_state"
 	wsReconnectionTimeout     = 10 * time.Second
 )
 
@@ -550,9 +549,9 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 	}
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
-		p.publishWebSocketEvent(wsEventCallRecordingStart, map[string]interface{}{
-			"callID":  channelID,
-			"startAt": state.Call.Recording.StartAt,
+		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			"callID":   channelID,
+			"recState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 

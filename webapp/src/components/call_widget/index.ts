@@ -68,7 +68,7 @@ const mapStateToProps = (state: GlobalState) => {
         statuses: voiceUsersStatuses(state) || {},
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         callHostID: voiceChannelCallHostID(state, channel?.id) || '',
-        callRecordingStartAt: callRecording(state, channel?.id)?.startAt || 0,
+        callRecording: callRecording(state, channel?.id),
         screenSharingID,
         allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),

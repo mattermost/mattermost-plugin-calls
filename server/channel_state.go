@@ -11,9 +11,7 @@ import (
 type recordingState struct {
 	ID        string `json:"id"`
 	CreatorID string `json:"creator_id"`
-	InitAt    int64  `json:"init_at"`
-	StartAt   int64  `json:"start_at"`
-	EndAt     int64  `json:"end_at"`
+	RecordingState
 }
 
 type userState struct {
@@ -64,13 +62,37 @@ type CallState struct {
 	ScreenSharingID string          `json:"screen_sharing_id"`
 	OwnerID         string          `json:"owner_id"`
 	HostID          string          `json:"host_id"`
-	Recording       *recordingState `json:"recording,omitempty"`
+	Recording       *RecordingState `json:"recording,omitempty"`
+}
+
+type RecordingState struct {
+	InitAt  int64 `json:"init_at"`
+	StartAt int64 `json:"start_at"`
+	EndAt   int64 `json:"end_at"`
 }
 
 type ChannelState struct {
 	ChannelID string     `json:"channel_id,omitempty"`
 	Enabled   bool       `json:"enabled"`
 	Call      *CallState `json:"call,omitempty"`
+}
+
+func (rs *RecordingState) toMap() map[string]interface{} {
+	if rs == nil {
+		return nil
+	}
+	return map[string]interface{}{
+		"init_at":  rs.InitAt,
+		"start_at": rs.StartAt,
+		"end_at":   rs.EndAt,
+	}
+}
+
+func (rs *recordingState) getClientState() *RecordingState {
+	if rs == nil {
+		return nil
+	}
+	return &rs.RecordingState
 }
 
 func (cs *callState) Clone() *callState {
@@ -151,7 +173,7 @@ func (cs *callState) getClientState(botID string) *CallState {
 		ScreenSharingID: cs.ScreenSharingID,
 		OwnerID:         cs.OwnerID,
 		HostID:          cs.HostID,
-		Recording:       cs.Recording,
+		Recording:       cs.Recording.getClientState(),
 	}
 }
 

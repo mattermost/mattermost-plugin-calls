@@ -237,8 +237,10 @@ func TestChannelStateClone(t *testing.T) {
 					"userB": {},
 				},
 				Recording: &recordingState{
-					InitAt:  1100,
-					StartAt: 1200,
+					RecordingState: RecordingState{
+						InitAt:  1100,
+						StartAt: 1200,
+					},
 				},
 			},
 		}
@@ -266,5 +268,32 @@ func TestChannelStateClone(t *testing.T) {
 		require.Condition(t, func() bool {
 			return cs.Call.Users["userA"] != cloned.Call.Users["userA"]
 		})
+	})
+}
+
+func TestRecordingStateGetClientState(t *testing.T) {
+	t.Run("nil", func(t *testing.T) {
+		var rs recordingState
+		require.Empty(t, rs.getClientState())
+	})
+
+	t.Run("non-nil", func(t *testing.T) {
+		rs := &recordingState{
+			ID:        "recID",
+			CreatorID: "creatorID",
+			RecordingState: RecordingState{
+				InitAt:  100,
+				StartAt: 200,
+				EndAt:   300,
+			},
+		}
+
+		recState := &RecordingState{
+			InitAt:  100,
+			StartAt: 200,
+			EndAt:   300,
+		}
+
+		require.Equal(t, recState, rs.getClientState())
 	})
 }

@@ -151,3 +151,9 @@ export const CallAlertStatesDefault = {
     },
 };
 
+export type CallRecordingState = {
+    init_at: number,
+    start_at: number,
+    end_at: number,
+}
+

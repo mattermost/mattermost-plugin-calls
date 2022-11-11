@@ -31,8 +31,7 @@ import {
     handleUserRaisedHand,
     handleUserUnraisedHand,
     handleCallHostChanged,
-    handleCallRecordingStart,
-    handleCallRecordingEnd,
+    handleCallRecordingState,
 } from './websocket_handlers';
 
 import {
@@ -106,7 +105,7 @@ import {
     SHOW_END_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
     VOICE_CHANNEL_CALL_HOST,
-    VOICE_CHANNEL_CALL_RECORDING_START,
+    VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
 
 import {PluginRegistry, Store} from './types/mattermost-webapp';
@@ -190,12 +189,8 @@ export default class Plugin {
             handleCallHostChanged(store, ev);
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_start`, (ev) => {
-            handleCallRecordingStart(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_end`, (ev) => {
-            handleCallRecordingEnd(store, ev);
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_state`, (ev) => {
+            handleCallRecordingState(store, ev);
         });
     }
 
@@ -572,6 +567,7 @@ export default class Plugin {
                         },
                     });
                 }
+
                 if (resp.data.call?.users && resp.data.call?.users.length > 0) {
                     store.dispatch({
                         type: VOICE_CHANNEL_PROFILES_CONNECTED,
@@ -581,12 +577,13 @@ export default class Plugin {
                         },
                     });
                 }
-                if (resp.data.call?.recording?.start_at) {
+
+                if (resp.data.call?.recording) {
                     store.dispatch({
-                        type: VOICE_CHANNEL_CALL_RECORDING_START,
+                        type: VOICE_CHANNEL_CALL_RECORDING_STATE,
                         data: {
                             callID: channelID,
-                            startAt: resp.data.call?.recording?.start_at,
+                            recState: resp.data.call?.recording,
                         },
                     });
                 }

@@ -8,6 +8,7 @@ import {
     UserState,
     CallsUserPreferences,
     CallsUserPreferencesDefault,
+    CallRecordingState,
 } from './types/types';
 
 import {
@@ -43,8 +44,7 @@ import {
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CLIENT_ERROR,
     DESKTOP_WIDGET_CONNECTED,
-    VOICE_CHANNEL_CALL_RECORDING_START,
-    VOICE_CHANNEL_CALL_RECORDING_END,
+    VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
 
 interface channelState {
@@ -398,31 +398,23 @@ const voiceUsersStatuses = (state: usersStatusesState = {}, action: usersStatuse
     }
 };
 
-type callRecordingState = {
-    callID: string;
-    startAt?: number;
-}
-
 type callRecordingStateAction = {
     type: string,
-    data: callRecordingState,
+    data: {
+        callID: string,
+        recState: CallRecordingState,
+    },
 }
 
-const callsRecordings = (state: {[callID: string]: callRecordingState} = {}, action: callRecordingStateAction) => {
+const callsRecordings = (state: {[callID: string]: CallRecordingState} = {}, action: callRecordingStateAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
-    case VOICE_CHANNEL_CALL_RECORDING_START:
+    case VOICE_CHANNEL_CALL_RECORDING_STATE:
         return {
             ...state,
-            [action.data.callID]: action.data,
+            [action.data.callID]: action.data.recState,
         };
-    case VOICE_CHANNEL_CALL_RECORDING_END: {
-        const {[action.data.callID]: omit, ...res} = state;
-        return {
-            ...res,
-        };
-    }
     default:
         return state;
     }

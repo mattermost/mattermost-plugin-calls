@@ -55,6 +55,7 @@ export default function ControlsButton(props: Props) {
                     isDisabled={props.disabled}
                     isUnavailable={props.unavailable}
                     disabled={props.disabled}
+                    fill={props.iconFill}
                 >
                     <ButtonIcon>
                         {props.icon}
@@ -81,15 +82,15 @@ const ButtonContainer = styled.div<{margin?: string}>`
    margin: ${({margin}) => margin || '0 16px'};
 `;
 
-const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailable?: boolean}>`
-  background-color: ${({bgColor}) => bgColor};
+const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailable?: boolean, fill?: string}>`
+  background-color: ${({bgColor}) => bgColor || 'rgba(255, 255, 255, 0.12)'};
 
   ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
     background-color: rgba(255, 255, 255, 0.08);
   `}
 
   svg {
-    fill: white;
+    fill: ${({fill}) => fill || 'white'};
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
       fill: rgba(255, 255, 255, 0.32);
     `}
