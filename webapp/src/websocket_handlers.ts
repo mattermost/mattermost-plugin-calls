@@ -1,6 +1,8 @@
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 
+import {Reaction} from 'src/types/types';
+
 import {Store} from './types/mattermost-webapp';
 
 import {
@@ -18,20 +20,21 @@ import {
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
+    VOICE_CHANNEL_USER_REACTION,
+    VOICE_CHANNEL_USER_REACTION_TIMEOUT,
 } from './action_types';
 
 import {
     getProfilesByIds,
-    getPluginStaticPath,
     playSound,
-    followThread,
+    followThread, getUserDisplayName,
 } from './utils';
 
 import {
-    connectedChannelID,
+    connectedChannelID, idToProfileInChannel,
 } from './selectors';
 
-import {logErr, logDebug} from './log';
+import {logErr} from './log';
 
 export function handleCallEnd(store: Store, ev: any) {
     if (connectedChannelID(store.getState()) === ev.broadcast.channel_id) {
@@ -198,4 +201,39 @@ export function handleUserUnraisedHand(store: Store, ev: any) {
             raised_hand: ev.data.raised_hand,
         },
     });
+}
+
+export function handleUserReaction(store: Store, ev: any) {
+    // Note: reactions will not respond to displayname preferences, but they're only on screen for a short time
+    // anyway, so that's ok. (cf. other competitor's displayname doesn't update at all during an entire call).
+    const profiles = idToProfileInChannel(store.getState(), ev.broadcast.channel_id);
+    const displayName = getUserDisplayName(profiles[ev.data.userID]);
+    const reaction: Reaction = {
+        emoji: {
+            name: ev.data.emoji_name,
+            skin: ev.data.emoji_skin,
+            unified: ev.data.emoji_unified,
+        },
+        timestamp: ev.data.timestamp,
+        user_id: ev.data.userID,
+        displayName,
+    };
+    store.dispatch({
+        type: VOICE_CHANNEL_USER_REACTION,
+        data: {
+            channelID: ev.broadcast.channel_id,
+            userID: ev.data.userID,
+            reaction,
+        },
+    });
+    setTimeout(() => {
+        store.dispatch({
+            type: VOICE_CHANNEL_USER_REACTION_TIMEOUT,
+            data: {
+                channelID: ev.broadcast.channel_id,
+                userID: ev.data.userID,
+                reaction,
+            },
+        });
+    }, 10000);
 }
