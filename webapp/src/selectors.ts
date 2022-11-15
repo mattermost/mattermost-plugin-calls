@@ -1,5 +1,9 @@
 import {getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId, getUsers, getUserIdsInChannels} from 'mattermost-redux/selectors/entities/users';
+import {
+    getCurrentUserId,
+    getUsers,
+    getUserIdsInChannels,
+} from 'mattermost-redux/selectors/entities/users';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {createSelector} from 'reselect';
@@ -65,12 +69,12 @@ export const voiceConnectedProfiles: (state: GlobalState) => UserProfile[] = (st
     return pluginState(state).voiceConnectedProfiles[connectedChannelID(state)] || [];
 };
 
-// idToProfileInCurrentChannel creates an id->UserProfile object for the current channel.
-export const idToProfileInCurrentChannel: (state: GlobalState) => { [id: string]: UserProfile } =
+// idToProfileInCurrentChannel creates an id->UserProfile object for the currently connected channel.
+export const idToProfileInConnectedChannel: (state: GlobalState) => { [id: string]: UserProfile } =
     createSelector(
         'idToProfileInCurrentChannel',
         voiceConnectedProfiles,
-        (profiles) => makeIdToProfile(profiles),
+        (profiles) => makeIdToObject(profiles),
     );
 
 export const voiceConnectedProfilesInChannel: (state: GlobalState, channelId: string) => UserProfile[] =
@@ -80,14 +84,6 @@ export const voiceConnectedProfilesInChannel: (state: GlobalState, channelId: st
         }
         return pluginState(state).voiceConnectedProfiles[channelID] || [];
     };
-
-// idToProfileInChannel creates an id->UserProfile object for channelId.
-export const idToProfileInChannel: (state: GlobalState, channelId: string) => { [id: string]: UserProfile } =
-    createSelector(
-        'idToProfileInChannel',
-        voiceConnectedProfilesInChannel,
-        (profiles) => makeIdToProfile(profiles),
-    );
 
 export const voiceUsersStatuses: (state: GlobalState) => { [id: string]: UserState } = (state: GlobalState) => {
     return pluginState(state).voiceUsersStatuses[connectedChannelID(state)] || {};
@@ -306,9 +302,9 @@ export const getChannelUrlAndDisplayName = (state: GlobalState, channel: Channel
     return {channelURL, channelDisplayName};
 };
 
-function makeIdToProfile(profiles: UserProfile[]) {
-    return profiles.reduce((acc: { [id: string]: UserProfile }, p) => {
-        acc[p.id] = p;
+export function makeIdToObject<HasId extends { id: string }>(arr: HasId[]) {
+    return arr.reduce((acc: { [id: string]: HasId }, e) => {
+        acc[e.id] = e;
         return acc;
     }, {});
 }

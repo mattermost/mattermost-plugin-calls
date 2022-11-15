@@ -89,6 +89,7 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                 <PickerContainer>
                     <Picker
                         emojiVersion={EMOJI_VERSION}
+                        set={'apple'}
                         skinTonePosition='search'
                         onEmojiSelect={handleUserPicksEmoji}
                         onClickOutside={toggleShowPicker}

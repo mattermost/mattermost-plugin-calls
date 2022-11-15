@@ -9,13 +9,11 @@ import {getMyChannelRoles, getMySystemRoles} from 'mattermost-redux/selectors/en
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
-import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {displayFreeTrial, getCallsConfig, displayCallErrorModal, showScreenSourceModal} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
-import {Reaction} from 'src/types/types';
 
 import {
     handleUserConnected,
@@ -42,12 +40,9 @@ import {
     voiceChannelCallOwnerID,
     isCloudFeatureRestricted,
     isLimitRestricted,
-    voiceChannelRootPost,
     allowEnableCalls,
     iceServers,
     needsTURNCredentials,
-    shouldPlayJoinUserSound,
-    idToProfileInChannel,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -95,17 +90,13 @@ import {
     VOICE_CHANNEL_USERS_CONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
     VOICE_CHANNEL_PROFILES_CONNECTED,
-    VOICE_CHANNEL_PROFILE_CONNECTED,
     VOICE_CHANNEL_CALL_START,
     VOICE_CHANNEL_USER_SCREEN_ON,
-    VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
     SHOW_END_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
-    VOICE_CHANNEL_USER_REACT,
-    VOICE_CHANNEL_USER_REACT_TIMEOUT,
 } from './action_types';
 
 import {PluginRegistry, Store} from './types/mattermost-webapp';
@@ -185,7 +176,7 @@ export default class Plugin {
             handleUserUnraisedHand(store, ev);
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_react`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_reacted`, (ev) => {
             handleUserReaction(store, ev);
         });
     }

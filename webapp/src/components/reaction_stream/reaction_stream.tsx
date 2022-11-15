@@ -8,7 +8,7 @@ import {useSelector} from 'react-redux';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {
-    idToProfileInCurrentChannel,
+    idToProfileInConnectedChannel,
     voiceReactions,
     voiceUsersStatuses,
 } from 'src/selectors';
@@ -21,17 +21,17 @@ interface Props {
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = ({forceLeft}: Props) => {
-    const vReactions = useSelector(voiceReactions);
     const currentUserID = useSelector(getCurrentUserId);
 
     const statuses = useSelector(voiceUsersStatuses);
-    const profileMap = useSelector(idToProfileInCurrentChannel);
+    const profileMap = useSelector(idToProfileInConnectedChannel);
 
     const handsup = Object.keys(statuses)
         .flatMap((id) => (statuses[id]?.raised_hand ? [statuses[id]] : []))
         .sort((a, b) => a.raised_hand - b.raised_hand)
         .map((u) => u.id);
 
+    const vReactions = useSelector(voiceReactions);
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
         const emoji = <Emoji emoji={reaction.emoji}/>;

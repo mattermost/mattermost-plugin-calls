@@ -30,7 +30,7 @@ const (
 	wsEventCallEnd          = "call_end"
 	wsEventUserRaiseHand    = "user_raise_hand"
 	wsEventUserUnraiseHand  = "user_unraise_hand"
-	wsEventUserReact        = "user_react"
+	wsEventUserReacted      = "user_reacted"
 	wsEventJoin             = "join"
 	wsEventError            = "error"
 	wsReconnectionTimeout   = 10 * time.Second
@@ -114,6 +114,20 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 
 	return nil
+}
+
+type EmojiData struct {
+	Name    string `json:"name"`
+	Skin    string `json:"skin,omitempty"`
+	Unified string `json:"unified"`
+}
+
+func (ed EmojiData) toMap() map[string]interface{} {
+	return map[string]interface{}{
+		"name":    ed.Name,
+		"skin":    ed.Skin,
+		"unified": ed.Unified,
+	}
 }
 
 func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID string) {
@@ -263,23 +277,17 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"raised_hand": ts,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeReact:
-		evType := wsEventUserReact
+		evType := wsEventUserReacted
 
-		var emoji struct {
-			Name    string `json:"name"`
-			Skin    string `json:"skin"`
-			Unified string `json:"unified"`
-		}
+		var emoji EmojiData
 		if err := json.Unmarshal(msg.Data, &emoji); err != nil {
 			p.LogError(err.Error())
 		}
 
 		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
-			"userID":        us.userID,
-			"emoji_name":    emoji.Name,
-			"emoji_skin":    emoji.Skin,
-			"emoji_unified": emoji.Unified,
-			"timestamp":     time.Now().UnixMilli(),
+			"user_id":   us.userID,
+			"emoji":     emoji.toMap(),
+			"timestamp": time.Now().UnixMilli(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 	default:
 		p.LogError("invalid client message", "type", msg.Type)

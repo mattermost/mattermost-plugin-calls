@@ -22,8 +22,8 @@ import {
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
-    VOICE_CHANNEL_USER_REACT,
-    VOICE_CHANNEL_USER_REACT_TIMEOUT,
+    VOICE_CHANNEL_USER_REACTED,
+    VOICE_CHANNEL_USER_REACTED_TIMEOUT,
 } from './action_types';
 
 import {
@@ -32,9 +32,7 @@ import {
     followThread, getUserDisplayName,
 } from './utils';
 
-import {
-    connectedChannelID, idToProfileInChannel,
-} from './selectors';
+import {connectedChannelID, idToProfileInConnectedChannel} from './selectors';
 
 import {logErr} from './log';
 
@@ -206,34 +204,30 @@ export function handleUserUnraisedHand(store: Store, ev: any) {
 }
 
 export function handleUserReaction(store: Store, ev: any) {
-    // Note: reactions will not respond to displayname preferences, but they're only on screen for a short time
-    // anyway, so that's ok. (cf. other competitor's displayname doesn't update at all during an entire call).
-    const profiles = idToProfileInChannel(store.getState(), ev.broadcast.channel_id);
-    const displayName = getUserDisplayName(profiles[ev.data.userID]);
+    if (connectedChannelID(store.getState()) !== ev.broadcast.channel_id) {
+        return;
+    }
+
+    const profiles = idToProfileInConnectedChannel(store.getState());
+    const displayName = getUserDisplayName(profiles[ev.data.user_id]);
     const reaction: Reaction = {
-        emoji: {
-            name: ev.data.emoji_name,
-            skin: ev.data.emoji_skin,
-            unified: ev.data.emoji_unified,
-        },
-        timestamp: ev.data.timestamp,
-        user_id: ev.data.userID,
+        ...ev.data,
         displayName,
     };
     store.dispatch({
-        type: VOICE_CHANNEL_USER_REACT,
+        type: VOICE_CHANNEL_USER_REACTED,
         data: {
             channelID: ev.broadcast.channel_id,
-            userID: ev.data.userID,
+            userID: ev.data.user_id,
             reaction,
         },
     });
     setTimeout(() => {
         store.dispatch({
-            type: VOICE_CHANNEL_USER_REACT_TIMEOUT,
+            type: VOICE_CHANNEL_USER_REACTED_TIMEOUT,
             data: {
                 channelID: ev.broadcast.channel_id,
-                userID: ev.data.userID,
+                userID: ev.data.user_id,
                 reaction,
             },
         });

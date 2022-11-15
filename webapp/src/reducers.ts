@@ -45,8 +45,8 @@ import {
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CLIENT_ERROR,
     DESKTOP_WIDGET_CONNECTED,
-    VOICE_CHANNEL_USER_REACT,
-    VOICE_CHANNEL_USER_REACT_TIMEOUT,
+    VOICE_CHANNEL_USER_REACTED,
+    VOICE_CHANNEL_USER_REACTED_TIMEOUT,
 } from './action_types';
 
 interface channelState {
@@ -246,7 +246,7 @@ const removeReaction = (reactions: Reaction[], reaction: Reaction) => {
 
 const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAction) => {
     switch (action.type) {
-    case VOICE_CHANNEL_USER_REACT:
+    case VOICE_CHANNEL_USER_REACTED:
         if (action.data.reaction) {
             if (!state[action.data.channelID]) {
                 return {
@@ -262,7 +262,7 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
             };
         }
         return state;
-    case VOICE_CHANNEL_USER_REACT_TIMEOUT:
+    case VOICE_CHANNEL_USER_REACTED_TIMEOUT:
         if (!state[action.data.channelID]?.reactions || !action.data.reaction) {
             return state;
         }
@@ -460,7 +460,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 },
             },
         };
-    case VOICE_CHANNEL_USER_REACT:
+    case VOICE_CHANNEL_USER_REACTED:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -485,7 +485,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 },
             },
         };
-    case VOICE_CHANNEL_USER_REACT_TIMEOUT: {
+    case VOICE_CHANNEL_USER_REACTED_TIMEOUT: {
         const storedReaction = state[action.data.channelID]?.[action.data.userID]?.reaction;
         if (!storedReaction || !action.data.reaction) {
             return state;
