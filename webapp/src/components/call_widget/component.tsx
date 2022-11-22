@@ -11,31 +11,19 @@ import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {Theme} from 'mattermost-redux/types/themes';
 
-import {
-    UserState,
-    AudioDevices,
-    CallAlertStates,
-    CallAlertStatesDefault,
-} from 'src/types/types';
+import {AudioDevices, CallAlertStates, CallAlertStatesDefault, UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
+import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent} from 'src/utils';
 import {
-    getUserDisplayName,
-    hasExperimentalFlag,
-    getPopOutURL,
-    sendDesktopEvent,
-} from 'src/utils';
-import {
-    MUTE_UNMUTE,
-    RAISE_LOWER_HAND,
-    SHARE_UNSHARE_SCREEN,
-    PARTICIPANTS_LIST_TOGGLE,
-    LEAVE_CALL,
     keyToAction,
+    LEAVE_CALL,
+    MUTE_UNMUTE,
+    PARTICIPANTS_LIST_TOGGLE,
+    RAISE_LOWER_HAND,
     reverseKeyMappings,
+    SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
-import {
-    CallAlertConfigs,
-} from 'src/constants';
+import {CallAlertConfigs} from 'src/constants';
 
 import {logDebug, logErr} from 'src/log';
 
@@ -139,7 +127,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 zIndex: '1000',
                 userSelect: 'none',
                 color: this.props.theme.centerChannelColor,
-                appRegion: 'drag',
             },
             topBar: {
                 background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
@@ -1454,7 +1441,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         const widerWidget = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
-        const mainWidth = widerWidget ? '280px' : '216px';
+        const mainStyle = {
+            ...this.style.main as CSSProperties,
+            width: widerWidget ? '280px' : '216px',
+            ...(this.props.global && {appRegion: 'drag'}),
+        };
 
         const ShowIcon = window.desktop && !this.props.global ? ExpandIcon : PopOutIcon;
 
@@ -1464,10 +1455,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <div
                 id='calls-widget'
-                style={{
-                    ...this.style.main as CSSProperties,
-                    width: mainWidth,
-                }}
+                style={mainStyle}
                 ref={this.node}
             >
 
