@@ -88,7 +88,7 @@ interface Props extends RouteComponentProps {
     },
     callStartAt: number,
     callHostID: string,
-    callRecording: CallRecordingState,
+    callRecording?: CallRecordingState,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
     selectRhsPost?: (postID: string) => void,
@@ -759,7 +759,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
 
         const isHost = this.props.callHostID === this.props.currentUserID;
-        const isRecording = isHost && this.props.callRecording?.init_at > 0 && !this.props.callRecording?.end_at;
+        const isRecording = isHost && this.props.callRecording && this.props.callRecording.init_at > 0 && !this.props.callRecording.end_at;
         const recordTooltipText = isRecording ? 'Stop recording' : 'Record call';
         const RecordIcon = isRecording ? RecordSquareOutlineIcon : RecordCircleOutlineIcon;
 

@@ -402,7 +402,7 @@ type callRecordingStateAction = {
     type: string,
     data: {
         callID: string,
-        recState: CallRecordingState,
+        recState: CallRecordingState | null,
     },
 }
 
