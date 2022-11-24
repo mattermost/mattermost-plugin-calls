@@ -43,6 +43,12 @@ export function handleCallEnd(store: Store, ev: any) {
             channelID,
         },
     });
+}
+
+export function handleCallStart(store: Store, ev: any) {
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
+
+    // Clear the old recording state (if any).
     store.dispatch({
         type: VOICE_CHANNEL_CALL_RECORDING_STATE,
         data: {
@@ -50,11 +56,6 @@ export function handleCallEnd(store: Store, ev: any) {
             recState: null,
         },
     });
-}
-
-export function handleCallStart(store: Store, ev: any) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-
     store.dispatch({
         type: VOICE_CHANNEL_CALL_START,
         data: {
@@ -82,19 +83,6 @@ export function handleCallStart(store: Store, ev: any) {
 
 export function handleUserDisconnected(store: Store, ev: any) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-
-    // TODO: We might want a "all participants have left" ws event to trigger this kind of call cleanup.
-    const participants = voiceConnectedProfilesInChannel(store.getState(), channelID);
-    if (participants.length === 1 && participants[0].id === ev.data.userID) {
-        // call has ended (no more participants)
-        store.dispatch({
-            type: VOICE_CHANNEL_CALL_RECORDING_STATE,
-            data: {
-                callID: channelID,
-                recState: null,
-            },
-        });
-    }
 
     store.dispatch({
         type: VOICE_CHANNEL_USER_DISCONNECTED,
