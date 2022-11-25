@@ -8,11 +8,11 @@ import styled, {css} from 'styled-components';
 
 import {OverlayTrigger} from 'react-bootstrap';
 
+import {HandRightOutlineIcon, HandRightOutlineOffIcon} from '@mattermost/compass-icons/components';
+
 import ControlsButton from 'src/components/expanded_view/controls_button';
 import {MAKE_REACTION, RAISE_LOWER_HAND, reverseKeyMappings} from 'src/shortcuts';
 import SmileyIcon from 'src/components/icons/smiley_icon';
-import UnraisedHandIcon from 'src/components/icons/unraised_hand';
-import RaisedHandIcon from 'src/components/icons/raised_hand';
 import * as Telemetry from 'src/types/telemetry';
 import {StyledTooltip} from 'src/components/shared';
 import Shortcut from 'src/components/shortcut';
@@ -56,10 +56,7 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     }));
 
     const callsClient = getCallsClient();
-    const isHandRaised = callsClient.isHandRaised;
-    const HandIcon = isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
     const addReactionText = showBar ? 'Close Reactions' : 'Add Reaction';
-    const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
 
     const handleUserPicksEmoji = (ev: EmojiPickEvent) => {
         const emojiData = {
@@ -79,6 +76,14 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
             callsClient.raiseHand();
         }
     };
+    const isHandRaised = callsClient.isHandRaised;
+    const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
+    const handIcon = isHandRaised ? (
+        <HandRightOutlineOffIcon
+            size={18}
+            color={'rgba(255, 188, 66, 1)'}
+        />
+    ) : <HandRightOutlineIcon size={18}/>;
 
     const toggleShowPicker = () => setShowPicker((prev) => !prev);
     const toggleReactions = () => setShowBar((prev) => !prev);
@@ -118,13 +123,7 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                             onClick={onRaiseHandToggle}
                             active={isHandRaised}
                         >
-                            <HandIcon
-                                style={{
-                                    width: '18px',
-                                    height: '18px',
-                                    fill: isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white',
-                                }}
-                            />
+                            {handIcon}
                             <HandText>{raiseHandText}</HandText>
                         </HandsButton>
                     </OverlayTrigger>
@@ -237,12 +236,16 @@ const HandsButton = styled.button<{ active: boolean }>`
     font-size: 14px;
     line-height: 14px;
 
+    :hover {
+        background: rgba(221, 223, 228, 0.08);
+    }
     ${({active}) => (active && css`
         background: rgba(245, 171, 0, 0.24);
+
+        :hover {
+            background: rgba(245, 171, 0, 0.40);
+        }
     `)}
-    :hover {
-        background: rgba(245, 171, 0, 0.12);
-    }
 `;
 
 const HandText = styled.span`
@@ -268,11 +271,15 @@ const QuickSelectButton = styled.button<{ active?: boolean }>`
     margin-left: 2px;
 
     :hover {
-        background: rgba(255, 255, 255, 0.24);
+        background: rgba(221, 223, 228, 0.08);
     }
 
     ${({active}) => (active && css`
-        background: rgba(255, 255, 255, 0.92);
-        color: #1C58D9;
+        background: rgba(93, 137, 234, 0.16);
+        color: #5D89EA;
+
+        :hover {
+            background: rgba(93, 137, 234, 0.32);
+        }
     `)}
 `;

@@ -43,7 +43,6 @@ import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import ScreenIcon from 'src/components/icons/screen_icon';
-import RaisedHandIcon from 'src/components/icons/raised_hand';
 import ParticipantsIcon from 'src/components/icons/participants';
 import CallDuration from 'src/components/call_widget/call_duration';
 import Shortcut from 'src/components/shortcut';
@@ -87,7 +86,6 @@ interface Props extends RouteComponentProps {
     channelTeam: Team,
     channelURL: string;
     channelDisplayName: string;
-
     connectedDMUser: UserProfile | undefined,
     threadID: Post['id'];
     threadUnreadReplies: number | undefined;
@@ -575,7 +573,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <>
                                 <div style={styles.reactionBackground}/>
                                 <div style={styles.handRaisedContainer}>
-                                    {'🤚'}
+                                    <CompassIcon
+                                        icon={'hand-right'}
+                                        style={{marginRight: '2px'}}
+                                    />
                                 </div>
                             </>
                         }
@@ -641,9 +642,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         }}
                     >
                         {isHandRaised &&
-                            <RaisedHandIcon
-                                fill={'rgba(255, 188, 66, 1)'}
-                                style={{width: '14px', height: '14px'}}
+                            <CompassIcon
+                                icon={'hand-right'}
+                                style={{
+                                    color: 'rgba(255, 188, 66, 1)',
+                                    marginBottom: 2,
+                                    fontSize: 16,
+                                }}
                             />
                         }
 
@@ -1057,7 +1062,8 @@ const styles: Record<string, CSSObject> = {
         alignItems: 'center',
         top: -5,
         right: -10,
-        background: 'rgba(255, 255, 255, 1)',
+        background: 'white',
+        color: 'rgba(255, 188, 66, 1)',
         borderRadius: '30px',
         width: '25px',
         height: '25px',

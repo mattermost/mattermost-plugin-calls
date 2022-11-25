@@ -14,6 +14,7 @@ import {
 } from 'src/selectors';
 import {Emoji} from 'src/components/emoji/emoji';
 import {getUserDisplayName} from 'src/utils';
+import CompassIcon from 'src/components/icons/compassIcon';
 
 interface Props {
     forceLeft?: boolean;
@@ -66,16 +67,22 @@ export const ReactionStream = ({forceLeft}: Props) => {
             participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${handsup?.length - 2} others`;
             break;
         }
-        const handsupElement = <Emoji emoji={{name: 'hand', skin: '', unified: '270B'}}/>;
 
         elements.push(
             <ReactionChip
                 key={'hands'}
                 highlight={true}
             >
-                <span>{handsupElement}</span>
-                &nbsp;
-                <span>{`${participants} raised a hand`}</span>
+                <CompassIcon
+                    icon={'hand-right'}
+                    style={{
+                        color: 'rgba(255, 188, 66, 1)',
+                        marginBottom: 2,
+                        fontSize: 16,
+                    }}
+                />
+                <Bold>{participants}</Bold>
+                <span>{' raised a hand'}</span>
             </ReactionChip>);
     }
 
@@ -113,18 +120,25 @@ interface chipProps {
 const ReactionChip = styled.div<chipProps>`
     display: flex;
     flex-direction: row;
-    align-items: flex-end;
-    padding: 2px 10px;
+    align-items: center;
+    padding: 0 8px;
     gap: 2px;
-    height: 23px;
+    height: 28px;
     color: black;
     background: rgba(221, 223, 228, 0.48);
     border-radius: 12px;
     margin: 4px 0;
     width: fit-content;
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 16px;
 
-    ${(props) => props.highlight && `
+    ${(props) => props.highlight && css`
         background: #FFFFFF;
         color: #090A0B;
   `}
+`;
+
+const Bold = styled.span`
+    font-weight: 600;
 `;
