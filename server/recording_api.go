@@ -92,6 +92,16 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 	if action == "start" {
 		recJobID, err := p.jobService.RunRecordingJob(callID, threadID, p.botSession.Token)
 		if err != nil {
+			// resetting state in case the job failed to run
+			if err := p.kvSetAtomicChannelState(callID, func(state *channelState) (*channelState, error) {
+				if state == nil || state.Call == nil || state.Call.Recording == nil {
+					return nil, fmt.Errorf("missing state")
+				}
+				state.Call.Recording = nil
+				return state, nil
+			}); err != nil {
+				p.LogError(err.Error())
+			}
 			res.Err = "failed to create recording job: " + err.Error()
 			res.Code = http.StatusInternalServerError
 			return
