@@ -12,8 +12,6 @@ require (
 	github.com/stretchr/testify v1.8.1
 )
 
-replace github.com/mattermost/calls-offloader => ../calls-offloader
-
 require (
 	github.com/mattermost/calls-offloader v0.0.0-20221125180720-4ec119b9c196
 	github.com/mattermost/logr/v2 v2.0.15
