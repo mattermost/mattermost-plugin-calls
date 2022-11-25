@@ -154,6 +154,12 @@ export const allowScreenSharing: (state: GlobalState) => boolean = createSelecto
     (config) => config.AllowScreenSharing,
 );
 
+export const recordingsEnabled: (state: GlobalState) => boolean = createSelector(
+    'recordingsEnabled',
+    callsConfig,
+    (config) => config.EnableRecordings,
+);
+
 export const endCallModal = (state: GlobalState) => {
     return getPluginState(state).endCallModal;
 };

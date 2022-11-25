@@ -39,6 +39,12 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 		return
 	}
 
+	if p.jobService == nil {
+		res.Err = "Job service is not initialized"
+		res.Code = http.StatusForbidden
+		return
+	}
+
 	if action == "publish" {
 		res.Err = "Not implemented"
 		res.Code = http.StatusNotImplemented
@@ -46,6 +52,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 	}
 
 	var recState recordingState
+	var threadID string
 	if err := p.kvSetAtomicChannelState(callID, func(state *channelState) (*channelState, error) {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
@@ -68,6 +75,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 			recState.CreatorID = userID
 			recState.InitAt = time.Now().UnixMilli()
 			state.Call.Recording = &recState
+			threadID = state.Call.ThreadID
 		} else if action == "stop" {
 			recState = *state.Call.Recording
 			recState.EndAt = time.Now().UnixMilli()
@@ -82,11 +90,46 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 	}
 
 	if action == "start" {
+		recJobID, err := p.jobService.RunRecordingJob(callID, threadID, p.botSession.Token)
+		if err != nil {
+			res.Err = "failed to create recording job: " + err.Error()
+			res.Code = http.StatusInternalServerError
+			return
+		}
+
+		if err := p.kvSetAtomicChannelState(callID, func(state *channelState) (*channelState, error) {
+			if state == nil {
+				return nil, fmt.Errorf("channel state is missing from store")
+			}
+			if state.Call == nil {
+				return nil, fmt.Errorf("no call ongoing")
+			}
+			if state.Call.Recording == nil {
+				return nil, fmt.Errorf("no recording ongoing")
+			}
+			if state.Call.Recording.JobID != "" {
+				return nil, fmt.Errorf("recording job already in progress")
+			}
+			state.Call.Recording.JobID = recJobID
+
+			return state, nil
+		}); err != nil {
+			res.Err = err.Error()
+			res.Code = http.StatusForbidden
+			return
+		}
+
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
 			"recState": recState.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	} else if action == "stop" {
+		if err := p.jobService.StopJob(recState.JobID); err != nil {
+			res.Err = "failed to create recording job: " + err.Error()
+			res.Code = http.StatusInternalServerError
+			return
+		}
+
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
 			"recState": recState.getClientState().toMap(),
