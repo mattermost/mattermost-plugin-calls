@@ -1,6 +1,10 @@
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 
+import {Reaction} from 'src/types/types';
+
+import {REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
+
 import {Store} from './types/mattermost-webapp';
 
 import {
@@ -18,20 +22,19 @@ import {
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
+    VOICE_CHANNEL_USER_REACTED,
+    VOICE_CHANNEL_USER_REACTED_TIMEOUT,
 } from './action_types';
 
 import {
     getProfilesByIds,
-    getPluginStaticPath,
     playSound,
-    followThread,
+    followThread, getUserDisplayName,
 } from './utils';
 
-import {
-    connectedChannelID,
-} from './selectors';
+import {connectedChannelID, idToProfileInConnectedChannel} from './selectors';
 
-import {logErr, logDebug} from './log';
+import {logErr} from './log';
 
 export function handleCallEnd(store: Store, ev: any) {
     if (connectedChannelID(store.getState()) === ev.broadcast.channel_id) {
@@ -198,4 +201,35 @@ export function handleUserUnraisedHand(store: Store, ev: any) {
             raised_hand: ev.data.raised_hand,
         },
     });
+}
+
+export function handleUserReaction(store: Store, ev: any) {
+    if (connectedChannelID(store.getState()) !== ev.broadcast.channel_id) {
+        return;
+    }
+
+    const profiles = idToProfileInConnectedChannel(store.getState());
+    const displayName = getUserDisplayName(profiles[ev.data.user_id]);
+    const reaction: Reaction = {
+        ...ev.data,
+        displayName,
+    };
+    store.dispatch({
+        type: VOICE_CHANNEL_USER_REACTED,
+        data: {
+            channelID: ev.broadcast.channel_id,
+            userID: ev.data.user_id,
+            reaction,
+        },
+    });
+    setTimeout(() => {
+        store.dispatch({
+            type: VOICE_CHANNEL_USER_REACTED_TIMEOUT,
+            data: {
+                channelID: ev.broadcast.channel_id,
+                userID: ev.data.user_id,
+                reaction,
+            },
+        });
+    }, REACTION_TIMEOUT_IN_REACTION_STREAM);
 }

@@ -12,9 +12,9 @@ import {withRouter} from 'react-router-dom';
 
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 
-import {UserState} from '../../types/types';
+import {UserState} from 'src/types/types';
 
-import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from '../../utils';
+import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from 'src/utils';
 
 import {
     closeRhs,
@@ -22,18 +22,18 @@ import {
     getIsRhsOpen,
     getRhsSelectedPostId,
 } from 'src/webapp_globals';
-import {hideExpandedView, prefetchThread, showScreenSourceModal, trackEvent} from '../../actions';
+import {hideExpandedView, prefetchThread, showScreenSourceModal, trackEvent} from 'src/actions';
 import {
     expandedView,
     voiceChannelCallStartAt,
     connectedChannelID,
-    voiceConnectedProfiles,
     voiceUsersStatuses,
     voiceChannelScreenSharingID,
     voiceChannelRootPost,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
-} from '../../selectors';
+    voiceConnectedProfiles,
+} from 'src/selectors';
 
 import ExpandedView from './component';
 
@@ -45,14 +45,14 @@ const mapStateToProps = (state: GlobalState) => {
     const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
     const threadID = voiceChannelRootPost(state, channel?.id);
 
-    const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
+    const sortedProfiles = (profiles: UserProfile[], statuses: { [key: string]: UserState }) => {
         return [...profiles].sort(alphaSortProfiles(profiles)).sort(stateSortProfiles(profiles, statuses, screenSharingID));
     };
 
     const statuses = voiceUsersStatuses(state);
     const profiles = sortedProfiles(voiceConnectedProfiles(state), statuses);
 
-    const pictures: {[key: string]: string} = {};
+    const pictures: { [key: string]: string } = {};
     for (let i = 0; i < profiles.length; i++) {
         pictures[String(profiles[i].id)] = Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
     }

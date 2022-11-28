@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useRef} from 'react';
 import {OverlayTrigger} from 'react-bootstrap';
 import styled, {css} from 'styled-components';
 
@@ -22,8 +22,23 @@ export type Props = {
 }
 
 export default function ControlsButton(props: Props) {
+    const overlayRef = useRef();
+
+    const onClick = () => {
+        if (props.disabled) {
+            return;
+        }
+
+        // @ts-ignore
+        overlayRef.current?.hide();
+        props.onToggle?.();
+    };
+
     return (
         <OverlayTrigger
+
+            /* @ts-ignore */
+            ref={overlayRef}
             key={props.id}
             placement='top'
             overlay={
@@ -33,12 +48,12 @@ export default function ControlsButton(props: Props) {
                 >
                     <div>{props.tooltipText}</div>
                     {props.tooltipSubtext &&
-                    <TooltipSubtext>
-                        {props.tooltipSubtext}
-                    </TooltipSubtext>
+                        <TooltipSubtext>
+                            {props.tooltipSubtext}
+                        </TooltipSubtext>
                     }
-                    { props.shortcut &&
-                    <Shortcut shortcut={props.shortcut}/>
+                    {props.shortcut &&
+                        <Shortcut shortcut={props.shortcut}/>
                     }
                 </StyledTooltip>
             }
@@ -50,7 +65,7 @@ export default function ControlsButton(props: Props) {
                 <Button
                     className='button-center-controls'
                     // eslint-disable-next-line no-undefined
-                    onClick={props.disabled ? undefined : props.onToggle}
+                    onClick={onClick}
                     bgColor={props.bgColor}
                     isDisabled={props.disabled}
                     isUnavailable={props.unavailable}
@@ -58,73 +73,72 @@ export default function ControlsButton(props: Props) {
                 >
                     <ButtonIcon>
                         {props.icon}
-                        { props.unavailable &&
-                        <UnavailableIcon>
-                            <CompassIcon icon='close-circle'/>
-                        </UnavailableIcon>
+                        {props.unavailable &&
+                            <UnavailableIcon>
+                                <CompassIcon icon='close-circle'/>
+                            </UnavailableIcon>
                         }
                     </ButtonIcon>
                 </Button>
-                { props.text &&
-                <ButtonText>{props.text}</ButtonText>
+                {props.text &&
+                    <ButtonText>{props.text}</ButtonText>
                 }
             </ButtonContainer>
         </OverlayTrigger>
     );
 }
 
-const ButtonContainer = styled.div<{margin?: string}>`
-   display: flex;
-   flex-direction: column;
-   align-items: center;
-   justify-content: center;
-   margin: ${({margin}) => margin || '0 16px'};
+const ButtonContainer = styled.div<{ margin?: string }>`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: ${({margin}) => margin || '0 16px'};
 `;
 
-const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailable?: boolean}>`
-  background-color: ${({bgColor}) => bgColor};
+const Button = styled.button<{ bgColor: string, isDisabled?: boolean, isUnavailable?: boolean }>`
+    background-color: ${({bgColor}) => bgColor};
 
-  ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-    background-color: rgba(255, 255, 255, 0.08);
-  `}
-
-  svg {
-    fill: white;
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-      fill: rgba(255, 255, 255, 0.32);
+        background-color: rgba(255, 255, 255, 0.08);
     `}
-  }
-
-  ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-    :hover {
-      background: rgba(255, 255, 255, 0.08);
+    svg {
+        fill: white;
+        ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
+            fill: rgba(255, 255, 255, 0.32);
+        `}
     }
-  `}
+
+    ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
+        :hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+    `}
 `;
 
 const ButtonText = styled.span`
-  font-size: 14px;
-  font-weight: 600;
-  margin-top: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 12px;
 `;
 
 const ButtonIcon = styled.div`
-  position: relative;
+    position: relative;
 `;
 
 const UnavailableIcon = styled.div`
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  color: var(--dnd-indicator);
-  font-size: 14px;
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    color: var(--dnd-indicator);
+    font-size: 14px;
 
-  i {
-    border-radius: 50%;
-    background-color: rgb(54, 55, 59);
-  }
+    i {
+        border-radius: 50%;
+        background-color: rgb(54, 55, 59);
+    }
 `;
 
 const TooltipSubtext = styled.div`
-  opacity: 0.56;
+    opacity: 0.56;
 `;
