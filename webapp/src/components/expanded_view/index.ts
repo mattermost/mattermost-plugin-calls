@@ -40,6 +40,7 @@ import {
     allowScreenSharing,
     voiceChannelCallHostID,
     callRecording,
+    recordingsEnabled,
 } from '../../selectors';
 
 import ExpandedView from './component';
@@ -96,6 +97,7 @@ const mapStateToProps = (state: GlobalState) => {
         rhsSelectedThreadID: getRhsSelectedPostId?.(state),
         isRhsOpen: getIsRhsOpen?.(state),
         allowScreenSharing: allowScreenSharing(state),
+        recordingsEnabled: recordingsEnabled(state),
     };
 };
 

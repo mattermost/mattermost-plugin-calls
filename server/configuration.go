@@ -43,6 +43,8 @@ type configuration struct {
 	// When set to true it will pass and use configured TURN candidates to server
 	// initiated connections.
 	ServerSideTURN *bool
+	// The URL to a running calls-offloader job service instance.
+	JobServiceURL string
 
 	clientConfig
 }
@@ -67,6 +69,8 @@ type clientConfig struct {
 	AllowScreenSharing *bool
 	// When set to true it enables the call recordings functionality
 	EnableRecordings *bool
+	// The maximum duration (in minutes) for call recordings.
+	MaxRecordingDuration *int
 }
 
 type ICEServers []string
@@ -158,6 +162,7 @@ func (c *configuration) getClientConfig() clientConfig {
 		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
 		AllowScreenSharing:   c.AllowScreenSharing,
 		EnableRecordings:     c.EnableRecordings,
+		MaxRecordingDuration: c.MaxRecordingDuration,
 	}
 }
 
@@ -188,6 +193,9 @@ func (c *configuration) SetDefaults() {
 	if c.EnableRecordings == nil {
 		c.EnableRecordings = new(bool)
 	}
+	if c.MaxRecordingDuration == nil {
+		c.MaxRecordingDuration = model.NewInt(60)
+	}
 }
 
 func (c *configuration) IsValid() error {
@@ -207,6 +215,10 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("TURNCredentialsExpirationMinutes is not valid")
 	}
 
+	if c.MaxRecordingDuration == nil || *c.MaxRecordingDuration < 0 {
+		return fmt.Errorf("MaxRecordingDuration is not valid")
+	}
+
 	return nil
 }
 
@@ -216,6 +228,7 @@ func (c *configuration) Clone() *configuration {
 
 	cfg.ICEHostOverride = c.ICEHostOverride
 	cfg.RTCDServiceURL = c.RTCDServiceURL
+	cfg.JobServiceURL = c.JobServiceURL
 	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 
 	if c.UDPServerPort != nil {
@@ -261,6 +274,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.EnableRecordings = model.NewBool(*c.EnableRecordings)
 	}
 
+	if c.MaxRecordingDuration != nil {
+		cfg.MaxRecordingDuration = model.NewInt(*c.MaxRecordingDuration)
+	}
+
 	return &cfg
 }
 
@@ -269,6 +286,13 @@ func (c *configuration) getRTCDURL() string {
 		return url
 	}
 	return c.RTCDServiceURL
+}
+
+func (c *configuration) getJobServiceURL() string {
+	if url := os.Getenv("MM_CALLS_JOB_SERVICE_URL"); url != "" {
+		return url
+	}
+	return c.JobServiceURL
 }
 
 func (c *configuration) recordingsEnabled() bool {

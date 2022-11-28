@@ -46,6 +46,8 @@ type Plugin struct {
 	rtcServer   *rtc.Server
 	rtcdManager *rtcdClientManager
 
+	jobService *jobService
+
 	// A map of userID -> limiter to implement basic, user based API rate-limiting.
 	// TODO: consider moving this to a dedicated API object.
 	apiLimiters    map[string]*rate.Limiter

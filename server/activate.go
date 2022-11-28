@@ -95,6 +95,12 @@ func (p *Plugin) OnActivate() error {
 			return err
 		}
 		p.botSession = session
+		p.jobService, err = p.newJobService(cfg.getJobServiceURL())
+		if err != nil {
+			err = fmt.Errorf("failed to create job service: %w", err)
+			p.LogError(err.Error())
+			return err
+		}
 	}
 
 	if rtcdURL := cfg.getRTCDURL(); rtcdURL != "" && p.licenseChecker.RTCDAllowed() {

@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/mattermost/mattermost-server/v6 v6.0.0-20221121180800-8e9e9f4ee1ca
+	github.com/mattermost/mattermost-server/v6 v6.0.0-20221122212622-0509e78744bf
 	github.com/pion/ice/v2 v2.2.6 // indirect
 	github.com/pion/rtcp v1.2.9 // indirect
 	github.com/pion/webrtc/v3 v3.1.40 // indirect
@@ -13,9 +13,10 @@ require (
 )
 
 require (
+	github.com/mattermost/calls-offloader v0.0.0-20221125180720-4ec119b9c196
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.1.1
-	github.com/mattermost/rtcd v0.7.1-0.20221121231753-14ce3f63d3df
+	github.com/mattermost/rtcd v0.7.1-0.20221124183223-25eed58b22d2
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324
@@ -23,12 +24,18 @@ require (
 
 require (
 	git.mills.io/prologic/bitcask v1.0.2 // indirect
+	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/abcum/lcp v0.0.0-20201209214815-7a3f3840be81 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/containerd/containerd v1.5.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/docker/distribution v2.7.1+incompatible // indirect
+	github.com/docker/docker v20.10.9+incompatible // indirect
+	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/dyatlov/go-opengraph/opengraph v0.0.0-20220524092352-606d7b1e5f8a // indirect
 	github.com/fatih/color v1.13.0 // indirect
@@ -36,8 +43,10 @@ require (
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/gofrs/flock v0.8.0 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/graph-gophers/graphql-go v1.4.0 // indirect
 	github.com/hashicorp/go-hclog v1.3.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.6 // indirect
@@ -58,6 +67,8 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/oklog/run v1.1.0 // indirect
+	github.com/opencontainers/go-digest v1.0.0 // indirect
+	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
