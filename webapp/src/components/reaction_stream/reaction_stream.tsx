@@ -76,7 +76,7 @@ export const ReactionStream = ({forceLeft}: Props) => {
                 <CompassIcon
                     icon={'hand-right'}
                     style={{
-                        color: 'rgba(255, 188, 66, 1)',
+                        color: 'rgb(255, 188, 66)',
                         marginBottom: 2,
                         fontSize: 16,
                     }}
