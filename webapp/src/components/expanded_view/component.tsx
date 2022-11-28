@@ -634,12 +634,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             let isMuted = true;
             let isSpeaking = false;
             let isHandRaised = false;
-            let hasReaction = false;
             if (status) {
                 isMuted = !status.unmuted;
                 isSpeaking = Boolean(status.voice);
                 isHandRaised = Boolean(status.raised_hand > 0);
-                hasReaction = Boolean(status.reaction);
             }
 
             return (
@@ -650,6 +648,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     isMuted={isMuted}
                     isSpeaking={isSpeaking}
                     isHandRaised={isHandRaised}
+                    reaction={status?.reaction}
                     isHost={profile.id === this.props.callHostID}
                 />
             );
@@ -944,7 +943,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 />
                             }
 
-                            <ControlsButton
                             <ReactionButton
                                 ref={this.emojiButtonRef}
                                 trackEvent={this.props.trackEvent}
@@ -1137,45 +1135,6 @@ const styles: Record<string, CSSObject> = {
         margin: 0,
         padding: 0,
         overflow: 'auto',
-    },
-    reactionBackground: {
-        position: 'absolute',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        top: -7,
-        right: -12,
-        background: 'rgba(37, 38, 42, 1)',
-        borderRadius: '30px',
-        width: '30px',
-        height: '30px',
-    },
-    reactionContainer: {
-        position: 'absolute',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        top: -5,
-        right: -10,
-        background: 'rgba(50, 50, 50, 1)',
-        borderRadius: '30px',
-        width: '25px',
-        height: '25px',
-        fontSize: '12px',
-    },
-    handRaisedContainer: {
-        position: 'absolute',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        top: -5,
-        right: -10,
-        background: 'white',
-        color: 'rgba(255, 188, 66, 1)',
-        borderRadius: '30px',
-        width: '25px',
-        height: '25px',
-        fontSize: '18px',
     },
 };
 

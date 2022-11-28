@@ -172,6 +172,7 @@ export default class RecordingView extends React.PureComponent<Props, State> {
                     isMuted={isMuted}
                     isSpeaking={isSpeaking}
                     isHandRaised={isHandRaised}
+                    reaction={status?.reaction}
                     isHost={profile.id === this.props.callHostID}
                 />
             );

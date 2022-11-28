@@ -94,7 +94,7 @@ export const voiceReactions: (state: GlobalState) => Reaction[] = (state: Global
 };
 
 export const voiceUsersStatusesInChannel = (state: GlobalState, channelID: string) => {
-    return getPluginState(state).voiceUsersStatuses[channelID] || {};
+    return pluginState(state).voiceUsersStatuses[channelID] || {};
 };
 
 export const voiceChannelCallStartAt = (state: GlobalState, channelID: string) => {
@@ -106,7 +106,7 @@ export const voiceChannelCallOwnerID = (state: GlobalState, channelID: string) =
 };
 
 export const voiceChannelCallHostID = (state: GlobalState, channelID: string) => {
-    return getPluginState(state).voiceChannelCalls[channelID]?.hostID;
+    return pluginState(state).voiceChannelCalls[channelID]?.hostID;
 };
 
 export const voiceChannelScreenSharingID = (state: GlobalState, channelID: string) => {
@@ -114,7 +114,7 @@ export const voiceChannelScreenSharingID = (state: GlobalState, channelID: strin
 };
 
 export const callRecording = (state: GlobalState, callID: string) => {
-    return getPluginState(state).callsRecordings[callID];
+    return pluginState(state).callsRecordings[callID];
 };
 
 export const expandedView = (state: GlobalState) => {

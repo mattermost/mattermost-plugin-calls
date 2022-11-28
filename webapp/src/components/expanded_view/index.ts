@@ -38,7 +38,10 @@ import {
     voiceChannelRootPost,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
-} from '../../selectors';
+    voiceChannelCallHostID,
+    callRecording,
+    recordingsEnabled,
+} from 'src/selectors';
 
 import ExpandedView from './component';
 
