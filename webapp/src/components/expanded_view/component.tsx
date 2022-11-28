@@ -66,6 +66,7 @@ import {
     PARTICIPANTS_LIST_TOGGLE,
     LEAVE_CALL,
     PUSH_TO_TALK,
+    RECORDING_TOGGLE,
     keyToAction,
     reverseKeyMappings,
     MAKE_REACTION,
@@ -241,6 +242,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         case LEAVE_CALL:
             this.onDisconnectClick();
             break;
+        case RECORDING_TOGGLE:
+            this.onRecordToggle(true);
+            break;
         }
     }
 
@@ -280,11 +284,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
-    onRecordToggle = async () => {
+    onRecordToggle = async (fromShortcut?: boolean) => {
         if (!this.props.callRecording || this.props.callRecording.end_at > 0) {
             await startCallRecording(this.props.channel.id);
+            this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
             await stopCallRecording(this.props.channel.id);
+            this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
     }
 
@@ -938,6 +944,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     onToggle={() => this.onRecordToggle()}
                                     tooltipText={recordTooltipText}
                                     bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                                    // eslint-disable-next-line no-undefined
+                                    shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}
                                     iconFill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : ''}
                                     icon={<RecordIcon size={28}/>}
                                 />
