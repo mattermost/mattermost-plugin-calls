@@ -2,9 +2,11 @@
 // See LICENSE.txt for license information.
 
 export type UserState = {
+    id: string;
     voice: boolean;
     unmuted: boolean;
     raised_hand: number;
+    reaction?: Reaction;
 }
 
 export type RTCStats = {
@@ -150,3 +152,16 @@ export const CallAlertStatesDefault = {
         show: false,
     },
 };
+
+export type EmojiData = {
+    name: string;
+    skin?: string;
+    unified: string;
+}
+
+export type Reaction = {
+    emoji: EmojiData;
+    timestamp: number;
+    user_id: string;
+    displayName: string;
+}
