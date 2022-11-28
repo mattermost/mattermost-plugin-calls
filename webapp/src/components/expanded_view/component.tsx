@@ -883,8 +883,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 icon={
                                     <ParticipantsIcon
                                         style={{
-                                            width: '28px',
-                                            height: '28px',
+                                            width: '24px',
+                                            height: '24px',
                                             fill: this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white',
                                         }}
                                     />
@@ -906,8 +906,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 icon={
                                     <MuteIcon
                                         style={{
-                                            width: '28px',
-                                            height: '28px',
+                                            width: '24px',
+                                            height: '24px',
                                             fill: isMuted ? '' : 'rgba(61, 184, 135, 1)',
                                         }}
                                     />
@@ -927,8 +927,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={
                                         <ScreenIcon
                                             style={{
-                                                width: '28px',
-                                                height: '28px',
+                                                width: '24px',
+                                                height: '24px',
                                                 fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : '',
                                             }}
                                         />
@@ -947,7 +947,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     // eslint-disable-next-line no-undefined
                                     shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}
                                     iconFill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : ''}
-                                    icon={<RecordIcon size={28}/>}
+                                    icon={<RecordIcon size={24}/>}
                                 />
                             }
 
@@ -968,7 +968,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={
                                         <div css={{position: 'relative'}}>
                                             <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
-                                                size={28}
+                                                size={24}
                                                 color={'white'}
                                             />
                                             {!chatDisabled && isChatUnread && (
@@ -980,35 +980,20 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 />
                             )}
                         </div>
-
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
-                            <OverlayTrigger
-                                key='tooltip-leave-call'
-                                placement='top'
-                                overlay={
-                                    <Tooltip
-                                        id='tooltip-leave-call'
-                                    >
-                                        <span>{'Leave call'}</span>
-                                        <Shortcut shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}/>
-                                    </Tooltip>
-                                }
-                            >
-                                <button
-                                    className='button-leave'
-                                    onClick={this.onDisconnectClick}
-                                >
-
+                            <ControlsButton
+                                id='leave-call'
+                                onToggle={() => this.onDisconnectClick()}
+                                tooltipText={'Leave call'}
+                                shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}
+                                bgColor={'rgb(var(--dnd-indicator-rgb))'}
+                                icon={
                                     <LeaveCallIcon
-                                        style={{width: '24px', height: '24px'}}
-                                        fill='white'
+                                        style={{width: '24px', height: '24px', fill: 'white'}}
                                     />
-                                    <span
-                                        style={{fontSize: '18px', fontWeight: 600, marginLeft: '8px'}}
-                                    >{'Leave'}</span>
-
-                                </button>
-                            </OverlayTrigger>
+                                }
+                                margin='0'
+                            />
                         </div>
                     </div>
                 </div>
