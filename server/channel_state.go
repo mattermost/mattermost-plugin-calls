@@ -12,7 +12,7 @@ type recordingState struct {
 	ID        string `json:"id"`
 	CreatorID string `json:"creator_id"`
 	JobID     string `json:"job_id"`
-	RecordingState
+	RecordingStateClient
 }
 
 type userState struct {
@@ -49,36 +49,36 @@ type channelState struct {
 	Call    *callState `json:"call,omitempty"`
 }
 
-type UserState struct {
+type UserStateClient struct {
 	Unmuted    bool  `json:"unmuted"`
 	RaisedHand int64 `json:"raised_hand"`
 }
 
-type CallState struct {
-	ID              string          `json:"id"`
-	StartAt         int64           `json:"start_at"`
-	Users           []string        `json:"users"`
-	States          []UserState     `json:"states,omitempty"`
-	ThreadID        string          `json:"thread_id"`
-	ScreenSharingID string          `json:"screen_sharing_id"`
-	OwnerID         string          `json:"owner_id"`
-	HostID          string          `json:"host_id"`
-	Recording       *RecordingState `json:"recording,omitempty"`
+type CallStateClient struct {
+	ID              string                `json:"id"`
+	StartAt         int64                 `json:"start_at"`
+	Users           []string              `json:"users"`
+	States          []UserStateClient     `json:"states,omitempty"`
+	ThreadID        string                `json:"thread_id"`
+	ScreenSharingID string                `json:"screen_sharing_id"`
+	OwnerID         string                `json:"owner_id"`
+	HostID          string                `json:"host_id"`
+	Recording       *RecordingStateClient `json:"recording,omitempty"`
 }
 
-type RecordingState struct {
+type RecordingStateClient struct {
 	InitAt  int64 `json:"init_at"`
 	StartAt int64 `json:"start_at"`
 	EndAt   int64 `json:"end_at"`
 }
 
-type ChannelState struct {
-	ChannelID string     `json:"channel_id,omitempty"`
-	Enabled   bool       `json:"enabled"`
-	Call      *CallState `json:"call,omitempty"`
+type ChannelStateClient struct {
+	ChannelID string           `json:"channel_id,omitempty"`
+	Enabled   bool             `json:"enabled"`
+	Call      *CallStateClient `json:"call,omitempty"`
 }
 
-func (rs *RecordingState) toMap() map[string]interface{} {
+func (rs *RecordingStateClient) toMap() map[string]interface{} {
 	if rs == nil {
 		return nil
 	}
@@ -89,11 +89,11 @@ func (rs *RecordingState) toMap() map[string]interface{} {
 	}
 }
 
-func (rs *recordingState) getClientState() *RecordingState {
+func (rs *recordingState) getClientState() *RecordingStateClient {
 	if rs == nil {
 		return nil
 	}
-	return &rs.RecordingState
+	return &rs.RecordingStateClient
 }
 
 func (cs *callState) Clone() *callState {
@@ -137,8 +137,8 @@ func (cs *channelState) Clone() *channelState {
 	return &newState
 }
 
-func (us *userState) getClientState() UserState {
-	return UserState{
+func (us *userState) getClientState() UserStateClient {
+	return UserStateClient{
 		Unmuted:    us.Unmuted,
 		RaisedHand: us.RaisedHand,
 	}
@@ -163,9 +163,9 @@ func (cs *callState) getHostID(botID string) string {
 	return hostID
 }
 
-func (cs *callState) getClientState(botID string) *CallState {
+func (cs *callState) getClientState(botID string) *CallStateClient {
 	users, states := cs.getUsersAndStates(botID)
-	return &CallState{
+	return &CallStateClient{
 		ID:              cs.ID,
 		StartAt:         cs.StartAt,
 		Users:           users,
@@ -178,9 +178,9 @@ func (cs *callState) getClientState(botID string) *CallState {
 	}
 }
 
-func (cs *callState) getUsersAndStates(botID string) ([]string, []UserState) {
+func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClient) {
 	users := make([]string, 0, len(cs.Users))
-	states := make([]UserState, 0, len(cs.Users))
+	states := make([]UserStateClient, 0, len(cs.Users))
 	for id, state := range cs.Users {
 		// We don't want to expose to the client that the bot is in a call.
 		if id == botID {

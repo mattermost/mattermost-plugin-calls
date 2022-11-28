@@ -117,6 +117,8 @@ interface State {
     promptDismissedAt: number,
 }
 
+const MaxParticipantsPerRow = 4;
+
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private screenPlayer = React.createRef<HTMLVideoElement>()
     private expandedRootRef = React.createRef<HTMLDivElement>()
@@ -805,7 +807,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         id='calls-expanded-view-participants-grid'
                         style={{
                             ...styles.participants,
-                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, MaxParticipantsPerRow)}, 1fr)`,
                         }}
                     >
                         { this.renderParticipants() }

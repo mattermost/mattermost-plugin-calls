@@ -28,7 +28,7 @@ func TestUserStateGetClientState(t *testing.T) {
 			JoinAt:     100,
 		}
 
-		cs := UserState{
+		cs := UserStateClient{
 			Unmuted:    us.Unmuted,
 			RaisedHand: us.RaisedHand,
 		}
@@ -40,9 +40,9 @@ func TestUserStateGetClientState(t *testing.T) {
 func TestCallStateGetClientState(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		var cs callState
-		var css CallState
+		var css CallStateClient
 		css.Users = []string{}
-		css.States = []UserState{}
+		css.States = []UserStateClient{}
 		require.Equal(t, &css, cs.getClientState("botID"))
 	})
 
@@ -62,11 +62,11 @@ func TestCallStateGetClientState(t *testing.T) {
 			OwnerID:         "ownerID",
 			HostID:          "hostID",
 		}
-		ccs := CallState{
+		ccs := CallStateClient{
 			ID:      cs.ID,
 			StartAt: cs.StartAt,
 			Users:   []string{"userA"},
-			States: []UserState{
+			States: []UserStateClient{
 				{RaisedHand: 1100},
 			},
 			ThreadID:        cs.ThreadID,
@@ -93,11 +93,11 @@ func TestCallStateGetClientState(t *testing.T) {
 			},
 		}
 
-		ccs := CallState{
+		ccs := CallStateClient{
 			ID:      "test",
 			StartAt: 100,
 			Users:   []string{"userA"},
-			States: []UserState{
+			States: []UserStateClient{
 				{RaisedHand: 1100},
 			},
 		}
@@ -237,7 +237,7 @@ func TestChannelStateClone(t *testing.T) {
 					"userB": {},
 				},
 				Recording: &recordingState{
-					RecordingState: RecordingState{
+					RecordingStateClient: RecordingStateClient{
 						InitAt:  1100,
 						StartAt: 1200,
 					},
@@ -281,14 +281,14 @@ func TestRecordingStateGetClientState(t *testing.T) {
 		rs := &recordingState{
 			ID:        "recID",
 			CreatorID: "creatorID",
-			RecordingState: RecordingState{
+			RecordingStateClient: RecordingStateClient{
 				InitAt:  100,
 				StartAt: 200,
 				EndAt:   300,
 			},
 		}
 
-		recState := &RecordingState{
+		recState := &RecordingStateClient{
 			InitAt:  100,
 			StartAt: 200,
 			EndAt:   300,

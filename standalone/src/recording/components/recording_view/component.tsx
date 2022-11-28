@@ -46,6 +46,8 @@ interface State {
     screenStream: MediaStream | null,
 }
 
+const MaxParticipantsPerRow = 10;
+
 export default class RecordingView extends React.PureComponent<Props, State> {
     private screenPlayer = React.createRef<HTMLVideoElement>()
 
@@ -226,15 +228,13 @@ export default class RecordingView extends React.PureComponent<Props, State> {
                 id='calls-recording-view'
                 style={style.root as CSSProperties}
             >
-                <div
-                    style={style.main as CSSProperties}
-                >
+                <div style={style.main as CSSProperties}>
                     { !hasScreenShare &&
                     <ul
                         id='calls-recording-view-participants-grid'
                         style={{
                             ...style.participants,
-                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 10)}, 1fr)`,
+                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, MaxParticipantsPerRow)}, 1fr)`,
                         }}
                     >
                         { this.renderParticipants() }

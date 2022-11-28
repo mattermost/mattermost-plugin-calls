@@ -35,7 +35,15 @@ export default function Badge(props: Props) {
     );
 }
 
-const Container = styled.div<{bgColor?: string, size: number, margin?: string, padding?: string, color?: string}>`
+type ContainerProps = {
+    bgColor?: string,
+    size: number,
+    margin?: string,
+    padding?: string,
+    color?: string,
+}
+
+const Container = styled.div<ContainerProps>`
   display: flex;
   align-items: center;
   justify-content: center;

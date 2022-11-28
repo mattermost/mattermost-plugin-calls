@@ -51,7 +51,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 		p.LogError(err.Error())
 	}
 
-	info := ChannelState{
+	info := ChannelStateClient{
 		ChannelID: channelID,
 	}
 
@@ -96,7 +96,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
 
 	var page int
-	channels := []ChannelState{}
+	channels := []ChannelStateClient{}
 	channelMembers := map[string]*model.ChannelMember{}
 	perPage := 200
 
@@ -139,7 +139,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, appErr.Error(), http.StatusInternalServerError)
 			}
 
-			info := ChannelState{
+			info := ChannelStateClient{
 				ChannelID: channelID,
 				Enabled:   state.Enabled,
 			}
@@ -299,7 +299,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		}
 	}
 
-	var info ChannelState
+	var info ChannelStateClient
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
 		res.Err = err.Error()
 		res.Code = http.StatusBadRequest
