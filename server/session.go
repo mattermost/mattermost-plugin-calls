@@ -67,10 +67,12 @@ func newUserSession(userID, channelID, connID string, rtc bool) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (channelState, error) {
-	var st channelState
+func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (channelState, channelState, error) {
+	var currState channelState
+	var prevState channelState
 
 	cfg := p.getConfiguration()
+	botID := p.getBotID()
 
 	err := p.kvSetAtomicChannelState(channel.Id, func(state *channelState) (*channelState, error) {
 		if state == nil {
@@ -86,6 +88,8 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 		if !state.Enabled {
 			return nil, fmt.Errorf("calls are not enabled")
 		}
+
+		prevState = *state.Clone()
 
 		if state.Call == nil {
 			state.Call = &callState{
@@ -123,17 +127,28 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 			return nil, fmt.Errorf("user cannot join because of limits")
 		}
 
-		state.Call.Users[userID] = &userState{}
+		// When the bot joins the call it means the recording has started.
+		if state.Call.Recording != nil && userID == botID {
+			state.Call.Recording.StartAt = time.Now().UnixMilli()
+		}
+
+		if state.Call.HostID == "" && userID != botID {
+			state.Call.HostID = userID
+		}
+
+		state.Call.Users[userID] = &userState{
+			JoinAt: time.Now().UnixMilli(),
+		}
 		state.Call.Sessions[connID] = struct{}{}
 		if len(state.Call.Users) > state.Call.Stats.Participants {
 			state.Call.Stats.Participants = len(state.Call.Users)
 		}
 
-		st = *state
+		currState = *state
 		return state, nil
 	})
 
-	return st, err
+	return currState, prevState, err
 }
 
 func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelState, channelState, error) {
@@ -141,13 +156,22 @@ func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelSta
 	var prevState channelState
 	errNotFound := errors.New("not found")
 
+	botID := p.getBotID()
+
 	setChannelState := func(state *channelState) (*channelState, error) {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
 		}
-		prevState = *state
+
+		prevState = *state.Clone()
+
 		if state.Call == nil {
 			return nil, fmt.Errorf("call state is missing from channel state")
+		}
+
+		if _, ok := state.Call.Users[userID]; !ok {
+			p.LogDebug("user not found in state", "userID", userID)
+			return nil, errNotFound
 		}
 
 		if state.Call.ScreenSharingID == userID {
@@ -159,13 +183,18 @@ func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelSta
 			}
 		}
 
-		if _, ok := state.Call.Users[userID]; !ok {
-			p.LogDebug("user not found in state", "userID", userID)
-			return nil, errNotFound
-		}
-
 		delete(state.Call.Users, userID)
 		delete(state.Call.Sessions, connID)
+
+		if state.Call.HostID == userID && len(state.Call.Users) > 0 {
+			state.Call.HostID = state.Call.getHostID(p.getBotID())
+		}
+
+		// If the bot leaves the call and recording has not been stopped it either means
+		// something has failed or the max duration timeout triggered.
+		if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 && userID == botID {
+			state.Call.Recording.EndAt = time.Now().UnixMilli()
+		}
 
 		if len(state.Call.Users) == 0 {
 			if state.Call.ScreenStartAt > 0 {
@@ -234,6 +263,21 @@ func (p *Plugin) removeSession(us *session) error {
 	currState, prevState, err := p.removeUserSession(us.userID, us.originalConnID, us.channelID)
 	if err != nil {
 		return err
+	}
+
+	if currState.Call != nil && prevState.Call != nil && currState.Call.HostID != prevState.Call.HostID {
+		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
+			"hostID": currState.Call.HostID,
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+	}
+
+	if prevState.Call != nil && prevState.Call.Recording != nil && currState.Call != nil && currState.Call.Recording != nil {
+		if prevState.Call.Recording.EndAt != currState.Call.Recording.EndAt {
+			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+				"callID":   us.channelID,
+				"recState": currState.Call.Recording.getClientState().toMap(),
+			}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+		}
 	}
 
 	if currState.Call == nil && prevState.Call != nil {

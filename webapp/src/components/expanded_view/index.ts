@@ -22,7 +22,12 @@ import {
     getIsRhsOpen,
     getRhsSelectedPostId,
 } from 'src/webapp_globals';
-import {hideExpandedView, prefetchThread, showScreenSourceModal, trackEvent} from '../../actions';
+import {
+    hideExpandedView,
+    prefetchThread,
+    showScreenSourceModal,
+    trackEvent,
+} from '../../actions';
 import {
     expandedView,
     voiceChannelCallStartAt,
@@ -33,6 +38,9 @@ import {
     voiceChannelRootPost,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
+    voiceChannelCallHostID,
+    callRecording,
+    recordingsEnabled,
 } from '../../selectors';
 
 import ExpandedView from './component';
@@ -75,6 +83,8 @@ const mapStateToProps = (state: GlobalState) => {
         pictures,
         statuses,
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
+        callHostID: voiceChannelCallHostID(state, channel?.id) || '',
+        callRecording: callRecording(state, channel?.id),
         screenSharingID,
         channel,
         channelTeam,
@@ -87,6 +97,7 @@ const mapStateToProps = (state: GlobalState) => {
         rhsSelectedThreadID: getRhsSelectedPostId?.(state),
         isRhsOpen: getIsRhsOpen?.(state),
         allowScreenSharing: allowScreenSharing(state),
+        recordingsEnabled: recordingsEnabled(state),
     };
 };
 

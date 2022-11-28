@@ -30,6 +30,8 @@ import {
     handleUserVoiceOff,
     handleUserRaisedHand,
     handleUserUnraisedHand,
+    handleCallHostChanged,
+    handleCallRecordingState,
 } from './websocket_handlers';
 
 import {
@@ -102,6 +104,8 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     SHOW_END_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
+    VOICE_CHANNEL_CALL_HOST,
+    VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
 
 import {PluginRegistry, Store} from './types/mattermost-webapp';
@@ -179,6 +183,14 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unraise_hand`, (ev) => {
             handleUserUnraisedHand(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_host_changed`, (ev) => {
+            handleCallHostChanged(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_state`, (ev) => {
+            handleCallRecordingState(store, ev);
         });
     }
 
@@ -479,6 +491,7 @@ export default class Plugin {
                                 channelID: resp.data[i].channel_id,
                                 startAt: resp.data[i].call?.start_at,
                                 ownerID: resp.data[i].call?.owner_id,
+                                hostID: resp.data[i].call?.host_id,
                             },
                         });
                     }
@@ -545,12 +558,32 @@ export default class Plugin {
                         },
                     });
                 }
+                if (resp.data.call?.host_id) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_CALL_HOST,
+                        data: {
+                            channelID,
+                            hostID: resp.data.call?.host_id,
+                        },
+                    });
+                }
+
                 if (resp.data.call?.users && resp.data.call?.users.length > 0) {
                     store.dispatch({
                         type: VOICE_CHANNEL_PROFILES_CONNECTED,
                         data: {
                             profiles: await getProfilesByIds(store.getState(), resp.data.call?.users),
                             channelID,
+                        },
+                    });
+                }
+
+                if (resp.data.call?.recording) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+                        data: {
+                            callID: channelID,
+                            recState: resp.data.call?.recording,
                         },
                     });
                 }

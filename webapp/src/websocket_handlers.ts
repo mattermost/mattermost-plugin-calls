@@ -18,20 +18,19 @@ import {
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
+    VOICE_CHANNEL_CALL_HOST,
+    VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
 
 import {
     getProfilesByIds,
-    getPluginStaticPath,
     playSound,
     followThread,
 } from './utils';
 
-import {
-    connectedChannelID,
-} from './selectors';
+import {connectedChannelID, voiceConnectedProfilesInChannel} from './selectors';
 
-import {logErr, logDebug} from './log';
+import {logErr} from './log';
 
 export function handleCallEnd(store: Store, ev: any) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
@@ -49,12 +48,21 @@ export function handleCallEnd(store: Store, ev: any) {
 export function handleCallStart(store: Store, ev: any) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
+    // Clear the old recording state (if any).
+    store.dispatch({
+        type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+        data: {
+            callID: channelID,
+            recState: null,
+        },
+    });
     store.dispatch({
         type: VOICE_CHANNEL_CALL_START,
         data: {
             channelID,
             startAt: ev.data.start_at,
             ownerID: ev.data.owner_id,
+            hostID: ev.data.host_id,
         },
     });
     store.dispatch({
@@ -75,6 +83,7 @@ export function handleCallStart(store: Store, ev: any) {
 
 export function handleUserDisconnected(store: Store, ev: any) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
+
     store.dispatch({
         type: VOICE_CHANNEL_USER_DISCONNECTED,
         data: {
@@ -206,6 +215,28 @@ export function handleUserUnraisedHand(store: Store, ev: any) {
             channelID,
             userID: ev.data.userID,
             raised_hand: ev.data.raised_hand,
+        },
+    });
+}
+
+export function handleCallHostChanged(store: Store, ev: any) {
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
+
+    store.dispatch({
+        type: VOICE_CHANNEL_CALL_HOST,
+        data: {
+            channelID,
+            hostID: ev.data.hostID,
+        },
+    });
+}
+
+export function handleCallRecordingState(store: Store, ev: any) {
+    store.dispatch({
+        type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+        data: {
+            callID: ev.data.callID,
+            recState: ev.data.recState,
         },
     });
 }

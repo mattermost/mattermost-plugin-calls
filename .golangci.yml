@@ -35,16 +35,13 @@ linters-settings:
 linters:
   disable-all: true
   enable:
-    - deadcode      # Finds unused code
     - gofmt         # Checks whether code was gofmt-ed
     - revive        # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint
     - gosimple      # Linter for Go source code that specializes in simplifying a code
     - govet         # Examines Go source code and reports suspicious constructs, such as Printf calls whose arguments do not align with the format string
     - ineffassign   # Detects when assignments to existing variables are not used
-    - structcheck   # Finds unused struct fields
     - unconvert     # Removes unnecessary type conversions
     - unused        # Checks Go code for unused constants, variables, functions and types
-    - varcheck      # Finds unused global variables and constants
     - exportloopref # Checks for pointers to enclosing loop variables
     - errcheck      # Detects unchecked errors.
 

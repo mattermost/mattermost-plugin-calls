@@ -55,6 +55,7 @@ import {
     handleUserVoiceOff,
     handleUserRaisedHand,
     handleUserUnraisedHand,
+    handleCallHostChanged,
 } from 'plugin/websocket_handlers';
 
 import {
@@ -155,6 +156,7 @@ async function fetchChannelData(store: Store, channelID: string) {
                 channelID: resp.channel_id,
                 startAt: resp.call.start_at,
                 ownerID: resp.call.owner_id,
+                hostID: resp.call.host_id,
             },
         });
 
@@ -295,6 +297,9 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_user_unraise_hand`:
             handleUserUnraisedHand(store, ev);
+            break;
+        case `custom_${pluginId}_call_host_changed`:
+            handleCallHostChanged(store, ev);
             break;
         default:
         }

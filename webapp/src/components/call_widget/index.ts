@@ -23,6 +23,8 @@ import {
     expandedView,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
+    voiceChannelCallHostID,
+    callRecording,
 } from '../../selectors';
 
 import {alphaSortProfiles, stateSortProfiles} from '../../utils';
@@ -65,6 +67,8 @@ const mapStateToProps = (state: GlobalState) => {
         picturesMap,
         statuses: voiceUsersStatuses(state) || {},
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
+        callHostID: voiceChannelCallHostID(state, channel?.id) || '',
+        callRecording: callRecording(state, channel?.id),
         screenSharingID,
         allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),

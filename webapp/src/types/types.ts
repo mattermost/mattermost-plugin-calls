@@ -65,6 +65,7 @@ export type CallsConfig = {
     MaxCallParticipants: number,
     NeedsTURNCredentials: boolean,
     AllowScreenSharing: boolean,
+    EnableRecordings: boolean,
     sku_short_name: string,
 }
 
@@ -76,6 +77,7 @@ export const CallsConfigDefault: CallsConfig = {
     MaxCallParticipants: 0,
     NeedsTURNCredentials: false,
     AllowScreenSharing: true,
+    EnableRecordings: false,
     sku_short_name: '',
 };
 
@@ -150,3 +152,10 @@ export const CallAlertStatesDefault = {
         show: false,
     },
 };
+
+export type CallRecordingState = {
+    init_at: number,
+    start_at: number,
+    end_at: number,
+}
+

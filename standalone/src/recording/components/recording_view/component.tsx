@@ -20,9 +20,12 @@ import {
 } from 'plugin/types/types';
 
 import Avatar from 'plugin/components/avatar/avatar';
-import CallDuration from 'plugin/components/call_widget/call_duration';
 import MutedIcon from 'plugin/components/icons/muted_icon';
 import UnmutedIcon from 'plugin/components/icons/unmuted_icon';
+import ScreenIcon from 'plugin/components/icons/screen_icon';
+import CallParticipant from 'plugin/components/expanded_view/call_participant';
+
+import Timestamp from './timestamp';
 
 interface Props {
     store: any,
@@ -34,6 +37,7 @@ interface Props {
         [key: string]: UserState,
     },
     callStartAt: number,
+    callHostID: string,
     screenSharingID: string,
     channel: Channel,
 }
@@ -41,6 +45,8 @@ interface Props {
 interface State {
     screenStream: MediaStream | null,
 }
+
+const MaxParticipantsPerRow = 10;
 
 export default class RecordingView extends React.PureComponent<Props, State> {
     private screenPlayer = React.createRef<HTMLVideoElement>()
@@ -107,10 +113,7 @@ export default class RecordingView extends React.PureComponent<Props, State> {
 
         return (
             <div
-                style={{
-                    ...style.screenContainer,
-                    maxHeight: 'calc(100% - 200px)',
-                } as CSSProperties}
+                style={style.screenContainer as CSSProperties}
             >
                 <video
                     id='screen-player'
@@ -120,19 +123,29 @@ export default class RecordingView extends React.PureComponent<Props, State> {
                     muted={true}
                     autoPlay={true}
                     onClick={(ev) => ev.preventDefault()}
-                    controls={true}
+                    controls={false}
                 />
-                <span
+
+                <div
                     style={{
-                        background: 'black',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        color: 'white',
-                        marginTop: '8px',
+                        position: 'absolute',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        bottom: '24px',
+                        padding: '4px 6px',
+                        borderRadius: '12px',
+                        background: 'rgba(9, 10, 11, 0.72)',
+                        color: '#DDDFE4',
+                        fontSize: '10px',
+                        lineHeight: '12px',
                     }}
                 >
-                    {msg}
-                </span>
+                    <ScreenIcon
+                        style={{width: '12px', height: '12px', margin: '0 6px', fill: 'rgba(221, 223, 228, 0.72)'}}
+                    />
+                    <span>{msg}</span>
+                </div>
             </div>
         );
     }
@@ -152,65 +165,54 @@ export default class RecordingView extends React.PureComponent<Props, State> {
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
             return (
-                <li
+                <CallParticipant
                     key={'participants_profile_' + idx}
-                    style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', margin: '16px'}}
-                >
-
-                    <div style={{position: 'relative'}}>
-                        <Avatar
-                            size={50}
-                            fontSize={18}
-                            border={false}
-                            borderGlow={isSpeaking}
-                            url={this.props.pictures[profile.id]}
-                        />
-                        <div
-                            style={{
-                                position: 'absolute',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                bottom: 0,
-                                right: 0,
-                                background: 'rgba(50, 50, 50, 1)',
-                                borderRadius: '30px',
-                                width: '20px',
-                                height: '20px',
-                            }}
-                        >
-                            <MuteIcon
-                                fill={isMuted ? '#C4C4C4' : '#3DB887'}
-                                style={{width: '14px', height: '14px'}}
-                                stroke={isMuted ? '#C4C4C4' : ''}
-                            />
-                        </div>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                display: isHandRaised ? 'flex' : 'none',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                top: 0,
-                                right: 0,
-                                background: 'rgba(50, 50, 50, 1)',
-                                borderRadius: '30px',
-                                width: '20px',
-                                height: '20px',
-                                fontSize: '12px',
-                            }}
-                        >
-                            {'✋'}
-                        </div>
-                    </div>
-
-                    <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
-                        {getUserDisplayName(profile)}
-                    </span>
-
-                </li>
+                    name={getUserDisplayName(profile)}
+                    pictureURL={this.props.pictures[profile.id]}
+                    isMuted={isMuted}
+                    isSpeaking={isSpeaking}
+                    isHandRaised={isHandRaised}
+                    isHost={profile.id === this.props.callHostID}
+                />
             );
         });
+    }
+
+    renderSpeaking() {
+        let speakingProfile;
+        for (let i = 0; i < this.props.profiles.length; i++) {
+            const profile = this.props.profiles[i];
+            const status = this.props.statuses[profile.id];
+            if (status?.voice) {
+                speakingProfile = profile;
+                break;
+            }
+        }
+
+        if (!speakingProfile) {
+            return null;
+        }
+
+        return (
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    marginLeft: 'auto',
+                    whiteSpace: 'pre',
+                }}
+            >
+                <Avatar
+                    size={20}
+                    fontSize={14}
+                    border={false}
+                    borderGlow={true}
+                    url={this.props.pictures[speakingProfile.id]}
+                />
+                <span style={{marginLeft: '8px'}}>{getUserDisplayName(speakingProfile)}</span>
+                <span style={{fontWeight: 400}}>{' is talking...'}</span>
+            </div>
+        );
     }
 
     render() {
@@ -219,7 +221,7 @@ export default class RecordingView extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const sharingID = this.props.screenSharingID;
+        const hasScreenShare = Boolean(this.props.screenSharingID);
 
         return (
             <div
@@ -227,30 +229,28 @@ export default class RecordingView extends React.PureComponent<Props, State> {
                 style={style.root as CSSProperties}
             >
                 <div style={style.main as CSSProperties}>
-                    <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
-                        <div style={style.topLeftContainer as CSSProperties}>
-                            <CallDuration
-                                style={{margin: '4px'}}
-                                startAt={this.props.callStartAt}
-                            />
-                            <span style={{margin: '4px'}}>{'•'}</span>
-                            <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
-
-                        </div>
-                    </div>
-
-                    { !this.props.screenSharingID &&
+                    { !hasScreenShare &&
                     <ul
                         id='calls-recording-view-participants-grid'
                         style={{
                             ...style.participants,
-                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, MaxParticipantsPerRow)}, 1fr)`,
                         }}
                     >
                         { this.renderParticipants() }
                     </ul>
                     }
-                    { this.props.screenSharingID && this.renderScreenSharingPlayer() }
+                    { hasScreenShare && this.renderScreenSharingPlayer() }
+                </div>
+
+                <div
+                    style={style.footer}
+                >
+                    <Timestamp/>
+                    { hasScreenShare &&
+                    <span style={{marginLeft: '4px'}}>{`• ${this.props.profiles.length} participants`}</span>
+                    }
+                    { hasScreenShare && this.renderSpeaking() }
                 </div>
             </div>
         );
@@ -261,6 +261,7 @@ const style = {
     root: {
         position: 'absolute',
         display: 'flex',
+        flexDirection: 'column',
         top: 0,
         left: 0,
         width: '100%',
@@ -273,6 +274,7 @@ const style = {
         flexDirection: 'column',
         alignItems: 'center',
         flex: '1',
+        maxHeight: 'calc(100% - 32px)',
     },
     participants: {
         display: 'grid',
@@ -280,20 +282,22 @@ const style = {
         margin: 'auto',
         padding: '0',
     },
-    topLeftContainer: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '16px',
-        marginRight: 'auto',
-        padding: '4px',
-    },
     screenContainer: {
+        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        margin: 'auto',
-        maxWidth: 'calc(100% - 16px)',
+        width: '100%',
+        height: '100%',
+    },
+    footer: {
+        display: 'flex',
+        background: '#000000',
+        alignItems: 'center',
+        fontWeight: 600,
+        lineHeight: '20px',
+        fontSize: '14px',
+        padding: '6px',
     },
 };

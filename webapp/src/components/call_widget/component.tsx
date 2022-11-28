@@ -11,7 +11,15 @@ import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {Theme} from 'mattermost-redux/types/themes';
 
-import {AudioDevices, CallAlertStates, CallAlertStatesDefault, UserState} from 'src/types/types';
+import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
+
+import {
+    UserState,
+    AudioDevices,
+    CallAlertStates,
+    CallAlertStatesDefault,
+    CallRecordingState,
+} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent} from 'src/utils';
 import {
@@ -23,7 +31,10 @@ import {
     reverseKeyMappings,
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
-import {CallAlertConfigs} from 'src/constants';
+import {
+    CallAlertConfigs,
+    CallRecordingDisclaimerStrings,
+} from 'src/constants';
 
 import {logDebug, logErr} from 'src/log';
 
@@ -43,6 +54,7 @@ import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import SpeakerIcon from '../../components/icons/speaker_icon';
 
 import Shortcut from 'src/components/shortcut';
+import Badge from 'src/components/badge';
 import {AudioInputPermissionsError} from 'src/client';
 
 import CallDuration from './call_duration';
@@ -69,6 +81,8 @@ interface Props {
         [key: string]: UserState,
     },
     callStartAt: number,
+    callHostID: string,
+    callRecording?: CallRecordingState,
     screenSharingID: string,
     show: boolean,
     showExpandedView: () => void,
@@ -107,6 +121,7 @@ interface State {
     showUsersJoined: string[],
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
+    recDisclaimerDismissedAt: number,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -168,8 +183,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             callInfo: {
                 display: 'flex',
+                alignItems: 'center',
                 fontSize: '11px',
+                lineHeight: '11px',
                 color: changeOpacity(this.props.theme.centerChannelColor, 0.64),
+                marginTop: '3px',
             },
             profiles: {
                 display: 'flex',
@@ -247,6 +265,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showUsersJoined: [],
             audioEls: [],
             alerts: CallAlertStatesDefault,
+            recDisclaimerDismissedAt: 0,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -1163,6 +1182,59 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
+    renderRecordingDisclaimer = () => {
+        // This component should render if all of the following conditions apply:
+        // - Recording has started.
+        // - Recording has not ended.
+        // - Diclaimer has not been dismissed already.
+
+        if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at) {
+            return null;
+        }
+
+        if (this.state.recDisclaimerDismissedAt > this.props.callRecording?.start_at) {
+            return null;
+        }
+
+        const isHost = this.props.callHostID === this.props.currentUserID;
+
+        return (
+            <WidgetBanner
+                key={'widget_banner_recording_disclaimer'}
+                type='info'
+                icon={(
+                    <RecordCircleOutlineIcon
+                        size={12}
+                    />)}
+                iconFill='rgb(var(--dnd-indicator-rgb))'
+                iconColor='rgb(var(--dnd-indicator-rgb))'
+                header={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header}
+                body={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body}
+                confirmText={isHost ? 'Dismiss' : 'Understood'}
+                onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
+            />
+        );
+    }
+
+    renderRecordingBadge = () => {
+        if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at) {
+            return null;
+        }
+
+        return (
+            <React.Fragment>
+                <Badge
+                    text={'REC'}
+                    textSize={11}
+                    gap={2}
+                    icon={(<RecordCircleOutlineIcon size={11}/>)}
+                    color={'#D24B4E'}
+                />
+                <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
+            </React.Fragment>
+        );
+    }
+
     renderAlertBanners = () => {
         return Object.entries(this.state.alerts).map((keyVal) => {
             const [alertID, alertState] = keyVal;
@@ -1176,7 +1248,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <WidgetBanner
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
-                    body={alertConfig.bannerText}
+                    header={alertConfig.bannerText}
                     onClose={() => {
                         this.setState({
                             alerts: {
@@ -1400,7 +1472,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     href={this.props.channelURL}
                     onClick={this.onChannelLinkClick}
                     className='calls-channel-link'
-                    style={{appRegion: 'no-drag'} as CSSProperties}
+                    style={{appRegion: 'no-drag', padding: '0'} as CSSProperties}
                 >
                     {isOpenChannel(this.props.channel) && <CompassIcon icon='globe'/>}
                     {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
@@ -1465,6 +1537,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
+                    {this.renderRecordingDisclaimer()}
                     {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
                     {this.renderMenu(widerWidget)}
@@ -1494,6 +1567,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={{width: widerWidget ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
+                                {this.renderRecordingBadge()}
                                 <CallDuration startAt={this.props.callStartAt}/>
                                 {this.renderChannelName(widerWidget)}
                             </div>

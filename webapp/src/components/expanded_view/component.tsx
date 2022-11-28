@@ -11,7 +11,7 @@ import {Post} from '@mattermost/types/posts';
 
 import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
 
-import {ProductChannelsIcon} from '@mattermost/compass-icons/components';
+import {ProductChannelsIcon, RecordCircleOutlineIcon, RecordSquareOutlineIcon} from '@mattermost/compass-icons/components';
 
 import {RouteComponentProps} from 'react-router-dom';
 
@@ -30,11 +30,18 @@ import {
     AudioDevices,
     CallAlertStates,
     CallAlertStatesDefault,
+    CallRecordingState,
 } from 'src/types/types';
 
 import {
     CallAlertConfigs,
+    CallRecordingDisclaimerStrings,
 } from 'src/constants';
+
+import {
+    startCallRecording,
+    stopCallRecording,
+} from '../../actions';
 
 import * as Telemetry from 'src/types/telemetry';
 
@@ -50,6 +57,7 @@ import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import ParticipantsIcon from '../../components/icons/participants';
 import CallDuration from '../call_widget/call_duration';
 import Shortcut from 'src/components/shortcut';
+import Badge from 'src/components/badge';
 
 import {
     MUTE_UNMUTE,
@@ -64,6 +72,8 @@ import {
 
 import GlobalBanner from './global_banner';
 import ControlsButton from './controls_button';
+import InCallPrompt from './in_call_prompt';
+import CallParticipant from './call_participant';
 
 import './component.scss';
 
@@ -79,6 +89,8 @@ interface Props extends RouteComponentProps {
         [key: string]: UserState,
     },
     callStartAt: number,
+    callHostID: string,
+    callRecording?: CallRecordingState,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
     selectRhsPost?: (postID: string) => void,
@@ -90,20 +102,21 @@ interface Props extends RouteComponentProps {
     channelTeam: Team,
     channelURL: string;
     channelDisplayName: string;
-
     connectedDMUser: UserProfile | undefined,
-    threadID: Post['id'];
-    threadUnreadReplies: number | undefined;
-    threadUnreadMentions: number | undefined;
-    rhsSelectedThreadID?: string;
+    threadID: Post['id'],
+    threadUnreadReplies: number | undefined,
+    threadUnreadMentions: number | undefined,
+    rhsSelectedThreadID?: string,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
     allowScreenSharing: boolean,
+    recordingsEnabled: boolean,
 }
 
 interface State {
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
     alerts: CallAlertStates,
+    promptDismissedAt: number,
 }
 
 const StyledMediaController = styled(MediaController)`
@@ -123,6 +136,8 @@ const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
 	background-color: transparent;
 `;
 
+const MaxParticipantsPerRow = 4;
+
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private screenPlayer = React.createRef<HTMLVideoElement>()
     private expandedRootRef = React.createRef<HTMLDivElement>()
@@ -137,6 +152,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             screenStream: null,
             showParticipantsList: false,
             alerts: CallAlertStatesDefault,
+            promptDismissedAt: 0,
         };
 
         if (window.opener) {
@@ -253,6 +269,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             callsClient.unmute();
         } else {
             callsClient.mute();
+        }
+    }
+
+    onRecordToggle = async () => {
+        if (!this.props.callRecording || this.props.callRecording.end_at > 0) {
+            await startCallRecording(this.props.channel.id);
+        } else {
+            await stopCallRecording(this.props.channel.id);
         }
     }
 
@@ -443,6 +467,58 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
     }
 
+    renderInfoPrompt = () => {
+        const isHost = this.props.callHostID === this.props.currentUserID;
+        const hasRecEnded = this.props.callRecording?.end_at;
+
+        // Nothing to show if the recording hasn't started yet.
+        if (!this.props.callRecording?.start_at) {
+            return null;
+        }
+
+        // If the recording has ended we only want to show the info prompt
+        // to the host.
+        if (hasRecEnded && !isHost) {
+            return null;
+        }
+
+        // If the prompt was dismissed after the call has started then we
+        // don't show this again.
+        if (!hasRecEnded && this.state.promptDismissedAt > this.props.callRecording?.start_at) {
+            return null;
+        }
+
+        // If the prompt was dismissed after the call has ended then we
+        // don't show this again.
+        if (hasRecEnded && this.state.promptDismissedAt > this.props.callRecording?.end_at) {
+            return null;
+        }
+
+        let header = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header;
+        let body = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body;
+        const confirmText = isHost ? 'Dismiss' : 'Understood';
+
+        if (hasRecEnded) {
+            header = 'Recording has stopped. Processing...';
+            body = 'You can find the recording in this call\'s chat thread once it\'s finished processing.';
+        }
+
+        return (
+            <InCallPrompt
+                icon={(
+                    <RecordCircleOutlineIcon
+                        size={18}
+                    />)}
+                iconFill='rgb(var(--dnd-indicator-rgb))'
+                iconColor='rgb(var(--dnd-indicator-rgb))'
+                header={header}
+                body={body}
+                confirmText={confirmText}
+                onClose={() => this.setState({promptDismissedAt: Date.now()})}
+            />
+        );
+    }
+
     renderAlertBanner = () => {
         for (const keyVal of Object.entries(this.state.alerts)) {
             const [alertID, alertState] = keyVal;
@@ -554,66 +630,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 isHandRaised = Boolean(status.raised_hand > 0);
             }
 
-            const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
-
             return (
-                <li
+                <CallParticipant
                     key={'participants_profile_' + idx}
-                    style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', margin: '16px'}}
-                >
-
-                    <div style={{position: 'relative'}}>
-                        <Avatar
-                            size={50}
-                            fontSize={18}
-                            border={false}
-                            borderGlow={isSpeaking}
-                            url={this.props.pictures[profile.id]}
-                        />
-                        <div
-                            style={{
-                                position: 'absolute',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                bottom: 0,
-                                right: 0,
-                                background: 'rgba(50, 50, 50, 1)',
-                                borderRadius: '30px',
-                                width: '20px',
-                                height: '20px',
-                            }}
-                        >
-                            <MuteIcon
-                                fill={isMuted ? '#C4C4C4' : '#3DB887'}
-                                style={{width: '14px', height: '14px'}}
-                                stroke={isMuted ? '#C4C4C4' : ''}
-                            />
-                        </div>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                display: isHandRaised ? 'flex' : 'none',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                top: 0,
-                                right: 0,
-                                background: 'rgba(50, 50, 50, 1)',
-                                borderRadius: '30px',
-                                width: '20px',
-                                height: '20px',
-                                fontSize: '12px',
-                            }}
-                        >
-                            {'✋'}
-                        </div>
-                    </div>
-
-                    <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
-                        {getUserDisplayName(profile)}{profile.id === this.props.currentUserID && ' (you)'}
-                    </span>
-
-                </li>
+                    name={`${getUserDisplayName(profile)}${profile.id === this.props.currentUserID ? ' (you)' : ''}`}
+                    pictureURL={this.props.pictures[profile.id]}
+                    isMuted={isMuted}
+                    isSpeaking={isSpeaking}
+                    isHandRaised={isHandRaised}
+                    isHost={profile.id === this.props.callHostID}
+                />
             );
         });
     }
@@ -686,6 +712,36 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         });
     }
 
+    renderRecordingBadge = () => {
+        // This should not render if:
+        // - The recording has not been initialized yet OR if it has ended.
+        if (!this.props.callRecording?.init_at || this.props.callRecording?.end_at) {
+            return null;
+        }
+
+        const isHost = this.props.callHostID === this.props.currentUserID;
+        const hasRecStarted = this.props.callRecording?.start_at;
+
+        // If the recording has not started yet then we only render if the user
+        // is the host, in which case we'll show the loading spinner.
+        if (!isHost && !hasRecStarted) {
+            return null;
+        }
+
+        return (
+            <Badge
+                text={'REC'}
+                textSize={12}
+                gap={6}
+                margin={'0 12px 0 0'}
+                padding={'8px 6px'}
+                icon={(<RecordCircleOutlineIcon size={12}/>)}
+                bgColor={hasRecStarted ? '#D24B4E' : 'rgba(221, 223, 228, 0.04)'}
+                loading={!hasRecStarted}
+            />
+        );
+    }
+
     render() {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
             return null;
@@ -739,6 +795,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
 
+        const isHost = this.props.callHostID === this.props.currentUserID;
+        const isRecording = isHost && this.props.callRecording && this.props.callRecording.init_at > 0 && !this.props.callRecording.end_at;
+        const recordTooltipText = isRecording ? 'Stop recording' : 'Record call';
+        const RecordIcon = isRecording ? RecordSquareOutlineIcon : RecordCircleOutlineIcon;
+
         return (
             <div
                 ref={this.expandedRootRef}
@@ -755,13 +816,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                     <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
                         <div style={styles.topLeftContainer}>
+                            { this.renderRecordingBadge() }
                             <CallDuration
                                 style={{margin: '4px'}}
                                 startAt={this.props.callStartAt}
                             />
                             <span style={{margin: '4px'}}>{'•'}</span>
                             <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
-
                         </div>
                         {
                             !window.opener &&
@@ -780,7 +841,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         id='calls-expanded-view-participants-grid'
                         style={{
                             ...styles.participants,
-                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, MaxParticipantsPerRow)}, 1fr)`,
                         }}
                     >
                         { this.renderParticipants() }
@@ -837,6 +898,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 }
                                 unavailable={noScreenPermissions}
                                 disabled={sharingID !== '' && !isSharing}
+                            />
+                            }
+
+                            { isHost && this.props.recordingsEnabled &&
+                            <ControlsButton
+                                id='calls-popout-record-button'
+                                onToggle={() => this.onRecordToggle()}
+                                tooltipText={recordTooltipText}
+                                bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                                iconFill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : ''}
+                                icon={<RecordIcon size={28}/>}
                             />
                             }
 
@@ -919,6 +991,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 </ul>
                 }
                 {globalRhsSupported && <ExpandedViewGlobalsStyle callThreadSelected={this.props.rhsSelectedThreadID === this.props.threadID}/>}
+
+                { this.renderInfoPrompt() }
             </div>
         );
     }
@@ -969,7 +1043,7 @@ const styles: Record<string, CSSObject> = {
         width: '100%',
         height: '100%',
         zIndex: 1000,
-        background: 'rgba(37, 38, 42, 1)',
+        background: '#1E1E1E',
         color: 'white',
         appRegion: 'drag',
         gridArea: 'center',
@@ -1008,8 +1082,10 @@ const styles: Record<string, CSSObject> = {
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: '16px',
+        lineHeight: '24px',
+        fontWeight: 600,
         marginRight: 'auto',
-        padding: '4px',
+        margin: '12px',
     },
     screenContainer: {
         display: 'flex',

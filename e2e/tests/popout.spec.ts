@@ -73,7 +73,7 @@ test.describe('popout window', () => {
         const msg = 'Hello World, first call thread reply';
         await replyTextbox.type(msg);
         await replyTextbox.press('Enter');
-        await expect(popOut.locator(`text=${msg}`)).toBeVisible();
+        await expect(popOut.locator(`p:has-text("${msg}")`)).toBeVisible();
 
         await popOut.click('#calls-popout-chat-button button');
         await expect(popOut.locator('#sidebar-right')).not.toBeVisible();
@@ -100,7 +100,7 @@ test.describe('popout window', () => {
         const msg = 'Hello World, first call thread reply';
         await replyTextbox.type(msg);
         await replyTextbox.press('Enter');
-        await expect(popOut.locator(`text=${msg}`)).toBeVisible();
+        await expect(popOut.locator(`p:has-text("${msg}")`)).toBeVisible();
 
         await popOut.click('#calls-popout-chat-button button');
         await expect(popOut.locator('#sidebar-right')).not.toBeVisible();

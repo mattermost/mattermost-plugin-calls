@@ -85,8 +85,16 @@ export const voiceChannelCallOwnerID = (state: GlobalState, channelID: string) =
     return getPluginState(state).voiceChannelCalls[channelID]?.ownerID;
 };
 
+export const voiceChannelCallHostID = (state: GlobalState, channelID: string) => {
+    return getPluginState(state).voiceChannelCalls[channelID]?.hostID;
+};
+
 export const voiceChannelScreenSharingID = (state: GlobalState, channelID: string) => {
     return getPluginState(state).voiceChannelScreenSharingID[channelID];
+};
+
+export const callRecording = (state: GlobalState, callID: string) => {
+    return getPluginState(state).callsRecordings[callID];
 };
 
 export const expandedView = (state: GlobalState) => {
@@ -144,6 +152,12 @@ export const allowScreenSharing: (state: GlobalState) => boolean = createSelecto
     'allowScreenSharing',
     callsConfig,
     (config) => config.AllowScreenSharing,
+);
+
+export const recordingsEnabled: (state: GlobalState) => boolean = createSelector(
+    'recordingsEnabled',
+    callsConfig,
+    (config) => config.EnableRecordings,
 );
 
 export const endCallModal = (state: GlobalState) => {
