@@ -107,6 +107,7 @@ interface Props extends RouteComponentProps {
     rhsSelectedThreadID?: string,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
     allowScreenSharing: boolean,
+    recordingsEnabled: boolean,
 }
 
 interface State {
@@ -864,7 +865,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                             }
 
-                            { isHost &&
+                            { isHost && this.props.recordingsEnabled &&
                             <ControlsButton
                                 id='calls-popout-record-button'
                                 onToggle={() => this.onRecordToggle()}

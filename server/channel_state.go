@@ -11,6 +11,7 @@ import (
 type recordingState struct {
 	ID        string `json:"id"`
 	CreatorID string `json:"creator_id"`
+	JobID     string `json:"job_id"`
 	RecordingState
 }
 

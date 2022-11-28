@@ -6,10 +6,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"runtime"
 	"strings"
 
 	"github.com/mattermost/logr/v2"
+	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 )
 
 const pkgPath = "github.com/mattermost/mattermost-plugin-calls/server/"
@@ -76,6 +78,10 @@ func (l *logger) fieldsToArgs(fields []logr.Field) []interface{} {
 	return args
 }
 
+func (l *logger) Trace(msg string, fields ...logr.Field) {
+	l.p.API.LogDebug(msg, l.fieldsToArgs(fields)...)
+}
+
 func (l *logger) Debug(msg string, fields ...logr.Field) {
 	l.p.API.LogDebug(msg, l.fieldsToArgs(fields)...)
 }
@@ -96,6 +102,18 @@ func (l *logger) Critical(msg string, fields ...logr.Field) {
 	l.p.API.LogError(msg, l.fieldsToArgs(fields)...)
 }
 
+func (l *logger) Fatal(msg string, fields ...logr.Field) {
+	l.p.API.LogError(msg, l.fieldsToArgs(fields)...)
+}
+
+func (l *logger) Flush() error {
+	return nil
+}
+
+func (l *logger) StdLogger(level logr.Level) *log.Logger {
+	return nil
+}
+
 func (l *logger) Log(_ logr.Level, msg string, fields ...logr.Field) {
 	l.p.API.LogDebug(msg, l.fieldsToArgs(fields)...)
 }
@@ -106,4 +124,8 @@ func (l *logger) LogM(_ []logr.Level, msg string, fields ...logr.Field) {
 
 func (l *logger) IsLevelEnabled(_ logr.Level) bool {
 	return false
+}
+
+func (l *logger) With(fields ...logr.Field) *mlog.Logger {
+	return nil
 }

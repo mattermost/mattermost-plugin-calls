@@ -7,7 +7,7 @@ orbs:
 executors:
   default:
     docker:
-      - image: cimg/go:1.17.9@sha256:25086b6ea0e5e898f8d04f3a9a57d9bafedf50c973398981ef3d0952db7ee996
+      - image: cimg/go:1.18.8@sha256:a65231064cf5806b7cb2a2243cbcf4eb4415b13554d8626e65b9d624b957675e
 
 commands:
   install-node-npm:
@@ -68,7 +68,7 @@ commands:
     parameters:
       version:
         type: string
-        default: 1.42.1
+        default: 1.50.1
       gobin:
         type: string
         default: /home/circleci/go/bin
