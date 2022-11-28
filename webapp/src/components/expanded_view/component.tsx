@@ -5,6 +5,8 @@
 import React from 'react';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
+
 import {UserProfile} from '@mattermost/types/users';
 import {Team} from '@mattermost/types/teams';
 import {Channel} from '@mattermost/types/channels';
@@ -100,6 +102,23 @@ interface State {
     showParticipantsList: boolean,
     alerts: CallAlertStates,
 }
+
+const StyledMediaController = styled(MediaController)`
+	height: 100%;
+	background-color: transparent;
+`;
+
+const StyledMediaControlBar = styled(MediaControlBar)`
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-end;
+	background-color: rgba(0, 0, 0, 0.5);
+`;
+
+const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
+	font-size: 18px;
+	background-color: transparent;
+`;
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private readonly screenPlayer = React.createRef<HTMLVideoElement>();
@@ -488,16 +507,31 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 }}
             >
                 <ReactionStream forceLeft={true}/>
-                <video
-                    id='screen-player'
-                    ref={this.screenPlayer}
-                    width='100%'
-                    height='100%'
-                    muted={true}
-                    autoPlay={true}
-                    onClick={(ev) => ev.preventDefault()}
-                    controls={true}
-                />
+                <StyledMediaController
+                    gesturesDisabled={true}
+                >
+                    <video
+                        id='screen-player'
+                        slot='media'
+                        ref={this.screenPlayer}
+                        muted={true}
+                        autoPlay={true}
+                        onClick={(ev) => ev.preventDefault()}
+                        controls={false}
+                    />
+                    <StyledMediaControlBar>
+                        <StyledMediaFullscreenButton>
+                            <CompassIcon
+                                slot='enter'
+                                icon='arrow-expand-all'
+                            />
+                            <CompassIcon
+                                slot='exit'
+                                icon='arrow-collapse'
+                            />
+                        </StyledMediaFullscreenButton>
+                    </StyledMediaControlBar>
+                </StyledMediaController>
                 <span
                     style={{
                         background: 'black',
