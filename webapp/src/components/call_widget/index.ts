@@ -10,24 +10,24 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {Client4} from 'mattermost-redux/client';
 
-import {UserState} from '../../types/types';
+import {UserState} from 'src/types/types';
 
-import {showExpandedView, showScreenSourceModal, trackEvent} from '../../actions';
+import {showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 
 import {
     connectedChannelID,
-    voiceConnectedProfiles,
     voiceUsersStatuses,
     voiceChannelCallStartAt,
     voiceChannelScreenSharingID,
     expandedView,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
+    voiceConnectedProfiles,
     voiceChannelCallHostID,
     callRecording,
-} from '../../selectors';
+} from 'src/selectors';
 
-import {alphaSortProfiles, stateSortProfiles} from '../../utils';
+import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
 
 import CallWidget from './component';
 

@@ -30,6 +30,7 @@ const (
 	wsEventCallEnd            = "call_end"
 	wsEventUserRaiseHand      = "user_raise_hand"
 	wsEventUserUnraiseHand    = "user_unraise_hand"
+	wsEventUserReacted        = "user_reacted"
 	wsEventJoin               = "join"
 	wsEventError              = "error"
 	wsEventCallHostChanged    = "call_host_changed"
@@ -143,6 +144,20 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 
 	return nil
+}
+
+type EmojiData struct {
+	Name    string `json:"name"`
+	Skin    string `json:"skin,omitempty"`
+	Unified string `json:"unified"`
+}
+
+func (ed EmojiData) toMap() map[string]interface{} {
+	return map[string]interface{}{
+		"name":    ed.Name,
+		"skin":    ed.Skin,
+		"unified": ed.Unified,
+	}
 }
 
 func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID string) {
@@ -291,6 +306,19 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"userID":      us.userID,
 			"raised_hand": ts,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+	case clientMessageTypeReact:
+		evType := wsEventUserReacted
+
+		var emoji EmojiData
+		if err := json.Unmarshal(msg.Data, &emoji); err != nil {
+			p.LogError(err.Error())
+		}
+
+		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
+			"user_id":   us.userID,
+			"emoji":     emoji.toMap(),
+			"timestamp": time.Now().UnixMilli(),
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 	default:
 		p.LogError("invalid client message", "type", msg.Type)
 		return
@@ -737,6 +765,14 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 		msg.Data = []byte(msgData)
+	case clientMessageTypeReact:
+		msgData, ok := req.Data["data"].(string)
+		if !ok {
+			p.LogError("invalid or missing reaction data")
+			return
+		}
+		msg.Data = []byte(msgData)
+
 	}
 
 	select {

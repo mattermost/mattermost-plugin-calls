@@ -1,6 +1,10 @@
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 
+import {Reaction} from 'src/types/types';
+
+import {REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
+
 import {Store} from './types/mattermost-webapp';
 
 import {
@@ -18,6 +22,8 @@ import {
     VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
+    VOICE_CHANNEL_USER_REACTED,
+    VOICE_CHANNEL_USER_REACTED_TIMEOUT,
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
@@ -25,10 +31,14 @@ import {
 import {
     getProfilesByIds,
     playSound,
-    followThread,
+    followThread, getUserDisplayName,
 } from './utils';
 
-import {connectedChannelID, voiceConnectedProfilesInChannel} from './selectors';
+import {
+    connectedChannelID,
+    idToProfileInConnectedChannel,
+    voiceConnectedProfilesInChannel,
+} from './selectors';
 
 import {logErr} from './log';
 
@@ -217,6 +227,37 @@ export function handleUserUnraisedHand(store: Store, ev: any) {
             raised_hand: ev.data.raised_hand,
         },
     });
+}
+
+export function handleUserReaction(store: Store, ev: any) {
+    if (connectedChannelID(store.getState()) !== ev.broadcast.channel_id) {
+        return;
+    }
+
+    const profiles = idToProfileInConnectedChannel(store.getState());
+    const displayName = getUserDisplayName(profiles[ev.data.user_id]);
+    const reaction: Reaction = {
+        ...ev.data,
+        displayName,
+    };
+    store.dispatch({
+        type: VOICE_CHANNEL_USER_REACTED,
+        data: {
+            channelID: ev.broadcast.channel_id,
+            userID: ev.data.user_id,
+            reaction,
+        },
+    });
+    setTimeout(() => {
+        store.dispatch({
+            type: VOICE_CHANNEL_USER_REACTED_TIMEOUT,
+            data: {
+                channelID: ev.broadcast.channel_id,
+                userID: ev.data.user_id,
+                reaction,
+            },
+        });
+    }, REACTION_TIMEOUT_IN_REACTION_STREAM);
 }
 
 export function handleCallHostChanged(store: Store, ev: any) {

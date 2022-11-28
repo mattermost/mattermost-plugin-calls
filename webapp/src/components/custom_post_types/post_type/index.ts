@@ -1,7 +1,9 @@
 import {bindActionCreators, Dispatch} from 'redux';
 import {connect} from 'react-redux';
+
 import {GlobalState} from '@mattermost/types/store';
 import {Post} from '@mattermost/types/posts';
+import {UserProfile} from '@mattermost/types/users';
 
 import {Client4} from 'mattermost-redux/client';
 
@@ -13,7 +15,6 @@ import {
     maxParticipants,
 } from 'src/selectors';
 import {showSwitchCallModal} from 'src/actions';
-
 import PostType from 'src/components/custom_post_types/post_type/component';
 
 interface OwnProps {
@@ -22,7 +23,7 @@ interface OwnProps {
 
 const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
     const channels = voiceConnectedChannels(state);
-    let profiles = [];
+    let profiles: UserProfile[] = [];
     const pictures = [];
     if (channels) {
         const users = channels[ownProps.post.channel_id];

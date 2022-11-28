@@ -3,6 +3,9 @@ import {
     CallAlertConfig,
 } from 'src/types/types';
 
+export const MAX_NUM_REACTIONS_IN_REACTION_STREAM = 50;
+export const REACTION_TIMEOUT_IN_REACTION_STREAM = 10000;
+
 export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
     missingAudioInput: {
         type: CallAlertType.Error,

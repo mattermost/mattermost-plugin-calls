@@ -1,7 +1,10 @@
+/* eslint-disable max-lines */
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import React from 'react';
 import {compareSemVer} from 'semver-parser';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 
 import {UserProfile} from '@mattermost/types/users';
@@ -24,7 +27,6 @@ import {
     shouldRenderDesktopWidget,
 } from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
-
 import {
     UserState,
     AudioDevices,
@@ -44,18 +46,16 @@ import {
 } from '../../actions';
 
 import * as Telemetry from 'src/types/telemetry';
-
-import Avatar from '../avatar/avatar';
-
-import CompassIcon from '../../components/icons/compassIcon';
-import LeaveCallIcon from '../../components/icons/leave_call_icon';
-import MutedIcon from '../../components/icons/muted_icon';
-import UnmutedIcon from '../../components/icons/unmuted_icon';
-import ScreenIcon from '../../components/icons/screen_icon';
-import RaisedHandIcon from '../../components/icons/raised_hand';
-import UnraisedHandIcon from '../../components/icons/unraised_hand';
-import ParticipantsIcon from '../../components/icons/participants';
-import CallDuration from '../call_widget/call_duration';
+import Avatar from 'src/components/avatar/avatar';
+import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
+import {Emoji} from 'src/components/emoji/emoji';
+import CompassIcon from 'src/components/icons/compassIcon';
+import LeaveCallIcon from 'src/components/icons/leave_call_icon';
+import MutedIcon from 'src/components/icons/muted_icon';
+import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import ScreenIcon from 'src/components/icons/screen_icon';
+import ParticipantsIcon from 'src/components/icons/participants';
+import CallDuration from 'src/components/call_widget/call_duration';
 import Shortcut from 'src/components/shortcut';
 import Badge from 'src/components/badge';
 
@@ -68,6 +68,7 @@ import {
     PUSH_TO_TALK,
     keyToAction,
     reverseKeyMappings,
+    MAKE_REACTION,
 } from 'src/shortcuts';
 
 import GlobalBanner from './global_banner';
@@ -76,6 +77,7 @@ import InCallPrompt from './in_call_prompt';
 import CallParticipant from './call_participant';
 
 import './component.scss';
+import {ReactionButton, ReactionButtonRef} from './reaction_button';
 
 interface Props extends RouteComponentProps {
     show: boolean,
@@ -139,8 +141,9 @@ const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
 const MaxParticipantsPerRow = 4;
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
-    private screenPlayer = React.createRef<HTMLVideoElement>()
-    private expandedRootRef = React.createRef<HTMLDivElement>()
+    private readonly screenPlayer = React.createRef<HTMLVideoElement>();
+    private readonly emojiButtonRef: React.RefObject<ReactionButtonRef>;
+    private expandedRootRef = React.createRef<HTMLDivElement>();
     private pushToTalk = false;
 
     #unlockNavigation?: () => void;
@@ -148,6 +151,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     constructor(props: Props) {
         super(props);
         this.screenPlayer = React.createRef();
+        this.emojiButtonRef = React.createRef();
         this.state = {
             screenStream: null,
             showParticipantsList: false,
@@ -225,6 +229,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         case RAISE_LOWER_HAND:
             this.onRaiseHandToggle(true);
             break;
+        case MAKE_REACTION:
+            this.emojiButtonRef.current?.toggle();
+            break;
         case SHARE_UNSHARE_SCREEN:
             this.onShareScreenToggle(true);
             break;
@@ -246,7 +253,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     active: devices.inputs.length === 0,
                     show: devices.inputs.length === 0,
                 },
-            }});
+            },
+        });
     }
 
     onDisconnectClick = () => {
@@ -407,7 +415,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         active: false,
                         show: false,
                     },
-                }});
+                },
+            });
         });
 
         this.setDevices(callsClient.getAudioDevices());
@@ -578,6 +587,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     maxHeight: `calc(100% - ${this.shouldRenderAlertBanner() ? 240 : 200}px)`,
                 }}
             >
+                <ReactionStream forceLeft={true}/>
                 <StyledMediaController
                     gesturesDisabled={true}
                 >
@@ -624,10 +634,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             let isMuted = true;
             let isSpeaking = false;
             let isHandRaised = false;
+            let hasReaction = false;
             if (status) {
                 isMuted = !status.unmuted;
                 isSpeaking = Boolean(status.voice);
                 isHandRaised = Boolean(status.raised_hand > 0);
+                hasReaction = Boolean(status.reaction);
             }
 
             return (
@@ -686,18 +698,22 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             gap: '4px',
                         }}
                     >
-                        { isHandRaised &&
-                            <RaisedHandIcon
-                                fill={'rgba(255, 188, 66, 1)'}
-                                style={{width: '14px', height: '14px'}}
+                        {isHandRaised &&
+                            <CompassIcon
+                                icon={'hand-right'}
+                                style={{
+                                    color: 'rgb(255, 188, 66)',
+                                    marginBottom: 2,
+                                    fontSize: 16,
+                                }}
                             />
                         }
 
-                        { this.props.screenSharingID === profile.id &&
-                        <ScreenIcon
-                            fill={'rgb(var(--dnd-indicator-rgb))'}
-                            style={{width: '14px', height: '14px'}}
-                        />
+                        {this.props.screenSharingID === profile.id &&
+                            <ScreenIcon
+                                fill={'rgb(var(--dnd-indicator-rgb))'}
+                                style={{width: '14px', height: '14px'}}
+                            />
                         }
 
                         <MuteIcon
@@ -779,10 +795,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
         const shareScreenTooltipSubtext = noScreenPermissions ? CallAlertConfigs.missingScreenPermissions.tooltipSubtext : '';
 
-        const isHandRaised = callsClient.isHandRaised;
-        const HandIcon = isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
-        const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
-        const participantsText = 'Show participants list';
+        const participantsText = this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list';
 
         let chatToolTipText = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID ? 'Click to close chat' : 'Click to open chat';
         const chatToolTipSubtext = '';
@@ -812,9 +825,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 }}
             >
                 <div style={styles.main}>
-                    { this.renderAlertBanner() }
+                    {this.renderAlertBanner()}
 
-                    <div style={{display: 'flex', alignItems: 'center', width: '100%'}}>
+                    <div style={{display: 'flex', width: '100%'}}>
                         <div style={styles.topLeftContainer}>
                             { this.renderRecordingBadge() }
                             <CallDuration
@@ -836,18 +849,21 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         }
                     </div>
 
-                    { !this.props.screenSharingID &&
-                    <ul
-                        id='calls-expanded-view-participants-grid'
-                        style={{
-                            ...styles.participants,
-                            gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, MaxParticipantsPerRow)}, 1fr)`,
-                        }}
-                    >
-                        { this.renderParticipants() }
-                    </ul>
+                    {!this.props.screenSharingID &&
+                        <div style={{flex: 1, display: 'flex', overflow: 'auto'}}>
+                            <ReactionStream/>
+                            <ul
+                                id='calls-expanded-view-participants-grid'
+                                style={{
+                                    ...styles.participants,
+                                    gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                                }}
+                            >
+                                {this.renderParticipants()}
+                            </ul>
+                        </div>
                     }
-                    { this.props.screenSharingID && this.renderScreenSharingPlayer() }
+                    {this.props.screenSharingID && this.renderScreenSharingPlayer()}
                     <div
                         id='calls-expanded-view-controls'
                         style={styles.controls}
@@ -856,12 +872,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <ControlsButton
                                 id='calls-popout-participants-button'
                                 onToggle={() => this.onParticipantsListToggle()}
-                                tooltipText={this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list'}
+                                tooltipText={participantsText}
                                 shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
                                 bgColor={this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}
                                 icon={
                                     <ParticipantsIcon
-                                        style={{width: '28px', height: '28px', fill: this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white'}}
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            fill: this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white',
+                                        }}
                                     />
                                 }
                                 margin='0'
@@ -869,49 +889,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
 
                         <div style={styles.centerControls}>
-                            <ControlsButton
-                                id='calls-popout-raisehand-button'
-                                onToggle={() => this.onRaiseHandToggle()}
-                                tooltipText={raiseHandText}
-                                shortcut={reverseKeyMappings.popout[RAISE_LOWER_HAND][0]}
-                                bgColor={isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
-                                icon={
-                                    <HandIcon
-                                        style={{width: '28px', height: '28px', fill: isHandRaised ? 'rgba(255, 188, 66, 1)' : 'white'}}
-                                    />
-                                }
-                            />
-
-                            { this.props.allowScreenSharing &&
-                            <ControlsButton
-                                id='calls-popout-screenshare-button'
-                                onToggle={() => this.onShareScreenToggle()}
-                                tooltipText={shareScreenTooltipText}
-                                tooltipSubtext={shareScreenTooltipSubtext}
-                                // eslint-disable-next-line no-undefined
-                                shortcut={noScreenPermissions ? undefined : reverseKeyMappings.popout[SHARE_UNSHARE_SCREEN][0]}
-                                bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
-                                icon={
-                                    <ScreenIcon
-                                        style={{width: '28px', height: '28px', fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : ''}}
-                                    />
-                                }
-                                unavailable={noScreenPermissions}
-                                disabled={sharingID !== '' && !isSharing}
-                            />
-                            }
-
-                            { isHost && this.props.recordingsEnabled &&
-                            <ControlsButton
-                                id='calls-popout-record-button'
-                                onToggle={() => this.onRecordToggle()}
-                                tooltipText={recordTooltipText}
-                                bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
-                                iconFill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : ''}
-                                icon={<RecordIcon size={28}/>}
-                            />
-                            }
-
                             <ControlsButton
                                 id='calls-popout-mute-button'
                                 // eslint-disable-next-line no-undefined
@@ -923,11 +900,56 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
                                 icon={
                                     <MuteIcon
-                                        style={{width: '28px', height: '28px', fill: isMuted ? '' : 'rgba(61, 184, 135, 1)'}}
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            fill: isMuted ? '' : 'rgba(61, 184, 135, 1)',
+                                        }}
                                     />
                                 }
                                 unavailable={noInputDevices || noAudioPermissions}
                             />
+
+                            {this.props.allowScreenSharing &&
+                                <ControlsButton
+                                    id='calls-popout-screenshare-button'
+                                    onToggle={() => this.onShareScreenToggle()}
+                                    tooltipText={shareScreenTooltipText}
+                                    tooltipSubtext={shareScreenTooltipSubtext}
+                                    // eslint-disable-next-line no-undefined
+                                    shortcut={noScreenPermissions ? undefined : reverseKeyMappings.popout[SHARE_UNSHARE_SCREEN][0]}
+                                    bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                                    icon={
+                                        <ScreenIcon
+                                            style={{
+                                                width: '28px',
+                                                height: '28px',
+                                                fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : '',
+                                            }}
+                                        />
+                                    }
+                                    unavailable={noScreenPermissions}
+                                    disabled={sharingID !== '' && !isSharing}
+                                />
+                            }
+
+                            { isHost && this.props.recordingsEnabled &&
+                                <ControlsButton
+                                    id='calls-popout-record-button'
+                                    onToggle={() => this.onRecordToggle()}
+                                    tooltipText={recordTooltipText}
+                                    bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                                    iconFill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : ''}
+                                    icon={<RecordIcon size={28}/>}
+                                />
+                            }
+
+                            <ControlsButton
+                            <ReactionButton
+                                ref={this.emojiButtonRef}
+                                trackEvent={this.props.trackEvent}
+                            />
+
                             {globalRhsSupported && (
                                 <ControlsButton
                                     id='calls-popout-chat-button'
@@ -984,13 +1006,25 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
                     </div>
                 </div>
-                { this.state.showParticipantsList &&
-                <ul style={styles.rhs}>
-                    <span style={{position: 'sticky', top: '0', background: 'inherit', fontWeight: 600, padding: '8px'}}>{'Participants list'}</span>
-                    { this.renderParticipantsRHSList() }
-                </ul>
+                {this.state.showParticipantsList &&
+                    <ul style={styles.rhs}>
+                        <span
+                            style={{
+                                position: 'sticky',
+                                top: '0',
+                                background: 'inherit',
+                                fontWeight: 600,
+                                padding: '8px',
+                            }}
+                        >{'Participants list'}</span>
+                        {this.renderParticipantsRHSList()}
+                    </ul>
                 }
-                {globalRhsSupported && <ExpandedViewGlobalsStyle callThreadSelected={this.props.rhsSelectedThreadID === this.props.threadID}/>}
+                {globalRhsSupported &&
+                    <ExpandedViewGlobalsStyle
+                        callThreadSelected={this.props.rhsSelectedThreadID === this.props.threadID}
+                    />
+                }
 
                 { this.renderInfoPrompt() }
             </div>
@@ -1002,7 +1036,7 @@ const isActiveElementInteractable = () => {
     return document.activeElement && ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName);
 };
 
-const UnreadIndicator = ({mentions}: {mentions?: number}) => {
+const UnreadIndicator = ({mentions}: { mentions?: number }) => {
     return (
         <UnreadDot>{mentions && mentions > 99 ? '99+' : mentions || null}</UnreadDot>
     );
@@ -1019,6 +1053,7 @@ const UnreadDot = styled.span`
     border-radius: 9px;
     box-shadow: 0 0 0 2px rgb(37 38 42);
     color: white;
+
     &:not(:empty) {
         top: -7px;
         right: -8px;
@@ -1052,7 +1087,6 @@ const styles: Record<string, CSSObject> = {
     main: {
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
         flex: '1',
     },
     closeViewButton: {
@@ -1104,9 +1138,48 @@ const styles: Record<string, CSSObject> = {
         padding: 0,
         overflow: 'auto',
     },
+    reactionBackground: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -7,
+        right: -12,
+        background: 'rgba(37, 38, 42, 1)',
+        borderRadius: '30px',
+        width: '30px',
+        height: '30px',
+    },
+    reactionContainer: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -5,
+        right: -10,
+        background: 'rgba(50, 50, 50, 1)',
+        borderRadius: '30px',
+        width: '25px',
+        height: '25px',
+        fontSize: '12px',
+    },
+    handRaisedContainer: {
+        position: 'absolute',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: -5,
+        right: -10,
+        background: 'white',
+        color: 'rgba(255, 188, 66, 1)',
+        borderRadius: '30px',
+        width: '25px',
+        height: '25px',
+        fontSize: '18px',
+    },
 };
 
-const ExpandedViewGlobalsStyle = createGlobalStyle<{callThreadSelected: boolean}>`
+const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean }>`
     #root {
         > #global-header,
         > .team-sidebar,
@@ -1115,20 +1188,24 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{callThreadSelected: boolean}
         > #SidebarContainer {
             display: none;
         }
+
         #sidebar-right #sbrSearchFormContainer {
             // mobile search not supported in expanded view or expanded window
             // TODO move to hideMobileSearchBarInRHS prop of Search component in mattermost-webapp
             display: none;
         }
+
         .channel-view-inner {
             padding: 0;
         }
+
         ${({callThreadSelected}) => !callThreadSelected && css`
             .sidebar--right {
                 display: none;
             }
         `}
     }
+
     #sidebar-right {
         z-index: 1001;
     }

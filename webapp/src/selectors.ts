@@ -1,28 +1,35 @@
 import {getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {GlobalState} from '@mattermost/types/store';
-
-import {getCurrentUserId, getUsers, getUserIdsInChannels} from 'mattermost-redux/selectors/entities/users';
+import {
+    getCurrentUserId,
+    getUsers,
+    getUserIdsInChannels,
+} from 'mattermost-redux/selectors/entities/users';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {createSelector} from 'reselect';
 
+import {GlobalState} from '@mattermost/types/store';
 import {LicenseSkus} from '@mattermost/types/general';
 import {Channel} from '@mattermost/types/channels';
+import {UserProfile} from '@mattermost/types/users';
 
-import {getGroupDisplayNameFromUserIds, getUserIdFromChannelName, isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
-
+import {
+    getGroupDisplayNameFromUserIds,
+    getUserIdFromChannelName,
+    isDirectChannel,
+    isGroupChannel,
+} from 'mattermost-redux/utils/channel_utils';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import {getChannelURL, isDMChannel} from 'src/utils';
-
-import {CallsConfig, CallsUserPreferences} from 'src/types/types';
+import {CallsConfig, CallsUserPreferences, Reaction, UserState} from 'src/types/types';
 
 import {pluginId} from './manifest';
 
 //@ts-ignore GlobalState is not complete
-const getPluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
+const pluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
 
-export const voiceConnectedChannels = (state: GlobalState) => getPluginState(state).voiceConnectedChannels;
+export const voiceConnectedChannels = (state: GlobalState) => pluginState(state).voiceConnectedChannels;
 export const voiceConnectedUsers = (state: GlobalState) => {
     const currentChannelID = getCurrentChannelId(state);
     const channels = voiceConnectedChannels(state);
@@ -46,7 +53,7 @@ export const voiceConnectedUsersInChannel = (state: GlobalState, channelID: stri
     return [];
 };
 
-export const connectedChannelID = (state: GlobalState) => getPluginState(state).connectedChannelID;
+export const connectedChannelID = (state: GlobalState) => pluginState(state).connectedChannelID;
 
 const numUsersInConnectedChannel: (state: GlobalState) => number = createSelector(
     'numUsersInConnectedChannel',
@@ -55,22 +62,35 @@ const numUsersInConnectedChannel: (state: GlobalState) => number = createSelecto
     (channelID, channels) => channels[channelID]?.length || 0,
 );
 
-export const voiceConnectedProfiles = (state: GlobalState) => {
-    if (!getPluginState(state).voiceConnectedProfiles) {
+export const voiceConnectedProfiles: (state: GlobalState) => UserProfile[] = (state) => {
+    if (!pluginState(state).voiceConnectedProfiles) {
         return [];
     }
-    return getPluginState(state).voiceConnectedProfiles[connectedChannelID(state)] || [];
+    return pluginState(state).voiceConnectedProfiles[connectedChannelID(state)] || [];
 };
 
-export const voiceConnectedProfilesInChannel = (state: GlobalState, channelID: string) => {
-    if (!getPluginState(state).voiceConnectedProfiles) {
-        return [];
-    }
-    return getPluginState(state).voiceConnectedProfiles[channelID] || [];
+// idToProfileInCurrentChannel creates an id->UserProfile object for the currently connected channel.
+export const idToProfileInConnectedChannel: (state: GlobalState) => { [id: string]: UserProfile } =
+    createSelector(
+        'idToProfileInCurrentChannel',
+        voiceConnectedProfiles,
+        (profiles) => makeIdToObject(profiles),
+    );
+
+export const voiceConnectedProfilesInChannel: (state: GlobalState, channelId: string) => UserProfile[] =
+    (state, channelID) => {
+        if (!pluginState(state).voiceConnectedProfiles) {
+            return [];
+        }
+        return pluginState(state).voiceConnectedProfiles[channelID] || [];
+    };
+
+export const voiceUsersStatuses: (state: GlobalState) => { [id: string]: UserState } = (state: GlobalState) => {
+    return pluginState(state).voiceUsersStatuses[connectedChannelID(state)] || {};
 };
 
-export const voiceUsersStatuses = (state: GlobalState) => {
-    return getPluginState(state).voiceUsersStatuses[connectedChannelID(state)] || {};
+export const voiceReactions: (state: GlobalState) => Reaction[] = (state: GlobalState) => {
+    return pluginState(state).reactionStatus[connectedChannelID(state)]?.reactions || [];
 };
 
 export const voiceUsersStatusesInChannel = (state: GlobalState, channelID: string) => {
@@ -78,11 +98,11 @@ export const voiceUsersStatusesInChannel = (state: GlobalState, channelID: strin
 };
 
 export const voiceChannelCallStartAt = (state: GlobalState, channelID: string) => {
-    return getPluginState(state).voiceChannelCalls[channelID]?.startAt;
+    return pluginState(state).voiceChannelCalls[channelID]?.startAt;
 };
 
 export const voiceChannelCallOwnerID = (state: GlobalState, channelID: string) => {
-    return getPluginState(state).voiceChannelCalls[channelID]?.ownerID;
+    return pluginState(state).voiceChannelCalls[channelID]?.ownerID;
 };
 
 export const voiceChannelCallHostID = (state: GlobalState, channelID: string) => {
@@ -90,7 +110,7 @@ export const voiceChannelCallHostID = (state: GlobalState, channelID: string) =>
 };
 
 export const voiceChannelScreenSharingID = (state: GlobalState, channelID: string) => {
-    return getPluginState(state).voiceChannelScreenSharingID[channelID];
+    return pluginState(state).voiceChannelScreenSharingID[channelID];
 };
 
 export const callRecording = (state: GlobalState, callID: string) => {
@@ -98,23 +118,23 @@ export const callRecording = (state: GlobalState, callID: string) => {
 };
 
 export const expandedView = (state: GlobalState) => {
-    return getPluginState(state).expandedView;
+    return pluginState(state).expandedView;
 };
 
 export const switchCallModal = (state: GlobalState) => {
-    return getPluginState(state).switchCallModal;
+    return pluginState(state).switchCallModal;
 };
 
 export const screenSourceModal = (state: GlobalState) => {
-    return getPluginState(state).screenSourceModal;
+    return pluginState(state).screenSourceModal;
 };
 
 export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
-    return getPluginState(state).voiceChannelRootPost[channelID];
+    return pluginState(state).voiceChannelRootPost[channelID];
 };
 
 const callsConfig = (state: GlobalState): CallsConfig => {
-    return getPluginState(state).callsConfig;
+    return pluginState(state).callsConfig;
 };
 
 export const iceServers: (state: GlobalState) => RTCIceServer[] = createSelector(
@@ -161,7 +181,7 @@ export const recordingsEnabled: (state: GlobalState) => boolean = createSelector
 );
 
 export const endCallModal = (state: GlobalState) => {
-    return getPluginState(state).endCallModal;
+    return pluginState(state).endCallModal;
 };
 
 //
@@ -245,12 +265,12 @@ export const isCloudTrialNeverStarted: (state: GlobalState) => boolean = createS
     },
 );
 
-export const channelState = (state: GlobalState, channelID: string) => getPluginState(state).channelState[channelID];
+export const channelState = (state: GlobalState, channelID: string) => pluginState(state).channelState[channelID];
 
 export const callsEnabled = (state: GlobalState, channelID: string) => Boolean(channelState(state, channelID)?.enabled);
 
 export const callsUserPreferences = (state: GlobalState): CallsUserPreferences => {
-    return getPluginState(state).callsUserPreferences;
+    return pluginState(state).callsUserPreferences;
 };
 
 export const shouldPlayJoinUserSound: (state: GlobalState) => boolean = createSelector(
@@ -262,7 +282,7 @@ export const shouldPlayJoinUserSound: (state: GlobalState) => boolean = createSe
     },
 );
 
-export const getClientError = (state: GlobalState) => getPluginState(state).clientErr;
+export const getClientError = (state: GlobalState) => pluginState(state).clientErr;
 
 export const isOnPremNotEnterprise: (state: GlobalState) => boolean = createSelector(
     'isOnPremNotEnterprise',
@@ -299,3 +319,10 @@ export const getChannelUrlAndDisplayName = (state: GlobalState, channel: Channel
     }
     return {channelURL, channelDisplayName};
 };
+
+export function makeIdToObject<HasId extends { id: string }>(arr: HasId[]) {
+    return arr.reduce((acc: { [id: string]: HasId }, e) => {
+        acc[e.id] = e;
+        return acc;
+    }, {});
+}

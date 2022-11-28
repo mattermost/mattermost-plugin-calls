@@ -849,11 +849,16 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 gap: '4px',
                             }}
                         >
-                            { isHandRaised &&
-                            <RaisedHandIcon
-                                fill={'rgba(255, 188, 66, 1)'}
-                                style={{width: '14px', height: '14px'}}
-                            />
+                            {
+                                isHandRaised &&
+                                <CompassIcon
+                                    icon={'hand-right'}
+                                    style={{
+                                        color: 'rgba(255, 188, 66, 1)',
+                                        marginBottom: 2,
+                                        fontSize: 16,
+                                    }}
+                                />
                             }
 
                             { this.props.screenSharingID === profile.id &&

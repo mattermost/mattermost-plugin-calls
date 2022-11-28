@@ -1,8 +1,9 @@
 import {connect} from 'react-redux';
 import {GlobalState} from '@mattermost/types/store';
 import {Channel} from '@mattermost/types/channels';
+import {UserProfile} from '@mattermost/types/users';
 
-import {voiceConnectedChannels, voiceConnectedProfilesInChannel} from '../../selectors';
+import {voiceConnectedChannels, voiceConnectedProfilesInChannel} from 'src/selectors';
 
 import ChannelLinkLabel from './component';
 
@@ -13,7 +14,7 @@ interface OwnProps {
 const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
     let hasCall = false;
     const channels = voiceConnectedChannels(state);
-    let profiles = [];
+    let profiles: UserProfile[] = [];
     if (channels) {
         const users = channels[ownProps.channel.id];
         if (users && users.length > 0) {

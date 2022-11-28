@@ -9,12 +9,10 @@ import {getMyChannelRoles, getMySystemRoles} from 'mattermost-redux/selectors/en
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
-import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {displayFreeTrial, getCallsConfig, displayCallErrorModal, showScreenSourceModal} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
-
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 
 import {
@@ -30,6 +28,7 @@ import {
     handleUserVoiceOff,
     handleUserRaisedHand,
     handleUserUnraisedHand,
+    handleUserReaction,
     handleCallHostChanged,
     handleCallRecordingState,
 } from './websocket_handlers';
@@ -43,11 +42,9 @@ import {
     voiceChannelCallOwnerID,
     isCloudFeatureRestricted,
     isLimitRestricted,
-    voiceChannelRootPost,
     allowEnableCalls,
     iceServers,
     needsTURNCredentials,
-    shouldPlayJoinUserSound,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -70,7 +67,6 @@ import reducer from './reducers';
 
 import {
     getPluginPath,
-    getPluginStaticPath,
     hasPermissionsToEnableCalls,
     getExpandedChannelID,
     getProfilesByIds,
@@ -78,6 +74,7 @@ import {
     getUserIdFromDM,
     getWSConnectionURL,
     playSound,
+    getUserDisplayName,
     followThread,
     shouldRenderDesktopWidget,
     sendDesktopEvent,
@@ -95,10 +92,8 @@ import {
     VOICE_CHANNEL_USERS_CONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
     VOICE_CHANNEL_PROFILES_CONNECTED,
-    VOICE_CHANNEL_PROFILE_CONNECTED,
     VOICE_CHANNEL_CALL_START,
     VOICE_CHANNEL_USER_SCREEN_ON,
-    VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
@@ -183,6 +178,10 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unraise_hand`, (ev) => {
             handleUserUnraisedHand(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_reacted`, (ev) => {
+            handleUserReaction(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_host_changed`, (ev) => {
@@ -598,11 +597,12 @@ export default class Plugin {
                     });
                 }
 
+                // TODO: we should use types here, could cause trouble in the future.
                 const userStates = {} as any;
                 const users = resp.data.call?.users || [];
                 const states = resp.data.call?.states || [];
                 for (let i = 0; i < users.length; i++) {
-                    userStates[users[i]] = states[i];
+                    userStates[users[i]] = {...states[i], id: users[i]};
                 }
                 store.dispatch({
                     type: VOICE_CHANNEL_USERS_CONNECTED_STATES,
