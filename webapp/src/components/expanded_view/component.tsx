@@ -511,9 +511,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         let header = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header;
         let body = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body;
-        const confirmText = isHost ? 'Dismiss' : 'Understood';
+        let confirmText = isHost ? 'Dismiss' : 'Understood';
+        const declineText = isHost ? '' : 'Leave call';
 
         if (hasRecEnded) {
+            confirmText = '';
             header = 'Recording has stopped. Processing...';
             body = 'You can find the recording in this call\'s chat thread once it\'s finished processing.';
         }
@@ -529,7 +531,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 header={header}
                 body={body}
                 confirmText={confirmText}
+                declineText={declineText}
                 onClose={() => this.setState({promptDismissedAt: Date.now()})}
+                onDecline={this.onDisconnectClick}
             />
         );
     }
