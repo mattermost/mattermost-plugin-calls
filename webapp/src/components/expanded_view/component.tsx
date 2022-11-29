@@ -919,6 +919,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 unavailable={noInputDevices || noAudioPermissions}
                             />
 
+                            { isHost && this.props.recordingsEnabled &&
+                                <ControlsButton
+                                    id='calls-popout-record-button'
+                                    onToggle={() => this.onRecordToggle()}
+                                    tooltipText={recordTooltipText}
+                                    bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                                    // eslint-disable-next-line no-undefined
+                                    shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}
+                                    iconFill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : ''}
+                                    icon={<RecordIcon size={24}/>}
+                                />
+                            }
+
                             {this.props.allowScreenSharing &&
                                 <ControlsButton
                                     id='calls-popout-screenshare-button'
@@ -939,19 +952,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     }
                                     unavailable={noScreenPermissions}
                                     disabled={sharingID !== '' && !isSharing}
-                                />
-                            }
-
-                            { isHost && this.props.recordingsEnabled &&
-                                <ControlsButton
-                                    id='calls-popout-record-button'
-                                    onToggle={() => this.onRecordToggle()}
-                                    tooltipText={recordTooltipText}
-                                    bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
-                                    // eslint-disable-next-line no-undefined
-                                    shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}
-                                    iconFill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : ''}
-                                    icon={<RecordIcon size={24}/>}
                                 />
                             }
 
