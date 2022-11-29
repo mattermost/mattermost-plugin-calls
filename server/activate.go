@@ -101,6 +101,8 @@ func (p *Plugin) OnActivate() error {
 			p.LogError(err.Error())
 			return err
 		}
+
+		p.LogDebug("job service initialized successfully")
 	}
 
 	if rtcdURL := cfg.getRTCDURL(); rtcdURL != "" && p.licenseChecker.RTCDAllowed() {

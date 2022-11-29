@@ -89,7 +89,24 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 		return
 	}
 
+	defer func() {
+		// In case of any error we reset the recording state for clients.
+		if res.Err != "" {
+			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+				"callID":   callID,
+				"recState": nil,
+			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+		}
+	}()
+
 	if action == "start" {
+		// Sending the event prior to making the API call to the job service
+		// since it could take a few seconds to complete and we want clients
+		// to get their local state updated as soon as it changes on the server.
+		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			"callID":   callID,
+			"recState": recState.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		recJobID, err := p.jobService.RunRecordingJob(callID, threadID, p.botSession.Token)
 		if err != nil {
 			// resetting state in case the job failed to run
@@ -134,16 +151,19 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 			"recState": recState.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	} else if action == "stop" {
+		// Sending the event prior to making the API call to the job service
+		// since it could take a few seconds to complete but we want clients
+		// to get their local state updated as soon as it changes on the server.
+		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			"callID":   callID,
+			"recState": recState.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
 		if err := p.jobService.StopJob(recState.JobID); err != nil {
 			res.Err = "failed to create recording job: " + err.Error()
 			res.Code = http.StatusInternalServerError
 			return
 		}
-
-		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-			"callID":   callID,
-			"recState": recState.getClientState().toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
