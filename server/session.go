@@ -280,6 +280,14 @@ func (p *Plugin) removeSession(us *session) error {
 		}
 	}
 
+	// If the bot is the only user left in the call we automatically stop the recording.
+	if currState.Call != nil && currState.Call.Recording != nil && len(currState.Call.Users) == 1 && currState.Call.Users[p.getBotID()] != nil {
+		p.LogDebug("all users left call with recording in progress, stopping", "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
+		if err := p.jobService.StopJob(currState.Call.Recording.JobID); err != nil {
+			p.LogError("failed to stop recording job", "error", err.Error(), "jobID", currState.Call.Recording.JobID)
+		}
+	}
+
 	if currState.Call == nil && prevState.Call != nil {
 		// call has ended
 		dur, err := p.updateCallThreadEnded(prevState.Call.ThreadID)
