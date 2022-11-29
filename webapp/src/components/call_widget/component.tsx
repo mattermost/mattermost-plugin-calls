@@ -1216,7 +1216,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 header={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header}
                 body={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body}
                 confirmText={isHost ? 'Dismiss' : 'Understood'}
+                declineText={isHost ? null : 'Leave call'}
                 onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
+                onDecline={this.onDisconnectClick}
             />
         );
     }
