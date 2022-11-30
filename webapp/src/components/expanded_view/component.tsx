@@ -518,9 +518,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             body = 'You can find the recording in this call\'s chat thread once it\'s finished processing.';
         }
 
+        let error = '';
         if (this.props.callRecording?.err) {
             header = 'Something went wrong with the recording!';
-            body = `${capitalize(this.props.callRecording?.err)}. Please try to record again. If the problem persists, reach out to a system admin.`;
+            body = 'Please try to record again. If the error persists please ask your system administrator.';
+            error = capitalize(this.props.callRecording?.err);
+
             icon = (
                 <CompassIcon
                     icon='alert-outline'
@@ -538,6 +541,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 iconColor='rgb(var(--dnd-indicator-rgb))'
                 header={header}
                 body={body}
+                error={error}
                 confirmText={confirmText}
                 onClose={() => this.setState({promptDismissedAt: Date.now()})}
             />

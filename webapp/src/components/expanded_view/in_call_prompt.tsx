@@ -8,6 +8,7 @@ export type Props = {
     iconFill?: string,
     iconColor?: string,
     body: string,
+    error?: string,
     header: string,
     confirmText?: string,
     onClose?: () => void,
@@ -35,6 +36,9 @@ export default function InCallPrompt(props: Props) {
                 </Header>
                 <Body>
                     {props.body}
+                    { props.error &&
+                    <ErrorMsg>{props.error}</ErrorMsg>
+                    }
                 </Body>
                 <Footer>
                     { props.confirmText && props.onClose &&
@@ -87,6 +91,8 @@ const Header = styled.div`
 const Body = styled.div`
   margin-top: 8px;
   margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
 `;
 
 const Footer = styled.div`
@@ -115,4 +121,8 @@ const CloseButton = styled(Icon)`
   :hover {
     background: rgba(var(--center-channel-color-rgb), 0.08);
   }
+`;
+
+const ErrorMsg = styled.i`
+  color: rgba(var(--center-channel-color-rgb), 0.72);
 `;
