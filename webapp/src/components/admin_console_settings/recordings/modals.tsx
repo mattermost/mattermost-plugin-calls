@@ -35,7 +35,7 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
         <StyledModal
             id={IDOnPremTrialSuccess}
             {...modalProps}
-            confirmButtonText={formatMessage({defaultMessage: 'Set up RTCD services'})}
+            confirmButtonText={formatMessage({defaultMessage: 'Set up call recordings'})}
             handleConfirm={() => navigateToURL('/admin_console/plugins/plugin_com.mattermost.calls')}
             onHide={() => null}
         >
@@ -54,8 +54,8 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
             <ModalBody css={'text-align: left'}>
                 <FormattedMessage
                     defaultMessage={'Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. ' +
-                        'You now have access to <rtcdDocsLink>RTCD services</rtcdDocsLink>, ' +
-                        '<recordingsDocsLink>call recordings</recordingsDocsLink>, ' +
+                        'You now have access to <recordingsDocsLink>Call recordings</recordingsDocsLink>,' +
+                        '<rtcdDocsLink>RTCD services</rtcdDocsLink>, ' +
                         '<guestAccountsLink>guest accounts</guestAccountsLink>, ' +
                         '<autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and ' +
                         '<mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, ' +
@@ -63,18 +63,18 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                         'View all features in our <documentationLink>documentation</documentationLink>.'}
                     values={{
                         trialExpirationDate: trialEndDate,
-                        rtcdDocsLink: (text: string) => (
+                        recordingsDocsLink: (text: string) => (
                             <a
-                                href='https://docs.mattermost.com/configure/calls-deployment.html'
+                                href='https://docs.mattermost.com/configure/calls-recordings.html'
                                 target='_blank'
                                 rel='noreferrer'
                             >
                                 {text}
                             </a>
                         ),
-                        recordingsDocsLink: (text: string) => (
+                        rtcdDocsLink: (text: string) => (
                             <a
-                                href='https://docs.mattermost.com/configure/calls-recordings.html'
+                                href='https://docs.mattermost.com/configure/calls-deployment.html'
                                 target='_blank'
                                 rel='noreferrer'
                             >
@@ -154,4 +154,3 @@ export const OnPremTrialError = (modalProps: Props) => {
         </GenericModal>
     );
 };
-

@@ -14,6 +14,9 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {displayFreeTrial, getCallsConfig, displayCallErrorModal, showScreenSourceModal} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
+import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
+import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
+import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
 
 import {
     handleUserConnected,
@@ -373,6 +376,9 @@ export default class Plugin {
         registerChannelHeaderMenuButton();
 
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
+        registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
+        registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
+        registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
 
         const connectCall = async (channelID: string, title?: string) => {
             if (shouldRenderDesktopWidget()) {
