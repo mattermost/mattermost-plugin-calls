@@ -92,7 +92,7 @@ const EnableRecordings = (props: CustomComponentProps) => {
                     <LeftBox>
                         <Title>
                             <FormattedMessage
-                                defaultMessage={'Enable recordings for calls'}
+                                defaultMessage={'Enable call recordings'}
                             />
                         </Title>
                         <VerticalSpacer size={8}/>

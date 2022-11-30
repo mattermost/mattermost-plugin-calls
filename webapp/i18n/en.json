@@ -6,7 +6,6 @@
   "47FYwb": "Cancel",
   "7C5R1Z": "Real-time communication daemon is a service built to offload calls onto your own WebRTC services and efficiently support scalable and secure deployments. <featureLink>Learn more about this feature</featureLink>.",
   "9tBhzB": "Upgrade now",
-  "CkbjCZ": "Enable recordings for calls",
   "EaucLA": "View plans",
   "Igo1xs": "It looks like something went wrong with your Enterprise trial request. You can try again later or <supportLink>contact Support</supportLink> if the error persists.",
   "KaiRbV": "Calls are a quick, audio-first, way to interact with your team. Get the full calls experience when you start a free, 30-day trial.",
@@ -25,6 +24,7 @@
   "iWGktR": "Disable calls",
   "isWX8N": "Select Notify Admin to send an automatic request to your System Admins to start the trial.",
   "kNZ9O2": "Allow call hosts to record meeting video and audio on the cloud. Recording include the entire call window view along with participants audio track and any shared screen video. <featureLink>Learn more about this feature</featureLink>.",
+  "n1Ubod": "Enable call recordings",
   "qpBeaD": "Calls are a quick, audio-first, way of interact with your team. Upgrade to Mattermost Professional to use calls in channels and group messages.",
   "yL9vD/": "Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. You now have access to <rtcdDocsLink>RTCD services</rtcdDocsLink>, <recordingsDocsLink>call recordings</recordingsDocsLink>, <guestAccountsLink>guest accounts</guestAccountsLink>, <autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and <mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, among many other features. View all features in our <documentationLink>documentation</documentationLink>."
 }
