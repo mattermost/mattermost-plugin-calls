@@ -135,7 +135,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	} else if action == "stop" {
 		if err := p.jobService.StopJob(recState.JobID); err != nil {
-			res.Err = "failed to create recording job: " + err.Error()
+			res.Err = "failed to stop recording job: " + err.Error()
 			res.Code = http.StatusInternalServerError
 			return
 		}
