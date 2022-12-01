@@ -63,10 +63,10 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 		if state.Call.HostID != userID {
 			return nil, fmt.Errorf("no permissions to record")
 		}
-		if action == "start" && state.Call.Recording != nil {
+		if action == "start" && state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
 			return nil, fmt.Errorf("recording already in progress")
 		}
-		if action == "stop" && state.Call.Recording == nil {
+		if action == "stop" && (state.Call.Recording == nil || state.Call.Recording.EndAt != 0) {
 			return nil, fmt.Errorf("no recording in progress")
 		}
 
