@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/mattermost/mattermost-plugin-api/cluster"
 
@@ -42,7 +43,13 @@ func (p *Plugin) getStoredJobServiceClientConfig() (offloader.ClientConfig, erro
 func (p *Plugin) getJobServiceClientConfig(serviceURL string) (offloader.ClientConfig, error) {
 	var cfg offloader.ClientConfig
 
-	cfg.URL = serviceURL
+	// Give precedence to environment to override everything else.
+	cfg.ClientID = os.Getenv("MM_CALLS_JOB_SERVICE_CLIENT_ID")
+	cfg.AuthKey = os.Getenv("MM_CALLS_JOB_SERVICE_AUTH_KEY")
+	cfg.URL = os.Getenv("MM_CALLS_JOB_SERVICE_URL")
+	if cfg.URL == "" {
+		cfg.URL = serviceURL
+	}
 
 	// Parsing the URL in case it's already containing credentials.
 	u, clientID, authKey, err := parseURL(cfg.URL)
