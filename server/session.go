@@ -74,17 +74,18 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 
 	err := p.kvSetAtomicChannelState(channel.Id, func(state *channelState) (*channelState, error) {
 		if state == nil {
-			if cfg.DefaultEnabled != nil && *cfg.DefaultEnabled {
-				state = &channelState{
-					Enabled: true,
-				}
-			} else {
-				return nil, fmt.Errorf("channel state is missing from store")
-			}
+			state = &channelState{}
 		}
 
-		if !state.Enabled {
-			return nil, fmt.Errorf("calls are not enabled")
+		// If there is an ongoing call, we can let this person join. If there isn't: if calls are
+		// not explicitly enabled and not default enabled, only allow sysadmins to start a call.
+		// TODO: look to see what logic we should lift to the joinCall fn
+		explicitlyEnabled := state.Enabled != nil && *state.Enabled
+		defaultEnabled := cfg.DefaultEnabled != nil && *cfg.DefaultEnabled
+		if state.Call == nil && !explicitlyEnabled && !defaultEnabled {
+			if !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+				return nil, fmt.Errorf("calls are not enabled")
+			}
 		}
 
 		if state.Call == nil {
@@ -116,7 +117,7 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 		}
 
 		// Check for cloud limits -- needs to be done here to prevent a race condition
-		if allowed, err := p.joinAllowed(channel, state); !allowed {
+		if allowed, err := p.joinAllowed(state); !allowed {
 			if err != nil {
 				p.LogError("joinAllowed failed", "error", err.Error())
 			}
@@ -197,26 +198,16 @@ func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelSta
 
 // JoinAllowed returns true if the user is allowed to join the call, taking into
 // account cloud and configuration limits
-func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool, error) {
+func (p *Plugin) joinAllowed(state *channelState) (bool, error) {
 	// Rules are:
+	// Cloud Starter: channels, dm/gm: limited to cfg.cloudStarterMaxParticipantsDefault
 	// On-prem, Cloud Professional & Cloud Enterprise (incl. trial): DMs 1-1, GMs and Channel calls
-	// limited to cfg.MaxCallParticipants people.
-	// Cloud Starter: DMs 1-1 only
-
+	// limited to cfg.cloudPaidMaxParticipantsDefault people.
+	// This is set in the override defaults, so MaxCallParticipants will be accurate for the current license.
 	if cfg := p.getConfiguration(); cfg != nil && cfg.MaxCallParticipants != nil &&
 		*cfg.MaxCallParticipants != 0 && len(state.Call.Users) >= *cfg.MaxCallParticipants {
 		return false, nil
 	}
-
-	license := p.pluginAPI.System.GetLicense()
-	if !isCloud(license) || isTrial(license) {
-		return true, nil
-	}
-
-	if isCloudStarter(license) {
-		return channel.Type == model.ChannelTypeDirect, nil
-	}
-
 	return true, nil
 }
 

@@ -11,7 +11,8 @@ interface Props {
     show: boolean,
     inCall: boolean,
     hasCall: boolean,
-    isCloudFeatureRestricted: boolean,
+    isAdmin: boolean,
+    isCloudStarter: boolean,
     isCloudPaid: boolean,
     isLimitRestricted: boolean,
     maxParticipants: number,
@@ -22,7 +23,8 @@ const ChannelHeaderDropdownButton = ({
     show,
     inCall,
     hasCall,
-    isCloudFeatureRestricted,
+    isAdmin,
+    isCloudStarter,
     isCloudPaid,
     isLimitRestricted,
     maxParticipants,
@@ -31,9 +33,8 @@ const ChannelHeaderDropdownButton = ({
     if (!show) {
         return null;
     }
-    const restricted = isLimitRestricted || isCloudFeatureRestricted || isChannelArchived;
-    const isCloudLimitRestricted = isCloudPaid && isLimitRestricted;
-    const withUpsellIcon = isCloudFeatureRestricted || (isCloudLimitRestricted && !inCall);
+    const restricted = isLimitRestricted || isChannelArchived;
+    const withUpsellIcon = (isLimitRestricted && isCloudStarter && !inCall);
 
     const button = (
         <CallButton
@@ -72,7 +73,7 @@ const ChannelHeaderDropdownButton = ({
         );
     }
 
-    if (isCloudFeatureRestricted) {
+    if (withUpsellIcon) {
         return (
             <OverlayTrigger
                 placement='bottom'
@@ -80,7 +81,7 @@ const ChannelHeaderDropdownButton = ({
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
-                            {'Mattermost Professional feature'}
+                            {'Mattermost Cloud Professional feature'}
                         </Header>
                         <SubHeader>
                             {'This is a paid feature, available with a free 30-day trial'}
@@ -93,6 +94,7 @@ const ChannelHeaderDropdownButton = ({
         );
     }
 
+    // TODO: verify isCloudPaid message (asked in channel)
     if (isLimitRestricted && !inCall) {
         return (
             <OverlayTrigger
@@ -104,10 +106,20 @@ const ChannelHeaderDropdownButton = ({
                             {`There's a limit of ${maxParticipants} participants per call.`}
                         </Header>
 
+                        {isCloudStarter && !isAdmin &&
+                            <SubHeader>
+                                {'Contact your system admin for more information about call capacity.'}
+                            </SubHeader>
+                        }
+                        {isCloudStarter && isAdmin &&
+                            <SubHeader>
+                                {`Upgrade to Cloud Professional or Cloud Enterprise to enable group calls with more than ${maxParticipants} participants.`}
+                            </SubHeader>
+                        }
                         {isCloudPaid &&
-                        <SubHeader>
-                            {'This is because calls is currently in beta. We’re working to remove this limit soon.'}
-                        </SubHeader>
+                            <SubHeader>
+                                {`At the moment, ${maxParticipants} is the participant limit for cloud calls.`}
+                            </SubHeader>
                         }
                     </Tooltip>
                 }

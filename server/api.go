@@ -10,6 +10,7 @@ import (
 	"net/http/pprof"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,7 +39,7 @@ type Call struct {
 
 type ChannelState struct {
 	ChannelID string `json:"channel_id,omitempty"`
-	Enabled   bool   `json:"enabled"`
+	Enabled   *bool  `json:"enabled,omitempty"`
 	Call      *Call  `json:"call,omitempty"`
 }
 
@@ -60,6 +61,8 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 		return
 	}
 
+	mobile, postGA := isMobilePostGA(r.Header.Get("User-Agent"), r.URL.Query().Get("mobilev2"))
+
 	state, err := p.kvGetChannelState(channelID)
 	if err != nil {
 		p.LogError(err.Error())
@@ -69,15 +72,14 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 		ChannelID: channelID,
 	}
 
-	cfg := p.getConfiguration()
-	if state == nil && cfg.DefaultEnabled != nil && *cfg.DefaultEnabled {
-		state = &channelState{
-			Enabled: true,
-		}
-	}
-
 	if state != nil {
 		info.Enabled = state.Enabled
+		// This is for backwards compatibility for mobile pre-v2
+		if info.Enabled == nil && mobile && !postGA {
+			cfg := p.getConfiguration()
+			info.Enabled = model.NewBool(cfg.DefaultEnabled != nil && *cfg.DefaultEnabled)
+		}
+
 		if state.Call != nil {
 			users, states := state.Call.getUsersAndStates()
 			info.Call = &Call{
@@ -117,6 +119,7 @@ func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Per
 
 func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
+	mobile, postGA := isMobilePostGA(r.Header.Get("User-Agent"), r.URL.Query().Get("mobilev2"))
 
 	var page int
 	channels := []ChannelState{}
@@ -162,9 +165,15 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, appErr.Error(), http.StatusInternalServerError)
 			}
 
+			enabled := state.Enabled
+			// This is for backwards compatibility for mobile pre-v2
+			if enabled == nil && mobile && !postGA {
+				cfg := p.getConfiguration()
+				enabled = model.NewBool(cfg.DefaultEnabled != nil && *cfg.DefaultEnabled)
+			}
 			info := ChannelState{
 				ChannelID: channelID,
-				Enabled:   state.Enabled,
+				Enabled:   enabled,
 			}
 			if state.Call != nil {
 				users, states := state.Call.getUsersAndStates()
@@ -290,46 +299,65 @@ func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
 	http.StripPrefix("/standalone/", http.FileServer(http.Dir(standalonePath))).ServeHTTP(w, r)
 }
 
+func (p *Plugin) permissionToEnableDisableChannel(userID, channelID string) (bool, *model.AppError) {
+	// If TestMode (DefaultEnabled=false): only sysadmins can modify
+	// If LiveMode (DefaultEnabled=true): channel, team, sysadmin, DM/GM participants can modify
+
+	// Sysadmin has permission regardless
+	if p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+		return true, nil
+	}
+
+	// if DefaultEnabled=false, no-one else has permissions
+	cfg := p.getConfiguration()
+	if cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled {
+		return false, nil
+	}
+
+	// Must be live mode.
+
+	// Channel admin?
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		return false, appErr
+	}
+	cm, appErr := p.API.GetChannelMember(channelID, userID)
+	if appErr != nil {
+		return false, appErr
+	}
+	if cm.SchemeAdmin {
+		return true, nil
+	}
+
+	// Team admin?
+	if p.API.HasPermissionToTeam(userID, channel.TeamId, model.PermissionManageTeam) {
+		return true, nil
+	}
+
+	// DM/GM participant
+	switch channel.Type {
+	case model.ChannelTypeDirect, model.ChannelTypeGroup:
+		if p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	var res httpResponse
 	defer p.httpAudit("handlePostChannel", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 
-	cfg := p.getConfiguration()
-	if !*cfg.AllowEnableCalls && !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+	if permission, appErr := p.permissionToEnableDisableChannel(userID, channelID); appErr != nil || !permission {
 		res.Err = "Forbidden"
+		if appErr != nil {
+			res.Err = appErr.Error()
+		}
 		res.Code = http.StatusForbidden
 		return
-	}
-
-	channel, appErr := p.API.GetChannel(channelID)
-	if appErr != nil {
-		res.Err = appErr.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
-	cm, appErr := p.API.GetChannelMember(channelID, userID)
-	if appErr != nil {
-		res.Err = appErr.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
-	switch channel.Type {
-	case model.ChannelTypeOpen, model.ChannelTypePrivate:
-		if !cm.SchemeAdmin && !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-			res.Err = "Forbidden"
-			res.Code = http.StatusForbidden
-			return
-		}
-	case model.ChannelTypeDirect, model.ChannelTypeGroup:
-		if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
-			res.Err = "Forbidden"
-			res.Code = http.StatusForbidden
-			return
-		}
 	}
 
 	var info ChannelState
@@ -353,7 +381,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 	}
 
 	var evType string
-	if info.Enabled {
+	if info.Enabled != nil && *info.Enabled {
 		evType = "channel_enable_voice"
 	} else {
 		evType = "channel_disable_voice"
@@ -554,4 +582,35 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	http.NotFound(w, r)
+}
+
+func isMobilePostGA(userAgent string, queryParam string) (mobile, postGA bool) {
+	if queryParam == "true" {
+		return true, true
+	}
+
+	// Below here is to test two things: is this mobile pre-GA? Is mobile version 441
+	// (a one-week period when we didn't have the above queryParam)
+	// TODO: simplify this once we can stop supporting 441.
+	fields := strings.Fields(userAgent)
+	clientAgent := fields[0] // safe to assume there's at least one
+	isMobile := strings.HasPrefix(clientAgent, "rnbeta") || strings.HasPrefix(clientAgent, "Mattermost")
+	if !isMobile {
+		return false, false
+	}
+	agent := strings.Split(clientAgent, "/")
+	if len(agent) != 2 {
+		return true, false
+	}
+
+	// We can use a semver package, because we're not using semver correctly. So manually parse...
+	version := strings.Split(agent[1], ".")
+	if len(version) != 4 {
+		return true, false
+	}
+	minor, err := strconv.Atoi(version[3])
+	if err != nil {
+		return true, false
+	}
+	return true, minor >= 441
 }

@@ -3,7 +3,7 @@ import {GlobalState} from '@mattermost/types/store';
 
 import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 
-import {callsEnabled} from '../../selectors';
+import {callsEnabled} from 'src/selectors';
 
 import ChannelHeaderMenuButton from './component';
 

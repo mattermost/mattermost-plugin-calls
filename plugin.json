@@ -1,6 +1,6 @@
 {
     "id": "com.mattermost.calls",
-    "name": "Calls (Beta)",
+    "name": "Calls",
     "description": "Integrates real-time voice communication in Mattermost",
     "homepage_url": "https://github.com/mattermost/mattermost-plugin-calls/",
     "support_url": "https://github.com/mattermost/mattermost-plugin-calls/issues",
@@ -23,26 +23,19 @@
         "footer": "",
         "settings": [
         {
-          "key": "UDPServerPort",
-          "display_name": "RTC Server Port",
-          "type": "number",
-          "help_text": "The UDP port the RTC server will listen on.",
-          "default": 8443,
-          "placeholder": "8443"
-        },
-        {
-          "key": "AllowEnableCalls",
-          "display_name": "Enable on specific channels",
-          "type": "bool",
-          "help_text": "When set to true, Channel Admins can enable or disable calls in their channels. It also allows participants in DMs/GMs to enable or disable calls.",
-          "default": false
-        },
-        {
           "key": "DefaultEnabled",
           "display_name": "Enable on all channels",
           "type": "bool",
-          "help_text": "When set to true, calls can be started in all channels where they're not explicitly disabled.",
+          "help_text": "When set to true, calls can be started in all channels unless they're explicitly disabled.",
           "default": false
+        },
+        {
+            "key": "UDPServerPort",
+            "display_name": "RTC Server Port",
+            "type": "number",
+            "help_text": "The UDP port the RTC server will listen on.",
+            "default": 8443,
+            "placeholder": "8443"
         },
         {
           "key": "MaxCallParticipants",

@@ -53,7 +53,8 @@ type clientConfig struct {
 
 	// A list of ICE server configurations to use.
 	ICEServersConfigs ICEServersConfigs
-	// When set to true, it allows channel admins to enable or disable calls in their channels.
+	// AllowEnableCalls is always true. DO NOT REMOVE; needed for mobile backward compatibility.
+	// It allows channel admins to enable or disable calls in their channels.
 	// It also allows participants of DMs/GMs to enable or disable calls.
 	AllowEnableCalls *bool
 	// When set to true, calls will be possible in all channels where they are not explicitly disabled.
@@ -162,9 +163,9 @@ func (c *configuration) SetDefaults() {
 	if c.UDPServerPort == nil {
 		c.UDPServerPort = model.NewInt(8443)
 	}
-	if c.AllowEnableCalls == nil {
-		c.AllowEnableCalls = new(bool)
-	}
+
+	c.AllowEnableCalls = model.NewBool(true)
+
 	if c.DefaultEnabled == nil {
 		c.DefaultEnabled = new(bool)
 		*c.DefaultEnabled = false
@@ -211,14 +212,11 @@ func (c *configuration) Clone() *configuration {
 	cfg.ICEHostOverride = c.ICEHostOverride
 	cfg.RTCDServiceURL = c.RTCDServiceURL
 	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
+	cfg.AllowEnableCalls = model.NewBool(true)
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)
 		*cfg.UDPServerPort = *c.UDPServerPort
-	}
-
-	if c.AllowEnableCalls != nil {
-		cfg.AllowEnableCalls = model.NewBool(*c.AllowEnableCalls)
 	}
 
 	if c.DefaultEnabled != nil {
@@ -338,6 +336,8 @@ func (p *Plugin) OnConfigurationChange() error {
 }
 
 func (p *Plugin) setOverrides(cfg *configuration) {
+	*cfg.AllowEnableCalls = true
+
 	if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// On Cloud installations we want calls enabled in all channels so we
 		// override it since the plugin's default is now false.
@@ -353,7 +353,11 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 		}
 	} else if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// otherwise, if this is a cloud installation, set it at the default
-		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
+		if isCloudStarter(license) {
+			*cfg.MaxCallParticipants = cloudStarterMaxParticipantsDefault
+		} else {
+			*cfg.MaxCallParticipants = cloudPaidMaxParticipantsDefault
+		}
 	}
 }
 

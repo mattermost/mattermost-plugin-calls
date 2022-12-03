@@ -4,6 +4,7 @@
 package main
 
 import (
+	"github.com/mattermost/mattermost-server/v6/model"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -77,9 +78,9 @@ func TestGetClientConfig(t *testing.T) {
 	cfg := &configuration{}
 	cfg.SetDefaults()
 	clientCfg := cfg.getClientConfig()
+	require.Equal(t, model.NewBool(true), clientCfg.AllowEnableCalls)
 	require.Equal(t, cfg.AllowEnableCalls, clientCfg.AllowEnableCalls)
 	require.Equal(t, cfg.DefaultEnabled, clientCfg.DefaultEnabled)
-	*cfg.AllowEnableCalls = true
 	*cfg.DefaultEnabled = true
 	clientCfg = cfg.getClientConfig()
 	require.Equal(t, cfg.AllowEnableCalls, clientCfg.AllowEnableCalls)

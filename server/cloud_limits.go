@@ -10,12 +10,13 @@ import (
 	"net/http"
 )
 
-// cloudMaxParticipantsDefault is set to 8.
+// cloudStarterMaxParticipantsDefault is set to 8.
 // The value used can be overridden by setting the MM_CALLS_MAX_PARTICIPANTS env variable.
 
 const (
-	cloudMaxParticipantsDefault     = 8
-	maxAdminsToQueryForNotification = 25
+	cloudStarterMaxParticipantsDefault = 8
+	cloudPaidMaxParticipantsDefault    = 200
+	maxAdminsToQueryForNotification    = 25
 )
 
 // handleCloudNotifyAdmins notifies the user's admin about upgrading for calls
@@ -48,7 +49,7 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 		return fmt.Errorf("no admins found")
 	}
 
-	maxParticipants := cloudMaxParticipantsDefault
+	maxParticipants := cloudStarterMaxParticipantsDefault
 	cfg := p.getConfiguration()
 	if cfg != nil && cfg.MaxCallParticipants != nil {
 		maxParticipants = *cfg.MaxCallParticipants
