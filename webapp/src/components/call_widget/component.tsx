@@ -909,7 +909,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
-    renderAudioDevicesMenu = (deviceType: string) => {
+    renderAudioDevicesList = (deviceType: string, devices: any[]) => {
         if (deviceType === 'input' && !this.state.showAudioInputDevicesMenu) {
             return null;
         }
@@ -918,8 +918,24 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const devices = deviceType === 'input' ? this.state.devices.inputs : this.state.devices.outputs;
         const currentDevice = deviceType === 'input' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
+
+        const deviceList = devices.map((device: any, idx: number) => {
+            return (
+                <li
+                    className='MenuItem'
+                    key={`audio-${deviceType}-device-${idx}`}
+                >
+                    <button
+                        className='style--none'
+                        style={{background: device.deviceId === currentDevice?.deviceId ? 'rgba(28, 88, 217, 0.12)' : ''}}
+                        onClick={() => (deviceType === 'input' ? this.onAudioInputDeviceClick(device) : this.onAudioOutputDeviceClick(device))}
+                    >
+                        <span style={{color: changeOpacity(this.props.theme.centerChannelColor, 0.56), fontSize: '12px', width: '100%'}}>{device.label}</span>
+                    </button>
+                </li>
+            );
+        });
 
         return (
             <div className='Menu'>
@@ -930,24 +946,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     // eslint-disable-next-line no-undefined
                     ref={this.props.global ? this.audioDevicesMenuRefCb : undefined}
                 >
-                    {
-                        devices.map((device: any, idx: number) => {
-                            return (
-                                <li
-                                    className='MenuItem'
-                                    key={`audio-${deviceType}-device-${idx}`}
-                                >
-                                    <button
-                                        className='style--none'
-                                        style={{background: device.deviceId === currentDevice?.deviceId ? 'rgba(28, 88, 217, 0.12)' : ''}}
-                                        onClick={() => (deviceType === 'input' ? this.onAudioInputDeviceClick(device) : this.onAudioOutputDeviceClick(device))}
-                                    >
-                                        <span style={{color: changeOpacity(this.props.theme.centerChannelColor, 0.56), fontSize: '12px', width: '100%'}}>{device.label}</span>
-                                    </button>
-                                </li>
-                            );
-                        })
-                    }
+                    { deviceList }
                 </ul>
             </div>
         );
@@ -966,7 +965,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const noInputDevices = deviceType === 'input' && this.state.devices.inputs?.length === 0;
         const noAudioPermissions = deviceType === 'input' && this.state.alerts.missingAudioInputPermissions.active;
-        const isDisabled = noInputDevices || noAudioPermissions;
 
         let label = currentDevice?.label || 'Default';
         if (noAudioPermissions) {
@@ -983,9 +981,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         };
 
+        const devices = deviceType === 'input' ? this.state.devices.inputs?.filter((device: any) => device.deviceId && device.label) :
+            this.state.devices.outputs?.filter((device: any) => device.deviceId && device.label);
+        const isDisabled = devices.length === 0;
+
         return (
             <React.Fragment>
-                {this.renderAudioDevicesMenu(deviceType)}
+                {devices.length > 0 && this.renderAudioDevicesList(deviceType, devices)}
                 <li
                     className='MenuItem'
                 >
@@ -1012,19 +1014,20 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 unavailable={isDisabled}
                                 margin={'0 8px 0 0'}
                             />
-
                             <span
                                 className='MenuItem__primary-text'
                                 style={{padding: '0'}}
                             >{deviceType === 'input' ? 'Microphone' : 'Audio Output'}</span>
-                            <ShowMoreIcon
-                                style={{
-                                    width: '11px',
-                                    height: '11px',
-                                    marginLeft: 'auto',
-                                    fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
-                                }}
-                            />
+                            { devices.length > 0 &&
+                                <ShowMoreIcon
+                                    style={{
+                                        width: '11px',
+                                        height: '11px',
+                                        marginLeft: 'auto',
+                                        fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
+                                    }}
+                                />
+                            }
                         </div>
                         <span
                             style={{
