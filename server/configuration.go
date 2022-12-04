@@ -336,7 +336,7 @@ func (p *Plugin) OnConfigurationChange() error {
 }
 
 func (p *Plugin) setOverrides(cfg *configuration) {
-	*cfg.AllowEnableCalls = true
+	cfg.AllowEnableCalls = model.NewBool(true)
 
 	if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// On Cloud installations we want calls enabled in all channels so we
