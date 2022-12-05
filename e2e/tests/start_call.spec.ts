@@ -78,7 +78,7 @@ test.describe('start new call', () => {
         await devPage.gotoDM(userState.users[1].username);
         await devPage.startCall();
         await devPage.wait(1000);
-        expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('calls-widget-bottom-bar-dm.png');
+        expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('dm-calls-widget-bottom-bar.png');
         await devPage.leaveCall();
     });
 });

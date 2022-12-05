@@ -10,8 +10,10 @@ type Props = {
     iconColor?: string,
     body?: string | React.ReactNode,
     header: string,
-    confirmText?: string,
+    confirmText?: string | null,
+    declineText?: string | null,
     onClose?: () => void,
+    onDecline?: () => void,
 }
 
 const colorMap: {[key: string]: string} = {
@@ -28,10 +30,14 @@ const bgMap: {[key: string]: string} = {
 
 export default function WidgetBanner(props: Props) {
     const [closing, setClosing] = useState(false);
+    const [declining, setDeclining] = useState(false);
 
     const onAnimationEnd = () => {
         if (closing && props.onClose) {
             props.onClose();
+        }
+        if (declining && props.onDecline) {
+            props.onDecline();
         }
     };
 
@@ -39,7 +45,7 @@ export default function WidgetBanner(props: Props) {
         <Banner
             color={colorMap[props.type]}
             bgColor={bgMap[props.type]}
-            fadeIn={!closing}
+            fadeIn={!closing && !declining}
             onAnimationEnd={onAnimationEnd}
         >
             <Icon
@@ -64,14 +70,25 @@ export default function WidgetBanner(props: Props) {
                     <BodyText>{props.body}</BodyText>
                     }
                 </Body>
-                { props.confirmText && props.onClose &&
+                { ((props.confirmText && props.onClose) || (props.onDecline && props.declineText)) &&
                     <Footer>
+                        { props.confirmText && props.onClose &&
                         <ConfirmButton
                             className='cursor--pointer style--none'
                             onClick={() => setClosing(true)}
                         >
                             {props.confirmText}
                         </ConfirmButton>
+                        }
+
+                        { props.declineText && props.onDecline &&
+                        <DeclineButton
+                            className='cursor--pointer style--none'
+                            onClick={() => setDeclining(true)}
+                        >
+                            {props.declineText}
+                        </DeclineButton>
+                        }
                     </Footer>
                 }
             </Main>
@@ -165,8 +182,25 @@ const Footer = styled.div`
 `;
 
 const ConfirmButton = styled.button`
-  color: var(--button-bg);
-  font-weight: 600;
+  &&& {
+    color: var(--button-bg);
+    font-weight: 600;
+    padding: 4px 10px;
+    margin-right: 2px;
+    border-radius: 4px;
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+  }
+`;
+
+const DeclineButton = styled.button`
+  &&& {
+    color: var(--dnd-indicator);
+    font-weight: 600;
+    padding: 4px 10px;
+    margin-left: 2px;
+    border-radius: 4px;
+    background: rgba(var(--dnd-indicator-rgb), 0.08);
+  }
 `;
 
 const Icon = styled.div<{fill?: string, color?: string}>`
