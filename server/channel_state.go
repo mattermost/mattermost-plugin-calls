@@ -67,9 +67,10 @@ type CallStateClient struct {
 }
 
 type RecordingStateClient struct {
-	InitAt  int64 `json:"init_at"`
-	StartAt int64 `json:"start_at"`
-	EndAt   int64 `json:"end_at"`
+	InitAt  int64  `json:"init_at"`
+	StartAt int64  `json:"start_at"`
+	EndAt   int64  `json:"end_at"`
+	Err     string `json:"err,omitempty"`
 }
 
 type ChannelStateClient struct {
@@ -86,6 +87,7 @@ func (rs *RecordingStateClient) toMap() map[string]interface{} {
 		"init_at":  rs.InitAt,
 		"start_at": rs.StartAt,
 		"end_at":   rs.EndAt,
+		"err":      rs.Err,
 	}
 }
 
@@ -124,6 +126,19 @@ func (cs *callState) Clone() *callState {
 	}
 
 	return &newState
+}
+
+func (cs *channelState) getRecording() (*recordingState, error) {
+	if cs == nil {
+		return nil, fmt.Errorf("channel state is missing from store")
+	}
+	if cs.Call == nil {
+		return nil, fmt.Errorf("no call ongoing")
+	}
+	if cs.Call.Recording == nil {
+		return nil, fmt.Errorf("no recording ongoing")
+	}
+	return cs.Call.Recording, nil
 }
 
 func (cs *channelState) Clone() *channelState {

@@ -250,10 +250,6 @@ func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool,
 }
 
 func (p *Plugin) removeSession(us *session) error {
-	p.publishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
-		"userID": us.userID,
-	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
-
 	p.LogDebug("removing session from state", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
 
 	p.mut.Lock()
@@ -265,23 +261,41 @@ func (p *Plugin) removeSession(us *session) error {
 		return err
 	}
 
-	if currState.Call != nil && prevState.Call != nil && currState.Call.HostID != prevState.Call.HostID {
+	// Checking if the user session was removed as this method can be called
+	// multiple times but we should send out the ws event only once.
+	if prevState.Call != nil && prevState.Call.Users[us.userID] != nil && (currState.Call == nil || currState.Call.Users[us.userID] == nil) {
+		p.LogDebug("session was removed from state", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
+		p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
+			"userID": us.userID,
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+	}
+
+	// Checking if the host has changed.
+	if prevState.Call != nil && currState.Call != nil && currState.Call.HostID != prevState.Call.HostID {
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 			"hostID": currState.Call.HostID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	}
 
-	if prevState.Call != nil && prevState.Call.Recording != nil && currState.Call != nil && currState.Call.Recording != nil {
-		if prevState.Call.Recording.EndAt != currState.Call.Recording.EndAt {
-			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-				"callID":   us.channelID,
-				"recState": currState.Call.Recording.getClientState().toMap(),
-			}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+	// Checking if the recording has ended due to the bot leaving.
+	if prevState.Call != nil && prevState.Call.Recording != nil && currState.Call != nil && currState.Call.Recording != nil &&
+		prevState.Call.Recording.EndAt != currState.Call.Recording.EndAt {
+		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			"callID":   us.channelID,
+			"recState": currState.Call.Recording.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+	}
+
+	// If the bot is the only user left in the call we automatically stop the recording.
+	if currState.Call != nil && currState.Call.Recording != nil && len(currState.Call.Users) == 1 && currState.Call.Users[p.getBotID()] != nil {
+		p.LogDebug("all users left call with recording in progress, stopping", "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
+		if err := p.jobService.StopJob(currState.Call.Recording.JobID); err != nil {
+			p.LogError("failed to stop recording job", "error", err.Error(), "jobID", currState.Call.Recording.JobID)
 		}
 	}
 
-	if currState.Call == nil && prevState.Call != nil {
-		// call has ended
+	// Check if call has ended.
+	if prevState.Call != nil && currState.Call == nil {
 		dur, err := p.updateCallThreadEnded(prevState.Call.ThreadID)
 		if err != nil {
 			return err
