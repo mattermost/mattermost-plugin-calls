@@ -18,7 +18,7 @@ This plugin demands some network configuration changes to allow audio/video comm
 
 [End-user documentation](https://docs.mattermost.com/channels/make-calls.html)  
 [Calls self-hosted deployment](https://docs.mattermost.com/configure/calls-deployment.html)  
-[Configuration settings](https://docs.mattermost.com/configure/plugins-configuration-settings.html#calls-beta)  
+[Configuration settings](https://docs.mattermost.com/configure/plugins-configuration-settings.html#calls)  
 
 ## Development
 
