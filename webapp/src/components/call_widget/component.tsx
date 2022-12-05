@@ -219,12 +219,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             leaveCallButton: {
                 display: 'flex',
                 alignItems: 'center',
-                padding: '0 8px',
+                padding: '10px 16px',
                 height: '28px',
                 borderRadius: '4px',
                 color: '#D24B4E',
                 background: 'rgba(var(--dnd-indicator-rgb), 0.08)',
-                marginRight: 'auto',
             },
             dotsMenu: {
                 position: 'relative',
@@ -1216,7 +1215,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 header={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header}
                 body={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body}
                 confirmText={isHost ? 'Dismiss' : 'Understood'}
+                declineText={isHost ? null : 'Leave call'}
                 onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
+                onDecline={this.onDisconnectClick}
             />
         );
     }
@@ -1584,6 +1585,75 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={this.style.bottomBar}
                     >
                         <OverlayTrigger
+                            key='participants'
+                            placement='top'
+                            overlay={
+                                <Tooltip id='tooltip-mute'>
+                                    {this.state.showParticipantsList ? 'Hide participants' : 'Show participants'}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}/>
+                                </Tooltip>
+                            }
+                        >
+                            <button
+                                className='style--none button-controls button-controls--wide'
+                                id='calls-widget-participants-button'
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    color: this.state.showParticipantsList ? 'rgba(28, 88, 217, 1)' : '',
+                                    background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.12)' : '',
+                                    marginRight: 'auto',
+                                }}
+                                onClick={() => this.onParticipantsButtonClick()}
+                            >
+                                <ParticipantsIcon
+                                    style={{width: '16px', height: '16px', marginRight: '4px'}}
+                                />
+
+                                <span
+                                    style={{fontWeight: 600, color: changeOpacity(this.props.theme.centerChannelColor, 0.64)}}
+                                >{this.props.profiles.length}</span>
+                            </button>
+                        </OverlayTrigger>
+
+                        <WidgetButton
+                            id='voice-mute-unmute'
+                            // eslint-disable-next-line no-undefined
+                            onToggle={noInputDevices ? undefined : this.onMuteToggle}
+                            // eslint-disable-next-line no-undefined
+                            shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
+                            tooltipText={muteTooltipText}
+                            tooltipSubtext={muteTooltipSubtext}
+                            bgColor={window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
+                            icon={<MuteIcon style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)'}}/>}
+                            unavailable={noInputDevices || noAudioPermissions}
+                        />
+
+                        { !isDirectChannel(this.props.channel) &&
+                        <WidgetButton
+                            id='raise-hand'
+                            onToggle={() => this.onRaiseHandToggle()}
+                            shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
+                            tooltipText={handTooltipText}
+                            bgColor={window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
+                            icon={<HandIcon style={{width: '16px', height: '16px', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}/>}
+                        />
+                        }
+
+                        {this.props.allowScreenSharing && (widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
+
+                        <button
+                            id='calls-widget-toggle-menu-button'
+                            className='cursor--pointer style--none button-controls'
+                            style={this.style.menuButton}
+                            onClick={this.onMenuClick}
+                        >
+                            <HorizontalDotsIcon
+                                style={{width: '16px', height: '16px'}}
+                            />
+                        </button>
+
+                        <OverlayTrigger
                             key='leave'
                             placement='top'
                             overlay={
@@ -1606,73 +1676,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             </button>
                         </OverlayTrigger>
 
-                        <button
-                            id='calls-widget-toggle-menu-button'
-                            className='cursor--pointer style--none button-controls'
-                            style={this.style.menuButton}
-                            onClick={this.onMenuClick}
-                        >
-                            <HorizontalDotsIcon
-                                style={{width: '16px', height: '16px'}}
-                            />
-                        </button>
-
-                        <OverlayTrigger
-                            key='participants'
-                            placement='top'
-                            overlay={
-                                <Tooltip id='tooltip-mute'>
-                                    {this.state.showParticipantsList ? 'Hide participants' : 'Show participants'}
-                                    <Shortcut shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}/>
-                                </Tooltip>
-                            }
-                        >
-                            <button
-                                className='style--none button-controls button-controls--wide'
-                                id='calls-widget-participants-button'
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    color: this.state.showParticipantsList ? 'rgba(28, 88, 217, 1)' : '',
-                                    background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.12)' : '',
-                                }}
-                                onClick={() => this.onParticipantsButtonClick()}
-                            >
-                                <ParticipantsIcon
-                                    style={{width: '16px', height: '16px', marginRight: '4px'}}
-                                />
-
-                                <span
-                                    style={{fontWeight: 600, color: changeOpacity(this.props.theme.centerChannelColor, 0.64)}}
-                                >{this.props.profiles.length}</span>
-                            </button>
-                        </OverlayTrigger>
-
-                        { !isDirectChannel(this.props.channel) &&
-                        <WidgetButton
-                            id='raise-hand'
-                            onToggle={() => this.onRaiseHandToggle()}
-                            shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
-                            tooltipText={handTooltipText}
-                            bgColor={window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
-                            icon={<HandIcon style={{width: '16px', height: '16px', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}/>}
-                        />
-                        }
-
-                        {this.props.allowScreenSharing && (widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
-
-                        <WidgetButton
-                            id='voice-mute-unmute'
-                            // eslint-disable-next-line no-undefined
-                            onToggle={noInputDevices ? undefined : this.onMuteToggle}
-                            // eslint-disable-next-line no-undefined
-                            shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
-                            tooltipText={muteTooltipText}
-                            tooltipSubtext={muteTooltipSubtext}
-                            bgColor={window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
-                            icon={<MuteIcon style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)'}}/>}
-                            unavailable={noInputDevices || noAudioPermissions}
-                        />
                     </div>
                 </div>
             </div>

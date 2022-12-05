@@ -248,9 +248,7 @@ export default class RecordingView extends React.PureComponent<Props, State> {
                     style={style.footer}
                 >
                     <Timestamp/>
-                    { hasScreenShare &&
                     <span style={{marginLeft: '4px'}}>{`• ${this.props.profiles.length} participants`}</span>
-                    }
                     { hasScreenShare && this.renderSpeaking() }
                 </div>
             </div>

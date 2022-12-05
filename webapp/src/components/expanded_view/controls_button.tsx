@@ -126,6 +126,7 @@ const ButtonText = styled.span`
 
 const ButtonIcon = styled.div`
     position: relative;
+    font-size: 0px;
 `;
 
 const UnavailableIcon = styled.div`

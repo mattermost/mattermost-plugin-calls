@@ -165,8 +165,8 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                 icon={
                     <SmileyIcon
                         style={{
-                            width: '28px',
-                            height: '28px',
+                            width: '24px',
+                            height: '24px',
                             fill: showBar ? '#090A0B' : '#FFFFFF',
                         }}
                     />

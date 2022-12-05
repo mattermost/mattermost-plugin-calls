@@ -67,6 +67,7 @@ import {
     PARTICIPANTS_LIST_TOGGLE,
     LEAVE_CALL,
     PUSH_TO_TALK,
+    RECORDING_TOGGLE,
     keyToAction,
     reverseKeyMappings,
     MAKE_REACTION,
@@ -242,6 +243,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         case LEAVE_CALL:
             this.onDisconnectClick();
             break;
+        case RECORDING_TOGGLE:
+            this.onRecordToggle(true);
+            break;
         }
     }
 
@@ -281,11 +285,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
-    onRecordToggle = async () => {
+    onRecordToggle = async (fromShortcut?: boolean) => {
         if (!this.props.callRecording || this.props.callRecording.end_at > 0) {
             await startCallRecording(this.props.channel.id);
+            this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
             await stopCallRecording(this.props.channel.id);
+            this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
     }
 
@@ -507,13 +513,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         let header = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header;
         let body = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body;
-        const confirmText = isHost ? 'Dismiss' : 'Understood';
+        let confirmText = isHost ? 'Dismiss' : 'Understood';
         let icon = (
             <RecordCircleOutlineIcon
                 size={18}
             />);
+        const declineText = isHost ? '' : 'Leave call';
 
         if (hasRecEnded) {
+            confirmText = '';
             header = 'Recording has stopped. Processing...';
             body = 'You can find the recording in this call\'s chat thread once it\'s finished processing.';
         }
@@ -543,7 +551,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 body={body}
                 error={error}
                 confirmText={confirmText}
+                declineText={declineText}
                 onClose={() => this.setState({promptDismissedAt: Date.now()})}
+                onDecline={this.onDisconnectClick}
             />
         );
     }
@@ -901,8 +911,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 icon={
                                     <ParticipantsIcon
                                         style={{
-                                            width: '28px',
-                                            height: '28px',
+                                            width: '24px',
+                                            height: '24px',
                                             fill: this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white',
                                         }}
                                     />
@@ -924,14 +934,27 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 icon={
                                     <MuteIcon
                                         style={{
-                                            width: '28px',
-                                            height: '28px',
+                                            width: '24px',
+                                            height: '24px',
                                             fill: isMuted ? '' : 'rgba(61, 184, 135, 1)',
                                         }}
                                     />
                                 }
                                 unavailable={noInputDevices || noAudioPermissions}
                             />
+
+                            { isHost && this.props.recordingsEnabled &&
+                                <ControlsButton
+                                    id='calls-popout-record-button'
+                                    onToggle={() => this.onRecordToggle()}
+                                    tooltipText={recordTooltipText}
+                                    bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                                    // eslint-disable-next-line no-undefined
+                                    shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}
+                                    iconFill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : ''}
+                                    icon={<RecordIcon size={24}/>}
+                                />
+                            }
 
                             {this.props.allowScreenSharing &&
                                 <ControlsButton
@@ -945,25 +968,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={
                                         <ScreenIcon
                                             style={{
-                                                width: '28px',
-                                                height: '28px',
+                                                width: '24px',
+                                                height: '24px',
                                                 fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : '',
                                             }}
                                         />
                                     }
                                     unavailable={noScreenPermissions}
                                     disabled={sharingID !== '' && !isSharing}
-                                />
-                            }
-
-                            { isHost && this.props.recordingsEnabled &&
-                                <ControlsButton
-                                    id='calls-popout-record-button'
-                                    onToggle={() => this.onRecordToggle()}
-                                    tooltipText={recordTooltipText}
-                                    bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
-                                    iconFill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : ''}
-                                    icon={<RecordIcon size={28}/>}
                                 />
                             }
 
@@ -984,7 +996,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={
                                         <div css={{position: 'relative'}}>
                                             <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
-                                                size={28}
+                                                size={24}
                                                 color={'white'}
                                             />
                                             {!chatDisabled && isChatUnread && (
@@ -996,35 +1008,20 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 />
                             )}
                         </div>
-
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
-                            <OverlayTrigger
-                                key='tooltip-leave-call'
-                                placement='top'
-                                overlay={
-                                    <Tooltip
-                                        id='tooltip-leave-call'
-                                    >
-                                        <span>{'Leave call'}</span>
-                                        <Shortcut shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}/>
-                                    </Tooltip>
-                                }
-                            >
-                                <button
-                                    className='button-leave'
-                                    onClick={this.onDisconnectClick}
-                                >
-
+                            <ControlsButton
+                                id='leave-call'
+                                onToggle={() => this.onDisconnectClick()}
+                                tooltipText={'Leave call'}
+                                shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}
+                                bgColor={'rgb(var(--dnd-indicator-rgb))'}
+                                icon={
                                     <LeaveCallIcon
-                                        style={{width: '24px', height: '24px'}}
-                                        fill='white'
+                                        style={{width: '24px', height: '24px', fill: 'white'}}
                                     />
-                                    <span
-                                        style={{fontSize: '18px', fontWeight: 600, marginLeft: '8px'}}
-                                    >{'Leave'}</span>
-
-                                </button>
-                            </OverlayTrigger>
+                                }
+                                margin='0'
+                            />
                         </div>
                     </div>
                 </div>

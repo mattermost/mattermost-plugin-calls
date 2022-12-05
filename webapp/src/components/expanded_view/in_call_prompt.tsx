@@ -11,7 +11,9 @@ export type Props = {
     error?: string,
     header: string,
     confirmText?: string,
+    declineText?: string,
     onClose?: () => void,
+    onDecline?: () => void,
 }
 
 export default function InCallPrompt(props: Props) {
@@ -48,6 +50,15 @@ export default function InCallPrompt(props: Props) {
                         >
                             {props.confirmText}
                         </ConfirmButton>
+                    }
+
+                    { props.declineText && props.onDecline &&
+                        <DeclineButton
+                            className='cursor--pointer style--none'
+                            onClick={props.onDecline}
+                        >
+                            {props.declineText}
+                        </DeclineButton>
                     }
                 </Footer>
             </Main>
@@ -99,11 +110,24 @@ const Footer = styled.div`
 `;
 
 const ConfirmButton = styled.button`
-  color: var(--button-bg);
+  &&& {
+  color: #1B1D22;
+  background: #FFFFFF;
   font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 4px;
+  margin-right: 6px;
+  }
+`;
 
-  :hover {
-    background: rgba(var(--center-channel-color-rgb), 0.08);
+const DeclineButton = styled.button`
+  &&& {
+  color: #D24B4E;
+  background: rgba(210, 75, 78, 0.08);
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 4px;
+  margin-left: 6px;
   }
 `;
 

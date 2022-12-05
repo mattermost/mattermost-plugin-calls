@@ -8,6 +8,8 @@ export enum Event {
     RaiseHand = 'user_raise_hand',
     LowerHand = 'user_lower_hand',
     OpenChannelLink = 'user_open_channel_link',
+    StartRecording = 'start_recording',
+    StopRecording = 'stop_recording',
 }
 
 export enum Source {
