@@ -336,7 +336,11 @@ func (p *Plugin) OnConfigurationChange() error {
 }
 
 func (p *Plugin) setOverrides(cfg *configuration) {
-	cfg.AllowEnableCalls = model.NewBool(true)
+	if cfg.AllowEnableCalls == nil {
+		cfg.AllowEnableCalls = model.NewBool(true)
+	} else {
+		*cfg.AllowEnableCalls = true
+	}
 
 	if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// On Cloud installations we want calls enabled in all channels so we
@@ -345,6 +349,9 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	}
 
 	// Allow env var to permanently override system console settings
+	if cfg.MaxCallParticipants == nil {
+		cfg.MaxCallParticipants = model.NewInt(0)
+	}
 	if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
 		if max, err := strconv.Atoi(maxPart); err == nil {
 			*cfg.MaxCallParticipants = max

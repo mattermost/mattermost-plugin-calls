@@ -179,6 +179,7 @@ async function globalSetup(config: FullConfig) {
     serverConfig.PluginSettings.Plugins = {
         ...serverConfig.PluginSettings.Plugins,
         [`${plugin.id}`]: {
+            ...serverConfig.PluginSettings.Plugins[`${plugin.id}`],
             defaultenabled: true,
         },
     };
