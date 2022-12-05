@@ -520,8 +520,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         let error = '';
         if (this.props.callRecording?.err) {
-            header = 'Something went wrong with the recording!';
-            body = 'Please try to record again. If the error persists please ask your system administrator.';
+            header = 'Something went wrong with the recording';
+            body = 'Please try to record again. You can also contact your system admin for troubleshooting help.';
             error = capitalize(this.props.callRecording?.err);
 
             icon = (
