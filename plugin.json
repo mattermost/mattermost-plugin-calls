@@ -22,79 +22,88 @@
         "header": "Calls plugin enables voice calls with screensharing in channels. See [documentation](https://docs.mattermost.com/channels/make-calls.html) to learn more.",
         "footer": "",
         "settings": [
-        {
-          "key": "DefaultEnabled",
-          "display_name": "Enable on all channels",
-          "type": "bool",
-          "help_text": "When set to true, calls can be started in all channels unless they're explicitly disabled.",
-          "default": false
-        },
-        {
-            "key": "UDPServerPort",
-            "display_name": "RTC Server Port",
-            "type": "number",
-            "help_text": "The UDP port the RTC server will listen on.",
-            "default": 8443,
-            "placeholder": "8443"
-        },
-        {
-          "key": "MaxCallParticipants",
-          "display_name": "Max call participants",
-          "type": "number",
-          "help_text": "The maximum number of participants that can join a call. If left empty, or set to 0, it means unlimited.",
-          "default": 0
-        },
-        {
-          "key": "ICEHostOverride",
-          "display_name": "ICE Host Override",
-          "type": "text",
-          "help_text": "(Optional) The IP (or hostname) to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.",
-          "default": ""
-        },
-        {
-          "key": "ICEServersConfigs",
-          "display_name": "ICE Servers Configurations",
-          "type": "longtext",
-          "help_text": "(Optional) A list of ICE servers (STUN/TURN) configurations to use. This field should contain a valid JSON array.",
-          "default": "[{\"urls\":[\"stun:stun.global.calls.mattermost.com:3478\"]}]",
-          "placeholder": "[{\n \"urls\":[\"turn:turnserver.example.org:3478\"],\n \"username\": \"webrtc\",\n \"credential\": \"turnpassword\"\n}]"
-        },
-        {
-          "key": "TURNStaticAuthSecret",
-          "display_name": "TURN Static Auth Secret",
-          "type": "text",
-          "default": "",
-          "help_text": "(Optional) The secret key used to generate TURN short-lived authentication credentials."
-        },
-        {
-          "key": "TURNCredentialsExpirationMinutes",
-          "display_name": "TURN Credentials Expiration (minutes)",
-          "type": "number",
-          "default": 1440,
-          "help_text": "(Optional) The number of minutes that the generated TURN credentials will be valid for."
-        },
-        {
-          "key": "ServerSideTURN",
-          "display_name": "Server Side TURN",
-          "type": "bool",
-          "default": false,
-          "help_text": "(Optional) When set to true it will pass and use configured TURN candidates to server initiated connections."
-        },
-
-        {
-          "key": "AllowScreenSharing",
-          "display_name": "Allow screen sharing",
-          "type": "bool",
-          "default": true,
-          "help_text": "When set to true it allows call participants to share their screen."
-        },
-        {
-          "key": "RTCDServiceURL",
-          "display_name": "RTCD service URL",
-          "type": "text",
-          "help_text": "(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
-          "placeholder": "https://rtcd.example.com"
-        }
+            {
+                "key": "TestMode",
+                "display_name": "Test mode",
+                "type": "radio",
+                "help_text": "When test mode is enabled, only system admins are able to start calls in channels. This allows testing to confirm calls are working as expected.",
+                "options": [
+                    {
+                        "display_name": "Off",
+                        "value": "off"
+                    },
+                    {
+                        "display_name": "On",
+                        "value": "on"
+                    }
+                ],
+                "default": "on"
+            },
+            {
+                "key": "UDPServerPort",
+                "display_name": "RTC Server Port",
+                "type": "number",
+                "help_text": "The UDP port the RTC server will listen on.",
+                "default": 8443,
+                "placeholder": "8443"
+            },
+            {
+                "key": "MaxCallParticipants",
+                "display_name": "Max call participants",
+                "type": "number",
+                "help_text": "The maximum number of participants that can join a call. If left empty, or set to 0, it means unlimited.",
+                "default": 0
+            },
+            {
+                "key": "ICEHostOverride",
+                "display_name": "ICE Host Override",
+                "type": "text",
+                "help_text": "(Optional) The IP (or hostname) to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.",
+                "default": ""
+            },
+            {
+                "key": "ICEServersConfigs",
+                "display_name": "ICE Servers Configurations",
+                "type": "longtext",
+                "help_text": "(Optional) A list of ICE servers (STUN/TURN) configurations to use. This field should contain a valid JSON array.",
+                "default": "[{\"urls\":[\"stun:stun.global.calls.mattermost.com:3478\"]}]",
+                "placeholder": "[{\n \"urls\":[\"turn:turnserver.example.org:3478\"],\n \"username\": \"webrtc\",\n \"credential\": \"turnpassword\"\n}]"
+            },
+            {
+                "key": "TURNStaticAuthSecret",
+                "display_name": "TURN Static Auth Secret",
+                "type": "text",
+                "default": "",
+                "help_text": "(Optional) The secret key used to generate TURN short-lived authentication credentials."
+            },
+            {
+                "key": "TURNCredentialsExpirationMinutes",
+                "display_name": "TURN Credentials Expiration (minutes)",
+                "type": "number",
+                "default": 1440,
+                "help_text": "(Optional) The number of minutes that the generated TURN credentials will be valid for."
+            },
+            {
+                "key": "ServerSideTURN",
+                "display_name": "Server Side TURN",
+                "type": "bool",
+                "default": false,
+                "help_text": "(Optional) When set to true it will pass and use configured TURN candidates to server initiated connections."
+            },
+            {
+                "key": "AllowScreenSharing",
+                "display_name": "Allow screen sharing",
+                "type": "bool",
+                "default": true,
+                "help_text": "When set to true it allows call participants to share their screen."
+            },
+            {
+                "key": "RTCDServiceURL",
+                "display_name": "RTCD service URL",
+                "type": "text",
+                "help_text": "(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
+                "placeholder": "https://rtcd.example.com"
+            }
         ]
     }
 }

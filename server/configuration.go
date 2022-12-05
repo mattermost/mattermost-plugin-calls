@@ -43,6 +43,9 @@ type configuration struct {
 	// When set to true it will pass and use configured TURN candidates to server
 	// initiated connections.
 	ServerSideTURN *bool
+	// TestMode is a setting used only in the system console. It is converted to DefaultEnabled
+	// for clients (see the entry in clientConfig below)
+	TestMode string
 
 	clientConfig
 }
@@ -57,7 +60,10 @@ type clientConfig struct {
 	// It allows channel admins to enable or disable calls in their channels.
 	// It also allows participants of DMs/GMs to enable or disable calls.
 	AllowEnableCalls *bool
-	// When set to true, calls will be possible in all channels where they are not explicitly disabled.
+	// DefaultEnabled is required for clients; it is set by TestMode in the plugin.json, such that:
+	// TestMode="on" -> DefaultEnabled=false
+	// TestMode="off" -> DefaultEnabled=true
+	// When TestMode is set to off (DefaultEnabled=true), calls will be possible in all channels where they are not explicitly disabled.
 	DefaultEnabled *bool
 	// The maximum number of participants that can join a call. The zero value
 	// means unlimited.
@@ -148,9 +154,15 @@ func (pr PortsRange) IsValid() error {
 }
 
 func (c *configuration) getClientConfig() clientConfig {
+	// convert TestMode -> DefaultEnabled
+	defaultEnabled := false
+	if c.TestMode == "off" {
+		defaultEnabled = true
+	}
+
 	return clientConfig{
 		AllowEnableCalls:     c.AllowEnableCalls,
-		DefaultEnabled:       c.DefaultEnabled,
+		DefaultEnabled:       model.NewBool(defaultEnabled),
 		ICEServers:           c.ICEServers,
 		ICEServersConfigs:    c.getICEServers(true),
 		MaxCallParticipants:  c.MaxCallParticipants,
@@ -213,6 +225,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.RTCDServiceURL = c.RTCDServiceURL
 	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 	cfg.AllowEnableCalls = model.NewBool(true)
+	cfg.TestMode = c.TestMode
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)

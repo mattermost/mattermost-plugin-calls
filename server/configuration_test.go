@@ -81,8 +81,8 @@ func TestGetClientConfig(t *testing.T) {
 	require.Equal(t, model.NewBool(true), clientCfg.AllowEnableCalls)
 	require.Equal(t, cfg.AllowEnableCalls, clientCfg.AllowEnableCalls)
 	require.Equal(t, cfg.DefaultEnabled, clientCfg.DefaultEnabled)
-	*cfg.DefaultEnabled = true
+	cfg.TestMode = "off"
 	clientCfg = cfg.getClientConfig()
 	require.Equal(t, cfg.AllowEnableCalls, clientCfg.AllowEnableCalls)
-	require.Equal(t, cfg.DefaultEnabled, clientCfg.DefaultEnabled)
+	require.Equal(t, true, *clientCfg.DefaultEnabled)
 }
