@@ -135,6 +135,7 @@ endif
 
 standalone/node_modules: $(wildcard standalone/package.json)
 ifneq ($(HAS_WEBAPP),)
+	cd standalone && node skip_integrity_check.js
 	cd standalone && $(NPM) install
 	touch $@
 endif
