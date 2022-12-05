@@ -65,7 +65,7 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                         trialExpirationDate: trialEndDate,
                         recordingsDocsLink: (text: string) => (
                             <a
-                                href='https://docs.mattermost.com/configure/calls-recordings.html'
+                                href='https://docs.mattermost.com/configure/calls-deployment.html#call-recording'
                                 target='_blank'
                                 rel='noreferrer'
                             >

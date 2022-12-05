@@ -98,11 +98,11 @@ const EnableRecordings = (props: CustomComponentProps) => {
                         <VerticalSpacer size={8}/>
                         <Text>
                             <FormattedMessage
-                                defaultMessage={'Allow call hosts to record meeting video and audio on the cloud. Recording include the entire call window view along with participants audio track and any shared screen video. <featureLink>Learn more about this feature</featureLink>.'}
+                                defaultMessage={'Allow call hosts to record meeting video and audio in the cloud. Recording include the entire call window view along with participants\' audio track and any shared screen video. <featureLink>Learn more about this feature</featureLink>.'}
                                 values={{
                                     featureLink: (text: string) => (
                                         <a
-                                            href='https://docs.mattermost.com/configure/calls-recordings.html'
+                                            href='https://docs.mattermost.com/configure/calls-deployment.html#call-recording'
                                             target='_blank'
                                             rel='noreferrer'
                                         >
