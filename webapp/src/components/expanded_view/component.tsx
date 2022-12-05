@@ -1010,7 +1010,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
                             <ControlsButton
-                                id='leave-call'
+                                id='calls-popout-leave-button'
                                 onToggle={() => this.onDisconnectClick()}
                                 tooltipText={'Leave call'}
                                 shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}
