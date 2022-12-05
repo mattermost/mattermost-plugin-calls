@@ -159,7 +159,6 @@ test.describe('keyboard shortcuts', () => {
         });
         if (!isMuted) {
             test.fail();
-            return;
         }
     });
 });
