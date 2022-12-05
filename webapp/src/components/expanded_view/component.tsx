@@ -25,6 +25,7 @@ import {
     hasExperimentalFlag,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
+    capitalize,
 } from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
 import {
@@ -480,8 +481,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isHost = this.props.callHostID === this.props.currentUserID;
         const hasRecEnded = this.props.callRecording?.end_at;
 
-        // Nothing to show if the recording hasn't started yet.
-        if (!this.props.callRecording?.start_at) {
+        // Nothing to show if the recording hasn't started yet, unless there
+        // was an error.
+        if (!this.props.callRecording?.start_at && !this.props.callRecording?.err) {
             return null;
         }
 
@@ -506,22 +508,40 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         let header = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header;
         let body = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body;
         const confirmText = isHost ? 'Dismiss' : 'Understood';
+        let icon = (
+            <RecordCircleOutlineIcon
+                size={18}
+            />);
 
         if (hasRecEnded) {
             header = 'Recording has stopped. Processing...';
             body = 'You can find the recording in this call\'s chat thread once it\'s finished processing.';
         }
 
+        let error = '';
+        if (this.props.callRecording?.err) {
+            header = 'Something went wrong with the recording';
+            body = 'Please try to record again. You can also contact your system admin for troubleshooting help.';
+            error = capitalize(this.props.callRecording?.err);
+
+            icon = (
+                <CompassIcon
+                    icon='alert-outline'
+                    style={{
+                        fontSize: 18,
+                    }}
+                />
+            );
+        }
+
         return (
             <InCallPrompt
-                icon={(
-                    <RecordCircleOutlineIcon
-                        size={18}
-                    />)}
+                icon={icon}
                 iconFill='rgb(var(--dnd-indicator-rgb))'
                 iconColor='rgb(var(--dnd-indicator-rgb))'
                 header={header}
                 body={body}
+                error={error}
                 confirmText={confirmText}
                 onClose={() => this.setState({promptDismissedAt: Date.now()})}
             />
@@ -743,6 +763,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return null;
         }
 
+        if (this.props.callRecording?.err) {
+            return null;
+        }
+
         return (
             <Badge
                 text={'REC'}
@@ -808,7 +832,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
 
         const isHost = this.props.callHostID === this.props.currentUserID;
-        const isRecording = isHost && this.props.callRecording && this.props.callRecording.init_at > 0 && !this.props.callRecording.end_at;
+        const isRecording = isHost && this.props.callRecording && this.props.callRecording.init_at > 0 && !this.props.callRecording.end_at && !this.props.callRecording.err;
         const recordTooltipText = isRecording ? 'Stop recording' : 'Record call';
         const RecordIcon = isRecording ? RecordSquareOutlineIcon : RecordCircleOutlineIcon;
 
