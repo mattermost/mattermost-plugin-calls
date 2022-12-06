@@ -68,6 +68,7 @@ export type CallsConfig = {
     NeedsTURNCredentials: boolean,
     AllowScreenSharing: boolean,
     EnableRecordings: boolean,
+    MaxRecordingDuration: number,
     sku_short_name: string,
 }
 
@@ -80,6 +81,7 @@ export const CallsConfigDefault: CallsConfig = {
     NeedsTURNCredentials: false,
     AllowScreenSharing: true,
     EnableRecordings: false,
+    MaxRecordingDuration: 60,
     sku_short_name: '',
 };
 
