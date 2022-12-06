@@ -19,15 +19,11 @@ test.describe('keyboard shortcuts', () => {
         // Solely needed to wait till the page has loaded.
         await expect(page.locator('[aria-label="channel header region"] button:has-text("Start Call")')).toBeVisible();
 
-        await page.keyboard.down('Control');
-        await page.keyboard.down('Shift');
-        await page.keyboard.down('S');
+        await page.keyboard.press('Control+Alt+S');
 
         await expect(page.locator('#calls-widget')).toBeVisible();
 
-        await page.keyboard.down('Control');
-        await page.keyboard.down('Shift');
-        await page.keyboard.down('L');
+        await page.keyboard.press('Control+Shift+L');
 
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
