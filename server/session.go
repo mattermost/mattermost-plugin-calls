@@ -128,8 +128,14 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 		}
 
 		// When the bot joins the call it means the recording has started.
-		if state.Call.Recording != nil && userID == botID {
-			state.Call.Recording.StartAt = time.Now().UnixMilli()
+		if userID == botID {
+			if state.Call.Recording != nil && state.Call.Recording.StartAt == 0 {
+				state.Call.Recording.StartAt = time.Now().UnixMilli()
+			} else if state.Call.Recording == nil || state.Call.Recording.StartAt > 0 {
+				// In this case we should fail to prevent the bot from recording
+				// without consent.
+				return nil, fmt.Errorf("recording not in progress or already started")
+			}
 		}
 
 		if state.Call.HostID == "" && userID != botID {
