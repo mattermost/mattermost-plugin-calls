@@ -168,6 +168,13 @@ async function globalSetup(config: FullConfig) {
                 headers,
             });
         }
+
+        await adminContext.post(`/plugins/${plugin.id}/${channel.id}`, {
+            data: {
+                enabled: true,
+            },
+            headers,
+        });
     }
 
     await adminContext.post(`/api/v4/plugins/${plugin.id}/enable`, {
@@ -179,7 +186,7 @@ async function globalSetup(config: FullConfig) {
     serverConfig.PluginSettings.Plugins = {
         ...serverConfig.PluginSettings.Plugins,
         [`${plugin.id}`]: {
-            ...serverConfig.PluginSettings.Plugins[`${plugin.id}`],
+            ...serverConfig.PluginSettings.Plugins[plugin.id],
             defaultenabled: true,
             testmode: 'off',
         },
