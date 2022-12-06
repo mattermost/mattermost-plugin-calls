@@ -39,5 +39,6 @@ const SizedGenericModal = styled(GenericModal)`
 
 const FooterContainer = styled.div`
     display: flex;
-    flex-direction: row-reverse;
+    flex-direction: row;
+    justify-content: center;
 `;
