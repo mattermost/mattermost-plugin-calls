@@ -25,8 +25,7 @@ test.describe('start/join call in channel with calls disabled', () => {
         await devPage.disableCalls();
 
         await page.locator('#post_textbox').fill('/call start');
-        await page.locator('#post_textbox').press('Enter');
-        await page.locator('#post_textbox').press('Enter');
+        await page.locator('[data-testid=SendMessageButton]').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
         await expect(page.locator('#create_post div.has-error label')).toBeVisible();
         const text = await page.textContent('#create_post div.has-error label');
@@ -40,8 +39,7 @@ test.describe('start/join call in channel with calls disabled', () => {
         await devPage.disableCalls();
 
         await page.locator('#post_textbox').fill('/call join');
-        await page.locator('#post_textbox').press('Enter');
-        await page.locator('#post_textbox').press('Enter');
+        await page.locator('[data-testid=SendMessageButton]').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
         await expect(page.locator('#create_post div.has-error label')).toBeVisible();
         const text = await page.textContent('#create_post div.has-error label');
@@ -64,12 +62,10 @@ test.describe('start new call', () => {
 
     test('slash command', async ({page, context}) => {
         await page.locator('#post_textbox').fill('/call join');
-        await page.locator('#post_textbox').press('Enter');
-        await page.locator('#post_textbox').press('Enter');
+        await page.locator('[data-testid=SendMessageButton]').click();
         await expect(page.locator('#calls-widget')).toBeVisible();
         await page.locator('#post_textbox').fill('/call leave');
-        await page.locator('#post_textbox').press('Enter');
-        await page.locator('#post_textbox').press('Enter');
+        await page.locator('[data-testid=SendMessageButton]').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
@@ -139,8 +135,7 @@ test.describe('auto join link', () => {
 
     test('public channel', async ({page, context}) => {
         await page.locator('#post_textbox').fill('/call link');
-        await page.locator('#post_textbox').press('Enter');
-        await page.locator('#post_textbox').press('Enter');
+        await page.locator('[data-testid=SendMessageButton]').click();
 
         const post = page.locator('.post-message__text').last();
         await expect(post).toBeVisible();
@@ -163,8 +158,7 @@ test.describe('auto join link', () => {
         await devPage.gotoDM(userState.users[1].username);
 
         await page.locator('#post_textbox').fill('/call link');
-        await page.locator('#post_textbox').press('Enter');
-        await page.locator('#post_textbox').press('Enter');
+        await page.locator('[data-testid=SendMessageButton]').click();
 
         const post = page.locator('.post-message__text').last();
         await expect(post).toBeVisible();
