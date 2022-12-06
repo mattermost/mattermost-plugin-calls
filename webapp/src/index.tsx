@@ -21,6 +21,8 @@ import {
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 
+import TestMode from 'src/components/admin_console_settings/test_mode';
+
 import {
     handleUserConnected,
     handleUserDisconnected,
@@ -235,8 +237,7 @@ export default class Plugin {
                         title = fields.slice(2).join(' ');
                     }
                     const team_id = args?.team_id || getChannel(store.getState(), args.channel_id).team_id;
-                    joinCall(args.channel_id, team_id, title);
-                    return {};
+                    return joinCall(args.channel_id, team_id, title);
                 }
                 return {error: {message: 'You\'re already connected to a call in the current channel.'}};
             case 'leave':
@@ -342,7 +343,7 @@ export default class Plugin {
             const explicitlyEnabled = callsExplicitlyEnabled(store.getState(), channelId);
             const explicitlyDisabled = callsExplicitlyDisabled(store.getState(), channelId);
 
-            // Note: not super happy with using explicitlyDisabled bothe here and below, but wanted to keep the "able to start" logic confined to one place.
+            // Note: not super happy with using explicitlyDisabled both here and below, but wanted to keep the "able to start" logic confined to one place.
             if (channelHasCall(store.getState(), channelId) || explicitlyEnabled || (!explicitlyDisabled && defaultEnabled(store.getState()))) {
                 if (isLimitRestricted(store.getState())) {
                     if (isCloudStarter(store.getState())) {
@@ -399,6 +400,7 @@ export default class Plugin {
         registerChannelHeaderMenuButton();
 
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
+        registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
 
         const connectCall = async (channelID: string, title?: string) => {
             if (shouldRenderDesktopWidget()) {

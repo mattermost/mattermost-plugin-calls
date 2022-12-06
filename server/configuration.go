@@ -43,9 +43,6 @@ type configuration struct {
 	// When set to true it will pass and use configured TURN candidates to server
 	// initiated connections.
 	ServerSideTURN *bool
-	// TestMode is a setting used only in the system console. It is converted to DefaultEnabled
-	// for clients (see the entry in clientConfig below)
-	TestMode string
 
 	clientConfig
 }
@@ -60,9 +57,9 @@ type clientConfig struct {
 	// It allows channel admins to enable or disable calls in their channels.
 	// It also allows participants of DMs/GMs to enable or disable calls.
 	AllowEnableCalls *bool
-	// DefaultEnabled is required for clients; it is set by TestMode in the plugin.json, such that:
-	// TestMode="on" -> DefaultEnabled=false
+	// DefaultEnabled is required for clients; it is called 'TestMode' in the client, such that:
 	// TestMode="off" -> DefaultEnabled=true
+	// TestMode="on" -> DefaultEnabled=false
 	// When TestMode is set to off (DefaultEnabled=true), calls will be possible in all channels where they are not explicitly disabled.
 	DefaultEnabled *bool
 	// The maximum number of participants that can join a call. The zero value
@@ -154,15 +151,9 @@ func (pr PortsRange) IsValid() error {
 }
 
 func (c *configuration) getClientConfig() clientConfig {
-	// convert TestMode -> DefaultEnabled
-	defaultEnabled := false
-	if c.TestMode == "off" {
-		defaultEnabled = true
-	}
-
 	return clientConfig{
-		AllowEnableCalls:     c.AllowEnableCalls,
-		DefaultEnabled:       model.NewBool(defaultEnabled),
+		AllowEnableCalls:     model.NewBool(true), // always true
+		DefaultEnabled:       c.DefaultEnabled,
 		ICEServers:           c.ICEServers,
 		ICEServersConfigs:    c.getICEServers(true),
 		MaxCallParticipants:  c.MaxCallParticipants,
@@ -179,8 +170,7 @@ func (c *configuration) SetDefaults() {
 	c.AllowEnableCalls = model.NewBool(true)
 
 	if c.DefaultEnabled == nil {
-		c.DefaultEnabled = new(bool)
-		*c.DefaultEnabled = false
+		c.DefaultEnabled = model.NewBool(false)
 	}
 	if c.MaxCallParticipants == nil {
 		c.MaxCallParticipants = new(int)
@@ -224,13 +214,14 @@ func (c *configuration) Clone() *configuration {
 	cfg.ICEHostOverride = c.ICEHostOverride
 	cfg.RTCDServiceURL = c.RTCDServiceURL
 	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
-	cfg.AllowEnableCalls = model.NewBool(true)
-	cfg.TestMode = c.TestMode
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)
 		*cfg.UDPServerPort = *c.UDPServerPort
 	}
+
+	// AllowEnableCalls is always true
+	cfg.AllowEnableCalls = model.NewBool(true)
 
 	if c.DefaultEnabled != nil {
 		cfg.DefaultEnabled = model.NewBool(*c.DefaultEnabled)
@@ -349,11 +340,7 @@ func (p *Plugin) OnConfigurationChange() error {
 }
 
 func (p *Plugin) setOverrides(cfg *configuration) {
-	if cfg.AllowEnableCalls == nil {
-		cfg.AllowEnableCalls = model.NewBool(true)
-	} else {
-		*cfg.AllowEnableCalls = true
-	}
+	cfg.AllowEnableCalls = model.NewBool(true)
 
 	if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// On Cloud installations we want calls enabled in all channels so we
@@ -361,10 +348,11 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 		*cfg.DefaultEnabled = true
 	}
 
-	// Allow env var to permanently override system console settings
 	if cfg.MaxCallParticipants == nil {
 		cfg.MaxCallParticipants = model.NewInt(0)
 	}
+
+	// Allow env var to permanently override system console settings
 	if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
 		if max, err := strconv.Atoi(maxPart); err == nil {
 			*cfg.MaxCallParticipants = max

@@ -23,21 +23,10 @@
         "footer": "",
         "settings": [
             {
-                "key": "TestMode",
+                "key": "DefaultEnabled",
                 "display_name": "Test mode",
-                "type": "radio",
-                "help_text": "When test mode is enabled, only system admins are able to start calls in channels. This allows testing to confirm calls are working as expected.",
-                "options": [
-                    {
-                        "display_name": "Off",
-                        "value": "off"
-                    },
-                    {
-                        "display_name": "On",
-                        "value": "on"
-                    }
-                ],
-                "default": "on"
+                "type": "custom",
+                "help_text": "When test mode is enabled, only system admins are able to start calls in channels. This allows testing to confirm calls are working as expected."
             },
             {
                 "key": "UDPServerPort",
