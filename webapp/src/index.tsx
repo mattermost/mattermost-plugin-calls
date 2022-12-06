@@ -38,7 +38,6 @@ import {
 } from './websocket_handlers';
 
 import {
-    callsEnabled,
     connectedChannelID,
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
@@ -50,6 +49,8 @@ import {
     defaultEnabled,
     isCloudStarter,
     channelHasCall,
+    callsExplicitlyEnabled,
+    callsExplicitlyDisabled,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -330,6 +331,7 @@ export default class Plugin {
 
         const joinCall = async (channelId: string, teamId: string, title?: string): Promise<SlashCommandWillBePostedReturn> => {
             // Anyone can join a call already in progress.
+            // If explicitly enabled, everyone can start calls.
             // In LiveMode (DefaultEnabled=true):
             //   - everyone can start a call unless it has been disabled
             // If explicitly disabled, no-one can start calls.
@@ -337,7 +339,11 @@ export default class Plugin {
             //   - sysadmins can start a call, but they receive an ephemeral message (server-side)
             //   - non-sysadmins cannot start a call and are shown a prompt
 
-            if (channelHasCall(store.getState(), channelId) || defaultEnabled(store.getState())) {
+            const explicitlyEnabled = callsExplicitlyEnabled(store.getState(), channelId);
+            const explicitlyDisabled = callsExplicitlyDisabled(store.getState(), channelId);
+
+            // Note: not super happy with using explicitlyDisabled bothe here and below, but wanted to keep the "able to start" logic confined to one place.
+            if (channelHasCall(store.getState(), channelId) || explicitlyEnabled || (!explicitlyDisabled && defaultEnabled(store.getState()))) {
                 if (isLimitRestricted(store.getState())) {
                     if (isCloudStarter(store.getState())) {
                         store.dispatch(displayFreeTrial());
@@ -352,7 +358,8 @@ export default class Plugin {
                 return {};
             }
 
-            if (!callsEnabled(store.getState(), channelId)) {
+            if (explicitlyDisabled) {
+                // UI should not have shown, so this is a response to a slash command.
                 return {error: {message: 'Cannot start or join call: calls are disabled in this channel.'}};
             }
 
@@ -360,10 +367,9 @@ export default class Plugin {
             if (isCurrentUserSystemAdmin(store.getState())) {
                 // Rely on server side to send ephemeral message.
                 await connectToCall(channelId, teamId, title);
-                return {};
+            } else {
+                store.dispatch(displayCallsTestModeUser());
             }
-
-            store.dispatch(displayCallsTestModeUser());
 
             return {};
         };
@@ -479,7 +485,7 @@ export default class Plugin {
                 async (channelID) => {
                     try {
                         const resp = await axios.post(`${getPluginPath()}/${currChannelId}`,
-                            {enabled: !callsEnabled(store.getState(), currChannelId)},
+                            {enabled: callsExplicitlyDisabled(store.getState(), currChannelId)},
                             {headers: {'X-Requested-With': 'XMLHttpRequest'}});
                         store.dispatch({
                             type: RECEIVED_CHANNEL_STATE,

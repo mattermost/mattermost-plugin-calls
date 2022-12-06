@@ -189,15 +189,16 @@ export const isCloudTrialNeverStarted = (state: GlobalState): boolean =>
 export const channelState = (state: GlobalState, channelId: string): ChannelState =>
     pluginState(state).channelState[channelId];
 
-// If this is the system admin, calls are enabled even if DefaultEnabled is false, but only in post 7.6.
-// TODO: remember to send the ephemeral message
+export const callsExplicitlyEnabled = (state: GlobalState, channelId: string): boolean =>
+    Boolean(channelState(state, channelId)?.enabled);
 
-// callsEnabled returns false if calls are explicitly enabled. A channel's enabled state can be undefined (never
-// explicitly set), true (explicitly enabled), or false (explicitly disabled)
-export const callsEnabled = (state: GlobalState, channelId: string): boolean => {
+export const callsExplicitlyDisabled = (state: GlobalState, channelId: string): boolean => {
     const enabled = channelState(state, channelId)?.enabled;
-    return (typeof enabled === 'undefined') || enabled;
+    return (typeof enabled !== 'undefined') && !enabled;
 };
+
+export const callsShowButton = (state: GlobalState, channelId: string): boolean =>
+    !callsExplicitlyDisabled(state, channelId);
 
 export const callsUserPreferences = (state: GlobalState): CallsUserPreferences =>
     pluginState(state).callsUserPreferences;
