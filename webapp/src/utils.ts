@@ -104,10 +104,10 @@ export function getPixelRatio(): number {
         return dpr;
     }
     const bsr = ctx.webkitBackingStorePixelRatio ||
-    ctx.mozBackingStorePixelRatio ||
-    ctx.msBackingStorePixelRatio ||
-    ctx.oBackingStorePixelRatio ||
-    ctx.backingStorePixelRatio || 1;
+        ctx.mozBackingStorePixelRatio ||
+        ctx.msBackingStorePixelRatio ||
+        ctx.oBackingStorePixelRatio ||
+        ctx.backingStorePixelRatio || 1;
     canvas.remove();
     return dpr / bsr;
 }
@@ -120,18 +120,6 @@ export function getScreenResolution() {
         width,
         height,
     };
-}
-
-export function hasPermissionsToEnableCalls(channel: Channel, cm: ChannelMembership | null | undefined, systemRoles: Set<string>, channelRoles: Record<string, Set<string>>, allowEnable: boolean) {
-    if (!allowEnable) {
-        return systemRoles.has('system_admin');
-    }
-
-    return (isDirectChannel(channel) ||
-    isGroupChannel(channel)) ||
-    cm?.scheme_admin === true ||
-    channelRoles[channel.id]?.has('channel_admin') ||
-    systemRoles.has('system_admin');
 }
 
 export function getExpandedChannelID() {
@@ -151,7 +139,7 @@ export function alphaSortProfiles(profiles: UserProfile[]) {
     };
 }
 
-export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: string]: UserState}, presenterID: string) {
+export function stateSortProfiles(profiles: UserProfile[], statuses: { [key: string]: UserState }, presenterID: string) {
     return (elA: UserProfile, elB: UserProfile) => {
         let stateA = statuses[elA.id];
         let stateB = statuses[elB.id];
@@ -197,8 +185,8 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
     };
 }
 
-export async function getScreenStream(sourceID?: string, withAudio?: boolean): Promise<MediaStream|null> {
-    let screenStream: MediaStream|null = null;
+export async function getScreenStream(sourceID?: string, withAudio?: boolean): Promise<MediaStream | null> {
+    let screenStream: MediaStream | null = null;
 
     if (window.desktop) {
         try {

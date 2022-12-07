@@ -12,6 +12,7 @@ import {
     CallsUserPreferencesDefault,
     Reaction,
     CallRecordingState,
+    ChannelState,
 } from './types/types';
 
 import {
@@ -52,20 +53,16 @@ import {
     VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
 
-interface channelState {
-    id: string,
-    enabled: boolean,
-}
-
 interface channelStateAction {
     type: string,
-    data: channelState,
+    data: ChannelState,
 }
 
-const channelState = (state: { [channelID: string]: channelState } = {}, action: channelStateAction) => {
+const channelState = (state: { [channelID: string]: ChannelState } = {}, action: channelStateAction) => {
     switch (action.type) {
     case RECEIVED_CHANNEL_STATE:
         return {
+            ...state,
             [action.data.id]: action.data,
         };
     default:

@@ -71,21 +71,14 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 	var currState channelState
 	var prevState channelState
 
-	cfg := p.getConfiguration()
 	botID := p.getBotID()
 
 	err := p.kvSetAtomicChannelState(channel.Id, func(state *channelState) (*channelState, error) {
 		if state == nil {
-			if cfg.DefaultEnabled != nil && *cfg.DefaultEnabled {
-				state = &channelState{
-					Enabled: true,
-				}
-			} else {
-				return nil, fmt.Errorf("channel state is missing from store")
-			}
+			state = &channelState{}
 		}
 
-		if !state.Enabled {
+		if !p.userCanStartOrJoin(userID, state) {
 			return nil, fmt.Errorf("calls are not enabled")
 		}
 
@@ -120,7 +113,7 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 		}
 
 		// Check for cloud limits -- needs to be done here to prevent a race condition
-		if allowed, err := p.joinAllowed(channel, state); !allowed {
+		if allowed, err := p.joinAllowed(state); !allowed {
 			if err != nil {
 				p.LogError("joinAllowed failed", "error", err.Error())
 			}
@@ -155,6 +148,36 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 	})
 
 	return currState, prevState, err
+}
+
+func (p *Plugin) userCanStartOrJoin(userID string, state *channelState) bool {
+	// If there is an ongoing call, we can let anyone join.
+	// If calls are disabled, no-one can start or join.
+	// If explicitly enabled, everyone can start or join.
+	// If not explicitly enabled and default enabled, everyone can join or start
+	// otherwise (not explicitly enabled and not default enabled), only sysadmins can start
+	// TODO: look to see what logic we should lift to the joinCall fn
+	cfg := p.getConfiguration()
+
+	explicitlyEnabled := state.Enabled != nil && *state.Enabled
+	explicitlyDisabled := state.Enabled != nil && !*state.Enabled
+	defaultEnabled := cfg.DefaultEnabled != nil && *cfg.DefaultEnabled
+
+	if state.Call != nil {
+		return true
+	}
+	if explicitlyDisabled {
+		return false
+	}
+	if explicitlyEnabled {
+		return true
+	}
+	if defaultEnabled {
+		return true
+	}
+
+	// must be !explicitlyEnabled and !defaultEnabled
+	return p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 }
 
 func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelState, channelState, error) {
@@ -232,26 +255,16 @@ func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelSta
 
 // JoinAllowed returns true if the user is allowed to join the call, taking into
 // account cloud and configuration limits
-func (p *Plugin) joinAllowed(channel *model.Channel, state *channelState) (bool, error) {
+func (p *Plugin) joinAllowed(state *channelState) (bool, error) {
 	// Rules are:
+	// Cloud Starter: channels, dm/gm: limited to cfg.cloudStarterMaxParticipantsDefault
 	// On-prem, Cloud Professional & Cloud Enterprise (incl. trial): DMs 1-1, GMs and Channel calls
-	// limited to cfg.MaxCallParticipants people.
-	// Cloud Starter: DMs 1-1 only
-
+	// limited to cfg.cloudPaidMaxParticipantsDefault people.
+	// This is set in the override defaults, so MaxCallParticipants will be accurate for the current license.
 	if cfg := p.getConfiguration(); cfg != nil && cfg.MaxCallParticipants != nil &&
 		*cfg.MaxCallParticipants != 0 && len(state.Call.Users) >= *cfg.MaxCallParticipants {
 		return false, nil
 	}
-
-	license := p.pluginAPI.System.GetLicense()
-	if !isCloud(license) || isTrial(license) {
-		return true, nil
-	}
-
-	if isCloudStarter(license) {
-		return channel.Type == model.ChannelTypeDirect, nil
-	}
-
 	return true, nil
 }
 

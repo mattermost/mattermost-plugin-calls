@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/mattermost/mattermost-server/v6/model"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -193,7 +195,7 @@ func TestChannelStateClone(t *testing.T) {
 	t.Run("nil call", func(t *testing.T) {
 		cs := channelState{
 			NodeID:  "nodeID",
-			Enabled: true,
+			Enabled: model.NewBool(true),
 		}
 		cloned := cs.Clone()
 		require.Equal(t, cs, *cloned)
@@ -203,7 +205,7 @@ func TestChannelStateClone(t *testing.T) {
 	t.Run("with empty call", func(t *testing.T) {
 		cs := channelState{
 			NodeID:  "nodeID",
-			Enabled: true,
+			Enabled: model.NewBool(true),
 			Call:    &callState{},
 		}
 		cloned := cs.Clone()
@@ -215,7 +217,7 @@ func TestChannelStateClone(t *testing.T) {
 	t.Run("with non-empty call", func(t *testing.T) {
 		cs := &channelState{
 			NodeID:  "nodeID",
-			Enabled: true,
+			Enabled: model.NewBool(true),
 			Call: &callState{
 				Users: map[string]*userState{
 					"userA": {

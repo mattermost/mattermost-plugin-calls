@@ -88,13 +88,14 @@ func (p *Plugin) OnActivate() error {
 		}
 	}
 
+	session, err := p.createBotSession()
+	if err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+	p.botSession = session
+
 	if p.licenseChecker.RecordingsAllowed() && cfg.recordingsEnabled() {
-		session, err := p.createBotSession()
-		if err != nil {
-			p.LogError(err.Error())
-			return err
-		}
-		p.botSession = session
 		p.jobService, err = p.newJobService(cfg.getJobServiceURL())
 		if err != nil {
 			err = fmt.Errorf("failed to create job service: %w", err)

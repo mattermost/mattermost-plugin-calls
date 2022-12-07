@@ -1,6 +1,7 @@
 import {Store as BaseStore} from 'redux';
 import {ThunkDispatch} from 'redux-thunk';
 import {GlobalState} from '@mattermost/types/store';
+import {CommandArgs} from '@mattermost/types/integrations';
 
 export interface PluginRegistry {
     registerPostTypeComponent(typeName: string, component: React.ElementType);
@@ -14,7 +15,7 @@ export interface PluginRegistry {
     registerWebSocketEventHandler(evType: string, fn: (event: WebSocketEvent) => void);
     registerCustomRoute(route: string, component: React.ElementType);
     registerNeedsTeamRoute(route: string, component: React.ElementType);
-    registerSlashCommandWillBePostedHook(hook: (message: string, args: CommandArgs) => any);
+    registerSlashCommandWillBePostedHook(hook: (message: string, args: CommandArgs) => SlashCommandWillBePostedReturn);
     registerCallButtonAction(button: React.ElementType, dropdownButton: React.ElementType, fn: (channel: Channel) => void);
     unregisterComponent(componentID: string);
     unregisterPostTypeComponent(componentID: string);
@@ -22,6 +23,8 @@ export interface PluginRegistry {
     unregisterReconnectHandler(handler: () => void);
     registerAdminConsoleCustomSetting(key: string, component: React.FunctionComponent<CustomComponentProps>, options?: {showTitle: boolean});
 }
+
+export type SlashCommandWillBePostedReturn = {error: string} | {message: string, args: CommandArgs} | {};
 
 export interface CustomComponentProps {
     id: string;

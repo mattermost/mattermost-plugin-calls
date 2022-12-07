@@ -62,7 +62,6 @@ export type RTCRemoteOutboundStats = {
 export type CallsConfig = {
     ICEServers: string[],
     ICEServersConfigs: RTCIceServer[],
-    AllowEnableCalls: boolean,
     DefaultEnabled: boolean,
     MaxCallParticipants: number,
     NeedsTURNCredentials: boolean,
@@ -75,7 +74,6 @@ export type CallsConfig = {
 export const CallsConfigDefault: CallsConfig = {
     ICEServers: [],
     ICEServersConfigs: [],
-    AllowEnableCalls: false,
     DefaultEnabled: false,
     MaxCallParticipants: 0,
     NeedsTURNCredentials: false,
@@ -84,6 +82,11 @@ export const CallsConfigDefault: CallsConfig = {
     MaxRecordingDuration: 60,
     sku_short_name: '',
 };
+
+export type ChannelState = {
+    id: string,
+    enabled?: boolean,
+}
 
 export type CallsClientConfig = {
     wsURL: string,

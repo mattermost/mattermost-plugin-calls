@@ -45,7 +45,7 @@ type callState struct {
 
 type channelState struct {
 	NodeID  string     `json:"node_id,omitempty"`
-	Enabled bool       `json:"enabled"`
+	Enabled *bool      `json:"enabled"`
 	Call    *callState `json:"call,omitempty"`
 }
 
@@ -75,7 +75,7 @@ type RecordingStateClient struct {
 
 type ChannelStateClient struct {
 	ChannelID string           `json:"channel_id,omitempty"`
-	Enabled   bool             `json:"enabled"`
+	Enabled   *bool            `json:"enabled,omitempty"`
 	Call      *CallStateClient `json:"call,omitempty"`
 }
 
