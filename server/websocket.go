@@ -48,6 +48,9 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 	// If broadcasting to a channel we need to also send to the bot since they
 	// won't be in the channel.
 	if botID != "" && broadcast != nil && broadcast.ChannelId != "" {
+		if data == nil {
+			data = map[string]interface{}{}
+		}
 		data["channelID"] = broadcast.ChannelId
 		p.metrics.IncWebSocketEvent("out", ev)
 		p.API.PublishWebSocketEvent(ev, data, &model.WebsocketBroadcast{
