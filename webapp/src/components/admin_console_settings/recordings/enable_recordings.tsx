@@ -18,7 +18,7 @@ import {
     IDOnPremTrialSuccess,
     OnPremTrialError,
     OnPremTrialSuccess,
-} from 'src/components/admin_console_settings/rtcd_service_url/modals';
+} from 'src/components/admin_console_settings/recordings/modals';
 import {requestOnPremTrialLicense} from 'src/actions';
 import manifest from 'src/manifest';
 
@@ -33,7 +33,7 @@ import {
     FooterText,
 } from 'src/components/admin_console_settings/common';
 
-const RTCDServiceUrl = (props: CustomComponentProps) => {
+const EnableRecordings = (props: CustomComponentProps) => {
     const dispatch = useDispatch();
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
@@ -43,10 +43,10 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
     const rightCol = 'col-sm-8';
 
     // Webapp doesn't pass the placeholder setting.
-    const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'RTCDServiceURL')?.placeholder || '';
+    const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'EnableRecordings')?.placeholder || '';
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        props.onChange(props.id, e.target.value);
+        props.onChange(props.id, e.target.value === 'true');
     };
 
     const requestLicense = async () => {
@@ -72,6 +72,10 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
         }
     };
 
+    if (cloud) {
+        return null;
+    }
+
     if (restricted) {
         return (
             <div
@@ -88,17 +92,17 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
                     <LeftBox>
                         <Title>
                             <FormattedMessage
-                                defaultMessage={'Use your own WebRTC service for calls and media processing'}
+                                defaultMessage={'Enable call recordings'}
                             />
                         </Title>
                         <VerticalSpacer size={8}/>
                         <Text>
                             <FormattedMessage
-                                defaultMessage={'Real-time communication daemon is a service built to offload calls onto your own WebRTC services and efficiently support scalable and secure deployments. <featureLink>Learn more about this feature</featureLink>.'}
+                                defaultMessage={'Allow call hosts to record meeting video and audio in the cloud. Recording include the entire call window view along with participants\' audio track and any shared screen video. <featureLink>Learn more about this feature</featureLink>.'}
                                 values={{
                                     featureLink: (text: string) => (
                                         <a
-                                            href='https://docs.mattermost.com/configure/calls-deployment.html'
+                                            href='https://docs.mattermost.com/configure/calls-deployment.html#call-recording'
                                             target='_blank'
                                             rel='noreferrer'
                                         >
@@ -167,16 +171,35 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
                 </LabelRow>
             </div>
             <div className={rightCol}>
-                <input
-                    data-testid={props.id + 'input'}
-                    id={props.id}
-                    className='form-control'
-                    type={'input'}
-                    placeholder={placeholder}
-                    value={props.value}
-                    onChange={handleChange}
-                    disabled={props.disabled}
-                />
+                <a id={props.id}/>
+                <label className='radio-inline'>
+                    <input
+                        data-testid={props.id + 'true'}
+                        id={props.id + 'true'}
+                        type={'radio'}
+                        placeholder={placeholder}
+                        value='true'
+                        checked={Boolean(props.value)}
+                        onChange={handleChange}
+                        disabled={props.disabled}
+                    />
+                    <span>{'true'}</span>
+                </label>
+
+                <label className='radio-inline'>
+                    <input
+                        data-testid={props.id + 'false'}
+                        id={props.id + 'false'}
+                        type={'radio'}
+                        placeholder={placeholder}
+                        value='false'
+                        checked={Boolean(!props.value)}
+                        onChange={handleChange}
+                        disabled={props.disabled}
+                    />
+                    <span>{'false'}</span>
+                </label>
+
                 <div
                     data-testid={props.id + 'help-text'}
                     className='help-text'
@@ -184,7 +207,8 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
                     {props.helpText}
                 </div>
             </div>
-        </div>);
+        </div>
+    );
 };
 
-export default RTCDServiceUrl;
+export default EnableRecordings;

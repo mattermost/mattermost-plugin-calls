@@ -32,7 +32,7 @@ export interface CustomComponentProps {
     config?: Record<string, unknown>;
     license?: Record<string, unknown>;
     setByEnv: boolean;
-    onChange: (id: string, value: string, confirm?: boolean, doSubmit?: boolean, warning?: boolean) => void;
+    onChange: (id: string, value: string | boolean | number, confirm?: boolean, doSubmit?: boolean, warning?: boolean) => void;
     saveAction: () => Promise<unknown>;
     unregisterSaveAction: (saveAction: () => Promise<unknown>) => void;
     setSaveNeeded: () => void;

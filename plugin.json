@@ -110,18 +110,18 @@
           "help_text": "(Optional) When set to true it enables the call recordings functionality."
         },
         {
+          "key": "JobServiceURL",
+          "display_name": "Job service URL",
+          "type": "text",
+          "help_text": "The URL to a running calls job service instance used for call recordings.",
+          "placeholder": "https://calls-job-service.example.com"
+        },
+        {
           "key": "MaxRecordingDuration",
           "display_name": "Maximum call recording duration",
           "type": "number",
           "default": 60,
           "help_text": "The maximum duration (in minutes) for call recordings. Value must be in the range [15, 180]."
-        },
-        {
-          "key": "JobServiceURL",
-          "display_name": "Job service URL",
-          "type": "text",
-          "help_text": "(Optional) The URL to a running calls job service instance.",
-          "placeholder": "http://192.168.1.100:4545"
         }
         ]
     }
