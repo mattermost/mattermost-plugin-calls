@@ -71,12 +71,12 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 	var st channelState
 
 	err := p.kvSetAtomicChannelState(channel.Id, func(state *channelState) (*channelState, error) {
-		if !p.userCanStartOrJoin(userID, state) {
-			return nil, fmt.Errorf("calls are not enabled")
-		}
-
 		if state == nil {
 			state = &channelState{}
+		}
+
+		if !p.userCanStartOrJoin(userID, state) {
+			return nil, fmt.Errorf("calls are not enabled")
 		}
 
 		if state.Call == nil {
