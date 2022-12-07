@@ -5,8 +5,6 @@ import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
-import {getMyChannelRoles, getMySystemRoles, getMyTeamRoles} from 'mattermost-redux/selectors/entities/roles';
-import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
@@ -52,7 +50,7 @@ import {
     isCloudStarter,
     channelHasCall,
     callsExplicitlyEnabled,
-    callsExplicitlyDisabled,
+    callsExplicitlyDisabled, hasPermissionsToEnableCalls,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -75,7 +73,6 @@ import reducer from './reducers';
 
 import {
     getPluginPath,
-    hasPermissionsToEnableCalls,
     getExpandedChannelID,
     getProfilesByIds,
     isDMChannel,
@@ -539,11 +536,6 @@ export default class Plugin {
                 channel = getChannel(store.getState(), channelID);
             }
 
-            const systemRoles = getMySystemRoles(store.getState());
-            const channelRoles = getMyChannelRoles(store.getState());
-            const teamRoles = getMyTeamRoles(store.getState())[channel.team_id];
-            const cms = getMyChannelMemberships(store.getState());
-
             if (isDMChannel(channel)) {
                 const otherID = getUserIdFromDM(channel.name, getCurrentUserId(store.getState()));
                 const dmUser = getUser(store.getState(), otherID);
@@ -554,7 +546,7 @@ export default class Plugin {
 
             try {
                 registry.unregisterComponent(channelHeaderMenuID);
-                if (hasPermissionsToEnableCalls(channel, cms[channelID], systemRoles, teamRoles, channelRoles, defaultEnabled(store.getState()))) {
+                if (hasPermissionsToEnableCalls(store.getState(), channelID)) {
                     registerChannelHeaderMenuAction();
                 }
             } catch (err) {

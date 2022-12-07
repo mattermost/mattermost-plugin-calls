@@ -1,8 +1,9 @@
-import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {
     getCurrentUserId,
     getUsers,
     getUserIdsInChannels,
+    isCurrentUserSystemAdmin,
 } from 'mattermost-redux/selectors/entities/users';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
@@ -20,6 +21,10 @@ import {
     isGroupChannel,
 } from 'mattermost-redux/utils/channel_utils';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
+
+import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/entities/roles';
+
+import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 
 import {getChannelURL} from 'src/utils';
 import {CallsConfig, CallsUserPreferences, ChannelState, Reaction, UserState} from 'src/types/types';
@@ -125,20 +130,23 @@ export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
     return pluginState(state).voiceChannelRootPost[channelID];
 };
 
+//
+// Config logic
+//
 const callsConfig = (state: GlobalState): CallsConfig =>
     pluginState(state).callsConfig;
 
 export const iceServers = (state: GlobalState): RTCIceServer[] =>
-    pluginState(state).callsConfig.ICEServersConfigs || [];
+    callsConfig(state).ICEServersConfigs || [];
 
 export const defaultEnabled = (state: GlobalState) =>
-    pluginState(state).callsConfig.DefaultEnabled;
+    callsConfig(state).DefaultEnabled;
 
 export const maxParticipants = (state: GlobalState) =>
-    pluginState(state).callsConfig.MaxCallParticipants;
+    callsConfig(state).MaxCallParticipants;
 
 export const needsTURNCredentials = (state: GlobalState) =>
-    pluginState(state).callsConfig.NeedsTURNCredentials;
+    callsConfig(state).NeedsTURNCredentials;
 
 export const isLimitRestricted = (state: GlobalState): boolean => {
     const numCurrentUsers = numCurrentVoiceConnectedUsers(state);
@@ -147,16 +155,60 @@ export const isLimitRestricted = (state: GlobalState): boolean => {
 };
 
 export const allowScreenSharing = (state: GlobalState) =>
-    pluginState(state).callsConfig.AllowScreenSharing;
+    callsConfig(state).AllowScreenSharing;
 
 export const endCallModal = (state: GlobalState) =>
     pluginState(state).endCallModal;
 
 //
+// Calls enabled/disabled logic
+//
+export const channelState = (state: GlobalState, channelId: string): ChannelState =>
+    pluginState(state).channelState[channelId];
+
+export const callsExplicitlyEnabled = (state: GlobalState, channelId: string): boolean =>
+    Boolean(channelState(state, channelId)?.enabled);
+
+export const callsExplicitlyDisabled = (state: GlobalState, channelId: string): boolean => {
+    const enabled = channelState(state, channelId)?.enabled;
+    return (typeof enabled !== 'undefined') && !enabled;
+};
+
+export const callsEnabledInCurrentChannel = (state: GlobalState): boolean => {
+    const channelId = getCurrentChannelId(state);
+    if (callsExplicitlyDisabled(state, channelId)) {
+        return false;
+    }
+    return callsExplicitlyEnabled(state, channelId) || defaultEnabled(state) || isCurrentUserSystemAdmin(state);
+};
+
+export const callsShowButton = (state: GlobalState, channelId: string): boolean =>
+    !callsExplicitlyDisabled(state, channelId);
+
+export const hasPermissionsToEnableCalls = (state: GlobalState, channelId: string): boolean => {
+    if (isCurrentUserSystemAdmin(state)) {
+        return true;
+    }
+    if (!defaultEnabled(state)) {
+        return false;
+    }
+
+    const channelRoles = getMyChannelRoles(state);
+    const channel = getChannel(state, channelId);
+    const teamRoles = getMyTeamRoles(state)[channel.team_id];
+    const cm = getMyChannelMemberships(state)[channelId];
+
+    return (isDirectChannel(channel) || isGroupChannel(channel)) ||
+        cm?.scheme_admin === true ||
+        channelRoles[channel.id]?.has('channel_admin') ||
+        teamRoles.has('team_admin');
+};
+
+//
 // Selectors for Cloud and beta limits:
 //
 const cloudSku = (state: GlobalState): string =>
-    pluginState(state).callsConfig.sku_short_name;
+    callsConfig(state).sku_short_name;
 
 export const isCloud = (state: GlobalState): boolean =>
     getLicense(state)?.Cloud === 'true';
@@ -185,26 +237,6 @@ export const isCloudTrialCompleted = (state: GlobalState): boolean => {
 
 export const isCloudTrialNeverStarted = (state: GlobalState): boolean =>
     getSubscription(state)?.trial_end_at === 0;
-
-export const channelState = (state: GlobalState, channelId: string): ChannelState =>
-    pluginState(state).channelState[channelId];
-
-export const callsExplicitlyEnabled = (state: GlobalState, channelId: string): boolean =>
-    Boolean(channelState(state, channelId)?.enabled);
-
-export const callsExplicitlyDisabled = (state: GlobalState, channelId: string): boolean => {
-    const enabled = channelState(state, channelId)?.enabled;
-    return (typeof enabled !== 'undefined') && !enabled;
-};
-
-export const callsEnabledInCurrentChannel = (state: GlobalState): boolean => {
-    const channelId = getCurrentChannelId(state);
-    return callsExplicitlyEnabled(state, channelId) ||
-        (!callsExplicitlyDisabled(state, channelId) && defaultEnabled(state));
-};
-
-export const callsShowButton = (state: GlobalState, channelId: string): boolean =>
-    !callsExplicitlyDisabled(state, channelId);
 
 export const callsUserPreferences = (state: GlobalState): CallsUserPreferences =>
     pluginState(state).callsUserPreferences;

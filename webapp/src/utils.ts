@@ -122,18 +122,6 @@ export function getScreenResolution() {
     };
 }
 
-export function hasPermissionsToEnableCalls(channel: Channel, cm: ChannelMembership | null | undefined, systemRoles: Set<string>, teamRoles: Set<string>, channelRoles: Record<string, Set<string>>, isDefaultEnabled: boolean) {
-    if (!isDefaultEnabled) {
-        return systemRoles.has('system_admin');
-    }
-
-    return (isDirectChannel(channel) || isGroupChannel(channel)) ||
-        cm?.scheme_admin === true ||
-        channelRoles[channel.id]?.has('channel_admin') ||
-        teamRoles.has('team_admin') ||
-        systemRoles.has('system_admin');
-}
-
 export function getExpandedChannelID() {
     const pattern = `${pluginId}/expanded/`;
     const idx = window.location.pathname.indexOf(pattern);
