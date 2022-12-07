@@ -121,7 +121,7 @@
           "display_name": "Maximum call recording duration",
           "type": "number",
           "default": 60,
-          "help_text": "The maximum duration (in minutes) for call recordings."
+          "help_text": "The maximum duration (in minutes) for call recordings. Value must be in the range [15, 180]."
         }
         ]
     }

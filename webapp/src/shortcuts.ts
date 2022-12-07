@@ -9,7 +9,7 @@ export const PUSH_TO_TALK = 'push-to-talk';
 export const RECORDING_TOGGLE = 'recording-toggle';
 
 const globalMappings = {
-    [isMac() ? 'meta+shift+s' : 'ctrl+shift+s']: JOIN_CALL,
+    [isMac() ? 'meta+alt+s' : 'ctrl+alt+s']: JOIN_CALL,
 };
 
 const widgetMappings = {

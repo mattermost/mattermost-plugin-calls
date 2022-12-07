@@ -25,7 +25,6 @@ import {
     hasExperimentalFlag,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
-    capitalize,
 } from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
 import {
@@ -38,7 +37,6 @@ import {
 
 import {
     CallAlertConfigs,
-    CallRecordingDisclaimerStrings,
 } from 'src/constants';
 
 import {
@@ -73,9 +71,10 @@ import {
     MAKE_REACTION,
 } from 'src/shortcuts';
 
+import RecordingInfoPrompt from './recording_info_prompt';
+
 import GlobalBanner from './global_banner';
 import ControlsButton from './controls_button';
-import InCallPrompt from './in_call_prompt';
 import CallParticipant from './call_participant';
 
 import './component.scss';
@@ -114,13 +113,13 @@ interface Props extends RouteComponentProps {
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
     allowScreenSharing: boolean,
     recordingsEnabled: boolean,
+    recordingMaxDuration: number,
 }
 
 interface State {
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
     alerts: CallAlertStates,
-    promptDismissedAt: number,
 }
 
 const StyledMediaController = styled(MediaController)`
@@ -158,7 +157,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             screenStream: null,
             showParticipantsList: false,
             alerts: CallAlertStatesDefault,
-            promptDismissedAt: 0,
         };
 
         if (window.opener) {
@@ -483,81 +481,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
     }
 
-    renderInfoPrompt = () => {
-        const isHost = this.props.callHostID === this.props.currentUserID;
-        const hasRecEnded = this.props.callRecording?.end_at;
-
-        // Nothing to show if the recording hasn't started yet, unless there
-        // was an error.
-        if (!this.props.callRecording?.start_at && !this.props.callRecording?.err) {
-            return null;
-        }
-
-        // If the recording has ended we only want to show the info prompt
-        // to the host.
-        if (hasRecEnded && !isHost) {
-            return null;
-        }
-
-        // If the prompt was dismissed after the call has started then we
-        // don't show this again.
-        if (!hasRecEnded && this.state.promptDismissedAt > this.props.callRecording?.start_at) {
-            return null;
-        }
-
-        // If the prompt was dismissed after the call has ended then we
-        // don't show this again.
-        if (hasRecEnded && this.state.promptDismissedAt > this.props.callRecording?.end_at) {
-            return null;
-        }
-
-        let header = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header;
-        let body = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body;
-        let confirmText = isHost ? 'Dismiss' : 'Understood';
-        let icon = (
-            <RecordCircleOutlineIcon
-                size={18}
-            />);
-        const declineText = isHost ? '' : 'Leave call';
-
-        if (hasRecEnded) {
-            confirmText = '';
-            header = 'Recording has stopped. Processing...';
-            body = 'You can find the recording in this call\'s chat thread once it\'s finished processing.';
-        }
-
-        let error = '';
-        if (this.props.callRecording?.err) {
-            header = 'Something went wrong with the recording';
-            body = 'Please try to record again. You can also contact your system admin for troubleshooting help.';
-            error = capitalize(this.props.callRecording?.err);
-
-            icon = (
-                <CompassIcon
-                    icon='alert-outline'
-                    style={{
-                        fontSize: 18,
-                    }}
-                />
-            );
-        }
-
-        return (
-            <InCallPrompt
-                icon={icon}
-                iconFill='rgb(var(--dnd-indicator-rgb))'
-                iconColor='rgb(var(--dnd-indicator-rgb))'
-                header={header}
-                body={body}
-                error={error}
-                confirmText={confirmText}
-                declineText={declineText}
-                onClose={() => this.setState({promptDismissedAt: Date.now()})}
-                onDecline={this.onDisconnectClick}
-            />
-        );
-    }
-
     renderAlertBanner = () => {
         for (const keyVal of Object.entries(this.state.alerts)) {
             const [alertID, alertState] = keyVal;
@@ -617,7 +540,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     maxHeight: `calc(100% - ${this.shouldRenderAlertBanner() ? 240 : 200}px)`,
                 }}
             >
-                <ReactionStream forceLeft={true}/>
                 <StyledMediaController
                     gesturesDisabled={true}
                 >
@@ -654,6 +576,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 >
                     {msg}
                 </span>
+                <ReactionStream forceLeft={true}/>
             </div>
         );
     }
@@ -1045,7 +968,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     />
                 }
 
-                { this.renderInfoPrompt() }
+                <RecordingInfoPrompt
+                    isHost={this.props.callHostID === this.props.currentUserID}
+                    recording={this.props.callRecording}
+                    recordingMaxDuration={this.props.recordingMaxDuration}
+                    onDecline={this.onDisconnectClick}
+                />
             </div>
         );
     }
