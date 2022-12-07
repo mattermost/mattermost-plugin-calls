@@ -10,7 +10,6 @@ import (
 	"net/http/pprof"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -61,7 +60,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 		return
 	}
 
-	mobile, postGA := isMobilePostGA(r.Header.Get("User-Agent"), r.URL.Query().Get("mobilev2"))
+	mobile, postGA := isMobilePostGA(r)
 
 	state, err := p.kvGetChannelState(channelID)
 	if err != nil {
@@ -119,7 +118,7 @@ func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Per
 
 func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
-	mobile, postGA := isMobilePostGA(r.Header.Get("User-Agent"), r.URL.Query().Get("mobilev2"))
+	mobile, postGA := isMobilePostGA(r)
 
 	var page int
 	channels := []ChannelState{}
@@ -582,35 +581,4 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	http.NotFound(w, r)
-}
-
-func isMobilePostGA(userAgent string, queryParam string) (mobile, postGA bool) {
-	if queryParam == "true" {
-		return true, true
-	}
-
-	// Below here is to test two things: is this mobile pre-GA? Is mobile version 441
-	// (a one-week period when we didn't have the above queryParam)
-	// TODO: simplify this once we can stop supporting 441.
-	fields := strings.Fields(userAgent)
-	clientAgent := fields[0] // safe to assume there's at least one
-	isMobile := strings.HasPrefix(clientAgent, "rnbeta") || strings.HasPrefix(clientAgent, "Mattermost")
-	if !isMobile {
-		return false, false
-	}
-	agent := strings.Split(clientAgent, "/")
-	if len(agent) != 2 {
-		return true, false
-	}
-
-	// We can use a semver package, because we're not using semver correctly. So manually parse...
-	version := strings.Split(agent[1], ".")
-	if len(version) != 4 {
-		return true, false
-	}
-	minor, err := strconv.Atoi(version[3])
-	if err != nil {
-		return true, false
-	}
-	return true, minor >= 441
 }

@@ -58,6 +58,7 @@ const channelState = (state: { [channelID: string]: ChannelState } = {}, action:
     switch (action.type) {
     case RECEIVED_CHANNEL_STATE:
         return {
+            ...state,
             [action.data.id]: action.data,
         };
     default:

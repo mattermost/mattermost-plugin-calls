@@ -188,7 +188,6 @@ async function globalSetup(config: FullConfig) {
         [`${plugin.id}`]: {
             ...serverConfig.PluginSettings.Plugins[plugin.id],
             defaultenabled: true,
-            testmode: 'off',
         },
     };
     await adminContext.put('/api/v4/config', {
