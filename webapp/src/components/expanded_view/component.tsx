@@ -93,6 +93,7 @@ interface Props extends RouteComponentProps {
     },
     callStartAt: number,
     callHostID: string,
+    callHostChangeAt: number,
     callRecording?: CallRecordingState,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
@@ -970,6 +971,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                 <RecordingInfoPrompt
                     isHost={this.props.callHostID === this.props.currentUserID}
+                    hostChangeAt={this.props.callHostChangeAt}
                     recording={this.props.callRecording}
                     recordingMaxDuration={this.props.recordingMaxDuration}
                     onDecline={this.onDisconnectClick}

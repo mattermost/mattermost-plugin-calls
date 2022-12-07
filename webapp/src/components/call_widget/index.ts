@@ -25,6 +25,7 @@ import {
     voiceConnectedProfiles,
     voiceChannelCallHostID,
     callRecording,
+    voiceChannelCallHostChangeAt,
 } from 'src/selectors';
 
 import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
@@ -68,6 +69,7 @@ const mapStateToProps = (state: GlobalState) => {
         statuses: voiceUsersStatuses(state) || {},
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         callHostID: voiceChannelCallHostID(state, channel?.id) || '',
+        callHostChangeAt: voiceChannelCallHostChangeAt(state, channel?.id) || 0,
         callRecording: callRecording(state, channel?.id),
         screenSharingID,
         allowScreenSharing: allowScreenSharing(state),

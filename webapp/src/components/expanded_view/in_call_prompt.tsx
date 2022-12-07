@@ -79,7 +79,7 @@ const Prompt = styled.div`
   position: absolute;
   bottom: 100px;
   margin: 0 24px;
-  background: rgba(221, 223, 228, 0.08);
+  background: #2D2D2E;
   border: 1px solid rgba(61, 60, 64, 0.16);
   box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.12);
   border-radius: 4px;
@@ -133,7 +133,6 @@ const DeclineButton = styled.button`
 
 const Icon = styled.div<{fill?: string, color?: string}>`
   font-size: 18px;
-  line-height: 18px;
   fill: ${({fill}) => (fill || 'currentColor')};
   color: ${({color}) => (color || 'currentColor')};
 `;
