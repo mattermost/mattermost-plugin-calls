@@ -234,7 +234,12 @@ export default class Plugin {
                         title = fields.slice(2).join(' ');
                     }
                     const team_id = args?.team_id || getChannel(store.getState(), args.channel_id).team_id;
-                    return joinCall(args.channel_id, team_id, title);
+                    try {
+                        await joinCall(args.channel_id, team_id, title);
+                        return {};
+                    } catch (e) {
+                        return {error: {message: e.message}};
+                    }
                 }
                 return {error: {message: 'You\'re already connected to a call in the current channel.'}};
             case 'leave':
@@ -327,7 +332,7 @@ export default class Plugin {
             }
         };
 
-        const joinCall = async (channelId: string, teamId: string, title?: string): Promise<SlashCommandWillBePostedReturn> => {
+        const joinCall = async (channelId: string, teamId: string, title?: string) => {
             // Anyone can join a call already in progress.
             // If explicitly enabled, everyone can start calls.
             // In LiveMode (DefaultEnabled=true):
@@ -345,20 +350,20 @@ export default class Plugin {
                 if (isLimitRestricted(store.getState())) {
                     if (isCloudStarter(store.getState())) {
                         store.dispatch(displayFreeTrial());
-                        return {};
+                        return;
                     }
 
                     // Don't allow a join if over limits (UI will have shown this info).
-                    return {};
+                    return;
                 }
 
                 await connectToCall(channelId, teamId, title);
-                return {};
+                return;
             }
 
             if (explicitlyDisabled) {
                 // UI should not have shown, so this is a response to a slash command.
-                return {error: {message: 'Cannot start or join call: calls are disabled in this channel.'}};
+                throw Error('Cannot start or join call: calls are disabled in this channel.');
             }
 
             // We are in TestMode (DefaultEnabled=false)
@@ -368,8 +373,6 @@ export default class Plugin {
             } else {
                 store.dispatch(displayCallsTestModeUser());
             }
-
-            return {};
         };
 
         let channelHeaderMenuButtonID: string;

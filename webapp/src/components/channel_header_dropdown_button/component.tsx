@@ -94,7 +94,6 @@ const ChannelHeaderDropdownButton = ({
         );
     }
 
-    // TODO: verify isCloudPaid message (asked in channel)
     if (isLimitRestricted && !inCall) {
         return (
             <OverlayTrigger
@@ -114,11 +113,6 @@ const ChannelHeaderDropdownButton = ({
                         {isCloudStarter && isAdmin &&
                             <SubHeader>
                                 {`Upgrade to Cloud Professional or Cloud Enterprise to enable group calls with more than ${maxParticipants} participants.`}
-                            </SubHeader>
-                        }
-                        {isCloudPaid &&
-                            <SubHeader>
-                                {`At the moment, ${maxParticipants} is the participant limit for cloud calls.`}
                             </SubHeader>
                         }
                     </Tooltip>
