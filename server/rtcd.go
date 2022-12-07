@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -299,6 +300,9 @@ func resolveURL(u string, timeout time.Duration) ([]net.IP, string, error) {
 }
 
 func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.DialContextFn) (*rtcd.Client, error) {
+	// Remove trailing slash if present.
+	rtcdURL = strings.TrimSuffix(rtcdURL, "/")
+
 	clientCfg, err := m.getRTCDClientConfig(rtcdURL, dialFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rtcd client config: %w", err)
