@@ -284,7 +284,7 @@ func (p *Plugin) removeSession(us *session) error {
 	// multiple times but we should send out the ws event only once.
 	if prevState.Call != nil && prevState.Call.Users[us.userID] != nil && (currState.Call == nil || currState.Call.Users[us.userID] == nil) {
 		p.LogDebug("session was removed from state", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
-		p.API.PublishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
+		p.publishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
 			"userID": us.userID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	}
