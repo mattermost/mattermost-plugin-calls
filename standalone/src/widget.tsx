@@ -6,10 +6,7 @@ import {
     playSound,
 } from 'plugin/utils';
 
-import {
-    logDebug,
-    logErr,
-} from 'plugin/log';
+import {logDebug} from 'plugin/log';
 
 import CallWidget from 'plugin/components/call_widget';
 

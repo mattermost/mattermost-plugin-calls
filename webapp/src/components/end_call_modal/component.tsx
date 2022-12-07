@@ -1,17 +1,12 @@
 import React, {CSSProperties} from 'react';
-import ReactDOM from 'react-dom';
-import PropTypes from 'prop-types';
 
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
-
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
-import {isDMChannel, isGMChannel, getUserDisplayName} from '../../utils';
-
-import {endCall} from '../../actions';
-
-import CompassIcon from '../../components/icons/compassIcon';
+import {isDMChannel, isGMChannel, getUserDisplayName} from 'src/utils';
+import {endCall} from 'src/actions';
+import CompassIcon from 'src/components/icons/compassIcon';
 
 import './component.scss';
 
