@@ -94,7 +94,7 @@ const ButtonContainer = styled.div<{ margin?: string }>`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: ${({margin}) => margin || '0 16px'};
+    margin: ${({margin}) => margin || '0 8px'};
 `;
 
 const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailable?: boolean, fill?: string}>`
