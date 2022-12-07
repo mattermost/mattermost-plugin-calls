@@ -133,7 +133,6 @@ const DeclineButton = styled.button`
 
 const Icon = styled.div<{fill?: string, color?: string}>`
   font-size: 18px;
-  line-height: 18px;
   fill: ${({fill}) => (fill || 'currentColor')};
   color: ${({color}) => (color || 'currentColor')};
 `;
