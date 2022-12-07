@@ -82,6 +82,7 @@ interface Props {
     },
     callStartAt: number,
     callHostID: string,
+    callHostChangeAt: number,
     callRecording?: CallRecordingState,
     screenSharingID: string,
     show: boolean,
@@ -1190,13 +1191,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // This component should render if all of the following conditions apply:
         // - Recording has started.
         // - Recording has not ended.
-        // - Diclaimer has not been dismissed already.
+        // - Diclaimer has not been dismissed after either call start or last host change.
 
         if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at) {
             return null;
         }
 
-        if (this.state.recDisclaimerDismissedAt > this.props.callRecording?.start_at) {
+        if (this.state.recDisclaimerDismissedAt > this.props.callRecording?.start_at && this.state.recDisclaimerDismissedAt > this.props.callHostChangeAt) {
             return null;
         }
 

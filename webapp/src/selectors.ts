@@ -109,6 +109,10 @@ export const voiceChannelCallHostID = (state: GlobalState, channelID: string) =>
     return pluginState(state).voiceChannelCalls[channelID]?.hostID;
 };
 
+export const voiceChannelCallHostChangeAt = (state: GlobalState, channelID: string) => {
+    return pluginState(state).voiceChannelCalls[channelID]?.hostChangeAt;
+};
+
 export const voiceChannelScreenSharingID = (state: GlobalState, channelID: string) => {
     return pluginState(state).voiceChannelScreenSharingID[channelID];
 };

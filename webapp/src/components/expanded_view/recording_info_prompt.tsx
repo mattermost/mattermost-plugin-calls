@@ -21,6 +21,7 @@ import InCallPrompt from './in_call_prompt';
 
 type Props = {
     isHost: boolean,
+    hostChangeAt: number,
     recording?: CallRecordingState,
     recordingMaxDuration: number,
     onDecline: () => void;
@@ -93,9 +94,9 @@ export default function RecordingInfoPrompt(props: Props) {
         return null;
     }
 
-    // If the prompt was dismissed after the call has started then we
-    // don't show this again.
-    if (!hasRecEnded && dismissedAt > props.recording?.start_at) {
+    // If the prompt was dismissed after the call has started and after the last host change
+    // we don't show this again.
+    if (!hasRecEnded && dismissedAt > props.recording?.start_at && dismissedAt > props.hostChangeAt) {
         return null;
     }
 

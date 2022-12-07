@@ -539,6 +539,7 @@ interface callState {
     startAt?: number,
     ownerID?: string,
     hostID: string,
+    hostChangeAt?: number,
 }
 
 interface callStateAction {
@@ -556,6 +557,7 @@ const voiceChannelCalls = (state: {[channelID: string]: callState} = {}, action:
             [action.data.channelID]: {
                 ...state[action.data.channelID],
                 hostID: action.data.hostID,
+                hostChangeAt: Date.now(),
             },
         };
     case VOICE_CHANNEL_CALL_START:
@@ -566,6 +568,7 @@ const voiceChannelCalls = (state: {[channelID: string]: callState} = {}, action:
                 startAt: action.data.startAt,
                 ownerID: action.data.ownerID,
                 hostID: action.data.hostID,
+                hostChangeAt: action.data.startAt,
             },
         };
     default:

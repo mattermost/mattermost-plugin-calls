@@ -42,6 +42,7 @@ import {
     callRecording,
     recordingsEnabled,
     recordingMaxDuration,
+    voiceChannelCallHostChangeAt,
 } from 'src/selectors';
 
 import ExpandedView from './component';
@@ -85,6 +86,7 @@ const mapStateToProps = (state: GlobalState) => {
         statuses,
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
         callHostID: voiceChannelCallHostID(state, channel?.id) || '',
+        callHostChangeAt: voiceChannelCallHostChangeAt(state, channel?.id) || 0,
         callRecording: callRecording(state, channel?.id),
         screenSharingID,
         channel,
