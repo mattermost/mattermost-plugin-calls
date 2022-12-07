@@ -314,7 +314,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			p.LogError(err.Error())
 		}
 
-		p.API.PublishWebSocketEvent(evType, map[string]interface{}{
+		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"user_id":   us.userID,
 			"emoji":     emoji.toMap(),
 			"timestamp": time.Now().UnixMilli(),
