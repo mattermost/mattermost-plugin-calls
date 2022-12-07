@@ -180,6 +180,12 @@ export const recordingsEnabled: (state: GlobalState) => boolean = createSelector
     (config) => config.EnableRecordings,
 );
 
+export const recordingMaxDuration: (state: GlobalState) => number = createSelector(
+    'recordingMaxDuration',
+    callsConfig,
+    (config) => config.MaxRecordingDuration,
+);
+
 export const endCallModal = (state: GlobalState) => {
     return pluginState(state).endCallModal;
 };

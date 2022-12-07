@@ -73,6 +73,12 @@ type clientConfig struct {
 	MaxRecordingDuration *int
 }
 
+const (
+	defaultRecDurationMinutes = 60
+	minRecDurationMinutes     = 15
+	maxRecDurationMinutes     = 180
+)
+
 type ICEServers []string
 type ICEServersConfigs rtc.ICEServers
 
@@ -194,7 +200,7 @@ func (c *configuration) SetDefaults() {
 		c.EnableRecordings = new(bool)
 	}
 	if c.MaxRecordingDuration == nil {
-		c.MaxRecordingDuration = model.NewInt(60)
+		c.MaxRecordingDuration = model.NewInt(defaultRecDurationMinutes)
 	}
 }
 
@@ -215,8 +221,8 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("TURNCredentialsExpirationMinutes is not valid")
 	}
 
-	if c.MaxRecordingDuration == nil || *c.MaxRecordingDuration < 0 {
-		return fmt.Errorf("MaxRecordingDuration is not valid")
+	if c.MaxRecordingDuration == nil || *c.MaxRecordingDuration < minRecDurationMinutes || *c.MaxRecordingDuration > maxRecDurationMinutes {
+		return fmt.Errorf("MaxRecordingDuration is not valid: range should be [%d, %d]", minRecDurationMinutes, maxRecDurationMinutes)
 	}
 
 	return nil

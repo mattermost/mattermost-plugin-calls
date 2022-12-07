@@ -41,6 +41,7 @@ import {
     voiceChannelCallHostID,
     callRecording,
     recordingsEnabled,
+    recordingMaxDuration,
 } from 'src/selectors';
 
 import ExpandedView from './component';
@@ -98,6 +99,7 @@ const mapStateToProps = (state: GlobalState) => {
         isRhsOpen: getIsRhsOpen?.(state),
         allowScreenSharing: allowScreenSharing(state),
         recordingsEnabled: recordingsEnabled(state),
+        recordingMaxDuration: recordingMaxDuration(state),
     };
 };
 
