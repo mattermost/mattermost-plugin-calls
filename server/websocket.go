@@ -448,6 +448,20 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title string) error {
 		})
 
 		// new call has started
+		// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
+		cfg := p.getConfiguration()
+		if cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
+			p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+			p.pluginAPI.Post.SendEphemeralPost(
+				userID,
+				&model.Post{
+					UserId:    p.botSession.UserId,
+					ChannelId: channelID,
+					Message:   "Currently calls are not enabled for non-admin users. You can change the setting through the system console",
+				},
+			)
+		}
+
 		threadID, err := p.startNewCallThread(userID, channelID, state.Call.StartAt, title)
 		if err != nil {
 			p.LogError(err.Error())

@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/mattermost/mattermost-server/v6/model"
 	"os"
 	"time"
 
@@ -14,6 +15,30 @@ import (
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 )
+
+func (p *Plugin) createBotSession() (*model.Session, error) {
+	botID, err := p.pluginAPI.Bot.EnsureBot(&model.Bot{
+		Username:    "calls",
+		DisplayName: "Calls",
+		Description: "Calls Bot",
+		OwnerId:     manifest.Id,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	session := &model.Session{
+		UserId:    botID,
+		ExpiresAt: 0,
+	}
+
+	session, err = p.pluginAPI.Session.Create(session)
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
 
 func (p *Plugin) OnActivate() error {
 	p.LogDebug("activating")
@@ -62,6 +87,13 @@ func (p *Plugin) OnActivate() error {
 			return err
 		}
 	}
+
+	session, err := p.createBotSession()
+	if err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+	p.botSession = session
 
 	if rtcdURL := cfg.getRTCDURL(); rtcdURL != "" && p.licenseChecker.RTCDAllowed() {
 		rtcdManager, err := p.newRTCDClientManager(rtcdURL)

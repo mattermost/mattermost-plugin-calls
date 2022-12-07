@@ -53,10 +53,14 @@ type clientConfig struct {
 
 	// A list of ICE server configurations to use.
 	ICEServersConfigs ICEServersConfigs
-	// When set to true, it allows channel admins to enable or disable calls in their channels.
+	// AllowEnableCalls is always true. DO NOT REMOVE; needed for mobile backward compatibility.
+	// It allows channel admins to enable or disable calls in their channels.
 	// It also allows participants of DMs/GMs to enable or disable calls.
 	AllowEnableCalls *bool
-	// When set to true, calls will be possible in all channels where they are not explicitly disabled.
+	// DefaultEnabled is required for clients; it is called 'TestMode' in the client, such that:
+	// TestMode="off" -> DefaultEnabled=true
+	// TestMode="on" -> DefaultEnabled=false
+	// When TestMode is set to off (DefaultEnabled=true), calls will be possible in all channels where they are not explicitly disabled.
 	DefaultEnabled *bool
 	// The maximum number of participants that can join a call. The zero value
 	// means unlimited.
@@ -148,7 +152,7 @@ func (pr PortsRange) IsValid() error {
 
 func (c *configuration) getClientConfig() clientConfig {
 	return clientConfig{
-		AllowEnableCalls:     c.AllowEnableCalls,
+		AllowEnableCalls:     model.NewBool(true), // always true
 		DefaultEnabled:       c.DefaultEnabled,
 		ICEServers:           c.ICEServers,
 		ICEServersConfigs:    c.getICEServers(true),
@@ -162,12 +166,11 @@ func (c *configuration) SetDefaults() {
 	if c.UDPServerPort == nil {
 		c.UDPServerPort = model.NewInt(8443)
 	}
-	if c.AllowEnableCalls == nil {
-		c.AllowEnableCalls = new(bool)
-	}
+
+	c.AllowEnableCalls = model.NewBool(true)
+
 	if c.DefaultEnabled == nil {
-		c.DefaultEnabled = new(bool)
-		*c.DefaultEnabled = false
+		c.DefaultEnabled = model.NewBool(false)
 	}
 	if c.MaxCallParticipants == nil {
 		c.MaxCallParticipants = new(int)
@@ -217,9 +220,8 @@ func (c *configuration) Clone() *configuration {
 		*cfg.UDPServerPort = *c.UDPServerPort
 	}
 
-	if c.AllowEnableCalls != nil {
-		cfg.AllowEnableCalls = model.NewBool(*c.AllowEnableCalls)
-	}
+	// AllowEnableCalls is always true
+	cfg.AllowEnableCalls = model.NewBool(true)
 
 	if c.DefaultEnabled != nil {
 		cfg.DefaultEnabled = model.NewBool(*c.DefaultEnabled)
@@ -338,10 +340,16 @@ func (p *Plugin) OnConfigurationChange() error {
 }
 
 func (p *Plugin) setOverrides(cfg *configuration) {
+	cfg.AllowEnableCalls = model.NewBool(true)
+
 	if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// On Cloud installations we want calls enabled in all channels so we
 		// override it since the plugin's default is now false.
 		*cfg.DefaultEnabled = true
+	}
+
+	if cfg.MaxCallParticipants == nil {
+		cfg.MaxCallParticipants = model.NewInt(0)
 	}
 
 	// Allow env var to permanently override system console settings
@@ -353,7 +361,11 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 		}
 	} else if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// otherwise, if this is a cloud installation, set it at the default
-		*cfg.MaxCallParticipants = cloudMaxParticipantsDefault
+		if isCloudStarter(license) {
+			*cfg.MaxCallParticipants = cloudStarterMaxParticipantsDefault
+		} else {
+			*cfg.MaxCallParticipants = cloudPaidMaxParticipantsDefault
+		}
 	}
 }
 

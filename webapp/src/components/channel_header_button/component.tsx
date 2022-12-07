@@ -11,7 +11,8 @@ interface Props {
     show: boolean,
     inCall: boolean,
     hasCall: boolean,
-    isCloudFeatureRestricted: boolean,
+    isAdmin: boolean,
+    isCloudStarter: boolean,
     isCloudPaid: boolean,
     isLimitRestricted: boolean,
     maxParticipants: number,
@@ -22,7 +23,8 @@ const ChannelHeaderButton = ({
     show,
     inCall,
     hasCall,
-    isCloudFeatureRestricted,
+    isAdmin,
+    isCloudStarter,
     isCloudPaid,
     isLimitRestricted,
     maxParticipants,
@@ -32,7 +34,8 @@ const ChannelHeaderButton = ({
         return null;
     }
 
-    const restricted = isLimitRestricted || isCloudFeatureRestricted || isChannelArchived;
+    const restricted = isLimitRestricted || isChannelArchived;
+    const withUpsellIcon = (isLimitRestricted && isCloudStarter && !inCall);
 
     const button = (
         <CallButton
@@ -42,9 +45,14 @@ const ChannelHeaderButton = ({
             isCloudPaid={isCloudPaid}
         >
             <CompassIcon icon='phone-outline'/>
-            <span className='call-button-label'>
-                {hasCall ? 'Join call' : 'Start call'}
-            </span>
+            <div>
+                <span className='call-button-label'>
+                    {hasCall ? 'Join call' : 'Start call'}
+                </span>
+            </div>
+            {withUpsellIcon &&
+                <UpsellIcon className={'icon icon-key-variant'}/>
+            }
         </CallButton>
     );
 
@@ -66,7 +74,7 @@ const ChannelHeaderButton = ({
         );
     }
 
-    if (isCloudFeatureRestricted) {
+    if (withUpsellIcon) {
         return (
             <OverlayTrigger
                 placement='bottom'
@@ -74,7 +82,7 @@ const ChannelHeaderButton = ({
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
-                            {'Mattermost Professional feature'}
+                            {'Mattermost Cloud Professional feature'}
                         </Header>
                         <SubHeader>
                             {'This is a paid feature, available with a free 30-day trial'}
@@ -82,14 +90,12 @@ const ChannelHeaderButton = ({
                     </Tooltip>
                 }
             >
-                <Wrapper>
-                    {button}
-                    <UpsellIcon className={'icon icon-key-variant-circle'}/>
-                </Wrapper>
+                {button}
             </OverlayTrigger>
         );
     }
 
+    // TODO: verify isCloudPaid message (asked in channel)
     if (isLimitRestricted && !inCall) {
         return (
             <OverlayTrigger
@@ -98,13 +104,23 @@ const ChannelHeaderButton = ({
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
-                            {`There's a limit of ${maxParticipants} participants per call.`}
+                            {`This call is at its maximum capacity of ${maxParticipants} participants.`}
                         </Header>
 
+                        {isCloudStarter && !isAdmin &&
+                            <SubHeader>
+                                {'Contact your system admin for more information about call capacity.'}
+                            </SubHeader>
+                        }
+                        {isCloudStarter && isAdmin &&
+                            <SubHeader>
+                                {`Upgrade to Cloud Professional or Cloud Enterprise to enable group calls with more than ${maxParticipants} participants.`}
+                            </SubHeader>
+                        }
                         {isCloudPaid &&
-                        <SubHeader>
-                            {'This is because calls is currently in beta. We’re working to remove this limit soon.'}
-                        </SubHeader>
+                            <SubHeader>
+                                {`At the moment, ${maxParticipants} is the participant limit for cloud calls.`}
+                            </SubHeader>
                         }
                     </Tooltip>
                 }
