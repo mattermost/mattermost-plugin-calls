@@ -197,6 +197,12 @@ export const callsExplicitlyDisabled = (state: GlobalState, channelId: string): 
     return (typeof enabled !== 'undefined') && !enabled;
 };
 
+export const callsEnabledInCurrentChannel = (state: GlobalState): boolean => {
+    const channelId = getCurrentChannelId(state);
+    return callsExplicitlyEnabled(state, channelId) ||
+        (!callsExplicitlyDisabled(state, channelId) && defaultEnabled(state));
+};
+
 export const callsShowButton = (state: GlobalState, channelId: string): boolean =>
     !callsExplicitlyDisabled(state, channelId);
 
