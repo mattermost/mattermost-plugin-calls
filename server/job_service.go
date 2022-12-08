@@ -18,7 +18,7 @@ import (
 )
 
 const jobServiceConfigKey = "jobservice_config"
-const recordingJobRunner = "mattermost/calls-recorder:v0.2.0"
+const recordingJobRunner = "mattermost/calls-recorder:v0.2.1"
 
 type jobService struct {
 	ctx    *Plugin
