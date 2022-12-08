@@ -98,16 +98,22 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
-    private async initAudio() {
+    private async initAudio(deviceId?: string) {
         const audioOptions = {
             autoGainControl: true,
             echoCancellation: true,
             noiseSuppression: true,
         } as any;
 
+        if (deviceId) {
+            audioOptions.deviceId = {
+                exact: deviceId,
+            };
+        }
+
         const defaultInputID = window.localStorage.getItem('calls_default_audio_input');
         const defaultOutputID = window.localStorage.getItem('calls_default_audio_output');
-        if (defaultInputID) {
+        if (defaultInputID && !this.currentAudioInputDevice) {
             const devices = this.audioDevices.inputs.filter((dev) => {
                 return dev.deviceId === defaultInputID;
             });
@@ -322,12 +328,20 @@ export default class CallsClient extends EventEmitter {
     }
 
     public async setAudioInputDevice(device: MediaDeviceInfo) {
-        if (!this.peer || !this.audioTrack || !this.stream) {
+        if (!this.peer) {
             return;
         }
 
         window.localStorage.setItem('calls_default_audio_input', device.deviceId);
         this.currentAudioInputDevice = device;
+
+        // If no track/stream exists we need to initialize again.
+        // This edge case can happen if the default input device failed
+        // but there are potentially more valid ones to choose (MM-48822).
+        if (!this.audioTrack || !this.stream) {
+            await this.initAudio(device.deviceId);
+            return;
+        }
 
         const isEnabled = this.audioTrack.enabled;
         this.voiceDetector.stop();
