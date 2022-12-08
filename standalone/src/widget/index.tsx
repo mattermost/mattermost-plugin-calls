@@ -19,7 +19,6 @@ import {
 
 import {
     logDebug,
-    logErr,
 } from 'plugin/log';
 
 import {

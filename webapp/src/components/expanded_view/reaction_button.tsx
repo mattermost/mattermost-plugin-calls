@@ -49,6 +49,13 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     const barRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const [showPicker, setShowPicker] = useState(false);
     const [showBar, setShowBar] = useState(false);
+
+    // Note: this is such a hack. Emoji-mart seems be mounted and then receives the onClickOutside immediately after.
+    //  (it's not really that emoji-mart/react doesn't trigger the cleanup function when it's unmounted, see:
+    //  https://github.com/missive/emoji-mart/issues/635, because clicking once it's unmounted doesn't fire the onClickOutside event.)
+    //  e.preventDefault() doesn't stop the click from propogating to the newly mounted picker.
+    const [pickerHack, setPickerHack] = useState(true);
+
     useImperativeHandle(ref, () => ({
         toggle() {
             toggleReactions();
@@ -85,7 +92,37 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
         />
     ) : <HandRightOutlineIcon size={18}/>;
 
-    const toggleShowPicker = () => setShowPicker((prev) => !prev);
+    const toggleShowPicker = () => {
+        setShowPicker((showing) => {
+            if (showing) {
+                // We are showing, and clicking the emoji icon sends an event here (but not to onClickOutside because
+                // it's closed before it has a chance to handle it). So reset the pickerHack to false for the next time.
+                setPickerHack(false);
+            }
+            return !showing;
+        });
+    };
+    const clickedOutsidePicker = () => {
+        if (!pickerHack) {
+            // Here's the hack: don't trigger the showPicker if we received this click immediately after mounting.
+            setPickerHack(true);
+            return;
+        }
+
+        // We have set pickerHack in the past, so this is a regular clickedOutsidePicker event.
+        setShowPicker((showing) => {
+            if (showing) {
+                // Reset the hack and close the picker.
+                setPickerHack(false);
+                return false;
+            }
+
+            // show the picker? (this should never happen--if the picker is not showing, it shouldn't receive the outsideClick.)
+            // But just in case:
+            return true;
+        });
+    };
+
     const toggleReactions = () => setShowBar((prev) => !prev);
 
     return (
@@ -97,7 +134,7 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                         set={'apple'}
                         skinTonePosition='search'
                         onEmojiSelect={handleUserPicksEmoji}
-                        onClickOutside={toggleShowPicker}
+                        onClickOutside={clickedOutsidePicker}
                         autoFocus={true}
                         perLine={9}
                         emojiButtonSize={35}
