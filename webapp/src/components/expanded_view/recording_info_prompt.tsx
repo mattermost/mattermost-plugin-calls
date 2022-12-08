@@ -74,8 +74,8 @@ export default function RecordingInfoPrompt(props: Props) {
                 }
                 iconFill='rgb(var(--dnd-indicator-rgb))'
                 iconColor='rgb(var(--dnd-indicator-rgb))'
-                header={`Your recording will end in ${getMinutesLeftBeforeEnd()} minutes`}
-                body={`Calls can only be recorded for up to ${props.recordingMaxDuration} minutes after which the recording will automatically stop.`}
+                header={`Calls can be recorded for up to ${props.recordingMaxDuration} minutes`}
+                body={`Your recording will end in ${getMinutesLeftBeforeEnd()} minutes.`}
                 confirmText={'Dismiss'}
                 onClose={() => updateDismissedAt(Date.now())}
             />
