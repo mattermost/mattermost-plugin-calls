@@ -506,7 +506,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     maxHeight: `calc(100% - ${this.shouldRenderAlertBanner() ? 240 : 200}px)`,
                 }}
             >
-                <ReactionStream forceLeft={true}/>
                 <StyledMediaController
                     gesturesDisabled={true}
                 >
@@ -543,6 +542,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 >
                     {msg}
                 </span>
+                <ReactionStream forceLeft={true}/>
             </div>
         );
     }

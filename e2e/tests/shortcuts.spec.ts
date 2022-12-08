@@ -19,15 +19,19 @@ test.describe('keyboard shortcuts', () => {
         // Solely needed to wait till the page has loaded.
         await expect(page.locator('[aria-label="channel header region"] button:has-text("Start Call")')).toBeVisible();
 
-        await page.keyboard.down('Control');
-        await page.keyboard.down('Shift');
-        await page.keyboard.down('S');
+        if (process.platform === 'darwin') {
+            await page.keyboard.press('Meta+Alt+S');
+        } else {
+            await page.keyboard.press('Control+Alt+S');
+        }
 
         await expect(page.locator('#calls-widget')).toBeVisible();
 
-        await page.keyboard.down('Control');
-        await page.keyboard.down('Shift');
-        await page.keyboard.down('L');
+        if (process.platform === 'darwin') {
+            await page.keyboard.press('Meta+Shift+L');
+        } else {
+            await page.keyboard.press('Control+Shift+L');
+        }
 
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
@@ -38,9 +42,11 @@ test.describe('keyboard shortcuts', () => {
         await devPage.wait(1000);
 
         const toggleMute = async () => {
-            await page.keyboard.down('Control');
-            await page.keyboard.down('Shift');
-            await page.keyboard.down('Space');
+            if (process.platform === 'darwin') {
+                await page.keyboard.press('Meta+Shift+Space');
+            } else {
+                await page.keyboard.press('Control+Shift+Space');
+            }
         };
 
         await toggleMute();
@@ -72,9 +78,11 @@ test.describe('keyboard shortcuts', () => {
         await devPage.wait(1000);
 
         const toggleHand = async () => {
-            await page.keyboard.down('Control');
-            await page.keyboard.down('Shift');
-            await page.keyboard.down('Y');
+            if (process.platform === 'darwin') {
+                await page.keyboard.press('Meta+Shift+Y');
+            } else {
+                await page.keyboard.press('Control+Shift+Y');
+            }
         };
 
         await toggleHand();
@@ -106,9 +114,11 @@ test.describe('keyboard shortcuts', () => {
         await devPage.wait(1000);
 
         const toggleParticipants = async () => {
-            await page.keyboard.down('Control');
-            await page.keyboard.down('Shift');
-            await page.keyboard.down('P');
+            if (process.platform === 'darwin') {
+                await page.keyboard.press('Meta+Shift+P');
+            } else {
+                await page.keyboard.press('Control+Shift+P');
+            }
         };
 
         await expect(page.locator('#calls-widget-participants-list')).toBeHidden();
@@ -152,14 +162,17 @@ test.describe('keyboard shortcuts', () => {
         }
 
         // mute
-        await page.keyboard.press('Control+Shift+Space');
+        if (process.platform === 'darwin') {
+            await page.keyboard.press('Meta+Shift+Space');
+        } else {
+            await page.keyboard.press('Control+Shift+Space');
+        }
 
         isMuted = await page.evaluate(() => {
             return window.callsClient.isMuted();
         });
         if (!isMuted) {
             test.fail();
-            return;
         }
     });
 });

@@ -8,7 +8,7 @@ export const LEAVE_CALL = 'leave-call';
 export const PUSH_TO_TALK = 'push-to-talk';
 
 const globalMappings = {
-    [isMac() ? 'meta+shift+s' : 'ctrl+shift+s']: JOIN_CALL,
+    [isMac() ? 'meta+alt+s' : 'ctrl+alt+s']: JOIN_CALL,
 };
 
 const widgetMappings = {

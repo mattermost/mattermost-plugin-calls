@@ -37,6 +37,8 @@ import {
     CallErrorModal,
 } from 'src/components/call_error_modal';
 
+import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
+
 import {
     SHOW_EXPANDED_VIEW,
     HIDE_EXPANDED_VIEW,
@@ -234,3 +236,14 @@ export function prefetchThread(postId: string) {
         return {data: thread};
     };
 }
+
+export const displayCallsTestModeUser = () => {
+    return async (dispatch: DispatchFunc) => {
+        dispatch(modals.openModal({
+            modalId: IDTestModeUser,
+            dialogType: CallsInTestModeModal,
+        }));
+
+        return {};
+    };
+};

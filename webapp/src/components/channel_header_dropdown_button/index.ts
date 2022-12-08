@@ -3,25 +3,29 @@ import {GlobalState} from '@mattermost/types/store';
 
 import {getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
 
+import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+
 import {
     voiceConnectedUsers,
     connectedChannelID,
-    callsEnabled,
-    isCloudFeatureRestricted,
     isCloudProfessionalOrEnterpriseOrTrial,
     isLimitRestricted,
     maxParticipants,
+    isCloudStarter,
+    callsShowButton,
 } from 'src/selectors';
 
 import ChannelHeaderDropdownButton from './component';
 
 const mapStateToProps = (state: GlobalState) => {
     const channel = getCurrentChannel(state);
+
     return {
-        show: callsEnabled(state, channel?.id),
+        show: callsShowButton(state, channel?.id),
         inCall: Boolean(connectedChannelID(state) && connectedChannelID(state) === channel?.id),
         hasCall: voiceConnectedUsers(state).length > 0,
-        isCloudFeatureRestricted: isCloudFeatureRestricted(state),
+        isAdmin: isCurrentUserSystemAdmin(state),
+        isCloudStarter: isCloudStarter(state),
         isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),
         isLimitRestricted: isLimitRestricted(state),
         maxParticipants: maxParticipants(state),

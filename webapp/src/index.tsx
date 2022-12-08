@@ -5,15 +5,21 @@ import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
-import {getMyChannelRoles, getMySystemRoles} from 'mattermost-redux/selectors/entities/roles';
-import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
-import {displayFreeTrial, getCallsConfig, displayCallErrorModal, showScreenSourceModal} from 'src/actions';
+import {
+    displayFreeTrial,
+    getCallsConfig,
+    displayCallErrorModal,
+    showScreenSourceModal,
+    displayCallsTestModeUser,
+} from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
+
+import TestMode from 'src/components/admin_console_settings/test_mode';
 
 import {
     handleUserConnected,
@@ -32,17 +38,19 @@ import {
 } from './websocket_handlers';
 
 import {
-    callsEnabled,
     connectedChannelID,
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
     voiceChannelCallStartAt,
     voiceChannelCallOwnerID,
-    isCloudFeatureRestricted,
     isLimitRestricted,
-    allowEnableCalls,
     iceServers,
     needsTURNCredentials,
+    defaultEnabled,
+    isCloudStarter,
+    channelHasCall,
+    callsExplicitlyEnabled,
+    callsExplicitlyDisabled, hasPermissionsToEnableCalls,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -66,7 +74,6 @@ import reducer from './reducers';
 
 import {
     getPluginPath,
-    hasPermissionsToEnableCalls,
     getExpandedChannelID,
     getRecordingChannelID,
     getProfilesByIds,
@@ -74,7 +81,6 @@ import {
     getUserIdFromDM,
     getWSConnectionURL,
     playSound,
-    getUserDisplayName,
     followThread,
     shouldRenderDesktopWidget,
     sendDesktopEvent,
@@ -101,7 +107,7 @@ import {
     DESKTOP_WIDGET_CONNECTED,
 } from './action_types';
 
-import {PluginRegistry, Store} from './types/mattermost-webapp';
+import {PluginRegistry, SlashCommandWillBePostedReturn, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
@@ -219,10 +225,6 @@ export default class Plugin {
             switch (subCmd) {
             case 'join':
             case 'start':
-                if (!callsEnabled(store.getState(), args.channel_id)) {
-                    return {error: {message: 'Cannot start or join call: calls are disabled in this channel.'}};
-                }
-
                 if (subCmd === 'start') {
                     if (voiceConnectedUsersInChannel(store.getState(), args.channel_id).length > 0) {
                         return {error: {message: 'A call is already ongoing in the channel.'}};
@@ -233,9 +235,13 @@ export default class Plugin {
                     if (fields.length > 2) {
                         title = fields.slice(2).join(' ');
                     }
-                    connectCall(args.channel_id, title);
-                    followThread(store, args.channel_id, args.team_id);
-                    return {};
+                    const team_id = args?.team_id || getChannel(store.getState(), args.channel_id).team_id;
+                    try {
+                        await joinCall(args.channel_id, team_id, title);
+                        return {};
+                    } catch (e) {
+                        return {error: {message: e.message}};
+                    }
                 }
                 return {error: {message: 'You\'re already connected to a call in the current channel.'}};
             case 'leave':
@@ -306,19 +312,77 @@ export default class Plugin {
             return {message, args};
         });
 
-        const joinCall = (channelID: string, teamID: string) => {
+        const connectToCall = async (channelId: string, teamId: string, title?: string) => {
+            try {
+                const users = voiceConnectedUsers(store.getState());
+                if (users && users.length > 0) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_PROFILES_CONNECTED,
+                        data: {
+                            profiles: await getProfilesByIds(store.getState(), users),
+                            channelId,
+                        },
+                    });
+                }
+            } catch (err) {
+                logErr(err);
+            }
+
             if (!connectedChannelID(store.getState())) {
-                connectCall(channelID);
+                connectCall(channelId, title);
 
                 // following the thread only on join. On call start
                 // this is done in the call_start ws event handler.
-                if (voiceConnectedUsersInChannel(store.getState(), channelID).length > 0) {
-                    followThread(store, channelID, teamID);
+                if (voiceConnectedUsersInChannel(store.getState(), channelId).length > 0) {
+                    followThread(store, channelId, teamId);
                 }
-            } else if (connectedChannelID(store.getState()) !== channelID) {
+            } else if (connectedChannelID(store.getState()) !== channelId) {
                 store.dispatch({
                     type: SHOW_SWITCH_CALL_MODAL,
                 });
+            }
+        };
+
+        const joinCall = async (channelId: string, teamId: string, title?: string) => {
+            // Anyone can join a call already in progress.
+            // If explicitly enabled, everyone can start calls.
+            // In LiveMode (DefaultEnabled=true):
+            //   - everyone can start a call unless it has been disabled
+            // If explicitly disabled, no-one can start calls.
+            // In TestMode (DefaultEnabled=false):
+            //   - sysadmins can start a call, but they receive an ephemeral message (server-side)
+            //   - non-sysadmins cannot start a call and are shown a prompt
+
+            const explicitlyEnabled = callsExplicitlyEnabled(store.getState(), channelId);
+            const explicitlyDisabled = callsExplicitlyDisabled(store.getState(), channelId);
+
+            // Note: not super happy with using explicitlyDisabled both here and below, but wanted to keep the "able to start" logic confined to one place.
+            if (channelHasCall(store.getState(), channelId) || explicitlyEnabled || (!explicitlyDisabled && defaultEnabled(store.getState()))) {
+                if (isLimitRestricted(store.getState())) {
+                    if (isCloudStarter(store.getState())) {
+                        store.dispatch(displayFreeTrial());
+                        return;
+                    }
+
+                    // Don't allow a join if over limits (UI will have shown this info).
+                    return;
+                }
+
+                await connectToCall(channelId, teamId, title);
+                return;
+            }
+
+            if (explicitlyDisabled) {
+                // UI should not have shown, so this is a response to a slash command.
+                throw Error('Cannot start or join call: calls are disabled in this channel.');
+            }
+
+            // We are in TestMode (DefaultEnabled=false)
+            if (isCurrentUserSystemAdmin(store.getState())) {
+                // Rely on server side to send ephemeral message.
+                await connectToCall(channelId, teamId, title);
+            } else {
+                store.dispatch(displayCallsTestModeUser());
             }
         };
 
@@ -339,31 +403,6 @@ export default class Plugin {
                 ChannelHeaderButton,
                 ChannelHeaderDropdownButton,
                 async (channel) => {
-                    if (isCloudFeatureRestricted(store.getState())) {
-                        store.dispatch(displayFreeTrial());
-                        return;
-                    }
-
-                    if (isLimitRestricted(store.getState())) {
-                        return;
-                    }
-
-                    try {
-                        const users = voiceConnectedUsers(store.getState());
-                        if (users && users.length > 0) {
-                            store.dispatch({
-                                type: VOICE_CHANNEL_PROFILES_CONNECTED,
-                                data: {
-                                    profiles: await getProfilesByIds(store.getState(), users),
-                                    channelID: channel.id,
-                                },
-                            });
-                        }
-                    } catch (err) {
-                        logErr(err);
-                        return;
-                    }
-
                     joinCall(channel.id, channel.team_id);
                 },
             );
@@ -372,6 +411,7 @@ export default class Plugin {
         registerChannelHeaderMenuButton();
 
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
+        registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
 
         const connectCall = async (channelID: string, title?: string) => {
             if (shouldRenderDesktopWidget()) {
@@ -464,7 +504,7 @@ export default class Plugin {
                 async (channelID) => {
                     try {
                         const resp = await axios.post(`${getPluginPath()}/${currChannelId}`,
-                            {enabled: !callsEnabled(store.getState(), currChannelId)},
+                            {enabled: callsExplicitlyDisabled(store.getState(), currChannelId)},
                             {headers: {'X-Requested-With': 'XMLHttpRequest'}});
                         store.dispatch({
                             type: RECEIVED_CHANNEL_STATE,
@@ -516,10 +556,6 @@ export default class Plugin {
                 channel = getChannel(store.getState(), channelID);
             }
 
-            const systemRoles = getMySystemRoles(store.getState());
-            const channelRoles = getMyChannelRoles(store.getState());
-            const cms = getMyChannelMemberships(store.getState());
-
             if (isDMChannel(channel)) {
                 const otherID = getUserIdFromDM(channel.name, getCurrentUserId(store.getState()));
                 const dmUser = getUser(store.getState(), otherID);
@@ -529,9 +565,8 @@ export default class Plugin {
             }
 
             try {
-                const allowEnable = allowEnableCalls(store.getState());
                 registry.unregisterComponent(channelHeaderMenuID);
-                if (hasPermissionsToEnableCalls(channel, cms[channelID], systemRoles, channelRoles, allowEnable)) {
+                if (hasPermissionsToEnableCalls(store.getState(), channelID)) {
                     registerChannelHeaderMenuAction();
                 }
             } catch (err) {
