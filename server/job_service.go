@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mattermost/mattermost-plugin-api/cluster"
 
@@ -46,7 +47,8 @@ func (p *Plugin) getJobServiceClientConfig(serviceURL string) (offloader.ClientC
 	// Give precedence to environment to override everything else.
 	cfg.ClientID = os.Getenv("MM_CALLS_JOB_SERVICE_CLIENT_ID")
 	cfg.AuthKey = os.Getenv("MM_CALLS_JOB_SERVICE_AUTH_KEY")
-	cfg.URL = os.Getenv("MM_CALLS_JOB_SERVICE_URL")
+	cfg.URL = strings.TrimSuffix(os.Getenv("MM_CALLS_JOB_SERVICE_URL"), "/")
+
 	if cfg.URL == "" {
 		cfg.URL = serviceURL
 	}
@@ -153,6 +155,9 @@ func (p *Plugin) newJobService(serviceURL string) (*jobService, error) {
 	if serviceURL == "" {
 		return nil, fmt.Errorf("serviceURL should not be empty")
 	}
+
+	// Remove trailing slash if present.
+	serviceURL = strings.TrimSuffix(serviceURL, "/")
 
 	cfg, err := p.getJobServiceClientConfig(serviceURL)
 	if err != nil {
