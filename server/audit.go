@@ -21,19 +21,11 @@ func (r httpResponse) isEmpty() bool {
 	return r == httpResponse{}
 }
 
-func (p *Plugin) httpAudit(handler string, res *httpResponse, w http.ResponseWriter, r *http.Request) {
-	logFields := reqAuditFields(r)
-	if res.Err != "" {
-		logFields = append(logFields, "error", res.Err, "code", res.Code, "status", "fail")
-	} else {
-		logFields = append(logFields, "status", "success")
-	}
-
+func (p *Plugin) httpResponseHandler(res *httpResponse, w http.ResponseWriter) {
 	if res.Err != "" && res.Msg == "" {
 		res.Msg = res.Err
 		res.Err = ""
 	}
-
 	if !res.isEmpty() {
 		if res.Code != 0 {
 			w.WriteHeader(res.Code)
@@ -43,6 +35,17 @@ func (p *Plugin) httpAudit(handler string, res *httpResponse, w http.ResponseWri
 			p.LogError(fmt.Sprintf("failed to encode data: %s", err))
 		}
 	}
+}
+
+func (p *Plugin) httpAudit(handler string, res *httpResponse, w http.ResponseWriter, r *http.Request) {
+	logFields := reqAuditFields(r)
+	if res.Err != "" {
+		logFields = append(logFields, "error", res.Err, "code", res.Code, "status", "fail")
+	} else {
+		logFields = append(logFields, "status", "success")
+	}
+
+	p.httpResponseHandler(res, w)
 
 	p.LogDebug(handler, logFields...)
 }

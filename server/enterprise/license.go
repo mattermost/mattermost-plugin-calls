@@ -31,3 +31,9 @@ func (e *LicenseChecker) RTCDAllowed() bool {
 
 	return e.isAtLeastE20Licensed() || pluginapi.IsCloud(license)
 }
+
+// RecordingsALlowed returns true if the license allows use of
+// the call recordings functionality.
+func (e *LicenseChecker) RecordingsAllowed() bool {
+	return e.isAtLeastE20Licensed()
+}

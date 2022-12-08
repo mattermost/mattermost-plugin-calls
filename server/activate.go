@@ -5,7 +5,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/mattermost/mattermost-server/v6/model"
 	"os"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/mattermost/rtcd/service/rtc"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 func (p *Plugin) createBotSession() (*model.Session, error) {
@@ -94,6 +94,17 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 	p.botSession = session
+
+	if p.licenseChecker.RecordingsAllowed() && cfg.recordingsEnabled() {
+		p.jobService, err = p.newJobService(cfg.getJobServiceURL())
+		if err != nil {
+			err = fmt.Errorf("failed to create job service: %w", err)
+			p.LogError(err.Error())
+			return err
+		}
+
+		p.LogDebug("job service initialized successfully")
+	}
 
 	if rtcdURL := cfg.getRTCDURL(); rtcdURL != "" && p.licenseChecker.RTCDAllowed() {
 		rtcdManager, err := p.newRTCDClientManager(rtcdURL)
@@ -200,6 +211,12 @@ func (p *Plugin) OnDeactivate() error {
 
 	if err := p.uninitTelemetry(); err != nil {
 		p.LogError(err.Error())
+	}
+
+	if p.botSession != nil {
+		if err := p.API.RevokeSession(p.botSession.Id); err != nil {
+			p.LogError(err.Error())
+		}
 	}
 
 	return nil

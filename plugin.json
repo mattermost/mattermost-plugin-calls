@@ -4,7 +4,7 @@
     "description": "Integrates real-time voice communication in Mattermost",
     "homepage_url": "https://github.com/mattermost/mattermost-plugin-calls/",
     "support_url": "https://github.com/mattermost/mattermost-plugin-calls/issues",
-    "min_server_version": "6.6.0",
+    "min_server_version": "7.6.0",
     "server": {
         "executables": {
             "linux-amd64": "server/dist/plugin-linux-amd64",
@@ -92,6 +92,27 @@
                 "type": "text",
                 "help_text": "(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
                 "placeholder": "https://rtcd.example.com"
+            },
+            {
+                "key": "EnableRecordings",
+                "display_name": "Enable call recordings (Beta)",
+                "type": "bool",
+                "default": false,
+                "help_text": "(Optional) When set to true it enables the call recordings functionality."
+            },
+            {
+                "key": "JobServiceURL",
+                "display_name": "Job service URL",
+                "type": "text",
+                "help_text": "The URL to a running calls job service instance used for call recordings.",
+                "placeholder": "https://calls-job-service.example.com"
+            },
+            {
+                "key": "MaxRecordingDuration",
+                "display_name": "Maximum call recording duration",
+                "type": "number",
+                "default": 60,
+                "help_text": "The maximum duration (in minutes) for call recordings. Value must be in the range [15, 180]."
             }
         ]
     }

@@ -43,6 +43,8 @@ type configuration struct {
 	// When set to true it will pass and use configured TURN candidates to server
 	// initiated connections.
 	ServerSideTURN *bool
+	// The URL to a running calls-offloader job service instance.
+	JobServiceURL string
 
 	clientConfig
 }
@@ -69,7 +71,17 @@ type clientConfig struct {
 	NeedsTURNCredentials *bool
 	// When set to true it allows call participants to share their screen.
 	AllowScreenSharing *bool
+	// When set to true it enables the call recordings functionality
+	EnableRecordings *bool
+	// The maximum duration (in minutes) for call recordings.
+	MaxRecordingDuration *int
 }
+
+const (
+	defaultRecDurationMinutes = 60
+	minRecDurationMinutes     = 15
+	maxRecDurationMinutes     = 180
+)
 
 type ICEServers []string
 type ICEServersConfigs rtc.ICEServers
@@ -159,6 +171,8 @@ func (c *configuration) getClientConfig() clientConfig {
 		MaxCallParticipants:  c.MaxCallParticipants,
 		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
 		AllowScreenSharing:   c.AllowScreenSharing,
+		EnableRecordings:     c.EnableRecordings,
+		MaxRecordingDuration: c.MaxRecordingDuration,
 	}
 }
 
@@ -185,6 +199,12 @@ func (c *configuration) SetDefaults() {
 		c.AllowScreenSharing = new(bool)
 		*c.AllowScreenSharing = true
 	}
+	if c.EnableRecordings == nil {
+		c.EnableRecordings = new(bool)
+	}
+	if c.MaxRecordingDuration == nil {
+		c.MaxRecordingDuration = model.NewInt(defaultRecDurationMinutes)
+	}
 }
 
 func (c *configuration) IsValid() error {
@@ -204,6 +224,10 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("TURNCredentialsExpirationMinutes is not valid")
 	}
 
+	if c.MaxRecordingDuration == nil || *c.MaxRecordingDuration < minRecDurationMinutes || *c.MaxRecordingDuration > maxRecDurationMinutes {
+		return fmt.Errorf("MaxRecordingDuration is not valid: range should be [%d, %d]", minRecDurationMinutes, maxRecDurationMinutes)
+	}
+
 	return nil
 }
 
@@ -213,6 +237,7 @@ func (c *configuration) Clone() *configuration {
 
 	cfg.ICEHostOverride = c.ICEHostOverride
 	cfg.RTCDServiceURL = c.RTCDServiceURL
+	cfg.JobServiceURL = c.JobServiceURL
 	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 
 	if c.UDPServerPort != nil {
@@ -253,6 +278,14 @@ func (c *configuration) Clone() *configuration {
 		cfg.AllowScreenSharing = model.NewBool(*c.AllowScreenSharing)
 	}
 
+	if c.EnableRecordings != nil {
+		cfg.EnableRecordings = model.NewBool(*c.EnableRecordings)
+	}
+
+	if c.MaxRecordingDuration != nil {
+		cfg.MaxRecordingDuration = model.NewInt(*c.MaxRecordingDuration)
+	}
+
 	return &cfg
 }
 
@@ -261,6 +294,20 @@ func (c *configuration) getRTCDURL() string {
 		return url
 	}
 	return c.RTCDServiceURL
+}
+
+func (c *configuration) getJobServiceURL() string {
+	if url := os.Getenv("MM_CALLS_JOB_SERVICE_URL"); url != "" {
+		return url
+	}
+	return c.JobServiceURL
+}
+
+func (c *configuration) recordingsEnabled() bool {
+	if c.EnableRecordings != nil && *c.EnableRecordings {
+		return true
+	}
+	return false
 }
 
 // getConfiguration retrieves the active configuration under lock, making it safe to use

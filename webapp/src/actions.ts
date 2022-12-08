@@ -237,6 +237,20 @@ export function prefetchThread(postId: string) {
     };
 }
 
+export const startCallRecording = async (callID: string) => {
+    return Client4.doFetch(
+        `${getPluginPath()}/calls/${callID}/recording/start`,
+        {method: 'post'},
+    );
+};
+
+export const stopCallRecording = async (callID: string) => {
+    return Client4.doFetch(
+        `${getPluginPath()}/calls/${callID}/recording/stop`,
+        {method: 'post'},
+    );
+};
+
 export const displayCallsTestModeUser = () => {
     return async (dispatch: DispatchFunc) => {
         dispatch(modals.openModal({

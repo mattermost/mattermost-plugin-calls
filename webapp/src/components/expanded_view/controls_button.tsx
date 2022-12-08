@@ -70,6 +70,7 @@ export default function ControlsButton(props: Props) {
                     isDisabled={props.disabled}
                     isUnavailable={props.unavailable}
                     disabled={props.disabled}
+                    fill={props.iconFill}
                 >
                     <ButtonIcon>
                         {props.icon}
@@ -93,21 +94,22 @@ const ButtonContainer = styled.div<{ margin?: string }>`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: ${({margin}) => margin || '0 16px'};
+    margin: ${({margin}) => margin || '0 8px'};
 `;
 
-const Button = styled.button<{ bgColor: string, isDisabled?: boolean, isUnavailable?: boolean }>`
-    background-color: ${({bgColor}) => bgColor};
+const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailable?: boolean, fill?: string}>`
+  background-color: ${({bgColor}) => bgColor || 'rgba(255, 255, 255, 0.12)'};
 
+  ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
+    background-color: rgba(255, 255, 255, 0.08);
+  `}
+
+  svg {
+    fill: ${({fill}) => fill || 'white'};
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-        background-color: rgba(255, 255, 255, 0.08);
+      fill: rgba(255, 255, 255, 0.32);
     `}
-    svg {
-        fill: white;
-        ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-            fill: rgba(255, 255, 255, 0.32);
-        `}
-    }
+  }
 
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
         :hover {
@@ -124,6 +126,7 @@ const ButtonText = styled.span`
 
 const ButtonIcon = styled.div`
     position: relative;
+    font-size: 0px;
 `;
 
 const UnavailableIcon = styled.div`

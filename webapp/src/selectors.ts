@@ -102,6 +102,10 @@ export const voiceReactions = (state: GlobalState): Reaction[] => {
     return pluginState(state).reactionStatus[connectedChannelID(state)]?.reactions || [];
 };
 
+export const voiceUsersStatusesInChannel = (state: GlobalState, channelID: string) => {
+    return pluginState(state).voiceUsersStatuses[channelID] || {};
+};
+
 export const voiceChannelCallStartAt = (state: GlobalState, channelID: string): number | undefined => {
     return pluginState(state).voiceChannelCalls[channelID]?.startAt;
 };
@@ -110,8 +114,20 @@ export const voiceChannelCallOwnerID = (state: GlobalState, channelID: string): 
     return pluginState(state).voiceChannelCalls[channelID]?.ownerID;
 };
 
+export const voiceChannelCallHostID = (state: GlobalState, channelID: string) => {
+    return pluginState(state).voiceChannelCalls[channelID]?.hostID;
+};
+
+export const voiceChannelCallHostChangeAt = (state: GlobalState, channelID: string) => {
+    return pluginState(state).voiceChannelCalls[channelID]?.hostChangeAt;
+};
+
 export const voiceChannelScreenSharingID = (state: GlobalState, channelID: string): string | undefined => {
     return pluginState(state).voiceChannelScreenSharingID[channelID];
+};
+
+export const callRecording = (state: GlobalState, callID: string) => {
+    return pluginState(state).callsRecordings[callID];
 };
 
 export const expandedView = (state: GlobalState) => {
@@ -157,8 +173,11 @@ export const isLimitRestricted = (state: GlobalState): boolean => {
 export const allowScreenSharing = (state: GlobalState) =>
     callsConfig(state).AllowScreenSharing;
 
-export const endCallModal = (state: GlobalState) =>
-    pluginState(state).endCallModal;
+export const recordingsEnabled = (state: GlobalState) =>
+    callsConfig(state).EnableRecordings;
+
+export const recordingMaxDuration = (state: GlobalState) =>
+    callsConfig(state).MaxRecordingDuration;
 
 //
 // Calls enabled/disabled logic
@@ -180,6 +199,10 @@ export const callsEnabledInCurrentChannel = (state: GlobalState): boolean => {
         return false;
     }
     return callsExplicitlyEnabled(state, channelId) || defaultEnabled(state) || isCurrentUserSystemAdmin(state);
+};
+
+export const endCallModal = (state: GlobalState) => {
+    return pluginState(state).endCallModal;
 };
 
 export const callsShowButton = (state: GlobalState, channelId: string): boolean =>

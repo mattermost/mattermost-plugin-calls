@@ -18,6 +18,9 @@ import {
 } from 'src/actions';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
+import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
+import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
+import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
 
 import TestMode from 'src/components/admin_console_settings/test_mode';
 
@@ -35,6 +38,8 @@ import {
     handleUserRaisedHand,
     handleUserUnraisedHand,
     handleUserReaction,
+    handleCallHostChanged,
+    handleCallRecordingState,
 } from './websocket_handlers';
 
 import {
@@ -103,6 +108,8 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     SHOW_END_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
+    VOICE_CHANNEL_CALL_HOST,
+    VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
 
 import {PluginRegistry, SlashCommandWillBePostedReturn, Store} from './types/mattermost-webapp';
@@ -184,6 +191,14 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_reacted`, (ev) => {
             handleUserReaction(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_host_changed`, (ev) => {
+            handleCallHostChanged(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_state`, (ev) => {
+            handleCallRecordingState(store, ev);
         });
     }
 
@@ -400,6 +415,9 @@ export default class Plugin {
         registerChannelHeaderMenuButton();
 
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
+        registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
+        registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
+        registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
 
         const connectCall = async (channelID: string, title?: string) => {
@@ -518,6 +536,7 @@ export default class Plugin {
                                 channelID: resp.data[i].channel_id,
                                 startAt: resp.data[i].call?.start_at,
                                 ownerID: resp.data[i].call?.owner_id,
+                                hostID: resp.data[i].call?.host_id,
                             },
                         });
                     }
@@ -579,12 +598,32 @@ export default class Plugin {
                         },
                     });
                 }
+                if (resp.data.call?.host_id) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_CALL_HOST,
+                        data: {
+                            channelID,
+                            hostID: resp.data.call?.host_id,
+                        },
+                    });
+                }
+
                 if (resp.data.call?.users && resp.data.call?.users.length > 0) {
                     store.dispatch({
                         type: VOICE_CHANNEL_PROFILES_CONNECTED,
                         data: {
                             profiles: await getProfilesByIds(store.getState(), resp.data.call?.users),
                             channelID,
+                        },
+                    });
+                }
+
+                if (resp.data.call?.recording) {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+                        data: {
+                            callID: channelID,
+                            recState: resp.data.call?.recording,
                         },
                     });
                 }

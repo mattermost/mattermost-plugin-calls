@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -299,6 +300,9 @@ func resolveURL(u string, timeout time.Duration) ([]net.IP, string, error) {
 }
 
 func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.DialContextFn) (*rtcd.Client, error) {
+	// Remove trailing slash if present.
+	rtcdURL = strings.TrimSuffix(rtcdURL, "/")
+
 	clientCfg, err := m.getRTCDClientConfig(rtcdURL, dialFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rtcd client config: %w", err)
@@ -535,8 +539,7 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 		return fmt.Errorf("unexpected data type %T", msg.Data)
 	}
 	m.ctx.LogDebug("relaying ws message", "sessionID", rtcMsg.SessionID, "userID", rtcMsg.UserID)
-	m.ctx.metrics.IncWebSocketEvent("out", "signal")
-	m.ctx.API.PublishWebSocketEvent(wsEventSignal, map[string]interface{}{
+	m.ctx.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 		"data":   string(rtcMsg.Data),
 		"connID": rtcMsg.SessionID,
 	}, &model.WebsocketBroadcast{UserId: rtcMsg.UserID, ReliableClusterSend: true})

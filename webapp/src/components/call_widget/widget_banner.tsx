@@ -5,27 +5,39 @@ import CompassIcon from 'src/components/icons/compassIcon';
 
 type Props = {
     type: string,
-    icon: string,
-    body: string | React.ReactNode,
+    icon: string | React.ReactNode,
+    iconFill?: string,
+    iconColor?: string,
+    body?: string | React.ReactNode,
+    header: string,
+    confirmText?: string | null,
+    declineText?: string | null,
     onClose?: () => void,
+    onDecline?: () => void,
 }
 
 const colorMap: {[key: string]: string} = {
     error: 'var(--button-color)',
     warning: 'var(--center-channel-color)',
+    info: 'var(--center-channel-color)',
 };
 
 const bgMap: {[key: string]: string} = {
     error: 'var(--dnd-indicator)',
     warning: 'var(--away-indicator)',
+    info: 'var(--center-channel-bg)',
 };
 
 export default function WidgetBanner(props: Props) {
     const [closing, setClosing] = useState(false);
+    const [declining, setDeclining] = useState(false);
 
     const onAnimationEnd = () => {
         if (closing && props.onClose) {
             props.onClose();
+        }
+        if (declining && props.onDecline) {
+            props.onDecline();
         }
     };
 
@@ -33,16 +45,60 @@ export default function WidgetBanner(props: Props) {
         <Banner
             color={colorMap[props.type]}
             bgColor={bgMap[props.type]}
-            fadeIn={!closing}
+            fadeIn={!closing && !declining}
             onAnimationEnd={onAnimationEnd}
         >
-            <Icon><CompassIcon icon={props.icon}/></Icon>
-            <Body>{props.body}</Body>
-            { props.onClose &&
             <Icon
-                isClose={true}
-                onClick={() => setClosing(true)}
-            ><CompassIcon icon='close'/></Icon>
+                fill={props.iconFill}
+                color={props.iconColor}
+            >
+                { typeof props.icon === 'string' &&
+                    <CompassIcon icon={props.icon}/>
+                }
+
+                { typeof props.icon !== 'string' &&
+                    props.icon
+                }
+            </Icon>
+
+            <Main>
+                <Header>
+                    <HeaderText>{props.header}</HeaderText>
+                </Header>
+                <Body>
+                    { props.body &&
+                    <BodyText>{props.body}</BodyText>
+                    }
+                </Body>
+                { ((props.confirmText && props.onClose) || (props.onDecline && props.declineText)) &&
+                    <Footer>
+                        { props.confirmText && props.onClose &&
+                        <ConfirmButton
+                            className='cursor--pointer style--none'
+                            onClick={() => setClosing(true)}
+                        >
+                            {props.confirmText}
+                        </ConfirmButton>
+                        }
+
+                        { props.declineText && props.onDecline &&
+                        <DeclineButton
+                            className='cursor--pointer style--none'
+                            onClick={() => setDeclining(true)}
+                        >
+                            {props.declineText}
+                        </DeclineButton>
+                        }
+                    </Footer>
+                }
+            </Main>
+
+            { props.onClose &&
+                <CloseButton
+                    onClick={() => setClosing(true)}
+                >
+                    <CompassIcon icon='close'/>
+                </CloseButton>
             }
         </Banner>
     );
@@ -75,6 +131,7 @@ const Banner = styled.div<{color: string, bgColor: string, fadeIn: boolean}>`
   align-items: flex-start;
   width: 100%;
   background-color: ${({bgColor}) => bgColor};
+  box-shadow: 0px 8px 24px rgba(var(--center-channel-color-rgb), 0.12);
   padding: 5px 8px;
   border-radius: 4px;
   color: ${({color}) => color};
@@ -86,22 +143,79 @@ const Banner = styled.div<{color: string, bgColor: string, fadeIn: boolean}>`
   }
 `;
 
-const Body = styled.span`
+const Main = styled.div`
+  display: flex;
+  flex-direction: column;
+
   font-style: normal;
-  font-weight: 600;
   font-size: 11px;
   line-height: 16px;
   letter-spacing: 0.02em;
   margin: 0 4px;
-  flex: 1;
 `;
 
-const Icon = styled.div<{isClose?: boolean}>`
-  margin-left: ${({isClose}) => (isClose ? '0' : '-5px')};
-  margin-right: ${({isClose}) => (isClose ? '-5px' : '0')};
-  ${({isClose}) => isClose && css`
-      cursor: pointer;
-  `}
+const Header = styled.div`
+  display: flex;
+  align-items: center;
+  width: 100%;
+`;
+
+const HeaderText = styled.span`
+  flex: 1;
+  font-weight: 600;
+`;
+
+const Body = styled.div`
+  display: flex;
+  align-items: flex-start;
+  margin-top: 4px;
+`;
+
+const BodyText = styled.div`
+  flex: 1;
+  font-weight: 400;
+`;
+
+const Footer = styled.div`
+  display: flex;
+  align-items: flex-start;
+  margin-top: 8px;
+`;
+
+const ConfirmButton = styled.button`
+  &&& {
+    color: var(--button-bg);
+    font-weight: 600;
+    padding: 4px 10px;
+    margin-right: 2px;
+    border-radius: 4px;
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+  }
+`;
+
+const DeclineButton = styled.button`
+  &&& {
+    color: var(--dnd-indicator);
+    font-weight: 600;
+    padding: 4px 10px;
+    margin-left: 2px;
+    border-radius: 4px;
+    background: rgba(var(--dnd-indicator-rgb), 0.08);
+  }
+`;
+
+const Icon = styled.div<{fill?: string, color?: string}>`
   font-size: 12px;
-  line-height: 16px;
+  fill: ${({fill}) => (fill || 'currentColor')};
+  color: ${({color}) => (color || 'currentColor')};
+  margin-top: 4px;
+`;
+
+const CloseButton = styled(Icon)`
+  cursor: pointer;
+  margin-top: 4px;
+
+  :hover {
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+  }
 `;

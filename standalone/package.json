@@ -62,7 +62,7 @@
     "webpack-cli": "4.7.2"
   },
   "dependencies": {
-    "@mattermost/compass-icons": "0.1.24",
+    "@mattermost/compass-icons": "0.1.31",
     "@mattermost/types": "6.7.0-0",
     "@msgpack/msgpack": "2.7.1",
     "bootstrap": "3.4.1",

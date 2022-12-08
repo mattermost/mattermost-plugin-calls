@@ -6,6 +6,7 @@ export const PARTICIPANTS_LIST_TOGGLE = 'participants-list-toggle';
 export const JOIN_CALL = 'join-call';
 export const LEAVE_CALL = 'leave-call';
 export const PUSH_TO_TALK = 'push-to-talk';
+export const RECORDING_TOGGLE = 'recording-toggle';
 
 const globalMappings = {
     [isMac() ? 'meta+alt+s' : 'ctrl+alt+s']: JOIN_CALL,
@@ -24,6 +25,7 @@ const widgetMappings = {
 const popoutMappings = {
     ...widgetMappings,
     space: PUSH_TO_TALK,
+    [isMac() ? 'meta+alt+r' : 'ctrl+alt+r']: RECORDING_TOGGLE,
 };
 
 export const keyMappings: {[key: string]: {[key: string]: string}} = {
