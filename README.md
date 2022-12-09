@@ -17,7 +17,7 @@ For more details on how to develop a plugin refer to the official [documentation
 
 ## Load testing
 
-Refer to [load-test client documentation](lt/README) for information on how to simulate and load-test calls.
+Refer to the load-test client [documentation](lt/) for information on how to simulate and load-test calls.
 
 ## License
 

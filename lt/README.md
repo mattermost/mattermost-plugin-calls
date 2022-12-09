@@ -2,10 +2,11 @@
 
 ## Requirements
 
-1. A running Mattermost installation with Calls enabled.
-2. A system admin account with username/password credentials used to automatically created resources (e.g. channels).
-3. Mattermost instance should have open signups with no email verification to allow for the test users to join.
-4. Mattermost should have at least one open team where users can join without invitation.
+1. Golang and git installed.
+2. A running Mattermost installation with Calls enabled.
+3. A system admin account with username/password credentials used to automatically create resources (e.g. channels).
+4. Open signups with no email verification to allow for the test users to join.
+5. At least one open team where users can join without invitation.
 
 ## How to use
 
@@ -29,7 +30,7 @@ go run ./lt -url http://localhost:8065 -team 11o73u33upfuprysuifa17dn5e -calls 2
 >
 > The load-test client will automatically create users and channels as needed through the provided admin account.
 
-> **_Note**
+> **_Note_**
 >
 > This requires Calls to be enabled in all channels (Test mode = Off).
 
