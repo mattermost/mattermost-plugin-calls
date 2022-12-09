@@ -672,20 +672,20 @@ func main() {
 	var numCalls int
 	var numUsersPerCall int
 
-	flag.StringVar(&teamID, "team", "", "team ID")
-	flag.StringVar(&channelID, "channel", "", "channel ID")
-	flag.StringVar(&siteURL, "url", "http://localhost:8065", "MM SiteURL")
-	flag.StringVar(&userPrefix, "user-prefix", "testuser-", "user prefix")
+	flag.StringVar(&teamID, "team", "", "The team ID to start calls in")
+	flag.StringVar(&channelID, "channel", "", "The channel ID to start the call in")
+	flag.StringVar(&siteURL, "url", "http://localhost:8065", "Mattermost SiteURL")
+	flag.StringVar(&userPrefix, "user-prefix", "testuser-", "The user prefix used to create and log in users")
 	flag.StringVar(&userPassword, "user-password", "testPass123$", "user password")
-	flag.IntVar(&numUnmuted, "unmuted", 0, "number of unmuted users per call")
-	flag.IntVar(&numScreenSharing, "screen-sharing", 0, "number of users screen-sharing")
-	flag.IntVar(&offset, "offset", 0, "users offset")
-	flag.IntVar(&numCalls, "calls", 1, "number of calls")
-	flag.IntVar(&numUsersPerCall, "users-per-call", 1, "number of users per call")
-	flag.StringVar(&duration, "duration", "1m", "duration")
-	flag.StringVar(&joinDuration, "join-duration", "30s", "join duration")
-	flag.StringVar(&adminUsername, "admin-username", "sysadmin", "admin username")
-	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "admin password")
+	flag.IntVar(&numUnmuted, "unmuted", 0, "The number of unmuted users per call")
+	flag.IntVar(&numScreenSharing, "screen-sharing", 0, "The number of users screen-sharing")
+	flag.IntVar(&offset, "offset", 0, "The user offset")
+	flag.IntVar(&numCalls, "calls", 1, "The number of calls to start")
+	flag.IntVar(&numUsersPerCall, "users-per-call", 1, "The number of participants per call")
+	flag.StringVar(&duration, "duration", "1m", "The total duration of the test")
+	flag.StringVar(&joinDuration, "join-duration", "30s", "The amount of time it takes for all participants to join their calls")
+	flag.StringVar(&adminUsername, "admin-username", "sysadmin", "The username of a system admin account")
+	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "The password of a system admin account")
 
 	flag.Parse()
 
@@ -694,7 +694,11 @@ func main() {
 	}
 
 	if channelID != "" && numCalls != 1 {
-		log.Fatalf("calls should be 1")
+		log.Fatalf("number of calls should be 1 when running on a single channel")
+	}
+
+	if channelID == "" && teamID == "" {
+		log.Fatalf("team must be set")
 	}
 
 	if numUsersPerCall == 0 {
@@ -742,10 +746,6 @@ func main() {
 
 	var channels []*model.Channel
 	if channelID == "" {
-		if teamID == "" {
-			log.Fatalf("team must be set")
-		}
-
 		page := 0
 		perPage := 100
 		for {

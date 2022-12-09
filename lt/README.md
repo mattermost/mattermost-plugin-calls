@@ -1,39 +1,76 @@
 # Calls load-test client
 
-## Sample usage
+## Requirements
+
+1. A running Mattermost installation with Calls enabled.
+2. A system admin account with username/password credentials used to automatically created resources (e.g. channels).
+3. Mattermost instance should have open signups with no email verification to allow for the test users to join.
+4. Mattermost should have at least one open team where users can join without invitation.
+
+## How to use
+
+### Clone the repository
+
+```
+git clone https://github.com/mattermost/mattermost-plugin-calls.git && cd mattermost-plugin-calls
+```
+
+### Run on a team
 
 ```sh
-go run ./lt/client.go -team 11o73u33upfuprysuifa17dn5e -url http://localhost:8065/ -calls 2 -users-per-call 5 -join-duration 10s -duration 60s -unmuted 1 -screen-sharing 1
+go run ./lt -url http://localhost:8065 -team 11o73u33upfuprysuifa17dn5e -calls 2 -users-per-call 5 -join-duration 10s -duration 5m -unmuted 1 -screen-sharing 1
+```
+
+> **_Note_**
+>
+> The team should be open so that users can join.
+
+> **_Note_**
+>
+> The load-test client will automatically create users and channels as needed through the provided admin account.
+
+> **_Note**
+>
+> This requires Calls to be enabled in all channels (Test mode = Off).
+
+### Run on a single channel
+
+It's also possible to run the load-test on a single channel by providing its ID instead of the team.
+
+```sh
+go run ./lt -url http://localhost:8065 -channel ebjjdnozn3gs5n7ozooesaubua -calls 1 -users-per-call 5 -join-duration 10s -duration 5m -unmuted 1 -screen-sharing 1
 ```
 
 ## Options
 
 ```
   -admin-password string
-    	admin password (default "Sys@dmin-sample1")
+    	The password of a system admin account (default "Sys@dmin-sample1")
   -admin-username string
-    	admin username (default "sysadmin")
+    	The username of a system admin account (default "sysadmin")
   -calls int
-    	number of calls (default 1)
+    	The number of calls to start (default 1)
+  -channel string
+    	The channel ID to start the call in
   -duration string
-    	duration (default "1m")
+    	The total duration of the test (default "1m")
   -join-duration string
-    	join duration (default "30s")
+    	The amount of time it takes for all participants to join their calls (default "30s")
   -offset int
-    	users offset
+    	The user offset
   -screen-sharing int
-    	number of users screen-sharing
+    	The number of users screen-sharing
   -team string
-    	team ID
+    	The team ID to start calls in
   -unmuted int
-    	number of unmuted users per call
+    	The number of unmuted users per call
   -url string
-    	MM SiteURL (default "http://localhost:8065")
+    	Mattermost SiteURL (default "http://localhost:8065")
   -user-password string
     	user password (default "testPass123$")
   -user-prefix string
-    	user prefix (default "testuser-")
+    	The user prefix used to create and log in users (default "testuser-")
   -users-per-call int
-    	number of users per call (default 1)
+    	The number of participants per call (default 1)
 ```
 
