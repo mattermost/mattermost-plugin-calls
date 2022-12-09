@@ -1,42 +1,47 @@
 import {bindActionCreators, Dispatch} from 'redux';
 import {connect} from 'react-redux';
-import {GlobalState} from 'mattermost-redux/types/store';
-import {Post} from 'mattermost-redux/types/posts';
+
+import {GlobalState} from '@mattermost/types/store';
+import {Post} from '@mattermost/types/posts';
+import {UserProfile} from '@mattermost/types/users';
 
 import {Client4} from 'mattermost-redux/client';
 
-import {voiceConnectedChannels, voiceConnectedProfilesInChannel, connectedChannelID} from '../../selectors';
-import {showSwitchCallModal} from '../../actions';
-
-import PostType from './component';
+import {
+    voiceConnectedChannels,
+    voiceConnectedProfilesInChannel,
+    connectedChannelID,
+    isCloudProfessionalOrEnterpriseOrTrial,
+    maxParticipants,
+} from 'src/selectors';
+import {showSwitchCallModal} from 'src/actions';
+import PostType from 'src/components/custom_post_types/post_type/component';
 
 interface OwnProps {
     post: Post,
 }
 
 const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
-    let hasCall = false;
-    const connectedID = connectedChannelID(state) || '';
     const channels = voiceConnectedChannels(state);
-
-    let profiles = [];
+    let profiles: UserProfile[] = [];
     const pictures = [];
     if (channels) {
         const users = channels[ownProps.post.channel_id];
         if (users && users.length > 0) {
-            hasCall = true;
             profiles = voiceConnectedProfilesInChannel(state, ownProps.post.channel_id);
             for (let i = 0; i < profiles.length; i++) {
                 pictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
             }
         }
     }
+
     return {
         ...ownProps,
-        connectedID,
-        hasCall,
+        connectedID: connectedChannelID(state) || '',
         pictures,
         profiles,
+        isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),
+        maxParticipants: maxParticipants(state),
     };
 };
 

@@ -17,6 +17,38 @@ test.beforeEach(async ({page, context}) => {
     await devPage.goto();
 });
 
+test.describe('start/join call in channel with calls disabled', () => {
+    test.use({storageState: userState.admin.storageStatePath});
+
+    test('/call start', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.disableCalls();
+
+        await page.locator('#post_textbox').fill('/call start');
+        await page.locator('[data-testid=SendMessageButton]').click();
+        await expect(page.locator('#calls-widget')).toBeHidden();
+        await expect(page.locator('#create_post div.has-error label')).toBeVisible();
+        const text = await page.textContent('#create_post div.has-error label');
+        expect(text).toBe('Cannot start or join call: calls are disabled in this channel.');
+
+        await devPage.enableCalls();
+    });
+
+    test('/call join', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.disableCalls();
+
+        await page.locator('#post_textbox').fill('/call join');
+        await page.locator('[data-testid=SendMessageButton]').click();
+        await expect(page.locator('#calls-widget')).toBeHidden();
+        await expect(page.locator('#create_post div.has-error label')).toBeVisible();
+        const text = await page.textContent('#create_post div.has-error label');
+        expect(text).toBe('Cannot start or join call: calls are disabled in this channel.');
+
+        await devPage.enableCalls();
+    });
+});
+
 test.describe('start new call', () => {
     test.use({storageState: userState.users[0].storageStatePath});
 
@@ -30,12 +62,10 @@ test.describe('start new call', () => {
 
     test('slash command', async ({page, context}) => {
         await page.locator('#post_textbox').fill('/call join');
-        await page.locator('#post_textbox').press('Enter');
-        await page.locator('#post_textbox').press('Enter');
+        await page.locator('[data-testid=SendMessageButton]').click();
         await expect(page.locator('#calls-widget')).toBeVisible();
         await page.locator('#post_textbox').fill('/call leave');
-        await page.locator('#post_textbox').press('Enter');
-        await page.locator('#post_textbox').press('Enter');
+        await page.locator('[data-testid=SendMessageButton]').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
@@ -44,7 +74,7 @@ test.describe('start new call', () => {
         await devPage.gotoDM(userState.users[1].username);
         await devPage.startCall();
         await devPage.wait(1000);
-        expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('calls-widget-bottom-bar-dm.png');
+        expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('dm-calls-widget-bottom-bar.png');
         await devPage.leaveCall();
     });
 });
@@ -105,8 +135,7 @@ test.describe('auto join link', () => {
 
     test('public channel', async ({page, context}) => {
         await page.locator('#post_textbox').fill('/call link');
-        await page.locator('#post_textbox').press('Enter');
-        await page.locator('#post_textbox').press('Enter');
+        await page.locator('[data-testid=SendMessageButton]').click();
 
         const post = page.locator('.post-message__text').last();
         await expect(post).toBeVisible();
@@ -129,8 +158,7 @@ test.describe('auto join link', () => {
         await devPage.gotoDM(userState.users[1].username);
 
         await page.locator('#post_textbox').fill('/call link');
-        await page.locator('#post_textbox').press('Enter');
-        await page.locator('#post_textbox').press('Enter');
+        await page.locator('[data-testid=SendMessageButton]').click();
 
         const post = page.locator('.post-message__text').last();
         await expect(post).toBeVisible();
@@ -241,7 +269,7 @@ test.describe('setting audio output device', () => {
         await devPage.leaveCall();
     });
 
-    test.only('setting default', async ({page}) => {
+    test('setting default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
         await devPage.wait(1000);
@@ -292,5 +320,32 @@ test.describe('setting audio output device', () => {
         if (!deviceID) {
             test.fail();
         }
+    });
+});
+
+test.describe('switching products', () => {
+    test.use({storageState: userState.users[0].storageStatePath});
+
+    test('boards', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        const switchProductsButton = devPage.page.locator('h1', {hasText: 'Channels'});
+        await expect(switchProductsButton).toBeVisible();
+        await switchProductsButton.click();
+
+        const boardsButton = devPage.page.locator('#product-switcher-menu-dropdown div', {hasText: 'Boards'});
+        await expect(boardsButton).toBeVisible();
+        await boardsButton.click();
+
+        await expect(devPage.page.locator('#calls-widget')).toBeVisible();
+
+        await devPage.page.locator('#calls-widget-participants-button').click();
+        const participantsList = devPage.page.locator('#calls-widget-participants-menu');
+        await expect(participantsList).toBeVisible();
+        expect(await participantsList.screenshot()).toMatchSnapshot('calls-widget-participants-list-boards.png');
+
+        await devPage.leaveCall();
     });
 });

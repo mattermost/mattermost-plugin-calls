@@ -1,19 +1,29 @@
 import {EventEmitter} from 'events';
-import SimplePeer from 'simple-peer';
-import axios from 'axios';
 
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {CallsClientConfig, AudioDevices, CallsClientStats, TrackInfo, EmojiData} from 'src/types/types';
 
-import {getPluginWSConnectionURL, getScreenStream, getPluginPath, setSDPMaxVideoBW} from './utils';
+import RTCPeer from './rtcpeer';
 
-import WebSocketClient from './websocket';
+import {getScreenStream, setSDPMaxVideoBW} from './utils';
+import {logErr, logDebug} from './log';
+import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 import VoiceActivityDetector from './vad';
 
+import {parseRTCStats} from './rtc_stats';
+
+export const AudioInputPermissionsError = new Error('missing audio input permissions');
+export const AudioInputMissingError = new Error('no audio input available');
+export const rtcPeerErr = new Error('rtc peer error');
+export const rtcPeerCloseErr = new Error('rtc peer close');
+export const insecureContextErr = new Error('insecure context');
+
 export default class CallsClient extends EventEmitter {
-    private peer: SimplePeer.Instance | null;
+    public channelID: string;
+    private readonly config: CallsClientConfig;
+    private peer: RTCPeer | null;
     private ws: WebSocketClient | null;
     private localScreenTrack: any;
     private remoteScreenTrack: any;
@@ -23,11 +33,15 @@ export default class CallsClient extends EventEmitter {
     private voiceTrackAdded: boolean;
     private streams: MediaStream[];
     private stream: MediaStream | null;
-    private audioDevices: { inputs: MediaDeviceInfo[]; outputs: MediaDeviceInfo[]; };
+    private audioDevices: AudioDevices;
     private audioTrack: MediaStreamTrack | null;
     public isHandRaised: boolean;
+    private onDeviceChange: () => void;
+    private onBeforeUnload: () => void;
+    private closed = false;
+    private initTime = Date.now();
 
-    constructor() {
+    constructor(config: CallsClientConfig) {
         super();
         this.ws = null;
         this.peer = null;
@@ -39,6 +53,16 @@ export default class CallsClient extends EventEmitter {
         this.stream = null;
         this.audioDevices = {inputs: [], outputs: []};
         this.isHandRaised = false;
+        this.channelID = '';
+        this.config = config;
+        this.onDeviceChange = () => {
+            this.updateDevices();
+        };
+        this.onBeforeUnload = () => {
+            logDebug('unload');
+            this.disconnect();
+        };
+        window.addEventListener('beforeunload', this.onBeforeUnload);
     }
 
     private initVAD(inputStream: MediaStream) {
@@ -60,38 +84,48 @@ export default class CallsClient extends EventEmitter {
     }
 
     private async updateDevices() {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        this.audioDevices = {
-            inputs: devices.filter((device) => device.kind === 'audioinput'),
-            outputs: devices.filter((device) => device.kind === 'audiooutput'),
-        };
+        logDebug('a/v device change detected');
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            this.audioDevices = {
+                inputs: devices.filter((device) => device.kind === 'audioinput'),
+                outputs: devices.filter((device) => device.kind === 'audiooutput'),
+            };
+            this.emit('devicechange', this.audioDevices);
+        } catch (err) {
+            logErr(err);
+        }
     }
 
-    public async init(channelID: string) {
-        await this.updateDevices();
-        navigator.mediaDevices.ondevicechange = this.updateDevices;
-
+    private async initAudio(deviceId?: string) {
         const audioOptions = {
             autoGainControl: true,
             echoCancellation: true,
             noiseSuppression: true,
         } as any;
 
+        if (deviceId) {
+            audioOptions.deviceId = {
+                exact: deviceId,
+            };
+        }
+
         const defaultInputID = window.localStorage.getItem('calls_default_audio_input');
         const defaultOutputID = window.localStorage.getItem('calls_default_audio_output');
-        if (defaultInputID) {
+        if (defaultInputID && !this.currentAudioInputDevice) {
             const devices = this.audioDevices.inputs.filter((dev) => {
                 return dev.deviceId === defaultInputID;
             });
 
             if (devices && devices.length === 1) {
-                console.log(`found default audio input device to use: ${devices[0].label}`);
+                logDebug(`found default audio input device to use: ${devices[0].label}`);
                 audioOptions.deviceId = {
                     exact: defaultInputID,
                 };
                 this.currentAudioInputDevice = devices[0];
             } else {
-                console.log('audio input device not found');
+                logDebug('audio input device not found');
                 window.localStorage.removeItem('calls_default_audio_input');
             }
         }
@@ -102,119 +136,169 @@ export default class CallsClient extends EventEmitter {
             });
 
             if (devices && devices.length === 1) {
-                console.log(`found default audio output device to use: ${devices[0].label}`);
+                logDebug(`found default audio output device to use: ${devices[0].label}`);
                 this.currentAudioOutputDevice = devices[0];
             } else {
-                console.log('audio output device not found');
+                logDebug('audio output device not found');
                 window.localStorage.removeItem('calls_default_audio_output');
             }
         }
 
-        this.stream = await navigator.mediaDevices.getUserMedia({
-            video: false,
-            audio: audioOptions,
-        });
+        try {
+            this.stream = await navigator.mediaDevices.getUserMedia({
+                video: false,
+                audio: audioOptions,
+            });
 
-        // updating the devices again cause some browsers (e.g Firefox) will
-        // return empty labels unless permissions were previously granted.
+            // updating the devices again cause some browsers (e.g Firefox) will
+            // return empty labels unless permissions were previously granted.
+            await this.updateDevices();
+
+            this.audioTrack = this.stream.getAudioTracks()[0];
+            this.streams.push(this.stream);
+
+            this.initVAD(this.stream);
+            this.audioTrack.enabled = false;
+
+            this.emit('initaudio');
+        } catch (err) {
+            logErr(err);
+            if (this.audioDevices.inputs.length > 0) {
+                throw AudioInputPermissionsError;
+            }
+            throw AudioInputMissingError;
+        }
+    }
+
+    public async init(channelID: string, title?: string) {
+        this.channelID = channelID;
+
+        if (!window.isSecureContext) {
+            throw insecureContextErr;
+        }
+
         await this.updateDevices();
+        navigator.mediaDevices.addEventListener('devicechange', this.onDeviceChange);
 
-        this.audioTrack = this.stream.getAudioTracks()[0];
-        this.streams.push(this.stream);
+        try {
+            await this.initAudio();
+        } catch (err) {
+            this.emit('error', err);
+        }
 
-        this.initVAD(this.stream);
-        this.audioTrack.enabled = false;
-
-        const ws = new WebSocketClient();
+        const ws = new WebSocketClient(this.config.wsURL, this.config.authToken);
         this.ws = ws;
 
-        ws.on('error', (err) => {
-            console.log('ws error', err);
-            this.disconnect();
+        ws.on('error', (err: WebSocketError) => {
+            logErr('ws error', err);
+            switch (err.type) {
+            case WebSocketErrorType.Native:
+                break;
+            case WebSocketErrorType.ReconnectTimeout:
+                this.ws = null;
+                this.disconnect(err);
+                break;
+            case WebSocketErrorType.Join:
+                this.disconnect(err);
+                break;
+            default:
+            }
         });
 
         ws.on('close', (code?: number) => {
-            console.log(`ws close: ${code}`);
-            this.ws = null;
-            this.disconnect();
+            logDebug(`ws close: ${code}`);
         });
 
-        ws.on('open', (connID: string) => {
-            console.log('ws open, sending join msg');
-            ws.send('join', {
-                channelID,
-            });
+        ws.on('open', (originalConnID: string, prevConnID: string, isReconnect: boolean) => {
+            if (isReconnect) {
+                logDebug('ws reconnect, sending reconnect msg');
+                ws.send('reconnect', {
+                    channelID,
+                    originalConnID,
+                    prevConnID,
+                });
+            } else {
+                logDebug('ws open, sending join msg');
+                ws.send('join', {
+                    channelID,
+                    title,
+                });
+            }
         });
 
         ws.on('join', async () => {
-            console.log('join ack received, initializing connection');
-            let config;
-            try {
-                const resp = await axios.get(`${getPluginPath()}/config`);
-                config = resp.data;
-            } catch (err) {
-                console.log(err);
-                this.ws?.close();
-                return;
-            }
+            logDebug('join ack received, initializing connection');
 
-            const iceServers = config.ICEServers?.length > 0 ? [{urls: config.ICEServers}] : [];
-            const peer = new SimplePeer({
-                initiator: true,
-                trickle: true,
-                config: {iceServers},
-            }) as SimplePeer.Instance;
+            const peer = new RTCPeer({
+                iceServers: this.config.iceServers || [],
+            });
 
             this.peer = peer;
-            peer.on('signal', (data) => {
-                console.log('signal', data);
-                if (data.type === 'offer' || data.type === 'answer') {
-                    if (!ws) {
-                        return;
-                    }
-                    ws.send('sdp', {
-                        data: deflate(JSON.stringify(data)),
-                    }, true);
-                } else if (data.type === 'candidate') {
-                    if (!ws) {
-                        return;
-                    }
-                    ws.send('ice', {
-                        data: JSON.stringify(data.candidate),
-                    });
+
+            peer.on('offer', (sdp) => {
+                logDebug(`local signal: ${JSON.stringify(sdp)}`);
+                ws.send('sdp', {
+                    data: deflate(JSON.stringify(sdp)),
+                }, true);
+            });
+
+            peer.on('answer', (sdp) => {
+                logDebug(`local signal: ${JSON.stringify(sdp)}`);
+
+                ws.send('sdp', {
+                    data: deflate(JSON.stringify(sdp)),
+                }, true);
+            });
+
+            peer.on('candidate', (candidate) => {
+                ws.send('ice', {
+                    data: JSON.stringify(candidate),
+                });
+            });
+
+            peer.on('error', (err) => {
+                logErr('peer error', err);
+                if (!this.closed) {
+                    this.disconnect(rtcPeerErr);
                 }
             });
-            peer.on('error', (err) => {
-                console.log('peer error', err);
-                this.disconnect();
-            });
+
             peer.on('stream', (remoteStream) => {
-                console.log('new remote stream received');
-                console.log(remoteStream);
+                logDebug('new remote stream received', remoteStream.id);
+                for (const track of remoteStream.getTracks()) {
+                    logDebug('remote track', track.kind, track.id);
+                }
 
                 this.streams.push(remoteStream);
 
                 if (remoteStream.getAudioTracks().length > 0) {
                     this.emit('remoteVoiceStream', remoteStream);
                 } else if (remoteStream.getVideoTracks().length > 0) {
-                    console.log(remoteStream.getTracks());
                     this.emit('remoteScreenStream', remoteStream);
                     this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
                 }
             });
+
             peer.on('connect', () => {
-                console.log('rtc connected');
+                logDebug('rtc connected');
                 this.emit('connect');
+            });
+
+            peer.on('close', () => {
+                logDebug('rtc closed');
+                if (!this.closed) {
+                    this.disconnect(rtcPeerCloseErr);
+                }
             });
         });
 
-        ws.on('message', ({data}) => {
+        ws.on('message', async ({data}) => {
             const msg = JSON.parse(data);
             if (!msg) {
                 return;
             }
             if (msg.type !== 'ping') {
-                console.log('ws', data);
+                logDebug('remote signal', data);
             }
             if (msg.type === 'answer' || msg.type === 'offer' || msg.type === 'candidate') {
                 if (msg.type === 'answer' || msg.type === 'offer') {
@@ -225,12 +309,10 @@ export default class CallsClient extends EventEmitter {
                     }
                 }
                 if (this.peer) {
-                    this.peer.signal(data);
+                    await this.peer.signal(data);
                 }
             }
         });
-
-        return this;
     }
 
     public destroy() {
@@ -238,19 +320,28 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('connect');
         this.removeAllListeners('remoteVoiceStream');
         this.removeAllListeners('remoteScreenStream');
-    }
-
-    public getAudioDevices() {
-        return this.audioDevices;
+        this.removeAllListeners('devicechange');
+        this.removeAllListeners('error');
+        this.removeAllListeners('initaudio');
+        window.removeEventListener('beforeunload', this.onBeforeUnload);
+        navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
     }
 
     public async setAudioInputDevice(device: MediaDeviceInfo) {
-        if (!this.peer || !this.audioTrack || !this.stream) {
+        if (!this.peer) {
             return;
         }
 
         window.localStorage.setItem('calls_default_audio_input', device.deviceId);
         this.currentAudioInputDevice = device;
+
+        // If no track/stream exists we need to initialize again.
+        // This edge case can happen if the default input device failed
+        // but there are potentially more valid ones to choose (MM-48822).
+        if (!this.audioTrack || !this.stream) {
+            await this.initAudio(device.deviceId);
+            return;
+        }
 
         const isEnabled = this.audioTrack.enabled;
         this.voiceDetector.stop();
@@ -278,8 +369,10 @@ export default class CallsClient extends EventEmitter {
         newTrack.enabled = isEnabled;
         if (isEnabled) {
             if (this.voiceTrackAdded) {
-                this.peer.replaceTrack(this.audioTrack, newTrack, this.stream);
+                logDebug('replacing track to peer', newTrack.id);
+                this.peer.replaceTrack(this.audioTrack.id, newTrack);
             } else {
+                logDebug('adding track to peer', newTrack.id, this.stream.id);
                 this.peer.addTrack(newTrack, this.stream);
             }
         } else {
@@ -296,8 +389,21 @@ export default class CallsClient extends EventEmitter {
         this.currentAudioOutputDevice = device;
     }
 
-    public disconnect() {
+    public disconnect(err?: Error) {
+        logDebug('disconnect');
+
+        if (this.closed) {
+            logErr('client already disconnected');
+            return;
+        }
+
+        this.closed = true;
         if (this.peer) {
+            this.getStats().then((stats) => {
+                sessionStorage.setItem('calls_client_stats', JSON.stringify(stats));
+            }).catch((statsErr) => {
+                logErr(statsErr);
+            });
             this.peer.destroy();
             this.peer = null;
         }
@@ -315,12 +421,12 @@ export default class CallsClient extends EventEmitter {
         });
 
         if (this.ws) {
-            console.log('disconnect');
+            this.ws.send('leave');
             this.ws.close();
             this.ws = null;
         }
 
-        this.emit('close');
+        this.emit('close', err);
     }
 
     public isMuted() {
@@ -339,8 +445,10 @@ export default class CallsClient extends EventEmitter {
             this.voiceDetector.stop();
         }
 
+        logDebug('replacing track to peer', null);
+
         // @ts-ignore: we actually mean (and need) to pass null here
-        this.peer.replaceTrack(this.audioTrack, null, this.stream);
+        this.peer.replaceTrack(this.audioTrack.id, null);
         this.audioTrack.enabled = false;
 
         if (this.ws) {
@@ -348,9 +456,18 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
-    public unmute() {
-        if (!this.peer || !this.audioTrack || !this.stream) {
+    public async unmute() {
+        if (!this.peer) {
             return;
+        }
+
+        if (!this.audioTrack) {
+            try {
+                await this.initAudio();
+            } catch (err) {
+                this.emit('error', err);
+                return;
+            }
         }
 
         if (this.voiceDetector) {
@@ -358,12 +475,14 @@ export default class CallsClient extends EventEmitter {
         }
 
         if (this.voiceTrackAdded) {
-            this.peer.replaceTrack(this.audioTrack, this.audioTrack, this.stream);
+            logDebug('replacing track to peer', this.audioTrack!.id);
+            this.peer.replaceTrack(this.audioTrack!.id, this.audioTrack!);
         } else {
-            this.peer.addTrack(this.audioTrack, this.stream);
+            logDebug('adding track to peer', this.audioTrack!.id, this.stream!.id);
+            this.peer.addTrack(this.audioTrack!, this.stream!);
             this.voiceTrackAdded = true;
         }
-        this.audioTrack.enabled = true;
+        this.audioTrack!.enabled = true;
         if (this.ws) {
             this.ws.send('unmute');
         }
@@ -412,10 +531,11 @@ export default class CallsClient extends EventEmitter {
             }
 
             // @ts-ignore: we actually mean to pass null here
-            this.peer.replaceTrack(screenTrack, null, screenStream);
+            this.peer.replaceTrack(screenTrack.id, null);
             this.ws.send('screen_off');
         };
 
+        logDebug('adding stream to peer', screenStream.id);
         this.peer.addStream(screenStream);
 
         this.ws.send('screen_on', {
@@ -451,16 +571,51 @@ export default class CallsClient extends EventEmitter {
     }
 
     public raiseHand() {
-        if (this.ws) {
-            this.ws.send('raise_hand');
-        }
+        this.ws?.send('raise_hand');
         this.isHandRaised = true;
     }
 
     public unraiseHand() {
-        if (this.ws) {
-            this.ws.send('unraise_hand');
-        }
+        this.ws?.send('unraise_hand');
         this.isHandRaised = false;
+    }
+
+    public sendUserReaction(data: EmojiData) {
+        this.ws?.send('react', {
+            data: JSON.stringify(data),
+        });
+    }
+
+    public async getStats(): Promise<CallsClientStats | null> {
+        if (!this.peer) {
+            throw new Error('not connected');
+        }
+
+        const tracksInfo : TrackInfo[] = [];
+        this.streams.forEach((stream) => {
+            return stream.getTracks().forEach((track) => {
+                tracksInfo.push({
+                    streamID: stream.id,
+                    id: track.id,
+                    kind: track.kind,
+                    label: track.label,
+                    enabled: track.enabled,
+                    readyState: track.readyState,
+                });
+            });
+        });
+
+        const stats = await this.peer.getStats();
+
+        return {
+            initTime: this.initTime,
+            callID: this.channelID,
+            tracksInfo,
+            rtcStats: stats ? parseRTCStats(stats) : null,
+        };
+    }
+
+    public getAudioDevices() {
+        return this.audioDevices;
     }
 }

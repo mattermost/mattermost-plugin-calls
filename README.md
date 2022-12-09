@@ -17,4 +17,5 @@ For more details on how to develop a plugin refer to the official [documentation
 
 ## License
 
-[mattermost-plugin-calls](https://github.com/mattermost/mattermost-plugin-calls) is licensed under [MIT](LICENSE)  
+See [LICENSE](LICENSE) and [LICENSE.enterprise](server/enterprise/LICENSE) for license rights and limitations.
+

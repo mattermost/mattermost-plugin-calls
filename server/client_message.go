@@ -1,3 +1,6 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
@@ -6,11 +9,13 @@ import (
 
 type clientMessage struct {
 	Type string          `json:"type"`
-	Data json.RawMessage `json:"data"`
+	Data json.RawMessage `json:"data,omitempty"`
 }
 
 const (
 	clientMessageTypeJoin        = "join"
+	clientMessageTypeLeave       = "leave"
+	clientMessageTypeReconnect   = "reconnect"
 	clientMessageTypeSDP         = "sdp"
 	clientMessageTypeICE         = "ice"
 	clientMessageTypeMute        = "mute"
@@ -21,6 +26,7 @@ const (
 	clientMessageTypeScreenOff   = "screen_off"
 	clientMessageTypeRaiseHand   = "raise_hand"
 	clientMessageTypeUnraiseHand = "unraise_hand"
+	clientMessageTypeReact       = "react"
 )
 
 func (m *clientMessage) ToJSON() ([]byte, error) {

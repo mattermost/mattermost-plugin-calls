@@ -152,25 +152,3 @@ func (c *Client) SendBinaryMessage(action string, data map[string]interface{}) e
 	c.sequence++
 	return c.conn.WriteMessage(websocket.BinaryMessage, binaryData)
 }
-
-// Helper utilities that call SendMessage.
-
-func (c *Client) UserTyping(channelId, parentId string) error {
-	data := map[string]interface{}{
-		"channel_id": channelId,
-		"parent_id":  parentId,
-	}
-
-	return c.SendMessage("user_typing", data)
-}
-
-func (c *Client) GetStatuses() error {
-	return c.SendMessage("get_statuses", nil)
-}
-
-func (c *Client) GetStatusesByIds(userIds []string) error {
-	data := map[string]interface{}{
-		"user_ids": userIds,
-	}
-	return c.SendMessage("get_statuses_by_ids", data)
-}

@@ -47,6 +47,8 @@ module.exports = {
     resolve: {
         alias: {
             src: path.resolve(__dirname, './src/'),
+            'mattermost-redux': path.resolve(__dirname, './node_modules/mattermost-webapp/packages/mattermost-redux/src/'),
+            reselect: path.resolve(__dirname, './node_modules/mattermost-webapp/packages/reselect/src/index'),
         },
         modules: [
             'src',
@@ -58,7 +60,7 @@ module.exports = {
         rules: [
             {
                 test: /\.(js|jsx|ts|tsx)$/,
-                exclude: /node_modules/,
+                exclude: /node_modules\/(?!(mattermost-webapp)\/).*/,
                 use: {
                     loader: 'babel-loader',
                     options: {
@@ -91,11 +93,17 @@ module.exports = {
                     },
                 ],
             },
+            {
+                resourceQuery: /inline/,
+                type: 'asset/inline',
+            },
         ],
     },
     externals: {
         react: 'React',
+        'react-dom': 'ReactDOM',
         redux: 'Redux',
+        luxon: 'Luxon',
         'react-redux': 'ReactRedux',
         'prop-types': 'PropTypes',
         'react-bootstrap': 'ReactBootstrap',

@@ -1,75 +1,86 @@
+import {compareSemVer} from 'semver-parser';
+
 import {
     getCurrentRelativeTeamUrl,
-    getCurrentTeam,
     getCurrentTeamId,
     getTeam,
-    getTeamByName,
-    getTeamMemberships,
 } from 'mattermost-redux/selectors/entities/teams';
+
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {Client4} from 'mattermost-redux/client';
 
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
+import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
-import {Team} from 'mattermost-redux/types/teams';
-import {Channel, ChannelMembership} from 'mattermost-redux/types/channels';
-import {UserProfile} from 'mattermost-redux/types/users';
-import {Dictionary} from 'mattermost-redux/types/utilities';
+import {Team} from '@mattermost/types/teams';
+import {Channel, ChannelMembership} from '@mattermost/types/channels';
+import {UserProfile} from '@mattermost/types/users';
 
-import {GlobalState} from 'mattermost-redux/types/store';
+import {GlobalState} from '@mattermost/types/store';
+import {ClientConfig} from '@mattermost/types/config';
 
 import {UserState} from './types/types';
 
 import {pluginId} from './manifest';
+import {logErr, logDebug} from './log';
+
+import {
+    voiceChannelRootPost,
+} from './selectors';
+
+import {Store} from './types/mattermost-webapp';
+
+import LeaveSelfSound from './sounds/leave_self.mp3';
+import JoinUserSound from './sounds/join_user.mp3';
+import JoinSelfSound from './sounds/join_self.mp3';
 
 export function getPluginStaticPath() {
-    return window.basename ? `${window.basename}/static/plugins/${pluginId}` :
-        `/static/plugins/${pluginId}`;
+    return `${window.basename || ''}/static/plugins/${pluginId}`;
 }
 
 export function getPluginPath() {
-    return window.basename ? `${window.basename}/plugins/${pluginId}` :
-        `/plugins/${pluginId}`;
+    return `${window.basename || ''}/plugins/${pluginId}`;
 }
 
-export function getWSConnectionURL(): string {
+export function getWSConnectionURL(config: Partial<ClientConfig>): string {
     const loc = window.location;
     const uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${uri}//${loc.host}${Client4.getUrlVersion()}/websocket`;
+    const baseURL = config && config.WebsocketURL ? config.WebsocketURL : `${uri}//${loc.host}${window.basename || ''}`;
+
+    return `${baseURL}${Client4.getUrlVersion()}/websocket`;
 }
 
-export function getPluginWSConnectionURL(channelID: string): string {
-    const loc = window.location;
-    const uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${uri}//${loc.host}${getPluginPath()}/${channelID}/ws`;
-}
-
-export function getTeamRelativeUrl(team: Team) {
+export function getTeamRelativeURL(team: Team) {
     if (!team) {
         return '';
     }
 
-    return '/' + team.name;
+    return `/${team.name}`;
+}
+
+export function getPopOutURL(team: Team, channel: Channel) {
+    return `${window.basename || ''}/${team.name}/${pluginId}/expanded/${channel.id}`;
 }
 
 export function getChannelURL(state: GlobalState, channel: Channel, teamId: string) {
-    let notificationURL;
+    let channelURL;
     if (channel && (channel.type === 'D' || channel.type === 'G')) {
-        notificationURL = getCurrentRelativeTeamUrl(state) + '/channels/' + channel.name;
+        channelURL = getCurrentRelativeTeamUrl(state) + '/channels/' + channel.name;
     } else if (channel) {
         const team = getTeam(state, teamId);
-        notificationURL = getTeamRelativeUrl(team) + '/channels/' + channel.name;
+        channelURL = getTeamRelativeURL(team) + '/channels/' + channel.name;
     } else if (teamId) {
         const team = getTeam(state, teamId);
         const redirectChannel = getRedirectChannelNameForTeam(state, teamId);
-        notificationURL = getTeamRelativeUrl(team) + `/channels/${redirectChannel}`;
+        channelURL = getTeamRelativeURL(team) + `/channels/${redirectChannel}`;
     } else {
         const currentTeamId = getCurrentTeamId(state);
         const redirectChannel = getRedirectChannelNameForTeam(state, currentTeamId);
-        notificationURL = getCurrentRelativeTeamUrl(state) + `/channels/${redirectChannel}`;
+        channelURL = getCurrentRelativeTeamUrl(state) + `/channels/${redirectChannel}`;
     }
-    return notificationURL;
+    return channelURL;
 }
 
 export function getUserDisplayName(user: UserProfile | undefined) {
@@ -93,10 +104,10 @@ export function getPixelRatio(): number {
         return dpr;
     }
     const bsr = ctx.webkitBackingStorePixelRatio ||
-    ctx.mozBackingStorePixelRatio ||
-    ctx.msBackingStorePixelRatio ||
-    ctx.oBackingStorePixelRatio ||
-    ctx.backingStorePixelRatio || 1;
+        ctx.mozBackingStorePixelRatio ||
+        ctx.msBackingStorePixelRatio ||
+        ctx.oBackingStorePixelRatio ||
+        ctx.backingStorePixelRatio || 1;
     canvas.remove();
     return dpr / bsr;
 }
@@ -109,24 +120,6 @@ export function getScreenResolution() {
         width,
         height,
     };
-}
-
-type userRoles = {
-    system: Set<string>;
-    team: Dictionary<Set<string>>;
-    channel: Dictionary<Set<string>>;
-}
-
-export function hasPermissionsToEnableCalls(channel: Channel, cm: ChannelMembership | null | undefined, roles: userRoles, allowEnable: boolean) {
-    if (!allowEnable) {
-        return roles.system.has('system_admin');
-    }
-
-    return (isDirectChannel(channel) ||
-    isGroupChannel(channel)) ||
-    cm?.scheme_admin === true ||
-    roles.channel[channel.id]?.has('channel_admin') ||
-    roles.system.has('system_admin');
 }
 
 export function getExpandedChannelID() {
@@ -146,7 +139,7 @@ export function alphaSortProfiles(profiles: UserProfile[]) {
     };
 }
 
-export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: string]: UserState}, presenterID: string) {
+export function stateSortProfiles(profiles: UserProfile[], statuses: { [key: string]: UserState }, presenterID: string) {
     return (elA: UserProfile, elB: UserProfile) => {
         let stateA = statuses[elA.id];
         let stateB = statuses[elB.id];
@@ -159,6 +152,7 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
 
         if (!stateA) {
             stateA = {
+                id: elA.id,
                 voice: false,
                 unmuted: false,
                 raised_hand: 0,
@@ -166,6 +160,7 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
         }
         if (!stateB) {
             stateB = {
+                id: elB.id,
                 voice: false,
                 unmuted: false,
                 raised_hand: 0,
@@ -190,8 +185,8 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: {[key: stri
     };
 }
 
-export async function getScreenStream(sourceID?: string, withAudio?: boolean): Promise<MediaStream|null> {
-    let screenStream: MediaStream|null = null;
+export async function getScreenStream(sourceID?: string, withAudio?: boolean): Promise<MediaStream | null> {
+    let screenStream: MediaStream | null = null;
 
     if (window.desktop) {
         try {
@@ -209,18 +204,19 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
                 audio: withAudio ? {mandatory: options} as any : false,
             });
         } catch (err) {
-            console.log(err);
+            logErr(err);
             return null;
         }
     } else {
         // browser
         try {
+            // @ts-ignore (fixed in typescript 4.4+ but webapp is on 4.3.4)
             screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: true,
                 audio: Boolean(withAudio),
             });
         } catch (err) {
-            console.log(err);
+            logErr(err);
         }
     }
 
@@ -287,4 +283,79 @@ export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
 
 export function hasExperimentalFlag() {
     return window.localStorage.getItem('calls_experimental_features') === 'on';
+}
+
+export function getUsersList(profiles: UserProfile[]) {
+    if (profiles.length === 0) {
+        return '';
+    }
+    if (profiles.length === 1) {
+        return getUserDisplayName(profiles[0]);
+    }
+    const list = profiles.slice(0, -1).map((profile, idx) => {
+        return getUserDisplayName(profile);
+    }).join(', ');
+    return list + ' and ' + getUserDisplayName(profiles[profiles.length - 1]);
+}
+
+export function playSound(name: string) {
+    let src = '';
+    switch (name) {
+    case 'leave_self':
+        src = LeaveSelfSound;
+        break;
+    case 'join_self':
+        src = JoinSelfSound;
+        break;
+    case 'join_user':
+        src = JoinUserSound;
+        break;
+    default:
+        logErr(`sound ${name} not found`);
+        return;
+    }
+
+    if (src.indexOf('/') === 0) {
+        src = getPluginStaticPath() + src;
+    }
+
+    const audio = new Audio(src);
+    audio.play();
+    audio.onended = () => {
+        audio.src = '';
+        audio.remove();
+    };
+}
+
+export async function followThread(store: Store, channelID: string, teamID: string) {
+    if (!teamID) {
+        logDebug('followThread: no team for channel');
+        return;
+    }
+    const threadID = voiceChannelRootPost(store.getState(), channelID);
+    if (threadID) {
+        store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
+    } else {
+        logErr('Unable to follow call\'s thread, not registered in store');
+    }
+}
+
+export function shouldRenderDesktopWidget() {
+    const win = window.opener ? window.opener : window;
+    return win.desktop && compareSemVer(win.desktop.version, '5.3.0') >= 0;
+}
+
+export function sendDesktopEvent(event: string, data?: any) {
+    const win = window.opener ? window.opener : window;
+    win.postMessage(
+        {
+            type: event,
+            message: data,
+        },
+        win.location.origin,
+    );
+}
+
+export function capitalize(input: string) {
+    return input.charAt(0).toUpperCase() + input.slice(1);
 }

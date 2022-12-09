@@ -1,3 +1,6 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
@@ -5,15 +8,14 @@ import (
 	"fmt"
 
 	"github.com/mattermost/mattermost-server/v6/model"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 type clusterMessage struct {
-	UserID        string        `json:"user_id"`
-	ChannelID     string        `json:"channel_id"`
-	SenderID      string        `json:"sender_id"`
-	ClientMessage clientMessage `json:"client_message"`
+	ConnID        string        `json:"conn_id,omitempty"`
+	UserID        string        `json:"user_id,omitempty"`
+	ChannelID     string        `json:"channel_id,omitempty"`
+	SenderID      string        `json:"sender_id,omitempty"`
+	ClientMessage clientMessage `json:"client_message,omitempty"`
 }
 
 type clusterMessageType string
@@ -21,9 +23,10 @@ type clusterMessageType string
 const (
 	clusterMessageTypeConnect    clusterMessageType = "connect"
 	clusterMessageTypeDisconnect clusterMessageType = "disconnect"
+	clusterMessageTypeLeave      clusterMessageType = "leave"
+	clusterMessageTypeReconnect  clusterMessageType = "reconnect"
 	clusterMessageTypeSignaling  clusterMessageType = "signaling"
 	clusterMessageTypeUserState  clusterMessageType = "user_state"
-	clusterMessageTypeCallEnded  clusterMessageType = "call_ended"
 )
 
 func (m *clusterMessage) ToJSON() ([]byte, error) {
@@ -50,7 +53,7 @@ func (p *Plugin) sendClusterMessage(msg clusterMessage, msgType clusterMessageTy
 		TargetId: targetID,
 	}
 
-	p.metrics.ClusterEventCounters.With(prometheus.Labels{"type": string(msgType)}).Inc()
+	p.metrics.IncClusterEvent(string(msgType))
 	if appErr := p.API.PublishPluginClusterEvent(ev, opts); appErr != nil {
 		return fmt.Errorf("failed to publish cluster event: %w", appErr)
 	}

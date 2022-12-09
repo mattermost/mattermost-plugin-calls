@@ -1,11 +1,18 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 )
@@ -26,20 +33,77 @@ type configuration struct {
 	ICEHostOverride string
 	// UDP port used by the RTC server to listen to.
 	UDPServerPort *int
+	// The URL to a running RTCD service instance that should host the calls.
+	// When set (non empty) all calls will be handled by the external service.
+	RTCDServiceURL string
+	// The secret key used to generate TURN short-lived authentication credentials
+	TURNStaticAuthSecret string
+	// The number of minutes that the generated TURN credentials will be valid for.
+	TURNCredentialsExpirationMinutes *int
+	// When set to true it will pass and use configured TURN candidates to server
+	// initiated connections.
+	ServerSideTURN *bool
+	// The URL to a running calls-offloader job service instance.
+	JobServiceURL string
+
 	clientConfig
 }
 
 type clientConfig struct {
-	// A comma separated list of ICE servers URLs (STUN/TURN) to use.
+	// **DEPRECATED: use ICEServersConfigs** A comma separated list of ICE servers URLs (STUN/TURN) to use.
 	ICEServers ICEServers
-	// When set to true, it allows channel admins to enable or disable calls in their channels.
+
+	// A list of ICE server configurations to use.
+	ICEServersConfigs ICEServersConfigs
+	// AllowEnableCalls is always true. DO NOT REMOVE; needed for mobile backward compatibility.
+	// It allows channel admins to enable or disable calls in their channels.
 	// It also allows participants of DMs/GMs to enable or disable calls.
 	AllowEnableCalls *bool
-	// When set to true, calls will be possible in all channels where they are not explicitly disabled.
+	// DefaultEnabled is required for clients; it is called 'TestMode' in the client, such that:
+	// TestMode="off" -> DefaultEnabled=true
+	// TestMode="on" -> DefaultEnabled=false
+	// When TestMode is set to off (DefaultEnabled=true), calls will be possible in all channels where they are not explicitly disabled.
 	DefaultEnabled *bool
+	// The maximum number of participants that can join a call. The zero value
+	// means unlimited.
+	MaxCallParticipants *int
+	// Used to signal the client whether or not to generate TURN credentials. This is a client only option, generated server side.
+	NeedsTURNCredentials *bool
+	// When set to true it allows call participants to share their screen.
+	AllowScreenSharing *bool
+	// When set to true it enables the call recordings functionality
+	EnableRecordings *bool
+	// The maximum duration (in minutes) for call recordings.
+	MaxRecordingDuration *int
 }
 
+const (
+	defaultRecDurationMinutes = 60
+	minRecDurationMinutes     = 15
+	maxRecDurationMinutes     = 180
+)
+
 type ICEServers []string
+type ICEServersConfigs rtc.ICEServers
+
+func (cfgs *ICEServersConfigs) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+	unquoted, err := strconv.Unquote(string(data))
+	if err != nil {
+		return err
+	}
+	if unquoted == "" {
+		return nil
+	}
+
+	var dst []rtc.ICEServerConfig
+	err = json.Unmarshal([]byte(unquoted), &dst)
+	*cfgs = dst
+
+	return err
+}
 
 func (is *ICEServers) UnmarshalJSON(data []byte) error {
 	*is = []string{}
@@ -100,9 +164,15 @@ func (pr PortsRange) IsValid() error {
 
 func (c *configuration) getClientConfig() clientConfig {
 	return clientConfig{
-		AllowEnableCalls: c.AllowEnableCalls,
-		DefaultEnabled:   c.DefaultEnabled,
-		ICEServers:       c.ICEServers,
+		AllowEnableCalls:     model.NewBool(true), // always true
+		DefaultEnabled:       c.DefaultEnabled,
+		ICEServers:           c.ICEServers,
+		ICEServersConfigs:    c.getICEServers(true),
+		MaxCallParticipants:  c.MaxCallParticipants,
+		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
+		AllowScreenSharing:   c.AllowScreenSharing,
+		EnableRecordings:     c.EnableRecordings,
+		MaxRecordingDuration: c.MaxRecordingDuration,
 	}
 }
 
@@ -110,12 +180,30 @@ func (c *configuration) SetDefaults() {
 	if c.UDPServerPort == nil {
 		c.UDPServerPort = model.NewInt(8443)
 	}
-	if c.AllowEnableCalls == nil {
-		c.AllowEnableCalls = new(bool)
-	}
+
+	c.AllowEnableCalls = model.NewBool(true)
+
 	if c.DefaultEnabled == nil {
-		c.DefaultEnabled = new(bool)
-		*c.DefaultEnabled = true
+		c.DefaultEnabled = model.NewBool(false)
+	}
+	if c.MaxCallParticipants == nil {
+		c.MaxCallParticipants = new(int)
+	}
+	if c.TURNCredentialsExpirationMinutes == nil {
+		c.TURNCredentialsExpirationMinutes = model.NewInt(1440)
+	}
+	if c.ServerSideTURN == nil {
+		c.ServerSideTURN = new(bool)
+	}
+	if c.AllowScreenSharing == nil {
+		c.AllowScreenSharing = new(bool)
+		*c.AllowScreenSharing = true
+	}
+	if c.EnableRecordings == nil {
+		c.EnableRecordings = new(bool)
+	}
+	if c.MaxRecordingDuration == nil {
+		c.MaxRecordingDuration = model.NewInt(defaultRecDurationMinutes)
 	}
 }
 
@@ -128,6 +216,18 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [1024, 49151]", *c.UDPServerPort)
 	}
 
+	if c.MaxCallParticipants == nil || *c.MaxCallParticipants < 0 {
+		return fmt.Errorf("MaxCallParticipants is not valid")
+	}
+
+	if c.TURNCredentialsExpirationMinutes != nil && *c.TURNCredentialsExpirationMinutes < 0 {
+		return fmt.Errorf("TURNCredentialsExpirationMinutes is not valid")
+	}
+
+	if c.MaxRecordingDuration == nil || *c.MaxRecordingDuration < minRecDurationMinutes || *c.MaxRecordingDuration > maxRecDurationMinutes {
+		return fmt.Errorf("MaxRecordingDuration is not valid: range should be [%d, %d]", minRecDurationMinutes, maxRecDurationMinutes)
+	}
+
 	return nil
 }
 
@@ -136,15 +236,17 @@ func (c *configuration) Clone() *configuration {
 	var cfg configuration
 
 	cfg.ICEHostOverride = c.ICEHostOverride
+	cfg.RTCDServiceURL = c.RTCDServiceURL
+	cfg.JobServiceURL = c.JobServiceURL
+	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)
 		*cfg.UDPServerPort = *c.UDPServerPort
 	}
 
-	if c.AllowEnableCalls != nil {
-		cfg.AllowEnableCalls = model.NewBool(*c.AllowEnableCalls)
-	}
+	// AllowEnableCalls is always true
+	cfg.AllowEnableCalls = model.NewBool(true)
 
 	if c.DefaultEnabled != nil {
 		cfg.DefaultEnabled = model.NewBool(*c.DefaultEnabled)
@@ -152,12 +254,60 @@ func (c *configuration) Clone() *configuration {
 
 	if c.ICEServers != nil {
 		cfg.ICEServers = make(ICEServers, len(c.ICEServers))
-		for i, u := range c.ICEServers {
-			cfg.ICEServers[i] = u
-		}
+		copy(cfg.ICEServers, c.ICEServers)
+	}
+
+	if c.ICEServersConfigs != nil {
+		cfg.ICEServersConfigs = make([]rtc.ICEServerConfig, len(c.ICEServersConfigs))
+		copy(cfg.ICEServersConfigs, c.ICEServersConfigs)
+	}
+
+	if c.MaxCallParticipants != nil {
+		cfg.MaxCallParticipants = model.NewInt(*c.MaxCallParticipants)
+	}
+
+	if c.TURNCredentialsExpirationMinutes != nil {
+		cfg.TURNCredentialsExpirationMinutes = model.NewInt(*c.TURNCredentialsExpirationMinutes)
+	}
+
+	if c.ServerSideTURN != nil {
+		cfg.ServerSideTURN = model.NewBool(*c.ServerSideTURN)
+	}
+
+	if c.AllowScreenSharing != nil {
+		cfg.AllowScreenSharing = model.NewBool(*c.AllowScreenSharing)
+	}
+
+	if c.EnableRecordings != nil {
+		cfg.EnableRecordings = model.NewBool(*c.EnableRecordings)
+	}
+
+	if c.MaxRecordingDuration != nil {
+		cfg.MaxRecordingDuration = model.NewInt(*c.MaxRecordingDuration)
 	}
 
 	return &cfg
+}
+
+func (c *configuration) getRTCDURL() string {
+	if url := os.Getenv("MM_CALLS_RTCD_URL"); url != "" {
+		return url
+	}
+	return c.RTCDServiceURL
+}
+
+func (c *configuration) getJobServiceURL() string {
+	if url := os.Getenv("MM_CALLS_JOB_SERVICE_URL"); url != "" {
+		return url
+	}
+	return c.JobServiceURL
+}
+
+func (c *configuration) recordingsEnabled() bool {
+	if c.EnableRecordings != nil && *c.EnableRecordings {
+		return true
+	}
+	return false
 }
 
 // getConfiguration retrieves the active configuration under lock, making it safe to use
@@ -187,6 +337,10 @@ func (p *Plugin) getConfiguration() *configuration {
 func (p *Plugin) setConfiguration(configuration *configuration) error {
 	p.configurationLock.Lock()
 	defer p.configurationLock.Unlock()
+
+	if p.configuration == nil && configuration != nil {
+		p.setOverrides(configuration)
+	}
 
 	if configuration != nil && p.configuration == configuration {
 		// Ignore assignment if the configuration struct is empty. Go will optimize the
@@ -226,5 +380,88 @@ func (p *Plugin) OnConfigurationChange() error {
 		return fmt.Errorf("OnConfigurationChange: failed to load plugin configuration: %w", err)
 	}
 
+	// Permanently override with envVar and cloud overrides
+	p.setOverrides(cfg)
+
 	return p.setConfiguration(cfg)
+}
+
+func (p *Plugin) setOverrides(cfg *configuration) {
+	cfg.AllowEnableCalls = model.NewBool(true)
+
+	if license := p.API.GetLicense(); license != nil && isCloud(license) {
+		// On Cloud installations we want calls enabled in all channels so we
+		// override it since the plugin's default is now false.
+		*cfg.DefaultEnabled = true
+	}
+
+	if cfg.MaxCallParticipants == nil {
+		cfg.MaxCallParticipants = model.NewInt(0)
+	}
+
+	// Allow env var to permanently override system console settings
+	if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
+		if max, err := strconv.Atoi(maxPart); err == nil {
+			*cfg.MaxCallParticipants = max
+		} else {
+			p.LogError("setOverrides", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
+		}
+	} else if license := p.API.GetLicense(); license != nil && isCloud(license) {
+		// otherwise, if this is a cloud installation, set it at the default
+		if isCloudStarter(license) {
+			*cfg.MaxCallParticipants = cloudStarterMaxParticipantsDefault
+		} else {
+			*cfg.MaxCallParticipants = cloudPaidMaxParticipantsDefault
+		}
+	}
+}
+
+func (p *Plugin) isSingleHandler() bool {
+	cfg := p.API.GetConfig()
+	pluginCfg := p.getConfiguration()
+
+	if cfg == nil || pluginCfg == nil || p.licenseChecker == nil {
+		return false
+	}
+
+	rtcdURL := pluginCfg.getRTCDURL()
+	hasRTCD := rtcdURL != "" && p.licenseChecker.RTCDAllowed()
+
+	if hasRTCD {
+		return false
+	}
+
+	isHA := cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
+	hasEnvVar := os.Getenv("MM_CALLS_IS_HANDLER") != ""
+
+	return !isHA || (isHA && hasEnvVar)
+}
+
+func (c *configuration) getICEServers(forClient bool) ICEServersConfigs {
+	var iceServers ICEServersConfigs
+
+	for _, cfg := range c.ICEServersConfigs {
+		if forClient && cfg.IsTURN() && cfg.Username == "" && cfg.Credential == "" {
+			continue
+		}
+		iceServers = append(iceServers, cfg)
+	}
+
+	if len(c.ICEServers) > 0 {
+		iceServers = append(iceServers, rtc.ICEServerConfig{
+			URLs: c.ICEServers,
+		})
+	}
+
+	return iceServers
+}
+
+func (cfgs ICEServersConfigs) getTURNConfigsForCredentials() []rtc.ICEServerConfig {
+	var configs []rtc.ICEServerConfig
+	for _, cfg := range cfgs {
+		if cfg.IsTURN() && cfg.Username == "" && cfg.Credential == "" {
+			configs = append(configs, cfg)
+		}
+	}
+	return configs
 }

@@ -1,19 +1,44 @@
 import React, {CSSProperties} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-import moment from 'moment-timezone';
 import {compareSemVer} from 'semver-parser';
 
-import {UserProfile} from 'mattermost-redux/types/users';
-import {Channel} from 'mattermost-redux/types/channels';
-import {Team} from 'mattermost-redux/types/teams';
-import {IDMappedObjects} from 'mattermost-redux/types/utilities';
-import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {UserProfile} from '@mattermost/types/users';
+import {Channel} from '@mattermost/types/channels';
+import {Team} from '@mattermost/types/teams';
+import {IDMappedObjects} from '@mattermost/types/utilities';
 
-import {UserState} from 'src/types/types';
-import {getUserDisplayName, isPublicChannel, isPrivateChannel, isDMChannel, isGMChannel, hasExperimentalFlag} from 'src/utils';
+import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
+import {Theme} from 'mattermost-redux/types/themes';
+
+import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
+
+import {
+    UserState,
+    AudioDevices,
+    CallAlertStates,
+    CallAlertStatesDefault,
+    CallRecordingState,
+} from 'src/types/types';
+import * as Telemetry from 'src/types/telemetry';
+import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent} from 'src/utils';
+import {
+    keyToAction,
+    LEAVE_CALL,
+    MUTE_UNMUTE,
+    PARTICIPANTS_LIST_TOGGLE,
+    RAISE_LOWER_HAND,
+    reverseKeyMappings,
+    SHARE_UNSHARE_SCREEN,
+} from 'src/shortcuts';
+import {
+    CallAlertConfigs,
+    CallRecordingDisclaimerStrings,
+} from 'src/constants';
+
+import {logDebug, logErr} from 'src/log';
 
 import Avatar from '../avatar/avatar';
-import {pluginId} from '../../manifest';
 import MutedIcon from '../../components/icons/muted_icon';
 import UnmutedIcon from '../../components/icons/unmuted_icon';
 import LeaveCallIcon from '../../components/icons/leave_call_icon';
@@ -28,14 +53,25 @@ import RaisedHandIcon from '../../components/icons/raised_hand';
 import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import SpeakerIcon from '../../components/icons/speaker_icon';
 
+import Shortcut from 'src/components/shortcut';
+import Badge from 'src/components/badge';
+import {AudioInputPermissionsError} from 'src/client';
+
+import CallDuration from './call_duration';
+import WidgetBanner from './widget_banner';
+import WidgetButton from './widget_button';
+import UnavailableIconWrapper from './unavailable_icon_wrapper';
+
 import './component.scss';
 
 interface Props {
-    theme: any,
+    store: any,
+    theme: Theme,
     currentUserID: string,
     channel: Channel,
     team: Team,
     channelURL: string,
+    channelDisplayName: string,
     profiles: UserProfile[],
     profilesMap: IDMappedObjects<UserProfile>,
     picturesMap: {
@@ -45,10 +81,20 @@ interface Props {
         [key: string]: UserState,
     },
     callStartAt: number,
+    callHostID: string,
+    callHostChangeAt: number,
+    callRecording?: CallRecordingState,
     screenSharingID: string,
     show: boolean,
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
+    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    allowScreenSharing: boolean,
+    global?: true,
+    position?: {
+        bottom: number,
+        left: number,
+    },
 }
 
 interface DraggingState {
@@ -65,7 +111,6 @@ interface State {
     showMenu: boolean,
     showParticipantsList: boolean,
     screenSharingID?: string,
-    intervalID?: NodeJS.Timer,
     screenStream?: any,
     currentAudioInputDevice?: any,
     currentAudioOutputDevice?: any,
@@ -76,135 +121,131 @@ interface State {
     expandedViewWindow: Window | null,
     showUsersJoined: string[],
     audioEls: HTMLAudioElement[],
+    alerts: CallAlertStates,
+    recDisclaimerDismissedAt: number,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
     private node: React.RefObject<HTMLDivElement>;
+    private menuNode: React.RefObject<HTMLDivElement>;
+    private menuResizeObserver: ResizeObserver | null = null;
+    private audioMenuResizeObserver: ResizeObserver | null = null;
     private screenPlayer = React.createRef<HTMLVideoElement>()
 
-    private style = {
-        main: {
-            position: 'fixed',
-            background: this.props.theme.centerChannelBg,
-            borderRadius: '8px',
-            display: 'flex',
-            bottom: '12px',
-            left: '12px',
-            lineHeight: '16px',
-            zIndex: '1000',
-            border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
-            userSelect: 'none',
-            color: this.props.theme.centerChannelColor,
-        },
-        topBar: {
-            background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
-            padding: '0 12px',
-            display: 'flex',
-            width: '100%',
-            alignItems: 'center',
-            height: '44px',
-            cursor: 'move',
-        },
-        bottomBar: {
-            padding: '6px 8px',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            width: '100%',
-            alignItems: 'center',
-        },
-        mutedButton: {
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: '24px',
-        },
-        unmutedButton: {
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: '24px',
-            background: 'rgba(61, 184, 135, 0.16)',
-            borderRadius: '4px',
-            color: 'rgba(61, 184, 135, 1)',
-        },
-        disconnectButton: {
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            color: 'color: rgba(255, 255, 255, 0.8)',
-            fontSize: '14px',
-            margin: '0 8px',
-            width: '24px',
-            height: '24px',
-            borderRadius: '4px',
-            backgroundColor: '#D24B4E',
-        },
-        status: {
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            width: '100%',
-        },
-        callInfo: {
-            display: 'flex',
-            fontSize: '11px',
-            color: changeOpacity(this.props.theme.centerChannelColor, 0.64),
-        },
-        profiles: {
-            display: 'flex',
-            marginRight: '8px',
-        },
-        menuButton: {
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            color: changeOpacity(this.props.theme.centerChannelColor, 0.8),
-            fontSize: '14px',
-            width: '24px',
-            height: '24px',
-        },
-        menu: {
-            position: 'absolute',
-            background: 'white',
-            color: this.props.theme.centerChannelColor,
-        },
-        screenSharingPanel: {
-            position: 'relative',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            width: '100%',
-            minWidth: 'revert',
-            maxWidth: 'revert',
-        },
-        leaveCallButton: {
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 8px',
-            height: '28px',
-            borderRadius: '4px',
-            color: '#D24B4E',
-            background: 'rgba(210, 75, 78, 0.04)',
-            marginRight: 'auto',
-        },
-        dotsMenu: {
-            position: 'relative',
-            width: '100%',
-            minWidth: 'revert',
-            maxWidth: 'revert',
-        },
-        audioInputsOutputsMenu: {
-            left: 'calc(100% + 4px)',
-            top: 'auto',
-        },
-        expandButton: {
-            position: 'absolute',
-            right: '8px',
-            top: '8px',
-            margin: 0,
-        },
-    };
+    private genStyle = () => {
+        return {
+            main: {
+                position: 'fixed',
+                display: 'flex',
+                bottom: `${this.props.position ? this.props.position.bottom : 12}px`,
+                left: `${this.props.position ? this.props.position.left : 12}px`,
+                lineHeight: '16px',
+                zIndex: '1000',
+                userSelect: 'none',
+                color: this.props.theme.centerChannelColor,
+            },
+            topBar: {
+                background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
+                padding: '0 12px',
+                display: 'flex',
+                width: '100%',
+                alignItems: 'center',
+                height: '44px',
+                cursor: 'move',
+            },
+            bottomBar: {
+                padding: '6px 8px',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                width: '100%',
+                alignItems: 'center',
+            },
+            disconnectButton: {
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                color: 'color: rgba(255, 255, 255, 0.8)',
+                fontSize: '14px',
+                margin: '0 8px',
+                width: '24px',
+                height: '24px',
+                borderRadius: '4px',
+                backgroundColor: '#D24B4E',
+            },
+            status: {
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                width: '100%',
+                background: this.props.theme.centerChannelBg,
+                border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
+                borderRadius: '8px',
+            },
+            callInfo: {
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '11px',
+                lineHeight: '11px',
+                color: changeOpacity(this.props.theme.centerChannelColor, 0.64),
+                marginTop: '3px',
+            },
+            profiles: {
+                display: 'flex',
+                marginRight: '8px',
+            },
+            menuButton: {
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                color: changeOpacity(this.props.theme.centerChannelColor, 0.8),
+                fontSize: '14px',
+                width: 'auto',
+                padding: '0 6px',
+            },
+            menu: {
+                position: 'absolute',
+                background: 'white',
+                color: this.props.theme.centerChannelColor,
+            },
+            screenSharingPanel: {
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                width: '100%',
+                minWidth: 'revert',
+                maxWidth: 'revert',
+            },
+            leaveCallButton: {
+                display: 'flex',
+                alignItems: 'center',
+                padding: '10px 16px',
+                height: '28px',
+                borderRadius: '4px',
+                color: '#D24B4E',
+                background: 'rgba(var(--dnd-indicator-rgb), 0.08)',
+            },
+            dotsMenu: {
+                position: 'relative',
+                width: '100%',
+                minWidth: 'revert',
+                maxWidth: 'revert',
+            },
+            audioInputsOutputsMenu: {
+                left: 'calc(100% + 4px)',
+                top: 'auto',
+            },
+            expandButton: {
+                position: 'absolute',
+                right: '8px',
+                top: '8px',
+                margin: 0,
+            },
+        };
+    }
+
+    private style = this.genStyle();
 
     constructor(props: Props) {
         super(props);
@@ -223,22 +264,61 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             expandedViewWindow: null,
             showUsersJoined: [],
             audioEls: [],
+            alerts: CallAlertStatesDefault,
+            recDisclaimerDismissedAt: 0,
         };
         this.node = React.createRef();
+        this.menuNode = React.createRef();
         this.screenPlayer = React.createRef();
     }
 
+    handleKBShortcuts = (ev: KeyboardEvent) => {
+        if (!this.props.show) {
+            return;
+        }
+        switch (keyToAction('widget', ev)) {
+        case MUTE_UNMUTE:
+            this.onMuteToggle();
+            break;
+        case RAISE_LOWER_HAND:
+            this.onRaiseHandToggle(true);
+            break;
+        case SHARE_UNSHARE_SCREEN:
+            this.onShareScreenToggle(true);
+            break;
+        case PARTICIPANTS_LIST_TOGGLE:
+            this.onParticipantsButtonClick(true);
+            break;
+        case LEAVE_CALL:
+            this.onDisconnectClick();
+            break;
+        }
+    }
+
     public componentDidMount() {
-        document.addEventListener('mouseup', this.onMouseUp, false);
+        if (this.props.global) {
+            this.menuResizeObserver = new ResizeObserver((entries) => {
+                if (entries.length === 0) {
+                    return;
+                }
+                sendDesktopEvent('calls-widget-resize', {
+                    element: 'calls-widget-menu',
+                    height: Math.round(entries[0].contentRect.height),
+                    width: Math.round(entries[0].contentRect.width),
+                });
+            });
+            this.menuResizeObserver.observe(this.menuNode.current!);
+        } else {
+            document.addEventListener('mouseup', this.onMouseUp, false);
+        }
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
 
-        // This is needed to force a re-render to periodically update
-        // the start time.
-        const id = setInterval(() => this.forceUpdate(), 1000);
+        // keyboard shortcuts
+        document.addEventListener('keydown', this.handleKBShortcuts, true);
+
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
-            intervalID: id,
             showUsersJoined: [this.props.currentUserID],
         });
 
@@ -255,7 +335,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEl.controls = false;
             audioEl.autoplay = true;
             audioEl.style.display = 'none';
-            audioEl.onerror = (err) => console.log(err);
+            audioEl.onerror = (err) => logErr(err);
+            audioEl.id = voiceTrack.id;
 
             const deviceID = window.callsClient.currentAudioOutputDevice?.deviceId;
             if (deviceID) {
@@ -269,6 +350,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             document.body.appendChild(audioEl);
             voiceTrack.onended = () => {
+                audioEl.srcObject = null;
                 audioEl.remove();
             };
         });
@@ -279,38 +361,95 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
+        window.callsClient.on('devicechange', (devices: AudioDevices) => {
+            this.setState({devices,
+                alerts: {
+                    ...this.state.alerts,
+                    missingAudioInput: {
+                        ...this.state.alerts.missingAudioInput,
+                        active: devices.inputs.length === 0,
+                        show: devices.inputs.length === 0,
+                    },
+                }});
+        });
+
         window.callsClient.on('connect', () => {
-            if (isDMChannel(this.props.channel) || isGMChannel(this.props.channel)) {
-                window.callsClient.unmute();
+            if (this.props.global) {
+                sendDesktopEvent('calls-joined-call', {
+                    callID: window.callsClient?.channelID,
+                });
+            }
+
+            if (isDirectChannel(this.props.channel) || isGroupChannel(this.props.channel)) {
+                // FIXME (MM-46048) - HACK
+                // There's a race condition between unmuting and receiving existing tracks from other participants.
+                // Fixing this properly requires extensive and potentially breaking changes.
+                // Waiting for a second before unmuting is a decent workaround that should work in most cases.
+                setTimeout(() => {
+                    window.callsClient?.unmute();
+                }, 1000);
             }
             this.setState({currentAudioInputDevice: window.callsClient.currentAudioInputDevice});
             this.setState({currentAudioOutputDevice: window.callsClient.currentAudioOutputDevice});
         });
+
+        window.callsClient.on('error', (err: Error) => {
+            if (err === AudioInputPermissionsError) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        missingAudioInputPermissions: {
+                            active: true,
+                            show: true,
+                        },
+                    }});
+            }
+        });
+
+        window.callsClient.on('initaudio', () => {
+            this.setState({
+                alerts: {
+                    ...this.state.alerts,
+                    missingAudioInputPermissions: {
+                        active: false,
+                        show: false,
+                    },
+                }});
+        });
     }
 
     public componentWillUnmount() {
-        document.removeEventListener('mouseup', this.onMouseUp, false);
+        if (!this.props.global) {
+            document.removeEventListener('mouseup', this.onMouseUp, false);
+        }
+
+        if (this.menuResizeObserver) {
+            this.menuResizeObserver.disconnect();
+        }
+
         document.removeEventListener('click', this.closeOnBlur, true);
         document.removeEventListener('keyup', this.keyboardClose, true);
-        if (this.state.intervalID) {
-            clearInterval(this.state.intervalID);
-        }
+        document.removeEventListener('keydown', this.handleKBShortcuts, true);
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
+        if (prevProps.theme.type !== this.props.theme.type) {
+            this.style = this.genStyle();
+        }
+
         let screenStream = this.state.screenStream;
         if (this.props.screenSharingID === this.props.currentUserID) {
             screenStream = window.callsClient.getLocalScreenStream();
         }
 
-        const wasRendering = Boolean(prevProps.screenSharingID && prevState.screenStream && prevProps.show);
-        const shouldRender = Boolean(this.props.screenSharingID && screenStream);
-
-        if (!this.state.screenStream && screenStream) {
+        const hasScreenTrackChanged = screenStream && this.state.screenStream?.getVideoTracks()[0].id !== screenStream.getVideoTracks()[0].id;
+        if ((screenStream && !this.state.screenStream) || hasScreenTrackChanged) {
             // eslint-disable-next-line react/no-did-update-set-state
             this.setState({screenStream});
-        } else if (!wasRendering && shouldRender && this.screenPlayer.current) {
-            this.screenPlayer.current.srcObject = screenStream;
+        }
+
+        if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer.current?.srcObject !== this.state.screenStream) {
+            this.screenPlayer.current.srcObject = this.state.screenStream;
         }
 
         let profiles;
@@ -366,26 +505,47 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     }
 
-    getCallDuration = () => {
-        const dur = moment.utc(moment().diff(moment(this.props.callStartAt)));
-        if (dur.hours() === 0) {
-            return dur.format('mm:ss');
+    onShareScreenToggle = async (fromShortcut?: boolean) => {
+        if (!this.props.allowScreenSharing) {
+            return;
         }
-        return dur.format('HH:mm:ss');
-    }
-
-    onShareScreenToggle = async () => {
         const state = {} as State;
+
         if (this.props.screenSharingID === this.props.currentUserID) {
             window.callsClient.unshareScreen();
             state.screenStream = null;
+            this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else if (!this.props.screenSharingID) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
-                this.props.showScreenSourceModal();
+                if (this.props.global) {
+                    sendDesktopEvent('desktop-sources-modal-request');
+                } else {
+                    this.props.showScreenSourceModal();
+                }
             } else {
                 const stream = await window.callsClient.shareScreen('', hasExperimentalFlag());
-                state.screenStream = stream;
+                if (stream) {
+                    state.screenStream = stream;
+                    state.alerts = {
+                        ...this.state.alerts,
+                        missingScreenPermissions: {
+                            ...this.state.alerts.missingScreenPermissions,
+                            active: false,
+                            show: false,
+                        },
+                    };
+                } else {
+                    state.alerts = {
+                        ...this.state.alerts,
+                        missingScreenPermissions: {
+                            ...this.state.alerts.missingScreenPermissions,
+                            active: true,
+                            show: true,
+                        },
+                    };
+                }
             }
+            this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
 
         this.setState({
@@ -397,6 +557,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     onMuteToggle = () => {
         if (!window.callsClient) {
             return;
+        }
+
+        // This is needed to prevent a conflict with the accessibility controller on buttons.
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
         }
 
         const isMuted = window.callsClient.isMuted();
@@ -434,12 +599,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     onMenuClick = () => {
         this.setState({
             showMenu: !this.state.showMenu,
-            devices: window.callsClient?.getAudioDevices(),
             showParticipantsList: false,
         });
     }
 
-    onParticipantsButtonClick = () => {
+    onParticipantsButtonClick = (fromShortcut?: boolean) => {
+        const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
+        this.props.trackEvent(event, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
+
+        // This is needed to prevent a conflict with the accessibility controller on buttons.
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
             showMenu: false,
@@ -462,9 +634,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 ps.push(audioEl.setSinkId(device.deviceId));
             }
             Promise.all(ps).then(() => {
-                console.log('audio output has changed');
+                logDebug('audio output has changed');
             }).catch((err) => {
-                console.log(err);
+                logErr(err);
             });
         }
         this.setState({showAudioOutputDevicesMenu: false, currentAudioOutputDevice: device});
@@ -501,7 +673,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         display: 'flex',
                         width: '100%',
                         height: '100%',
-                        background: 'rgba(210, 75, 78, 0.4)',
+                        background: 'rgba(var(--dnd-indicator-rgb), 0.4)',
                         justifyContent: 'center',
                         alignItems: 'center',
                         zIndex: 1001,
@@ -514,12 +686,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             justifyContent: 'center',
                             alignItems: 'center',
                             padding: '8px 16px',
-                            background: 'rgba(210, 75, 78, 1)',
+                            background: 'rgb(var(--dnd-indicator-rgb))',
                             color: 'white',
                             borderRadius: '4px',
                             fontWeight: 600,
                         }}
-                        onClick={this.onShareScreenToggle}
+                        onClick={() => this.onShareScreenToggle()}
                     >
                         {'Stop sharing'}
                     </button>
@@ -579,31 +751,33 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
 
+        let fill = '';
+        if (isSharing) {
+            fill = 'rgb(var(--dnd-indicator-rgb))';
+        } else if (sharingID) {
+            fill = changeOpacity(this.props.theme.centerChannelColor, 0.34);
+        }
+
+        const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
+        let shareScreenTooltipText = isSharing ? 'Stop presenting' : 'Start presenting';
+        if (noScreenPermissions) {
+            shareScreenTooltipText = CallAlertConfigs.missingScreenPermissions.tooltipText;
+        }
+        const shareScreenTooltipSubtext = noScreenPermissions ? CallAlertConfigs.missingScreenPermissions.tooltipSubtext : '';
+
         return (
-            <OverlayTrigger
-                key='share_screen'
-                placement='top'
-                overlay={
-                    <Tooltip
-                        id='tooltip-mute'
-                        style={{display: sharingID && !isSharing ? 'none' : ''}}
-                    >
-                        {isSharing ? 'Stop presenting' : 'Start presenting'}
-                    </Tooltip>
-                }
-            >
-                <button
-                    className={`style--none ${!sharingID || isSharing ? 'button-controls' : 'button-controls-disabled'} button-controls--wide`}
-                    disabled={sharingID !== '' && !isSharing}
-                    style={{background: isSharing ? 'rgba(210, 75, 78, 0.12)' : ''}}
-                    onClick={this.onShareScreenToggle}
-                >
-                    <ScreenIcon
-                        style={{width: '16px', height: '16px', fill: isSharing ? 'rgba(210, 75, 78, 1)' : ''}}
-                        fill={isSharing ? 'rgba(210, 75, 78, 1)' : ''}
-                    />
-                </button>
-            </OverlayTrigger>
+            <WidgetButton
+                id='share-screen'
+                onToggle={() => this.onShareScreenToggle()}
+                tooltipText={shareScreenTooltipText}
+                tooltipSubtext={shareScreenTooltipSubtext}
+                // eslint-disable-next-line no-undefined
+                shortcut={noScreenPermissions ? undefined : reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}
+                bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                icon={<ScreenIcon style={{width: '16px', height: '16px', fill}}/>}
+                unavailable={this.state.alerts.missingScreenPermissions.active}
+                disabled={sharingID !== '' && !isSharing}
+            />
         );
     }
 
@@ -620,8 +794,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <div style={{fontSize: '12px', display: 'flex', whiteSpace: 'pre'}}>
                 <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                    {speakingProfile ? getUserDisplayName(speakingProfile) : 'No one'}
-                </span><span>{' is talking...'}</span>
+                    {speakingProfile ? getUserDisplayName(speakingProfile) : 'No one'} <span style={{fontWeight: 400}}>{'is talking...'}</span>
+                </span>
             </div>
         );
     }
@@ -656,6 +830,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             fontSize={10}
                             url={this.props.picturesMap[profile.id]}
                             style={{marginRight: '8px'}}
+                            borderGlow={isSpeaking}
                         />
 
                         <span className='MenuItem__primary-text'>
@@ -674,16 +849,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 gap: '4px',
                             }}
                         >
-                            { isHandRaised &&
-                            <RaisedHandIcon
-                                fill={'rgba(255, 188, 66, 1)'}
-                                style={{width: '14px', height: '14px'}}
-                            />
+                            {
+                                isHandRaised &&
+                                <CompassIcon
+                                    icon={'hand-right'}
+                                    style={{
+                                        color: 'rgba(255, 188, 66, 1)',
+                                        marginBottom: 2,
+                                        fontSize: 16,
+                                    }}
+                                />
                             }
 
                             { this.props.screenSharingID === profile.id &&
                             <ScreenIcon
-                                fill={'rgba(210, 75, 78, 1)'}
+                                fill={'rgb(var(--dnd-indicator-rgb))'}
                                 style={{width: '14px', height: '14px'}}
                             />
                             }
@@ -702,10 +882,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         return (
             <div
+                id='calls-widget-participants-menu'
                 className='Menu'
-                style={{}}
             >
                 <ul
+                    id='calls-widget-participants-list'
                     className='Menu__content dropdown-menu'
                     style={{width: '100%', minWidth: 'revert', maxWidth: 'revert', maxHeight: '188px', overflow: 'auto', position: 'relative'}}
                 >
@@ -721,7 +902,33 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
-    renderAudioDevicesMenu = (deviceType: string) => {
+    audioDevicesMenuRefCb = (el: HTMLUListElement) => {
+        if (this.audioMenuResizeObserver) {
+            this.audioMenuResizeObserver.disconnect();
+        }
+
+        if (el) {
+            this.audioMenuResizeObserver = new ResizeObserver((entries) => {
+                if (entries.length === 0) {
+                    return;
+                }
+                sendDesktopEvent('calls-widget-resize', {
+                    element: 'calls-widget-audio-menu',
+                    width: Math.round(entries[0].contentRect.width),
+                    height: Math.round(entries[0].contentRect.height),
+                });
+            });
+            this.audioMenuResizeObserver.observe(el);
+        } else {
+            sendDesktopEvent('calls-widget-resize', {
+                element: 'calls-widget-audio-menu',
+                width: 0,
+                height: 0,
+            });
+        }
+    }
+
+    renderAudioDevicesList = (deviceType: string, devices: any[]) => {
         if (deviceType === 'input' && !this.state.showAudioInputDevicesMenu) {
             return null;
         }
@@ -730,8 +937,24 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const devices = deviceType === 'input' ? this.state.devices.inputs : this.state.devices.outputs;
         const currentDevice = deviceType === 'input' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
+
+        const deviceList = devices.map((device: any, idx: number) => {
+            return (
+                <li
+                    className='MenuItem'
+                    key={`audio-${deviceType}-device-${idx}`}
+                >
+                    <button
+                        className='style--none'
+                        style={{background: device.deviceId === currentDevice?.deviceId ? 'rgba(28, 88, 217, 0.12)' : ''}}
+                        onClick={() => (deviceType === 'input' ? this.onAudioInputDeviceClick(device) : this.onAudioOutputDeviceClick(device))}
+                    >
+                        <span style={{color: changeOpacity(this.props.theme.centerChannelColor, 0.56), fontSize: '12px', width: '100%'}}>{device.label}</span>
+                    </button>
+                </li>
+            );
+        });
 
         return (
             <div className='Menu'>
@@ -739,25 +962,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     id={`calls-widget-audio-${deviceType}s-menu`}
                     className='Menu__content dropdown-menu'
                     style={this.style.audioInputsOutputsMenu}
+                    // eslint-disable-next-line no-undefined
+                    ref={this.props.global ? this.audioDevicesMenuRefCb : undefined}
                 >
-                    {
-                        devices.map((device: any, idx: number) => {
-                            return (
-                                <li
-                                    className='MenuItem'
-                                    key={`audio-${deviceType}-device-${idx}`}
-                                >
-                                    <button
-                                        className='style--none'
-                                        style={{background: device.deviceId === currentDevice?.deviceId ? 'rgba(28, 88, 217, 0.12)' : ''}}
-                                        onClick={() => (deviceType === 'input' ? this.onAudioInputDeviceClick(device) : this.onAudioOutputDeviceClick(device))}
-                                    >
-                                        <span style={{color: changeOpacity(this.props.theme.centerChannelColor, 0.56), fontSize: '12px', width: '100%'}}>{device.label}</span>
-                                    </button>
-                                </li>
-                            );
-                        })
-                    }
+                    { deviceList }
                 </ul>
             </div>
         );
@@ -774,50 +982,84 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const currentDevice = deviceType === 'input' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
         const DeviceIcon = deviceType === 'input' ? UnmutedIcon : SpeakerIcon;
 
+        const noInputDevices = deviceType === 'input' && this.state.devices.inputs?.length === 0;
+        const noAudioPermissions = deviceType === 'input' && this.state.alerts.missingAudioInputPermissions.active;
+
+        let label = currentDevice?.label || 'Default';
+        if (noAudioPermissions) {
+            label = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
+        } else if (noInputDevices) {
+            label = CallAlertConfigs.missingAudioInput.tooltipText;
+        }
+
         const onClickHandler = () => {
-            const devices = window.callsClient?.getAudioDevices();
             if (deviceType === 'input') {
-                this.setState({showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu, showAudioOutputDevicesMenu: false, devices});
+                this.setState({showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu, showAudioOutputDevicesMenu: false});
             } else {
-                this.setState({showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu, showAudioInputDevicesMenu: false, devices});
+                this.setState({showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu, showAudioInputDevicesMenu: false});
             }
         };
 
+        const devices = deviceType === 'input' ? this.state.devices.inputs?.filter((device: any) => device.deviceId && device.label) :
+            this.state.devices.outputs?.filter((device: any) => device.deviceId && device.label);
+        const isDisabled = devices.length === 0;
+
         return (
             <React.Fragment>
-                {this.renderAudioDevicesMenu(deviceType)}
+                {devices.length > 0 && this.renderAudioDevicesList(deviceType, devices)}
                 <li
                     className='MenuItem'
                 >
                     <button
                         id={`calls-widget-audio-${deviceType}-button`}
                         className='style--none'
-                        style={{display: 'flex', flexDirection: 'column'}}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            color: isDisabled ? changeOpacity(this.props.theme.centerChannelColor, 0.32) : '',
+                        }}
                         onClick={onClickHandler}
+                        disabled={isDisabled}
                     >
-                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%'}}>
-                            <DeviceIcon
-                                style={{width: '14px', height: '14px', marginRight: '8px', fill: changeOpacity(this.props.theme.centerChannelColor, 0.56)}}
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%', padding: '2px 0'}}>
+                            <UnavailableIconWrapper
+                                icon={(
+                                    <DeviceIcon
+                                        style={{
+                                            fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
+                                        }}
+                                    />
+                                )}
+                                unavailable={isDisabled}
+                                margin={'0 8px 0 0'}
                             />
                             <span
                                 className='MenuItem__primary-text'
                                 style={{padding: '0'}}
                             >{deviceType === 'input' ? 'Microphone' : 'Audio Output'}</span>
-                            <ShowMoreIcon
-                                style={{width: '11px', height: '11px', marginLeft: 'auto', fill: changeOpacity(this.props.theme.centerChannelColor, 0.56)}}
-                            />
+                            { devices.length > 0 &&
+                                <ShowMoreIcon
+                                    style={{
+                                        width: '11px',
+                                        height: '11px',
+                                        marginLeft: 'auto',
+                                        fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
+                                    }}
+                                />
+                            }
                         </div>
                         <span
                             style={{
-                                color: changeOpacity(this.props.theme.centerChannelColor, 0.56),
+                                color: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
                                 fontSize: '12px',
                                 width: '100%',
+                                lineHeight: '16px',
                                 textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
                                 overflow: 'hidden',
+                                whiteSpace: isDisabled ? 'initial' : 'nowrap',
                             }}
                         >
-                            {currentDevice?.label || 'Default'}
+                            {label}
                         </span>
                     </button>
                 </li>
@@ -829,6 +1071,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const sharingID = this.props.screenSharingID;
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
+        const isDisabled = Boolean(sharingID !== '' && !isSharing);
+        const noPermissions = this.state.alerts.missingScreenPermissions.active;
 
         return (
             <React.Fragment>
@@ -837,19 +1081,44 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     <button
                         id='calls-widget-menu-screenshare'
-                        className='style--none'
+                        className={`style--none ${noPermissions ? 'unavailable' : ''}`}
                         style={{
                             display: 'flex',
-                            color: sharingID !== '' && !isSharing ? changeOpacity(this.props.theme.centerChannelColor, 0.34) : '',
+                            flexDirection: 'column',
+                            color: isDisabled || noPermissions ? changeOpacity(this.props.theme.centerChannelColor, 0.34) : '',
                         }}
-                        disabled={Boolean(sharingID !== '' && !isSharing)}
-                        onClick={this.onShareScreenToggle}
+                        disabled={isDisabled}
+                        onClick={() => this.onShareScreenToggle()}
                     >
-                        <ScreenIcon
-                            style={{width: '16px', height: '16px', marginRight: '8px'}}
-                            fill={isSharing ? 'rgba(210, 75, 78, 1)' : changeOpacity(this.props.theme.centerChannelColor, 0.64)}
-                        />
-                        <span>{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
+
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%', padding: '2px 0'}}>
+                            <UnavailableIconWrapper
+                                icon={(
+                                    <ScreenIcon
+                                        style={{width: '16px', height: '16px'}}
+                                        fill={isSharing ? 'rgb(var(--dnd-indicator-rgb))' : changeOpacity(this.props.theme.centerChannelColor, 0.64)}
+                                    />
+                                )}
+                                unavailable={noPermissions}
+                                margin={'0 8px 0 0'}
+                            />
+                            <span>{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
+                        </div>
+
+                        { noPermissions &&
+                        <span
+                            style={{
+                                color: changeOpacity(this.props.theme.centerChannelColor, 0.32),
+                                fontSize: '12px',
+                                width: '100%',
+                                lineHeight: '16px',
+                                whiteSpace: 'initial',
+                            }}
+                        >
+                            {CallAlertConfigs.missingScreenPermissions.tooltipText}
+                        </span>
+                        }
+
                     </button>
                 </li>
                 <li className='MenuGroup menu-divider'/>
@@ -857,7 +1126,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
-    renderMenu = (hasTeamSidebar: boolean) => {
+    renderMenu = (widerWidget: boolean) => {
         if (!this.state.showMenu) {
             return null;
         }
@@ -869,7 +1138,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='Menu__content dropdown-menu'
                     style={this.style.dotsMenu as CSSProperties}
                 >
-                    {!hasTeamSidebar && this.renderScreenSharingMenuItem()}
+                    {this.props.allowScreenSharing && !widerWidget && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
                 </ul>
@@ -921,6 +1190,91 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
+    renderRecordingDisclaimer = () => {
+        // This component should render if all of the following conditions apply:
+        // - Recording has started.
+        // - Recording has not ended.
+        // - Diclaimer has not been dismissed after either call start or last host change.
+
+        if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at) {
+            return null;
+        }
+
+        if (this.state.recDisclaimerDismissedAt > this.props.callRecording?.start_at && this.state.recDisclaimerDismissedAt > this.props.callHostChangeAt) {
+            return null;
+        }
+
+        const isHost = this.props.callHostID === this.props.currentUserID;
+
+        return (
+            <WidgetBanner
+                key={'widget_banner_recording_disclaimer'}
+                type='info'
+                icon={(
+                    <RecordCircleOutlineIcon
+                        size={12}
+                    />)}
+                iconFill='rgb(var(--dnd-indicator-rgb))'
+                iconColor='rgb(var(--dnd-indicator-rgb))'
+                header={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header}
+                body={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body}
+                confirmText={isHost ? 'Dismiss' : 'Understood'}
+                declineText={isHost ? null : 'Leave call'}
+                onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
+                onDecline={this.onDisconnectClick}
+            />
+        );
+    }
+
+    renderRecordingBadge = () => {
+        if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at) {
+            return null;
+        }
+
+        return (
+            <React.Fragment>
+                <Badge
+                    text={'REC'}
+                    textSize={11}
+                    gap={2}
+                    icon={(<RecordCircleOutlineIcon size={11}/>)}
+                    color={'#D24B4E'}
+                />
+                <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
+            </React.Fragment>
+        );
+    }
+
+    renderAlertBanners = () => {
+        return Object.entries(this.state.alerts).map((keyVal) => {
+            const [alertID, alertState] = keyVal;
+            if (!alertState.show) {
+                return null;
+            }
+
+            const alertConfig = CallAlertConfigs[alertID];
+
+            return (
+                <WidgetBanner
+                    {...alertConfig}
+                    key={`widget_banner_${alertID}`}
+                    header={alertConfig.bannerText}
+                    onClose={() => {
+                        this.setState({
+                            alerts: {
+                                ...this.state.alerts,
+                                [alertID]: {
+                                    ...alertState,
+                                    show: false,
+                                },
+                            },
+                        });
+                    }}
+                />
+            );
+        });
+    }
+
     renderNotificationBar = () => {
         if (!this.props.currentUserID) {
             return null;
@@ -933,7 +1287,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <span>{`You are ${isMuted ? 'muted' : 'unmuted'}. Click `}</span>
                 <MuteIcon
                     style={{width: '11px', height: '11px', fill: isMuted ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : '#3DB887'}}
-                    stroke={isMuted ? 'rgba(210, 75, 78, 1)' : '#3DB887'}
+                    stroke={isMuted ? 'rgb(var(--dnd-indicator-rgb))' : '#3DB887'}
                 />
                 <span>{` to ${isMuted ? 'unmute' : 'mute'}.`}</span>
             </React.Fragment>
@@ -1055,14 +1409,20 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
+        this.props.trackEvent(Telemetry.Event.OpenExpandedView, Telemetry.Source.Widget, {initiator: 'button'});
+
         // TODO: remove this as soon as we support opening a window from desktop app.
-        if (window.desktop) {
+        if (window.desktop && !this.props.global) {
             this.props.showExpandedView();
         } else {
+            let features = 'resizable=yes';
+            if (this.props.global) {
+                features += ',frame=false';
+            }
             const expandedViewWindow = window.open(
-                `/${this.props.team.name}/${pluginId}/expanded/${this.props.channel.id}`,
+                getPopOutURL(this.props.team, this.props.channel),
                 'ExpandedView',
-                'resizable=yes',
+                features,
             );
 
             this.setState({
@@ -1070,9 +1430,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
 
             expandedViewWindow?.addEventListener('beforeunload', () => {
+                this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView);
                 if (!window.callsClient) {
                     return;
                 }
+
                 const localScreenStream = window.callsClient.getLocalScreenStream();
                 if (localScreenStream && localScreenStream.getVideoTracks()[0].id === expandedViewWindow.screenSharingTrackId) {
                     window.callsClient.unshareScreen();
@@ -1081,23 +1443,37 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
-    onRaiseHandToggle = () => {
+    onRaiseHandToggle = (fromShortcut?: boolean) => {
         if (!window.callsClient) {
             return;
         }
+
+        // This is needed to prevent a conflict with the accessibility controller on buttons.
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+
         if (window.callsClient.isHandRaised) {
             window.callsClient.unraiseHand();
+            this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
             window.callsClient.raiseHand();
+            this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
     }
 
     onChannelLinkClick = (ev: React.MouseEvent<HTMLElement>) => {
         ev.preventDefault();
-        window.postMessage({type: 'browser-history-push-return', message: {pathName: this.props.channelURL}}, window.origin);
+        const message = {pathName: this.props.channelURL};
+        if (this.props.global) {
+            sendDesktopEvent('calls-widget-channel-link-click', message);
+        } else {
+            window.postMessage({type: 'browser-history-push-return', message}, window.origin);
+        }
+        this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     }
 
-    renderChannelName = (hasTeamSidebar: boolean) => {
+    renderChannelName = (widerWidget: boolean) => {
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
@@ -1106,17 +1482,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     href={this.props.channelURL}
                     onClick={this.onChannelLinkClick}
                     className='calls-channel-link'
+                    style={{appRegion: 'no-drag', padding: '0'} as CSSProperties}
                 >
-                    {isPublicChannel(this.props.channel) ? <CompassIcon icon='globe'/> : <CompassIcon icon='lock'/>}
+                    {isOpenChannel(this.props.channel) && <CompassIcon icon='globe'/>}
+                    {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
+                    {isDirectChannel(this.props.channel) && <CompassIcon icon='account-outline'/>}
+                    {isGroupChannel(this.props.channel) && <CompassIcon icon='account-multiple-outline'/>}
                     <span
                         style={{
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            maxWidth: hasTeamSidebar ? '24ch' : '14ch',
+                            maxWidth: widerWidget ? '22ch' : '12ch',
                         }}
                     >
-                        {this.props.channel.display_name}
+                        {this.props.channelDisplayName}
                     </span>
                 </a>
             </React.Fragment>
@@ -1128,13 +1508,28 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const MuteIcon = window.callsClient.isMuted() ? MutedIcon : UnmutedIcon;
-        const muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
+        const noInputDevices = this.state.alerts.missingAudioInput.active;
+        const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
+        const MuteIcon = window.callsClient.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
+        let muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
+        let muteTooltipSubtext = '';
+        if (noInputDevices) {
+            muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText;
+            muteTooltipSubtext = CallAlertConfigs.missingAudioInput.tooltipSubtext;
+        }
+        if (noAudioPermissions) {
+            muteTooltipText = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
+            muteTooltipSubtext = CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext;
+        }
 
-        const hasTeamSidebar = Boolean(document.querySelector('.team-sidebar'));
-        const mainWidth = hasTeamSidebar ? '280px' : '216px';
+        const widerWidget = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
+        const mainStyle = {
+            ...this.style.main as CSSProperties,
+            width: widerWidget ? '280px' : '216px',
+            ...(this.props.global && {appRegion: 'drag'}),
+        };
 
-        const ShowIcon = window.desktop ? ExpandIcon : PopOutIcon;
+        const ShowIcon = window.desktop && !this.props.global ? ExpandIcon : PopOutIcon;
 
         const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
         const handTooltipText = window.callsClient.isHandRaised ? 'Click to lower hand' : 'Click to raise hand';
@@ -1142,23 +1537,27 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <div
                 id='calls-widget'
-                style={{
-                    ...this.style.main as CSSProperties,
-                    width: mainWidth,
-                }}
+                style={mainStyle}
                 ref={this.node}
             >
-                <div style={this.style.status as CSSProperties}>
-                    <div style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%'}}>
-                        {this.renderNotificationBar()}
-                        {this.renderScreenSharingPanel()}
-                        {this.renderParticipantsList()}
-                        {this.renderMenu(hasTeamSidebar)}
-                    </div>
 
+                <div
+                    ref={this.menuNode}
+                    style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%', zIndex: -1}}
+                >
+                    {this.renderNotificationBar()}
+                    {this.renderAlertBanners()}
+                    {this.renderRecordingDisclaimer()}
+                    {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
+                    {this.renderParticipantsList()}
+                    {this.renderMenu(widerWidget)}
+                </div>
+
+                <div style={this.style.status as CSSProperties}>
                     <div
                         style={this.style.topBar}
-                        onMouseDown={this.onMouseDown}
+                        // eslint-disable-next-line no-undefined
+                        onMouseDown={this.props.global ? undefined : this.onMouseDown}
                     >
                         <button
                             id='calls-widget-expand-button'
@@ -1175,11 +1574,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={this.style.profiles}>
                             {this.renderProfiles()}
                         </div>
-                        <div style={{width: '85%'}}>
+                        <div style={{width: widerWidget ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
-                                <div style={{fontWeight: 600}}>{this.getCallDuration()}</div>
-                                {(isPublicChannel(this.props.channel) || isPrivateChannel(this.props.channel)) && this.renderChannelName(hasTeamSidebar)}
+                                {this.renderRecordingBadge()}
+                                <CallDuration startAt={this.props.callStartAt}/>
+                                {this.renderChannelName(widerWidget)}
                             </div>
                         </div>
                     </div>
@@ -1189,11 +1589,81 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={this.style.bottomBar}
                     >
                         <OverlayTrigger
+                            key='participants'
+                            placement='top'
+                            overlay={
+                                <Tooltip id='tooltip-mute'>
+                                    {this.state.showParticipantsList ? 'Hide participants' : 'Show participants'}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}/>
+                                </Tooltip>
+                            }
+                        >
+                            <button
+                                className='style--none button-controls button-controls--wide'
+                                id='calls-widget-participants-button'
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    color: this.state.showParticipantsList ? 'rgba(28, 88, 217, 1)' : '',
+                                    background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.12)' : '',
+                                    marginRight: 'auto',
+                                }}
+                                onClick={() => this.onParticipantsButtonClick()}
+                            >
+                                <ParticipantsIcon
+                                    style={{width: '16px', height: '16px', marginRight: '4px'}}
+                                />
+
+                                <span
+                                    style={{fontWeight: 600, color: changeOpacity(this.props.theme.centerChannelColor, 0.64)}}
+                                >{this.props.profiles.length}</span>
+                            </button>
+                        </OverlayTrigger>
+
+                        <WidgetButton
+                            id='voice-mute-unmute'
+                            // eslint-disable-next-line no-undefined
+                            onToggle={noInputDevices ? undefined : this.onMuteToggle}
+                            // eslint-disable-next-line no-undefined
+                            shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
+                            tooltipText={muteTooltipText}
+                            tooltipSubtext={muteTooltipSubtext}
+                            bgColor={window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
+                            icon={<MuteIcon style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)'}}/>}
+                            unavailable={noInputDevices || noAudioPermissions}
+                        />
+
+                        { !isDirectChannel(this.props.channel) &&
+                        <WidgetButton
+                            id='raise-hand'
+                            onToggle={() => this.onRaiseHandToggle()}
+                            shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
+                            tooltipText={handTooltipText}
+                            bgColor={window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
+                            icon={<HandIcon style={{width: '16px', height: '16px', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}/>}
+                        />
+                        }
+
+                        {this.props.allowScreenSharing && (widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
+
+                        <button
+                            id='calls-widget-toggle-menu-button'
+                            className='cursor--pointer style--none button-controls'
+                            style={this.style.menuButton}
+                            onClick={this.onMenuClick}
+                        >
+                            <HorizontalDotsIcon
+                                style={{width: '16px', height: '16px'}}
+                            />
+                        </button>
+
+                        <OverlayTrigger
                             key='leave'
                             placement='top'
                             overlay={
                                 <Tooltip id='tooltip-leave'>
                                     {'Click to leave call'}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}/>
                                 </Tooltip>
                             }
                         >
@@ -1210,92 +1680,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             </button>
                         </OverlayTrigger>
 
-                        <button
-                            id='calls-widget-toggle-menu-button'
-                            className='cursor--pointer style--none button-controls'
-                            style={this.style.menuButton}
-                            onClick={this.onMenuClick}
-                        >
-                            <HorizontalDotsIcon
-                                style={{width: '16px', height: '16px'}}
-                            />
-                        </button>
-
-                        <OverlayTrigger
-                            key='participants'
-                            placement='top'
-                            overlay={
-                                <Tooltip id='tooltip-mute'>
-                                    {this.state.showParticipantsList ? 'Hide participants' : 'Show participants'}
-                                </Tooltip>
-                            }
-                        >
-                            <button
-                                className='style--none button-controls button-controls--wide'
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    color: this.state.showParticipantsList ? 'rgba(28, 88, 217, 1)' : '',
-                                    background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.12)' : '',
-                                }}
-                                onClick={this.onParticipantsButtonClick}
-                            >
-                                <ParticipantsIcon
-                                    style={{width: '16px', height: '16px', marginRight: '4px'}}
-                                />
-
-                                <span
-                                    style={{fontWeight: 600, color: changeOpacity(this.props.theme.centerChannelColor, 0.64)}}
-                                >{this.props.profiles.length}</span>
-                            </button>
-                        </OverlayTrigger>
-
-                        { !isDMChannel(this.props.channel) &&
-                        <OverlayTrigger
-                            key='hand'
-                            placement='top'
-                            overlay={
-                                <Tooltip id='tooltip-hand'>
-                                    {handTooltipText}
-                                </Tooltip>
-                            }
-                        >
-                            <button
-                                className='cursor--pointer style--none button-controls'
-                                onClick={this.onRaiseHandToggle}
-                                style={{background: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}}
-                            >
-                                <HandIcon
-                                    style={{width: '16px', height: '16px', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}
-                                />
-                            </button>
-
-                        </OverlayTrigger>
-                        }
-
-                        {(hasTeamSidebar || isDMChannel(this.props.channel)) && this.renderScreenShareButton()}
-
-                        <OverlayTrigger
-                            key='mute'
-                            placement='top'
-                            overlay={
-                                <Tooltip id='tooltip-mute'>
-                                    {muteTooltipText}
-                                </Tooltip>
-                            }
-                        >
-                            <button
-                                id='voice-mute-unmute'
-                                className='cursor--pointer style--none button-controls'
-                                style={window.callsClient.isMuted() ? this.style.mutedButton : this.style.unmutedButton}
-                                onClick={this.onMuteToggle}
-                            >
-                                <MuteIcon
-                                    style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : 'rgba(61, 184, 135, 1)'}}
-                                    stroke={window.callsClient.isMuted() ? 'rgba(210, 75, 78, 1)' : ''}
-                                />
-                            </button>
-                        </OverlayTrigger>
                     </div>
                 </div>
             </div>

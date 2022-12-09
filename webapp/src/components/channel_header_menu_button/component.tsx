@@ -1,5 +1,7 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import React from 'react';
-import PropTypes from 'prop-types';
 import {FormattedMessage} from 'react-intl';
 
 interface Props {
@@ -9,17 +11,11 @@ interface Props {
 const ChannelHeaderMenuButton = (props: Props) => {
     if (props.enabled) {
         return (
-            <FormattedMessage
-                id='button.channel.menu'
-                defaultMessage='Disable Calls'
-            />
+            <FormattedMessage defaultMessage='Disable calls'/>
         );
     }
     return (
-        <FormattedMessage
-            id='button.channel.menu'
-            defaultMessage='Enable Calls'
-        />
+        <FormattedMessage defaultMessage='Enable calls'/>
     );
 };
 

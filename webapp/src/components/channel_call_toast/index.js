@@ -4,7 +4,13 @@ import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels'
 
 import {Client4} from 'mattermost-redux/client';
 
-import {voiceConnectedChannels, voiceConnectedProfilesInChannel, connectedChannelID, voiceChannelCallStartAt} from 'selectors';
+import {
+    voiceConnectedChannels,
+    voiceConnectedProfilesInChannel,
+    connectedChannelID,
+    voiceChannelCallStartAt,
+    isLimitRestricted,
+} from 'selectors';
 
 import ChannelCallToast from './component';
 
@@ -33,6 +39,7 @@ const mapStateToProps = (state) => {
         startAt: voiceChannelCallStartAt(state, currentID),
         pictures,
         profiles,
+        isLimitRestricted: isLimitRestricted(state),
     };
 };
 

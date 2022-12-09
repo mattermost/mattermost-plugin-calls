@@ -1,35 +1,30 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"net/http"
 	"net/http/pprof"
+	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
+
+	"golang.org/x/time/rate"
+
+	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
+var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
 
-type Call struct {
-	ID              string      `json:"id"`
-	StartAt         int64       `json:"start_at"`
-	Users           []string    `json:"users"`
-	States          []userState `json:"states,omitempty"`
-	ThreadID        string      `json:"thread_id"`
-	ScreenSharingID string      `json:"screen_sharing_id"`
-}
-
-type ChannelState struct {
-	ChannelID string `json:"channel_id"`
-	Enabled   bool   `json:"enabled"`
-	Call      *Call  `json:"call,omitempty"`
-}
+const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
 func (p *Plugin) handleGetVersion(w http.ResponseWriter, r *http.Request) {
 	info := map[string]interface{}{
@@ -44,39 +39,34 @@ func (p *Plugin) handleGetVersion(w http.ResponseWriter, r *http.Request) {
 
 func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	userID := r.Header.Get("Mattermost-User-Id")
-	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+	// We should go through only if the user has permissions to the requested channel
+	// or if the user is the Calls bot.
+	if !(p.isBotSession(r) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
+
+	mobile, postGA := isMobilePostGA(r)
 
 	state, err := p.kvGetChannelState(channelID)
 	if err != nil {
 		p.LogError(err.Error())
 	}
 
-	info := ChannelState{
+	info := ChannelStateClient{
 		ChannelID: channelID,
-	}
-
-	cfg := p.getConfiguration()
-	if state == nil && cfg.DefaultEnabled != nil && *cfg.DefaultEnabled {
-		state = &channelState{
-			Enabled: true,
-		}
 	}
 
 	if state != nil {
 		info.Enabled = state.Enabled
+		// This is for backwards compatibility for mobile pre-v2
+		if info.Enabled == nil && mobile && !postGA {
+			cfg := p.getConfiguration()
+			info.Enabled = model.NewBool(cfg.DefaultEnabled != nil && *cfg.DefaultEnabled)
+		}
+
 		if state.Call != nil {
-			users, states := state.Call.getUsersAndStates()
-			info.Call = &Call{
-				ID:              state.Call.ID,
-				StartAt:         state.Call.StartAt,
-				Users:           users,
-				States:          states,
-				ThreadID:        state.Call.ThreadID,
-				ScreenSharingID: state.Call.ScreenSharingID,
-			}
+			info.Call = state.Call.getClientState(p.getBotID())
 		}
 	}
 
@@ -105,9 +95,10 @@ func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Per
 
 func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
+	mobile, postGA := isMobilePostGA(r)
 
 	var page int
-	var channels []ChannelState
+	channels := []ChannelStateClient{}
 	channelMembers := map[string]*model.ChannelMember{}
 	perPage := 200
 
@@ -131,7 +122,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	// loop on channels to check membership/permissions
 	page = 0
 	for {
-		p.metrics.StoreOpCounters.With(prometheus.Labels{"type": "KVList"}).Inc()
+		p.metrics.IncStoreOp("KVList")
 		channelIDs, appErr := p.API.KVList(page, perPage)
 		if appErr != nil {
 			p.LogError(appErr.Error())
@@ -150,20 +141,18 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, appErr.Error(), http.StatusInternalServerError)
 			}
 
-			info := ChannelState{
+			enabled := state.Enabled
+			// This is for backwards compatibility for mobile pre-v2
+			if enabled == nil && mobile && !postGA {
+				cfg := p.getConfiguration()
+				enabled = model.NewBool(cfg.DefaultEnabled != nil && *cfg.DefaultEnabled)
+			}
+			info := ChannelStateClient{
 				ChannelID: channelID,
-				Enabled:   state.Enabled,
+				Enabled:   enabled,
 			}
 			if state.Call != nil {
-				users, states := state.Call.getUsersAndStates()
-				info.Call = &Call{
-					ID:              state.Call.ID,
-					StartAt:         state.Call.StartAt,
-					Users:           users,
-					States:          states,
-					ThreadID:        state.Call.ThreadID,
-					ScreenSharingID: state.Call.ScreenSharingID,
-				}
+				info.Call = state.Call.getClientState(p.getBotID())
 			}
 			channels = append(channels, info)
 		}
@@ -181,53 +170,166 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
+func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID string) {
+	var res httpResponse
+	defer p.httpAudit("handleEndCall", &res, w, r)
+
 	userID := r.Header.Get("Mattermost-User-Id")
 
-	cfg := p.getConfiguration()
-	if !*cfg.AllowEnableCalls && !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
+
+	state, err := p.kvGetChannelState(channelID)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
-	channel, appErr := p.API.GetChannel(channelID)
-	if appErr != nil {
-		p.LogError(appErr.Error())
-		http.Error(w, appErr.Error(), http.StatusInternalServerError)
+	if state == nil || state.Call == nil {
+		res.Err = "no call ongoing"
+		res.Code = http.StatusBadRequest
 		return
 	}
 
-	cm, appErr := p.API.GetChannelMember(channelID, userID)
-	if appErr != nil {
-		p.LogError(appErr.Error())
-		http.Error(w, appErr.Error(), http.StatusInternalServerError)
+	if !isAdmin && state.Call.OwnerID != userID {
+		res.Err = "no permissions to end the call"
+		res.Code = http.StatusForbidden
 		return
 	}
 
-	switch channel.Type {
-	case model.ChannelTypeOpen, model.ChannelTypePrivate:
-		if !cm.SchemeAdmin && !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-			http.Error(w, "Forbidden", http.StatusForbidden)
+	callID := state.Call.ID
+
+	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+		if state == nil || state.Call == nil {
+			return nil, nil
+		}
+
+		if state.Call.ID != callID {
+			return nil, fmt.Errorf("previous call has ended and new one has started")
+		}
+
+		if state.Call.EndAt == 0 {
+			state.Call.EndAt = time.Now().UnixMilli()
+		}
+
+		return state, nil
+	}); err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+	go func() {
+		// We wait a few seconds for the call to end cleanly. If this doesn't
+		// happen we force end it.
+		time.Sleep(5 * time.Second)
+
+		state, err := p.kvGetChannelState(channelID)
+		if err != nil {
+			p.LogError(err.Error())
 			return
 		}
-	case model.ChannelTypeDirect, model.ChannelTypeGroup:
-		if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
-			http.Error(w, "Forbidden", http.StatusForbidden)
+		if state == nil || state.Call == nil || state.Call.ID != callID {
 			return
 		}
-	}
 
-	data, err := ioutil.ReadAll(r.Body)
+		p.LogInfo("call state is still in store, force ending it")
+
+		for connID := range state.Call.Sessions {
+			if err := p.closeRTCSession(userID, connID, channelID, state.NodeID); err != nil {
+				p.LogError(err.Error())
+			}
+		}
+
+		if err := p.cleanCallState(channelID); err != nil {
+			p.LogError(err.Error())
+		}
+	}()
+
+	res.Code = http.StatusOK
+	res.Msg = "success"
+}
+
+func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
+	bundlePath, err := p.API.GetBundlePath()
 	if err != nil {
 		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var info ChannelState
-	if err := json.Unmarshal(data, &info); err != nil {
-		p.LogError(err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	standalonePath := filepath.Join(bundlePath, "standalone/dist/")
+
+	http.StripPrefix("/standalone/", http.FileServer(http.Dir(standalonePath))).ServeHTTP(w, r)
+}
+
+func (p *Plugin) permissionToEnableDisableChannel(userID, channelID string) (bool, *model.AppError) {
+	// If TestMode (DefaultEnabled=false): only sysadmins can modify
+	// If LiveMode (DefaultEnabled=true): channel, team, sysadmin, DM/GM participants can modify
+
+	// Sysadmin has permission regardless
+	if p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+		return true, nil
+	}
+
+	// if DefaultEnabled=false, no-one else has permissions
+	cfg := p.getConfiguration()
+	if cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled {
+		return false, nil
+	}
+
+	// Must be live mode.
+
+	// Channel admin?
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		return false, appErr
+	}
+	cm, appErr := p.API.GetChannelMember(channelID, userID)
+	if appErr != nil {
+		return false, appErr
+	}
+	if cm.SchemeAdmin {
+		return true, nil
+	}
+
+	// Team admin?
+	if p.API.HasPermissionToTeam(userID, channel.TeamId, model.PermissionManageTeam) {
+		return true, nil
+	}
+
+	// DM/GM participant
+	switch channel.Type {
+	case model.ChannelTypeDirect, model.ChannelTypeGroup:
+		if p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
+	var res httpResponse
+	defer p.httpAudit("handlePostChannel", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	if permission, appErr := p.permissionToEnableDisableChannel(userID, channelID); appErr != nil || !permission {
+		res.Err = "Forbidden"
+		if appErr != nil {
+			res.Err = appErr.Error()
+		}
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	var info ChannelStateClient
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusBadRequest
 		return
 	}
 
@@ -239,26 +341,35 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		return state, nil
 	}); err != nil {
 		// handle creation case
-		p.LogError(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
 	var evType string
-	if info.Enabled {
+	if info.Enabled != nil && *info.Enabled {
 		evType = "channel_enable_voice"
 	} else {
 		evType = "channel_disable_voice"
 	}
 
-	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID})
+	p.publishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
-	if _, err := w.Write(data); err != nil {
+	if err := json.NewEncoder(w).Encode(info); err != nil {
 		p.LogError(err.Error())
 	}
 }
 
-func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleDebug", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	if !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+		res.Err = "Forbidden"
+		res.Code = http.StatusForbidden
+		return
+	}
 	if strings.HasPrefix(r.URL.Path, "/debug/pprof/profile") {
 		pprof.Profile(w, r)
 		return
@@ -269,7 +380,93 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		pprof.Index(w, r)
 		return
 	}
+	res.Err = "Not found"
+	res.Code = http.StatusNotFound
+}
 
+func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleGetTURNCredentials", &res, w, r)
+
+	cfg := p.getConfiguration()
+	if cfg.TURNStaticAuthSecret == "" {
+		res.Err = "TURNStaticAuthSecret should be set"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	turnServers := cfg.ICEServersConfigs.getTURNConfigsForCredentials()
+	if len(turnServers) == 0 {
+		res.Err = "No TURN server was configured"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	user, appErr := p.API.GetUser(r.Header.Get("Mattermost-User-Id"))
+	if appErr != nil {
+		res.Err = appErr.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	configs, err := rtc.GenTURNConfigs(turnServers, user.Username, cfg.TURNStaticAuthSecret, *cfg.TURNCredentialsExpirationMinutes)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(configs); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
+// handleConfig returns the client configuration, and cloud license information
+// that isn't exposed to clients yet on the webapp
+func (p *Plugin) handleConfig(w http.ResponseWriter) error {
+	skuShortName := "starter"
+	license := p.pluginAPI.System.GetLicense()
+	if license != nil {
+		skuShortName = license.SkuShortName
+	}
+
+	type config struct {
+		clientConfig
+		SkuShortName string `json:"sku_short_name"`
+	}
+	ret := config{
+		clientConfig: p.getConfiguration().getClientConfig(),
+		SkuShortName: skuShortName,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(ret); err != nil {
+		return fmt.Errorf("error encoding config: %w", err)
+	}
+
+	return nil
+}
+
+func (p *Plugin) checkAPIRateLimits(userID string) error {
+	p.apiLimitersMut.RLock()
+	limiter := p.apiLimiters[userID]
+	p.apiLimitersMut.RUnlock()
+	if limiter == nil {
+		limiter = rate.NewLimiter(1, 10)
+		p.apiLimitersMut.Lock()
+		p.apiLimiters[userID] = limiter
+		p.apiLimitersMut.Unlock()
+	}
+
+	if !limiter.Allow() {
+		return fmt.Errorf(`{"message": "too many requests", "status_code": %d}`, http.StatusTooManyRequests)
+	}
+
+	return nil
+}
+
+func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/version") {
 		p.handleGetVersion(w, r)
 		return
@@ -280,16 +477,36 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if r.Header.Get("Mattermost-User-Id") == "" {
+	if strings.HasPrefix(r.URL.Path, "/standalone/") {
+		p.handleServeStandalone(w, r)
+		return
+	}
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	if userID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/bot") {
+		p.handleBotAPI(w, r)
+		return
+	}
+
+	if err := p.checkAPIRateLimits(userID); err != nil {
+		http.Error(w, err.Error(), http.StatusTooManyRequests)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/debug") {
+		p.handleDebug(w, r)
 		return
 	}
 
 	if r.Method == http.MethodGet {
 		if r.URL.Path == "/config" {
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(p.getConfiguration().getClientConfig()); err != nil {
-				p.LogError(err.Error())
+			if err := p.handleConfig(w); err != nil {
+				p.handleError(w, err)
 			}
 			return
 		}
@@ -299,15 +516,53 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 			return
 		}
 
+		if r.URL.Path == "/turn-credentials" {
+			p.handleGetTURNCredentials(w, r)
+			return
+		}
+
 		if matches := chRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handleGetChannel(w, r, matches[1])
+			return
+		}
+
+		if matches := jobsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleGetJob(w, r, matches[1])
+			return
+		}
+
+		if matches := jobsLogsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleGetJobLogs(w, r, matches[1])
 			return
 		}
 	}
 
 	if r.Method == http.MethodPost {
+		// End user has requested to notify their admin about upgrading for calls
+		if r.URL.Path == "/cloud-notify-admins" {
+			if err := p.handleCloudNotifyAdmins(w, r); err != nil {
+				p.handleError(w, err)
+			}
+			return
+		}
+
 		if matches := chRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handlePostChannel(w, r, matches[1])
+			return
+		}
+
+		if matches := callEndRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleEndCall(w, r, matches[1])
+			return
+		}
+
+		if r.URL.Path == "/telemetry/track" {
+			p.handleTrackEvent(w, r)
+			return
+		}
+
+		if matches := callRecordingActionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
+			p.handleRecordingAction(w, r, matches[1], matches[2])
 			return
 		}
 	}

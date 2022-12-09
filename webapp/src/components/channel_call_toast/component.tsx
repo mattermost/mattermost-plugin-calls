@@ -1,7 +1,7 @@
 import React from 'react';
 import moment from 'moment-timezone';
 
-import {UserProfile} from 'mattermost-redux/types/users';
+import {UserProfile} from '@mattermost/types/users';
 
 import ActiveCallIcon from '../../components/icons/active_call_icon';
 import ConnectedProfiles from '../../components/connected_profiles';
@@ -13,6 +13,7 @@ interface Props {
     startAt?: number,
     pictures: string[],
     profiles: UserProfile[],
+    isLimitRestricted: boolean,
 }
 
 interface State {
@@ -57,7 +58,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
     }
 
     render() {
-        if (!this.props.hasCall || this.state.hidden) {
+        if (!this.props.hasCall || this.state.hidden || this.props.isLimitRestricted) {
             return null;
         }
 

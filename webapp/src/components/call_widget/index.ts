@@ -1,28 +1,40 @@
-import {bindActionCreators, Dispatch} from 'redux';
+import {bindActionCreators, Dispatch, compose} from 'redux';
 import {connect} from 'react-redux';
-import {GlobalState} from 'mattermost-redux/types/store';
-import {UserProfile} from 'mattermost-redux/types/users';
-import {IDMappedObjects} from 'mattermost-redux/types/utilities';
 
-import {getUsers} from 'mattermost-redux/selectors/entities/common';
+import {GlobalState} from '@mattermost/types/store';
+import {UserProfile} from '@mattermost/types/users';
+import {IDMappedObjects} from '@mattermost/types/utilities';
+
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
-
 import {Client4} from 'mattermost-redux/client';
 
-import {UserState} from '../../types/types';
+import {UserState} from 'src/types/types';
 
-import {showExpandedView, showScreenSourceModal} from '../../actions';
+import {showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 
-import {connectedChannelID, voiceConnectedProfiles, voiceUsersStatuses, voiceChannelCallStartAt, voiceChannelScreenSharingID, expandedView} from '../../selectors';
+import {
+    connectedChannelID,
+    voiceUsersStatuses,
+    voiceChannelCallStartAt,
+    voiceChannelScreenSharingID,
+    expandedView,
+    getChannelUrlAndDisplayName,
+    allowScreenSharing,
+    voiceConnectedProfiles,
+    voiceChannelCallHostID,
+    callRecording,
+    voiceChannelCallHostChangeAt,
+} from 'src/selectors';
 
-import {getChannelURL, alphaSortProfiles, stateSortProfiles} from '../../utils';
+import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
 
 import CallWidget from './component';
 
 const mapStateToProps = (state: GlobalState) => {
     const channel = getChannel(state, connectedChannelID(state));
+    const currentUserID = getCurrentUserId(state);
 
     const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
 
@@ -43,22 +55,24 @@ const mapStateToProps = (state: GlobalState) => {
         profilesMap[profiles[i].id] = profiles[i];
     }
 
-    let channelURL = '';
-    if (channel) {
-        channelURL = getChannelURL(state, channel, channel.team_id);
-    }
+    const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
 
     return {
-        currentUserID: getCurrentUserId(state),
+        currentUserID,
         channel,
-        team: getTeam(state, getCurrentTeamId(state)),
+        team: getTeam(state, channel?.team_id || getCurrentTeamId(state)),
         channelURL,
+        channelDisplayName,
         profiles,
         profilesMap,
         picturesMap,
         statuses: voiceUsersStatuses(state) || {},
         callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
+        callHostID: voiceChannelCallHostID(state, channel?.id) || '',
+        callHostChangeAt: voiceChannelCallHostChangeAt(state, channel?.id) || 0,
+        callRecording: callRecording(state, channel?.id),
         screenSharingID,
+        allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),
     };
 };
@@ -66,6 +80,7 @@ const mapStateToProps = (state: GlobalState) => {
 const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     showExpandedView,
     showScreenSourceModal,
+    trackEvent,
 }, dispatch);
 
 export default connect(mapStateToProps, mapDispatchToProps)(CallWidget);

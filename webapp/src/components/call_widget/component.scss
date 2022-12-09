@@ -103,7 +103,7 @@ a.calls-channel-link {
     }
   }
 
-  &:visited {
+  &:link, &:focus, &:visited {
     color: rgba(var(--center-channel-color-rgb), 0.64);
     text-decoration: none;
   }
@@ -131,4 +131,25 @@ a.calls-channel-link {
       }
     }
   }
+}
+
+#calls-widget .Menu {
+  position: static;
+}
+
+#calls-widget button {
+  app-region: no-drag;
+}
+
+#calls-widget button:hover {
+  background: rgba(var(--center-channel-color-rgb), 0.1);
+}
+
+#calls-widget-audio-input-button:hover:disabled, #calls-widget-audio-output-button:hover:disabled {
+  background: none;
+  cursor: auto;
+}
+
+#calls-widget-menu-screenshare.unavailable {
+  background: none;
 }

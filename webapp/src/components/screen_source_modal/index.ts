@@ -1,6 +1,6 @@
 import {bindActionCreators, Dispatch} from 'redux';
 import {connect} from 'react-redux';
-import {GlobalState} from 'mattermost-redux/types/store';
+import {GlobalState} from '@mattermost/types/store';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 
 import {hideScreenSourceModal} from '../../actions';

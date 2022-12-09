@@ -56,12 +56,14 @@ gomod-check:
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: apply golangci-lint webapp/node_modules gomod-check
+check-style: apply golangci-lint webapp/node_modules standalone/node_modules gomod-check
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && npm run lint
 	cd webapp && npm run check-types
+	cd standalone && npm run lint
+	cd standalone && npm run check-types
 endif
 
 golangci-lint: ## Run golangci-lint on codebase
@@ -94,6 +96,8 @@ else
 	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-linux-arm64;
 	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-darwin-amd64;
 	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-darwin-arm64;
+	cd server && env CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-freebsd-amd64;
+	cd server && env CGO_ENABLED=0 GOOS=openbsd GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-openbsd-amd64;
 endif
 else
 	$(info DEBUG mode is on; to disable, unset MM_DEBUG)
@@ -104,21 +108,21 @@ else
 	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -gcflags "all=-N -l" -trimpath -o dist/plugin-linux-arm64;
 	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -gcflags "all=-N -l" -trimpath -o dist/plugin-darwin-amd64;
 	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -gcflags "all=-N -l" -trimpath -o dist/plugin-darwin-arm64;
+	cd server && env CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -gcflags "all=-N -l" -trimpath -o dist/plugin-freebsd-amd64;
+	cd server && env CGO_ENABLED=0 GOOS=openbsd GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -gcflags "all=-N -l" -trimpath -o dist/plugin-openbsd-amd64;
 endif
 endif
 endif
 
-## Builds the server on ci -- only build for linux-amd64 (for now)
+## Builds the server on ci -- only build for linux-amd64, linux-arm64, freebsd-amd64 and openbsd-amd64 (for now)
 .PHONY: server-ci
 server-ci:
 ifneq ($(HAS_SERVER),)
 	mkdir -p server/dist;
-ifeq ($(MM_DEBUG),)
 	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-linux-amd64;
-else
-	$(info DEBUG mode is on; to disable, unset MM_DEBUG)
-	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -gcflags "all=-N -l" -trimpath -o dist/plugin-linux-amd64;
-endif
+	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-linux-arm64;
+	cd server && env CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-freebsd-amd64;
+	cd server && env CGO_ENABLED=0 GOOS=openbsd GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) -ldflags '$(LDFLAGS)' -trimpath -o dist/plugin-openbsd-amd64;
 endif
 
 ## Ensures NPM dependencies are installed without having to run this all the time.
@@ -126,6 +130,13 @@ webapp/node_modules: $(wildcard webapp/package.json)
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && node skip_integrity_check.js
 	cd webapp && $(NPM) install
+	touch $@
+endif
+
+standalone/node_modules: $(wildcard standalone/package.json)
+ifneq ($(HAS_WEBAPP),)
+	cd standalone && node skip_integrity_check.js
+	cd standalone && $(NPM) install
 	touch $@
 endif
 
@@ -139,6 +150,25 @@ else
 	cd webapp && $(NPM) run debug;
 endif
 endif
+
+## Builds the standalone apps.
+.PHONY: standalone
+standalone: standalone/node_modules
+ifeq ($(MM_DEBUG),)
+	cd standalone && $(NPM) run build;
+else
+	cd standalone && $(NPM) run debug;
+endif
+
+## Builds the webapp on ci -- dependencies are handled by the npm-dependencies step in ci
+.PHONY: webapp-ci
+webapp-ci:
+	cd webapp && $(NPM) run build
+
+## Builds the standalone apps on ci -- dependencies are handled by the npm-dependencies step in ci
+.PHONY: standalone-ci
+standalone-ci:
+	cd standalone && $(NPM) run build
 
 ## Generates a tar bundle of the plugin for install.
 .PHONY: bundle
@@ -159,6 +189,9 @@ endif
 ifneq ($(HAS_WEBAPP),)
 	mkdir -p dist/$(PLUGIN_ID)/webapp
 	cp -r webapp/dist dist/$(PLUGIN_ID)/webapp/
+	rm -fr standalone/dist/files/*.png
+	mkdir dist/$(PLUGIN_ID)/standalone
+	cp -r standalone/dist dist/$(PLUGIN_ID)/standalone/dist
 endif
 	cd dist && tar -cvzf $(BUNDLE_NAME) $(PLUGIN_ID)
 
@@ -166,11 +199,11 @@ endif
 
 ## Builds and bundles the plugin.
 .PHONY: dist
-dist:	apply server webapp bundle
+dist:	apply server webapp standalone bundle
 
 ## Builds and bundles the plugin on ci.
 .PHONY: dist-ci
-dist-ci:	apply server-ci webapp bundle
+dist-ci:	apply server-ci webapp-ci standalone-ci bundle
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
@@ -237,7 +270,7 @@ gotestsum:
 
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
-test: apply webapp/node_modules gotestsum
+test: apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/...
 endif
@@ -251,7 +284,7 @@ endif
 ## Runs any lints and unit tests defined for the server and webapp, if they exist, optimized
 ## for a CI environment.
 .PHONY: test-ci
-test-ci: apply webapp/node_modules gotestsum
+test-ci: apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./...
 endif
@@ -261,7 +294,7 @@ endif
 
 ## Creates a coverage report for the server code.
 .PHONY: coverage
-coverage: apply webapp/node_modules
+coverage: apply webapp/node_modules standalone/node_modules
 ifneq ($(HAS_SERVER),)
 	$(GO) test $(GO_TEST_FLAGS) -coverprofile=server/coverage.txt ./server/...
 	$(GO) tool cover -html=server/coverage.txt
@@ -281,11 +314,7 @@ test-e2e-update-snapshots:
 .PHONY: i18n-extract
 i18n-extract:
 ifneq ($(HAS_WEBAPP),)
-ifeq ($(HAS_MM_UTILITIES),)
-	@echo "You must clone github.com/mattermost/mattermost-utilities repo in .. to use this command"
-else
-	cd $(MM_UTILITIES_DIR) && npm install && npm run babel && node mmjstool/build/index.js i18n extract-webapp --webapp-dir $(PWD)/webapp
-endif
+	cd webapp && $(NPM) run extract
 endif
 
 ## Disable the plugin.
@@ -325,6 +354,8 @@ ifneq ($(HAS_WEBAPP),)
 	rm -fr webapp/junit.xml
 	rm -fr webapp/dist
 	rm -fr webapp/node_modules
+	rm -fr standalone/dist
+	rm -fr standalone/node_modules
 endif
 	rm -fr build/bin/
 	rm -fr e2e/tests-results/

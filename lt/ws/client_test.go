@@ -73,7 +73,7 @@ func TestClose(t *testing.T) {
 			}
 		}()
 
-		err = c.UserTyping("channelId", "parentId")
+		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
 
 		err = c.conn.Close()
@@ -101,7 +101,7 @@ func TestClose(t *testing.T) {
 			}
 		}()
 
-		err = c.UserTyping("channelId", "parentId")
+		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
 
 		c.Close()
@@ -125,7 +125,7 @@ func TestClose(t *testing.T) {
 			}
 		}()
 
-		err = c.UserTyping("channelId", "parentId")
+		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
 
 		var wg2 sync.WaitGroup
@@ -171,13 +171,13 @@ func TestSendMessage(t *testing.T) {
 			}
 		}()
 
-		err = c.UserTyping("channelId", "parentId")
+		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
 
 		err = c.conn.Close()
 		assert.Nil(t, err)
 
-		err = c.UserTyping("channelId2", "parentId2")
+		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.NotNil(t, err)
 	})
 
@@ -196,12 +196,12 @@ func TestSendMessage(t *testing.T) {
 			}
 		}()
 
-		err = c.UserTyping("channelId", "parentId")
+		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
 
 		c.Close()
 
-		err = c.UserTyping("channelId2", "parentId2")
+		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.NotNil(t, err)
 	})
 
@@ -220,11 +220,11 @@ func TestSendMessage(t *testing.T) {
 			}
 		}()
 
-		err = c.UserTyping("channelId", "parentId")
+		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
 
 		go func() {
-			c.UserTyping("channelId2", "parentId2")
+			_ = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		}()
 
 		err = c.conn.Close()
@@ -246,11 +246,11 @@ func TestSendMessage(t *testing.T) {
 			}
 		}()
 
-		err = c.UserTyping("channelId", "parentId")
+		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
 
 		go func() {
-			c.UserTyping("channelId2", "parentId2")
+			_ = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		}()
 
 		c.Close()

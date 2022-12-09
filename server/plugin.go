@@ -1,24 +1,32 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package main
 
 import (
 	"fmt"
-	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"golang.org/x/time/rate"
+
+	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
 
+	"github.com/mattermost/rtcd/service/rtc"
+
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
-
-	"github.com/pion/ice/v2"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
 type Plugin struct {
 	plugin.MattermostPlugin
+	pluginAPI      *pluginapi.Client
+	licenseChecker *enterprise.LicenseChecker
 
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
@@ -29,33 +37,48 @@ type Plugin struct {
 	metrics   *performance.Metrics
 	telemetry *telemetry.Client
 
-	mut           sync.RWMutex
-	nodeID        string // the node cluster id
-	stopCh        chan struct{}
-	clusterEvCh   chan model.PluginClusterEvent
-	sessions      map[string]*session
-	calls         map[string]*call
-	udpServerConn *net.UDPConn
-	udpServerMux  ice.UDPMux
-	hostIP        string
+	mut         sync.RWMutex
+	nodeID      string // the node cluster id
+	stopCh      chan struct{}
+	clusterEvCh chan model.PluginClusterEvent
+	sessions    map[string]*session
+
+	rtcServer   *rtc.Server
+	rtcdManager *rtcdClientManager
+
+	jobService *jobService
+
+	// A map of userID -> limiter to implement basic, user based API rate-limiting.
+	// TODO: consider moving this to a dedicated API object.
+	apiLimiters    map[string]*rate.Limiter
+	apiLimitersMut sync.RWMutex
+
+	botSession *model.Session
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	defer func() {
-		wg.Wait()
-		p.LogDebug("exiting session handler")
-	}()
+	cfg := rtc.SessionConfig{
+		GroupID:   "default",
+		CallID:    us.channelID,
+		UserID:    us.userID,
+		SessionID: us.connID,
+	}
+	if err := p.rtcServer.InitSession(cfg, func() error {
+		p.LogDebug("rtc session close cb", "sessionID", us.connID)
+		if atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
+			close(us.rtcCloseCh)
+		}
+		return p.removeSession(us)
+	}); err != nil {
+		p.LogError(err.Error(), "sessionConfig", fmt.Sprintf("%+v", cfg))
+		return
+	}
 
-	go func() {
-		defer wg.Done()
-		p.metrics.RTCSessions.With(prometheus.Labels{"channelID": us.channelID}).Inc()
-		defer p.metrics.RTCSessions.With(prometheus.Labels{"channelID": us.channelID}).Dec()
-		p.initRTCConn(us.userID)
-		p.LogDebug("initRTCConn DONE")
-		p.handleTracks(us)
-		p.LogDebug("handleTracks DONE")
+	defer func() {
+		p.LogDebug("closing rtc session", "sessionID", us.connID)
+		if err := p.rtcServer.CloseSession(us.connID); err != nil {
+			p.LogError("failed to close session", "error", err.Error())
+		}
 	}()
 
 	for {
@@ -65,6 +88,7 @@ func (p *Plugin) startSession(us *session, senderID string) {
 				return
 			}
 			clusterMsg := clusterMessage{
+				ConnID:    us.connID,
 				UserID:    us.userID,
 				ChannelID: us.channelID,
 				SenderID:  p.nodeID,
@@ -76,7 +100,7 @@ func (p *Plugin) startSession(us *session, senderID string) {
 			if err := p.sendClusterMessage(clusterMsg, clusterMessageTypeSignaling, senderID); err != nil {
 				p.LogError(err.Error())
 			}
-		case <-us.closeCh:
+		case <-us.rtcCloseCh:
 			return
 		}
 	}
@@ -98,83 +122,131 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		return err
 	}
 
-	p.mut.RLock()
-	us := p.sessions[msg.UserID]
-	p.mut.RUnlock()
-
 	switch clusterMessageType(ev.Id) {
 	case clusterMessageTypeConnect:
+		p.LogDebug("connect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID)
+		p.mut.Lock()
+		defer p.mut.Unlock()
+		us := p.sessions[msg.ConnID]
 		if us != nil {
-			return fmt.Errorf("session already exists, userID=%q, channelID=%q", us.userID, us.channelID)
+			return fmt.Errorf("session already exists, userID=%q, connID=%q, channelID=%q",
+				us.userID, msg.ConnID, us.channelID)
 		}
-		us := newUserSession(msg.UserID, msg.ChannelID, "")
-		p.mut.Lock()
-		if _, ok := p.calls[msg.ChannelID]; !ok {
-			p.LogDebug("new call, setting state")
-			p.calls[msg.ChannelID] = &call{
-				channelID: msg.ChannelID,
-				sessions:  map[string]*session{},
-			}
-		}
-		p.sessions[msg.UserID] = us
-		p.mut.Unlock()
+		us = newUserSession(msg.UserID, msg.ChannelID, msg.ConnID, true)
+		p.sessions[msg.ConnID] = us
 		go p.startSession(us, msg.SenderID)
-	case clusterMessageTypeDisconnect:
-		if us == nil {
-			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
-		}
-		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID)
-		if call := p.getCall(us.channelID); call != nil {
-			if userID := call.getScreenSessionID(); userID == msg.UserID {
-				call.setScreenSession(nil)
-			}
-		}
+		return nil
+	case clusterMessageTypeReconnect:
+		p.LogDebug("reconnect event", "UserID", msg.UserID, "ConnID", msg.ConnID)
+
 		p.mut.Lock()
-		delete(p.sessions, us.userID)
-		p.mut.Unlock()
-		close(us.signalInCh)
-		close(us.closeCh)
-		if us.rtcConn != nil {
-			us.rtcConn.Close()
-		}
-	case clusterMessageTypeSignaling:
+		defer p.mut.Unlock()
+
+		us := p.sessions[msg.ConnID]
 		if us == nil {
-			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
+			return nil
+		}
+
+		if atomic.CompareAndSwapInt32(&us.wsReconnected, 0, 1) {
+			p.LogDebug("closing reconnectCh", "connID", msg.ConnID)
+			close(us.wsReconnectCh)
+			if !us.rtc {
+				delete(p.sessions, us.connID)
+			}
+		} else {
+			return fmt.Errorf("session already reconnected, connID=%q", msg.ConnID)
+		}
+
+		return nil
+	case clusterMessageTypeLeave:
+		p.LogDebug("leave event", "UserID", msg.UserID, "ConnID", msg.ConnID)
+
+		p.mut.RLock()
+		us := p.sessions[msg.ConnID]
+		p.mut.RUnlock()
+
+		if us == nil {
+			return nil
+		}
+
+		if atomic.CompareAndSwapInt32(&us.left, 0, 1) {
+			p.LogDebug("closing leaveCh", "connID", msg.ConnID)
+			close(us.leaveCh)
+		}
+	case clusterMessageTypeDisconnect:
+		p.LogDebug("disconnect event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID)
+		p.mut.RLock()
+		us := p.sessions[msg.ConnID]
+		p.mut.RUnlock()
+		if us == nil {
+			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, connID=%q, channelID=%q",
+				ev.Id, msg.UserID, msg.ConnID, msg.ChannelID)
+		}
+		if atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
+			close(us.rtcCloseCh)
+		}
+		return nil
+	case clusterMessageTypeSignaling:
+		p.LogDebug("signaling event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID)
+		p.mut.RLock()
+		us := p.sessions[msg.ConnID]
+		p.mut.RUnlock()
+
+		if us == nil {
+			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, connID=%q, channelID=%q",
+				ev.Id, msg.UserID, msg.ConnID, msg.ChannelID)
 		}
 		if msg.ClientMessage.Type != clientMessageTypeSDP && msg.ClientMessage.Type != clientMessageTypeICE {
 			return fmt.Errorf("unexpected client message type %q", msg.ClientMessage.Type)
 		}
 
-		signalCh := us.signalInCh
+		msgType := rtc.SDPMessage
 		if msg.ClientMessage.Type == clientMessageTypeICE {
-			signalCh = us.iceCh
+			msgType = rtc.ICEMessage
 		}
-		if us.connID != "" {
-			signalCh = us.signalOutCh
+		rtcMsg := rtc.Message{
+			SessionID: us.connID,
+			Type:      msgType,
+			Data:      msg.ClientMessage.Data,
 		}
 
-		select {
-		case signalCh <- []byte(msg.ClientMessage.Data):
-		default:
-			return fmt.Errorf("chan is full, dropping msg")
+		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
+			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	case clusterMessageTypeUserState:
+		p.LogDebug("user state event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID)
+		p.mut.RLock()
+		us := p.sessions[msg.ConnID]
+		p.mut.RUnlock()
+
 		if us == nil {
-			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, channelID=%q", ev.Id, msg.UserID, msg.ChannelID)
+			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, connID=%q, channelID=%q",
+				ev.Id, msg.UserID, msg.ConnID, msg.ChannelID)
 		}
-		if msg.ClientMessage.Type == clientMessageTypeScreenOff {
-			if call := p.getCall(us.channelID); call != nil {
-				if userID := call.getScreenSessionID(); userID == msg.UserID {
-					call.setScreenSession(nil)
-				}
-			}
-		} else {
-			us.trackEnableCh <- (msg.ClientMessage.Type == clientMessageTypeMute)
+
+		var msgType rtc.MessageType
+		switch msg.ClientMessage.Type {
+		case clientMessageTypeMute:
+			msgType = rtc.MuteMessage
+		case clientMessageTypeUnmute:
+			msgType = rtc.UnmuteMessage
+		case clientMessageTypeScreenOn:
+			msgType = rtc.ScreenOnMessage
+		case clientMessageTypeScreenOff:
+			msgType = rtc.ScreenOffMessage
+		default:
+			return fmt.Errorf("unexpected client message type %q", msg.ClientMessage.Type)
 		}
-	case clusterMessageTypeCallEnded:
-		p.mut.Lock()
-		delete(p.calls, msg.ChannelID)
-		p.mut.Unlock()
+
+		rtcMsg := rtc.Message{
+			SessionID: us.connID,
+			Type:      msgType,
+			Data:      msg.ClientMessage.Data,
+		}
+
+		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
+			return fmt.Errorf("failed to send RTC message: %w", err)
+		}
 	default:
 		return fmt.Errorf("unexpected event type %q", ev.Id)
 	}
@@ -195,7 +267,7 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64) (string, error) {
+func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64, title string) (string, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return "", appErr
@@ -222,6 +294,7 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64) (st
 		Props: map[string]interface{}{
 			"attachments": []*model.SlackAttachment{&slackAttachment},
 			"start_at":    startAt,
+			"title":       title,
 		},
 	}
 
