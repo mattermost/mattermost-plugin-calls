@@ -17,7 +17,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mattermost/mattermost-load-test-ng/loadtest/user/websocket"
+	"github.com/mattermost/mattermost-plugin-calls/lt/ws"
+
 	"github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/pion/rtcp"
@@ -456,8 +457,8 @@ func (u *user) wsListen(authToken string) {
 	var originalConnID string
 	var wsServerSeq int64
 
-	connect := func() (*websocket.Client, error) {
-		ws, err := websocket.NewClient4(&websocket.ClientParams{
+	connect := func() (*ws.Client, error) {
+		ws, err := ws.NewClient(&ws.ClientParams{
 			WsURL:          u.cfg.wsURL,
 			AuthToken:      authToken,
 			ConnID:         wsConnID,
@@ -688,10 +689,6 @@ func main() {
 
 	flag.Parse()
 
-	if teamID == "" {
-		log.Fatalf("team must be set")
-	}
-
 	if numCalls == 0 {
 		log.Fatalf("calls should be > 0")
 	}
@@ -745,6 +742,10 @@ func main() {
 
 	var channels []*model.Channel
 	if channelID == "" {
+		if teamID == "" {
+			log.Fatalf("team must be set")
+		}
+
 		page := 0
 		perPage := 100
 		for {
@@ -793,7 +794,7 @@ func main() {
 	for j := 0; j < numCalls; j++ {
 		log.Printf("starting call in %s", channels[j].DisplayName)
 		for i := 0; i < numUsersPerCall; i++ {
-			go func(idx int, channelID string, channelType model.ChannelType, unmuted, screenSharing bool) {
+			go func(idx int, channelID string, teamID string, channelType model.ChannelType, unmuted, screenSharing bool) {
 				username := fmt.Sprintf("%s%d", userPrefix, idx)
 				if unmuted {
 					log.Printf("%s: going to transmit voice", username)
@@ -827,7 +828,7 @@ func main() {
 				if err := user.Connect(stopCh, channelType); err != nil {
 					log.Printf("connectUser failed: %s", err.Error())
 				}
-			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].Type, i < numUnmuted, i == 0 && j < numScreenSharing)
+			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, channels[j].Type, i < numUnmuted, i == 0 && j < numScreenSharing)
 		}
 	}
 

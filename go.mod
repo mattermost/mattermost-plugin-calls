@@ -3,7 +3,7 @@ module github.com/mattermost/mattermost-plugin-calls
 go 1.17
 
 require (
-	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/gorilla/websocket v1.4.2
 	github.com/mattermost/mattermost-server/v6 v6.4.0
 	github.com/pion/ice/v2 v2.1.20
 	github.com/pion/rtcp v1.2.9
@@ -13,10 +13,10 @@ require (
 )
 
 require (
-	github.com/mattermost/mattermost-load-test-ng v1.4.1-0.20220222081115-d53465499b65
 	github.com/pion/interceptor v0.1.4
 	github.com/pion/stun v0.3.5
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible
+	github.com/vmihailenco/msgpack/v5 v5.3.5
 )
 
 require (
@@ -79,7 +79,6 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tinylib/msgp v1.1.6 // indirect
-	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/wiggin77/merror v1.0.3 // indirect
 	github.com/wiggin77/srslog v1.0.1 // indirect
