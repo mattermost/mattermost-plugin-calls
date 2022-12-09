@@ -28,6 +28,10 @@ Use `make deploy` to deploy the plugin to your local server.
 
 For more details on how to develop a plugin refer to the official [documentation](https://developers.mattermost.com/extend/plugins/).
 
+## Load testing
+
+Refer to the load-test client [documentation](lt/) for information on how to simulate and load-test calls.
+
 ## Get involved
 
 Please join the [Developers: Calls](https://community.mattermost.com/core/channels/developers-channel-call) channel to discuss any topic related to this project.

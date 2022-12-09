@@ -3,11 +3,11 @@ module github.com/mattermost/mattermost-plugin-calls
 go 1.18
 
 require (
-	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/gorilla/websocket v1.5.0
 	github.com/mattermost/mattermost-server/v6 v6.0.0-20221122212622-0509e78744bf
 	github.com/pion/ice/v2 v2.2.6 // indirect
-	github.com/pion/rtcp v1.2.9 // indirect
-	github.com/pion/webrtc/v3 v3.1.40 // indirect
+	github.com/pion/rtcp v1.2.9
+	github.com/pion/webrtc/v3 v3.1.40
 	github.com/prometheus/client_golang v1.13.0
 	github.com/stretchr/testify v1.8.1
 )
@@ -19,6 +19,7 @@ require (
 	github.com/mattermost/rtcd v0.7.1-0.20221124183223-25eed58b22d2
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
+	github.com/vmihailenco/msgpack/v5 v5.3.5
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324
 )
 
@@ -98,7 +99,6 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tinylib/msgp v1.1.6 // indirect
-	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/wiggin77/merror v1.0.4 // indirect
 	github.com/wiggin77/srslog v1.0.1 // indirect
