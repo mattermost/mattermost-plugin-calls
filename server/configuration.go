@@ -389,6 +389,10 @@ func (p *Plugin) OnConfigurationChange() error {
 func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.AllowEnableCalls = model.NewBool(true)
 
+	if cfg.DefaultEnabled == nil {
+		cfg.DefaultEnabled = model.NewBool(false)
+	}
+
 	if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// On Cloud installations we want calls enabled in all channels so we
 		// override it since the plugin's default is now false.
