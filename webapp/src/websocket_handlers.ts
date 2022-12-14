@@ -38,6 +38,7 @@ import {
     connectedChannelID,
     idToProfileInConnectedChannel,
     voiceConnectedProfilesInChannel,
+    shouldPlayJoinUserSound,
 } from './selectors';
 
 import {logErr} from './log';
@@ -112,7 +113,7 @@ export async function handleUserConnected(store: Store, ev: any) {
     if (window.callsClient?.channelID === channelID) {
         if (userID === currentUserID) {
             playSound('join_self');
-        } else if (channelID === connectedChannelID(store.getState())) {
+        } else if (shouldPlayJoinUserSound(store.getState())) {
             playSound('join_user');
         }
     }
