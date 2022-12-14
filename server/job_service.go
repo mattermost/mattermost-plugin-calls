@@ -169,6 +169,39 @@ func (p *Plugin) newJobService(serviceURL string) (*jobService, error) {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
+	err = client.Login(cfg.ClientID, cfg.AuthKey)
+	if err == nil {
+		return &jobService{
+			ctx:    p,
+			client: client,
+		}, nil
+	}
+
+	// If login fails we attempt to re-register once as the jobs instance may
+	// have restarted, potentially losing stored credentials.
+	p.LogError("failed to login to job service", "err", err.Error())
+	p.LogDebug("attempting to re-register the job service client")
+
+	mutex, err := cluster.NewMutex(p.API, "job_service_registration")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
+	}
+
+	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
+	defer cancelCtx()
+	if err := mutex.LockWithContext(lockCtx); err != nil {
+		return nil, fmt.Errorf("failed to acquire cluster lock: %w", err)
+	}
+	defer mutex.Unlock()
+
+	if err := p.registerJobServiceClient(cfg); err != nil {
+		return nil, fmt.Errorf("failed to register job service client: %w", err)
+	}
+
+	if err := client.Login(cfg.ClientID, cfg.AuthKey); err != nil {
+		return nil, fmt.Errorf("login failed: %w", err)
+	}
+
 	return &jobService{
 		ctx:    p,
 		client: client,
