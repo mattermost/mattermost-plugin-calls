@@ -4,7 +4,6 @@
 
 import React from 'react';
 import {compareSemVer} from 'semver-parser';
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 
 import {UserProfile} from '@mattermost/types/users';
@@ -47,7 +46,6 @@ import {
 import * as Telemetry from 'src/types/telemetry';
 import Avatar from 'src/components/avatar/avatar';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
-import {Emoji} from 'src/components/emoji/emoji';
 import CompassIcon from 'src/components/icons/compassIcon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
@@ -55,7 +53,6 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import ParticipantsIcon from 'src/components/icons/participants';
 import CallDuration from 'src/components/call_widget/call_duration';
-import Shortcut from 'src/components/shortcut';
 import Badge from 'src/components/badge';
 
 import {
@@ -366,7 +363,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     onCloseViewClick = () => {
         this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
-        this.props.hideExpandedView();
+        if (window.opener) {
+            // This is the global widget's window
+            window.close();
+        } else {
+            // This is the webapp or desktop (pre-global widget)'s window
+            this.props.hideExpandedView();
+        }
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
@@ -794,16 +797,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <span style={{margin: '4px'}}>{'•'}</span>
                             <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
                         </div>
-                        {
-                            !window.opener &&
-                            <button
-                                className='button-close'
-                                style={styles.closeViewButton}
-                                onClick={this.onCloseViewClick}
-                            >
-                                <CompassIcon icon='arrow-collapse'/>
-                            </button>
-                        }
+                        <button
+                            className='button-close'
+                            style={styles.closeViewButton}
+                            onClick={this.onCloseViewClick}
+                        >
+                            <CompassIcon icon='arrow-collapse'/>
+                        </button>
                     </div>
 
                     {!this.props.screenSharingID &&

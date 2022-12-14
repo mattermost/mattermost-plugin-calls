@@ -1,4 +1,4 @@
-import {test, expect, chromium} from '@playwright/test';
+import {test, expect} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
