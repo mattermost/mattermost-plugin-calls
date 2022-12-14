@@ -1034,6 +1034,7 @@ const styles: Record<string, CSSObject> = {
         overflow: 'auto',
     },
     main: {
+        appRegion: 'no-drag',
         display: 'flex',
         flexDirection: 'column',
         flex: '1',
