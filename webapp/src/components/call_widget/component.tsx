@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import React, {CSSProperties} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {compareSemVer} from 'semver-parser';
