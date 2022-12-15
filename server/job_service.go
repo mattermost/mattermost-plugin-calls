@@ -87,20 +87,6 @@ func (p *Plugin) getJobServiceClientConfig(serviceURL string) (offloader.ClientC
 		return cfg, nil
 	}
 
-	// Here we need some coordination to avoid multiple plugin instances to
-	// register at the same time (at most one would succeed).
-	mutex, err := cluster.NewMutex(p.API, "job_service_registration")
-	if err != nil {
-		return cfg, fmt.Errorf("failed to create cluster mutex: %w", err)
-	}
-
-	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
-	defer cancelCtx()
-	if err := mutex.LockWithContext(lockCtx); err != nil {
-		return cfg, fmt.Errorf("failed to acquire cluster lock: %w", err)
-	}
-	defer mutex.Unlock()
-
 	if storedCfg, err := p.getStoredJobServiceClientConfig(); err != nil {
 		return cfg, fmt.Errorf("failed to get job service credentials: %w", err)
 	} else if storedCfg.URL == cfg.URL && storedCfg.ClientID == cfg.ClientID {
@@ -159,6 +145,20 @@ func (p *Plugin) newJobService(serviceURL string) (*jobService, error) {
 	// Remove trailing slash if present.
 	serviceURL = strings.TrimSuffix(serviceURL, "/")
 
+	// Here we need some coordination to avoid multiple plugin instances to
+	// register at the same time (at most one would succeed).
+	mutex, err := cluster.NewMutex(p.API, "job_service_registration")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
+	}
+
+	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
+	defer cancelCtx()
+	if err := mutex.LockWithContext(lockCtx); err != nil {
+		return nil, fmt.Errorf("failed to acquire cluster lock: %w", err)
+	}
+	defer mutex.Unlock()
+
 	cfg, err := p.getJobServiceClientConfig(serviceURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job service client config: %w", err)
@@ -167,6 +167,27 @@ func (p *Plugin) newJobService(serviceURL string) (*jobService, error) {
 	client, err := offloader.NewClient(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client: %w", err)
+	}
+
+	err = client.Login(cfg.ClientID, cfg.AuthKey)
+	if err == nil {
+		return &jobService{
+			ctx:    p,
+			client: client,
+		}, nil
+	}
+
+	// If login fails we attempt to re-register once as the jobs instance may
+	// have restarted, potentially losing stored credentials.
+	p.LogError("failed to login to job service", "err", err.Error())
+	p.LogDebug("attempting to re-register the job service client")
+
+	if err := p.registerJobServiceClient(cfg); err != nil {
+		return nil, fmt.Errorf("failed to register job service client: %w", err)
+	}
+
+	if err := client.Login(cfg.ClientID, cfg.AuthKey); err != nil {
+		return nil, fmt.Errorf("login failed: %w", err)
 	}
 
 	return &jobService{
