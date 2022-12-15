@@ -66,13 +66,9 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     const addReactionText = showBar ? 'Close Reactions' : 'Add Reaction';
 
     const handleUserPicksEmoji = (ev: EmojiPickEvent) => {
-        let skin;
-        if (ev.skin) {
-            skin = EMOJI_SKINTONE_MAP.get(ev.skin);
-        }
         const emojiData = {
             name: ev.id,
-            skin,
+            skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : undefined, // eslint-disable-line no-undefined
             unified: ev.unified.toUpperCase(),
         };
         callsClient.sendUserReaction(emojiData);
