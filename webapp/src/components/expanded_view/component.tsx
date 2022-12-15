@@ -362,14 +362,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onCloseViewClick = () => {
-        this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
         if (window.opener) {
-            // This is the global widget's window
-            window.close();
-        } else {
-            // This is the webapp or desktop (pre-global widget)'s window
-            this.props.hideExpandedView();
+            return;
         }
+
+        // This desktop (pre-global widget)'s window.
+        this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
+        this.props.hideExpandedView();
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
@@ -798,13 +797,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
                             <span style={{flex: 1}}/>
                         </div>
-                        <button
-                            className='button-close'
-                            style={styles.closeViewButton}
-                            onClick={this.onCloseViewClick}
-                        >
-                            <CompassIcon icon='arrow-collapse'/>
-                        </button>
+                        {
+                            !window.opener &&
+                            <button
+                                className='button-close'
+                                style={styles.closeViewButton}
+                                onClick={this.onCloseViewClick}
+                            >
+                                <CompassIcon icon='arrow-collapse'/>
+                            </button>
+                        }
                     </div>
 
                     {!this.props.screenSharingID &&
@@ -1030,12 +1032,10 @@ const styles: Record<string, CSSObject> = {
         zIndex: 1000,
         background: '#1E1E1E',
         color: 'white',
-        appRegion: 'drag',
         gridArea: 'center',
         overflow: 'auto',
     },
     main: {
-        appRegion: 'no-drag',
         display: 'flex',
         flexDirection: 'column',
         flex: '1',
@@ -1066,7 +1066,6 @@ const styles: Record<string, CSSObject> = {
         width: '100%',
     },
     topLeftContainer: {
-        appRegion: 'drag',
         flex: 1,
         display: 'flex',
         alignItems: 'center',
