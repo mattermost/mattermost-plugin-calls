@@ -787,7 +787,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <div style={styles.main}>
                     {this.renderAlertBanner()}
 
-                    <div style={{display: 'flex', width: '100%'}}>
+                    <div style={styles.topContainer}>
                         <div style={styles.topLeftContainer}>
                             { this.renderRecordingBadge() }
                             <CallDuration
@@ -796,6 +796,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                             <span style={{margin: '4px'}}>{'•'}</span>
                             <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
+                            <span style={{flex: 1}}/>
                         </div>
                         <button
                             className='button-close'
@@ -1034,13 +1035,13 @@ const styles: Record<string, CSSObject> = {
         overflow: 'auto',
     },
     main: {
+        appRegion: 'no-drag',
         display: 'flex',
         flexDirection: 'column',
         flex: '1',
     },
     closeViewButton: {
         fontSize: '24px',
-        marginLeft: 'auto',
     },
     participants: {
         display: 'grid',
@@ -1060,15 +1061,21 @@ const styles: Record<string, CSSObject> = {
         alignItems: 'center',
         justifyContent: 'center',
     },
+    topContainer: {
+        display: 'flex',
+        width: '100%',
+    },
     topLeftContainer: {
+        appRegion: 'drag',
+        flex: 1,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: '16px',
         lineHeight: '24px',
         fontWeight: 600,
-        marginRight: 'auto',
-        margin: '12px',
+        marginLeft: '12px',
+        height: '56px',
     },
     screenContainer: {
         display: 'flex',
