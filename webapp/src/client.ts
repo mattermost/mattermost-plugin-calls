@@ -6,6 +6,7 @@ import {deflate} from 'pako/lib/deflate.js';
 import {CallsClientConfig, AudioDevices, CallsClientStats, TrackInfo, EmojiData} from 'src/types/types';
 
 import RTCPeer from './rtcpeer';
+import RTCMonitor from './rtc_monitor';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';
@@ -19,6 +20,8 @@ export const AudioInputMissingError = new Error('no audio input available');
 export const rtcPeerErr = new Error('rtc peer error');
 export const rtcPeerCloseErr = new Error('rtc peer close');
 export const insecureContextErr = new Error('insecure context');
+
+const rtcMonitorInterval = 4000;
 
 export default class CallsClient extends EventEmitter {
     public channelID: string;
@@ -40,6 +43,7 @@ export default class CallsClient extends EventEmitter {
     private onBeforeUnload: () => void;
     private closed = false;
     private initTime = Date.now();
+    private rtcMonitor: RTCMonitor | null = null;
 
     constructor(config: CallsClientConfig) {
         super();
@@ -235,6 +239,11 @@ export default class CallsClient extends EventEmitter {
 
             this.peer = peer;
 
+            this.rtcMonitor = new RTCMonitor(peer, {
+                monitorInterval: rtcMonitorInterval,
+            });
+            this.rtcMonitor.on('mos', (mos) => this.emit('mos', mos));
+
             peer.on('offer', (sdp) => {
                 logDebug(`local signal: ${JSON.stringify(sdp)}`);
                 ws.send('sdp', {
@@ -282,6 +291,8 @@ export default class CallsClient extends EventEmitter {
             peer.on('connect', () => {
                 logDebug('rtc connected');
                 this.emit('connect');
+
+                this.rtcMonitor?.start();
             });
 
             peer.on('close', () => {
@@ -323,6 +334,7 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('devicechange');
         this.removeAllListeners('error');
         this.removeAllListeners('initaudio');
+        this.removeAllListeners('mos');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
     }
@@ -397,6 +409,8 @@ export default class CallsClient extends EventEmitter {
             return;
         }
 
+        this.rtcMonitor?.stop();
+
         this.closed = true;
         if (this.peer) {
             this.getStats().then((stats) => {
@@ -445,10 +459,6 @@ export default class CallsClient extends EventEmitter {
             this.voiceDetector.stop();
         }
 
-        logDebug('replacing track to peer', null);
-
-        // @ts-ignore: we actually mean (and need) to pass null here
-        this.peer.replaceTrack(this.audioTrack.id, null);
         this.audioTrack.enabled = false;
 
         if (this.ws) {
@@ -474,10 +484,7 @@ export default class CallsClient extends EventEmitter {
             this.voiceDetector.start();
         }
 
-        if (this.voiceTrackAdded) {
-            logDebug('replacing track to peer', this.audioTrack!.id);
-            this.peer.replaceTrack(this.audioTrack!.id, this.audioTrack!);
-        } else {
+        if (!this.voiceTrackAdded) {
             logDebug('adding track to peer', this.audioTrack!.id, this.stream!.id);
             this.peer.addTrack(this.audioTrack!, this.stream!);
             this.voiceTrackAdded = true;

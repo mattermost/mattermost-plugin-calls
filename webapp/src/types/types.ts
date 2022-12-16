@@ -27,6 +27,7 @@ export type RTCRemoteStats = {
 }
 
 export type RTCLocalInboundStats = {
+    timestamp: number,
     kind: string,
     packetsReceived: number,
     bytesReceived: number,
@@ -37,6 +38,7 @@ export type RTCLocalInboundStats = {
 }
 
 export type RTCLocalOutboundStats = {
+    timestamp: number,
     kind: string,
     packetsSent: number,
     bytesSent: number,
@@ -47,16 +49,28 @@ export type RTCLocalOutboundStats = {
 }
 
 export type RTCRemoteInboundStats = {
+    timestamp: number,
     kind: string,
     packetsLost: number,
     fractionLost: number,
     jitter: number,
+    roundTripTime: number,
 }
 
 export type RTCRemoteOutboundStats = {
+    timestamp: number,
     kind: string,
     packetsSent: number,
     bytesSent: number,
+}
+
+export type RTCCandidatePairStats = {
+    timestamp: number,
+    priority?: number,
+    packetsSent: number,
+    packetsReceived: number,
+    currentRoundTripTime: number,
+    totalRoundTripTime: number,
 }
 
 export type CallsConfig = {
@@ -132,8 +146,9 @@ export type CallAlertConfig = {
     type: CallAlertType,
     icon: string,
     bannerText: string,
-    tooltipText: string,
-    tooltipSubtext: string,
+    tooltipText?: string,
+    tooltipSubtext?: string,
+    dismissable: boolean,
 }
 
 export type CallAlertState = {
@@ -155,6 +170,10 @@ export const CallAlertStatesDefault = {
         show: false,
     },
     missingScreenPermissions: {
+        active: false,
+        show: false,
+    },
+    degradedCallQuality: {
         active: false,
         show: false,
     },
@@ -180,3 +199,6 @@ export type CallRecordingState = {
     err?: string,
 }
 
+export type RTCMonitorConfig = {
+    monitorInterval: number,
+}

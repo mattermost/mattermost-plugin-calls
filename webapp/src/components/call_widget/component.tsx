@@ -416,6 +416,29 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     },
                 }});
         });
+
+        window.callsClient.on('mos', (mos: number) => {
+            if (!this.state.alerts.degradedCallQuality.show && mos < 4) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: true,
+                            show: true,
+                        },
+                    }});
+            }
+            if (this.state.alerts.degradedCallQuality.show && mos >= 4) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: false,
+                            show: false,
+                        },
+                    }});
+            }
+        });
     }
 
     public componentWillUnmount() {
@@ -761,7 +784,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
         let shareScreenTooltipText = isSharing ? 'Stop presenting' : 'Start presenting';
         if (noScreenPermissions) {
-            shareScreenTooltipText = CallAlertConfigs.missingScreenPermissions.tooltipText;
+            shareScreenTooltipText = CallAlertConfigs.missingScreenPermissions.tooltipText!;
         }
         const shareScreenTooltipSubtext = noScreenPermissions ? CallAlertConfigs.missingScreenPermissions.tooltipSubtext : '';
 
@@ -987,9 +1010,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         let label = currentDevice?.label || 'Default';
         if (noAudioPermissions) {
-            label = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
+            label = CallAlertConfigs.missingAudioInputPermissions.tooltipText!;
         } else if (noInputDevices) {
-            label = CallAlertConfigs.missingAudioInput.tooltipText;
+            label = CallAlertConfigs.missingAudioInput.tooltipText!;
         }
 
         const onClickHandler = () => {
@@ -1115,7 +1138,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 whiteSpace: 'initial',
                             }}
                         >
-                            {CallAlertConfigs.missingScreenPermissions.tooltipText}
+                            {CallAlertConfigs.missingScreenPermissions.tooltipText!}
                         </span>
                         }
 
@@ -1254,22 +1277,27 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             const alertConfig = CallAlertConfigs[alertID];
 
+            let onClose;
+            if (alertConfig.dismissable) {
+                onClose = () => {
+                    this.setState({
+                        alerts: {
+                            ...this.state.alerts,
+                            [alertID]: {
+                                ...alertState,
+                                show: false,
+                            },
+                        },
+                    });
+                };
+            }
+
             return (
                 <WidgetBanner
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
                     header={alertConfig.bannerText}
-                    onClose={() => {
-                        this.setState({
-                            alerts: {
-                                ...this.state.alerts,
-                                [alertID]: {
-                                    ...alertState,
-                                    show: false,
-                                },
-                            },
-                        });
-                    }}
+                    onClose={onClose}
                 />
             );
         });
@@ -1514,12 +1542,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         let muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
         let muteTooltipSubtext = '';
         if (noInputDevices) {
-            muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText;
-            muteTooltipSubtext = CallAlertConfigs.missingAudioInput.tooltipSubtext;
+            muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText!;
+            muteTooltipSubtext = CallAlertConfigs.missingAudioInput.tooltipSubtext!;
         }
         if (noAudioPermissions) {
-            muteTooltipText = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
-            muteTooltipSubtext = CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext;
+            muteTooltipText = CallAlertConfigs.missingAudioInputPermissions.tooltipText!;
+            muteTooltipSubtext = CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext!;
         }
 
         const widerWidget = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);

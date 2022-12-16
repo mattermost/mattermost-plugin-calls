@@ -456,6 +456,29 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 }
             }
         }
+
+        callsClient.on('mos', (mos: number) => {
+            if (!this.state.alerts.degradedCallQuality.show && mos < 4) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: true,
+                            show: true,
+                        },
+                    }});
+            }
+            if (this.state.alerts.degradedCallQuality.show && mos >= 4) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: false,
+                            show: false,
+                        },
+                    }});
+            }
+        });
     }
 
     toggleChat = async () => {
@@ -491,22 +514,27 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
             const alertConfig = CallAlertConfigs[alertID];
 
+            let onClose;
+            if (alertConfig.dismissable) {
+                onClose = () => {
+                    this.setState({
+                        alerts: {
+                            ...this.state.alerts,
+                            [alertID]: {
+                                ...alertState,
+                                show: false,
+                            },
+                        },
+                    });
+                };
+            }
+
             return (
                 <GlobalBanner
                     {...alertConfig}
                     icon={alertConfig.icon}
                     body={alertConfig.bannerText}
-                    onClose={() => {
-                        this.setState({
-                            alerts: {
-                                ...this.state.alerts,
-                                [alertID]: {
-                                    ...alertState,
-                                    show: false,
-                                },
-                            },
-                        });
-                    }}
+                    onClose={onClose}
                 />
             );
         }
@@ -734,12 +762,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         let muteTooltipText = isMuted ? 'Click to unmute' : 'Click to mute';
         let muteTooltipSubtext = '';
         if (noInputDevices) {
-            muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText;
-            muteTooltipSubtext = CallAlertConfigs.missingAudioInput.tooltipSubtext;
+            muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText!;
+            muteTooltipSubtext = CallAlertConfigs.missingAudioInput.tooltipSubtext!;
         }
         if (noAudioPermissions) {
-            muteTooltipText = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
-            muteTooltipSubtext = CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext;
+            muteTooltipText = CallAlertConfigs.missingAudioInputPermissions.tooltipText!;
+            muteTooltipSubtext = CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext!;
         }
 
         const sharingID = this.props.screenSharingID;
@@ -748,7 +776,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         let shareScreenTooltipText = isSharing ? 'Stop presenting' : 'Start presenting';
         if (noScreenPermissions) {
-            shareScreenTooltipText = CallAlertConfigs.missingScreenPermissions.tooltipText;
+            shareScreenTooltipText = CallAlertConfigs.missingScreenPermissions.tooltipText!;
         }
         const shareScreenTooltipSubtext = noScreenPermissions ? CallAlertConfigs.missingScreenPermissions.tooltipSubtext : '';
 
