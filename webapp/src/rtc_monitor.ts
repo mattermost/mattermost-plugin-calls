@@ -43,7 +43,6 @@ function calculateMOS(latency: number, jitter: number, lossRate: number) {
     R -= 2.5 * (lossRate * 100);
 
     let MOS = 1;
-    const MOS2 = 1;
     if (R >= 0 && R <= 100) {
         MOS = 1 + (0.035 * R) + (0.000007 * R * (R - 60) * (100 - R));
     } else if (R > 100) {
