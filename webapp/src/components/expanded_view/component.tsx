@@ -137,6 +137,8 @@ const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
 	background-color: transparent;
 `;
 
+const MaxParticipantsPerRow = 4;
+
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private readonly screenPlayer = React.createRef<HTMLVideoElement>();
     private readonly emojiButtonRef: React.RefObject<ReactionButtonRef>;
@@ -813,7 +815,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 id='calls-expanded-view-participants-grid'
                                 style={{
                                     ...styles.participants,
-                                    gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                                    gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, MaxParticipantsPerRow)}, 1fr)`,
                                 }}
                             >
                                 {this.renderParticipants()}
