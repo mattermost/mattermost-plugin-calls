@@ -4,21 +4,15 @@ import ReactDOM from 'react-dom';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {Theme} from 'mattermost-redux/types/themes';
 import {UserProfile} from '@mattermost/types/users';
-
 import {Client4} from 'mattermost-redux/client';
 import {ChannelTypes} from 'mattermost-redux/action_types';
 
-import {
-    getProfilesByIds,
-    getPluginPath,
-} from 'plugin/utils';
-
-import {
-    logErr,
-} from 'plugin/log';
-
+import {getProfilesByIds, getPluginPath} from 'plugin/utils';
+import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {voiceConnectedProfilesInChannel} from 'plugin/selectors';
+
+import {Provider} from 'react-redux';
 
 import recordingReducer from 'src/recording/reducers';
 
@@ -79,9 +73,9 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
     }
 
     ReactDOM.render(
-        <RecordingView
-            store={store}
-        />,
+        <Provider store={store}>
+            <RecordingView/>
+        </Provider>,
         document.getElementById('root'),
     );
 }

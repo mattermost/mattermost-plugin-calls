@@ -27,10 +27,10 @@ export const ReactionStream = ({forceLeft}: Props) => {
     const statuses = useSelector(voiceUsersStatuses);
     const profileMap = useSelector(idToProfileInConnectedChannel);
 
-    const handsup = Object.keys(statuses)
-        .flatMap((id) => (statuses[id]?.raised_hand ? [statuses[id]] : []))
-        .sort((a, b) => a.raised_hand - b.raised_hand)
-        .map((u) => u.id);
+    const handsUp = Object.keys(statuses).
+        flatMap((id) => (statuses[id]?.raised_hand ? [statuses[id]] : [])).
+        sort((a, b) => a.raised_hand - b.raised_hand).
+        map((u) => u.id);
 
     const vReactions = useSelector(voiceReactions);
     const reversed = [...vReactions].reverse();
@@ -52,19 +52,19 @@ export const ReactionStream = ({forceLeft}: Props) => {
         return user_id === currentUserID ? 'You' : getUserDisplayName(profileMap[user_id]);
     };
     let participants: string;
-    if (handsup?.length) {
-        switch (handsup?.length) {
+    if (handsUp?.length) {
+        switch (handsUp?.length) {
         case 1:
-            participants = `${getName(handsup[0])}`;
+            participants = `${getName(handsUp[0])}`;
             break;
         case 2:
-            participants = `${getName(handsup[0])} & ${getName(handsup[1])}`;
+            participants = `${getName(handsUp[0])} & ${getName(handsUp[1])}`;
             break;
         case 3:
-            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${getName(handsup[2])}`;
+            participants = `${getName(handsUp[0])}, ${getName(handsUp[1])} & ${getName(handsUp[2])}`;
             break;
         default:
-            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${handsup?.length - 2} others`;
+            participants = `${getName(handsUp[0])}, ${getName(handsUp[1])} & ${handsUp?.length - 2} others`;
             break;
         }
 
@@ -106,6 +106,7 @@ const ReactionStreamList = styled.div<streamListStyleProps>`
     display: flex;
     flex-direction: column-reverse;
     margin-left: 10px;
+    margin-bottom: 20px;
     -webkit-mask: -webkit-gradient(#0000, #000);
     mask: linear-gradient(#0000, #0003, #000f);
     ${(props) => props.forceLeft && css`

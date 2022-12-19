@@ -137,8 +137,6 @@ const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
 	background-color: transparent;
 `;
 
-const MaxParticipantsPerRow = 4;
-
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private readonly screenPlayer = React.createRef<HTMLVideoElement>();
     private readonly emojiButtonRef: React.RefObject<ReactionButtonRef>;
@@ -586,8 +584,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     renderParticipants = () => {
-        return this.props.profiles.map((profile, idx) => {
+        return this.props.profiles.map((profile) => {
             const status = this.props.statuses[profile.id];
+
             let isMuted = true;
             let isSpeaking = false;
             let isHandRaised = false;
@@ -599,7 +598,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
             return (
                 <CallParticipant
-                    key={'participants_profile_' + idx}
+                    key={profile.id}
                     name={`${getUserDisplayName(profile)}${profile.id === this.props.currentUserID ? ' (you)' : ''}`}
                     pictureURL={this.props.pictures[profile.id]}
                     isMuted={isMuted}

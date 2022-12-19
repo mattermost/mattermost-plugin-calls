@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import {combineReducers} from 'redux';
 
 import {UserProfile} from '@mattermost/types/users';

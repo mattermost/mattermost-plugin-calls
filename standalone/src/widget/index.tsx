@@ -3,42 +3,19 @@ import ReactDOM from 'react-dom';
 
 import {Store} from 'plugin/types/mattermost-webapp';
 import {Theme} from 'mattermost-redux/types/themes';
-
-import {getTeam as getTeamAction, getMyTeams, selectTeam} from 'mattermost-redux/actions/teams';
+import {getTeam as getTeamAction, selectTeam} from 'mattermost-redux/actions/teams';
 import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redux/actions/channels';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getTeams} from 'mattermost-redux/selectors/entities/teams';
+import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 
-import {getTeam, getTeams} from 'mattermost-redux/selectors/entities/teams';
-import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
-
-import {
-    sendDesktopEvent,
-    playSound,
-} from 'plugin/utils';
-
-import {
-    logDebug,
-} from 'plugin/log';
-
-import {
-    VOICE_CHANNEL_USER_CONNECTED,
-} from 'plugin/action_types';
-
+import {sendDesktopEvent, playSound} from 'plugin/utils';
+import {logDebug} from 'plugin/log';
 import CallWidget from 'plugin/components/call_widget';
 
 import init from '../init';
 
-async function initWidget(store: Store, theme: Theme, channelID: string) {
-    await store.dispatch({
-        type: VOICE_CHANNEL_USER_CONNECTED,
-        data: {
-            channelID,
-            userID: getCurrentUserId(store.getState()),
-            currentUserID: getCurrentUserId(store.getState()),
-        },
-    });
-
+async function initWidget(store: Store, theme: Theme) {
     window.addEventListener('message', (ev: MessageEvent) => {
         if (ev.origin !== window.origin) {
             return;
