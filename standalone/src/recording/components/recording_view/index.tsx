@@ -15,7 +15,8 @@ import CallParticipant from 'plugin/components/expanded_view/call_participant';
 import {voiceChannelCallHostID, voiceChannelScreenSharingID, voiceConnectedProfiles, voiceUsersStatuses} from 'src/selectors';
 import ScreenIcon from 'src/components/icons/screen_icon';
 
-import {ReactionStream} from 'src/recording/components/reaction_stream';
+import {ReactionStream} from 'plugin/components/reaction_stream/reaction_stream';
+
 import {callProfileImages} from 'src/recording/selectors';
 
 import Timestamp from './timestamp';
