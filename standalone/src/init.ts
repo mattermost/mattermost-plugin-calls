@@ -308,16 +308,6 @@ export default async function init(cfg: InitConfig) {
 
     await cfg.initCb(store, theme, channelID);
 
-    // Sending this here because both recorder and widget need it.
-    await store.dispatch({
-        type: VOICE_CHANNEL_USER_CONNECTED,
-        data: {
-            channelID,
-            userID: getCurrentUserId(store.getState()),
-            currentUserID: getCurrentUserId(store.getState()),
-        },
-    });
-
     logDebug(`${cfg.name} init completed in ${Math.round(performance.now() - initStartTime)}ms`);
 }
 
