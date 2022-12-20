@@ -39,7 +39,6 @@ import {
 } from 'src/constants';
 
 import {
-    startCallRecording,
     stopCallRecording,
 } from '../../actions';
 
@@ -112,6 +111,7 @@ interface Props extends RouteComponentProps {
     allowScreenSharing: boolean,
     recordingsEnabled: boolean,
     recordingMaxDuration: number,
+    startCallRecording: (callID: string) => void,
 }
 
 interface State {
@@ -283,7 +283,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     onRecordToggle = async (fromShortcut?: boolean) => {
         if (!this.props.callRecording || this.props.callRecording.end_at > 0) {
-            await startCallRecording(this.props.channel.id);
+            await this.props.startCallRecording(this.props.channel.id);
             this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
             await stopCallRecording(this.props.channel.id);
