@@ -16,7 +16,7 @@ require (
 	github.com/mattermost/calls-offloader v0.1.0
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.1.1
-	github.com/mattermost/rtcd v0.7.1-0.20221124183223-25eed58b22d2
+	github.com/mattermost/rtcd v0.7.1-0.20221220025824-179e368a69ca
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
 	github.com/vmihailenco/msgpack/v5 v5.3.5

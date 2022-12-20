@@ -538,6 +538,18 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 	if !ok {
 		return fmt.Errorf("unexpected data type %T", msg.Data)
 	}
+
+	if rtcMsg.Type == rtc.VoiceOnMessage || rtcMsg.Type == rtc.VoiceOffMessage {
+		evType := wsEventUserVoiceOff
+		if rtcMsg.Type == rtc.VoiceOnMessage {
+			evType = wsEventUserVoiceOn
+		}
+		m.ctx.publishWebSocketEvent(evType, map[string]interface{}{
+			"userID": rtcMsg.UserID,
+		}, &model.WebsocketBroadcast{ChannelId: rtcMsg.CallID})
+		return nil
+	}
+
 	m.ctx.LogDebug("relaying ws message", "sessionID", rtcMsg.SessionID, "userID", rtcMsg.UserID)
 	m.ctx.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 		"data":   string(rtcMsg.Data),
