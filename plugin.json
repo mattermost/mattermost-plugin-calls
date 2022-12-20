@@ -115,5 +115,8 @@
                 "help_text": "The maximum duration (in minutes) for call recordings. Value must be in the range [15, 180]."
             }
         ]
+    },
+    "props": {
+        "min_rtcd_version": "v0.8.0"
     }
 }

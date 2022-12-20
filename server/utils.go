@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Masterminds/semver"
 )
 
 const (
@@ -131,4 +133,22 @@ func isMobilePostGA(r *http.Request) (mobile, postGA bool) {
 		return true, false
 	}
 	return true, minor >= 441
+}
+
+func checkMinVersion(minVersion, currVersion string) error {
+	minV, err := semver.NewVersion(minVersion)
+	if err != nil {
+		return fmt.Errorf("failed to parse minVersion: %w", err)
+	}
+
+	currV, err := semver.NewVersion(currVersion)
+	if err != nil {
+		return fmt.Errorf("failed to parse currVersion: %w", err)
+	}
+
+	if cmp := currV.Compare(minV); cmp < 0 {
+		return fmt.Errorf("current version (%s) is lower than minimum supported version (%s)", currVersion, minVersion)
+	}
+
+	return nil
 }
