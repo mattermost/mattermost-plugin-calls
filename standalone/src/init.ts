@@ -96,12 +96,16 @@ function connectCall(channelID: string, callTitle: string, wsURL: string, iceCon
         window.callsClient.init(channelID, callTitle).then(() => {
             window.callsClient.ws.on('event', wsEventHandler);
         }).catch((err: Error) => {
-            delete window.callsClient;
             logErr(err);
+            if (closeCb) {
+                closeCb();
+            }
         });
     } catch (err) {
-        delete window.callsClient;
         logErr(err);
+        if (closeCb) {
+            closeCb();
+        }
     }
 }
 
