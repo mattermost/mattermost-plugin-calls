@@ -13,7 +13,7 @@ require (
 )
 
 require (
-	github.com/mattermost/calls-offloader v0.1.3-0.20221220221003-b6d72f8f4ea7
+	github.com/mattermost/calls-offloader v0.1.3
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.1.1
 	github.com/mattermost/rtcd v0.7.1-0.20221124183223-25eed58b22d2
