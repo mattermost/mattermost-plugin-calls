@@ -3,16 +3,13 @@ import configureStore from 'mattermost-redux/store';
 import {getMe} from 'mattermost-redux/actions/users';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
-import {getTeam as getTeamAction, getMyTeams, selectTeam} from 'mattermost-redux/actions/teams';
+import {getMyTeams} from 'mattermost-redux/actions/teams';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getTeam, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
-import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
-
-import {Store} from 'plugin/types/mattermost-webapp';
+import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/common';
 import {Theme} from 'mattermost-redux/types/themes';
-
+import {Store} from 'plugin/types/mattermost-webapp';
 import {pluginId} from 'plugin/manifest';
 import CallsClient from 'plugin/client';
 import reducer from 'plugin/reducers';
@@ -23,25 +20,19 @@ import {
     VOICE_CHANNEL_USERS_CONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
     VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_USER_CONNECTED,
 } from 'plugin/action_types';
 import {getCallsConfig} from 'plugin/actions';
-
 import {
     getWSConnectionURL,
     getPluginPath,
     getProfilesByIds,
 } from 'plugin/utils';
-
-import {
-    iceServers,
-    needsTURNCredentials,
-} from 'plugin/selectors';
-
+import {iceServers, needsTURNCredentials} from 'plugin/selectors';
 import {
     logDebug,
     logErr,
 } from 'plugin/log';
-
 import {
     handleUserConnected,
     handleUserDisconnected,
@@ -56,6 +47,7 @@ import {
     handleUserRaisedHand,
     handleUserUnraisedHand,
     handleCallHostChanged,
+    handleUserReaction,
 } from 'plugin/websocket_handlers';
 
 import {
@@ -63,9 +55,7 @@ import {
     getCallTitle,
     getToken,
 } from './common';
-
 import {applyTheme} from './theme_utils';
-
 import {ChannelState} from './types/calls';
 
 // CSS
@@ -300,6 +290,10 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_call_host_changed`:
             handleCallHostChanged(store, ev);
+            break;
+        case `custom_${pluginId}_user_reacted`:
+            handleUserReaction(store, ev);
+
             break;
         default:
         }

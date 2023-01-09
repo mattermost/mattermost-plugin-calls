@@ -91,6 +91,7 @@ module.exports = {
             'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
             'react-bootstrap': path.resolve(__dirname, './node_modules/react-bootstrap'),
             bootstrap: path.resolve(__dirname, './node_modules/bootstrap'),
+            'react-redux': path.resolve(__dirname, './node_modules/react-redux'),
         },
         fallback: {
             src: path.resolve(__dirname, '../webapp/src'),

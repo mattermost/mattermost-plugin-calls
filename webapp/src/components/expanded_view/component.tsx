@@ -586,8 +586,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     renderParticipants = () => {
-        return this.props.profiles.map((profile, idx) => {
+        return this.props.profiles.map((profile) => {
             const status = this.props.statuses[profile.id];
+
             let isMuted = true;
             let isSpeaking = false;
             let isHandRaised = false;
@@ -599,7 +600,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
             return (
                 <CallParticipant
-                    key={'participants_profile_' + idx}
+                    key={profile.id}
                     name={`${getUserDisplayName(profile)}${profile.id === this.props.currentUserID ? ' (you)' : ''}`}
                     pictureURL={this.props.pictures[profile.id]}
                     isMuted={isMuted}
@@ -814,7 +815,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 id='calls-expanded-view-participants-grid'
                                 style={{
                                     ...styles.participants,
-                                    gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                                    gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, MaxParticipantsPerRow)}, 1fr)`,
                                 }}
                             >
                                 {this.renderParticipants()}
