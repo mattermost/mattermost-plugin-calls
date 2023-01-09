@@ -4,13 +4,13 @@ import ReactDOM from 'react-dom';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {Theme} from 'mattermost-redux/types/themes';
 
-import {getTeam as getTeamAction, getMyTeams, selectTeam} from 'mattermost-redux/actions/teams';
+import {getTeam as getTeamAction, selectTeam} from 'mattermost-redux/actions/teams';
 import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redux/actions/channels';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {getTeam, getTeams} from 'mattermost-redux/selectors/entities/teams';
-import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
+import {getTeams} from 'mattermost-redux/selectors/entities/teams';
+import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 
 import {
     sendDesktopEvent,

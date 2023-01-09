@@ -1,5 +1,7 @@
 import {EventEmitter} from 'events';
 
+import {logDebug} from '../log';
+
 import {
     RTCPeerConfig,
 } from './types';
@@ -9,6 +11,7 @@ const rtcConnFailedErr = new Error('rtc connection failed');
 export default class RTCPeer extends EventEmitter {
     private pc: RTCPeerConnection | null;
     private senders: {[key: string]: RTCRtpSender};
+    private makingOffer = false;
 
     constructor(config: RTCPeerConfig) {
         super();
@@ -61,10 +64,13 @@ export default class RTCPeer extends EventEmitter {
 
     private async onNegotiationNeeded() {
         try {
-            await this.pc?.setLocalDescription(await this.pc?.createOffer());
+            this.makingOffer = true;
+            await this.pc?.setLocalDescription();
             this.emit('offer', this.pc?.localDescription);
         } catch (err) {
             this.emit('error', err);
+        } finally {
+            this.makingOffer = false;
         }
     }
 
@@ -83,13 +89,17 @@ export default class RTCPeer extends EventEmitter {
 
         const msg = JSON.parse(data);
 
+        if (msg.type === 'offer' && (this.makingOffer || this.pc?.signalingState !== 'stable')) {
+            logDebug('signaling conflict, we are polite, proceeding...');
+        }
+
         switch (msg.type) {
         case 'candidate':
             await this.pc.addIceCandidate(msg.candidate);
             break;
         case 'offer':
             await this.pc.setRemoteDescription(msg);
-            await this.pc.setLocalDescription(await this.pc.createAnswer());
+            await this.pc.setLocalDescription();
             this.emit('answer', this.pc.localDescription);
             break;
         case 'answer':

@@ -71,6 +71,7 @@
     "@mattermost/compass-icons": "0.1.32",
     "@mattermost/types": "6.7.0-0",
     "@msgpack/msgpack": "2.7.1",
+    "@redux-devtools/extension": "3.2.3",
     "axios": "0.21.4",
     "core-js": "3.21.1",
     "css-vars-ponyfill": "2.4.8",

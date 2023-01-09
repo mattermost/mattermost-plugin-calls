@@ -27,6 +27,7 @@ import {
     prefetchThread,
     showScreenSourceModal,
     trackEvent,
+    startCallRecording,
 } from 'src/actions';
 import {
     expandedView,
@@ -112,6 +113,7 @@ const mapDispatchToProps = {
     selectRhsPost,
     prefetchThread,
     trackEvent,
+    startCallRecording,
 };
 
 export default withRouter(connect(mapStateToProps, mapDispatchToProps)(ExpandedView));
