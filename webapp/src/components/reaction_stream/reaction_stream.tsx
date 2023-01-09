@@ -123,7 +123,7 @@ const ReactionChip = styled.div<chipProps>`
     align-items: center;
     padding: 0 8px;
     gap: 2px;
-    height: 28px;
+    max-height: 28px;
     color: black;
     background: rgba(221, 223, 228, 0.48);
     border-radius: 12px;
@@ -131,7 +131,7 @@ const ReactionChip = styled.div<chipProps>`
     width: fit-content;
     font-weight: 400;
     font-size: 12px;
-    line-height: 16px;
+    line-height: 28px;
 
     ${(props) => props.highlight && css`
         background: #FFFFFF;
