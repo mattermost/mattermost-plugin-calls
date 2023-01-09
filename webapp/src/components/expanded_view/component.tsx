@@ -200,6 +200,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.getCallsClient()?.mute();
             this.pushToTalk = false;
             this.forceUpdate();
+            return;
+        }
+
+        // Disabling Alt+ sequences as they would show the window menu on Linux Desktop.
+        if (window.opener?.desktop && (ev.key === 'Alt' || ev.altKey)) {
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
         }
     }
 
