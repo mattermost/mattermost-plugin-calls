@@ -196,9 +196,10 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 		res.Code = http.StatusInternalServerError
 		return
 	}
-	recordings, ok := post.GetProp("recording_files").([]string)
+
+	recordings, ok := post.GetProp("recording_files").([]interface{})
 	if !ok {
-		recordings = []string{
+		recordings = []interface{}{
 			fileID,
 		}
 	} else {
