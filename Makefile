@@ -160,16 +160,6 @@ else
 	cd standalone && $(NPM) run debug;
 endif
 
-## Builds the webapp on ci -- dependencies are handled by the npm-dependencies step in ci
-.PHONY: webapp-ci
-webapp-ci:
-	cd webapp && $(NPM) run build
-
-## Builds the standalone apps on ci -- dependencies are handled by the npm-dependencies step in ci
-.PHONY: standalone-ci
-standalone-ci:
-	cd standalone && $(NPM) run build
-
 ## Generates a tar bundle of the plugin for install.
 .PHONY: bundle
 bundle:
@@ -199,11 +189,13 @@ endif
 
 ## Builds and bundles the plugin.
 .PHONY: dist
-dist:	apply server webapp standalone bundle
+dist:
 
-## Builds and bundles the plugin on ci.
-.PHONY: dist-ci
-dist-ci:	apply server-ci webapp-ci standalone-ci bundle
+ifeq ($(CI),true)
+dist: apply server-ci webapp standalone bundle
+else
+dist: apply server webapp standalone bundle
+endif
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
@@ -270,6 +262,16 @@ gotestsum:
 
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
+
+ifeq ($(CI),true)
+test-ci: apply webapp/node_modules standalone/node_modules gotestsum
+ifneq ($(HAS_SERVER),)
+	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./...
+endif
+ifneq ($(HAS_WEBAPP),)
+	cd webapp && $(NPM) run test;
+endif
+else
 test: apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/...
@@ -280,16 +282,6 @@ endif
 ifneq ($(wildcard ./build/sync/plan/.),)
 	cd ./build/sync && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
 endif
-
-## Runs any lints and unit tests defined for the server and webapp, if they exist, optimized
-## for a CI environment.
-.PHONY: test-ci
-test-ci: apply webapp/node_modules standalone/node_modules gotestsum
-ifneq ($(HAS_SERVER),)
-	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./...
-endif
-ifneq ($(HAS_WEBAPP),)
-	cd webapp && $(NPM) run test;
 endif
 
 ## Creates a coverage report for the server code.
