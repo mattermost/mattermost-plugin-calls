@@ -46,7 +46,6 @@ interface Props {
 }
 
 export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
-    const barRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const [showPicker, setShowPicker] = useState(false);
     const [showBar, setShowBar] = useState(false);
 
@@ -145,7 +144,7 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                 </PickerContainer>
             }
             {showBar &&
-                <Bar ref={barRef}>
+                <Bar>
                     <OverlayTrigger
                         key={'calls-popout-raisehand-button'}
                         placement='top'
