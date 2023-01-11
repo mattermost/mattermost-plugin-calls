@@ -66,6 +66,8 @@ export type CallsConfig = {
     MaxCallParticipants: number,
     NeedsTURNCredentials: boolean,
     AllowScreenSharing: boolean,
+    EnableRecordings: boolean,
+    MaxRecordingDuration: number,
     sku_short_name: string,
 }
 
@@ -76,6 +78,8 @@ export const CallsConfigDefault: CallsConfig = {
     MaxCallParticipants: 0,
     NeedsTURNCredentials: false,
     AllowScreenSharing: true,
+    EnableRecordings: false,
+    MaxRecordingDuration: 60,
     sku_short_name: '',
 };
 
@@ -168,3 +172,11 @@ export type Reaction = {
     user_id: string;
     displayName: string;
 }
+
+export type CallRecordingState = {
+    init_at: number,
+    start_at: number,
+    end_at: number,
+    err?: string,
+}
+

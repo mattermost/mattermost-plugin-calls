@@ -4,7 +4,6 @@
 import React, {ComponentProps} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {NavLink} from 'react-router-dom';
-import styled from 'styled-components';
 
 import HandsSvg from 'mattermost-webapp/components/common/svg_images_components/hands_svg';
 
@@ -18,6 +17,13 @@ export const IDOnPremTrialSuccess = 'onprem_trial_success';
 export const IDOnPremTrialError = 'onprem_trial_error';
 
 type Props = Partial<ComponentProps<typeof GenericModal>>;
+
+import {
+    ModalTitle,
+    StyledModal,
+    ModalFooterContainer,
+    ModalBody,
+} from 'src/components/admin_console_settings/common';
 
 export const OnPremTrialSuccess = (modalProps: Props) => {
     const {formatMessage} = useIntl();
@@ -38,17 +44,18 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                 height={100}
             />
             <VerticalSpacer size={32}/>
-            <Title>
+            <ModalTitle>
                 <FormattedMessage
                     defaultMessage={'Your trial has started!{br}Explore the benefits of Enterprise'}
                     values={{br: <br/>}}
                 />
-            </Title>
+            </ModalTitle>
             <VerticalSpacer size={8}/>
-            <Body css={'text-align: left'}>
+            <ModalBody css={'text-align: left'}>
                 <FormattedMessage
                     defaultMessage={'Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. ' +
                         'You now have access to <rtcdDocsLink>RTCD services</rtcdDocsLink>, ' +
+                        '<recordingsDocsLink>call recordings</recordingsDocsLink>, ' +
                         '<guestAccountsLink>guest accounts</guestAccountsLink>, ' +
                         '<autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and ' +
                         '<mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, ' +
@@ -59,6 +66,15 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                         rtcdDocsLink: (text: string) => (
                             <a
                                 href='https://docs.mattermost.com/configure/calls-deployment.html'
+                                target='_blank'
+                                rel='noreferrer'
+                            >
+                                {text}
+                            </a>
+                        ),
+                        recordingsDocsLink: (text: string) => (
+                            <a
+                                href='https://docs.mattermost.com/configure/calls-deployment.html#call-recording'
                                 target='_blank'
                                 rel='noreferrer'
                             >
@@ -97,7 +113,7 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                         ),
                     }}
                 />
-            </Body>
+            </ModalBody>
         </StyledModal>
     );
 };
@@ -112,13 +128,13 @@ export const OnPremTrialError = (modalProps: Props) => {
             confirmButtonText={formatMessage({defaultMessage: 'Okay'})}
             handleConfirm={() => null}
             onHide={() => null}
-            components={{FooterContainer}}
+            components={{FooterContainer: ModalFooterContainer}}
         >
-            <Title>
+            <ModalTitle>
                 <FormattedMessage defaultMessage={'Something went wrong!'}/>
-            </Title>
+            </ModalTitle>
             <VerticalSpacer size={8}/>
-            <Body css={'text-align: center'}>
+            <ModalBody css={'text-align: center'}>
                 <FormattedMessage
                     defaultMessage={'It looks like something went wrong with your Enterprise trial request. ' +
                         'You can try again later or <supportLink>contact Support</supportLink> if the error persists.'}
@@ -134,33 +150,8 @@ export const OnPremTrialError = (modalProps: Props) => {
                         ),
                     }}
                 />
-            </Body>
+            </ModalBody>
         </GenericModal>
     );
 };
 
-const Title = styled.div`
-    font-family: 'Metropolis', sans-serif;
-    font-style: normal;
-    font-weight: 600;
-    font-size: 22px;
-    line-height: 28px;
-    text-align: center;
-`;
-
-const Body = styled.div`
-    font-family: 'Open Sans', sans-serif;
-    font-style: normal;
-    font-weight: 400;
-    font-size: 14px;
-    line-height: 20px;
-`;
-
-const FooterContainer = styled.div`
-    display: flex;
-    justify-content: center;
-`;
-
-const StyledModal = styled(GenericModal)`
-    text-align: center;
-`;

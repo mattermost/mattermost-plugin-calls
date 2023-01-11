@@ -49,6 +49,7 @@ import {
     HIDE_END_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CLIENT_ERROR,
+    VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -236,6 +237,33 @@ export function prefetchThread(postId: string) {
         return {data: thread};
     };
 }
+
+export const startCallRecording = (callID: string) => (dispatch: Dispatch<GenericAction>) => {
+    Client4.doFetch(
+        `${getPluginPath()}/calls/${callID}/recording/start`,
+        {method: 'post'},
+    ).catch((err) => {
+        dispatch({
+            type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+            data: {
+                callID,
+                recState: {
+                    init_at: 0,
+                    start_at: 0,
+                    end_at: 0,
+                    err: err.message,
+                },
+            },
+        });
+    });
+};
+
+export const stopCallRecording = async (callID: string) => {
+    return Client4.doFetch(
+        `${getPluginPath()}/calls/${callID}/recording/stop`,
+        {method: 'post'},
+    );
+};
 
 export const displayCallsTestModeUser = () => {
     return async (dispatch: DispatchFunc) => {

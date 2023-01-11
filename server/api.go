@@ -26,22 +26,6 @@ var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
-type Call struct {
-	ID              string      `json:"id"`
-	StartAt         int64       `json:"start_at"`
-	Users           []string    `json:"users"`
-	States          []userState `json:"states,omitempty"`
-	ThreadID        string      `json:"thread_id"`
-	ScreenSharingID string      `json:"screen_sharing_id"`
-	OwnerID         string      `json:"owner_id"`
-}
-
-type ChannelState struct {
-	ChannelID string `json:"channel_id,omitempty"`
-	Enabled   *bool  `json:"enabled,omitempty"`
-	Call      *Call  `json:"call,omitempty"`
-}
-
 func (p *Plugin) handleGetVersion(w http.ResponseWriter, r *http.Request) {
 	info := map[string]interface{}{
 		"version": manifest.Version,
@@ -55,7 +39,9 @@ func (p *Plugin) handleGetVersion(w http.ResponseWriter, r *http.Request) {
 
 func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
 	userID := r.Header.Get("Mattermost-User-Id")
-	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+	// We should go through only if the user has permissions to the requested channel
+	// or if the user is the Calls bot.
+	if !(p.isBotSession(r) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -67,7 +53,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 		p.LogError(err.Error())
 	}
 
-	info := ChannelState{
+	info := ChannelStateClient{
 		ChannelID: channelID,
 	}
 
@@ -80,16 +66,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 		}
 
 		if state.Call != nil {
-			users, states := state.Call.getUsersAndStates()
-			info.Call = &Call{
-				ID:              state.Call.ID,
-				StartAt:         state.Call.StartAt,
-				Users:           users,
-				States:          states,
-				ThreadID:        state.Call.ThreadID,
-				ScreenSharingID: state.Call.ScreenSharingID,
-				OwnerID:         state.Call.OwnerID,
-			}
+			info.Call = state.Call.getClientState(p.getBotID())
 		}
 	}
 
@@ -121,7 +98,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	mobile, postGA := isMobilePostGA(r)
 
 	var page int
-	channels := []ChannelState{}
+	channels := []ChannelStateClient{}
 	channelMembers := map[string]*model.ChannelMember{}
 	perPage := 200
 
@@ -170,21 +147,12 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 				cfg := p.getConfiguration()
 				enabled = model.NewBool(cfg.DefaultEnabled != nil && *cfg.DefaultEnabled)
 			}
-			info := ChannelState{
+			info := ChannelStateClient{
 				ChannelID: channelID,
 				Enabled:   enabled,
 			}
 			if state.Call != nil {
-				users, states := state.Call.getUsersAndStates()
-				info.Call = &Call{
-					ID:              state.Call.ID,
-					StartAt:         state.Call.StartAt,
-					Users:           users,
-					States:          states,
-					ThreadID:        state.Call.ThreadID,
-					ScreenSharingID: state.Call.ScreenSharingID,
-					OwnerID:         state.Call.OwnerID,
-				}
+				info.Call = state.Call.getClientState(p.getBotID())
 			}
 			channels = append(channels, info)
 		}
@@ -251,8 +219,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 		return
 	}
 
-	p.metrics.IncWebSocketEvent("out", "call_end")
-	p.API.PublishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	go func() {
 		// We wait a few seconds for the call to end cleanly. If this doesn't
@@ -359,7 +326,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		return
 	}
 
-	var info ChannelState
+	var info ChannelStateClient
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
 		res.Err = err.Error()
 		res.Code = http.StatusBadRequest
@@ -386,7 +353,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		evType = "channel_disable_voice"
 	}
 
-	p.API.PublishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	p.publishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	if err := json.NewEncoder(w).Encode(info); err != nil {
 		p.LogError(err.Error())
@@ -510,14 +477,19 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	if strings.HasPrefix(r.URL.Path, "/standalone/") {
+		p.handleServeStandalone(w, r)
+		return
+	}
+
 	userID := r.Header.Get("Mattermost-User-Id")
 	if userID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	if strings.HasPrefix(r.URL.Path, "/standalone/") {
-		p.handleServeStandalone(w, r)
+	if strings.HasPrefix(r.URL.Path, "/bot") {
+		p.handleBotAPI(w, r)
 		return
 	}
 
@@ -553,6 +525,16 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 			p.handleGetChannel(w, r, matches[1])
 			return
 		}
+
+		if matches := jobsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleGetJob(w, r, matches[1])
+			return
+		}
+
+		if matches := jobsLogsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleGetJobLogs(w, r, matches[1])
+			return
+		}
 	}
 
 	if r.Method == http.MethodPost {
@@ -576,6 +558,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if r.URL.Path == "/telemetry/track" {
 			p.handleTrackEvent(w, r)
+			return
+		}
+
+		if matches := callRecordingActionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
+			p.handleRecordingAction(w, r, matches[1], matches[2])
 			return
 		}
 	}

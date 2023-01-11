@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import {combineReducers} from 'redux';
 
 import {UserProfile} from '@mattermost/types/users';
@@ -10,7 +11,9 @@ import {
     UserState,
     CallsUserPreferences,
     CallsUserPreferencesDefault,
-    Reaction, ChannelState,
+    Reaction,
+    CallRecordingState,
+    ChannelState,
 } from './types/types';
 
 import {
@@ -32,6 +35,7 @@ import {
     VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
+    VOICE_CHANNEL_CALL_HOST,
     SHOW_EXPANDED_VIEW,
     HIDE_EXPANDED_VIEW,
     SHOW_SWITCH_CALL_MODAL,
@@ -47,6 +51,7 @@ import {
     DESKTOP_WIDGET_CONNECTED,
     VOICE_CHANNEL_USER_REACTED,
     VOICE_CHANNEL_USER_REACTED_TIMEOUT,
+    VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
 
 interface channelStateAction {
@@ -505,21 +510,54 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
     }
 };
 
-interface callState {
-    channelID: string,
-    startAt: number,
-    ownerID: string,
+type callRecordingStateAction = {
+    type: string,
+    data: {
+        callID: string,
+        recState: CallRecordingState | null,
+    },
 }
 
-interface callStartAction {
+const callsRecordings = (state: {[callID: string]: CallRecordingState} = {}, action: callRecordingStateAction) => {
+    switch (action.type) {
+    case VOICE_CHANNEL_UNINIT:
+        return {};
+    case VOICE_CHANNEL_CALL_RECORDING_STATE:
+        return {
+            ...state,
+            [action.data.callID]: action.data.recState,
+        };
+    default:
+        return state;
+    }
+};
+
+interface callState {
+    channelID: string,
+    startAt?: number,
+    ownerID?: string,
+    hostID: string,
+    hostChangeAt?: number,
+}
+
+interface callStateAction {
     type: string,
     data: callState,
 }
 
-const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, action: callStartAction) => {
+const voiceChannelCalls = (state: {[channelID: string]: callState} = {}, action: callStateAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
+    case VOICE_CHANNEL_CALL_HOST:
+        return {
+            ...state,
+            [action.data.channelID]: {
+                ...state[action.data.channelID],
+                hostID: action.data.hostID,
+                hostChangeAt: Date.now(),
+            },
+        };
     case VOICE_CHANNEL_CALL_START:
         return {
             ...state,
@@ -527,6 +565,8 @@ const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, actio
                 channelID: action.data.channelID,
                 startAt: action.data.startAt,
                 ownerID: action.data.ownerID,
+                hostID: action.data.hostID,
+                hostChangeAt: action.data.startAt,
             },
         };
     default:
@@ -671,4 +711,5 @@ export default combineReducers({
     callsConfig,
     callsUserPreferences,
     clientErr,
+    callsRecordings,
 });

@@ -11,6 +11,7 @@ type CallState = {
     thread_id: string,
     screen_sharing_id: string,
     owner_id: string,
+    host_id: string,
 }
 
 export type ChannelState = {

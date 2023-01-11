@@ -364,3 +364,7 @@ export function sendDesktopEvent(event: string, data?: any) {
         win.location.origin,
     );
 }
+
+export function capitalize(input: string) {
+    return input.charAt(0).toUpperCase() + input.slice(1);
+}

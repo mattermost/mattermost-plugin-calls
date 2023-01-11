@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import React, {CSSProperties} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {compareSemVer} from 'semver-parser';
@@ -11,7 +12,15 @@ import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {Theme} from 'mattermost-redux/types/themes';
 
-import {AudioDevices, CallAlertStates, CallAlertStatesDefault, UserState} from 'src/types/types';
+import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
+
+import {
+    UserState,
+    AudioDevices,
+    CallAlertStates,
+    CallAlertStatesDefault,
+    CallRecordingState,
+} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent} from 'src/utils';
 import {
@@ -23,7 +32,10 @@ import {
     reverseKeyMappings,
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
-import {CallAlertConfigs} from 'src/constants';
+import {
+    CallAlertConfigs,
+    CallRecordingDisclaimerStrings,
+} from 'src/constants';
 
 import {logDebug, logErr} from 'src/log';
 
@@ -43,6 +55,7 @@ import UnraisedHandIcon from '../../components/icons/unraised_hand';
 import SpeakerIcon from '../../components/icons/speaker_icon';
 
 import Shortcut from 'src/components/shortcut';
+import Badge from 'src/components/badge';
 import {AudioInputPermissionsError} from 'src/client';
 
 import CallDuration from './call_duration';
@@ -69,6 +82,9 @@ interface Props {
         [key: string]: UserState,
     },
     callStartAt: number,
+    callHostID: string,
+    callHostChangeAt: number,
+    callRecording?: CallRecordingState,
     screenSharingID: string,
     show: boolean,
     showExpandedView: () => void,
@@ -107,6 +123,7 @@ interface State {
     showUsersJoined: string[],
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
+    recDisclaimerDismissedAt: number,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -168,8 +185,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             callInfo: {
                 display: 'flex',
+                alignItems: 'center',
                 fontSize: '11px',
+                lineHeight: '11px',
                 color: changeOpacity(this.props.theme.centerChannelColor, 0.64),
+                marginTop: '3px',
             },
             profiles: {
                 display: 'flex',
@@ -201,12 +221,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             leaveCallButton: {
                 display: 'flex',
                 alignItems: 'center',
-                padding: '0 8px',
+                padding: '10px 16px',
                 height: '28px',
                 borderRadius: '4px',
                 color: '#D24B4E',
                 background: 'rgba(var(--dnd-indicator-rgb), 0.08)',
-                marginRight: 'auto',
             },
             dotsMenu: {
                 position: 'relative',
@@ -247,6 +266,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showUsersJoined: [],
             audioEls: [],
             alerts: CallAlertStatesDefault,
+            recDisclaimerDismissedAt: 0,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -362,14 +382,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
 
             if (isDirectChannel(this.props.channel) || isGroupChannel(this.props.channel)) {
-                // FIXME (MM-46048) - HACK
-                // There's a race condition between unmuting and receiving existing tracks from other participants.
-                // Fixing this properly requires extensive and potentially breaking changes.
-                // Waiting for a second before unmuting is a decent workaround that should work in most cases.
-                setTimeout(() => {
-                    window.callsClient?.unmute();
-                }, 1000);
+                window.callsClient?.unmute();
             }
+
             this.setState({currentAudioInputDevice: window.callsClient.currentAudioInputDevice});
             this.setState({currentAudioOutputDevice: window.callsClient.currentAudioOutputDevice});
         });
@@ -1171,6 +1186,61 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     }
 
+    renderRecordingDisclaimer = () => {
+        // This component should render if all of the following conditions apply:
+        // - Recording has started.
+        // - Recording has not ended.
+        // - Diclaimer has not been dismissed after either call start or last host change.
+
+        if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at) {
+            return null;
+        }
+
+        if (this.state.recDisclaimerDismissedAt > this.props.callRecording?.start_at && this.state.recDisclaimerDismissedAt > this.props.callHostChangeAt) {
+            return null;
+        }
+
+        const isHost = this.props.callHostID === this.props.currentUserID;
+
+        return (
+            <WidgetBanner
+                key={'widget_banner_recording_disclaimer'}
+                type='info'
+                icon={(
+                    <RecordCircleOutlineIcon
+                        size={12}
+                    />)}
+                iconFill='rgb(var(--dnd-indicator-rgb))'
+                iconColor='rgb(var(--dnd-indicator-rgb))'
+                header={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header}
+                body={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body}
+                confirmText={isHost ? 'Dismiss' : 'Understood'}
+                declineText={isHost ? null : 'Leave call'}
+                onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
+                onDecline={this.onDisconnectClick}
+            />
+        );
+    }
+
+    renderRecordingBadge = () => {
+        if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at) {
+            return null;
+        }
+
+        return (
+            <React.Fragment>
+                <Badge
+                    text={'REC'}
+                    textSize={11}
+                    gap={2}
+                    icon={(<RecordCircleOutlineIcon size={11}/>)}
+                    color={'#D24B4E'}
+                />
+                <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
+            </React.Fragment>
+        );
+    }
+
     renderAlertBanners = () => {
         return Object.entries(this.state.alerts).map((keyVal) => {
             const [alertID, alertState] = keyVal;
@@ -1184,7 +1254,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <WidgetBanner
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
-                    body={alertConfig.bannerText}
+                    header={alertConfig.bannerText}
                     onClose={() => {
                         this.setState({
                             alerts: {
@@ -1341,14 +1411,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (window.desktop && !this.props.global) {
             this.props.showExpandedView();
         } else {
-            let features = 'resizable=yes';
-            if (this.props.global) {
-                features += ',frame=false';
-            }
             const expandedViewWindow = window.open(
                 getPopOutURL(this.props.team, this.props.channel),
                 'ExpandedView',
-                features,
+                'resizable=yes',
             );
 
             this.setState({
@@ -1408,7 +1474,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     href={this.props.channelURL}
                     onClick={this.onChannelLinkClick}
                     className='calls-channel-link'
-                    style={{appRegion: 'no-drag'} as CSSProperties}
+                    style={{appRegion: 'no-drag', padding: '0'} as CSSProperties}
                 >
                     {isOpenChannel(this.props.channel) && <CompassIcon icon='globe'/>}
                     {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
@@ -1473,6 +1539,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
+                    {this.renderRecordingDisclaimer()}
                     {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
                     {this.renderMenu(widerWidget)}
@@ -1502,6 +1569,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={{width: widerWidget ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
+                                {this.renderRecordingBadge()}
                                 <CallDuration startAt={this.props.callStartAt}/>
                                 {this.renderChannelName(widerWidget)}
                             </div>
@@ -1512,6 +1580,75 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         className='calls-widget-bottom-bar'
                         style={this.style.bottomBar}
                     >
+                        <OverlayTrigger
+                            key='participants'
+                            placement='top'
+                            overlay={
+                                <Tooltip id='tooltip-mute'>
+                                    {this.state.showParticipantsList ? 'Hide participants' : 'Show participants'}
+                                    <Shortcut shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}/>
+                                </Tooltip>
+                            }
+                        >
+                            <button
+                                className='style--none button-controls button-controls--wide'
+                                id='calls-widget-participants-button'
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    color: this.state.showParticipantsList ? 'rgba(28, 88, 217, 1)' : '',
+                                    background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.12)' : '',
+                                    marginRight: 'auto',
+                                }}
+                                onClick={() => this.onParticipantsButtonClick()}
+                            >
+                                <ParticipantsIcon
+                                    style={{width: '16px', height: '16px', marginRight: '4px'}}
+                                />
+
+                                <span
+                                    style={{fontWeight: 600, color: changeOpacity(this.props.theme.centerChannelColor, 0.64)}}
+                                >{this.props.profiles.length}</span>
+                            </button>
+                        </OverlayTrigger>
+
+                        <WidgetButton
+                            id='voice-mute-unmute'
+                            // eslint-disable-next-line no-undefined
+                            onToggle={noInputDevices ? undefined : this.onMuteToggle}
+                            // eslint-disable-next-line no-undefined
+                            shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
+                            tooltipText={muteTooltipText}
+                            tooltipSubtext={muteTooltipSubtext}
+                            bgColor={window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
+                            icon={<MuteIcon style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)'}}/>}
+                            unavailable={noInputDevices || noAudioPermissions}
+                        />
+
+                        { !isDirectChannel(this.props.channel) &&
+                        <WidgetButton
+                            id='raise-hand'
+                            onToggle={() => this.onRaiseHandToggle()}
+                            shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
+                            tooltipText={handTooltipText}
+                            bgColor={window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
+                            icon={<HandIcon style={{width: '16px', height: '16px', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}/>}
+                        />
+                        }
+
+                        {this.props.allowScreenSharing && (widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
+
+                        <button
+                            id='calls-widget-toggle-menu-button'
+                            className='cursor--pointer style--none button-controls'
+                            style={this.style.menuButton}
+                            onClick={this.onMenuClick}
+                        >
+                            <HorizontalDotsIcon
+                                style={{width: '16px', height: '16px'}}
+                            />
+                        </button>
+
                         <OverlayTrigger
                             key='leave'
                             placement='top'
@@ -1535,73 +1672,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             </button>
                         </OverlayTrigger>
 
-                        <button
-                            id='calls-widget-toggle-menu-button'
-                            className='cursor--pointer style--none button-controls'
-                            style={this.style.menuButton}
-                            onClick={this.onMenuClick}
-                        >
-                            <HorizontalDotsIcon
-                                style={{width: '16px', height: '16px'}}
-                            />
-                        </button>
-
-                        <OverlayTrigger
-                            key='participants'
-                            placement='top'
-                            overlay={
-                                <Tooltip id='tooltip-mute'>
-                                    {this.state.showParticipantsList ? 'Hide participants' : 'Show participants'}
-                                    <Shortcut shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}/>
-                                </Tooltip>
-                            }
-                        >
-                            <button
-                                className='style--none button-controls button-controls--wide'
-                                id='calls-widget-participants-button'
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    color: this.state.showParticipantsList ? 'rgba(28, 88, 217, 1)' : '',
-                                    background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.12)' : '',
-                                }}
-                                onClick={() => this.onParticipantsButtonClick()}
-                            >
-                                <ParticipantsIcon
-                                    style={{width: '16px', height: '16px', marginRight: '4px'}}
-                                />
-
-                                <span
-                                    style={{fontWeight: 600, color: changeOpacity(this.props.theme.centerChannelColor, 0.64)}}
-                                >{this.props.profiles.length}</span>
-                            </button>
-                        </OverlayTrigger>
-
-                        { !isDirectChannel(this.props.channel) &&
-                        <WidgetButton
-                            id='raise-hand'
-                            onToggle={() => this.onRaiseHandToggle()}
-                            shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
-                            tooltipText={handTooltipText}
-                            bgColor={window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
-                            icon={<HandIcon style={{width: '16px', height: '16px', fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : ''}}/>}
-                        />
-                        }
-
-                        {this.props.allowScreenSharing && (widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
-
-                        <WidgetButton
-                            id='voice-mute-unmute'
-                            // eslint-disable-next-line no-undefined
-                            onToggle={noInputDevices ? undefined : this.onMuteToggle}
-                            // eslint-disable-next-line no-undefined
-                            shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
-                            tooltipText={muteTooltipText}
-                            tooltipSubtext={muteTooltipSubtext}
-                            bgColor={window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
-                            icon={<MuteIcon style={{width: '16px', height: '16px', fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)'}}/>}
-                            unavailable={noInputDevices || noAudioPermissions}
-                        />
                     </div>
                 </div>
             </div>

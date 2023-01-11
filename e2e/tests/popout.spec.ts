@@ -1,4 +1,4 @@
-import {test, expect, chromium} from '@playwright/test';
+import {test, expect} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
@@ -22,7 +22,7 @@ test.describe('popout window', () => {
         await expect(popOut.locator('#calls-popout-mute-button')).toBeVisible();
         const text = await popOut.textContent('#calls-popout-mute-button');
 
-        await popOut.locator('.button-leave').click();
+        await popOut.locator('#calls-popout-leave-button').click();
     });
 
     test('popout opens in a DM channel', async ({page, context}) => {
@@ -35,7 +35,7 @@ test.describe('popout window', () => {
             page.click('#calls-widget-expand-button'),
         ]);
         await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
-        await popOut.locator('.button-leave').click();
+        await popOut.locator('#calls-popout-leave-button').click();
     });
 
     test('window title matches', async ({page, context}) => {
@@ -51,7 +51,7 @@ test.describe('popout window', () => {
         await expect(popOut).toHaveTitle(`Call - ${getChannelNameForTest()}`);
         await expect(page).not.toHaveTitle(`Call - ${getChannelNameForTest()}`);
 
-        await popOut.locator('.button-leave').click();
+        await popOut.locator('#calls-popout-leave-button').click();
     });
 
     test('supports chat', async ({page, context}) => {
@@ -78,7 +78,7 @@ test.describe('popout window', () => {
         await popOut.click('#calls-popout-chat-button button');
         await expect(popOut.locator('#sidebar-right')).not.toBeVisible();
 
-        await popOut.locator('.button-leave').click();
+        await popOut.locator('#calls-popout-leave-button').click();
     });
 
     test('supports chat in a DM channel', async ({page, context}) => {
@@ -105,7 +105,7 @@ test.describe('popout window', () => {
         await popOut.click('#calls-popout-chat-button button');
         await expect(popOut.locator('#sidebar-right')).not.toBeVisible();
 
-        await popOut.locator('.button-leave').click();
+        await popOut.locator('#calls-popout-leave-button').click();
     });
 });
 

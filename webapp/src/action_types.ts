@@ -20,6 +20,8 @@ export const VOICE_CHANNEL_USER_UNRAISE_HAND = pluginId + '_voice_channel_user_u
 export const VOICE_CHANNEL_USER_REACTED = pluginId + '_voice_channel_user_reacted';
 export const VOICE_CHANNEL_USER_REACTED_TIMEOUT = pluginId + '_voice_channel_user_reacted_timeout';
 export const VOICE_CHANNEL_ROOT_POST = pluginId + '_voice_channel_root_post';
+export const VOICE_CHANNEL_CALL_HOST = pluginId + '_voice_channel_call_host';
+export const VOICE_CHANNEL_CALL_RECORDING_STATE = pluginId + '_voice_channel_call_recording_state';
 
 export const SHOW_EXPANDED_VIEW = pluginId + '_show_expanded_view';
 export const HIDE_EXPANDED_VIEW = pluginId + '_hide_expanded_view';

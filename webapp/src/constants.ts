@@ -24,9 +24,19 @@ export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
     missingScreenPermissions: {
         type: CallAlertType.Error,
         icon: 'monitor',
-        bannerText: 'Allow screen recording access to Mattermost in your system preferences.',
+        bannerText: 'Screen recording access is not currently allowed or was cancelled.',
         tooltipText: 'No screen sharing permissions',
         tooltipSubtext: 'Allow screen recording access to Mattermost.',
     },
 };
 
+export const CallRecordingDisclaimerStrings: {[key: string]: {[key: string]: string}} = {
+    host: {
+        header: 'You are recording',
+        body: 'You are recording this meeting. Consider letting everyone know that this meeting is being recorded.',
+    },
+    participant: {
+        header: 'Recording is in progress',
+        body: 'Host has started recording this meeting. By staying in the meeting you give consent to being recorded.',
+    },
+};

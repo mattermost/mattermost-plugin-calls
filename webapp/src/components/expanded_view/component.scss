@@ -4,10 +4,8 @@
   align-items: center;
   border-radius: 8px;
   color: white;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.12);
+  padding: 16px;
   border: none;
-  app-region: no-drag;
 
   &:hover {
     color: rgba(28, 88, 217);
@@ -35,7 +33,6 @@
   padding: 14px 20px;
   background: rgb(var(--dnd-indicator-rgb));
   border: none;
-  app-region: no-drag;
 
   &:hover {
     color: white;
