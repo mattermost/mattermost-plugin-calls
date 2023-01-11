@@ -1,12 +1,16 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {forwardRef, RefObject, useImperativeHandle, useRef, useState} from 'react';
-import Picker from '@emoji-mart/react';
-
+import React, {forwardRef, useImperativeHandle, useState} from 'react';
 import styled, {css} from 'styled-components';
-
 import {OverlayTrigger} from 'react-bootstrap';
+import EmojiPicker, {
+    EmojiClickData,
+    EmojiStyle,
+    SkinTonePickerLocation,
+    SuggestionMode,
+    Theme,
+} from 'emoji-picker-react';
 
 import {HandRightOutlineIcon, HandRightOutlineOffIcon} from '@mattermost/compass-icons/components';
 
@@ -64,11 +68,11 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     const callsClient = getCallsClient();
     const addReactionText = showBar ? 'Close Reactions' : 'Add Reaction';
 
-    const handleUserPicksEmoji = (ev: EmojiPickEvent) => {
-        const emojiData = {
-            name: ev.id,
-            skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : undefined, // eslint-disable-line no-undefined
-            unified: ev.unified.toUpperCase(),
+    const handleUserPicksEmoji = (ecd: EmojiClickData) => {
+        const emojiData: EmojiData = {
+            name: ecd.emoji,
+            skin: ecd.activeSkinTone,
+            unified: ecd.unified.toUpperCase(),
         };
         callsClient.sendUserReaction(emojiData);
     };
@@ -122,24 +126,27 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
         });
     };
 
-    const toggleReactions = () => setShowBar((prev) => !prev);
+    const toggleReactions = () => setShowBar((prev) => {
+        if (prev && showPicker) {
+            setShowPicker(false);
+        }
+        return !prev;
+    });
 
     return (
         <div style={{position: 'relative'}}>
             {showPicker &&
                 <PickerContainer>
-                    <Picker
+                    <EmojiPicker
                         emojiVersion={EMOJI_VERSION}
-                        set={'apple'}
-                        skinTonePosition='search'
-                        onEmojiSelect={handleUserPicksEmoji}
-                        onClickOutside={clickedOutsidePicker}
-                        autoFocus={true}
-                        perLine={9}
-                        emojiButtonSize={35}
-                        emojiSize={24}
-                        previewPosition={'none'}
-                        maxFrequentRows={1}
+                        emojiStyle={EmojiStyle.APPLE}
+                        skinTonePickerLocation={SkinTonePickerLocation.SEARCH}
+                        onEmojiClick={handleUserPicksEmoji}
+                        autoFocusSearch={true}
+                        theme={Theme.DARK}
+                        previewConfig={{showPreview: false}}
+                        suggestedEmojisMode={SuggestionMode.RECENT}
+                        height={400}
                     />
                 </PickerContainer>
             }
@@ -214,12 +221,12 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
 
 interface QuickSelectProps {
     emoji: EmojiData,
-    handleClick: (e: EmojiPickEvent) => void
+    handleClick: (e: EmojiClickData) => void
 }
 
 const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
     const onClick = () => {
-        handleClick({id: emoji.name, unified: emoji.unified});
+        handleClick({emoji: emoji.name, unified: emoji.unified} as EmojiClickData);
     };
 
     return (
@@ -231,7 +238,7 @@ const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
 
 const PickerContainer = styled.div`
     position: absolute;
-    top: -496px;
+    top: -462px;
     left: -129px;
 
     // style the emoji selector
@@ -241,11 +248,20 @@ const PickerContainer = styled.div`
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
         }
     }
+
+    .EmojiPickerReact {
+        --epr-emoji-size: 24px;
+        --epr-bg-color: #090A0B;
+        --epr-category-label-bg-color: #090A0B;
+        --epr-picker-border-color: rgba(221, 223, 228, 0.16);
+        --epr-search-border-color: #5D89EA;
+        --epr-picker-border-radius: 4px;
+    }
 `;
 
 const Bar = styled.div`
     position: absolute;
-    min-width: 343px; // to match the emoji picker
+    min-width: 351px; // to match the emoji picker
     top: -56px;
     left: -130px;
     display: flex;
@@ -275,6 +291,7 @@ const HandsButton = styled.button<{ active: boolean }>`
     :hover {
         background: rgba(221, 223, 228, 0.08);
     }
+
     ${({active}) => (active && css`
         background: rgba(245, 171, 0, 0.24);
 
