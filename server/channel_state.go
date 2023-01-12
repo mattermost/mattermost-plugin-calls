@@ -12,6 +12,7 @@ type recordingState struct {
 	ID        string `json:"id"`
 	CreatorID string `json:"creator_id"`
 	JobID     string `json:"job_id"`
+	BotConnID string `json:"bot_conn_id"`
 	RecordingStateClient
 }
 
@@ -273,7 +274,7 @@ func (p *Plugin) cleanUpState() error {
 				continue
 			}
 
-			if len(k) < 26 {
+			if len(k) != 26 {
 				continue
 			}
 
