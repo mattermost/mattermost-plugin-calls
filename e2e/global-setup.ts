@@ -121,7 +121,7 @@ async function globalSetup(config: FullConfig) {
             data: [
                 {user_id: user.id, category: 'recommended_next_steps', name: 'hide', value: 'true'},
                 {user_id: user.id, category: 'insights', name: 'insights_tutorial_state', value: '{"insights_modal_viewed":true}'},
-                {user_id: user.id, category: 'drafts', name: 'drafts_tour_tip_showed', value: 'true'},
+                {user_id: user.id, category: 'drafts', name: 'drafts_tour_tip_showed', value: '{"drafts_tour_tip_showed":true}'},
             ],
             headers,
         });
