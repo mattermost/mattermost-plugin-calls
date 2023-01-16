@@ -124,6 +124,7 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 		if userID == botID {
 			if state.Call.Recording != nil && state.Call.Recording.StartAt == 0 {
 				state.Call.Recording.StartAt = time.Now().UnixMilli()
+				state.Call.Recording.BotConnID = connID
 			} else if state.Call.Recording == nil || state.Call.Recording.StartAt > 0 {
 				// In this case we should fail to prevent the bot from recording
 				// without consent.
@@ -185,8 +186,6 @@ func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelSta
 	var prevState channelState
 	errNotFound := errors.New("not found")
 
-	botID := p.getBotID()
-
 	setChannelState := func(state *channelState) (*channelState, error) {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
@@ -221,7 +220,7 @@ func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelSta
 
 		// If the bot leaves the call and recording has not been stopped it either means
 		// something has failed or the max duration timeout triggered.
-		if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 && userID == botID {
+		if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 && connID == state.Call.Recording.BotConnID {
 			state.Call.Recording.EndAt = time.Now().UnixMilli()
 		}
 
@@ -298,7 +297,7 @@ func (p *Plugin) removeSession(us *session) error {
 
 	// Checking if the recording has ended due to the bot leaving.
 	if prevState.Call != nil && prevState.Call.Recording != nil && currState.Call != nil && currState.Call.Recording != nil &&
-		prevState.Call.Recording.EndAt != currState.Call.Recording.EndAt {
+		currState.Call.Recording.EndAt > prevState.Call.Recording.EndAt {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   us.channelID,
 			"recState": currState.Call.Recording.getClientState().toMap(),
