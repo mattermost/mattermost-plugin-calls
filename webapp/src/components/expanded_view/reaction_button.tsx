@@ -1,12 +1,16 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {forwardRef, RefObject, useImperativeHandle, useRef, useState} from 'react';
-import Picker from '@emoji-mart/react';
-
+import React, {forwardRef, useImperativeHandle, useState} from 'react';
 import styled, {css} from 'styled-components';
-
 import {OverlayTrigger} from 'react-bootstrap';
+import EmojiPicker, {
+    EmojiClickData,
+    EmojiStyle,
+    SkinTonePickerLocation,
+    SuggestionMode,
+    Theme,
+} from 'emoji-picker-react';
 
 import {HandRightOutlineIcon, HandRightOutlineOffIcon} from '@mattermost/compass-icons/components';
 
@@ -46,15 +50,8 @@ interface Props {
 }
 
 export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
-    const barRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const [showPicker, setShowPicker] = useState(false);
     const [showBar, setShowBar] = useState(false);
-
-    // Note: this is such a hack. Emoji-mart seems be mounted and then receives the onClickOutside immediately after.
-    //  (it's not really that emoji-mart/react doesn't trigger the cleanup function when it's unmounted, see:
-    //  https://github.com/missive/emoji-mart/issues/635, because clicking once it's unmounted doesn't fire the onClickOutside event.)
-    //  e.preventDefault() doesn't stop the click from propogating to the newly mounted picker.
-    const [pickerHack, setPickerHack] = useState(true);
 
     useImperativeHandle(ref, () => ({
         toggle() {
@@ -65,11 +62,11 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     const callsClient = getCallsClient();
     const addReactionText = showBar ? 'Close Reactions' : 'Add Reaction';
 
-    const handleUserPicksEmoji = (ev: EmojiPickEvent) => {
-        const emojiData = {
-            name: ev.id,
-            skin: ev.skin ? EMOJI_SKINTONE_MAP.get(ev.skin) : undefined, // eslint-disable-line no-undefined
-            unified: ev.unified.toUpperCase(),
+    const handleUserPicksEmoji = (ecd: EmojiClickData) => {
+        const emojiData: EmojiData = {
+            name: ecd.emoji,
+            skin: ecd.activeSkinTone,
+            unified: ecd.unified.toUpperCase(),
         };
         callsClient.sendUserReaction(emojiData);
     };
@@ -93,59 +90,35 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     ) : <HandRightOutlineIcon size={18}/>;
 
     const toggleShowPicker = () => {
-        setShowPicker((showing) => {
-            if (showing) {
-                // We are showing, and clicking the emoji icon sends an event here (but not to onClickOutside because
-                // it's closed before it has a chance to handle it). So reset the pickerHack to false for the next time.
-                setPickerHack(false);
-            }
-            return !showing;
-        });
+        setShowPicker((showing) => !showing);
     };
-    const clickedOutsidePicker = () => {
-        if (!pickerHack) {
-            // Here's the hack: don't trigger the showPicker if we received this click immediately after mounting.
-            setPickerHack(true);
-            return;
+
+    const toggleReactions = () => setShowBar((prev) => {
+        if (prev && showPicker) {
+            setShowPicker(false);
         }
-
-        // We have set pickerHack in the past, so this is a regular clickedOutsidePicker event.
-        setShowPicker((showing) => {
-            if (showing) {
-                // Reset the hack and close the picker.
-                setPickerHack(false);
-                return false;
-            }
-
-            // show the picker? (this should never happen--if the picker is not showing, it shouldn't receive the outsideClick.)
-            // But just in case:
-            return true;
-        });
-    };
-
-    const toggleReactions = () => setShowBar((prev) => !prev);
+        return !prev;
+    });
 
     return (
         <div style={{position: 'relative'}}>
             {showPicker &&
                 <PickerContainer>
-                    <Picker
+                    <EmojiPicker
                         emojiVersion={EMOJI_VERSION}
-                        set={'apple'}
-                        skinTonePosition='search'
-                        onEmojiSelect={handleUserPicksEmoji}
-                        onClickOutside={clickedOutsidePicker}
-                        autoFocus={true}
-                        perLine={9}
-                        emojiButtonSize={35}
-                        emojiSize={24}
-                        previewPosition={'none'}
-                        maxFrequentRows={1}
+                        emojiStyle={EmojiStyle.APPLE}
+                        skinTonePickerLocation={SkinTonePickerLocation.SEARCH}
+                        onEmojiClick={handleUserPicksEmoji}
+                        autoFocusSearch={true}
+                        theme={Theme.DARK}
+                        previewConfig={{showPreview: false}}
+                        suggestedEmojisMode={SuggestionMode.RECENT}
+                        height={400}
                     />
                 </PickerContainer>
             }
             {showBar &&
-                <Bar ref={barRef}>
+                <Bar>
                     <OverlayTrigger
                         key={'calls-popout-raisehand-button'}
                         placement='top'
@@ -215,12 +188,12 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
 
 interface QuickSelectProps {
     emoji: EmojiData,
-    handleClick: (e: EmojiPickEvent) => void
+    handleClick: (e: EmojiClickData) => void
 }
 
 const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
     const onClick = () => {
-        handleClick({id: emoji.name, unified: emoji.unified});
+        handleClick({emoji: emoji.name, unified: emoji.unified} as EmojiClickData);
     };
 
     return (
@@ -232,7 +205,7 @@ const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
 
 const PickerContainer = styled.div`
     position: absolute;
-    top: -496px;
+    top: -462px;
     left: -129px;
 
     // style the emoji selector
@@ -242,11 +215,20 @@ const PickerContainer = styled.div`
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
         }
     }
+
+    .EmojiPickerReact {
+        --epr-emoji-size: 24px;
+        --epr-bg-color: #090A0B;
+        --epr-category-label-bg-color: #090A0B;
+        --epr-picker-border-color: rgba(221, 223, 228, 0.16);
+        --epr-search-border-color: #5D89EA;
+        --epr-picker-border-radius: 4px;
+    }
 `;
 
 const Bar = styled.div`
     position: absolute;
-    min-width: 343px; // to match the emoji picker
+    min-width: 351px; // to match the emoji picker
     top: -56px;
     left: -130px;
     display: flex;
@@ -276,6 +258,7 @@ const HandsButton = styled.button<{ active: boolean }>`
     :hover {
         background: rgba(221, 223, 228, 0.08);
     }
+
     ${({active}) => (active && css`
         background: rgba(245, 171, 0, 0.24);
 

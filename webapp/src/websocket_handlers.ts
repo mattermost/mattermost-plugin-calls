@@ -37,7 +37,6 @@ import {
 import {
     connectedChannelID,
     idToProfileInConnectedChannel,
-    voiceConnectedProfilesInChannel,
     shouldPlayJoinUserSound,
 } from './selectors';
 
@@ -231,7 +230,9 @@ export function handleUserUnraisedHand(store: Store, ev: any) {
 }
 
 export function handleUserReaction(store: Store, ev: any) {
-    if (connectedChannelID(store.getState()) !== ev.broadcast.channel_id) {
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
+
+    if (connectedChannelID(store.getState()) !== channelID) {
         return;
     }
 
@@ -244,7 +245,7 @@ export function handleUserReaction(store: Store, ev: any) {
     store.dispatch({
         type: VOICE_CHANNEL_USER_REACTED,
         data: {
-            channelID: ev.broadcast.channel_id,
+            channelID,
             userID: ev.data.user_id,
             reaction,
         },
@@ -253,7 +254,7 @@ export function handleUserReaction(store: Store, ev: any) {
         store.dispatch({
             type: VOICE_CHANNEL_USER_REACTED_TIMEOUT,
             data: {
-                channelID: ev.broadcast.channel_id,
+                channelID,
                 userID: ev.data.user_id,
                 reaction,
             },

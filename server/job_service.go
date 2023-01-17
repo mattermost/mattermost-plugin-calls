@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/mattermost/mattermost-plugin-api/cluster"
 
@@ -18,7 +19,8 @@ import (
 )
 
 const jobServiceConfigKey = "jobservice_config"
-const recordingJobRunner = "mattermost/calls-recorder:v0.2.1"
+const recordingJobRunner = "mattermost/calls-recorder:v0.2.2"
+const runnerUpdateLockTimeout = 2 * time.Minute
 
 type jobService struct {
 	ctx    *Plugin
@@ -210,6 +212,24 @@ func (s *jobService) GetJob(jobID string) (offloader.Job, error) {
 
 func (s *jobService) GetJobLogs(jobID string) ([]byte, error) {
 	return s.client.GetJobLogs(jobID)
+}
+
+func (s *jobService) UpdateJobRunner(runner string) error {
+	// Here we need some coordination to avoid multiple plugin instances to
+	// update the runner concurrently.
+	mutex, err := cluster.NewMutex(s.ctx.API, "job_service_runner_update")
+	if err != nil {
+		return fmt.Errorf("failed to create cluster mutex: %w", err)
+	}
+
+	lockCtx, cancelCtx := context.WithTimeout(context.Background(), runnerUpdateLockTimeout)
+	defer cancelCtx()
+	if err := mutex.LockWithContext(lockCtx); err != nil {
+		return fmt.Errorf("failed to acquire cluster lock: %w", err)
+	}
+	defer mutex.Unlock()
+
+	return s.client.UpdateJobRunner(runner)
 }
 
 func (s *jobService) RunRecordingJob(callID, threadID, authToken string) (string, error) {

@@ -82,6 +82,11 @@ func (p *Plugin) newRTCDClientManager(rtcdURL string) (m *rtcdClientManager, err
 		if err != nil {
 			return nil, err
 		}
+
+		if err := m.versionCheck(client); err != nil {
+			return nil, fmt.Errorf("version compatibility check failed: %w", err)
+		}
+
 		if err := m.addHost(ip.String(), client); err != nil {
 			return nil, fmt.Errorf("failed to add host: %w", err)
 		}
@@ -142,6 +147,11 @@ func (m *rtcdClientManager) hostsChecker() {
 					client, err := m.newRTCDClient(m.rtcdURL, ip, getDialFn(ip, m.rtcdPort))
 					if err != nil {
 						m.ctx.LogError(fmt.Sprintf("failed to create new client: %s", err.Error()), "host", ip)
+						continue
+					}
+
+					if err := m.versionCheck(client); err != nil {
+						m.ctx.LogError(fmt.Sprintf("version compatibility check failed: %s", err.Error()), "host", ip)
 						continue
 					}
 
@@ -297,6 +307,34 @@ func resolveURL(u string, timeout time.Duration) ([]net.IP, string, error) {
 	}
 
 	return ips, port, nil
+}
+
+func (m *rtcdClientManager) versionCheck(client *rtcd.Client) error {
+	// Version compatibility check.
+	info, err := client.GetVersionInfo()
+	if err != nil {
+		return fmt.Errorf("failed to get rtcd version info: %w", err)
+	}
+
+	minRTCDVersion, ok := manifest.Props["min_rtcd_version"].(string)
+	if !ok {
+		return fmt.Errorf("failed to get min_rtcd_version from manifest")
+	}
+
+	// Always support dev builds.
+	if info.BuildVersion == "" || strings.HasPrefix(info.BuildVersion, "dev") {
+		return nil
+	}
+
+	if err := checkMinVersion(minRTCDVersion, info.BuildVersion); err != nil {
+		return fmt.Errorf("minimum version check failed: %w", err)
+	}
+
+	m.ctx.LogDebug("rtcd version compatibility check succeeded",
+		"min_rtcd_version", minRTCDVersion,
+		"curr_rtcd_version", info.BuildVersion)
+
+	return nil
 }
 
 func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.DialContextFn) (*rtcd.Client, error) {
