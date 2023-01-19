@@ -104,6 +104,20 @@ async function globalSetup(config: FullConfig) {
 
     const team = await resp.json();
 
+    const getPreferences = (userID: string) => [
+        {user_id: userID, category: 'recommended_next_steps', name: 'hide', value: 'true'},
+        {user_id: userID, category: 'insights', name: 'insights_tutorial_state', value: '{"insights_modal_viewed":true}'},
+        {user_id: userID, category: 'drafts', name: 'drafts_tour_tip_showed', value: '{"drafts_tour_tip_showed":true}'},
+    ];
+
+    // set admin preferences
+    resp = await adminContext.get('/api/v4/users/me');
+    const adminUser = await resp.json();
+    await adminContext.put(`/api/v4/users/${adminUser.id}/preferences`, {
+        data: getPreferences(adminUser.id),
+        headers,
+    });
+
     // add users to team.
     for (const userInfo of userState.users) {
         resp = await adminContext.get(`/api/v4/users/username/${userInfo.username}`);
@@ -118,10 +132,7 @@ async function globalSetup(config: FullConfig) {
 
         // disable various onboarding flows
         await adminContext.put(`/api/v4/users/${user.id}/preferences`, {
-            data: [
-                {user_id: user.id, category: 'recommended_next_steps', name: 'hide', value: 'true'},
-                {user_id: user.id, category: 'insights', name: 'insights_tutorial_state', value: '{"insights_modal_viewed":true}'},
-            ],
+            data: getPreferences(user.id),
             headers,
         });
 

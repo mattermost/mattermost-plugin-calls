@@ -26,7 +26,7 @@ export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
     missingScreenPermissions: {
         type: CallAlertType.Error,
         icon: 'monitor',
-        bannerText: 'Allow screen recording access to Mattermost in your system preferences.',
+        bannerText: 'Screen recording access is not currently allowed or was cancelled.',
         tooltipText: 'No screen sharing permissions',
         tooltipSubtext: 'Allow screen recording access to Mattermost.',
         dismissable: true,

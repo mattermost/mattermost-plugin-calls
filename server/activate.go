@@ -96,14 +96,29 @@ func (p *Plugin) OnActivate() error {
 	p.botSession = session
 
 	if p.licenseChecker.RecordingsAllowed() && cfg.recordingsEnabled() {
-		p.jobService, err = p.newJobService(cfg.getJobServiceURL())
+		p.LogDebug("initializing job service")
+		jobService, err := p.newJobService(cfg.getJobServiceURL())
 		if err != nil {
 			err = fmt.Errorf("failed to create job service: %w", err)
 			p.LogError(err.Error())
 			return err
 		}
 
-		p.LogDebug("job service initialized successfully")
+		go func() {
+			p.LogDebug("updating job runner")
+
+			if err := jobService.UpdateJobRunner(recordingJobRunner); err != nil {
+				err = fmt.Errorf("failed to update job runner: %w", err)
+				p.LogError(err.Error())
+				return
+			}
+
+			p.mut.Lock()
+			p.jobService = jobService
+			p.mut.Unlock()
+
+			p.LogDebug("job service initialized successfully")
+		}()
 	}
 
 	if rtcdURL := cfg.getRTCDURL(); rtcdURL != "" && p.licenseChecker.RTCDAllowed() {

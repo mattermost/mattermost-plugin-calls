@@ -4,7 +4,6 @@
 
 import React from 'react';
 import {compareSemVer} from 'semver-parser';
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 
 import {UserProfile} from '@mattermost/types/users';
@@ -40,14 +39,12 @@ import {
 } from 'src/constants';
 
 import {
-    startCallRecording,
     stopCallRecording,
 } from '../../actions';
 
 import * as Telemetry from 'src/types/telemetry';
 import Avatar from 'src/components/avatar/avatar';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
-import {Emoji} from 'src/components/emoji/emoji';
 import CompassIcon from 'src/components/icons/compassIcon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
@@ -55,7 +52,6 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import ParticipantsIcon from 'src/components/icons/participants';
 import CallDuration from 'src/components/call_widget/call_duration';
-import Shortcut from 'src/components/shortcut';
 import Badge from 'src/components/badge';
 
 import {
@@ -115,6 +111,7 @@ interface Props extends RouteComponentProps {
     allowScreenSharing: boolean,
     recordingsEnabled: boolean,
     recordingMaxDuration: number,
+    startCallRecording: (callID: string) => void,
 }
 
 interface State {
@@ -203,6 +200,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.getCallsClient()?.mute();
             this.pushToTalk = false;
             this.forceUpdate();
+            return;
+        }
+
+        // Disabling Alt+ sequences as they would show the window menu on Linux Desktop.
+        if (window.opener?.desktop && (ev.key === 'Alt' || ev.altKey)) {
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
         }
     }
 
@@ -286,7 +290,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     onRecordToggle = async (fromShortcut?: boolean) => {
         if (!this.props.callRecording || this.props.callRecording.end_at > 0) {
-            await startCallRecording(this.props.channel.id);
+            await this.props.startCallRecording(this.props.channel.id);
             this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
             await stopCallRecording(this.props.channel.id);
@@ -365,6 +369,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onCloseViewClick = () => {
+        if (window.opener) {
+            return;
+        }
+
+        // This desktop (pre-global widget)'s window.
         this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
         this.props.hideExpandedView();
     }
@@ -611,8 +620,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     renderParticipants = () => {
-        return this.props.profiles.map((profile, idx) => {
+        return this.props.profiles.map((profile) => {
             const status = this.props.statuses[profile.id];
+
             let isMuted = true;
             let isSpeaking = false;
             let isHandRaised = false;
@@ -624,7 +634,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
             return (
                 <CallParticipant
-                    key={'participants_profile_' + idx}
+                    key={profile.id}
                     name={`${getUserDisplayName(profile)}${profile.id === this.props.currentUserID ? ' (you)' : ''}`}
                     pictureURL={this.props.pictures[profile.id]}
                     isMuted={isMuted}
@@ -812,7 +822,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <div style={styles.main}>
                     {this.renderAlertBanner()}
 
-                    <div style={{display: 'flex', width: '100%'}}>
+                    <div style={styles.topContainer}>
                         <div style={styles.topLeftContainer}>
                             { this.renderRecordingBadge() }
                             <CallDuration
@@ -821,6 +831,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                             <span style={{margin: '4px'}}>{'•'}</span>
                             <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
+                            <span style={{flex: 1}}/>
                         </div>
                         {
                             !window.opener &&
@@ -841,7 +852,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 id='calls-expanded-view-participants-grid'
                                 style={{
                                     ...styles.participants,
-                                    gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, 4)}, 1fr)`,
+                                    gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, MaxParticipantsPerRow)}, 1fr)`,
                                 }}
                             >
                                 {this.renderParticipants()}
@@ -1057,7 +1068,6 @@ const styles: Record<string, CSSObject> = {
         zIndex: 1000,
         background: '#1E1E1E',
         color: 'white',
-        appRegion: 'drag',
         gridArea: 'center',
         overflow: 'auto',
     },
@@ -1068,7 +1078,6 @@ const styles: Record<string, CSSObject> = {
     },
     closeViewButton: {
         fontSize: '24px',
-        marginLeft: 'auto',
     },
     participants: {
         display: 'grid',
@@ -1088,15 +1097,20 @@ const styles: Record<string, CSSObject> = {
         alignItems: 'center',
         justifyContent: 'center',
     },
+    topContainer: {
+        display: 'flex',
+        width: '100%',
+    },
     topLeftContainer: {
+        flex: 1,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: '16px',
         lineHeight: '24px',
         fontWeight: 600,
-        marginRight: 'auto',
-        margin: '12px',
+        marginLeft: '12px',
+        height: '56px',
     },
     screenContainer: {
         display: 'flex',

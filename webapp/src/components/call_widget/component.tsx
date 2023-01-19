@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import React, {CSSProperties} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {compareSemVer} from 'semver-parser';
@@ -381,14 +382,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
 
             if (isDirectChannel(this.props.channel) || isGroupChannel(this.props.channel)) {
-                // FIXME (MM-46048) - HACK
-                // There's a race condition between unmuting and receiving existing tracks from other participants.
-                // Fixing this properly requires extensive and potentially breaking changes.
-                // Waiting for a second before unmuting is a decent workaround that should work in most cases.
-                setTimeout(() => {
-                    window.callsClient?.unmute();
-                }, 1000);
+                window.callsClient?.unmute();
             }
+
             this.setState({currentAudioInputDevice: window.callsClient.currentAudioInputDevice});
             this.setState({currentAudioOutputDevice: window.callsClient.currentAudioOutputDevice});
         });
@@ -1443,14 +1439,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (window.desktop && !this.props.global) {
             this.props.showExpandedView();
         } else {
-            let features = 'resizable=yes';
-            if (this.props.global) {
-                features += ',frame=false';
-            }
             const expandedViewWindow = window.open(
                 getPopOutURL(this.props.team, this.props.channel),
                 'ExpandedView',
-                features,
+                'resizable=yes',
             );
 
             this.setState({

@@ -7,6 +7,7 @@ import {Post} from '@mattermost/types/posts';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
+import CompassIcon from 'src/components/icons/compassIcon';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
@@ -53,15 +54,26 @@ const PostType = ({
         }
     };
 
+    const recordings = post.props.recording_files?.length || 0;
+
+    const recordingsSubMessage = recordings > 0 ? (
+        <>
+            <Divider>{'•'}</Divider>
+            <CompassIcon icon='file-video-outline'/>
+            <span>{`${recordings} recording${recordings > 1 ? 's' : ''} available`}</span>
+        </>
+    ) : null;
+
     const subMessage = post.props.end_at ? (
         <>
             <Duration>
                 {`Ended at ${moment(post.props.end_at).format('h:mm A')}`}
             </Duration>
-            <span style={{margin: '0 4px'}}>{'•'}</span>
+            <Divider>{'•'}</Divider>
             <Duration>
                 {`Lasted ${moment.duration(post.props.end_at - post.props.start_at).humanize(false)}`}
             </Duration>
+            { recordingsSubMessage }
         </>
     ) : (
         <Duration>{moment(post.props.start_at).fromNow()}</Duration>
@@ -255,6 +267,10 @@ const DisabledButton = styled(Button)`
     color: rgba(var(--center-channel-color-rgb), 0.32);
     background: rgba(var(--center-channel-color-rgb), 0.08);
     cursor: not-allowed;
+`;
+
+const Divider = styled.span`
+    margin: 0 4px;
 `;
 
 export default PostType;

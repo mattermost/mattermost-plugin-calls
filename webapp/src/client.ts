@@ -336,7 +336,7 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('initaudio');
         this.removeAllListeners('mos');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
-        navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
+        navigator.mediaDevices?.removeEventListener('devicechange', this.onDeviceChange);
     }
 
     public async setAudioInputDevice(device: MediaDeviceInfo) {

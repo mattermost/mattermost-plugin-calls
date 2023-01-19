@@ -1,27 +1,21 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
+import {Provider} from 'react-redux';
 
 import {Store} from 'plugin/types/mattermost-webapp';
 import {Theme} from 'mattermost-redux/types/themes';
 import {UserProfile} from '@mattermost/types/users';
-
 import {Client4} from 'mattermost-redux/client';
 import {ChannelTypes} from 'mattermost-redux/action_types';
+import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/users';
 
-import {
-    getProfilesByIds,
-    getPluginPath,
-} from 'plugin/utils';
-
-import {
-    logErr,
-} from 'plugin/log';
-
+import {getProfilesByIds, getPluginPath} from 'plugin/utils';
+import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {voiceConnectedProfilesInChannel} from 'plugin/selectors';
+import {VOICE_CHANNEL_USER_CONNECTED} from 'src/action_types';
 
 import recordingReducer from 'src/recording/reducers';
-
 import init from '../init';
 
 import RecordingView from './components/recording_view';
@@ -66,6 +60,15 @@ async function initRecordingStore(store: Store, channelID: string) {
 }
 
 async function initRecording(store: Store, theme: Theme, channelID: string) {
+    await store.dispatch({
+        type: VOICE_CHANNEL_USER_CONNECTED,
+        data: {
+            channelID,
+            userID: getCurrentUserId(store.getState()),
+            currentUserID: getCurrentUserId(store.getState()),
+        },
+    });
+
     const profiles = voiceConnectedProfilesInChannel(store.getState(), channelID);
 
     if (profiles?.length > 0) {
@@ -79,9 +82,9 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
     }
 
     ReactDOM.render(
-        <RecordingView
-            store={store}
-        />,
+        <Provider store={store}>
+            <RecordingView/>
+        </Provider>,
         document.getElementById('root'),
     );
 }
