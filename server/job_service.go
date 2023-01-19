@@ -19,7 +19,7 @@ import (
 )
 
 const jobServiceConfigKey = "jobservice_config"
-const recordingJobRunner = "mattermost/calls-recorder:v0.2.1"
+const recordingJobRunner = "mattermost/calls-recorder:v0.2.2"
 const runnerUpdateLockTimeout = 2 * time.Minute
 
 type jobService struct {
