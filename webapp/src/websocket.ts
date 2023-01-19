@@ -30,8 +30,8 @@ export class WebSocketError extends Error {
 
 export class WebSocketClient extends EventEmitter {
     private ws: WebSocket | null = null;
-    private wsURL: string;
-    private authToken: string;
+    private readonly wsURL: string;
+    private readonly authToken: string;
     private seqNo = 1;
     private serverSeqNo = 0;
     private connID = '';
@@ -144,7 +144,7 @@ export class WebSocketClient extends EventEmitter {
         };
     }
 
-    send(action: string, data?: Object, binary?: boolean) {
+    send(action: string, data?: Record<string, unknown>, binary?: boolean) {
         const msg = {
             action: `${this.eventPrefix}_${action}`,
             seq: this.seqNo++,

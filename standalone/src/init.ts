@@ -7,8 +7,10 @@ import {getMyTeams} from 'mattermost-redux/actions/teams';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
-import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/common';
 import {Theme} from 'mattermost-redux/types/themes';
+
+import {WebSocketMessage} from '@mattermost/types/websocket';
+
 import {Store} from 'plugin/types/mattermost-webapp';
 import {pluginId} from 'plugin/manifest';
 import CallsClient from 'plugin/client';
@@ -20,7 +22,6 @@ import {
     VOICE_CHANNEL_USERS_CONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
     VOICE_CHANNEL_CALL_START,
-    VOICE_CHANNEL_USER_CONNECTED,
 } from 'plugin/action_types';
 import {getCallsConfig} from 'plugin/actions';
 import {
@@ -51,6 +52,16 @@ import {
 } from 'plugin/websocket_handlers';
 
 import {
+    CallHostChangedData,
+    CallStartData,
+    EmptyData,
+    UserConnectedData,
+    UserDisconnectedData, UserMutedUnmutedData, UserRaiseUnraiseHandData, UserReactionData, UserScreenOnOffData,
+    UserVoiceOnOffData,
+    WebsocketEventData,
+} from 'src/types/types';
+
+import {
     getCallID,
     getCallTitle,
     getToken,
@@ -74,7 +85,7 @@ function setBasename() {
     }
 }
 
-function connectCall(channelID: string, callTitle: string, wsURL: string, iceConfigs: RTCIceServer[], wsEventHandler: (ev: any) => void, closeCb?: () => void) {
+function connectCall(channelID: string, callTitle: string, wsURL: string, iceConfigs: RTCIceServer[], wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void, closeCb?: () => void) {
     try {
         if (window.callsClient) {
             logErr('calls client is already initialized');
@@ -254,49 +265,51 @@ export default async function init(cfg: InitConfig) {
     connectCall(channelID, callTitle, getWSConnectionURL(getConfig(store.getState())), iceConfigs, (ev) => {
         switch (ev.event) {
         case 'hello':
-            setServerVersion(ev.data.server_version)(store.dispatch, store.getState);
+            // TODO: where is this server_version coming from? I think we can remove this case.
+            // @ts-ignore
+            store.dispatch(setServerVersion(ev.data.server_version));
             break;
         case `custom_${pluginId}_call_start`:
-            handleCallStart(store, ev);
+            handleCallStart(store, ev as WebSocketMessage<CallStartData>);
             break;
         case `custom_${pluginId}_call_end`:
-            handleCallEnd(store, ev);
+            handleCallEnd(store, ev as WebSocketMessage<EmptyData>);
             break;
         case `custom_${pluginId}_user_connected`:
-            handleUserConnected(store, ev);
+            handleUserConnected(store, ev as WebSocketMessage<UserConnectedData>);
             break;
         case `custom_${pluginId}_user_disconnected`:
-            handleUserDisconnected(store, ev);
+            handleUserDisconnected(store, ev as WebSocketMessage<UserDisconnectedData>);
             break;
         case `custom_${pluginId}_user_voice_on`:
-            handleUserVoiceOn(store, ev);
+            handleUserVoiceOn(store, ev as WebSocketMessage<UserVoiceOnOffData>);
             break;
         case `custom_${pluginId}_user_voice_off`:
-            handleUserVoiceOff(store, ev);
+            handleUserVoiceOff(store, ev as WebSocketMessage<UserVoiceOnOffData>);
             break;
         case `custom_${pluginId}_user_screen_on`:
-            handleUserScreenOn(store, ev);
+            handleUserScreenOn(store, ev as WebSocketMessage<UserScreenOnOffData>);
             break;
         case `custom_${pluginId}_user_screen_off`:
-            handleUserScreenOff(store, ev);
+            handleUserScreenOff(store, ev as WebSocketMessage<UserScreenOnOffData>);
             break;
         case `custom_${pluginId}_user_muted`:
-            handleUserMuted(store, ev);
+            handleUserMuted(store, ev as WebSocketMessage<UserMutedUnmutedData>);
             break;
         case `custom_${pluginId}_user_unmuted`:
-            handleUserUnmuted(store, ev);
+            handleUserUnmuted(store, ev as WebSocketMessage<UserMutedUnmutedData>);
             break;
         case `custom_${pluginId}_user_raise_hand`:
-            handleUserRaisedHand(store, ev);
+            handleUserRaisedHand(store, ev as WebSocketMessage<UserRaiseUnraiseHandData>);
             break;
         case `custom_${pluginId}_user_unraise_hand`:
-            handleUserUnraisedHand(store, ev);
+            handleUserUnraisedHand(store, ev as WebSocketMessage<UserRaiseUnraiseHandData>);
             break;
         case `custom_${pluginId}_call_host_changed`:
-            handleCallHostChanged(store, ev);
+            handleCallHostChanged(store, ev as WebSocketMessage<CallHostChangedData>);
             break;
         case `custom_${pluginId}_user_reacted`:
-            handleUserReaction(store, ev);
+            handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);
 
             break;
         default:

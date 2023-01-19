@@ -1,5 +1,4 @@
 import React from 'react';
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import styled, {css} from 'styled-components';
 
 import CompassIcon from 'src/components/icons/compassIcon';

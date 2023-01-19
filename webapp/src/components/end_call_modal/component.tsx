@@ -3,6 +3,7 @@ import React, {CSSProperties} from 'react';
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {Theme} from 'mattermost-redux/types/themes';
 
 import {isDMChannel, isGMChannel, getUserDisplayName} from 'src/utils';
 import {endCall} from 'src/actions';
@@ -11,7 +12,7 @@ import CompassIcon from 'src/components/icons/compassIcon';
 import './component.scss';
 
 interface Props {
-    theme: any,
+    theme: Theme,
     show: boolean,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
@@ -24,7 +25,7 @@ interface State {
 }
 
 export default class EndCallModal extends React.PureComponent<Props, State> {
-    private node: React.RefObject<HTMLDivElement>;
+    private readonly node: React.RefObject<HTMLDivElement>;
     private style = {
         main: {
             position: 'absolute',
@@ -92,7 +93,7 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
         if (this.props.show && e.key === 'Escape') {
             this.hideModal();
         }
-    }
+    };
 
     private closeOnBlur = (e: Event) => {
         if (!this.props.show) {
@@ -102,7 +103,7 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
             return;
         }
         this.hideModal();
-    }
+    };
 
     private endCall = () => {
         endCall(this.props.channel.id).then(() => {
@@ -112,12 +113,12 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
                 errorMsg: err.response && err.response.data ? err.response.data.err : err.toString(),
             });
         });
-    }
+    };
 
     private hideModal = () => {
         this.setState({errorMsg: ''});
         this.props.hideEndCallModal();
-    }
+    };
 
     componentDidMount() {
         document.addEventListener('keyup', this.keyboardClose, true);

@@ -30,7 +30,7 @@ import CallWidget from 'plugin/components/call_widget';
 import init from '../init';
 
 async function initWidget(store: Store, theme: Theme, channelID: string) {
-    await store.dispatch({
+    store.dispatch({
         type: VOICE_CHANNEL_USER_CONNECTED,
         data: {
             channelID,
@@ -90,7 +90,10 @@ function deinitWidget() {
     setTimeout(() => {
         window.callsClient?.destroy();
         delete window.callsClient;
-        ReactDOM.unmountComponentAtNode(document.getElementById('root')!);
+        const el = document.getElementById('root');
+        if (el) {
+            ReactDOM.unmountComponentAtNode(el);
+        }
         logDebug('sending leave call message to desktop app');
         sendDesktopEvent('calls-leave-call');
     }, 200);

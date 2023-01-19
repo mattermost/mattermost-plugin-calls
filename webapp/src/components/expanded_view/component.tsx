@@ -1,4 +1,5 @@
 /* eslint-disable max-lines */
+
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
@@ -13,7 +14,11 @@ import {Post} from '@mattermost/types/posts';
 
 import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
 
-import {ProductChannelsIcon, RecordCircleOutlineIcon, RecordSquareOutlineIcon} from '@mattermost/compass-icons/components';
+import {
+    ProductChannelsIcon,
+    RecordCircleOutlineIcon,
+    RecordSquareOutlineIcon,
+} from '@mattermost/compass-icons/components';
 
 import {RouteComponentProps} from 'react-router-dom';
 
@@ -40,7 +45,7 @@ import {
 
 import {
     stopCallRecording,
-} from '../../actions';
+} from 'src/actions';
 
 import * as Telemetry from 'src/types/telemetry';
 import Avatar from 'src/components/avatar/avatar';
@@ -107,7 +112,7 @@ interface Props extends RouteComponentProps {
     threadUnreadReplies: number | undefined,
     threadUnreadMentions: number | undefined,
     rhsSelectedThreadID?: string,
-    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
     allowScreenSharing: boolean,
     recordingsEnabled: boolean,
     recordingMaxDuration: number,
@@ -121,20 +126,20 @@ interface State {
 }
 
 const StyledMediaController = styled(MediaController)`
-	height: 100%;
-	background-color: transparent;
+    height: 100%;
+    background-color: transparent;
 `;
 
 const StyledMediaControlBar = styled(MediaControlBar)`
-	display: flex;
-	flex-direction: row;
-	justify-content: flex-end;
-	background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    background-color: rgba(0, 0, 0, 0.5);
 `;
 
 const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
-	font-size: 18px;
-	background-color: transparent;
+    font-size: 18px;
+    background-color: transparent;
 `;
 
 const MaxParticipantsPerRow = 4;
@@ -159,7 +164,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         if (window.opener) {
             const callsClient = window.opener.callsClient;
-            callsClient.on('close', () => window.close());
+            callsClient?.on('close', () => window.close());
 
             // don't allow navigation in expanded window e.g. permalinks in rhs
             this.#unlockNavigation = props.history.block(() => {
@@ -181,7 +186,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     getCallsClient = () => {
         return window.opener ? window.opener.callsClient : window.callsClient;
-    }
+    };
 
     handleBlur = () => {
         if (this.pushToTalk) {
@@ -189,7 +194,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.pushToTalk = false;
             this.forceUpdate();
         }
-    }
+    };
 
     handleKeyUp = (ev: KeyboardEvent) => {
         if (isActiveElementInteractable() && !this.expandedRootRef.current?.contains(document.activeElement)) {
@@ -208,7 +213,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             ev.preventDefault();
             ev.stopImmediatePropagation();
         }
-    }
+    };
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
@@ -250,7 +255,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.onRecordToggle(true);
             break;
         }
-    }
+    };
 
     setDevices = (devices: AudioDevices) => {
         this.setState({
@@ -263,7 +268,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 },
             },
         });
-    }
+    };
 
     onDisconnectClick = () => {
         this.props.hideExpandedView();
@@ -274,19 +279,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 window.close();
             }
         }
-    }
+    };
 
     onMuteToggle = () => {
         if (this.pushToTalk) {
             return;
         }
         const callsClient = this.getCallsClient();
-        if (callsClient.isMuted()) {
+        if (callsClient?.isMuted()) {
             callsClient.unmute();
         } else {
-            callsClient.mute();
+            callsClient?.mute();
         }
-    }
+    };
 
     onRecordToggle = async (fromShortcut?: boolean) => {
         if (!this.props.callRecording || this.props.callRecording.end_at > 0) {
@@ -296,7 +301,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             await stopCallRecording(this.props.channel.id);
             this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
-    }
+    };
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
         if (!this.props.allowScreenSharing) {
@@ -304,7 +309,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
         const callsClient = this.getCallsClient();
         if (this.props.screenSharingID === this.props.currentUserID) {
-            callsClient.unshareScreen();
+            callsClient?.unshareScreen();
             this.setState({
                 screenStream: null,
             });
@@ -320,10 +325,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 if (window.opener && stream) {
                     window.screenSharingTrackId = stream.getVideoTracks()[0].id;
                 }
-                callsClient.setScreenStream(stream);
-                state.screenStream = stream;
-
                 if (stream) {
+                    callsClient?.setScreenStream(stream);
+                    state.screenStream = stream;
+
                     state.alerts = {
                         ...this.state.alerts,
                         missingScreenPermissions: {
@@ -347,18 +352,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
             this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
-    }
+    };
 
     onRaiseHandToggle = (fromShortcut?: boolean) => {
         const callsClient = this.getCallsClient();
-        if (callsClient.isHandRaised) {
+        if (callsClient?.isHandRaised) {
             this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
-            callsClient.unraiseHand();
+            callsClient?.unraiseHand();
         } else {
             this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
-            callsClient.raiseHand();
+            callsClient?.raiseHand();
         }
-    }
+    };
 
     onParticipantsListToggle = (fromShortcut?: boolean) => {
         const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
@@ -366,7 +371,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
         });
-    }
+    };
 
     onCloseViewClick = () => {
         if (window.opener) {
@@ -376,9 +381,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         // This desktop (pre-global widget)'s window.
         this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
         this.props.hideExpandedView();
-    }
+    };
 
-    public componentDidUpdate(prevProps: Props, prevState: State) {
+    public componentDidUpdate(prevProps: Props) {
         if (window.opener) {
             if (document.title.indexOf('Call') === -1 && this.props.channel) {
                 if (isDMChannel(this.props.channel) && this.props.connectedDMUser) {
@@ -410,12 +415,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     public componentDidMount() {
+        const callsClient = this.getCallsClient();
+        if (!callsClient) {
+            return;
+        }
+
         // keyboard shortcuts
         window.addEventListener('keydown', this.handleKBShortcuts, true);
         window.addEventListener('keyup', this.handleKeyUp, true);
         window.addEventListener('blur', this.handleBlur, true);
 
-        const callsClient = this.getCallsClient();
         callsClient.on('remoteScreenStream', (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
@@ -478,7 +487,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             // open thread
             this.props.selectRhsPost?.(this.props.threadID);
         }
-    }
+    };
 
     public componentWillUnmount() {
         window.removeEventListener('keydown', this.handleKBShortcuts, true);
@@ -489,7 +498,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     shouldRenderAlertBanner = () => {
         return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
-    }
+    };
 
     renderAlertBanner = () => {
         for (const keyVal of Object.entries(this.state.alerts)) {
@@ -521,7 +530,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         return null;
-    }
+    };
 
     renderScreenSharingPlayer = () => {
         const isSharing = this.props.screenSharingID === this.props.currentUserID;
@@ -589,7 +598,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <ReactionStream forceLeft={true}/>
             </div>
         );
-    }
+    };
 
     renderParticipants = () => {
         return this.props.profiles.map((profile) => {
@@ -617,10 +626,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 />
             );
         });
-    }
+    };
 
     renderParticipantsRHSList = () => {
-        return this.props.profiles.map((profile, idx) => {
+        return this.props.profiles.map((profile) => {
             const status = this.props.statuses[profile.id];
             let isMuted = true;
             let isSpeaking = false;
@@ -635,7 +644,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
             return (
                 <li
-                    key={'participants_rhs_profile_' + idx}
+                    key={'participants_rhs_profile_' + profile.id}
                     style={{display: 'flex', alignItems: 'center', padding: '4px 8px'}}
                 >
                     <Avatar
@@ -689,7 +698,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 </li>
             );
         });
-    }
+    };
 
     renderRecordingBadge = () => {
         // This should not render if:
@@ -723,7 +732,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 loading={!hasRecStarted}
             />
         );
-    }
+    };
 
     render() {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
@@ -796,7 +805,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                     <div style={styles.topContainer}>
                         <div style={styles.topLeftContainer}>
-                            { this.renderRecordingBadge() }
+                            {this.renderRecordingBadge()}
                             <CallDuration
                                 style={{margin: '4px'}}
                                 startAt={this.props.callStartAt}
@@ -878,7 +887,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 unavailable={noInputDevices || noAudioPermissions}
                             />
 
-                            { isHost && this.props.recordingsEnabled &&
+                            {isHost && this.props.recordingsEnabled &&
                                 <ControlsButton
                                     id='calls-popout-record-button'
                                     onToggle={() => this.onRecordToggle()}
@@ -1005,7 +1014,7 @@ const UnreadIndicator = ({mentions}: { mentions?: number }) => {
 const UnreadDot = styled.span`
     position: absolute;
     z-index: 1;
-    top: 0px;
+    top: 0;
     right: -1px;
     width: 8px;
     height: 8px;

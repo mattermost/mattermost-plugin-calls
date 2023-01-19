@@ -2,28 +2,18 @@ import {Dispatch} from 'redux';
 import axios from 'axios';
 
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
-
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
-
 import {Client4} from 'mattermost-redux/client';
-
-import {CloudCustomer} from '@mattermost/types/cloud';
-
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
-
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
-
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
-
 import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
-
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
 import {CallsConfig} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 import {getPluginPath} from 'src/utils';
-
 import {modals, openPricingModal} from 'src/webapp_globals';
 import {
     CloudFreeTrialModalAdmin,
@@ -31,12 +21,10 @@ import {
     IDAdmin,
     IDUser,
 } from 'src/cloud_pricing/modals';
-
 import {
     CallErrorModalID,
     CallErrorModal,
 } from 'src/components/call_error_modal';
-
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 
 import {
@@ -112,18 +100,6 @@ export const notifyAdminCloudFreeTrial = async () => {
         `${getPluginPath()}/cloud-notify-admins`,
         {method: 'post'},
     );
-};
-
-export const requestCloudTrial = async () => {
-    try {
-        await Client4.doFetchWithResponse<CloudCustomer>(
-            `${Client4.getCloudRoute()}/request-trial`,
-            {method: 'put'},
-        );
-    } catch (error) {
-        return false;
-    }
-    return true;
 };
 
 export const displayFreeTrial = () => {
@@ -204,7 +180,7 @@ export const clearClientError = () => (dispatch: Dispatch<GenericAction>) => {
     });
 };
 
-export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => {
+export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
         const config = getConfig(getState());
         if (config.DiagnosticsEnabled !== 'true') {

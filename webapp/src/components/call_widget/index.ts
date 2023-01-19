@@ -1,4 +1,4 @@
-import {bindActionCreators, Dispatch, compose} from 'redux';
+import {bindActionCreators, Dispatch} from 'redux';
 import {connect} from 'react-redux';
 
 import {GlobalState} from '@mattermost/types/store';
@@ -39,7 +39,7 @@ const mapStateToProps = (state: GlobalState) => {
     const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
 
     const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
-        return [...profiles].sort(alphaSortProfiles(profiles)).sort(stateSortProfiles(profiles, statuses, screenSharingID));
+        return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID));
     };
 
     const statuses = voiceUsersStatuses(state);

@@ -3,24 +3,17 @@ import React, {CSSProperties} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {compareSemVer} from 'semver-parser';
 
+import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {Theme} from 'mattermost-redux/types/themes';
+import {Store} from 'src/types/mattermost-webapp';
 
-import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
-
-import {
-    UserState,
-    AudioDevices,
-    CallAlertStates,
-    CallAlertStatesDefault,
-    CallRecordingState,
-} from 'src/types/types';
+import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallRecordingState, UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent} from 'src/utils';
 import {
@@ -32,28 +25,22 @@ import {
     reverseKeyMappings,
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
-import {
-    CallAlertConfigs,
-    CallRecordingDisclaimerStrings,
-} from 'src/constants';
-
+import {CallAlertConfigs, CallRecordingDisclaimerStrings} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
-
-import Avatar from '../avatar/avatar';
-import MutedIcon from '../../components/icons/muted_icon';
-import UnmutedIcon from '../../components/icons/unmuted_icon';
-import LeaveCallIcon from '../../components/icons/leave_call_icon';
-import HorizontalDotsIcon from '../../components/icons/horizontal_dots';
-import ParticipantsIcon from '../../components/icons/participants';
-import ShowMoreIcon from '../../components/icons/show_more';
-import CompassIcon from '../../components/icons/compassIcon';
-import ScreenIcon from '../../components/icons/screen_icon';
-import PopOutIcon from '../../components/icons/popout';
-import ExpandIcon from '../../components/icons/expand';
-import RaisedHandIcon from '../../components/icons/raised_hand';
-import UnraisedHandIcon from '../../components/icons/unraised_hand';
-import SpeakerIcon from '../../components/icons/speaker_icon';
-
+import Avatar from 'src/components/avatar/avatar';
+import MutedIcon from 'src/components/icons/muted_icon';
+import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import LeaveCallIcon from 'src/components/icons/leave_call_icon';
+import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
+import ParticipantsIcon from 'src/components/icons/participants';
+import ShowMoreIcon from 'src/components/icons/show_more';
+import CompassIcon from 'src/components/icons/compassIcon';
+import ScreenIcon from 'src/components/icons/screen_icon';
+import PopOutIcon from 'src/components/icons/popout';
+import ExpandIcon from 'src/components/icons/expand';
+import RaisedHandIcon from 'src/components/icons/raised_hand';
+import UnraisedHandIcon from 'src/components/icons/unraised_hand';
+import SpeakerIcon from 'src/components/icons/speaker_icon';
 import Shortcut from 'src/components/shortcut';
 import Badge from 'src/components/badge';
 import {AudioInputPermissionsError} from 'src/client';
@@ -66,7 +53,7 @@ import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import './component.scss';
 
 interface Props {
-    store: any,
+    store: Store,
     theme: Theme,
     currentUserID: string,
     channel: Channel,
@@ -89,7 +76,7 @@ interface Props {
     show: boolean,
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
-    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
     allowScreenSharing: boolean,
     global?: true,
     position?: {
@@ -112,10 +99,10 @@ interface State {
     showMenu: boolean,
     showParticipantsList: boolean,
     screenSharingID?: string,
-    screenStream?: any,
-    currentAudioInputDevice?: any,
-    currentAudioOutputDevice?: any,
-    devices?: any,
+    screenStream?: MediaStream | null,
+    currentAudioInputDevice?: MediaDeviceInfo | null,
+    currentAudioOutputDevice?: MediaDeviceInfo | null,
+    devices?: AudioDevices,
     showAudioInputDevicesMenu?: boolean,
     showAudioOutputDevicesMenu?: boolean,
     dragging: DraggingState,
@@ -127,11 +114,11 @@ interface State {
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
-    private node: React.RefObject<HTMLDivElement>;
-    private menuNode: React.RefObject<HTMLDivElement>;
+    private readonly node: React.RefObject<HTMLDivElement>;
+    private readonly menuNode: React.RefObject<HTMLDivElement>;
     private menuResizeObserver: ResizeObserver | null = null;
     private audioMenuResizeObserver: ResizeObserver | null = null;
-    private screenPlayer = React.createRef<HTMLVideoElement>()
+    private readonly screenPlayer = React.createRef<HTMLVideoElement>();
 
     private genStyle = () => {
         return {
@@ -244,7 +231,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 margin: 0,
             },
         };
-    }
+    };
 
     private style = this.genStyle();
 
@@ -294,7 +281,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.onDisconnectClick();
             break;
         }
-    }
+    };
 
     public componentDidMount() {
         if (this.props.global) {
@@ -308,7 +295,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     width: Math.round(entries[0].contentRect.width),
                 });
             });
-            this.menuResizeObserver.observe(this.menuNode.current!);
+            if (this.menuNode.current) {
+                this.menuResizeObserver.observe(this.menuNode.current);
+            }
         } else {
             document.addEventListener('mouseup', this.onMouseUp, false);
         }
@@ -329,7 +318,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         }, 5000);
 
-        window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
+        window.callsClient?.on('remoteVoiceStream', (stream: MediaStream) => {
             const voiceTrack = stream.getAudioTracks()[0];
             const audioEl = document.createElement('audio');
             audioEl.srcObject = stream;
@@ -339,7 +328,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEl.onerror = (err) => logErr(err);
             audioEl.id = voiceTrack.id;
 
-            const deviceID = window.callsClient.currentAudioOutputDevice?.deviceId;
+            const deviceID = window.callsClient?.currentAudioOutputDevice?.deviceId;
             if (deviceID) {
                 // @ts-ignore - setSinkId is an experimental feature
                 audioEl.setSinkId(deviceID);
@@ -356,13 +345,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             };
         });
 
-        window.callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+        window.callsClient?.on('remoteScreenStream', (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
         });
 
-        window.callsClient.on('devicechange', (devices: AudioDevices) => {
+        window.callsClient?.on('devicechange', (devices: AudioDevices) => {
             this.setState({devices,
                 alerts: {
                     ...this.state.alerts,
@@ -374,7 +363,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }});
         });
 
-        window.callsClient.on('connect', () => {
+        window.callsClient?.on('connect', () => {
             if (this.props.global) {
                 sendDesktopEvent('calls-joined-call', {
                     callID: window.callsClient?.channelID,
@@ -385,11 +374,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 window.callsClient?.unmute();
             }
 
-            this.setState({currentAudioInputDevice: window.callsClient.currentAudioInputDevice});
-            this.setState({currentAudioOutputDevice: window.callsClient.currentAudioOutputDevice});
+            this.setState({currentAudioInputDevice: window.callsClient?.currentAudioInputDevice});
+            this.setState({currentAudioOutputDevice: window.callsClient?.currentAudioOutputDevice});
         });
 
-        window.callsClient.on('error', (err: Error) => {
+        window.callsClient?.on('error', (err: Error) => {
             if (err === AudioInputPermissionsError) {
                 this.setState({
                     alerts: {
@@ -402,7 +391,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         });
 
-        window.callsClient.on('initaudio', () => {
+        window.callsClient?.on('initaudio', () => {
             this.setState({
                 alerts: {
                     ...this.state.alerts,
@@ -428,14 +417,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         document.removeEventListener('keydown', this.handleKBShortcuts, true);
     }
 
-    public componentDidUpdate(prevProps: Props, prevState: State) {
+    public componentDidUpdate(prevProps: Props) {
         if (prevProps.theme.type !== this.props.theme.type) {
             this.style = this.genStyle();
         }
 
         let screenStream = this.state.screenStream;
         if (this.props.screenSharingID === this.props.currentUserID) {
-            screenStream = window.callsClient.getLocalScreenStream();
+            screenStream = window.callsClient?.getLocalScreenStream();
         }
 
         const hasScreenTrackChanged = screenStream && this.state.screenStream?.getVideoTracks()[0].id !== screenStream.getVideoTracks()[0].id;
@@ -448,12 +437,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.screenPlayer.current.srcObject = this.state.screenStream;
         }
 
-        let profiles;
-        if (this.props.profiles.length > prevProps.profiles.length) {
-            profiles = this.props.profiles;
-        } else if (this.props.profiles.length < prevProps.profiles.length) {
-            profiles = prevProps.profiles.length;
-        }
         let ids: string[] = [];
         const currIDs = Object.keys(this.props.statuses);
         const prevIDs = Object.keys(prevProps.statuses);
@@ -492,14 +475,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (e.key === 'Escape') {
             this.setState({showMenu: false});
         }
-    }
+    };
 
     private closeOnBlur = (e: Event) => {
         if (this.node && this.node.current && e.target && this.node.current.contains(e.target as Node)) {
             return;
         }
         this.setState({showMenu: false});
-    }
+    };
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
         if (!this.props.allowScreenSharing) {
@@ -508,7 +491,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const state = {} as State;
 
         if (this.props.screenSharingID === this.props.currentUserID) {
-            window.callsClient.unshareScreen();
+            window.callsClient?.unshareScreen();
             state.screenStream = null;
             this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else if (!this.props.screenSharingID) {
@@ -519,7 +502,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     this.props.showScreenSourceModal();
                 }
             } else {
-                const stream = await window.callsClient.shareScreen('', hasExperimentalFlag());
+                const stream = await window.callsClient?.shareScreen('', hasExperimentalFlag());
                 if (stream) {
                     state.screenStream = stream;
                     state.alerts = {
@@ -548,7 +531,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             ...state,
             showMenu: false,
         });
-    }
+    };
 
     onMuteToggle = () => {
         if (!window.callsClient) {
@@ -566,7 +549,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         } else {
             window.callsClient.mute();
         }
-    }
+    };
 
     onDisconnectClick = () => {
         if (this.state.expandedViewWindow) {
@@ -590,14 +573,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             expandedViewWindow: null,
         });
-    }
+    };
 
     onMenuClick = () => {
         this.setState({
             showMenu: !this.state.showMenu,
             showParticipantsList: false,
         });
-    }
+    };
 
     onParticipantsButtonClick = (fromShortcut?: boolean) => {
         const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
@@ -612,18 +595,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showParticipantsList: !this.state.showParticipantsList,
             showMenu: false,
         });
-    }
+    };
 
     onAudioInputDeviceClick = (device: MediaDeviceInfo) => {
         if (device.deviceId !== this.state.currentAudioInputDevice?.deviceId) {
-            window.callsClient.setAudioInputDevice(device);
+            window.callsClient?.setAudioInputDevice(device);
         }
         this.setState({showAudioInputDevicesMenu: false, currentAudioInputDevice: device});
-    }
+    };
 
     onAudioOutputDeviceClick = (device: MediaDeviceInfo) => {
         if (device.deviceId !== this.state.currentAudioOutputDevice?.deviceId) {
-            window.callsClient.setAudioOutputDevice(device);
+            window.callsClient?.setAudioOutputDevice(device);
             const ps = [];
             for (const audioEl of this.state.audioEls) {
                 // @ts-ignore - setSinkId is an experimental feature
@@ -636,7 +619,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         }
         this.setState({showAudioOutputDevicesMenu: false, currentAudioOutputDevice: device});
-    }
+    };
 
     renderScreenSharingPanel = () => {
         if (!this.props.screenSharingID) {
@@ -740,7 +723,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 </ul>
             </div>
         );
-    }
+    };
 
     renderScreenShareButton = () => {
         const sharingID = this.props.screenSharingID;
@@ -775,7 +758,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 disabled={sharingID !== '' && !isSharing}
             />
         );
-    }
+    };
 
     renderSpeaking = () => {
         let speakingProfile;
@@ -794,7 +777,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 </span>
             </div>
         );
-    }
+    };
 
     renderParticipantsList = () => {
         if (!this.state.showParticipantsList) {
@@ -802,7 +785,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         const renderParticipants = () => {
-            return this.props.profiles.map((profile, idx) => {
+            return this.props.profiles.map((profile) => {
                 const status = this.props.statuses[profile.id];
                 let isMuted = true;
                 let isSpeaking = false;
@@ -896,7 +879,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 </ul>
             </div>
         );
-    }
+    };
 
     audioDevicesMenuRefCb = (el: HTMLUListElement) => {
         if (this.audioMenuResizeObserver) {
@@ -922,9 +905,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 height: 0,
             });
         }
-    }
+    };
 
-    renderAudioDevicesList = (deviceType: string, devices: any[]) => {
+    renderAudioDevicesList = (deviceType: string, devices: MediaDeviceInfo[]) => {
         if (deviceType === 'input' && !this.state.showAudioInputDevicesMenu) {
             return null;
         }
@@ -935,11 +918,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const currentDevice = deviceType === 'input' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
 
-        const deviceList = devices.map((device: any, idx: number) => {
+        const deviceList = devices.map((device) => {
             return (
                 <li
                     className='MenuItem'
-                    key={`audio-${deviceType}-device-${idx}`}
+                    key={`audio-${deviceType}-device-${device.deviceId}`}
                 >
                     <button
                         className='style--none'
@@ -965,7 +948,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 </ul>
             </div>
         );
-    }
+    };
 
     renderAudioDevices = (deviceType: string) => {
         if (!window.callsClient || !this.state.devices) {
@@ -996,8 +979,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         };
 
-        const devices = deviceType === 'input' ? this.state.devices.inputs?.filter((device: any) => device.deviceId && device.label) :
-            this.state.devices.outputs?.filter((device: any) => device.deviceId && device.label);
+        const devices = deviceType === 'input' ? this.state.devices.inputs?.filter((device) => device.deviceId && device.label) : this.state.devices.outputs?.filter((device) => device.deviceId && device.label);
         const isDisabled = devices.length === 0;
 
         return (
@@ -1061,7 +1043,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 </li>
             </React.Fragment>
         );
-    }
+    };
 
     renderScreenSharingMenuItem = () => {
         const sharingID = this.props.screenSharingID;
@@ -1120,14 +1102,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <li className='MenuGroup menu-divider'/>
             </React.Fragment>
         );
-    }
+    };
 
     renderMenu = (widerWidget: boolean) => {
         if (!this.state.showMenu) {
             return null;
         }
 
-        const {channel} = this.props;
         return (
             <div className='Menu'>
                 <ul
@@ -1140,7 +1121,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 </ul>
             </div>
         );
-    }
+    };
 
     renderProfiles = () => {
         let speakingPictureURL;
@@ -1184,7 +1165,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             </div>
         );
-    }
+    };
 
     renderRecordingDisclaimer = () => {
         // This component should render if all of the following conditions apply:
@@ -1220,7 +1201,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 onDecline={this.onDisconnectClick}
             />
         );
-    }
+    };
 
     renderRecordingBadge = () => {
         if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at) {
@@ -1239,7 +1220,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
             </React.Fragment>
         );
-    }
+    };
 
     renderAlertBanners = () => {
         return Object.entries(this.state.alerts).map((keyVal) => {
@@ -1269,29 +1250,31 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 />
             );
         });
-    }
+    };
 
     renderNotificationBar = () => {
         if (!this.props.currentUserID) {
             return null;
         }
 
-        const isMuted = window.callsClient.isMuted();
+        const isMuted = window.callsClient?.isMuted();
         const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
-        const onJoinSelf = (
+        const notificationContent = (
             <React.Fragment>
                 <span>{`You are ${isMuted ? 'muted' : 'unmuted'}. Click `}</span>
                 <MuteIcon
-                    style={{width: '11px', height: '11px', fill: isMuted ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : '#3DB887'}}
+                    style={{
+                        width: '11px',
+                        height: '11px',
+                        fill: isMuted ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : '#3DB887',
+                    }}
                     stroke={isMuted ? 'rgb(var(--dnd-indicator-rgb))' : '#3DB887'}
                 />
                 <span>{` to ${isMuted ? 'unmute' : 'mute'}.`}</span>
             </React.Fragment>
         );
 
-        const notificationContent = onJoinSelf;
-
-        const joinedUsers = this.state.showUsersJoined.map((userID, idx) => {
+        const joinedUsers = this.state.showUsersJoined.map((userID) => {
             if (userID === this.props.currentUserID) {
                 return null;
             }
@@ -1331,11 +1314,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }
             </React.Fragment>
         );
-    }
+    };
 
     onMouseDown = (ev: React.MouseEvent<HTMLDivElement>) => {
         document.addEventListener('mousemove', this.onMouseMove, false);
-        const target = ev.target as HTMLElement;
         this.setState({
             dragging: {
                 ...this.state.dragging,
@@ -1344,11 +1326,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 initY: ev.clientY - this.state.dragging.offY,
             },
         });
-    }
+    };
 
-    onMouseUp = (ev: MouseEvent) => {
+    onMouseUp = () => {
         document.removeEventListener('mousemove', this.onMouseMove, false);
-        const target = ev.target as HTMLElement;
         this.setState({
             dragging: {
                 ...this.state.dragging,
@@ -1357,7 +1338,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 initY: this.state.dragging.y,
             },
         });
-    }
+    };
 
     onMouseMove = (ev: MouseEvent) => {
         if (this.state.dragging.dragging && this.node && this.node.current) {
@@ -1397,7 +1378,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
             this.node.current.style.transform = 'translate3d(' + x + 'px, ' + y + 'px, 0)';
         }
-    }
+    };
 
     onExpandClick = () => {
         if (this.state.expandedViewWindow && !this.state.expandedViewWindow.closed) {
@@ -1433,7 +1414,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }
             });
         }
-    }
+    };
 
     onRaiseHandToggle = (fromShortcut?: boolean) => {
         if (!window.callsClient) {
@@ -1452,7 +1433,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             window.callsClient.raiseHand();
             this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
-    }
+    };
 
     onChannelLinkClick = (ev: React.MouseEvent<HTMLElement>) => {
         ev.preventDefault();
@@ -1463,7 +1444,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             window.postMessage({type: 'browser-history-push-return', message}, window.origin);
         }
         this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
-    }
+    };
 
     renderChannelName = (widerWidget: boolean) => {
         return (
@@ -1493,7 +1474,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 </a>
             </React.Fragment>
         );
-    }
+    };
 
     render() {
         if (!this.props.channel || !window.callsClient || !this.props.show) {

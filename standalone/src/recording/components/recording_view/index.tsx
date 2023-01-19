@@ -224,7 +224,7 @@ const RecordingView = () => {
 export default RecordingView;
 
 const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}, screenSharingID: string) => {
-    return [...profiles].sort(alphaSortProfiles(profiles)).sort(stateSortProfiles(profiles, statuses, screenSharingID));
+    return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID));
 };
 
 const style = {

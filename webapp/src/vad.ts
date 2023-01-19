@@ -5,9 +5,9 @@ import {logDebug} from './log';
 export default class VoiceActivityDetector extends EventEmitter {
     private audioContext: AudioContext;
     private inputStream: MediaStream;
-    private sourceNode: MediaStreamAudioSourceNode;
-    private analyserNode: AnalyserNode;
-    private processNode: ScriptProcessorNode;
+    private readonly sourceNode: MediaStreamAudioSourceNode;
+    private readonly analyserNode: AnalyserNode;
+    private readonly processNode: ScriptProcessorNode;
     private startTime = 0;
     private isActive = false;
     private isReady = false;

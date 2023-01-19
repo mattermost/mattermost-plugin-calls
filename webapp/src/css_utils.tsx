@@ -326,7 +326,7 @@ function dropAlpha(value: string) {
     return value.substr(value.indexOf('(') + 1).split(',', 3).join(',');
 }
 function changeCss(className: string, classValue: string) {
-    let styleEl: HTMLStyleElement = document.querySelector('style[data-class="' + className + '"]')!;
+    let styleEl: HTMLStyleElement | null = document.querySelector('style[data-class="' + className + '"]');
     if (!styleEl) {
         styleEl = document.createElement('style');
         styleEl.setAttribute('data-class', className);
@@ -336,15 +336,17 @@ function changeCss(className: string, classValue: string) {
     }
 
     // Grab style sheet
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const styleSheet = styleEl.sheet!;
     const rules: CSSRuleList = styleSheet.cssRules || styleSheet.rules;
     const style = classValue.substr(0, classValue.indexOf(':'));
     const value = classValue.substr(classValue.indexOf(':') + 1).replace(/!important[;]/g, '');
-    const priority = (classValue.match(/!important/) ? 'important' : null);
+    // eslint-disable-next-line no-undefined
+    const priority = classValue.match(/!important/) ? 'important' : undefined;
 
     for (let i = 0; i < rules.length; i++) {
-        if ((rules[i] as any).selectorText === className) {
-            (rules[i] as any).style.setProperty(style, value, priority);
+        if ((rules[i] as CSSStyleRule).selectorText === className) {
+            (rules[i] as CSSStyleRule).style.setProperty(style, value, priority);
             return;
         }
     }
@@ -385,7 +387,7 @@ function changeColor(colourIn: string, amt: number): string {
 }
 
 function applyMonokaiCodeTheme() {
-    const link: HTMLLinkElement = document.querySelector('link.code_theme')!;
+    const link: HTMLLinkElement | null = document.querySelector('link.code_theme');
     if (link) {
         link.href = monokaiCSS;
     }
