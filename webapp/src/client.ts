@@ -28,7 +28,6 @@ export default class CallsClient extends EventEmitter {
     private remoteScreenTrack: any;
     public currentAudioInputDevice: MediaDeviceInfo | null = null;
     public currentAudioOutputDevice: MediaDeviceInfo | null = null;
-    private voiceDetector: any;
     private voiceTrackAdded: boolean;
     private streams: MediaStream[];
     private stream: MediaStream | null;
@@ -324,8 +323,6 @@ export default class CallsClient extends EventEmitter {
         }
 
         const isEnabled = this.audioTrack.enabled;
-        this.voiceDetector.stop();
-        this.voiceDetector.destroy();
         this.audioTrack.stop();
         const newStream = await navigator.mediaDevices.getUserMedia({
             video: false,
@@ -342,9 +339,6 @@ export default class CallsClient extends EventEmitter {
         const newTrack = newStream.getAudioTracks()[0];
         this.stream.removeTrack(this.audioTrack);
         this.stream.addTrack(newTrack);
-        if (isEnabled) {
-            this.voiceDetector.on('ready', () => this.voiceDetector.start());
-        }
         newTrack.enabled = isEnabled;
         if (isEnabled) {
             if (this.voiceTrackAdded) {
@@ -387,11 +381,6 @@ export default class CallsClient extends EventEmitter {
             this.peer = null;
         }
 
-        if (this.voiceDetector) {
-            this.voiceDetector.destroy();
-            this.voiceDetector = null;
-        }
-
         this.streams.forEach((s) => {
             s.getTracks().forEach((track) => {
                 track.stop();
@@ -420,10 +409,6 @@ export default class CallsClient extends EventEmitter {
             return;
         }
 
-        if (this.voiceDetector) {
-            this.voiceDetector.stop();
-        }
-
         logDebug('replacing track to peer', null);
 
         // @ts-ignore: we actually mean (and need) to pass null here
@@ -447,10 +432,6 @@ export default class CallsClient extends EventEmitter {
                 this.emit('error', err);
                 return;
             }
-        }
-
-        if (this.voiceDetector) {
-            this.voiceDetector.start();
         }
 
         if (this.voiceTrackAdded) {
