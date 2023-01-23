@@ -10,7 +10,6 @@ import RTCPeer from './rtcpeer';
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
-import VoiceActivityDetector from './vad';
 
 import {parseRTCStats} from './rtc_stats';
 
@@ -63,24 +62,6 @@ export default class CallsClient extends EventEmitter {
             this.disconnect();
         };
         window.addEventListener('beforeunload', this.onBeforeUnload);
-    }
-
-    private initVAD(inputStream: MediaStream) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) {
-            throw new Error('AudioCtx unsupported');
-        }
-        this.voiceDetector = new VoiceActivityDetector(new AudioContext(), inputStream.clone());
-        this.voiceDetector.on('start', () => {
-            if (this.ws && this.audioTrack?.enabled) {
-                this.ws.send('voice_on');
-            }
-        });
-        this.voiceDetector.on('stop', () => {
-            if (this.ws) {
-                this.ws.send('voice_off');
-            }
-        });
     }
 
     private async updateDevices() {
@@ -157,7 +138,6 @@ export default class CallsClient extends EventEmitter {
             this.audioTrack = this.stream.getAudioTracks()[0];
             this.streams.push(this.stream);
 
-            this.initVAD(this.stream);
             this.audioTrack.enabled = false;
 
             this.emit('initaudio');
@@ -362,7 +342,6 @@ export default class CallsClient extends EventEmitter {
         const newTrack = newStream.getAudioTracks()[0];
         this.stream.removeTrack(this.audioTrack);
         this.stream.addTrack(newTrack);
-        this.initVAD(this.stream);
         if (isEnabled) {
             this.voiceDetector.on('ready', () => this.voiceDetector.start());
         }
