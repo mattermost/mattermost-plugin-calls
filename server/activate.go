@@ -164,6 +164,7 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	rtcServerConfig := rtc.ServerConfig{
+		ICEAddressUDP:   cfg.UDPServerAddress,
 		ICEPortUDP:      *cfg.UDPServerPort,
 		ICEHostOverride: cfg.ICEHostOverride,
 		ICEServers:      rtc.ICEServers(cfg.getICEServers(false)),

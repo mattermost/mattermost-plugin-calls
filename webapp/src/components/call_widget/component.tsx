@@ -235,7 +235,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             audioInputsOutputsMenu: {
                 left: 'calc(100% + 4px)',
-                top: 'auto',
+                overflow: 'auto',
+                top: 0,
+                maxHeight: 'calc(100% + 90px)',
             },
             expandButton: {
                 position: 'absolute',
@@ -905,13 +907,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (el) {
             this.audioMenuResizeObserver = new ResizeObserver((entries) => {
-                if (entries.length === 0) {
+                if (entries.length === 0 || entries[0].borderBoxSize.length === 0) {
                     return;
                 }
                 sendDesktopEvent('calls-widget-resize', {
                     element: 'calls-widget-audio-menu',
-                    width: Math.round(entries[0].contentRect.width),
-                    height: Math.round(entries[0].contentRect.height),
+                    height: Math.round(entries[0].borderBoxSize[0].blockSize),
+                    width: Math.round(entries[0].borderBoxSize[0].inlineSize),
                 });
             });
             this.audioMenuResizeObserver.observe(el);
@@ -1000,6 +1002,16 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.state.devices.outputs?.filter((device: any) => device.deviceId && device.label);
         const isDisabled = devices.length === 0;
 
+        const buttonStyle: CSSProperties = {
+            display: 'flex',
+            flexDirection: 'column',
+            color: isDisabled ? changeOpacity(this.props.theme.centerChannelColor, 0.32) : '',
+        };
+
+        if ((deviceType === 'input' && this.state.showAudioInputDevicesMenu) || (deviceType === 'output' && this.state.showAudioOutputDevicesMenu)) {
+            buttonStyle.background = 'rgba(var(--center-channel-color-rgb), 0.1)';
+        }
+
         return (
             <React.Fragment>
                 {devices.length > 0 && this.renderAudioDevicesList(deviceType, devices)}
@@ -1009,11 +1021,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <button
                         id={`calls-widget-audio-${deviceType}-button`}
                         className='style--none'
-                        style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            color: isDisabled ? changeOpacity(this.props.theme.centerChannelColor, 0.32) : '',
-                        }}
+                        style={buttonStyle}
                         onClick={onClickHandler}
                         disabled={isDisabled}
                     >
