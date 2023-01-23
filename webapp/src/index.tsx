@@ -17,12 +17,16 @@ import {
     showScreenSourceModal,
     displayCallsTestModeUser,
 } from 'src/actions';
+
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
 import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
 import TestMode from 'src/components/admin_console_settings/test_mode';
+import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
+import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
+import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 
 import {UserState} from 'src/types/types';
 
@@ -420,6 +424,9 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
+        registry.registerAdminConsoleCustomSetting('UDPServerAddress', UDPServerAddress);
+        registry.registerAdminConsoleCustomSetting('UDPServerPort', UDPServerPort);
+        registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
 
         const connectCall = async (channelID: string, title?: string) => {
             if (shouldRenderDesktopWidget()) {

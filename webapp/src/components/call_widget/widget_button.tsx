@@ -1,5 +1,5 @@
-import React from 'react';
-import {OverlayTrigger} from 'react-bootstrap';
+import React, {useRef, useState} from 'react';
+import {Overlay} from 'react-bootstrap';
 import styled, {css} from 'styled-components';
 
 import Shortcut from 'src/components/shortcut';
@@ -21,29 +21,16 @@ export type Props = {
 }
 
 export default function WidgetButton(props: Props) {
+    const [show, setShow] = useState(false);
+    const target = useRef<HTMLButtonElement>(null);
+
     return (
-        <OverlayTrigger
-            key={props.id}
-            placement='top'
-            overlay={
-                <StyledTooltip
-                    id={`tooltip-${props.id}`}
-                    $isDisabled={props.disabled}
-                >
-                    <div>{props.tooltipText}</div>
-                    {props.tooltipSubtext &&
-                    <TooltipSubtext>
-                        {props.tooltipSubtext}
-                    </TooltipSubtext>
-                    }
-                    { props.shortcut &&
-                    <Shortcut shortcut={props.shortcut}/>
-                    }
-                </StyledTooltip>
-            }
-        >
+        <>
             <Button
+                ref={target}
                 id={props.id}
+                onMouseOver={() => setShow(true)}
+                onMouseOut={() => setShow(false)}
                 className='cursor--pointer style--none button-controls'
                 // eslint-disable-next-line no-undefined
                 onClick={props.disabled ? undefined : props.onToggle}
@@ -57,7 +44,28 @@ export default function WidgetButton(props: Props) {
                     unavailable={Boolean(props.unavailable)}
                 />
             </Button>
-        </OverlayTrigger>
+            <Overlay
+                key={props.id}
+                target={target.current as HTMLButtonElement}
+                show={show}
+                placement='top'
+            >
+                <StyledTooltip
+                    id={`tooltip-${props.id}`}
+                    $isDisabled={props.disabled}
+                >
+                    <div>{props.tooltipText}</div>
+                    {props.tooltipSubtext &&
+                        <TooltipSubtext>
+                            {props.tooltipSubtext}
+                        </TooltipSubtext>
+                    }
+                    {props.shortcut &&
+                        <Shortcut shortcut={props.shortcut}/>
+                    }
+                </StyledTooltip>
+            </Overlay>
+        </>
     );
 }
 

@@ -11,7 +11,6 @@ import RTCPeer from './rtcpeer';
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
-import VoiceActivityDetector from './vad';
 import {parseRTCStats} from './rtc_stats';
 
 export const AudioInputPermissionsError = new Error('missing audio input permissions');
@@ -29,7 +28,6 @@ export default class CallsClient extends EventEmitter {
     private remoteScreenTrack: MediaStreamTrack | null = null;
     public currentAudioInputDevice: MediaDeviceInfo | null = null;
     public currentAudioOutputDevice: MediaDeviceInfo | null = null;
-    private voiceDetector: VoiceActivityDetector | null = null;
     private voiceTrackAdded: boolean;
     private streams: MediaStream[];
     private stream: MediaStream | null;
@@ -63,24 +61,6 @@ export default class CallsClient extends EventEmitter {
             this.disconnect();
         };
         window.addEventListener('beforeunload', this.onBeforeUnload);
-    }
-
-    private initVAD(inputStream: MediaStream) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) {
-            throw new Error('AudioCtx unsupported');
-        }
-        this.voiceDetector = new VoiceActivityDetector(new AudioContext(), inputStream.clone());
-        this.voiceDetector.on('start', () => {
-            if (this.ws && this.audioTrack?.enabled) {
-                this.ws.send('voice_on');
-            }
-        });
-        this.voiceDetector.on('stop', () => {
-            if (this.ws) {
-                this.ws.send('voice_off');
-            }
-        });
     }
 
     private async updateDevices() {
@@ -157,7 +137,6 @@ export default class CallsClient extends EventEmitter {
             this.audioTrack = this.stream.getAudioTracks()[0];
             this.streams.push(this.stream);
 
-            this.initVAD(this.stream);
             this.audioTrack.enabled = false;
 
             this.emit('initaudio');
@@ -344,8 +323,6 @@ export default class CallsClient extends EventEmitter {
         }
 
         const isEnabled = this.audioTrack.enabled;
-        this.voiceDetector?.stop();
-        this.voiceDetector?.destroy();
         this.audioTrack.stop();
         const newStream = await navigator.mediaDevices.getUserMedia({
             video: false,
@@ -362,10 +339,6 @@ export default class CallsClient extends EventEmitter {
         const newTrack = newStream.getAudioTracks()[0];
         this.stream.removeTrack(this.audioTrack);
         this.stream.addTrack(newTrack);
-        this.initVAD(this.stream);
-        if (isEnabled) {
-            this.voiceDetector?.on('ready', () => this.voiceDetector?.start());
-        }
         newTrack.enabled = isEnabled;
         if (isEnabled) {
             if (this.voiceTrackAdded) {
@@ -408,11 +381,6 @@ export default class CallsClient extends EventEmitter {
             this.peer = null;
         }
 
-        if (this.voiceDetector) {
-            this.voiceDetector.destroy();
-            this.voiceDetector = null;
-        }
-
         this.streams.forEach((s) => {
             s.getTracks().forEach((track) => {
                 track.stop();
@@ -441,10 +409,6 @@ export default class CallsClient extends EventEmitter {
             return;
         }
 
-        if (this.voiceDetector) {
-            this.voiceDetector.stop();
-        }
-
         logDebug('replacing track to peer', null);
 
         // @ts-ignore: we actually mean (and need) to pass null here
@@ -468,10 +432,6 @@ export default class CallsClient extends EventEmitter {
                 this.emit('error', err);
                 return;
             }
-        }
-
-        if (this.voiceDetector) {
-            this.voiceDetector.start();
         }
 
         if (this.audioTrack) {
