@@ -54,7 +54,7 @@ import {
 import {
     CallHostChangedData,
     CallStartData,
-    EmptyData,
+    EmptyData, HelloData,
     UserConnectedData,
     UserDisconnectedData, UserMutedUnmutedData, UserRaiseUnraiseHandData, UserReactionData, UserScreenOnOffData,
     UserVoiceOnOffData,
@@ -265,9 +265,7 @@ export default async function init(cfg: InitConfig) {
     connectCall(channelID, callTitle, getWSConnectionURL(getConfig(store.getState())), iceConfigs, (ev) => {
         switch (ev.event) {
         case 'hello':
-            // TODO: where is this server_version coming from? I think we can remove this case.
-            // @ts-ignore
-            store.dispatch(setServerVersion(ev.data.server_version));
+            store.dispatch(setServerVersion((ev.data as HelloData).server_version));
             break;
         case `custom_${pluginId}_call_start`:
             handleCallStart(store, ev as WebSocketMessage<CallStartData>);

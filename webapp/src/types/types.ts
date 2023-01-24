@@ -7,6 +7,11 @@
 
 export type EmptyData = Record<string, never>;
 
+export type HelloData = {
+    connection_id: string;
+    server_version: string;
+}
+
 export type CallStartData = {
     channelID: string;
     start_at: number;
@@ -78,6 +83,7 @@ export type UserState = {
 
 export type WebsocketEventData =
     EmptyData
+    | HelloData
     | CallStartData
     | UserDisconnectedData
     | UserConnectedData
