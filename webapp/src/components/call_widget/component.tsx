@@ -44,6 +44,7 @@ import SpeakerIcon from 'src/components/icons/speaker_icon';
 import Shortcut from 'src/components/shortcut';
 import Badge from 'src/components/badge';
 import {AudioInputPermissionsError} from 'src/client';
+import {Emoji} from 'src/components/emoji/emoji';
 
 import CallDuration from './call_duration';
 import WidgetBanner from './widget_banner';
@@ -830,13 +831,26 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 gap: '4px',
                             }}
                         >
-                            {
-                                isHandRaised &&
+                            {status?.reaction &&
+                                <div
+                                    style={{
+                                        marginBottom: 2,
+                                        marginRight: 4,
+                                    }}
+                                >
+                                    <Emoji
+                                        emoji={status.reaction.emoji}
+                                        size={16}
+                                    />
+                                </div>
+                            }
+                            {isHandRaised &&
                                 <CompassIcon
                                     icon={'hand-right'}
                                     style={{
                                         color: 'rgba(255, 188, 66, 1)',
                                         marginBottom: 2,
+                                        marginLeft: -4,
                                         fontSize: 16,
                                     }}
                                 />
