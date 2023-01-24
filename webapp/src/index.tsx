@@ -646,7 +646,6 @@ export default class Plugin {
                     });
                 }
 
-                // TODO: we should use types here, could cause trouble in the future.
                 const userStates: Record<string, UserState> = {};
                 const users = resp.data.call?.users || [];
                 const states = resp.data.call?.states || [];

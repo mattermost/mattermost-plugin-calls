@@ -23,7 +23,7 @@ export default class CallsClient extends EventEmitter {
     public channelID: string;
     private readonly config: CallsClientConfig;
     private peer: RTCPeer | null;
-    private ws: WebSocketClient | null;
+    public ws: WebSocketClient | null;
     private localScreenTrack: MediaStreamTrack | null = null;
     private remoteScreenTrack: MediaStreamTrack | null = null;
     public currentAudioInputDevice: MediaDeviceInfo | null = null;

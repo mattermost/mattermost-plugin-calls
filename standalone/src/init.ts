@@ -1,3 +1,5 @@
+import {Reducer} from 'redux';
+
 import {Client4} from 'mattermost-redux/client';
 import configureStore from 'mattermost-redux/store';
 import {getMe} from 'mattermost-redux/actions/users';
@@ -54,9 +56,15 @@ import {
 import {
     CallHostChangedData,
     CallStartData,
-    EmptyData, HelloData,
+    EmptyData,
+    HelloData,
     UserConnectedData,
-    UserDisconnectedData, UserMutedUnmutedData, UserRaiseUnraiseHandData, UserReactionData, UserScreenOnOffData,
+    UserDisconnectedData,
+    UserMutedUnmutedData,
+    UserRaiseUnraiseHandData,
+    UserReactionData,
+    UserScreenOnOffData,
+    UserState,
     UserVoiceOnOffData,
     WebsocketEventData,
 } from 'src/types/types';
@@ -85,7 +93,14 @@ function setBasename() {
     }
 }
 
-function connectCall(channelID: string, callTitle: string, wsURL: string, iceConfigs: RTCIceServer[], wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void, closeCb?: () => void) {
+function connectCall(
+    channelID: string,
+    callTitle: string,
+    wsURL: string,
+    iceConfigs: RTCIceServer[],
+    wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void,
+    closeCb?: () => void,
+) {
     try {
         if (window.callsClient) {
             logErr('calls client is already initialized');
@@ -105,7 +120,7 @@ function connectCall(channelID: string, callTitle: string, wsURL: string, iceCon
         });
 
         window.callsClient.init(channelID, callTitle).then(() => {
-            window.callsClient.ws.on('event', wsEventHandler);
+            window.callsClient?.ws?.on('event', wsEventHandler);
         }).catch((err: Error) => {
             logErr(err);
             if (closeCb) {
@@ -174,11 +189,11 @@ async function fetchChannelData(store: Store, channelID: string) {
                 },
             });
 
-            const userStates = {} as any;
+            const userStates: Record<string, UserState> = {};
             const users = resp.call.users || [];
             const states = resp.call.states || [];
             for (let i = 0; i < users.length; i++) {
-                userStates[users[i]] = states[i];
+                userStates[users[i]] = {...states[i], id: users[i], voice: false};
             }
             store.dispatch({
                 type: VOICE_CHANNEL_USERS_CONNECTED_STATES,
@@ -197,8 +212,8 @@ type InitConfig = {
     name: string,
     initCb: (store: Store, theme: Theme, channelID: string) => void,
     closeCb?: () => void,
-    reducer?: any,
-    wsHandler?: (store: Store, ev: any) => void,
+    reducer?: Reducer,
+    wsHandler?: (store: Store, ev: WebSocketMessage<WebsocketEventData>) => void,
     initStore?: (store: Store, channelID: string) => Promise<void>,
 };
 
@@ -328,10 +343,12 @@ export default async function init(cfg: InitConfig) {
 
 declare global {
     interface Window {
-        callsClient: any,
+        callsClient?: CallsClient,
         webkitAudioContext: AudioContext,
         basename: string,
-        desktop: any,
+        desktop: {
+            version?: string | null;
+        },
         screenSharingTrackId: string,
     }
 
