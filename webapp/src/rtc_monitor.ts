@@ -29,7 +29,7 @@ type CallQualityStats = {
 };
 
 function calculateMOS(latency: number, jitter: number, lossRate: number) {
-    logDebug(`RTCMonitor: MOS inputs --> ${latency} ${jitter} ${lossRate}`);
+    logDebug(`RTCMonitor: MOS inputs --> latency: ${latency} jitter: ${jitter} loss: ${lossRate}`);
 
     let R = 0;
     const effectiveLatency = latency + (2 * jitter) + 10.0;
@@ -249,6 +249,14 @@ export default class RTCMonitor extends EventEmitter {
 
         clearInterval(this.intervalID);
         this.intervalID = null;
+        this.clearCache();
         this.removeAllListeners('mos');
+    }
+
+    clearCache() {
+        this.stats = {
+            lastLocalIn: {},
+            lastRemoteIn: {},
+        };
     }
 }

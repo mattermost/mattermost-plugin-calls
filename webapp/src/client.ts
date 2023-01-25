@@ -450,6 +450,14 @@ export default class CallsClient extends EventEmitter {
             }
         }
 
+        // NOTE: we purposely clear the monitor's stats cache upon unmuting
+        // in order to skip some calculations since upon muting we actually
+        // stop sending packets which would result in stats to be skewed as
+        // soon as we resume sending.
+        // This is not perfect but it avoids having to constantly send
+        // silence frames when muted.
+        this.rtcMonitor?.clearCache();
+
         if (this.audioTrack) {
             if (this.voiceTrackAdded) {
                 logDebug('replacing track to peer', this.audioTrack.id);
