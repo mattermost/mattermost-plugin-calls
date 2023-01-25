@@ -11,9 +11,6 @@ on:
 permissions:
   contents: read
 
-env:
-  CI: true
-
 jobs:
   plugin-cd:
     uses: mattermost/actions-workflows/.github/workflows/plugin-cd.yml@main
