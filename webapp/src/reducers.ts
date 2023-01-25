@@ -305,6 +305,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
         return state;
     case VOICE_CHANNEL_USER_DISCONNECTED:
         if (state[action.data.channelID]) {
+            // eslint-disable-next-line
             const {[action.data.userID]: omit, ...res} = state[action.data.channelID];
             return {
                 ...state,

@@ -1,5 +1,4 @@
-import React, {CSSProperties, useState, useEffect} from 'react';
-import moment from 'moment-timezone';
+import React, {useState, useEffect, useCallback} from 'react';
 
 import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
 
@@ -38,17 +37,17 @@ export default function RecordingInfoPrompt(props: Props) {
         return () => clearInterval(interval);
     });
 
-    const getMinutesLeftBeforeEnd = () => {
+    const getMinutesLeftBeforeEnd = useCallback(() => {
         if (!props.recording?.start_at) {
             return 0;
         }
         const callDurationMinutes = (Date.now() - props.recording.start_at) / (1000 * 60);
         return Math.round(props.recordingMaxDuration - callDurationMinutes);
-    };
+    }, [props.recording?.start_at, props.recordingMaxDuration]);
 
     const [dismissedAt, updateDismissedAt] = useState(0);
-
     const [recordingWillEndSoon, updateRecordingWillEndSoon] = useState(0);
+
     useEffect(() => {
         if (!props.isHost || !props.recording || props.recording.start_at === 0 || props.recording.end_at !== 0 || recordingWillEndSoon !== 0) {
             return;
@@ -57,7 +56,7 @@ export default function RecordingInfoPrompt(props: Props) {
         if (getMinutesLeftBeforeEnd() <= minutesLeftThreshold) {
             updateRecordingWillEndSoon(Date.now());
         }
-    });
+    }, [props.isHost, props.recording, recordingWillEndSoon, getMinutesLeftBeforeEnd]);
 
     const hasRecEnded = props.recording?.end_at;
 

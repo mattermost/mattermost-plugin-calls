@@ -1,23 +1,19 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {ChangeEvent, useState} from 'react';
+import React, {ChangeEvent} from 'react';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
-import {useDispatch, useSelector} from 'react-redux';
+import {useSelector} from 'react-redux';
 
 import manifest from 'src/manifest';
-
-import {adminStats, isCloud, isOnPremNotEnterprise} from 'src/selectors';
-
+import {isCloud, isOnPremNotEnterprise} from 'src/selectors';
 import {
     LabelRow,
 } from 'src/components/admin_console_settings/common';
 
 const MaxRecordingDuration = (props: CustomComponentProps) => {
-    const dispatch = useDispatch();
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
-    const stats = useSelector(adminStats);
 
     const leftCol = 'col-sm-4';
     const rightCol = 'col-sm-8';

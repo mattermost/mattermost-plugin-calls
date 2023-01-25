@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {ChangeEvent, useState} from 'react';
+import React, {ChangeEvent} from 'react';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 import {getConfig} from 'mattermost-redux/selectors/entities/admin';
 import {useSelector} from 'react-redux';

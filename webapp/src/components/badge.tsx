@@ -1,6 +1,5 @@
 import React from 'react';
-import {OverlayTrigger} from 'react-bootstrap';
-import styled, {css} from 'styled-components';
+import styled from 'styled-components';
 
 export type Props = {
     text: string,
@@ -83,5 +82,5 @@ const Spinner = styled.span<{size: number}>`
     100% {
       transform: rotate(360deg);
     }
-  } 
+  }
 `;

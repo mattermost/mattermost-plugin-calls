@@ -1,20 +1,18 @@
 import React, {CSSProperties} from 'react';
-import ReactDOM from 'react-dom';
-import PropTypes from 'prop-types';
 
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
 
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {Theme} from 'mattermost-redux/types/themes';
 
-import {isDMChannel, isGMChannel, getUserDisplayName} from '../../utils';
-
-import CompassIcon from '../../components/icons/compassIcon';
+import {isDMChannel, isGMChannel, getUserDisplayName} from 'src/utils';
+import CompassIcon from 'src/components/icons/compassIcon';
 
 import './component.scss';
 
 interface Props {
-    theme: any,
+    theme: Theme,
     currentChannel: Channel,
     connectedChannel: Channel,
     currentDMUser: UserProfile | undefined,
@@ -24,7 +22,7 @@ interface Props {
 }
 
 export default class SwitchCallModal extends React.PureComponent<Props> {
-    private node: React.RefObject<HTMLDivElement>;
+    private readonly node: React.RefObject<HTMLDivElement>;
     private style = {
         main: {
             position: 'absolute',
@@ -85,7 +83,7 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
         if (this.props.show && e.key === 'Escape') {
             this.props.hideSwitchCallModal();
         }
-    }
+    };
 
     private closeOnBlur = (e: Event) => {
         if (!this.props.show) {
@@ -95,13 +93,13 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
             return;
         }
         this.props.hideSwitchCallModal();
-    }
+    };
 
     private joinCall = () => {
         this.props.hideSwitchCallModal();
         window.callsClient?.disconnect();
         window.postMessage({type: 'connectCall', channelID: this.props.currentChannel.id}, window.origin);
-    }
+    };
 
     componentDidMount() {
         document.addEventListener('keyup', this.keyboardClose, true);

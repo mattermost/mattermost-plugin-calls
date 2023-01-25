@@ -3,7 +3,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import {UserProfile} from '@mattermost/types/users';
 
-import {getUserDisplayName, getUsersList} from '../utils';
+import {getUsersList} from '../utils';
 
 import Avatar from './avatar/avatar';
 
