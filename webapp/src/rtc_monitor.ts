@@ -216,8 +216,7 @@ export default class RTCMonitor extends EventEmitter {
         };
 
         if (typeof transportLatency === 'undefined' && typeof remoteInStats.avgLatency === 'undefined') {
-            logDebug('RTCMonitor: latency could not be calculated');
-            return;
+            transportLatency = this.peer.getRTT() / 2;
         }
 
         if (typeof localInStats.avgJitter === 'undefined' && typeof remoteInStats.avgJitter === 'undefined') {

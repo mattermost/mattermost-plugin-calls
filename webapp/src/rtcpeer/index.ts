@@ -7,11 +7,15 @@ import {
 } from './types';
 
 const rtcConnFailedErr = new Error('rtc connection failed');
+const pingInterval = 1000;
 
 export default class RTCPeer extends EventEmitter {
     private pc: RTCPeerConnection | null;
+    private dc: RTCDataChannel;
     private senders: {[key: string]: RTCRtpSender};
     private makingOffer = false;
+    private pingIntervalID: ReturnType<typeof setInterval>;
+    private rtt = 0;
 
     constructor(config: RTCPeerConfig) {
         super();
@@ -29,8 +33,28 @@ export default class RTCPeer extends EventEmitter {
 
         // We create a data channel for two reasons:
         // - Initiate a connection without preemptively add audio/video tracks.
+        // - Calculate transport latency through simple ping/pong sequences.
         // - Use this communication channel for further negotiation (to be implemented).
-        this.pc.createDataChannel('calls-dc');
+        this.dc = this.pc.createDataChannel('calls-dc');
+
+        this.pingIntervalID = this.initPingHandler();
+    }
+
+    private initPingHandler() {
+        let pingTS = 0;
+        this.dc.onmessage = ({data}) => {
+            if (data === 'pong' && pingTS > 0) {
+                this.rtt = (performance.now() - pingTS) / 1000;
+            }
+        };
+        return setInterval(() => {
+            if (this.dc.readyState !== 'open') {
+                return;
+            }
+
+            pingTS = performance.now();
+            this.dc.send('ping');
+        }, pingInterval);
     }
 
     private onICECandidate(ev: RTCPeerConnectionIceEvent) {
@@ -145,6 +169,13 @@ export default class RTCPeer extends EventEmitter {
         return this.pc.getStats(null);
     }
 
+    public getRTT() {
+        if (!this.pc) {
+            throw new Error('peer has been destroyed');
+        }
+        return this.rtt;
+    }
+
     public destroy() {
         if (!this.pc) {
             throw new Error('peer has been destroyed already');
@@ -164,5 +195,6 @@ export default class RTCPeer extends EventEmitter {
         this.pc.ontrack = null;
         this.pc.close();
         this.pc = null;
+        clearInterval(this.pingIntervalID);
     }
 }
