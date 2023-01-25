@@ -266,14 +266,6 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID": us.userID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
-	case clientMessageTypeVoiceOn, clientMessageTypeVoiceOff:
-		evType := wsEventUserVoiceOff
-		if msg.Type == clientMessageTypeVoiceOn {
-			evType = wsEventUserVoiceOn
-		}
-		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID": us.userID,
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
 		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
 			p.LogError(err.Error())
@@ -392,6 +384,18 @@ func (p *Plugin) wsWriter() {
 				p.LogError("session should not be nil")
 				continue
 			}
+
+			if msg.Type == rtc.VoiceOnMessage || msg.Type == rtc.VoiceOffMessage {
+				evType := wsEventUserVoiceOff
+				if msg.Type == rtc.VoiceOnMessage {
+					evType = wsEventUserVoiceOn
+				}
+				p.publishWebSocketEvent(evType, map[string]interface{}{
+					"userID": us.userID,
+				}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+				continue
+			}
+
 			p.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 				"data":   string(msg.Data),
 				"connID": msg.SessionID,
