@@ -58,6 +58,10 @@ export const reverseKeyMappings = (() => {
 })();
 
 export function keyToAction(scope: string, ev: KeyboardEvent) {
+    if (!ev.key || !ev.code) {
+        return null;
+    }
+
     const key = ev.key.toLowerCase();
     const code = ev.code.replace('Key', '').toLowerCase();
 

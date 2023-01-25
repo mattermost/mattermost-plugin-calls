@@ -51,11 +51,11 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
             return;
         }
         window.postMessage({type: 'connectCall', channelID: this.props.currChannelID}, window.origin);
-    }
+    };
 
     onDismissClick = () => {
         this.setState({hidden: true});
-    }
+    };
 
     render() {
         if (!this.props.hasCall || this.state.hidden || this.props.isLimitRestricted) {

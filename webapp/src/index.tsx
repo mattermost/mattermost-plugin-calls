@@ -1,4 +1,5 @@
-import React from 'react';
+/* eslint-disable max-lines */
+
 import axios from 'axios';
 
 import {Client4} from 'mattermost-redux/client';
@@ -16,13 +17,18 @@ import {
     showScreenSourceModal,
     displayCallsTestModeUser,
 } from 'src/actions';
+
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
 import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
-
 import TestMode from 'src/components/admin_console_settings/test_mode';
+import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
+import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
+import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
+
+import {UserState} from 'src/types/types';
 
 import {
     handleUserConnected,
@@ -111,8 +117,7 @@ import {
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
-
-import {PluginRegistry, SlashCommandWillBePostedReturn, Store} from './types/mattermost-webapp';
+import {PluginRegistry, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
@@ -121,7 +126,7 @@ export default class Plugin {
         this.unsubscribers = [];
     }
 
-    private registerReconnectHandler(registry: PluginRegistry, store: Store, handler: () => void) {
+    private registerReconnectHandler(registry: PluginRegistry, _store: Store, handler: () => void) {
         registry.registerReconnectHandler(handler);
         this.unsubscribers.push(() => registry.unregisterReconnectHandler(handler));
     }
@@ -419,6 +424,9 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
+        registry.registerAdminConsoleCustomSetting('UDPServerAddress', UDPServerAddress);
+        registry.registerAdminConsoleCustomSetting('UDPServerPort', UDPServerPort);
+        registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
 
         const connectCall = async (channelID: string, title?: string) => {
             if (shouldRenderDesktopWidget()) {
@@ -469,7 +477,7 @@ export default class Plugin {
 
                 window.callsClient.init(channelID, title).catch((err: Error) => {
                     logErr(err);
-                    store.dispatch(displayCallErrorModal(window.callsClient.channelID, err));
+                    store.dispatch(displayCallErrorModal(channelID, err));
                     delete window.callsClient;
                 });
             } catch (err) {
@@ -502,7 +510,7 @@ export default class Plugin {
         const registerChannelHeaderMenuAction = () => {
             channelHeaderMenuID = registry.registerChannelHeaderMenuAction(
                 ChannelHeaderMenuButton,
-                async (channelID) => {
+                async () => {
                     try {
                         const resp = await axios.post(`${getPluginPath()}/${currChannelId}`,
                             {enabled: callsExplicitlyDisabled(store.getState(), currChannelId)},
@@ -554,7 +562,7 @@ export default class Plugin {
 
             let channel = getChannel(store.getState(), channelID);
             if (!channel) {
-                await getChannelAction(channelID)(store.dispatch as any, store.getState);
+                await store.dispatch(getChannelAction(channelID));
                 channel = getChannel(store.getState(), channelID);
             }
 
@@ -638,8 +646,7 @@ export default class Plugin {
                     });
                 }
 
-                // TODO: we should use types here, could cause trouble in the future.
-                const userStates = {} as any;
+                const userStates: Record<string, UserState> = {};
                 const users = resp.data.call?.users || [];
                 const states = resp.data.call?.states || [];
                 for (let i = 0; i < users.length; i++) {
@@ -675,14 +682,14 @@ export default class Plugin {
                 configRetrieved = true;
             }
 
-            fetchChannels();
+            await fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
             if (currChannelId) {
                 fetchChannelData(currChannelId);
             } else {
                 const expandedID = getExpandedChannelID();
                 if (expandedID.length > 0) {
-                    await store.dispatch({
+                    store.dispatch({
                         type: VOICE_CHANNEL_USER_CONNECTED,
                         data: {
                             channelID: expandedID,
@@ -768,10 +775,12 @@ declare global {
     interface Window {
         registerPlugin(id: string, plugin: Plugin): void,
 
-        callsClient: any,
+        callsClient?: CallsClient,
         webkitAudioContext: AudioContext,
         basename: string,
-        desktop: any,
+        desktop?: {
+            version?: string | null;
+        },
         screenSharingTrackId: string,
     }
 

@@ -1,6 +1,78 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+//
+// Websocket Types
+//
+
+export type EmptyData = Record<string, never>;
+
+export type HelloData = {
+    connection_id: string;
+    server_version: string;
+}
+
+export type CallStartData = {
+    channelID: string;
+    start_at: number;
+    thread_id: string;
+    owner_id: string;
+    host_id: string;
+}
+
+export type UserDisconnectedData = {
+    userID: string;
+}
+
+export type UserConnectedData = {
+    userID: string;
+}
+
+export type UserMutedUnmutedData = {
+    userID: string;
+}
+
+export type UserVoiceOnOffData = {
+    userID: string;
+}
+
+export type UserScreenOnOffData = {
+    userID: string;
+}
+
+export type UserRaiseUnraiseHandData = {
+    userID: string;
+    raised_hand: number;
+}
+
+export type EmojiData = {
+    name: string;
+    skin?: string;
+    unified: string;
+}
+
+export type UserReactionData = {
+    user_id: string;
+    emoji: EmojiData;
+    timestamp: number;
+}
+
+export type CallHostChangedData = {
+    hostID: string;
+}
+
+export type CallRecordingState = {
+    init_at: number,
+    start_at: number,
+    end_at: number,
+    err?: string,
+}
+
+export type CallRecordingStateData = {
+    recState: CallRecordingState;
+    callID: string;
+}
+
 export type UserState = {
     id: string;
     voice: boolean;
@@ -8,6 +80,22 @@ export type UserState = {
     raised_hand: number;
     reaction?: Reaction;
 }
+
+export type WebsocketEventData =
+    EmptyData
+    | HelloData
+    | CallStartData
+    | UserDisconnectedData
+    | UserConnectedData
+    | UserMutedUnmutedData
+    | UserVoiceOnOffData
+    | UserScreenOnOffData
+    | UserRaiseUnraiseHandData
+    | EmojiData
+    | UserReactionData
+    | CallHostChangedData
+    | CallRecordingStateData
+    | UserState;
 
 export type RTCStats = {
     [key: number]: {
@@ -179,24 +267,15 @@ export const CallAlertStatesDefault = {
     },
 };
 
-export type EmojiData = {
-    name: string;
-    skin?: string;
-    unified: string;
-}
-
-export type Reaction = {
-    emoji: EmojiData;
-    timestamp: number;
-    user_id: string;
+export type Reaction = UserReactionData & {
     displayName: string;
 }
 
-export type CallRecordingState = {
-    init_at: number,
-    start_at: number,
-    end_at: number,
-    err?: string,
+export type CapturerSource = {
+    id: string;
+    name: string;
+    thumbnailURL: string;
+    display_id: string;
 }
 
 export type RTCMonitorConfig = {

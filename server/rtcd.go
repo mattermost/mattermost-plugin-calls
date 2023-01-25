@@ -495,7 +495,19 @@ func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string, dialFn rtcd.Dial
 
 	if storedCfg, err := m.getStoredRTCDConfig(); err != nil {
 		return cfg, fmt.Errorf("failed to get rtcd credentials: %w", err)
-	} else if storedCfg.URL == cfg.URL && storedCfg.ClientID == cfg.ClientID {
+	} else if storedCfg.ClientID == cfg.ClientID {
+		// If the clientID matches then it means we registered previously and can
+		// return and proceed to connect.
+		if storedCfg.URL != cfg.URL {
+			// If the URL has changed, we store the new value and return.
+			// If we are not registered yet due to the server changing then
+			// connecting will fail and will trigger a registration attempt.
+			m.ctx.LogInfo("rtcd URL has changed")
+			storedCfg.URL = cfg.URL
+			if err := m.storeConfig(storedCfg); err != nil {
+				return cfg, err
+			}
+		}
 		return storedCfg, nil
 	}
 
@@ -514,17 +526,24 @@ func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string, dialFn rtcd.Dial
 	return cfg, nil
 }
 
+func (m *rtcdClientManager) storeConfig(cfg rtcd.ClientConfig) error {
+	cfgData, err := json.Marshal(&cfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal rtcd client config: %w", err)
+	}
+	m.ctx.metrics.IncStoreOp("KVSet")
+	if err := m.ctx.API.KVSet(rtcdConfigKey, cfgData); err != nil {
+		return fmt.Errorf("failed to store rtcd client config: %w", err)
+	}
+	return nil
+}
+
 func (m *rtcdClientManager) registerRTCDClient(cfg rtcd.ClientConfig, dialFn rtcd.DialContextFn) error {
 	client, err := rtcd.NewClient(cfg, rtcd.WithDialFunc(dialFn))
 	if err != nil {
 		return fmt.Errorf("failed to create rtcd client: %w", err)
 	}
 	defer client.Close()
-
-	cfgData, err := json.Marshal(&cfg)
-	if err != nil {
-		return fmt.Errorf("failed to marshal rtcd client config: %w", err)
-	}
 
 	if err := client.Register(cfg.ClientID, cfg.AuthKey); err != nil {
 		return fmt.Errorf("failed to register rtcd client: %w", err)
@@ -533,9 +552,8 @@ func (m *rtcdClientManager) registerRTCDClient(cfg rtcd.ClientConfig, dialFn rtc
 	// TODO: guard against the "locked out" corner case that the server/plugin process exits
 	// before being able to store the credentials but after a successful
 	// registration.
-	m.ctx.metrics.IncStoreOp("KVSet")
-	if err := m.ctx.API.KVSet(rtcdConfigKey, cfgData); err != nil {
-		return fmt.Errorf("failed to store rtcd client config: %w", err)
+	if err := m.storeConfig(cfg); err != nil {
+		return err
 	}
 
 	m.ctx.LogDebug("rtcd client registered successfully", "clientID", cfg.ClientID)
@@ -576,6 +594,18 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 	if !ok {
 		return fmt.Errorf("unexpected data type %T", msg.Data)
 	}
+
+	if rtcMsg.Type == rtc.VoiceOnMessage || rtcMsg.Type == rtc.VoiceOffMessage {
+		evType := wsEventUserVoiceOff
+		if rtcMsg.Type == rtc.VoiceOnMessage {
+			evType = wsEventUserVoiceOn
+		}
+		m.ctx.publishWebSocketEvent(evType, map[string]interface{}{
+			"userID": rtcMsg.UserID,
+		}, &model.WebsocketBroadcast{ChannelId: rtcMsg.CallID})
+		return nil
+	}
+
 	m.ctx.LogDebug("relaying ws message", "sessionID", rtcMsg.SessionID, "userID", rtcMsg.UserID)
 	m.ctx.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 		"data":   string(rtcMsg.Data),

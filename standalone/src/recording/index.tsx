@@ -9,13 +9,17 @@ import {Client4} from 'mattermost-redux/client';
 import {ChannelTypes} from 'mattermost-redux/action_types';
 import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/users';
 
+import {WebSocketMessage} from '@mattermost/types/websocket';
+
 import {getProfilesByIds, getPluginPath} from 'plugin/utils';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {voiceConnectedProfilesInChannel} from 'plugin/selectors';
 import {VOICE_CHANNEL_USER_CONNECTED} from 'src/action_types';
+import {UserConnectedData, WebsocketEventData} from 'src/types/types';
 
 import recordingReducer from 'src/recording/reducers';
+
 import init from '../init';
 
 import RecordingView from './components/recording_view';
@@ -89,14 +93,14 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
     );
 }
 
-async function wsHandlerRecording(store: Store, ev: any) {
+async function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventData>) {
     switch (ev.event) {
     case `custom_${pluginId}_user_connected`: {
-        const profiles = await getProfilesByIds(store.getState(), [ev.data.userID]);
+        const profiles = await getProfilesByIds(store.getState(), [(ev.data as UserConnectedData).userID]);
         store.dispatch({
             type: RECEIVED_CALL_PROFILE_IMAGES,
             data: {
-                channelID: ev.data.channelID,
+                channelID: ev.broadcast.channel_id,
                 profileImages: await fetchProfileImages(profiles),
             },
         });

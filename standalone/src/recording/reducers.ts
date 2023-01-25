@@ -1,4 +1,4 @@
-import {combineReducers} from 'redux';
+import {combineReducers, Reducer} from 'redux';
 
 import {
     RECEIVED_CALL_PROFILE_IMAGES,
@@ -47,4 +47,4 @@ const callProfileImages = (state: callProfileImagesState = {}, action: callProfi
 
 export default combineReducers({
     callProfileImages,
-});
+}) as Reducer;

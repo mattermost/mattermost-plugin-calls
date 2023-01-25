@@ -1,3 +1,5 @@
+/* eslint-disable max-lines */
+
 import {EventEmitter} from 'events';
 
 // @ts-ignore
@@ -11,8 +13,6 @@ import RTCMonitor from './rtc_monitor';
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
-import VoiceActivityDetector from './vad';
-
 import {parseRTCStats} from './rtc_stats';
 
 export const AudioInputPermissionsError = new Error('missing audio input permissions');
@@ -27,20 +27,19 @@ export default class CallsClient extends EventEmitter {
     public channelID: string;
     private readonly config: CallsClientConfig;
     private peer: RTCPeer | null;
-    private ws: WebSocketClient | null;
-    private localScreenTrack: any;
-    private remoteScreenTrack: any;
+    public ws: WebSocketClient | null;
+    private localScreenTrack: MediaStreamTrack | null = null;
+    private remoteScreenTrack: MediaStreamTrack | null = null;
     public currentAudioInputDevice: MediaDeviceInfo | null = null;
     public currentAudioOutputDevice: MediaDeviceInfo | null = null;
-    private voiceDetector: any;
     private voiceTrackAdded: boolean;
     private streams: MediaStream[];
     private stream: MediaStream | null;
     private audioDevices: AudioDevices;
-    private audioTrack: MediaStreamTrack | null;
+    public audioTrack: MediaStreamTrack | null;
     public isHandRaised: boolean;
-    private onDeviceChange: () => void;
-    private onBeforeUnload: () => void;
+    private readonly onDeviceChange: () => void;
+    private readonly onBeforeUnload: () => void;
     private closed = false;
     private initTime = Date.now();
     private rtcMonitor: RTCMonitor | null = null;
@@ -59,32 +58,14 @@ export default class CallsClient extends EventEmitter {
         this.isHandRaised = false;
         this.channelID = '';
         this.config = config;
-        this.onDeviceChange = () => {
-            this.updateDevices();
+        this.onDeviceChange = async () => {
+            await this.updateDevices();
         };
         this.onBeforeUnload = () => {
             logDebug('unload');
             this.disconnect();
         };
         window.addEventListener('beforeunload', this.onBeforeUnload);
-    }
-
-    private initVAD(inputStream: MediaStream) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) {
-            throw new Error('AudioCtx unsupported');
-        }
-        this.voiceDetector = new VoiceActivityDetector(new AudioContext(), inputStream.clone());
-        this.voiceDetector.on('start', () => {
-            if (this.ws && this.audioTrack?.enabled) {
-                this.ws.send('voice_on');
-            }
-        });
-        this.voiceDetector.on('stop', () => {
-            if (this.ws) {
-                this.ws.send('voice_off');
-            }
-        });
     }
 
     private async updateDevices() {
@@ -103,11 +84,11 @@ export default class CallsClient extends EventEmitter {
     }
 
     private async initAudio(deviceId?: string) {
-        const audioOptions = {
+        const audioOptions: MediaTrackConstraints = {
             autoGainControl: true,
             echoCancellation: true,
             noiseSuppression: true,
-        } as any;
+        };
 
         if (deviceId) {
             audioOptions.deviceId = {
@@ -161,7 +142,6 @@ export default class CallsClient extends EventEmitter {
             this.audioTrack = this.stream.getAudioTracks()[0];
             this.streams.push(this.stream);
 
-            this.initVAD(this.stream);
             this.audioTrack.enabled = false;
 
             this.emit('initaudio');
@@ -356,8 +336,6 @@ export default class CallsClient extends EventEmitter {
         }
 
         const isEnabled = this.audioTrack.enabled;
-        this.voiceDetector.stop();
-        this.voiceDetector.destroy();
         this.audioTrack.stop();
         const newStream = await navigator.mediaDevices.getUserMedia({
             video: false,
@@ -368,16 +346,12 @@ export default class CallsClient extends EventEmitter {
                 autoGainControl: true,
                 echoCancellation: true,
                 noiseSuppression: true,
-            } as any,
+            },
         });
         this.streams.push(newStream);
         const newTrack = newStream.getAudioTracks()[0];
         this.stream.removeTrack(this.audioTrack);
         this.stream.addTrack(newTrack);
-        this.initVAD(this.stream);
-        if (isEnabled) {
-            this.voiceDetector.on('ready', () => this.voiceDetector.start());
-        }
         newTrack.enabled = isEnabled;
         if (isEnabled) {
             if (this.voiceTrackAdded) {
@@ -385,7 +359,7 @@ export default class CallsClient extends EventEmitter {
                 this.peer.replaceTrack(this.audioTrack.id, newTrack);
             } else {
                 logDebug('adding track to peer', newTrack.id, this.stream.id);
-                this.peer.addTrack(newTrack, this.stream);
+                await this.peer.addTrack(newTrack, this.stream);
             }
         } else {
             this.voiceTrackAdded = false;
@@ -422,11 +396,6 @@ export default class CallsClient extends EventEmitter {
             this.peer = null;
         }
 
-        if (this.voiceDetector) {
-            this.voiceDetector.destroy();
-            this.voiceDetector = null;
-        }
-
         this.streams.forEach((s) => {
             s.getTracks().forEach((track) => {
                 track.stop();
@@ -455,9 +424,10 @@ export default class CallsClient extends EventEmitter {
             return;
         }
 
-        if (this.voiceDetector) {
-            this.voiceDetector.stop();
-        }
+        logDebug('replacing track to peer', null);
+
+        // @ts-ignore: we actually mean (and need) to pass null here
+        this.peer.replaceTrack(this.audioTrack.id, null);
 
         this.audioTrack.enabled = false;
 
@@ -480,16 +450,17 @@ export default class CallsClient extends EventEmitter {
             }
         }
 
-        if (this.voiceDetector) {
-            this.voiceDetector.start();
+        if (this.audioTrack) {
+            if (this.voiceTrackAdded) {
+                logDebug('replacing track to peer', this.audioTrack.id);
+                this.peer.replaceTrack(this.audioTrack.id, this.audioTrack);
+            } else if (this.stream) {
+                logDebug('adding track to peer', this.audioTrack.id, this.stream.id);
+                await this.peer.addTrack(this.audioTrack, this.stream);
+                this.voiceTrackAdded = true;
+            }
+            this.audioTrack.enabled = true;
         }
-
-        if (!this.voiceTrackAdded) {
-            logDebug('adding track to peer', this.audioTrack!.id, this.stream!.id);
-            this.peer.addTrack(this.audioTrack!, this.stream!);
-            this.voiceTrackAdded = true;
-        }
-        this.audioTrack!.enabled = true;
         if (this.ws) {
             this.ws.send('unmute');
         }

@@ -3,31 +3,32 @@
 
 import React, {ChangeEvent} from 'react';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
+import {getConfig} from 'mattermost-redux/selectors/entities/admin';
 import {useSelector} from 'react-redux';
 
 import manifest from 'src/manifest';
-import {isCloud, isOnPremNotEnterprise} from 'src/selectors';
+
 import {
     LabelRow,
 } from 'src/components/admin_console_settings/common';
 
-const MaxRecordingDuration = (props: CustomComponentProps) => {
-    const restricted = useSelector(isOnPremNotEnterprise);
-    const cloud = useSelector(isCloud);
+const UDPServerAddress = (props: CustomComponentProps) => {
+    const config = useSelector(getConfig);
+
+    // If RTCD is configured then this setting doesn't apply and should be hidden.
+    if (config.PluginSettings?.Plugins[manifest.id].rtcdserviceurl?.length > 0) {
+        return null;
+    }
 
     const leftCol = 'col-sm-4';
     const rightCol = 'col-sm-8';
 
     // Webapp doesn't pass the placeholder setting.
-    const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'MaxRecordingDuration')?.placeholder || '';
+    const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'UDPServerAddress')?.placeholder || '';
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        props.onChange(props.id, parseInt(e.target.value, 10));
+        props.onChange(props.id, e.target.value);
     };
-
-    if (cloud || restricted) {
-        return null;
-    }
 
     return (
         <div
@@ -46,10 +47,10 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
             </div>
             <div className={rightCol}>
                 <input
-                    data-testid={props.id + 'number'}
+                    data-testid={props.id + 'input'}
                     id={props.id}
                     className='form-control'
-                    type={'number'}
+                    type={'input'}
                     placeholder={placeholder}
                     value={props.value}
                     onChange={handleChange}
@@ -66,4 +67,4 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
     );
 };
 
-export default MaxRecordingDuration;
+export default UDPServerAddress;

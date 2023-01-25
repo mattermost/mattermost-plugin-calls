@@ -1,17 +1,13 @@
 import React from 'react';
-import PropTypes from 'prop-types';
-
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-
-import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
+import {Theme} from 'mattermost-redux/types/themes';
 
-import {getUserDisplayName, getUsersList} from '../../utils';
-
-import ActiveCallIcon from '../../components/icons/active_call_icon';
+import {getUsersList} from 'src/utils';
+import ActiveCallIcon from 'src/components/icons/active_call_icon';
 
 interface Props {
-    theme: any,
+    theme: Theme,
     hasCall: boolean,
     profiles: UserProfile[],
 }

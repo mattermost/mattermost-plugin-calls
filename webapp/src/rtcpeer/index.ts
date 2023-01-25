@@ -110,18 +110,18 @@ export default class RTCPeer extends EventEmitter {
         }
     }
 
-    public async addTrack(track: MediaStreamTrack, stream?: MediaStream) {
+    public async addTrack(track: MediaStreamTrack, stream: MediaStream) {
         if (!this.pc) {
             throw new Error('peer has been destroyed');
         }
-        const sender = await this.pc.addTrack(track, stream!);
+        const sender = await this.pc.addTrack(track, stream);
         if (sender) {
             this.senders[track.id] = sender;
         }
     }
 
     public addStream(stream: MediaStream) {
-        stream.getTracks().forEach(track => {
+        stream.getTracks().forEach((track) => {
             this.addTrack(track, stream);
         });
     }
