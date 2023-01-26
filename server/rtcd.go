@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/url"
 	"os"
@@ -24,12 +25,13 @@ import (
 )
 
 const (
-	rtcdConfigKey        = "rtcd_config"
-	maxReconnectAttempts = 8
-	lockTimeout          = 5 * time.Second
-	resolveTimeout       = 2 * time.Second
-	dialingTimeout       = 4 * time.Second
-	hostCheckInterval    = 10 * time.Second
+	rtcdConfigKey           = "rtcd_config"
+	maxReconnectAttempts    = 8
+	lockTimeout             = 5 * time.Second
+	resolveTimeout          = 2 * time.Second
+	dialingTimeout          = 4 * time.Second
+	hostCheckInterval       = 10 * time.Second
+	baseReconnectIntervalMs = 5000
 )
 
 type rtcdHost struct {
@@ -143,6 +145,11 @@ func (m *rtcdClientManager) hostsChecker() {
 				m.mut.RUnlock()
 				if !ok {
 					// create new client
+
+					// We add some jitter to try and avoid multiple clients to attempt
+					// authentication/registration all at the same exact time.
+					time.Sleep(time.Duration(rand.Intn(baseReconnectIntervalMs)) * time.Millisecond)
+
 					m.ctx.LogDebug("creating client for missing host", "host", ip)
 					client, err := m.newRTCDClient(m.rtcdURL, ip, getDialFn(ip, m.rtcdPort))
 					if err != nil {
@@ -373,6 +380,7 @@ func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.Dial
 			}
 			return fmt.Errorf("max reconnection attempts reached, removing client")
 		}
+
 		if err := registerClient(); err != nil {
 			m.ctx.LogError(fmt.Sprintf("failed to register client: %s", err.Error()))
 			return nil
@@ -431,6 +439,10 @@ func (m *rtcdClientManager) getStoredRTCDConfig() (rtcd.ClientConfig, error) {
 
 func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string, dialFn rtcd.DialContextFn) (rtcd.ClientConfig, error) {
 	var cfg rtcd.ClientConfig
+
+	// We add some jitter to try and avoid multiple clients to attempt
+	// authentication/registration all at the same exact time.
+	cfg.ReconnectInterval = time.Duration(rand.Intn(baseReconnectIntervalMs)) * time.Millisecond
 
 	// Give precedence to environment to override everything else.
 	cfg.ClientID = os.Getenv("MM_CLOUD_INSTALLATION_ID")
