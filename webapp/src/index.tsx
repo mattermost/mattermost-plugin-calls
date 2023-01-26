@@ -778,7 +778,7 @@ declare global {
         callsClient?: CallsClient,
         webkitAudioContext: AudioContext,
         basename: string,
-        desktop: {
+        desktop?: {
             version?: string | null;
         },
         screenSharingTrackId: string,
