@@ -323,7 +323,6 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_user_reacted`:
             handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);
-
             break;
         default:
         }

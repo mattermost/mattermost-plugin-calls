@@ -48,7 +48,7 @@ import {
 import {logErr} from './log';
 
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
     if (connectedChannelID(store.getState()) === channelID) {
         window.callsClient?.disconnect();
     }
@@ -97,7 +97,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
 }
 
 export function handleUserDisconnected(store: Store, ev: WebSocketMessage<UserDisconnectedData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
     store.dispatch({
         type: VOICE_CHANNEL_USER_DISCONNECTED,
@@ -111,7 +111,7 @@ export function handleUserDisconnected(store: Store, ev: WebSocketMessage<UserDi
 
 export async function handleUserConnected(store: Store, ev: WebSocketMessage<UserConnectedData>) {
     const userID = ev.data.userID;
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
     const currentUserID = getCurrentUserId(store.getState());
 
     if (window.callsClient?.channelID === channelID) {
@@ -145,7 +145,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
 }
 
 export function handleUserMuted(store: Store, ev: WebSocketMessage<UserMutedUnmutedData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
         type: VOICE_CHANNEL_USER_MUTED,
         data: {
@@ -156,7 +156,7 @@ export function handleUserMuted(store: Store, ev: WebSocketMessage<UserMutedUnmu
 }
 
 export function handleUserUnmuted(store: Store, ev: WebSocketMessage<UserMutedUnmutedData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
         type: VOICE_CHANNEL_USER_UNMUTED,
         data: {
@@ -167,7 +167,7 @@ export function handleUserUnmuted(store: Store, ev: WebSocketMessage<UserMutedUn
 }
 
 export function handleUserVoiceOn(store: Store, ev: WebSocketMessage<UserVoiceOnOffData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
         type: VOICE_CHANNEL_USER_VOICE_ON,
         data: {
@@ -178,7 +178,7 @@ export function handleUserVoiceOn(store: Store, ev: WebSocketMessage<UserVoiceOn
 }
 
 export function handleUserVoiceOff(store: Store, ev: WebSocketMessage<UserVoiceOnOffData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
         type: VOICE_CHANNEL_USER_VOICE_OFF,
         data: {
@@ -189,7 +189,7 @@ export function handleUserVoiceOff(store: Store, ev: WebSocketMessage<UserVoiceO
 }
 
 export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreenOnOffData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
         type: VOICE_CHANNEL_USER_SCREEN_ON,
         data: {
@@ -200,7 +200,7 @@ export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreen
 }
 
 export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScreenOnOffData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
         type: VOICE_CHANNEL_USER_SCREEN_OFF,
         data: {
@@ -211,7 +211,7 @@ export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScree
 }
 
 export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
         type: VOICE_CHANNEL_USER_RAISE_HAND,
         data: {
@@ -223,7 +223,7 @@ export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRais
 }
 
 export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
         type: VOICE_CHANNEL_USER_UNRAISE_HAND,
         data: {
@@ -235,7 +235,7 @@ export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRa
 }
 
 export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReactionData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
     if (connectedChannelID(store.getState()) !== channelID) {
         return;
@@ -268,7 +268,7 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
 }
 
 export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHostChangedData>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
     store.dispatch({
         type: VOICE_CHANNEL_CALL_HOST,
