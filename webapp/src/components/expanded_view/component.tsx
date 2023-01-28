@@ -4,7 +4,9 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
+import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
+import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 
 import {UserProfile} from '@mattermost/types/users';
@@ -12,15 +14,19 @@ import {Team} from '@mattermost/types/teams';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 
-import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
-
 import {
     ProductChannelsIcon,
     RecordCircleOutlineIcon,
     RecordSquareOutlineIcon,
 } from '@mattermost/compass-icons/components';
 
-import {RouteComponentProps} from 'react-router-dom';
+import {
+    UserState,
+    AudioDevices,
+    CallAlertStates,
+    CallAlertStatesDefault,
+    CallRecordingState,
+} from '@calls/common/lib/types';
 
 import {
     getUserDisplayName,
@@ -31,13 +37,6 @@ import {
     shouldRenderDesktopWidget,
 } from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
-import {
-    UserState,
-    AudioDevices,
-    CallAlertStates,
-    CallAlertStatesDefault,
-    CallRecordingState,
-} from '@calls/common/lib';
 
 import {
     CallAlertConfigs,
@@ -940,7 +939,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     shortcut={undefined}
                                     bgColor={''}
                                     icon={
-                                        <div css={{position: 'relative'}}>
+                                        <div style={{position: 'relative'}}>
                                             <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
                                                 size={24}
                                                 color={'white'}

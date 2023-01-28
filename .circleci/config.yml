@@ -38,7 +38,7 @@ commands:
       - run:
           name: Getting JavaScript dependencies
           command: |
-            cd webapp
+            cd webapp/packages && npm run build && cd ..
             NODE_ENV=development npm ci --ignore-scripts --no-save
       - save_cache:
           name: Save npm cache
@@ -55,7 +55,7 @@ commands:
       - run:
           name: Getting JavaScript dependencies
           command: |
-            cd standalone
+            cd webapp/packages && npm run build && cd ../../standalone
             NODE_ENV=development npm ci --ignore-scripts --no-save
       - save_cache:
           name: Save npm cache
@@ -111,6 +111,7 @@ jobs:
       - install-golangci-lint
       - *restore_cache
       - install-node-npm
+      - run: make apply
       - npm-dependencies
       - npm-dependencies-standalone
       - run:
@@ -121,7 +122,6 @@ jobs:
           name: Checking diff of go mod files
           command: |
             git --no-pager diff --exit-code go.mod go.sum || (echo "Please run \"go mod tidy\" and commit the changes in go.mod and go.sum." && exit 1)
-      - run: make apply
       - run:
           name: Checking diff of generated manifest files
           command: |
@@ -140,6 +140,7 @@ jobs:
       - checkout
       - *restore_cache
       - install-node-npm
+      - run: make apply
       - npm-dependencies
       - npm-dependencies-standalone
       - run: make test
@@ -151,6 +152,7 @@ jobs:
     steps:
       - checkout
       - install-node-npm
+      - run: make apply
       - npm-dependencies
       - npm-dependencies-standalone
       - run:

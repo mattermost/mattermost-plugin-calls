@@ -67,7 +67,7 @@ import {
     UserState,
     UserVoiceOnOffData,
     WebsocketEventData,
-} from '@calls/common';
+} from '@calls/common/lib/types';
 
 import {
     getCallID,

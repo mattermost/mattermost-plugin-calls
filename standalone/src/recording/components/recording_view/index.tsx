@@ -4,10 +4,10 @@
 import React, {CSSProperties, useEffect, useRef, useState} from 'react';
 import {useSelector} from 'react-redux';
 
-import {GlobalState} from '@mattermost/types/lib/store';
+import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 
-import {UserState} from '@calls/common';
+import {UserState} from '@calls/common/lib/types';
 
 import {logErr} from 'plugin/log';
 import {alphaSortProfiles, getUserDisplayName, stateSortProfiles} from 'plugin/utils';
