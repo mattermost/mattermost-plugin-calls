@@ -1,6 +1,7 @@
 {
   "private": true,
   "scripts": {
+    "postinstall": "npm run build --workspaces && node skip_integrity_check.js",
     "build": "npm run build --workspaces && webpack --mode=production",
     "build:watch": "npm run build --workspaces && webpack --mode=production --watch",
     "debug": "npm run build --workspaces && webpack --mode=none",
