@@ -20,7 +20,7 @@ import {UserProfile} from '@mattermost/types/users';
 import {GlobalState} from '@mattermost/types/store';
 import {ClientConfig} from '@mattermost/types/config';
 
-import {UserState} from './types/types';
+import {UserState} from '@calls/common';
 
 import {pluginId} from './manifest';
 import {logErr, logDebug} from './log';

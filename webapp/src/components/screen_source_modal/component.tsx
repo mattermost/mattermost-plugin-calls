@@ -8,7 +8,7 @@ import {hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from '
 import CompassIcon from 'src/components/icons/compassIcon';
 
 import './component.scss';
-import {CapturerSource} from 'src/types/types';
+import {CapturerSource} from '@calls/common';
 
 interface Props {
     theme: Theme,

@@ -7,9 +7,10 @@ import {useSelector} from 'react-redux';
 import {GlobalState} from '@mattermost/types/lib/store';
 import {UserProfile} from '@mattermost/types/users';
 
+import {UserState} from '@calls/common';
+
 import {logErr} from 'plugin/log';
 import {alphaSortProfiles, getUserDisplayName, stateSortProfiles} from 'plugin/utils';
-import {UserState} from 'plugin/types/types';
 import Avatar from 'plugin/components/avatar/avatar';
 import CallParticipant from 'plugin/components/expanded_view/call_participant';
 import {voiceChannelCallHostID, voiceChannelScreenSharingID, voiceConnectedProfiles, voiceUsersStatuses} from 'src/selectors';

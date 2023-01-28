@@ -1,4 +1,4 @@
-import {RTCStats} from 'src/types/types';
+import {RTCStats} from './types';
 
 export function parseRTCStats(reports: RTCStatsReport): RTCStats {
     const stats: RTCStats = {};

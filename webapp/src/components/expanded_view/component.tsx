@@ -37,7 +37,7 @@ import {
     CallAlertStates,
     CallAlertStatesDefault,
     CallRecordingState,
-} from 'src/types/types';
+} from '@calls/common/lib';
 
 import {
     CallAlertConfigs,
