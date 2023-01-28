@@ -4,11 +4,12 @@ import {Channel} from '@mattermost/types/channels';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {Theme} from 'mattermost-redux/types/themes';
 
+import {CapturerSource} from '@calls/common';
+
 import {hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
 import CompassIcon from 'src/components/icons/compassIcon';
 
 import './component.scss';
-import {CapturerSource} from '@calls/common';
 
 interface Props {
     theme: Theme,

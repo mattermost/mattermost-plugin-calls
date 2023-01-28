@@ -12,6 +12,7 @@ import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/pre
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
 import {CallsConfig} from '@calls/common';
+
 import * as Telemetry from 'src/types/telemetry';
 import {getPluginPath} from 'src/utils';
 import {modals, openPricingModal} from 'src/webapp_globals';

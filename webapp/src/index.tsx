@@ -10,6 +10,8 @@ import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels'
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
+import {UserState} from '@calls/common';
+
 import {
     displayFreeTrial,
     getCallsConfig,
@@ -27,8 +29,6 @@ import TestMode from 'src/components/admin_console_settings/test_mode';
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
-
-import {UserState} from '@calls/common';
 
 import {
     handleUserConnected,

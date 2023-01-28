@@ -3,8 +3,6 @@ import {combineReducers} from 'redux';
 
 import {UserProfile} from '@mattermost/types/users';
 
-import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
-
 import {
     CallsConfigDefault,
     CallsConfig,
@@ -15,6 +13,8 @@ import {
     CallRecordingState,
     ChannelState,
 } from '@calls/common';
+
+import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 
 import {
     VOICE_CHANNEL_USER_CONNECTED,

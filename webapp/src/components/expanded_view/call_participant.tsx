@@ -1,12 +1,12 @@
 import React from 'react';
-
 import {CSSObject} from 'styled-components';
+
+import {Reaction} from '@calls/common';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 import MutedIcon from 'src/components/icons/muted_icon';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import Avatar from 'src/components/avatar/avatar';
-import {Reaction} from '@calls/common';
 import {Emoji} from 'src/components/emoji/emoji';
 
 export type Props = {

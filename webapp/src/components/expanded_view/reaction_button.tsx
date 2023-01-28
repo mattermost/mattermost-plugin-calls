@@ -14,6 +14,8 @@ import EmojiPicker, {
 
 import {HandRightOutlineIcon, HandRightOutlineOffIcon} from '@mattermost/compass-icons/components';
 
+import {EmojiData} from '@calls/common';
+
 import ControlsButton from 'src/components/expanded_view/controls_button';
 import {MAKE_REACTION, RAISE_LOWER_HAND, reverseKeyMappings} from 'src/shortcuts';
 import SmileyIcon from 'src/components/icons/smiley_icon';
@@ -22,7 +24,6 @@ import {StyledTooltip} from 'src/components/shared';
 import Shortcut from 'src/components/shortcut';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {Emoji} from 'src/components/emoji/emoji';
-import {EmojiData} from '@calls/common';
 
 const EMOJI_VERSION = '13';
 
