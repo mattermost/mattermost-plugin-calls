@@ -38,7 +38,7 @@ import UDPServerPort from 'src/components/admin_console_settings/udp_server_port
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 
-import {UserState} from 'src/types/types';
+import {UserState} from '@calls/common';
 
 import {DisabledCallsErr} from 'src/constants';
 

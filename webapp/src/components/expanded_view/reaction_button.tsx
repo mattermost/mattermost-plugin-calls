@@ -22,7 +22,7 @@ import {StyledTooltip} from 'src/components/shared';
 import Shortcut from 'src/components/shortcut';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {Emoji} from 'src/components/emoji/emoji';
-import {EmojiData} from 'src/types/types';
+import {EmojiData} from '@calls/common';
 
 const EMOJI_VERSION = '13';
 

@@ -13,7 +13,8 @@ import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from '
 import {Theme} from 'mattermost-redux/types/themes';
 import {Store} from 'src/types/mattermost-webapp';
 
-import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallRecordingState, UserState} from 'src/types/types';
+import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallRecordingState, UserState} from '@calls/common/lib';
+
 import * as Telemetry from 'src/types/telemetry';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent} from 'src/utils';
 import {

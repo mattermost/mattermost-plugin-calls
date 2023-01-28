@@ -6,7 +6,7 @@ import CompassIcon from 'src/components/icons/compassIcon';
 
 import {
     CallRecordingState,
-} from 'src/types/types';
+} from '@calls/common';
 
 import {
     CallRecordingDisclaimerStrings,

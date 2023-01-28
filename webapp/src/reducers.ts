@@ -14,7 +14,7 @@ import {
     Reaction,
     CallRecordingState,
     ChannelState,
-} from './types/types';
+} from '@calls/common';
 
 import {
     VOICE_CHANNEL_USER_CONNECTED,

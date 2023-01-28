@@ -1,7 +1,7 @@
 import {
     CallAlertType,
     CallAlertConfig,
-} from 'src/types/types';
+} from '@calls/common';
 
 export const MAX_NUM_REACTIONS_IN_REACTION_STREAM = 50;
 export const REACTION_TIMEOUT_IN_REACTION_STREAM = 10000;

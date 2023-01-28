@@ -1,12 +1,12 @@
 {
   "private": true,
   "scripts": {
-    "build": "webpack --mode=production",
-    "build:watch": "webpack --mode=production --watch",
-    "debug": "webpack --mode=none",
-    "debug:watch": "webpack --mode=development --watch",
-    "lint": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js --ext .jsx --ext tsx --ext ts . --quiet --cache",
-    "fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js --ext .jsx --ext tsx --ext ts . --quiet --fix --cache",
+    "build": "npm run build --workspaces && webpack --mode=production",
+    "build:watch": "npm run build --workspaces && webpack --mode=production --watch",
+    "debug": "npm run build --workspaces && webpack --mode=none",
+    "debug:watch": "npm run build --workspaces && webpack --mode=development --watch",
+    "lint": "eslint --ignore-pattern node_modules --ignore-pattern dist --ignore-pattern lib --ext .js --ext .jsx --ext tsx --ext ts . --quiet --cache",
+    "fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ignore-pattern lib --ext .js --ext .jsx --ext tsx --ext ts . --quiet --fix --cache",
     "test": "jest --forceExit --detectOpenHandles --verbose",
     "test:watch": "jest --watch",
     "test-ci": "jest --forceExit --detectOpenHandles --maxWorkers=2",
@@ -128,5 +128,8 @@
     ],
     "testURL": "http://localhost:8065",
     "testEnvironment": "jsdom"
-  }
+  },
+  "workspaces": [
+    "packages/common"
+  ]
 }

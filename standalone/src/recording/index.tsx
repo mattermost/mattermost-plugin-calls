@@ -11,12 +11,13 @@ import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/
 
 import {WebSocketMessage} from '@mattermost/types/websocket';
 
+import {UserConnectedData, WebsocketEventData} from '@calls/common';
+
 import {getProfilesByIds, getPluginPath} from 'plugin/utils';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {voiceConnectedProfilesInChannel} from 'plugin/selectors';
 import {VOICE_CHANNEL_USER_CONNECTED} from 'src/action_types';
-import {UserConnectedData, WebsocketEventData} from 'src/types/types';
 
 import recordingReducer from 'src/recording/reducers';
 

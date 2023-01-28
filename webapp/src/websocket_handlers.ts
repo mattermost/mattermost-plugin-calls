@@ -10,7 +10,8 @@ import {
     UserConnectedData,
     UserDisconnectedData,
     UserMutedUnmutedData, UserRaiseUnraiseHandData, UserReactionData, UserScreenOnOffData, UserVoiceOnOffData,
-} from 'src/types/types';
+} from '@calls/common';
+
 import {REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 
 import {Store} from './types/mattermost-webapp';
