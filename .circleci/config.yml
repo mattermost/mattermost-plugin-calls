@@ -36,7 +36,7 @@ commands:
           name: Getting JavaScript dependencies
           command: |
             cd webapp
-            NODE_ENV=development npm ci --ignore-scripts --no-save --workspaces
+            NODE_ENV=development npm ci --ignore-scripts --no-save
 
   npm-dependencies-standalone:
     description: "Get JavaScript dependencies"
@@ -45,7 +45,7 @@ commands:
           name: Getting JavaScript dependencies
           command: |
             cd standalone
-            NODE_ENV=development npm ci --ignore-scripts --no-save --workspaces
+            NODE_ENV=development npm ci --ignore-scripts --no-save
 
   install-golangci-lint:
     description: Install golangci-lint
