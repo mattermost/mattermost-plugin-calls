@@ -140,6 +140,7 @@ jobs:
       - checkout
       - *restore_cache
       - install-node-npm
+      - run: make apply
       - npm-dependencies
       - npm-dependencies-standalone
       - run: make test
