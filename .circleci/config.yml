@@ -152,6 +152,7 @@ jobs:
     steps:
       - checkout
       - install-node-npm
+      - run: make apply
       - npm-dependencies
       - npm-dependencies-standalone
       - run:
