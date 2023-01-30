@@ -16,6 +16,8 @@ import {
     displayCallErrorModal,
     showScreenSourceModal,
     displayCallsTestModeUser,
+    startCallRecording,
+    stopCallRecording,
 } from 'src/actions';
 
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
@@ -61,7 +63,10 @@ import {
     isCloudStarter,
     channelHasCall,
     callsExplicitlyEnabled,
-    callsExplicitlyDisabled, hasPermissionsToEnableCalls,
+    callsExplicitlyDisabled,
+    hasPermissionsToEnableCalls,
+    voiceChannelCallHostID,
+    callRecording,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -315,6 +320,44 @@ export default class Plugin {
                 }
                 const data = sessionStorage.getItem('calls_client_stats') || '{}';
                 return {message: `/call stats ${btoa(data)}`, args};
+            }
+            case 'recording': {
+                if (fields.length < 3) {
+                    break;
+                }
+
+                if (args.channel_id !== connectedID) {
+                    return {error: {message: 'You\'re not connected to a call in the current channel.'}};
+                }
+
+                const state = store.getState();
+                const isHost = voiceChannelCallHostID(state, connectedID) === getCurrentUserId(state);
+                const recording = callRecording(state, connectedID);
+
+                if (fields[2] === 'start') {
+                    if (recording?.start_at > recording?.end_at) {
+                        return {error: {message: 'A recording is already in progress.'}};
+                    }
+
+                    if (!isHost) {
+                        return {error: {message: 'You don\'t have permissions to start a recording. Please ask the call host to start a recording.'}};
+                    }
+
+                    await store.dispatch(startCallRecording(connectedID));
+                }
+
+                if (fields[2] === 'stop') {
+                    if (!recording || recording?.end_at > recording?.start_at) {
+                        return {error: {message: 'No recording is in progress.'}};
+                    }
+
+                    if (!isHost) {
+                        return {error: {message: 'You don\'t have permissions to stop the recording. Please ask the call host to stop the recording.'}};
+                    }
+
+                    await stopCallRecording(connectedID);
+                }
+                break;
             }
             }
 
