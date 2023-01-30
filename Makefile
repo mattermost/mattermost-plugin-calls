@@ -356,6 +356,7 @@ ifneq ($(HAS_WEBAPP),)
 	rm -fr webapp/node_modules
 	rm -fr standalone/dist
 	rm -fr standalone/node_modules
+	npm --prefix webapp/packages/common run clean
 endif
 	rm -fr build/bin/
 	rm -fr e2e/tests-results/
