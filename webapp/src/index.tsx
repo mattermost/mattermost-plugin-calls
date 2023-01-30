@@ -10,7 +10,7 @@ import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels'
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
-import {UserState} from '@calls/common';
+import {UserState} from '@calls/common/lib/types';
 
 import {
     displayFreeTrial,
@@ -258,7 +258,7 @@ export default class Plugin {
                         await joinCall(args.channel_id, team_id, title);
                         return {};
                     } catch (e) {
-                        return {error: {message: e.message}};
+                        return {error: {message: (e as Error).message}};
                     }
                 }
                 return {error: {message: 'You\'re already connected to a call in the current channel.'}};

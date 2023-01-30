@@ -26,7 +26,7 @@ import {
     CallAlertStates,
     CallAlertStatesDefault,
     CallRecordingState,
-} from '@calls/common/lib';
+} from '@calls/common/lib/types';
 
 import {
     getUserDisplayName,
@@ -937,7 +937,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     shortcut={undefined}
                                     bgColor={''}
                                     icon={
-                                        <div css={{position: 'relative'}}>
+                                        <div style={{position: 'relative'}}>
                                             <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
                                                 size={24}
                                                 color={'white'}

@@ -2,9 +2,7 @@ import React, {useState, useEffect, useCallback} from 'react';
 
 import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
 
-import {
-    CallRecordingState,
-} from '@calls/common';
+import {CallRecordingState} from '@calls/common/lib/types';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 

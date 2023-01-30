@@ -11,7 +11,9 @@ import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
-import {CallsConfig} from '@calls/common';
+import {ClientError} from 'mattermost-redux/client/client4';
+
+import {CallsConfig} from '@calls/common/lib/types';
 
 import * as Telemetry from 'src/types/telemetry';
 import {getPluginPath} from 'src/utils';
@@ -151,7 +153,8 @@ export const requestOnPremTrialLicense = async (users: number, termsAccepted: bo
         return {data: response};
     } catch (e) {
         // In the event that the status code returned is 451, this request has been blocked because it originated from an embargoed country
-        return {error: e.message, data: {status: e.status_code}};
+        const err = e as ClientError;
+        return {error: err.message, data: {status: err.status_code}};
     }
 };
 

@@ -3,7 +3,10 @@
     "version": "0.12.0",
     "description": "Common code shared between calls webapp, desktop, and mobile.",
     "license": "MIT",
-    "main": "./lib/index.js",
+    "exports": {
+        ".": "./lib/index.js",
+        "./types": "./lib/types/index.js"
+    },
     "devDependencies": {},
     "scripts": {
         "build": "tsc --build --verbose",

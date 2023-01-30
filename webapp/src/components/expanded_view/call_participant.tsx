@@ -1,7 +1,7 @@
 import React from 'react';
 import {CSSObject} from 'styled-components';
 
-import {Reaction} from '@calls/common';
+import {Reaction} from '@calls/common/lib/types';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 import MutedIcon from 'src/components/icons/muted_icon';
