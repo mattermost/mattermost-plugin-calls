@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -33,6 +34,8 @@ const (
 	hostCheckInterval       = 10 * time.Second
 	baseReconnectIntervalMs = 5000
 )
+
+var errClientReplaced = errors.New("client replaced")
 
 type rtcdHost struct {
 	ip           string
@@ -112,7 +115,7 @@ func (m *rtcdClientManager) hostsChecker() {
 		case <-ticker.C:
 			ips, _, err := resolveURL(m.rtcdURL, resolveTimeout)
 			if err != nil {
-				m.ctx.LogError(fmt.Sprintf("failed to resolve URL: %s", err.Error()))
+				m.ctx.LogWarn(fmt.Sprintf("failed to resolve URL: %s", err.Error()))
 				continue
 			}
 
@@ -348,32 +351,13 @@ func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.Dial
 	// Remove trailing slash if present.
 	rtcdURL = strings.TrimSuffix(rtcdURL, "/")
 
-	clientCfg, err := m.getRTCDClientConfig(rtcdURL, dialFn)
+	clientCfg, err := m.getRTCDClientConfig(rtcdURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rtcd client config: %w", err)
 	}
 
-	registerClient := func() error {
-		mutex, err := cluster.NewMutex(m.ctx.API, "rtcd_registration")
-		if err != nil {
-			return fmt.Errorf("failed to create cluster mutex: %w", err)
-		}
-
-		lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
-		defer cancelCtx()
-		if err := mutex.LockWithContext(lockCtx); err != nil {
-			return fmt.Errorf("failed to acquire cluster lock: %w", err)
-		}
-		defer mutex.Unlock()
-
-		if err := m.registerRTCDClient(clientCfg, dialFn); err != nil {
-			return fmt.Errorf("failed to register rtcd client: %w", err)
-		}
-
-		return nil
-	}
-
-	reconnectCb := func(c *rtcd.Client, attempt int) error {
+	var reconnectCb rtcd.ClientReconnectCb
+	reconnectCb = func(c *rtcd.Client, attempt int) error {
 		if attempt >= maxReconnectAttempts {
 			if err := m.removeHost(host); err != nil {
 				m.ctx.LogError("failed to remove rtcd client: %w", err)
@@ -381,44 +365,41 @@ func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.Dial
 			return fmt.Errorf("max reconnection attempts reached, removing client")
 		}
 
-		if err := registerClient(); err != nil {
-			m.ctx.LogError(fmt.Sprintf("failed to register client: %s", err.Error()))
+		// On disconnect, it's possible the rtcd server restarted
+		// and cleared its stored credentials, so we attempt to connect and
+		// register again if that fails.
+		m.ctx.LogDebug("reconnect callback, reconnection attempt")
+
+		_, client, err := m.registerRTCDClient(clientCfg, reconnectCb, dialFn)
+		if err != nil {
+			m.ctx.LogWarn(fmt.Sprintf("failed to register client: %s", err.Error()))
 			return nil
 		}
-		return nil
+
+		m.ctx.LogDebug("reconnection successfull, replacing client")
+
+		if err = m.removeHost(host); err != nil {
+			m.ctx.LogError("failed to remove rtcd client: %w", err)
+		}
+
+		if err = m.addHost(host, client); err != nil {
+			m.ctx.LogError("failed to add rtcd client: %w", err)
+		}
+
+		if err != nil {
+			client.Close()
+			return nil
+		}
+
+		return errClientReplaced
 	}
 
-	client, err := rtcd.NewClient(clientCfg, rtcd.WithClientReconnectCb(reconnectCb), rtcd.WithDialFunc(dialFn))
+	clientCfg, client, err := m.registerRTCDClient(clientCfg, reconnectCb, dialFn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create rtcd client: %w", err)
-	}
-
-	err = client.Connect()
-	if err == nil {
-		return client, nil
-	}
-	defer client.Close()
-
-	// If connecting fails we attempt to re-register once as the rtcd instance may
-	// have restarted, potentially losing stored credentials.
-
-	m.ctx.LogError(fmt.Sprintf("failed to connect rtcd client: %s", err.Error()))
-	m.ctx.LogDebug("attempting to re-register the rtcd client")
-
-	if err := registerClient(); err != nil {
 		return nil, err
 	}
 
-	newClient, err := rtcd.NewClient(clientCfg, rtcd.WithClientReconnectCb(reconnectCb), rtcd.WithDialFunc(dialFn))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create rtcd client: %w", err)
-	}
-
-	if err := newClient.Connect(); err != nil {
-		return nil, fmt.Errorf("failed to connect rtcd client: %w", err)
-	}
-
-	return newClient, nil
+	return client, nil
 }
 
 func (m *rtcdClientManager) getStoredRTCDConfig() (rtcd.ClientConfig, error) {
@@ -437,7 +418,7 @@ func (m *rtcdClientManager) getStoredRTCDConfig() (rtcd.ClientConfig, error) {
 	return cfg, nil
 }
 
-func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string, dialFn rtcd.DialContextFn) (rtcd.ClientConfig, error) {
+func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string) (rtcd.ClientConfig, error) {
 	var cfg rtcd.ClientConfig
 
 	// We add some jitter to try and avoid multiple clients to attempt
@@ -485,43 +466,17 @@ func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string, dialFn rtcd.Dial
 	}
 
 	// If the auth key is set we proceed and return the config.
-	// Otherwise we need to either fetch the config from the k/v store
-	// or register the client.
+	// Otherwise we fetch the config from the k/v store.
 	if cfg.AuthKey != "" {
 		return cfg, nil
 	}
 
-	// Here we need some coordination to avoid multiple plugin instances to
-	// register at the same time (at most one would succeed).
-	mutex, err := cluster.NewMutex(m.ctx.API, "rtcd_registration")
+	storedCfg, err := m.getStoredRTCDConfig()
 	if err != nil {
-		return cfg, fmt.Errorf("failed to create cluster mutex: %w", err)
+		return cfg, fmt.Errorf("failed to get stored rtcd config: %w", err)
 	}
 
-	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
-	defer cancelCtx()
-	if err := mutex.LockWithContext(lockCtx); err != nil {
-		return cfg, fmt.Errorf("failed to acquire cluster lock: %w", err)
-	}
-	defer mutex.Unlock()
-
-	if storedCfg, err := m.getStoredRTCDConfig(); err != nil {
-		return cfg, fmt.Errorf("failed to get rtcd credentials: %w", err)
-	} else if storedCfg.ClientID == cfg.ClientID {
-		// If the clientID matches then it means we registered previously and can
-		// return and proceed to connect.
-		if storedCfg.URL != cfg.URL {
-			// If the URL has changed, we store the new value and return.
-			// If we are not registered yet due to the server changing then
-			// connecting will fail and will trigger a registration attempt.
-			m.ctx.LogInfo("rtcd URL has changed")
-			storedCfg.URL = cfg.URL
-			if err := m.storeConfig(storedCfg); err != nil {
-				return cfg, err
-			}
-		}
-		return storedCfg, nil
-	}
+	cfg.AuthKey = storedCfg.AuthKey
 
 	if cfg.AuthKey == "" {
 		m.ctx.LogDebug("auth key missing from rtcd config, generating a new one")
@@ -529,10 +484,6 @@ func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string, dialFn rtcd.Dial
 		if err != nil {
 			return cfg, fmt.Errorf("failed to generate auth key: %w", err)
 		}
-	}
-
-	if err := m.registerRTCDClient(cfg, dialFn); err != nil {
-		return cfg, fmt.Errorf("failed to register rtcd client: %w", err)
 	}
 
 	return cfg, nil
@@ -550,27 +501,56 @@ func (m *rtcdClientManager) storeConfig(cfg rtcd.ClientConfig) error {
 	return nil
 }
 
-func (m *rtcdClientManager) registerRTCDClient(cfg rtcd.ClientConfig, dialFn rtcd.DialContextFn) error {
-	client, err := rtcd.NewClient(cfg, rtcd.WithDialFunc(dialFn))
+// registerRTCDClient attempts to register a new client.
+// Returns a newly connected client on success.
+func (m *rtcdClientManager) registerRTCDClient(cfg rtcd.ClientConfig, reconnectCb rtcd.ClientReconnectCb, dialFn rtcd.DialContextFn) (rtcd.ClientConfig, *rtcd.Client, error) {
+	// Here we need some coordination to avoid multiple plugin instances to
+	// register at the same time (at most one would succeed).
+	mutex, err := cluster.NewMutex(m.ctx.API, "rtcd_registration")
 	if err != nil {
-		return fmt.Errorf("failed to create rtcd client: %w", err)
+		return cfg, nil, fmt.Errorf("failed to create cluster mutex: %w", err)
 	}
-	defer client.Close()
+
+	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
+	defer cancelCtx()
+	if err := mutex.LockWithContext(lockCtx); err != nil {
+		return cfg, nil, fmt.Errorf("failed to acquire cluster lock: %w", err)
+	}
+	defer mutex.Unlock()
+
+	client, err := rtcd.NewClient(cfg, rtcd.WithClientReconnectCb(reconnectCb), rtcd.WithDialFunc(dialFn))
+	if err != nil {
+		return cfg, nil, fmt.Errorf("failed to create rtcd client: %w", err)
+	}
+
+	// If we are able to connect likely some other node registered for us.
+	err = client.Connect()
+	if err == nil {
+		return cfg, client, nil
+	}
+
+	// If connecting fails we attempt to re-register once as the rtcd instance may
+	// have restarted, potentially losing stored credentials.
+
+	m.ctx.LogWarn(fmt.Sprintf("failed to connect rtcd client: %s", err.Error()))
+	m.ctx.LogDebug("attempting to re-register the rtcd client")
 
 	if err := client.Register(cfg.ClientID, cfg.AuthKey); err != nil {
-		return fmt.Errorf("failed to register rtcd client: %w", err)
+		client.Close()
+		return cfg, nil, fmt.Errorf("failed to register rtcd client: %w", err)
 	}
 
 	// TODO: guard against the "locked out" corner case that the server/plugin process exits
 	// before being able to store the credentials but after a successful
 	// registration.
 	if err := m.storeConfig(cfg); err != nil {
-		return err
+		client.Close()
+		return cfg, nil, err
 	}
 
 	m.ctx.LogDebug("rtcd client registered successfully", "clientID", cfg.ClientID)
 
-	return nil
+	return cfg, client, client.Connect()
 }
 
 func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
@@ -640,10 +620,17 @@ func (m *rtcdClientManager) clientReader(client *rtcd.Client) {
 	for {
 		select {
 		case err, ok := <-client.ErrorCh():
-			if !ok {
+			if !ok || err == nil {
 				return
 			}
-			m.ctx.LogError(err.Error())
+
+			if errors.Is(err, errClientReplaced) {
+				m.ctx.LogDebug(err.Error())
+			} else if strings.Contains(err.Error(), "EOF") {
+				m.ctx.LogWarn(err.Error())
+			} else {
+				m.ctx.LogError(err.Error())
+			}
 		case msg, ok := <-client.ReceiveCh():
 			if !ok {
 				return

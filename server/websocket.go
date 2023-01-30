@@ -717,7 +717,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		title, _ := req.Data["title"].(string)
 		go func() {
 			if err := p.handleJoin(userID, connID, channelID, title); err != nil {
-				p.LogError(err.Error(), "userID", userID, "connID", connID, "channelID", channelID)
+				p.LogWarn(err.Error(), "userID", userID, "connID", connID, "channelID", channelID)
 				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
 					"connID": connID,
@@ -745,7 +745,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 
 		go func() {
 			if err := p.handleReconnect(userID, connID, channelID, originalConnID, prevConnID); err != nil {
-				p.LogError(err.Error(), "userID", userID, "connID", connID,
+				p.LogWarn(err.Error(), "userID", userID, "connID", connID,
 					"originalConnID", originalConnID, "prevConnID", prevConnID, "channelID", channelID)
 			}
 		}()
