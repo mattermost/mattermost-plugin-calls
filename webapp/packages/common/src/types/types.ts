@@ -10,6 +10,8 @@ interface RTCIceServer {
     username?: string;
 }
 
+type MediaDeviceKind = 'audioinput' | 'audiooutput' | 'videoinput';
+
 interface MediaDeviceInfo {
     readonly deviceId: string;
     readonly groupId: string;
