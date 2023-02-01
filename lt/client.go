@@ -21,7 +21,10 @@ import (
 
 	"github.com/mattermost/mattermost-server/v6/model"
 
+	"github.com/pion/interceptor"
 	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+	"github.com/pion/rtp/codecs"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 	"github.com/pion/webrtc/v3/pkg/media/ivfreader"
@@ -48,6 +51,18 @@ var (
 			{Type: "nack", Parameter: "pli"},
 		},
 	}
+	rtpVideoExtensions = []string{
+		"urn:ietf:params:rtp-hdrext:sdes:mid",
+		"urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id",
+		"urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id",
+	}
+)
+
+const (
+	simulcastLevelHigh = "h"
+	simulcastLevelLow  = "l"
+	receiveMTU         = 1460
+	sendMTU            = 1200
 )
 
 type config struct {
@@ -60,11 +75,13 @@ type config struct {
 	duration      time.Duration
 	unmuted       bool
 	screenSharing bool
+	simulcast     bool
 }
 
 type user struct {
 	cfg         config
 	pc          *webrtc.PeerConnection
+	dc          *webrtc.DataChannel
 	connectedCh chan struct{}
 	doneCh      chan struct{}
 	iceCh       chan webrtc.ICECandidateInit
@@ -93,14 +110,105 @@ func newUser(cfg config) *user {
 	}
 }
 
-func (u *user) transmitScreen() {
-	track, err := webrtc.NewTrackLocalStaticSample(rtpVideoCodecVP8, "video", "screen-"+model.NewId())
+func (u *user) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPTransceiver, simulcast bool) {
+	getExtensionID := func(URI string) uint8 {
+		for _, ext := range trx.Sender().GetParameters().RTPParameters.HeaderExtensions {
+			if ext.URI == URI {
+				return uint8(ext.ID)
+			}
+		}
+		return 0
+	}
+
+	packetizer := rtp.NewPacketizer(
+		sendMTU,
+		0,
+		0,
+		&codecs.VP8Payloader{
+			EnablePictureID: true,
+		},
+		rtp.NewRandomSequencer(),
+		rtpVideoCodecVP8.ClockRate,
+	)
+
+	// Open a IVF file and start reading using our IVFReader
+	file, ivfErr := os.Open(fmt.Sprintf("./lt/samples/video_%s.ivf", track.RID()))
+	if ivfErr != nil {
+		log.Fatalf(ivfErr.Error())
+	}
+	defer file.Close()
+
+	ivf, header, ivfErr := ivfreader.NewWith(file)
+	if ivfErr != nil {
+		log.Fatalf(ivfErr.Error())
+	}
+
+	// Wait for connection established
+	<-u.connectedCh
+
+	// Send our video file frame at a time. Pace our sending so we send it at the same speed it should be played back as.
+	// This isn't required since the video is timestamped, but we will such much higher loss if we send all at once.
+	//
+	// It is important to use a time.Ticker instead of time.Sleep because
+	// * avoids accumulating skew, just calling time.Sleep didn't compensate for the time spent parsing the data
+	// * works around latency issues with Sleep (see https://github.com/golang/go/issues/44343)
+	frameDuration := time.Millisecond * time.Duration((float32(header.TimebaseNumerator)/float32(header.TimebaseDenominator))*1000)
+
+	ticker := time.NewTicker(frameDuration)
+	for ; true; <-ticker.C {
+		var frame []byte
+		var ivfErr error
+		frame, _, ivfErr = ivf.ParseNextFrame()
+		if ivfErr == io.EOF || (ivfErr != nil && ivfErr.Error() == "incomplete frame data") {
+			ivf.ResetReader(func(_ int64) io.Reader {
+				_, _ = file.Seek(0, 0)
+				ivf, header, ivfErr = ivfreader.NewWith(file)
+				if ivfErr != nil {
+					log.Fatalf(ivfErr.Error())
+				}
+				return file
+			})
+			frame, _, ivfErr = ivf.ParseNextFrame()
+		}
+		if ivfErr != nil {
+			log.Fatalf(ivfErr.Error())
+		}
+
+		packets := packetizer.Packetize(frame, rtpVideoCodecVP8.ClockRate/header.TimebaseDenominator)
+		for _, p := range packets {
+			if simulcast {
+				if err := p.Header.SetExtension(getExtensionID(rtpVideoExtensions[0]), []byte(trx.Mid())); err != nil {
+					log.Printf("failed to set header extension: %s", err.Error())
+				}
+
+				if err := p.Header.SetExtension(getExtensionID(rtpVideoExtensions[1]), []byte(track.RID())); err != nil {
+					log.Printf("failed to set header extension: %s", err.Error())
+				}
+			}
+
+			if err := track.WriteRTP(p); err != nil {
+				log.Printf("failed to write video sample: %s", err.Error())
+				return
+			}
+		}
+	}
+}
+
+func (u *user) transmitScreen(simulcast bool) {
+	streamID := model.NewId()
+
+	trackHigh, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelHigh))
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	trx, err := u.pc.AddTransceiverFromTrack(trackHigh, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
 	info := map[string]string{
-		"screenStreamID": track.StreamID(),
+		"screenStreamID": trackHigh.StreamID(),
 	}
 	data, err := json.Marshal(&info)
 	if err != nil {
@@ -115,13 +223,21 @@ func (u *user) transmitScreen() {
 		log.Printf("failed to send ws message")
 	}
 
-	rtpSender, err := u.pc.AddTrack(track)
-	if err != nil {
-		log.Fatalf(err.Error())
+	rtpSender := trx.Sender()
+
+	var trackLow *webrtc.TrackLocalStaticRTP
+	if simulcast {
+		trackLow, err = webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelLow))
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		if err := rtpSender.AddEncoding(trackLow); err != nil {
+			log.Fatalf(err.Error())
+		}
 	}
 
 	go func() {
-		rtcpBuf := make([]byte, 1500)
+		rtcpBuf := make([]byte, receiveMTU)
 		for {
 			if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
 				return
@@ -138,59 +254,29 @@ func (u *user) transmitScreen() {
 			}
 		}()
 
-		// Open a IVF file and start reading using our IVFReader
-		file, ivfErr := os.Open("./lt/samples/video.ivf")
-		if ivfErr != nil {
-			log.Fatalf(ivfErr.Error())
-		}
-		defer file.Close()
-
-		ivf, header, ivfErr := ivfreader.NewWith(file)
-		if ivfErr != nil {
-			log.Fatalf(ivfErr.Error())
+		if simulcast {
+			go u.sendVideoFile(trackLow, trx, simulcast)
 		}
 
-		// Wait for connection established
-		<-u.connectedCh
-
-		// Send our video file frame at a time. Pace our sending so we send it at the same speed it should be played back as.
-		// This isn't required since the video is timestamped, but we will such much higher loss if we send all at once.
-		//
-		// It is important to use a time.Ticker instead of time.Sleep because
-		// * avoids accumulating skew, just calling time.Sleep didn't compensate for the time spent parsing the data
-		// * works around latency issues with Sleep (see https://github.com/golang/go/issues/44343)
-		ticker := time.NewTicker(time.Millisecond * time.Duration((float32(header.TimebaseNumerator)/float32(header.TimebaseDenominator))*1000))
-		for ; true; <-ticker.C {
-			var frame []byte
-			var ivfErr error
-			frame, _, ivfErr = ivf.ParseNextFrame()
-			if ivfErr == io.EOF || (ivfErr != nil && ivfErr.Error() == "incomplete frame data") {
-				ivf.ResetReader(func(_ int64) io.Reader {
-					_, _ = file.Seek(0, 0)
-					ivf, header, ivfErr = ivfreader.NewWith(file)
-					if ivfErr != nil {
-						log.Fatalf(ivfErr.Error())
-					}
-					return file
-				})
-				frame, _, ivfErr = ivf.ParseNextFrame()
-			}
-			if ivfErr != nil {
-				log.Fatalf(ivfErr.Error())
-			}
-
-			if err := track.WriteSample(media.Sample{Data: frame, Duration: time.Second}); err != nil {
-				log.Printf("failed to write video sample: %s", err.Error())
-			}
-		}
+		u.sendVideoFile(trackHigh, trx, simulcast)
 	}()
 }
 
-func (u *user) transmitAudio(track *webrtc.TrackLocalStaticSample, rtpSender *webrtc.RTPSender) {
+func (u *user) transmitAudio() {
+	track, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	sender, err := u.pc.AddTrack(track)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
 	go func() {
-		rtcpBuf := make([]byte, 1500)
+		rtcpBuf := make([]byte, receiveMTU)
 		for {
-			if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
+			if _, _, rtcpErr := sender.Read(rtcpBuf); rtcpErr != nil {
+				log.Printf("%s: failed to read rtcp: %s", u.cfg.username, rtcpErr.Error())
 				return
 			}
 		}
@@ -267,10 +353,30 @@ func (u *user) initRTC() error {
 
 	peerConnConfig := webrtc.Configuration{
 		ICEServers:   []webrtc.ICEServer{},
-		SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
+		SDPSemantics: webrtc.SDPSemanticsUnifiedPlan,
 	}
 
-	pc, err := webrtc.NewPeerConnection(peerConnConfig)
+	var m webrtc.MediaEngine
+	if err := m.RegisterDefaultCodecs(); err != nil {
+		return err
+	}
+
+	i := interceptor.Registry{}
+	if err := webrtc.RegisterDefaultInterceptors(&m, &i); err != nil {
+		return err
+	}
+
+	if u.cfg.simulcast {
+		for _, ext := range rtpVideoExtensions {
+			if err := m.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: ext}, webrtc.RTPCodecTypeVideo); err != nil {
+				return err
+			}
+		}
+	}
+
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(&m), webrtc.WithInterceptorRegistry(&i))
+
+	pc, err := api.NewPeerConnection(peerConnConfig)
 	if err != nil {
 		return err
 	}
@@ -316,54 +422,53 @@ func (u *user) initRTC() error {
 	})
 
 	pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		rtcpSendErr := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
-		if rtcpSendErr != nil {
-			log.Printf(rtcpSendErr.Error())
+		if track.Kind() == webrtc.RTPCodecTypeVideo {
+			rtcpSendErr := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
+			if rtcpSendErr != nil {
+				log.Printf("%s: rtcp send error: %s", u.cfg.username, rtcpSendErr.Error())
+			}
 		}
 
 		codecName := strings.Split(track.Codec().RTPCodecCapability.MimeType, "/")[1]
 		log.Printf("%s: Track has started, of type %d: %s \n", u.cfg.username, track.PayloadType(), codecName)
 
-		buf := make([]byte, 1400)
+		buf := make([]byte, receiveMTU)
 		for {
 			_, _, readErr := track.Read(buf)
 			if readErr != nil {
-				log.Printf("%v", readErr.Error())
+				log.Printf("%s: track read error: %s", u.cfg.username, readErr.Error())
 				return
 			}
 		}
 	})
 
-	audioTrack, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	audioRTPSender, err := pc.AddTrack(audioTrack)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
 	if u.cfg.unmuted {
-		u.transmitAudio(audioTrack, audioRTPSender)
+		u.transmitAudio()
 	}
 
 	if u.cfg.screenSharing {
-		u.transmitScreen()
+		u.transmitScreen(u.cfg.simulcast)
 	}
 
-	sdp, err := pc.CreateOffer(nil)
+	dc, err := pc.CreateDataChannel("calls-dc", nil)
 	if err != nil {
 		return err
 	}
 
-	if err := pc.SetLocalDescription(sdp); err != nil {
+	u.dc = dc
+
+	offer, err := pc.CreateOffer(nil)
+	if err != nil {
 		return err
 	}
 
-	log.Printf("%s: set local description", u.cfg.username)
+	if err := pc.SetLocalDescription(offer); err != nil {
+		return err
+	}
 
 	var sdpData bytes.Buffer
 	w := zlib.NewWriter(&sdpData)
-	if err := json.NewEncoder(w).Encode(sdp); err != nil {
+	if err := json.NewEncoder(w).Encode(offer); err != nil {
 		return err
 	}
 	w.Close()
@@ -476,7 +581,7 @@ func (u *user) wsListen(authToken string) {
 	defer func() {
 		err := ws.SendMessage("custom_com.mattermost.calls_leave", nil)
 		if err != nil {
-			log.Printf(err.Error())
+			log.Printf("%s: ws send error: %s", u.cfg.username, err.Error())
 		}
 		ws.Close()
 	}()
@@ -501,7 +606,7 @@ func (u *user) wsListen(authToken string) {
 						"prevConnID":     wsConnID,
 					}
 					if err := ws.SendMessage("custom_com.mattermost.calls_reconnect", data); err != nil {
-						log.Printf(err.Error())
+						log.Printf("%s: ws send error: %s", u.cfg.username, err.Error())
 						continue
 					}
 
@@ -671,6 +776,7 @@ func main() {
 	var numScreenSharing int
 	var numCalls int
 	var numUsersPerCall int
+	var simulcast bool
 
 	flag.StringVar(&teamID, "team", "", "The team ID to start calls in")
 	flag.StringVar(&channelID, "channel", "", "The channel ID to start the call in")
@@ -686,6 +792,7 @@ func main() {
 	flag.StringVar(&joinDuration, "join-duration", "30s", "The amount of time it takes for all participants to join their calls")
 	flag.StringVar(&adminUsername, "admin-username", "sysadmin", "The username of a system admin account")
 	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "The password of a system admin account")
+	flag.BoolVar(&simulcast, "simulcast", true, "Whether or not to enable simulcast for screen")
 
 	flag.Parse()
 
@@ -822,6 +929,7 @@ func main() {
 					duration:      dur,
 					unmuted:       unmuted,
 					screenSharing: screenSharing,
+					simulcast:     simulcast,
 				}
 
 				user := newUser(cfg)
