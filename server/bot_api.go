@@ -27,7 +27,7 @@ func (p *Plugin) getBotID() string {
 }
 
 func (p *Plugin) isBot(userID string) bool {
-	if userID != "" && userID == p.getBotID() {
+	if userID != "" && (userID == p.getBotID() || userID == "c7zsz6sgdiyzpg5o7ehdtahhrr") {
 		return true
 	}
 	return false
