@@ -2,6 +2,25 @@
 // See LICENSE.txt for license information.
 
 //
+// Re-declaring types that need to be manually included by mobile:
+//
+interface RTCIceServer {
+    credential?: string;
+    urls: string | string[];
+    username?: string;
+}
+
+interface MediaDeviceInfo {
+    readonly deviceId: string;
+    readonly groupId: string;
+    readonly kind: MediaDeviceKind;
+    readonly label: string;
+    toJSON(): any;
+}
+
+type MediaStreamTrackState = 'ended' | 'live';
+
+//
 // Websocket Types
 //
 
