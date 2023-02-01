@@ -56,6 +56,7 @@ var (
 		"urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id",
 		"urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id",
 	}
+	audioLevelExtensionURI = "urn:ietf:params:rtp-hdrext:ssrc-audio-level"
 )
 
 const (
@@ -363,6 +364,12 @@ func (u *user) initRTC() error {
 
 	i := interceptor.Registry{}
 	if err := webrtc.RegisterDefaultInterceptors(&m, &i); err != nil {
+		return err
+	}
+
+	if err := m.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{
+		URI: audioLevelExtensionURI,
+	}, webrtc.RTPCodecTypeAudio); err != nil {
 		return err
 	}
 
