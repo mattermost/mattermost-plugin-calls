@@ -273,8 +273,15 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64, tit
 		return "", appErr
 	}
 
+	cfg := p.API.GetConfig()
+	if cfg == nil {
+		return "", fmt.Errorf("failed to get configuration")
+	}
+
+	showFullName := cfg.PrivacySettings.ShowFullName != nil && *cfg.PrivacySettings.ShowFullName
+
 	var postMsg string
-	if user.FirstName != "" && user.LastName != "" {
+	if user.FirstName != "" && user.LastName != "" && showFullName {
 		postMsg = fmt.Sprintf("%s %s started a call", user.FirstName, user.LastName)
 	} else {
 		postMsg = fmt.Sprintf("%s started a call", user.Username)
