@@ -1,6 +1,6 @@
 import {EventEmitter} from 'events';
 
-import type {
+import {
     RTCPeerConfig,
     RTCPeerConnection,
     RTCRtpSender,
