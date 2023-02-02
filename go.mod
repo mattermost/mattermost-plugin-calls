@@ -17,7 +17,7 @@ require (
 	github.com/mattermost/calls-offloader v0.1.3
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.1.1
-	github.com/mattermost/rtcd v0.8.1-0.20230202155343-35bc5fb4a4f3
+	github.com/mattermost/rtcd v0.8.1-0.20230202190347-823fbd14146f
 	github.com/pion/interceptor v0.1.12
 	github.com/pion/rtp v1.7.13
 	github.com/pkg/errors v0.9.1
