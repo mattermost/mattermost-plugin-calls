@@ -1,12 +1,20 @@
 import {EventEmitter} from 'events';
 
-import {RTCPeerConfig} from './types';
+import type {
+    RTCPeerConfig,
+    RTCPeerConnection,
+    RTCRtpSender,
+    RTCPeerConnectionIceEvent,
+    RTCTrackEvent,
+    MediaStreamTrack,
+    MediaStream,
+} from './types';
 
 const rtcConnFailedErr = new Error('rtc connection failed');
 
 export class RTCPeer extends EventEmitter {
     private pc: RTCPeerConnection | null;
-    private readonly senders: {[key: string]: RTCRtpSender};
+    private readonly senders: { [key: string]: RTCRtpSender };
     private readonly logDebug: (...args: unknown[]) => void;
 
     private makingOffer = false;
@@ -22,10 +30,10 @@ export class RTCPeer extends EventEmitter {
 
         this.pc = new RTCPeerConnection(config);
         this.pc.onnegotiationneeded = () => this.onNegotiationNeeded();
-        this.pc.onicecandidate = (ev) => this.onICECandidate(ev);
+        this.pc.onicecandidate = (ev: RTCPeerConnectionIceEvent) => this.onICECandidate(ev);
         this.pc.oniceconnectionstatechange = () => this.onICEConnectionStateChange();
         this.pc.onconnectionstatechange = () => this.onConnectionStateChange();
-        this.pc.ontrack = (ev) => this.onTrack(ev);
+        this.pc.ontrack = (ev: RTCTrackEvent) => this.onTrack(ev);
 
         this.connected = false;
 
@@ -126,7 +134,7 @@ export class RTCPeer extends EventEmitter {
     }
 
     public addStream(stream: MediaStream) {
-        stream.getTracks().forEach((track) => {
+        stream.getTracks().forEach((track: MediaStreamTrack) => {
             this.addTrack(track, stream);
         });
     }
