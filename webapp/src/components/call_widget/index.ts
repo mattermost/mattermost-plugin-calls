@@ -39,7 +39,7 @@ const mapStateToProps = (state: GlobalState) => {
     const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
 
     const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
-        return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID));
+        return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
     };
 
     const statuses = voiceUsersStatuses(state);
