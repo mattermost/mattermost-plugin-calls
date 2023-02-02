@@ -614,25 +614,21 @@ export default class Plugin {
                     },
                 });
 
-                if (call.thread_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_ROOT_POST,
-                        data: {
-                            channelID,
-                            rootPost: call.thread_id,
-                        },
-                    });
-                }
+                store.dispatch({
+                    type: VOICE_CHANNEL_ROOT_POST,
+                    data: {
+                        channelID,
+                        rootPost: call.thread_id,
+                    },
+                });
 
-                if (call.host_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_CALL_HOST,
-                        data: {
-                            channelID,
-                            hostID: call.host_id,
-                        },
-                    });
-                }
+                store.dispatch({
+                    type: VOICE_CHANNEL_CALL_HOST,
+                    data: {
+                        channelID,
+                        hostID: call.host_id,
+                    },
+                });
 
                 if (call.users && call.users.length > 0) {
                     store.dispatch({
@@ -644,25 +640,21 @@ export default class Plugin {
                     });
                 }
 
-                if (call.recording) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_CALL_RECORDING_STATE,
-                        data: {
-                            callID: channelID,
-                            recState: call.recording,
-                        },
-                    });
-                }
+                store.dispatch({
+                    type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+                    data: {
+                        callID: channelID,
+                        recState: call.recording,
+                    },
+                });
 
-                if (call.screen_sharing_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_USER_SCREEN_ON,
-                        data: {
-                            channelID,
-                            userID: call.screen_sharing_id,
-                        },
-                    });
-                }
+                store.dispatch({
+                    type: VOICE_CHANNEL_USER_SCREEN_ON,
+                    data: {
+                        channelID,
+                        userID: call.screen_sharing_id,
+                    },
+                });
 
                 const userStates: Record<string, UserState> = {};
                 const users = call.users || [];
