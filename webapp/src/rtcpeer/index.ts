@@ -13,6 +13,8 @@ export default class RTCPeer extends EventEmitter {
     private senders: {[key: string]: RTCRtpSender};
     private makingOffer = false;
 
+    public connected: boolean;
+
     constructor(config: RTCPeerConfig) {
         super();
 
@@ -27,8 +29,10 @@ export default class RTCPeer extends EventEmitter {
         this.pc.onconnectionstatechange = () => this.onConnectionStateChange();
         this.pc.ontrack = (ev) => this.onTrack(ev);
 
+        this.connected = false;
+
         // We create a data channel for two reasons:
-        // - Initiate a connection without preemptively add audio/video tracks.
+        // - Initiate a connection without preemptively adding audio/video tracks.
         // - Use this communication channel for further negotiation (to be implemented).
         this.pc.createDataChannel('calls-dc');
     }
@@ -41,6 +45,9 @@ export default class RTCPeer extends EventEmitter {
 
     private onConnectionStateChange() {
         switch (this.pc?.connectionState) {
+        case 'connected':
+            this.connected = true;
+            break;
         case 'failed':
             this.emit('close', rtcConnFailedErr);
             break;
@@ -126,7 +133,7 @@ export default class RTCPeer extends EventEmitter {
         });
     }
 
-    public replaceTrack(oldTrackID: string, newTrack: MediaStreamTrack) {
+    public replaceTrack(oldTrackID: string, newTrack: MediaStreamTrack | null) {
         const sender = this.senders[oldTrackID];
         if (!sender) {
             throw new Error('sender for track not found');
@@ -164,5 +171,6 @@ export default class RTCPeer extends EventEmitter {
         this.pc.ontrack = null;
         this.pc.close();
         this.pc = null;
+        this.connected = false;
     }
 }
