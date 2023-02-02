@@ -8,16 +8,19 @@ import {
 
 const rtcConnFailedErr = new Error('rtc connection failed');
 
-export default class RTCPeer extends EventEmitter {
+export class RTCPeer extends EventEmitter {
     private pc: RTCPeerConnection | null;
-    private senders: {[key: string]: RTCRtpSender};
+    private readonly senders: {[key: string]: RTCRtpSender};
+    private readonly logDebug: (...args: unknown[]) => void;
+
     private makingOffer = false;
     private candidates: RTCIceCandidate[] = [];
 
     public connected: boolean;
 
-    constructor(config: RTCPeerConfig) {
+    constructor(config: RTCPeerConfig, logDebug: (...args: unknown[]) => void) {
         super();
+        this.logDebug = logDebug;
 
         // We keep a map of track IDs -> RTP sender so that we can easily
         // replace tracks when muting/unmuting.
@@ -98,7 +101,7 @@ export default class RTCPeer extends EventEmitter {
         const msg = JSON.parse(data);
 
         if (msg.type === 'offer' && (this.makingOffer || this.pc?.signalingState !== 'stable')) {
-            logDebug('signaling conflict, we are polite, proceeding...');
+            this.logDebug('signaling conflict, we are polite, proceeding...');
         }
 
         switch (msg.type) {

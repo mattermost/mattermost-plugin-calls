@@ -130,6 +130,10 @@ export type RTCStats = {
     }
 }
 
+export type RTCPeerConfig = {
+    iceServers: RTCIceServer[],
+}
+
 export type RTCLocalStats = {
     in?: RTCLocalInboundStats,
     out?: RTCLocalOutboundStats,
