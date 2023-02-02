@@ -26,6 +26,8 @@ require (
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324
 )
 
+replace github.com/pion/interceptor v0.1.12 => github.com/streamer45/interceptor v0.0.0-20230202152215-57f3ac9e7696
+
 require (
 	git.mills.io/prologic/bitcask v1.0.2 // indirect
 	github.com/Microsoft/go-winio v0.5.0 // indirect
