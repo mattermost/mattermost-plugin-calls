@@ -255,7 +255,7 @@ export default class Plugin {
                     }
                     const team_id = args?.team_id || getChannel(store.getState(), args.channel_id).team_id;
                     try {
-                        await joinCall(args.channel_id, team_id, title);
+                        await joinCall(args.channel_id, team_id, title, args.root_id);
                         return {};
                     } catch (e) {
                         return {error: {message: e.message}};
@@ -321,7 +321,7 @@ export default class Plugin {
             return {message, args};
         });
 
-        const connectToCall = async (channelId: string, teamId: string, title?: string) => {
+        const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
             try {
                 const users = voiceConnectedUsers(store.getState());
                 if (users && users.length > 0) {
@@ -338,7 +338,7 @@ export default class Plugin {
             }
 
             if (!connectedChannelID(store.getState())) {
-                connectCall(channelId, title);
+                connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
                 // this is done in the call_start ws event handler.
@@ -352,7 +352,7 @@ export default class Plugin {
             }
         };
 
-        const joinCall = async (channelId: string, teamId: string, title?: string) => {
+        const joinCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
             // Anyone can join a call already in progress.
             // If explicitly enabled, everyone can start calls.
             // In LiveMode (DefaultEnabled=true):
@@ -377,7 +377,7 @@ export default class Plugin {
                     return;
                 }
 
-                await connectToCall(channelId, teamId, title);
+                await connectToCall(channelId, teamId, title, rootId);
                 return;
             }
 
@@ -389,7 +389,7 @@ export default class Plugin {
             // We are in TestMode (DefaultEnabled=false)
             if (isCurrentUserSystemAdmin(store.getState())) {
                 // Rely on server side to send ephemeral message.
-                await connectToCall(channelId, teamId, title);
+                await connectToCall(channelId, teamId, title, rootId);
             } else {
                 store.dispatch(displayCallsTestModeUser());
             }
@@ -428,7 +428,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('UDPServerPort', UDPServerPort);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
 
-        const connectCall = async (channelID: string, title?: string) => {
+        const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             if (shouldRenderDesktopWidget()) {
                 logDebug('sending join call message to desktop app');
                 sendDesktopEvent('calls-join-call', {
@@ -475,7 +475,7 @@ export default class Plugin {
                     }
                 });
 
-                window.callsClient.init(channelID, title).catch((err: Error) => {
+                window.callsClient.init(channelID, title, rootId).catch((err: Error) => {
                     logErr(err);
                     store.dispatch(displayCallErrorModal(channelID, err));
                     delete window.callsClient;

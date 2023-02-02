@@ -232,7 +232,7 @@ func (s *jobService) UpdateJobRunner(runner string) error {
 	return s.client.UpdateJobRunner(runner)
 }
 
-func (s *jobService) RunRecordingJob(callID, threadID, authToken string) (string, error) {
+func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, error) {
 	cfg := s.ctx.getConfiguration()
 	if cfg == nil {
 		return "", fmt.Errorf("failed to get plugin configuration")
@@ -253,7 +253,7 @@ func (s *jobService) RunRecordingJob(callID, threadID, authToken string) (string
 		InputData: (&offloader.RecordingJobInputData{
 			SiteURL:   siteURL,
 			CallID:    callID,
-			ThreadID:  threadID,
+			ThreadID:  postID,
 			AuthToken: authToken,
 		}).ToMap(),
 	})

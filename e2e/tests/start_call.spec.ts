@@ -77,6 +77,30 @@ test.describe('start new call', () => {
         expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('dm-calls-widget-bottom-bar.png');
         await devPage.leaveCall();
     });
+
+    test.only('slash command from existing thread', async ({page, context}) => {
+        // create a test thread
+        await page.locator('#post_textbox').fill('test thread');
+        await page.locator('[data-testid=SendMessageButton]').click();
+        const post = page.locator('.post-message__text').last();
+        await expect(post).toBeVisible();
+
+        // open RHS
+        await post.click();
+        await expect(page.locator('#rhsContainer')).toBeVisible();
+
+        // send slash command in thread to start a call.
+        await page.locator('#reply_textbox').fill('/call start');
+        await page.locator('#reply_textbox').press('Enter');
+        await expect(page.locator('#calls-widget')).toBeVisible();
+
+        // verify the call post is created in the thread.
+        await expect(page.locator('#rhsContainer').filter({has: page.getByText(`${userState.users[0].username} started a call`)})).toBeVisible();
+
+        await page.locator('#reply_textbox').fill('/call leave');
+        await page.locator('#reply_textbox').press('Enter');
+        await expect(page.locator('#calls-widget')).toBeHidden();
+    });
 });
 
 test.describe('desktop', () => {

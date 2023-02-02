@@ -149,7 +149,7 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
-    public async init(channelID: string, title?: string) {
+    public async init(channelID: string, title?: string, rootId?: string) {
         this.channelID = channelID;
 
         if (!window.isSecureContext) {
@@ -201,6 +201,7 @@ export default class CallsClient extends EventEmitter {
                 ws.send('join', {
                     channelID,
                     title,
+                    threadID: rootId,
                 });
             }
         });
