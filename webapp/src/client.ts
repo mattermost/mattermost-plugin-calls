@@ -7,9 +7,8 @@ import {deflate} from 'pako/lib/deflate.js';
 
 import {CallsClientConfig, AudioDevices, CallsClientStats, TrackInfo, EmojiData} from '@calls/common/lib/types';
 
-import {parseRTCStats} from '@calls/common';
+import {parseRTCStats, RTCPeer} from '@calls/common';
 
-import RTCPeer from './rtcpeer';
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
@@ -211,7 +210,7 @@ export default class CallsClient extends EventEmitter {
 
             const peer = new RTCPeer({
                 iceServers: this.config.iceServers || [],
-            });
+            }, logDebug);
 
             this.peer = peer;
 
