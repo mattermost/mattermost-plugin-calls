@@ -1,7 +1,7 @@
 import {
     CallAlertType,
     CallAlertConfig,
-} from '@mmcalls/common/src/types';
+} from '@mmcalls/common/lib/types';
 
 export const MAX_NUM_REACTIONS_IN_REACTION_STREAM = 50;
 export const REACTION_TIMEOUT_IN_REACTION_STREAM = 10000;

@@ -5,7 +5,7 @@ import React from 'react';
 
 import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
 
-import {EmojiData} from '@mmcalls/common/src/types';
+import {EmojiData} from '@mmcalls/common/lib/types';
 
 import {Emojis, EmojiIndicesByUnicode} from 'src/emojis/emoji';
 

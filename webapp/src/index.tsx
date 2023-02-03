@@ -10,7 +10,7 @@ import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels'
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
-import {UserState} from '@mmcalls/common/src/types';
+import {UserState} from '@mmcalls/common/lib/types';
 
 import {
     displayFreeTrial,

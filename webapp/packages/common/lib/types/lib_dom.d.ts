@@ -1,15 +1,6 @@
-/* eslint-disable  @typescript-eslint/no-explicit-any */
-/* eslint-disable  max-lines */
-
-//
-// These are included because mobile doesn't have them build in.
-// They are copied from lib.dom.d.ts
-//
-
 export interface RTCStatsReport {
     forEach(callbackfn: (value: any, key: string, parent: RTCStatsReport) => void, thisArg?: any): void;
 }
-
 export interface RTCRtpSender {
     readonly dtmf: RTCDTMFSender | null;
     readonly track: MediaStreamTrack | null;
@@ -20,24 +11,20 @@ export interface RTCRtpSender {
     setParameters(parameters: RTCRtpSendParameters): Promise<void>;
     setStreams(...streams: MediaStream[]): void;
 }
-
 export interface RTCPeerConnectionIceEvent extends Event {
     readonly candidate: RTCIceCandidate | null;
 }
-
 export interface RTCTrackEvent extends Event {
     readonly receiver: RTCRtpReceiver;
     readonly streams: ReadonlyArray<MediaStream>;
     readonly track: MediaStreamTrack;
     readonly transceiver: RTCRtpTransceiver;
 }
-
 export interface RTCIceServer {
     credential?: string;
     urls: string | string[];
     username?: string;
 }
-
 export interface RTCPeerConnection extends EventTarget {
     readonly canTrickleIceCandidates: boolean | null;
     readonly connectionState: RTCPeerConnectionState;
@@ -61,19 +48,16 @@ export interface RTCPeerConnection extends EventTarget {
     readonly sctp: RTCSctpTransport | null;
     readonly signalingState: RTCSignalingState;
     addIceCandidate(candidate?: RTCIceCandidateInit): Promise<void>;
-
     /** @deprecated */
     addIceCandidate(candidate: RTCIceCandidateInit, successCallback: VoidFunction, failureCallback: RTCPeerConnectionErrorCallback): Promise<void>;
     addTrack(track: MediaStreamTrack, ...streams: MediaStream[]): RTCRtpSender;
     addTransceiver(trackOrKind: MediaStreamTrack | string, init?: RTCRtpTransceiverInit): RTCRtpTransceiver;
     close(): void;
     createAnswer(options?: RTCAnswerOptions): Promise<RTCSessionDescriptionInit>;
-
     /** @deprecated */
     createAnswer(successCallback: RTCSessionDescriptionCallback, failureCallback: RTCPeerConnectionErrorCallback): Promise<void>;
     createDataChannel(label: string, dataChannelDict?: RTCDataChannelInit): RTCDataChannel;
     createOffer(options?: RTCOfferOptions): Promise<RTCSessionDescriptionInit>;
-
     /** @deprecated */
     createOffer(successCallback: RTCSessionDescriptionCallback, failureCallback: RTCPeerConnectionErrorCallback, options?: RTCOfferOptions): Promise<void>;
     getConfiguration(): RTCConfiguration;
@@ -85,11 +69,9 @@ export interface RTCPeerConnection extends EventTarget {
     restartIce(): void;
     setConfiguration(configuration?: RTCConfiguration): void;
     setLocalDescription(description?: RTCLocalSessionDescriptionInit): Promise<void>;
-
     /** @deprecated */
     setLocalDescription(description: RTCLocalSessionDescriptionInit, successCallback: VoidFunction, failureCallback: RTCPeerConnectionErrorCallback): Promise<void>;
     setRemoteDescription(description: RTCSessionDescriptionInit): Promise<void>;
-
     /** @deprecated */
     setRemoteDescription(description: RTCSessionDescriptionInit, successCallback: VoidFunction, failureCallback: RTCPeerConnectionErrorCallback): Promise<void>;
     addEventListener<K extends keyof RTCPeerConnectionEventMap>(type: K, listener: (this: RTCPeerConnection, ev: RTCPeerConnectionEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
@@ -97,14 +79,11 @@ export interface RTCPeerConnection extends EventTarget {
     removeEventListener<K extends keyof RTCPeerConnectionEventMap>(type: K, listener: (this: RTCPeerConnection, ev: RTCPeerConnectionEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
-
-// eslint-disable-next-line no-var
 export declare var RTCPeerConnection: {
     prototype: RTCPeerConnection;
-    new(configuration?: RTCConfiguration): RTCPeerConnection;
+    new (configuration?: RTCConfiguration): RTCPeerConnection;
     generateCertificate(keygenAlgorithm: AlgorithmIdentifier): Promise<RTCCertificate>;
 };
-
 export interface MediaStream extends EventTarget {
     readonly active: boolean;
     readonly id: string;
@@ -122,7 +101,6 @@ export interface MediaStream extends EventTarget {
     removeEventListener<K extends keyof MediaStreamEventMap>(type: K, listener: (this: MediaStream, ev: MediaStreamEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
-
 export interface MediaStreamTrack extends EventTarget {
     contentHint: string;
     enabled: boolean;
@@ -145,7 +123,6 @@ export interface MediaStreamTrack extends EventTarget {
     removeEventListener<K extends keyof MediaStreamTrackEventMap>(type: K, listener: (this: MediaStreamTrack, ev: MediaStreamTrackEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
-
 export interface MediaDeviceInfo {
     readonly deviceId: string;
     readonly groupId: string;
@@ -153,7 +130,6 @@ export interface MediaDeviceInfo {
     readonly label: string;
     toJSON(): any;
 }
-
 export type MediaStreamTrackState = 'ended' | 'live';
 type MediaDeviceKind = 'audioinput' | 'audiooutput' | 'videoinput';
 type RTCBundlePolicy = 'balanced' | 'max-bundle' | 'max-compat';
@@ -173,17 +149,14 @@ type RTCRtpTransceiverDirection = 'inactive' | 'recvonly' | 'sendonly' | 'sendre
 type RTCSctpTransportState = 'closed' | 'connected' | 'connecting';
 type RTCSdpType = 'answer' | 'offer' | 'pranswer' | 'rollback';
 type RTCSignalingState = 'closed' | 'have-local-offer' | 'have-local-pranswer' | 'have-remote-offer' | 'have-remote-pranswer' | 'stable';
-
 interface RTCSessionDescription {
     readonly sdp: string;
     readonly type: RTCSdpType;
     toJSON(): any;
 }
-
 interface RTCDataChannelEvent extends Event {
     readonly channel: RTCDataChannel;
 }
-
 interface RTCSctpTransport extends EventTarget {
     readonly maxChannels: number | null;
     readonly maxMessageSize: number;
@@ -195,24 +168,20 @@ interface RTCSctpTransport extends EventTarget {
     removeEventListener<K extends keyof RTCSctpTransportEventMap>(type: K, listener: (this: RTCSctpTransport, ev: RTCSctpTransportEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
-
 interface RTCIceCandidateInit {
     candidate?: string;
     sdpMLineIndex?: number | null;
     sdpMid?: string | null;
     usernameFragment?: string | null;
 }
-
 interface RTCPeerConnectionErrorCallback {
     (error: DOMException): void;
 }
-
 interface RTCRtpTransceiverInit {
     direction?: RTCRtpTransceiverDirection;
     sendEncodings?: RTCRtpEncodingParameters[];
     streams?: MediaStream[];
 }
-
 interface RTCRtpTransceiver {
     readonly currentDirection: RTCRtpTransceiverDirection | null;
     direction: RTCRtpTransceiverDirection;
@@ -222,28 +191,22 @@ interface RTCRtpTransceiver {
     setCodecPreferences(codecs: RTCRtpCodecCapability[]): void;
     stop(): void;
 }
-
 interface RTCRtpCodecCapability {
     channels?: number;
     clockRate: number;
     mimeType: string;
     sdpFmtpLine?: string;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface RTCOfferAnswerOptions {}
-
-type RTCAnswerOptions = RTCOfferAnswerOptions
-
+interface RTCOfferAnswerOptions {
+}
+type RTCAnswerOptions = RTCOfferAnswerOptions;
 interface RTCSessionDescriptionInit {
     sdp?: string;
     type: RTCSdpType;
 }
-
 interface RTCSessionDescriptionCallback {
     (description: RTCSessionDescriptionInit): void;
 }
-
 interface RTCDataChannelInit {
     id?: number;
     maxPacketLifeTime?: number;
@@ -252,7 +215,6 @@ interface RTCDataChannelInit {
     ordered?: boolean;
     protocol?: string;
 }
-
 interface RTCDataChannel extends EventTarget {
     binaryType: BinaryType;
     readonly bufferedAmount: number;
@@ -281,13 +243,11 @@ interface RTCDataChannel extends EventTarget {
     removeEventListener<K extends keyof RTCDataChannelEventMap>(type: K, listener: (this: RTCDataChannel, ev: RTCDataChannelEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
-
 interface RTCOfferOptions extends RTCOfferAnswerOptions {
     iceRestart?: boolean;
     offerToReceiveAudio?: boolean;
     offerToReceiveVideo?: boolean;
 }
-
 export interface RTCConfiguration {
     bundlePolicy?: RTCBundlePolicy;
     certificates?: RTCCertificate[];
@@ -296,7 +256,6 @@ export interface RTCConfiguration {
     iceTransportPolicy?: RTCIceTransportPolicy;
     rtcpMuxPolicy?: RTCRtcpMuxPolicy;
 }
-
 interface RTCRtpCodecParameters {
     channels?: number;
     clockRate: number;
@@ -304,28 +263,22 @@ interface RTCRtpCodecParameters {
     payloadType: number;
     sdpFmtpLine?: string;
 }
-
 interface RTCRtpHeaderExtensionParameters {
     encrypted?: boolean;
     id: number;
     uri: string;
 }
-
 interface RTCRtcpParameters {
     cname?: string;
     reducedSize?: boolean;
 }
-
 interface RTCRtpParameters {
     codecs: RTCRtpCodecParameters[];
     headerExtensions: RTCRtpHeaderExtensionParameters[];
     rtcp: RTCRtcpParameters;
 }
-
-type RTCRtpReceiveParameters = RTCRtpParameters
-
-type RTCRtpSynchronizationSource = RTCRtpContributingSource
-
+type RTCRtpReceiveParameters = RTCRtpParameters;
+type RTCRtpSynchronizationSource = RTCRtpContributingSource;
 interface RTCRtpReceiver {
     readonly track: MediaStreamTrack;
     readonly transport: RTCDtlsTransport | null;
@@ -334,12 +287,10 @@ interface RTCRtpReceiver {
     getStats(): Promise<RTCStatsReport>;
     getSynchronizationSources(): RTCRtpSynchronizationSource[];
 }
-
 interface RTCLocalSessionDescriptionInit {
     sdp?: string;
     type?: RTCSdpType;
 }
-
 interface RTCPeerConnectionEventMap {
     'connectionstatechange': Event;
     'datachannel': RTCDataChannelEvent;
@@ -351,15 +302,12 @@ interface RTCPeerConnectionEventMap {
     'signalingstatechange': Event;
     'track': RTCTrackEvent;
 }
-
 interface RTCDTMFToneChangeEvent extends Event {
     readonly tone: string;
 }
-
 interface RTCDTMFSenderEventMap {
     'tonechange': RTCDTMFToneChangeEvent;
 }
-
 interface RTCDTMFSender extends EventTarget {
     readonly canInsertDTMF: boolean;
     ontonechange: ((this: RTCDTMFSender, ev: RTCDTMFToneChangeEvent) => any) | null;
@@ -370,7 +318,6 @@ interface RTCDTMFSender extends EventTarget {
     removeEventListener<K extends keyof RTCDTMFSenderEventMap>(type: K, listener: (this: RTCDTMFSender, ev: RTCDTMFSenderEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
-
 interface RTCDtlsTransport extends EventTarget {
     readonly iceTransport: RTCIceTransport;
     onerror: ((this: RTCDtlsTransport, ev: Event) => any) | null;
@@ -382,13 +329,11 @@ interface RTCDtlsTransport extends EventTarget {
     removeEventListener<K extends keyof RTCDtlsTransportEventMap>(type: K, listener: (this: RTCDtlsTransport, ev: RTCDtlsTransportEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
-
 interface RTCRtpSendParameters extends RTCRtpParameters {
     degradationPreference?: RTCDegradationPreference;
     encodings: RTCRtpEncodingParameters[];
     transactionId: string;
 }
-
 interface RTCIceCandidate {
     readonly address: string | null;
     readonly candidate: string;
@@ -406,11 +351,9 @@ interface RTCIceCandidate {
     readonly usernameFragment: string | null;
     toJSON(): RTCIceCandidateInit;
 }
-
 interface MediaTrackConstraints extends MediaTrackConstraintSet {
     advanced?: MediaTrackConstraintSet[];
 }
-
 interface MediaTrackConstraintSet {
     aspectRatio?: ConstrainDouble;
     autoGainControl?: ConstrainBoolean;
@@ -428,45 +371,34 @@ interface MediaTrackConstraintSet {
     suppressLocalAudioPlayback?: ConstrainBoolean;
     width?: ConstrainULong;
 }
-
 type ConstrainDOMString = string | string[] | ConstrainDOMStringParameters;
-
 interface ConstrainDOMStringParameters {
     exact?: string | string[];
     ideal?: string | string[];
 }
-
 type ConstrainULong = number | ConstrainULongRange;
-
 interface ConstrainULongRange extends ULongRange {
     exact?: number;
     ideal?: number;
 }
-
 type ConstrainDouble = number | ConstrainDoubleRange;
-
 interface DoubleRange {
     max?: number;
     min?: number;
 }
-
 interface ConstrainDoubleRange extends DoubleRange {
     exact?: number;
     ideal?: number;
 }
-
 type ConstrainBoolean = boolean | ConstrainBooleanParameters;
-
 interface ConstrainBooleanParameters {
     exact?: boolean;
     ideal?: boolean;
 }
-
 interface ULongRange {
     max?: number;
     min?: number;
 }
-
 interface MediaTrackCapabilities {
     aspectRatio?: DoubleRange;
     autoGainControl?: boolean[];
@@ -487,7 +419,6 @@ interface MediaTrackCapabilities {
     sampleSize?: ULongRange;
     width?: ULongRange;
 }
-
 interface MediaTrackSettings {
     aspectRatio?: number;
     autoGainControl?: boolean;
@@ -503,70 +434,53 @@ interface MediaTrackSettings {
     sampleSize?: number;
     width?: number;
 }
-
 interface MediaStreamTrackEventMap {
     'ended': Event;
     'mute': Event;
     'unmute': Event;
 }
-
 interface MediaStreamTrackEvent extends Event {
     readonly track: MediaStreamTrack;
 }
-
 interface MediaStreamEventMap {
     'addtrack': MediaStreamTrackEvent;
     'removetrack': MediaStreamTrackEvent;
 }
-
 interface VoidFunction {
     (): void;
 }
-
 type EventListenerOrEventListenerObject = EventListener | EventListenerObject;
-
 interface EventListener {
     (evt: Event): void;
 }
-
 interface EventListenerObject {
     handleEvent(object: Event): void;
 }
-
 interface AddEventListenerOptions extends EventListenerOptions {
     once?: boolean;
     passive?: boolean;
     signal?: AbortSignal;
 }
-
 interface EventListenerOptions {
     capture?: boolean;
 }
-
 export type AlgorithmIdentifier = Algorithm | string;
-
 interface Algorithm {
     name: string;
 }
-
 export interface RTCCertificate {
     readonly expires: EpochTimeStamp;
     getFingerprints(): RTCDtlsFingerprint[];
 }
-
 type EpochTimeStamp = number;
-
 interface RTCDtlsFingerprint {
     algorithm?: string;
     value?: string;
 }
-
 interface RTCSctpTransportEventMap {
     'statechange': Event;
 }
-
 interface DOMException extends Error {
-
     /** @deprecated */
     readonly code: number;
     readonly message: string;
@@ -597,13 +511,10 @@ interface DOMException extends Error {
     readonly VALIDATION_ERR: number;
     readonly WRONG_DOCUMENT_ERR: number;
 }
-
 interface RTCRtpCodingParameters {
     rid?: string;
 }
-
 type RTCPriorityType = 'high' | 'low' | 'medium' | 'very-low';
-
 interface RTCRtpEncodingParameters extends RTCRtpCodingParameters {
     active?: boolean;
     maxBitrate?: number;
@@ -612,33 +523,23 @@ interface RTCRtpEncodingParameters extends RTCRtpCodingParameters {
     priority?: RTCPriorityType;
     scaleResolutionDownBy?: number;
 }
-
 type BinaryType = 'arraybuffer' | 'blob';
-
 interface MessageEvent<T = any> extends Event {
-
     /** Returns the data of the message. */
     readonly data: T;
-
     /** Returns the last event ID string, for server-sent events. */
     readonly lastEventId: string;
-
     /** Returns the origin of the message, for server-sent events and cross-document messaging. */
     readonly origin: string;
-
     /** Returns the MessagePort array sent with the message, for cross-document messaging and channel messaging. */
     readonly ports: ReadonlyArray<MessagePort>;
-
     /** Returns the WindowProxy of the source window, for cross-document messaging, and the MessagePort being attached, in the connect event fired at SharedWorkerGlobalScope objects. */
     readonly source: MessageEventSource | null;
-
     /** @deprecated */
     initMessageEvent(type: string, bubbles?: boolean, cancelable?: boolean, data?: any, origin?: string, lastEventId?: string, source?: MessageEventSource | null, ports?: MessagePort[]): void;
 }
-
 type MessageEventSource = any;
 type MessagePort = any;
-
 interface RTCDataChannelEventMap {
     'bufferedamountlow': Event;
     'close': Event;
@@ -647,25 +548,19 @@ interface RTCDataChannelEventMap {
     'message': MessageEvent;
     'open': Event;
 }
-
 type DOMHighResTimeStamp = number;
-
 interface RTCRtpContributingSource {
     audioLevel?: number;
     rtpTimestamp: number;
     source: number;
     timestamp: DOMHighResTimeStamp;
 }
-
 type RTCIceGathererState = 'complete' | 'gathering' | 'new';
-
 type RTCIceTransportState = 'checking' | 'closed' | 'completed' | 'connected' | 'disconnected' | 'failed' | 'new';
-
 interface RTCIceTransportEventMap {
     'gatheringstatechange': Event;
     'statechange': Event;
 }
-
 interface RTCIceTransport extends EventTarget {
     readonly gatheringState: RTCIceGathererState;
     ongatheringstatechange: ((this: RTCIceTransport, ev: Event) => any) | null;
@@ -676,8 +571,8 @@ interface RTCIceTransport extends EventTarget {
     removeEventListener<K extends keyof RTCIceTransportEventMap>(type: K, listener: (this: RTCIceTransport, ev: RTCIceTransportEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
-
 interface RTCDtlsTransportEventMap {
     'error': Event;
     'statechange': Event;
 }
+export {};

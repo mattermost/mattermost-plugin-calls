@@ -67,7 +67,7 @@ import {
     UserState,
     UserVoiceOnOffData,
     WebsocketEventData,
-} from '@mmcalls/common/src/types';
+} from '@mmcalls/common/lib/types';
 
 import {
     getCallID,

@@ -3,10 +3,11 @@
     "version": "0.12.0",
     "description": "Common code shared between calls webapp, desktop, and mobile.",
     "license": "MIT",
+    "main": "./lib/index.js",
     "devDependencies": {},
     "scripts": {
-        "build": "",
-        "run": "",
+        "build": "rm -rf tsconfig.tsbuildinfo ./lib && tsc --build --verbose",
+        "run": "tsc --watch --preserveWatchOutput",
         "clean": "rm -rf tsconfig.tsbuildinfo ./lib"
     }
 }

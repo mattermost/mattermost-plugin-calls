@@ -6,9 +6,11 @@ import type {
     RTCPeerConnectionIceEvent,
     RTCTrackEvent,
     MediaStreamTrack,
-    RTCPeerConnection,
     MediaStream,
 } from './types';
+
+// eslint-disable-next-line no-duplicate-imports
+import {RTCPeerConnection} from './types';
 
 const rtcConnFailedErr = new Error('rtc connection failed');
 

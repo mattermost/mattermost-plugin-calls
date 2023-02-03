@@ -15,7 +15,7 @@ import {
     UserReactionData,
     UserScreenOnOffData,
     UserVoiceOnOffData,
-} from '@mmcalls/common/src/types';
+} from '@mmcalls/common/lib/types';
 
 import {REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 

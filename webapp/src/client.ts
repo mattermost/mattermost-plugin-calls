@@ -5,9 +5,9 @@ import {EventEmitter} from 'events';
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
-import {CallsClientConfig, AudioDevices, CallsClientStats, TrackInfo, EmojiData} from '@mmcalls/common/src/types';
+import {CallsClientConfig, AudioDevices, CallsClientStats, TrackInfo, EmojiData} from '@mmcalls/common/lib/types';
 
-import {parseRTCStats, RTCPeer} from '@mmcalls/common/src';
+import {parseRTCStats, RTCPeer} from '@mmcalls/common';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
 import {logErr, logDebug} from './log';

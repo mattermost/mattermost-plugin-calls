@@ -10,7 +10,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {Client4} from 'mattermost-redux/client';
 
-import {UserState} from '@mmcalls/common/src/types';
+import {UserState} from '@mmcalls/common/lib/types';
 
 import {showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 
