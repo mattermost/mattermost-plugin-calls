@@ -155,6 +155,7 @@ export interface MediaDeviceInfo {
 }
 
 export type MediaStreamTrackState = 'ended' | 'live';
+type MediaDeviceKind = 'audioinput' | 'audiooutput' | 'videoinput';
 type RTCBundlePolicy = 'balanced' | 'max-bundle' | 'max-compat';
 type RTCDataChannelState = 'closed' | 'closing' | 'connecting' | 'open';
 type RTCDegradationPreference = 'balanced' | 'maintain-framerate' | 'maintain-resolution';
@@ -635,61 +636,7 @@ interface MessageEvent<T = any> extends Event {
     initMessageEvent(type: string, bubbles?: boolean, cancelable?: boolean, data?: any, origin?: string, lastEventId?: string, source?: MessageEventSource | null, ports?: MessagePort[]): void;
 }
 
-type MessageEventSource = WindowProxy | MessagePort | ServiceWorker;
-
-type WindowProxy = any;
-
-interface ServiceWorker extends EventTarget, AbstractWorker {
-    onstatechange: ((this: ServiceWorker, ev: Event) => any) | null;
-    readonly scriptURL: string;
-    readonly state: ServiceWorkerState;
-    postMessage(message: any, transfer: Transferable[]): void;
-    postMessage(message: any, options?: StructuredSerializeOptions): void;
-    addEventListener<K extends keyof ServiceWorkerEventMap>(type: K, listener: (this: ServiceWorker, ev: ServiceWorkerEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
-    addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-    removeEventListener<K extends keyof ServiceWorkerEventMap>(type: K, listener: (this: ServiceWorker, ev: ServiceWorkerEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
-    removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
-}
-
-type ServiceWorkerState = 'activated' | 'activating' | 'installed' | 'installing' | 'parsed' | 'redundant';
-
-interface StructuredSerializeOptions {
-    transfer?: Transferable[];
-}
-
-interface ServiceWorkerEventMap extends AbstractWorkerEventMap {
-    'statechange': Event;
-}
-
-interface MessagePort extends EventTarget {
-    onmessage: ((this: MessagePort, ev: MessageEvent) => any) | null;
-    onmessageerror: ((this: MessagePort, ev: MessageEvent) => any) | null;
-
-    /** Disconnects the port, so that it is no longer active. */
-    close(): void;
-
-    /**
-     * Posts a message through the channel. Objects listed in transfer are transferred, not just cloned, meaning that they are no longer usable on the sending side.
-     *
-     * Throws a "DataCloneError" DOMException if transfer contains duplicate objects or port, or if message could not be cloned.
-     */
-    postMessage(message: any, transfer: Transferable[]): void;
-    postMessage(message: any, options?: StructuredSerializeOptions): void;
-
-    /** Begins dispatching messages received on the port. */
-    start(): void;
-    addEventListener<K extends keyof MessagePortEventMap>(type: K, listener: (this: MessagePort, ev: MessagePortEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
-    addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-    removeEventListener<K extends keyof MessagePortEventMap>(type: K, listener: (this: MessagePort, ev: MessagePortEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
-    removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
-}
-
-interface MessagePortEventMap {
-    'message': MessageEvent;
-    'messageerror': MessageEvent;
-}
-
-type Transferable = any;
+type MessageEventSource = any;
 
 interface RTCDataChannelEventMap {
     'bufferedamountlow': Event;
