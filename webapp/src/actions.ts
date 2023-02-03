@@ -13,7 +13,7 @@ import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
 import {ClientError} from 'mattermost-redux/client/client4';
 
-import {CallsConfig} from '@calls/common/lib/types';
+import {CallsConfig} from '@mmcalls/common/lib/types';
 
 import * as Telemetry from 'src/types/telemetry';
 import {getPluginPath} from 'src/utils';

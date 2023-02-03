@@ -12,7 +12,7 @@ import {
     Reaction,
     CallRecordingState,
     ChannelState,
-} from '@calls/common/lib/types';
+} from '@mmcalls/common/lib/types';
 
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 

@@ -1,5 +1,5 @@
 {
-    "name": "@calls/common",
+    "name": "@mmcalls/common",
     "version": "0.12.0",
     "description": "Common code shared between calls webapp, desktop, and mobile.",
     "license": "MIT",
