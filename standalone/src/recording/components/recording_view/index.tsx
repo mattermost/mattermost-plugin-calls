@@ -7,7 +7,7 @@ import {useSelector} from 'react-redux';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 
-import {UserState} from '@mmcalls/common/lib/types';
+import {UserState} from '@mmcalls/common/src/types';
 
 import {logErr} from 'plugin/log';
 import {alphaSortProfiles, getUserDisplayName, stateSortProfiles} from 'plugin/utils';

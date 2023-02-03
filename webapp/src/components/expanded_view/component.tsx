@@ -26,7 +26,7 @@ import {
     CallAlertStates,
     CallAlertStatesDefault,
     CallRecordingState,
-} from '@mmcalls/common/lib/types';
+} from '@mmcalls/common/src/types';
 
 import {
     getUserDisplayName,

@@ -4,7 +4,7 @@ import {Channel} from '@mattermost/types/channels';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {Theme} from 'mattermost-redux/types/themes';
 
-import {CapturerSource} from '@mmcalls/common/lib/types';
+import {CapturerSource} from '@mmcalls/common/src/types';
 
 import {hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
 import CompassIcon from 'src/components/icons/compassIcon';

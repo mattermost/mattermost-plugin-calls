@@ -14,7 +14,7 @@ import EmojiPicker, {
 
 import {HandRightOutlineIcon, HandRightOutlineOffIcon} from '@mattermost/compass-icons/components';
 
-import {EmojiData} from '@mmcalls/common/lib/types';
+import {EmojiData} from '@mmcalls/common/src/types';
 
 import ControlsButton from 'src/components/expanded_view/controls_button';
 import {MAKE_REACTION, RAISE_LOWER_HAND, reverseKeyMappings} from 'src/shortcuts';

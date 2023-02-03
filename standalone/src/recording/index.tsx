@@ -11,7 +11,7 @@ import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/
 
 import {WebSocketMessage} from '@mattermost/types/websocket';
 
-import {UserConnectedData, WebsocketEventData} from '@mmcalls/common/lib/types';
+import {UserConnectedData, WebsocketEventData} from '@mmcalls/common/src/types';
 
 import {getProfilesByIds, getPluginPath} from 'plugin/utils';
 import {logErr} from 'plugin/log';
