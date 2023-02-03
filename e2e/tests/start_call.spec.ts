@@ -78,7 +78,7 @@ test.describe('start new call', () => {
         await devPage.leaveCall();
     });
 
-    test.only('slash command from existing thread', async ({page, context}) => {
+    test('slash command from existing thread', async ({page, context}) => {
         // create a test thread
         await page.locator('#post_textbox').fill('test thread');
         await page.locator('[data-testid=SendMessageButton]').click();
