@@ -791,7 +791,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <div style={{fontSize: '12px', display: 'flex', whiteSpace: 'pre'}}>
                 <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
                     {speakingProfile ? getUserDisplayName(speakingProfile) : 'No one'}
-                    <span style={{fontWeight: 400}}>{'is talking...'}</span>
+                    <span style={{fontWeight: 400}}>{' is talking...'}</span>
                 </span>
             </div>
         );
