@@ -281,7 +281,7 @@ interface RTCOfferOptions extends RTCOfferAnswerOptions {
     offerToReceiveVideo?: boolean;
 }
 
-interface RTCConfiguration {
+export interface RTCConfiguration {
     bundlePolicy?: RTCBundlePolicy;
     certificates?: RTCCertificate[];
     iceCandidatePoolSize?: number;
@@ -536,13 +536,13 @@ interface EventListenerOptions {
     capture?: boolean;
 }
 
-type AlgorithmIdentifier = Algorithm | string;
+export type AlgorithmIdentifier = Algorithm | string;
 
 interface Algorithm {
     name: string;
 }
 
-interface RTCCertificate {
+export interface RTCCertificate {
     readonly expires: EpochTimeStamp;
     getFingerprints(): RTCDtlsFingerprint[];
 }
