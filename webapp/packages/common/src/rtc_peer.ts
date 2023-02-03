@@ -6,6 +6,8 @@ import {
     RTCPeerConnectionIceEvent,
     RTCTrackEvent,
     MediaStreamTrack,
+    MediaStream as MediaStreamType,
+    RTCPeerConnection as RTCPeerConnectionType,
 } from './types';
 
 import {RTCPeerConnection, MediaStream} from './types/lib_dom_vars';
@@ -13,7 +15,7 @@ import {RTCPeerConnection, MediaStream} from './types/lib_dom_vars';
 const rtcConnFailedErr = new Error('rtc connection failed');
 
 export class RTCPeer extends EventEmitter {
-    private pc: RTCPeerConnection | null;
+    private pc: RTCPeerConnectionType | null;
     private readonly senders: { [key: string]: RTCRtpSender };
     private readonly logDebug: (...args: unknown[]) => void;
 
@@ -123,7 +125,7 @@ export class RTCPeer extends EventEmitter {
         }
     }
 
-    public async addTrack(track: MediaStreamTrack, stream: MediaStream) {
+    public async addTrack(track: MediaStreamTrack, stream: MediaStreamType) {
         if (!this.pc) {
             throw new Error('peer has been destroyed');
         }
@@ -133,7 +135,7 @@ export class RTCPeer extends EventEmitter {
         }
     }
 
-    public addStream(stream: MediaStream) {
+    public addStream(stream: MediaStreamType) {
         stream.getTracks().forEach((track: MediaStreamTrack) => {
             this.addTrack(track, stream);
         });
