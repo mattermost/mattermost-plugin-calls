@@ -1,4 +1,3 @@
-"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -8,13 +7,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RTCPeer = void 0;
-const events_1 = require("events");
-// eslint-disable-next-line no-duplicate-imports
-const types_1 = require("./types");
+import { EventEmitter } from 'events';
 const rtcConnFailedErr = new Error('rtc connection failed');
-class RTCPeer extends events_1.EventEmitter {
+export class RTCPeer extends EventEmitter {
     constructor(config, logDebug) {
         super();
         this.makingOffer = false;
@@ -22,7 +17,7 @@ class RTCPeer extends events_1.EventEmitter {
         // We keep a map of track IDs -> RTP sender so that we can easily
         // replace tracks when muting/unmuting.
         this.senders = {};
-        this.pc = new types_1.RTCPeerConnection(config);
+        this.pc = new RTCPeerConnection(config);
         this.pc.onnegotiationneeded = () => this.onNegotiationNeeded();
         this.pc.onicecandidate = (ev) => this.onICECandidate(ev);
         this.pc.oniceconnectionstatechange = () => this.onICEConnectionStateChange();
@@ -169,4 +164,3 @@ class RTCPeer extends events_1.EventEmitter {
         this.connected = false;
     }
 }
-exports.RTCPeer = RTCPeer;

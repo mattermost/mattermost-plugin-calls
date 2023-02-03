@@ -79,11 +79,6 @@ export interface RTCPeerConnection extends EventTarget {
     removeEventListener<K extends keyof RTCPeerConnectionEventMap>(type: K, listener: (this: RTCPeerConnection, ev: RTCPeerConnectionEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
-export declare var RTCPeerConnection: {
-    prototype: RTCPeerConnection;
-    new (configuration?: RTCConfiguration): RTCPeerConnection;
-    generateCertificate(keygenAlgorithm: AlgorithmIdentifier): Promise<RTCCertificate>;
-};
 export interface MediaStream extends EventTarget {
     readonly active: boolean;
     readonly id: string;

@@ -6,13 +6,28 @@ import type {
     RTCPeerConnectionIceEvent,
     RTCTrackEvent,
     MediaStreamTrack,
-    MediaStream,
+    MediaStream as MediaStreamType,
+    AlgorithmIdentifier,
+    RTCCertificate,
+    RTCConfiguration,
 } from './types';
 
-// eslint-disable-next-line no-duplicate-imports
-import {RTCPeerConnection} from './types';
-
 const rtcConnFailedErr = new Error('rtc connection failed');
+
+// eslint-disable-next-line no-var
+declare var RTCPeerConnection: {
+    prototype: RTCPeerConnection;
+    new(configuration?: RTCConfiguration): RTCPeerConnection;
+    generateCertificate(keygenAlgorithm: AlgorithmIdentifier): Promise<RTCCertificate>;
+};
+
+// eslint-disable-next-line no-var
+declare var MediaStream: {
+    prototype: MediaStream;
+    new(): MediaStream;
+    new(stream: MediaStream): MediaStream;
+    new(tracks: MediaStreamTrack[]): MediaStream;
+};
 
 export class RTCPeer extends EventEmitter {
     private pc: RTCPeerConnection | null;
@@ -125,7 +140,7 @@ export class RTCPeer extends EventEmitter {
         }
     }
 
-    public async addTrack(track: MediaStreamTrack, stream: MediaStream) {
+    public async addTrack(track: MediaStreamTrack, stream: MediaStreamType) {
         if (!this.pc) {
             throw new Error('peer has been destroyed');
         }
@@ -135,7 +150,7 @@ export class RTCPeer extends EventEmitter {
         }
     }
 
-    public addStream(stream: MediaStream) {
+    public addStream(stream: MediaStreamType) {
         stream.getTracks().forEach((track: MediaStreamTrack) => {
             this.addTrack(track, stream);
         });

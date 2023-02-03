@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { EventEmitter } from 'events';
-import type { RTCPeerConfig, MediaStreamTrack, MediaStream } from './types';
+import type { RTCPeerConfig, MediaStreamTrack, MediaStream as MediaStreamType } from './types';
 export declare class RTCPeer extends EventEmitter {
     private pc;
     private readonly senders;
@@ -14,9 +14,9 @@ export declare class RTCPeer extends EventEmitter {
     private onNegotiationNeeded;
     private onTrack;
     signal(data: string): Promise<void>;
-    addTrack(track: MediaStreamTrack, stream: MediaStream): Promise<void>;
-    addStream(stream: MediaStream): void;
+    addTrack(track: MediaStreamTrack, stream: MediaStreamType): Promise<void>;
+    addStream(stream: MediaStreamType): void;
     replaceTrack(oldTrackID: string, newTrack: MediaStreamTrack | null): void;
-    getStats(): Promise<import("./types").RTCStatsReport>;
+    getStats(): Promise<RTCStatsReport>;
     destroy(): void;
 }

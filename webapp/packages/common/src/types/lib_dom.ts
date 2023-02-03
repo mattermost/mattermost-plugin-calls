@@ -98,13 +98,6 @@ export interface RTCPeerConnection extends EventTarget {
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
 
-// eslint-disable-next-line no-var
-export declare var RTCPeerConnection: {
-    prototype: RTCPeerConnection;
-    new(configuration?: RTCConfiguration): RTCPeerConnection;
-    generateCertificate(keygenAlgorithm: AlgorithmIdentifier): Promise<RTCCertificate>;
-};
-
 export interface MediaStream extends EventTarget {
     readonly active: boolean;
     readonly id: string;

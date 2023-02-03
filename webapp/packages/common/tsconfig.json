@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "module": "CommonJS",
+        "module": "ES6",
         "moduleResolution": "node",
         "target": "ES6",
         "strict": true,
@@ -13,5 +13,5 @@
         "rootDir": "./src",
         "composite": true
     },
-    "exclude": ["**/node_modules", "**/*.test.js", "**/*.test.ts"],
+    "exclude": ["**/node_modules", "**/lib", "**/*.test.js", "**/*.test.ts"]
 }

@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseRTCStats = void 0;
-function parseRTCStats(reports) {
+export function parseRTCStats(reports) {
     const stats = {};
     reports.forEach((report) => {
         if (!report.ssrc) {
@@ -63,4 +60,3 @@ function parseRTCStats(reports) {
     });
     return stats;
 }
-exports.parseRTCStats = parseRTCStats;
