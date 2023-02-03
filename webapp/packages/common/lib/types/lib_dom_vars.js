@@ -1,2 +1,3 @@
+"use strict";
 /* eslint-disable  no-var */
-export {};
+Object.defineProperty(exports, "__esModule", { value: true });

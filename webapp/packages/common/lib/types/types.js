@@ -1,6 +1,9 @@
+"use strict";
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
-export const CallsConfigDefault = {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CallAlertStatesDefault = exports.CallAlertType = exports.CallsUserPreferencesDefault = exports.CallsConfigDefault = void 0;
+exports.CallsConfigDefault = {
     ICEServers: [],
     ICEServersConfigs: [],
     DefaultEnabled: false,
@@ -11,15 +14,15 @@ export const CallsConfigDefault = {
     MaxRecordingDuration: 60,
     sku_short_name: '',
 };
-export const CallsUserPreferencesDefault = {
+exports.CallsUserPreferencesDefault = {
     joinSoundParticipantsThreshold: 8,
 };
-export var CallAlertType;
+var CallAlertType;
 (function (CallAlertType) {
     CallAlertType["Error"] = "error";
     CallAlertType["Warning"] = "warning";
-})(CallAlertType || (CallAlertType = {}));
-export const CallAlertStatesDefault = {
+})(CallAlertType = exports.CallAlertType || (exports.CallAlertType = {}));
+exports.CallAlertStatesDefault = {
     missingAudioInput: {
         active: false,
         show: false,

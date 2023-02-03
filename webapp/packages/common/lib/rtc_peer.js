@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -7,10 +8,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { EventEmitter } from 'events';
-import { RTCPeerConnection, MediaStream } from './types/lib_dom_vars';
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.RTCPeer = void 0;
+const events_1 = require("events");
+const lib_dom_vars_1 = require("./types/lib_dom_vars");
 const rtcConnFailedErr = new Error('rtc connection failed');
-export class RTCPeer extends EventEmitter {
+class RTCPeer extends events_1.EventEmitter {
     constructor(config, logDebug) {
         super();
         this.makingOffer = false;
@@ -18,7 +21,7 @@ export class RTCPeer extends EventEmitter {
         // We keep a map of track IDs -> RTP sender so that we can easily
         // replace tracks when muting/unmuting.
         this.senders = {};
-        this.pc = new RTCPeerConnection(config);
+        this.pc = new lib_dom_vars_1.RTCPeerConnection(config);
         this.pc.onnegotiationneeded = () => this.onNegotiationNeeded();
         this.pc.onicecandidate = (ev) => this.onICECandidate(ev);
         this.pc.oniceconnectionstatechange = () => this.onICEConnectionStateChange();
@@ -79,7 +82,7 @@ export class RTCPeer extends EventEmitter {
     }
     onTrack(ev) {
         if (ev.streams.length === 0) {
-            this.emit('stream', new MediaStream([ev.track]));
+            this.emit('stream', new lib_dom_vars_1.MediaStream([ev.track]));
             return;
         }
         this.emit('stream', ev.streams[0]);
@@ -165,3 +168,4 @@ export class RTCPeer extends EventEmitter {
         this.connected = false;
     }
 }
+exports.RTCPeer = RTCPeer;
