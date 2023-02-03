@@ -146,8 +146,15 @@ export interface MediaStream extends EventTarget {
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
 
-type MediaStreamTrackState = 'ended' | 'live';
+export interface MediaDeviceInfo {
+    readonly deviceId: string;
+    readonly groupId: string;
+    readonly kind: MediaDeviceKind;
+    readonly label: string;
+    toJSON(): any;
+}
 
+export type MediaStreamTrackState = 'ended' | 'live';
 type RTCBundlePolicy = 'balanced' | 'max-bundle' | 'max-compat';
 type RTCDataChannelState = 'closed' | 'closing' | 'connecting' | 'open';
 type RTCDegradationPreference = 'balanced' | 'maintain-framerate' | 'maintain-resolution';
@@ -632,6 +639,28 @@ type MessageEventSource = WindowProxy | MessagePort | ServiceWorker;
 
 type WindowProxy = any;
 
+interface ServiceWorker extends EventTarget, AbstractWorker {
+    onstatechange: ((this: ServiceWorker, ev: Event) => any) | null;
+    readonly scriptURL: string;
+    readonly state: ServiceWorkerState;
+    postMessage(message: any, transfer: Transferable[]): void;
+    postMessage(message: any, options?: StructuredSerializeOptions): void;
+    addEventListener<K extends keyof ServiceWorkerEventMap>(type: K, listener: (this: ServiceWorker, ev: ServiceWorkerEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+    removeEventListener<K extends keyof ServiceWorkerEventMap>(type: K, listener: (this: ServiceWorker, ev: ServiceWorkerEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+    removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+}
+
+type ServiceWorkerState = 'activated' | 'activating' | 'installed' | 'installing' | 'parsed' | 'redundant';
+
+interface StructuredSerializeOptions {
+    transfer?: Transferable[];
+}
+
+interface ServiceWorkerEventMap extends AbstractWorkerEventMap {
+    'statechange': Event;
+}
+
 interface MessagePort extends EventTarget {
     onmessage: ((this: MessagePort, ev: MessageEvent) => any) | null;
     onmessageerror: ((this: MessagePort, ev: MessageEvent) => any) | null;
@@ -653,6 +682,11 @@ interface MessagePort extends EventTarget {
     addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
     removeEventListener<K extends keyof MessagePortEventMap>(type: K, listener: (this: MessagePort, ev: MessagePortEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+}
+
+interface MessagePortEventMap {
+    'message': MessageEvent;
+    'messageerror': MessageEvent;
 }
 
 type Transferable = any;
