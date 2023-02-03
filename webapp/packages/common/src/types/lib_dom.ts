@@ -214,6 +214,9 @@ interface RTCRtpTransceiver {
     stop(): void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface RTCOfferAnswerOptions {}
+
 type RTCAnswerOptions = RTCOfferAnswerOptions
 
 interface RTCSessionDescriptionInit {
@@ -278,6 +281,35 @@ interface RTCConfiguration {
     rtcpMuxPolicy?: RTCRtcpMuxPolicy;
 }
 
+interface RTCRtpCodecParameters {
+    channels?: number;
+    clockRate: number;
+    mimeType: string;
+    payloadType: number;
+    sdpFmtpLine?: string;
+}
+
+interface RTCRtpHeaderExtensionParameters {
+    encrypted?: boolean;
+    id: number;
+    uri: string;
+}
+
+interface RTCRtcpParameters {
+    cname?: string;
+    reducedSize?: boolean;
+}
+
+interface RTCRtpParameters {
+    codecs: RTCRtpCodecParameters[];
+    headerExtensions: RTCRtpHeaderExtensionParameters[];
+    rtcp: RTCRtcpParameters;
+}
+
+type RTCRtpReceiveParameters = RTCRtpParameters
+
+type RTCRtpSynchronizationSource = RTCRtpContributingSource
+
 interface RTCRtpReceiver {
     readonly track: MediaStreamTrack;
     readonly transport: RTCDtlsTransport | null;
@@ -302,6 +334,14 @@ interface RTCPeerConnectionEventMap {
     'negotiationneeded': Event;
     'signalingstatechange': Event;
     'track': RTCTrackEvent;
+}
+
+interface RTCDTMFToneChangeEvent extends Event {
+    readonly tone: string;
+}
+
+interface RTCDTMFSenderEventMap {
+    'tonechange': RTCDTMFToneChangeEvent;
 }
 
 interface RTCDTMFSender extends EventTarget {
@@ -355,6 +395,62 @@ interface MediaTrackConstraints extends MediaTrackConstraintSet {
     advanced?: MediaTrackConstraintSet[];
 }
 
+interface MediaTrackConstraintSet {
+    aspectRatio?: ConstrainDouble;
+    autoGainControl?: ConstrainBoolean;
+    channelCount?: ConstrainULong;
+    deviceId?: ConstrainDOMString;
+    echoCancellation?: ConstrainBoolean;
+    facingMode?: ConstrainDOMString;
+    frameRate?: ConstrainDouble;
+    groupId?: ConstrainDOMString;
+    height?: ConstrainULong;
+    latency?: ConstrainDouble;
+    noiseSuppression?: ConstrainBoolean;
+    sampleRate?: ConstrainULong;
+    sampleSize?: ConstrainULong;
+    suppressLocalAudioPlayback?: ConstrainBoolean;
+    width?: ConstrainULong;
+}
+
+type ConstrainDOMString = string | string[] | ConstrainDOMStringParameters;
+
+interface ConstrainDOMStringParameters {
+    exact?: string | string[];
+    ideal?: string | string[];
+}
+
+type ConstrainULong = number | ConstrainULongRange;
+
+interface ConstrainULongRange extends ULongRange {
+    exact?: number;
+    ideal?: number;
+}
+
+type ConstrainDouble = number | ConstrainDoubleRange;
+
+interface DoubleRange {
+    max?: number;
+    min?: number;
+}
+
+interface ConstrainDoubleRange extends DoubleRange {
+    exact?: number;
+    ideal?: number;
+}
+
+type ConstrainBoolean = boolean | ConstrainBooleanParameters;
+
+interface ConstrainBooleanParameters {
+    exact?: boolean;
+    ideal?: boolean;
+}
+
+interface ULongRange {
+    max?: number;
+    min?: number;
+}
+
 interface MediaTrackCapabilities {
     aspectRatio?: DoubleRange;
     autoGainControl?: boolean[];
@@ -405,4 +501,145 @@ interface MediaStreamTrackEvent extends Event {
 interface MediaStreamEventMap {
     'addtrack': MediaStreamTrackEvent;
     'removetrack': MediaStreamTrackEvent;
+}
+
+interface VoidFunction {
+    (): void;
+}
+
+type EventListenerOrEventListenerObject = EventListener | EventListenerObject;
+
+interface AddEventListenerOptions extends EventListenerOptions {
+    once?: boolean;
+    passive?: boolean;
+    signal?: AbortSignal;
+}
+
+interface EventListenerOptions {
+    capture?: boolean;
+}
+
+type AlgorithmIdentifier = Algorithm | string;
+
+interface RTCCertificate {
+    readonly expires: EpochTimeStamp;
+    getFingerprints(): RTCDtlsFingerprint[];
+}
+
+interface RTCSctpTransportEventMap {
+    'statechange': Event;
+}
+
+interface DOMException extends Error {
+
+    /** @deprecated */
+    readonly code: number;
+    readonly message: string;
+    readonly name: string;
+    readonly ABORT_ERR: number;
+    readonly DATA_CLONE_ERR: number;
+    readonly DOMSTRING_SIZE_ERR: number;
+    readonly HIERARCHY_REQUEST_ERR: number;
+    readonly INDEX_SIZE_ERR: number;
+    readonly INUSE_ATTRIBUTE_ERR: number;
+    readonly INVALID_ACCESS_ERR: number;
+    readonly INVALID_CHARACTER_ERR: number;
+    readonly INVALID_MODIFICATION_ERR: number;
+    readonly INVALID_NODE_TYPE_ERR: number;
+    readonly INVALID_STATE_ERR: number;
+    readonly NAMESPACE_ERR: number;
+    readonly NETWORK_ERR: number;
+    readonly NOT_FOUND_ERR: number;
+    readonly NOT_SUPPORTED_ERR: number;
+    readonly NO_DATA_ALLOWED_ERR: number;
+    readonly NO_MODIFICATION_ALLOWED_ERR: number;
+    readonly QUOTA_EXCEEDED_ERR: number;
+    readonly SECURITY_ERR: number;
+    readonly SYNTAX_ERR: number;
+    readonly TIMEOUT_ERR: number;
+    readonly TYPE_MISMATCH_ERR: number;
+    readonly URL_MISMATCH_ERR: number;
+    readonly VALIDATION_ERR: number;
+    readonly WRONG_DOCUMENT_ERR: number;
+}
+
+interface RTCRtpCodingParameters {
+    rid?: string;
+}
+
+type RTCPriorityType = 'high' | 'low' | 'medium' | 'very-low';
+
+interface RTCRtpEncodingParameters extends RTCRtpCodingParameters {
+    active?: boolean;
+    maxBitrate?: number;
+    maxFramerate?: number;
+    networkPriority?: RTCPriorityType;
+    priority?: RTCPriorityType;
+    scaleResolutionDownBy?: number;
+}
+
+type BinaryType = 'arraybuffer' | 'blob';
+
+interface MessageEvent<T = any> extends Event {
+
+    /** Returns the data of the message. */
+    readonly data: T;
+
+    /** Returns the last event ID string, for server-sent events. */
+    readonly lastEventId: string;
+
+    /** Returns the origin of the message, for server-sent events and cross-document messaging. */
+    readonly origin: string;
+
+    /** Returns the MessagePort array sent with the message, for cross-document messaging and channel messaging. */
+    readonly ports: ReadonlyArray<MessagePort>;
+
+    /** Returns the WindowProxy of the source window, for cross-document messaging, and the MessagePort being attached, in the connect event fired at SharedWorkerGlobalScope objects. */
+    readonly source: MessageEventSource | null;
+
+    /** @deprecated */
+    initMessageEvent(type: string, bubbles?: boolean, cancelable?: boolean, data?: any, origin?: string, lastEventId?: string, source?: MessageEventSource | null, ports?: MessagePort[]): void;
+}
+
+interface RTCDataChannelEventMap {
+    'bufferedamountlow': Event;
+    'close': Event;
+    'closing': Event;
+    'error': Event;
+    'message': MessageEvent;
+    'open': Event;
+}
+
+type DOMHighResTimeStamp = number;
+
+interface RTCRtpContributingSource {
+    audioLevel?: number;
+    rtpTimestamp: number;
+    source: number;
+    timestamp: DOMHighResTimeStamp;
+}
+
+type RTCIceGathererState = 'complete' | 'gathering' | 'new';
+
+type RTCIceTransportState = 'checking' | 'closed' | 'completed' | 'connected' | 'disconnected' | 'failed' | 'new';
+
+interface RTCIceTransportEventMap {
+    'gatheringstatechange': Event;
+    'statechange': Event;
+}
+
+interface RTCIceTransport extends EventTarget {
+    readonly gatheringState: RTCIceGathererState;
+    ongatheringstatechange: ((this: RTCIceTransport, ev: Event) => any) | null;
+    onstatechange: ((this: RTCIceTransport, ev: Event) => any) | null;
+    readonly state: RTCIceTransportState;
+    addEventListener<K extends keyof RTCIceTransportEventMap>(type: K, listener: (this: RTCIceTransport, ev: RTCIceTransportEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+    removeEventListener<K extends keyof RTCIceTransportEventMap>(type: K, listener: (this: RTCIceTransport, ev: RTCIceTransportEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+    removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+}
+
+interface RTCDtlsTransportEventMap {
+    'error': Event;
+    'statechange': Event;
 }
