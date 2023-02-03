@@ -70,13 +70,6 @@ export interface RTCPeerConnection extends EventTarget {
     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
 
-// eslint-disable-next-line no-var
-export declare var RTCPeerConnection: {
-    prototype: RTCPeerConnection;
-    new(configuration?: RTCConfiguration): RTCPeerConnection;
-    generateCertificate(keygenAlgorithm: AlgorithmIdentifier): Promise<RTCCertificate>;
-};
-
 export interface RTCRtpSender {
     readonly dtmf: RTCDTMFSender | null;
     readonly track: MediaStreamTrack | null;
@@ -637,6 +630,7 @@ interface MessageEvent<T = any> extends Event {
 }
 
 type MessageEventSource = any;
+type MessagePort = any;
 
 interface RTCDataChannelEventMap {
     'bufferedamountlow': Event;

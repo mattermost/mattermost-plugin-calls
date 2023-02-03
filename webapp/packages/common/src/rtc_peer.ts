@@ -2,13 +2,13 @@ import {EventEmitter} from 'events';
 
 import {
     RTCPeerConfig,
-    RTCPeerConnection,
     RTCRtpSender,
     RTCPeerConnectionIceEvent,
     RTCTrackEvent,
     MediaStreamTrack,
-    MediaStream,
 } from './types';
+
+import {RTCPeerConnection, MediaStream} from './types/lib_dom_vars';
 
 const rtcConnFailedErr = new Error('rtc connection failed');
 
