@@ -6,7 +6,7 @@
     "main": "./lib/index.js",
     "devDependencies": {},
     "scripts": {
-        "build": "tsc --build --verbose",
+        "build": "rm -rf tsconfig.tsbuildinfo ./lib && tsc --build --verbose",
         "run": "tsc --watch --preserveWatchOutput",
         "clean": "rm -rf tsconfig.tsbuildinfo ./lib"
     }
