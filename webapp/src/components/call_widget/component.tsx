@@ -117,9 +117,11 @@ interface State {
 export default class CallWidget extends React.PureComponent<Props, State> {
     private readonly node: React.RefObject<HTMLDivElement>;
     private readonly menuNode: React.RefObject<HTMLDivElement>;
+    private audioMenu: HTMLUListElement | null = null;
     private menuResizeObserver: ResizeObserver | null = null;
     private audioMenuResizeObserver: ResizeObserver | null = null;
     private readonly screenPlayer = React.createRef<HTMLVideoElement>();
+    private prevDevicePixelRatio = 0;
 
     private genStyle = () => {
         return {
@@ -286,21 +288,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
+    private onViewportResize = () => {
+        if (window.devicePixelRatio === this.prevDevicePixelRatio) {
+            return;
+        }
+        this.prevDevicePixelRatio = window.devicePixelRatio;
+        this.sendGlobalWidgetBounds();
+    }
+
     public componentDidMount() {
         if (this.props.global) {
-            this.menuResizeObserver = new ResizeObserver((entries) => {
-                if (entries.length === 0) {
-                    return;
-                }
-                sendDesktopEvent('calls-widget-resize', {
-                    element: 'calls-widget-menu',
-                    height: Math.round(entries[0].contentRect.height),
-                    width: Math.round(entries[0].contentRect.width),
-                });
-            });
-            if (this.menuNode.current) {
-                this.menuResizeObserver.observe(this.menuNode.current);
-            }
+            window.visualViewport.addEventListener('resize', this.onViewportResize);
+            this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
+            this.menuResizeObserver.observe(this.menuNode.current!);
         } else {
             document.addEventListener('mouseup', this.onMouseUp, false);
         }
@@ -411,7 +411,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentWillUnmount() {
-        if (!this.props.global) {
+        if (this.props.global) {
+            window.visualViewport.removeEventListener('resize', this.onViewportResize);
+        } else {
             document.removeEventListener('mouseup', this.onMouseUp, false);
         }
 
@@ -476,6 +478,51 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }
             }
         }
+    }
+
+    private getGlobalWidgetBounds = () => {
+        const bounds = {
+            width: 0,
+            height: 0,
+        };
+
+        const widget = this.node.current;
+
+        if (widget) {
+            const widgetMenu = widget.children[0];
+            const baseWidget = widget.children[1];
+
+            // No strict need to be pixel perfect here since the window will be transparent
+            // and better to overestimate slightly to avoid the widget possibly being cut.
+            const margin = 4;
+
+            // Margin on base width is needed to account for the widget being
+            // positioned 2px from the left: 2px + 280px (base width) + 2px
+            bounds.width = baseWidget.getBoundingClientRect().width + margin;
+
+            // Margin on base height is needed to account for the widget being
+            // positioned 2px from the bottom: 2px + 86px (base height) + 2px
+            bounds.height = baseWidget.getBoundingClientRect().height + widgetMenu.getBoundingClientRect().height + margin;
+
+            if (widgetMenu.getBoundingClientRect().height > 0) {
+                bounds.height += margin;
+            }
+
+            if (this.audioMenu) {
+                bounds.width += this.audioMenu.getBoundingClientRect().width + margin;
+            }
+        }
+
+        return bounds;
+    }
+
+    private sendGlobalWidgetBounds = () => {
+        const bounds = this.getGlobalWidgetBounds();
+        sendDesktopEvent('calls-widget-resize', {
+            element: 'calls-widget',
+            width: Math.ceil(bounds.width),
+            height: Math.ceil(bounds.height),
+        });
     }
 
     private keyboardClose = (e: KeyboardEvent) => {
@@ -931,24 +978,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.audioMenuResizeObserver.disconnect();
         }
 
+        this.audioMenu = el;
+
         if (el) {
-            this.audioMenuResizeObserver = new ResizeObserver((entries) => {
-                if (entries.length === 0 || entries[0].borderBoxSize.length === 0) {
-                    return;
-                }
-                sendDesktopEvent('calls-widget-resize', {
-                    element: 'calls-widget-audio-menu',
-                    height: Math.round(entries[0].borderBoxSize[0].blockSize),
-                    width: Math.round(entries[0].borderBoxSize[0].inlineSize),
-                });
-            });
+            this.audioMenuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
             this.audioMenuResizeObserver.observe(el);
         } else {
-            sendDesktopEvent('calls-widget-resize', {
-                element: 'calls-widget-audio-menu',
-                width: 0,
-                height: 0,
-            });
+            this.sendGlobalWidgetBounds();
         }
     };
 
