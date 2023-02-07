@@ -23,9 +23,19 @@ const (
 	experimentalCommandTrigger = "experimental"
 	statsCommandTrigger        = "stats"
 	endCommandTrigger          = "end"
+	recordingCommandTrigger    = "recording"
 )
 
-var subCommands = []string{startCommandTrigger, joinCommandTrigger, leaveCommandTrigger, linkCommandTrigger, experimentalCommandTrigger, endCommandTrigger, statsCommandTrigger}
+var subCommands = []string{
+	startCommandTrigger,
+	joinCommandTrigger,
+	leaveCommandTrigger,
+	linkCommandTrigger,
+	experimentalCommandTrigger,
+	endCommandTrigger,
+	statsCommandTrigger,
+	recordingCommandTrigger,
+}
 
 func getAutocompleteData() *model.AutocompleteData {
 	data := model.NewAutocompleteData(rootCommandTrigger, "[command]",
@@ -42,6 +52,11 @@ func getAutocompleteData() *model.AutocompleteData {
 	experimentalCmdData := model.NewAutocompleteData(experimentalCommandTrigger, "", "Turn experimental features on or off.")
 	experimentalCmdData.AddTextArgument("Available options: on, off", "", "on|off")
 	data.AddCommand(experimentalCmdData)
+
+	recordingCmdData := model.NewAutocompleteData(recordingCommandTrigger, "", "Manage calls recordings")
+	recordingCmdData.AddTextArgument("Available options: start, stop", "", "start|stop")
+	data.AddCommand(recordingCmdData)
+
 	return data
 }
 
@@ -138,6 +153,18 @@ func (p *Plugin) handleEndCallCommand(userID, channelID string) (*model.CommandR
 	return &model.CommandResponse{}, nil
 }
 
+func (p *Plugin) handleRecordingCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("Invalid number of arguments provided")
+	}
+
+	if subCmd := fields[2]; subCmd != "start" && subCmd != "stop" {
+		return nil, fmt.Errorf("Invalid subcommand %q", subCmd)
+	}
+
+	return &model.CommandResponse{}, nil
+}
+
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
@@ -193,6 +220,17 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == endCommandTrigger {
 		resp, err := p.handleEndCallCommand(args.UserId, args.ChannelId)
+		if err != nil {
+			return &model.CommandResponse{
+				ResponseType: model.CommandResponseTypeEphemeral,
+				Text:         fmt.Sprintf("Error: %s", err.Error()),
+			}, nil
+		}
+		return resp, nil
+	}
+
+	if subCmd == recordingCommandTrigger {
+		resp, err := p.handleRecordingCommand(args, fields)
 		if err != nil {
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,
