@@ -633,65 +633,75 @@ export default class Plugin {
                     type: RECEIVED_CHANNEL_STATE,
                     data: {id: channelID, enabled: resp.data.enabled},
                 });
+
+                const call = resp.data.call;
+                if (!call) {
+                    return;
+                }
+
+                store.dispatch({
+                    type: VOICE_CHANNEL_CALL_START,
+                    data: {
+                        channelID,
+                        startAt: call.start_at,
+                        ownerID: call.owner_id,
+                        hostID: call.host_id,
+                    },
+                });
+
                 store.dispatch({
                     type: VOICE_CHANNEL_USERS_CONNECTED,
                     data: {
-                        users: resp.data.call?.users,
+                        users: call.users || [],
                         channelID,
                     },
                 });
-                if (resp.data.call?.thread_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_ROOT_POST,
-                        data: {
-                            channelID,
-                            rootPost: resp.data.call?.thread_id,
-                        },
-                    });
-                }
-                if (resp.data.call?.host_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_CALL_HOST,
-                        data: {
-                            channelID,
-                            hostID: resp.data.call?.host_id,
-                        },
-                    });
-                }
 
-                if (resp.data.call?.users && resp.data.call?.users.length > 0) {
+                store.dispatch({
+                    type: VOICE_CHANNEL_ROOT_POST,
+                    data: {
+                        channelID,
+                        rootPost: call.thread_id,
+                    },
+                });
+
+                store.dispatch({
+                    type: VOICE_CHANNEL_CALL_HOST,
+                    data: {
+                        channelID,
+                        hostID: call.host_id,
+                    },
+                });
+
+                if (call.users && call.users.length > 0) {
                     store.dispatch({
                         type: VOICE_CHANNEL_PROFILES_CONNECTED,
                         data: {
-                            profiles: await getProfilesByIds(store.getState(), resp.data.call?.users),
+                            profiles: await getProfilesByIds(store.getState(), call.users),
                             channelID,
                         },
                     });
                 }
 
-                if (resp.data.call?.recording) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_CALL_RECORDING_STATE,
-                        data: {
-                            callID: channelID,
-                            recState: resp.data.call?.recording,
-                        },
-                    });
-                }
+                store.dispatch({
+                    type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+                    data: {
+                        callID: channelID,
+                        recState: call.recording,
+                    },
+                });
 
-                if (resp.data.call?.screen_sharing_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_USER_SCREEN_ON,
-                        data: {
-                            channelID,
-                            userID: resp.data.call?.screen_sharing_id,
-                        },
-                    });
-                }
+                store.dispatch({
+                    type: VOICE_CHANNEL_USER_SCREEN_ON,
+                    data: {
+                        channelID,
+                        userID: call.screen_sharing_id,
+                    },
+                });
 
                 const userStates: Record<string, UserState> = {};
-                const users = resp.data.call?.users || [];
-                const states = resp.data.call?.states || [];
+                const users = call.users || [];
+                const states = call.states || [];
                 for (let i = 0; i < users.length; i++) {
                     userStates[users[i]] = {...states[i], id: users[i]};
                 }
