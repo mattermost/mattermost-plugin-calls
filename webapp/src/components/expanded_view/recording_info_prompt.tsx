@@ -93,13 +93,13 @@ export default function RecordingInfoPrompt(props: Props) {
         return null;
     }
 
-    // If the prompt was dismissed after the call has started and after the last host change
+    // If the prompt was dismissed after the recording has started and after the last host change
     // we don't show this again.
     if (!hasRecEnded && dismissedAt > props.recording?.start_at && dismissedAt > props.hostChangeAt) {
         return null;
     }
 
-    // If the prompt was dismissed after the call has ended then we
+    // If the prompt was dismissed after the recording has ended then we
     // don't show this again.
     if (hasRecEnded && dismissedAt > props.recording?.end_at) {
         return null;

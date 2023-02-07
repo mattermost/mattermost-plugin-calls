@@ -117,9 +117,11 @@ interface State {
 export default class CallWidget extends React.PureComponent<Props, State> {
     private readonly node: React.RefObject<HTMLDivElement>;
     private readonly menuNode: React.RefObject<HTMLDivElement>;
+    private audioMenu: HTMLUListElement | null = null;
     private menuResizeObserver: ResizeObserver | null = null;
     private audioMenuResizeObserver: ResizeObserver | null = null;
     private readonly screenPlayer = React.createRef<HTMLVideoElement>();
+    private prevDevicePixelRatio = 0;
 
     private genStyle = () => {
         return {
@@ -286,21 +288,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
+    private onViewportResize = () => {
+        if (window.devicePixelRatio === this.prevDevicePixelRatio) {
+            return;
+        }
+        this.prevDevicePixelRatio = window.devicePixelRatio;
+        this.sendGlobalWidgetBounds();
+    }
+
     public componentDidMount() {
         if (this.props.global) {
-            this.menuResizeObserver = new ResizeObserver((entries) => {
-                if (entries.length === 0) {
-                    return;
-                }
-                sendDesktopEvent('calls-widget-resize', {
-                    element: 'calls-widget-menu',
-                    height: Math.round(entries[0].contentRect.height),
-                    width: Math.round(entries[0].contentRect.width),
-                });
-            });
-            if (this.menuNode.current) {
-                this.menuResizeObserver.observe(this.menuNode.current);
-            }
+            window.visualViewport.addEventListener('resize', this.onViewportResize);
+            this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
+            this.menuResizeObserver.observe(this.menuNode.current!);
         } else {
             document.addEventListener('mouseup', this.onMouseUp, false);
         }
@@ -411,7 +411,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentWillUnmount() {
-        if (!this.props.global) {
+        if (this.props.global) {
+            window.visualViewport.removeEventListener('resize', this.onViewportResize);
+        } else {
             document.removeEventListener('mouseup', this.onMouseUp, false);
         }
 
@@ -476,6 +478,51 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }
             }
         }
+    }
+
+    private getGlobalWidgetBounds = () => {
+        const bounds = {
+            width: 0,
+            height: 0,
+        };
+
+        const widget = this.node.current;
+
+        if (widget) {
+            const widgetMenu = widget.children[0];
+            const baseWidget = widget.children[1];
+
+            // No strict need to be pixel perfect here since the window will be transparent
+            // and better to overestimate slightly to avoid the widget possibly being cut.
+            const margin = 4;
+
+            // Margin on base width is needed to account for the widget being
+            // positioned 2px from the left: 2px + 280px (base width) + 2px
+            bounds.width = baseWidget.getBoundingClientRect().width + margin;
+
+            // Margin on base height is needed to account for the widget being
+            // positioned 2px from the bottom: 2px + 86px (base height) + 2px
+            bounds.height = baseWidget.getBoundingClientRect().height + widgetMenu.getBoundingClientRect().height + margin;
+
+            if (widgetMenu.getBoundingClientRect().height > 0) {
+                bounds.height += margin;
+            }
+
+            if (this.audioMenu) {
+                bounds.width += this.audioMenu.getBoundingClientRect().width + margin;
+            }
+        }
+
+        return bounds;
+    }
+
+    private sendGlobalWidgetBounds = () => {
+        const bounds = this.getGlobalWidgetBounds();
+        sendDesktopEvent('calls-widget-resize', {
+            element: 'calls-widget',
+            width: Math.ceil(bounds.width),
+            height: Math.ceil(bounds.height),
+        });
     }
 
     private keyboardClose = (e: KeyboardEvent) => {
@@ -791,7 +838,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <div style={{fontSize: '12px', display: 'flex', whiteSpace: 'pre'}}>
                 <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
                     {speakingProfile ? getUserDisplayName(speakingProfile) : 'No one'}
-                    <span style={{fontWeight: 400}}>{'is talking...'}</span>
+                    <span style={{fontWeight: 400}}>{' is talking...'}</span>
                 </span>
             </div>
         );
@@ -931,24 +978,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.audioMenuResizeObserver.disconnect();
         }
 
+        this.audioMenu = el;
+
         if (el) {
-            this.audioMenuResizeObserver = new ResizeObserver((entries) => {
-                if (entries.length === 0 || entries[0].borderBoxSize.length === 0) {
-                    return;
-                }
-                sendDesktopEvent('calls-widget-resize', {
-                    element: 'calls-widget-audio-menu',
-                    height: Math.round(entries[0].borderBoxSize[0].blockSize),
-                    width: Math.round(entries[0].borderBoxSize[0].inlineSize),
-                });
-            });
+            this.audioMenuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
             this.audioMenuResizeObserver.observe(el);
         } else {
-            sendDesktopEvent('calls-widget-resize', {
-                element: 'calls-widget-audio-menu',
-                width: 0,
-                height: 0,
-            });
+            this.sendGlobalWidgetBounds();
         }
     };
 
@@ -1251,34 +1287,73 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     renderRecordingDisclaimer = () => {
-        // This component should render if all of the following conditions apply:
-        // - Recording has started.
-        // - Recording has not ended.
-        // - Diclaimer has not been dismissed after either call start or last host change.
-
-        if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at) {
-            return null;
-        }
-
-        if (this.state.recDisclaimerDismissedAt > this.props.callRecording?.start_at && this.state.recDisclaimerDismissedAt > this.props.callHostChangeAt) {
-            return null;
-        }
-
         const isHost = this.props.callHostID === this.props.currentUserID;
+        const dismissedAt = this.state.recDisclaimerDismissedAt;
+        const recording = this.props.callRecording;
+        const hasRecEnded = recording?.end_at;
+
+        // Nothing to show if the recording hasn't started yet, unless there
+        // was an error.
+        if (!recording?.start_at && !recording?.err) {
+            return null;
+        }
+
+        // If the recording has ended we only want to show the info prompt
+        // to the host.
+        if (hasRecEnded && !isHost) {
+            return null;
+        }
+
+        // If the prompt was dismissed after the recording has started and after the last host change
+        // we don't show this again.
+        if (!hasRecEnded && dismissedAt > recording?.start_at && dismissedAt > this.props.callHostChangeAt) {
+            return null;
+        }
+
+        // If the prompt was dismissed after the recording has ended then we
+        // don't show this again.
+        if (hasRecEnded && dismissedAt > recording?.end_at) {
+            return null;
+        }
+
+        let header = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header;
+        let body = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body;
+        let confirmText = isHost ? 'Dismiss' : 'Understood';
+        let icon = (
+            <RecordCircleOutlineIcon
+                size={12}
+            />
+        );
+
+        if (hasRecEnded) {
+            confirmText = '';
+            header = 'Recording has stopped. Processing...';
+            body = 'You can find the recording in this call\'s chat thread once it\'s finished processing.';
+        }
+
+        if (recording?.err) {
+            header = 'Something went wrong with the recording';
+            body = recording?.err;
+            icon = (
+                <CompassIcon
+                    icon='alert-outline'
+                    style={{
+                        fontSize: 12,
+                    }}
+                />
+            );
+        }
 
         return (
             <WidgetBanner
                 key={'widget_banner_recording_disclaimer'}
                 type='info'
-                icon={(
-                    <RecordCircleOutlineIcon
-                        size={12}
-                    />)}
+                icon={icon}
                 iconFill='rgb(var(--dnd-indicator-rgb))'
                 iconColor='rgb(var(--dnd-indicator-rgb))'
-                header={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header}
-                body={CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body}
-                confirmText={isHost ? 'Dismiss' : 'Understood'}
+                header={header}
+                body={body}
+                confirmText={confirmText}
                 declineText={isHost ? null : 'Leave call'}
                 onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
                 onDecline={this.onDisconnectClick}
@@ -1287,7 +1362,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     renderRecordingBadge = () => {
-        if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at) {
+        // This should not render if:
+        // - The recording has not been initialized yet OR if it has ended.
+        if (!this.props.callRecording?.init_at || this.props.callRecording?.end_at) {
+            return null;
+        }
+
+        const isHost = this.props.callHostID === this.props.currentUserID;
+        const hasRecStarted = this.props.callRecording?.start_at;
+
+        // If the recording has not started yet then we only render if the user
+        // is the host, in which case we'll show the loading spinner.
+        if (!isHost && !hasRecStarted) {
+            return null;
+        }
+
+        if (this.props.callRecording?.err) {
             return null;
         }
 
@@ -1298,7 +1388,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     textSize={11}
                     gap={2}
                     icon={(<RecordCircleOutlineIcon size={11}/>)}
-                    color={'#D24B4E'}
+                    color={hasRecStarted ? '#D24B4E' : 'rgb(var(--center-channel-color-rgb))'}
+                    loading={!hasRecStarted}
                 />
                 <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
             </React.Fragment>
@@ -1465,7 +1556,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     onExpandClick = () => {
         if (this.state.expandedViewWindow && !this.state.expandedViewWindow.closed) {
-            this.state.expandedViewWindow.focus();
+            if (this.props.global) {
+                sendDesktopEvent('calls-popout-focus');
+            } else {
+                this.state.expandedViewWindow.focus();
+            }
             return;
         }
 

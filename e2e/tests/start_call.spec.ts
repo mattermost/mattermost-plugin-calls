@@ -101,6 +101,16 @@ test.describe('start new call', () => {
         await page.locator('#reply_textbox').press('Enter');
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
+
+    test('verify no one is talking', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        await expect(page.locator('#calls-widget').filter({has: page.getByText('No one is talking...')})).toBeVisible();
+
+        await devPage.leaveCall();
+    });
 });
 
 test.describe('desktop', () => {
