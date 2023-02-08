@@ -78,6 +78,22 @@ test.describe('start new call', () => {
         await devPage.leaveCall();
     });
 
+    test.only('cannot start call twice', async ({page, context}) => {
+        await page.locator('#post_textbox').fill('/call start');
+        await page.locator('[data-testid=SendMessageButton]').click();
+        await expect(page.locator('#calls-widget')).toBeVisible();
+
+        await page.locator('#post_textbox').fill('/call start');
+        await page.locator('[data-testid=SendMessageButton]').click();
+        await expect(page.locator('#calls-widget')).toBeVisible();
+
+        await expect(page.locator('#postCreateFooter').filter({has: page.getByText('A call is already ongoing in the channel.')})).toBeVisible();
+
+        await page.locator('#post_textbox').fill('/call leave');
+        await page.locator('[data-testid=SendMessageButton]').click();
+        await expect(page.locator('#calls-widget')).toBeHidden();
+    });
+
     test('slash command from existing thread', async ({page, context}) => {
         // create a test thread
         await page.locator('#post_textbox').fill('test thread');
