@@ -139,14 +139,6 @@ export function getRecordingChannelID() {
     return window.location.pathname.substr(idx + pattern.length);
 }
 
-export function alphaSortProfiles(profiles: UserProfile[]) {
-    return (elA: UserProfile, elB: UserProfile) => {
-        const nameA = getUserDisplayName(elA);
-        const nameB = getUserDisplayName(elB);
-        return nameA.localeCompare(nameB);
-    };
-}
-
 export function alphaSortProfiles(elA: UserProfile, elB: UserProfile) {
     const nameA = getUserDisplayName(elA);
     const nameB = getUserDisplayName(elB);
