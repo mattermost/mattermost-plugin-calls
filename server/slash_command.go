@@ -20,13 +20,22 @@ const (
 	joinCommandTrigger         = "join"
 	leaveCommandTrigger        = "leave"
 	linkCommandTrigger         = "link"
-	recordingCommandTrigger    = "recording"
 	experimentalCommandTrigger = "experimental"
 	statsCommandTrigger        = "stats"
 	endCommandTrigger          = "end"
+	recordingCommandTrigger    = "recording"
 )
 
-var subCommands = []string{startCommandTrigger, joinCommandTrigger, leaveCommandTrigger, linkCommandTrigger, experimentalCommandTrigger, endCommandTrigger, statsCommandTrigger, recordingCommandTrigger}
+var subCommands = []string{
+	startCommandTrigger,
+	joinCommandTrigger,
+	leaveCommandTrigger,
+	linkCommandTrigger,
+	experimentalCommandTrigger,
+	endCommandTrigger,
+	statsCommandTrigger,
+	recordingCommandTrigger,
+}
 
 func getAutocompleteData() *model.AutocompleteData {
 	data := model.NewAutocompleteData(rootCommandTrigger, "[command]",

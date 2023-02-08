@@ -1,15 +1,14 @@
 import React, {CSSProperties} from 'react';
 
 import {Channel} from '@mattermost/types/channels';
-
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {Theme} from 'mattermost-redux/types/themes';
 
-import {hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from '../../utils';
-
-import CompassIcon from '../../components/icons/compassIcon';
+import {hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
+import CompassIcon from 'src/components/icons/compassIcon';
 
 import './component.scss';
+import {CapturerSource} from 'src/types/types';
 
 interface Props {
     theme: Theme,
@@ -19,7 +18,7 @@ interface Props {
 }
 
 interface State {
-    sources: any[],
+    sources: CapturerSource[],
     selected: string,
 }
 
@@ -109,7 +108,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
         if (this.props.show && e.key === 'Escape') {
             this.hide();
         }
-    }
+    };
 
     private closeOnBlur = (e: Event) => {
         if (!this.props.show) {
@@ -119,7 +118,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             return;
         }
         this.hide();
-    }
+    };
 
     private renderSources = () => {
         return this.state.sources.map((source) => {
@@ -142,7 +141,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                 </button>
             );
         });
-    }
+    };
 
     private hide = () => {
         this.setState({
@@ -150,7 +149,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             selected: '',
         });
         this.props.hideScreenSourceModal();
-    }
+    };
 
     private shareScreen = () => {
         if (shouldRenderDesktopWidget()) {
@@ -159,10 +158,10 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                 withAudio: hasExperimentalFlag(),
             });
         } else {
-            window.callsClient.shareScreen(this.state.selected, hasExperimentalFlag());
+            window.callsClient?.shareScreen(this.state.selected, hasExperimentalFlag());
         }
         this.hide();
-    }
+    };
 
     componentDidMount() {
         document.addEventListener('keyup', this.keyboardClose, true);
@@ -201,7 +200,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             sources,
             selected: sources[0]?.id || '',
         });
-    }
+    };
 
     render() {
         if (!this.props.show || this.state.sources.length === 0) {

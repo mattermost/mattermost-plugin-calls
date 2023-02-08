@@ -25,7 +25,6 @@ const ChannelHeaderDropdownButton = ({
     hasCall,
     isAdmin,
     isCloudStarter,
-    isCloudPaid,
     isLimitRestricted,
     maxParticipants,
     isChannelArchived,

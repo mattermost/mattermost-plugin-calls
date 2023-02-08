@@ -27,7 +27,7 @@ const RecordingView = () => {
     const screenPlayerRef = useRef<HTMLVideoElement>(null);
     const [screenStream, setScreenStream] = useState<MediaStream|null>(null);
     const callsClient = window.callsClient;
-    const channelID = callsClient?.channelID;
+    const channelID = callsClient?.channelID || '';
     const screenSharingID = useSelector((state: GlobalState) => voiceChannelScreenSharingID(state, channelID)) || '';
     const statuses = useSelector(voiceUsersStatuses);
     const profiles = sortedProfiles(useSelector(voiceConnectedProfiles), statuses, screenSharingID);
@@ -41,10 +41,10 @@ const RecordingView = () => {
     const callHostID = useSelector((state: GlobalState) => voiceChannelCallHostID(state, channelID)) || '';
 
     useEffect(() => {
-        window.callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+        window.callsClient?.on('remoteScreenStream', (stream: MediaStream) => {
             setScreenStream(stream);
         });
-        window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
+        window.callsClient?.on('remoteVoiceStream', (stream: MediaStream) => {
             const voiceTrack = stream.getAudioTracks()[0];
             const audioEl = document.createElement('audio');
             audioEl.srcObject = stream;
@@ -58,7 +58,7 @@ const RecordingView = () => {
             };
         });
 
-        setScreenStream(callsClient.getRemoteScreenStream());
+        setScreenStream(callsClient?.getRemoteScreenStream() || null);
     }, [callsClient]);
 
     useEffect(() => {
@@ -224,7 +224,7 @@ const RecordingView = () => {
 export default RecordingView;
 
 const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}, screenSharingID: string) => {
-    return [...profiles].sort(alphaSortProfiles(profiles)).sort(stateSortProfiles(profiles, statuses, screenSharingID));
+    return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID));
 };
 
 const style = {

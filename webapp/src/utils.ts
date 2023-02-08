@@ -1,4 +1,4 @@
-import {compareSemVer} from 'semver-parser';
+import {parseSemVer} from 'semver-parser';
 
 import {
     getCurrentRelativeTeamUrl,
@@ -11,11 +11,10 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {Client4} from 'mattermost-redux/client';
 
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
-import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
 import {Team} from '@mattermost/types/teams';
-import {Channel, ChannelMembership} from '@mattermost/types/channels';
+import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
 
 import {GlobalState} from '@mattermost/types/store';
@@ -148,7 +147,13 @@ export function alphaSortProfiles(profiles: UserProfile[]) {
     };
 }
 
-export function stateSortProfiles(profiles: UserProfile[], statuses: { [key: string]: UserState }, presenterID: string) {
+export function alphaSortProfiles(elA: UserProfile, elB: UserProfile) {
+    const nameA = getUserDisplayName(elA);
+    const nameB = getUserDisplayName(elB);
+    return nameA.localeCompare(nameB);
+}
+
+export function stateSortProfiles(profiles: UserProfile[], statuses: { [key: string]: UserState }, presenterID: string, considerReaction = false) {
     return (elA: UserProfile, elB: UserProfile) => {
         let stateA = statuses[elA.id];
         let stateB = statuses[elB.id];
@@ -190,6 +195,16 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: { [key: str
             return stateA.raised_hand - stateB.raised_hand;
         }
 
+        if (considerReaction) {
+            if (stateA.reaction && !stateB.reaction) {
+                return -1;
+            } else if (stateB.reaction && !stateA.reaction) {
+                return 1;
+            } else if (stateA.reaction && stateB.reaction) {
+                return stateA.reaction.timestamp - stateB.reaction.timestamp;
+            }
+        }
+
         return 0;
     };
 }
@@ -202,15 +217,15 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
             // electron
             const options = {
                 chromeMediaSource: 'desktop',
-            } as any;
+            } as Record<string, unknown>;
             if (sourceID) {
                 options.chromeMediaSourceId = sourceID;
             }
             screenStream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     mandatory: options,
-                } as any,
-                audio: withAudio ? {mandatory: options} as any : false,
+                } as Record<string, unknown>,
+                audio: withAudio ? {mandatory: options} as Record<string, unknown> : false,
             });
         } catch (err) {
             logErr(err);
@@ -301,7 +316,7 @@ export function getUsersList(profiles: UserProfile[]) {
     if (profiles.length === 1) {
         return getUserDisplayName(profiles[0]);
     }
-    const list = profiles.slice(0, -1).map((profile, idx) => {
+    const list = profiles.slice(0, -1).map((profile) => {
         return getUserDisplayName(profile);
     }).join(', ');
     return list + ' and ' + getUserDisplayName(profiles[profiles.length - 1]);
@@ -351,10 +366,20 @@ export async function followThread(store: Store, channelID: string, teamID: stri
 
 export function shouldRenderDesktopWidget() {
     const win = window.opener ? window.opener : window;
-    return win.desktop && compareSemVer(win.desktop.version, '5.3.0') >= 0;
+    if (!win.desktop) {
+        return false;
+    }
+
+    const version = parseSemVer(win.desktop.version);
+
+    if (version.major < 5) {
+        return false;
+    }
+
+    return version.major > 5 || version.minor >= 3;
 }
 
-export function sendDesktopEvent(event: string, data?: any) {
+export function sendDesktopEvent(event: string, data?: Record<string, unknown>) {
     const win = window.opener ? window.opener : window;
     win.postMessage(
         {

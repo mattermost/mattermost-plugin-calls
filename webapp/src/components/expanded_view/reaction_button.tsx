@@ -25,17 +25,6 @@ import {Emoji} from 'src/components/emoji/emoji';
 import {EmojiData} from 'src/types/types';
 
 const EMOJI_VERSION = '13';
-const EMOJI_SKINTONE_MAP = new Map([[1, ''], [2, '1F3FB'], [3, '1F3FC'], [4, '1F3FD'], [5, '1F3FE'], [6, '1F3FF']]);
-
-interface EmojiPickEvent {
-    id: string;
-    keywords?: string[]
-    name?: string;
-    native?: string;
-    shortcodes?: string;
-    skin?: number;
-    unified: string;
-}
 
 const getCallsClient = () => {
     return window.opener ? window.opener.callsClient : window.callsClient;
@@ -46,7 +35,7 @@ export type ReactionButtonRef = {
 };
 
 interface Props {
-    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
 }
 
 export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
@@ -68,19 +57,19 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
             skin: ecd.activeSkinTone,
             unified: ecd.unified.toUpperCase(),
         };
-        callsClient.sendUserReaction(emojiData);
+        callsClient?.sendUserReaction(emojiData);
     };
 
     const onRaiseHandToggle = () => {
         if (isHandRaised) {
             trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.ExpandedView, {initiator: 'button'});
-            callsClient.unraiseHand();
+            callsClient?.unraiseHand();
         } else {
             trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.ExpandedView, {initiator: 'button'});
-            callsClient.raiseHand();
+            callsClient?.raiseHand();
         }
     };
-    const isHandRaised = callsClient.isHandRaised;
+    const isHandRaised = Boolean(callsClient?.isHandRaised);
     const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
     const handIcon = isHandRaised ? (
         <HandRightOutlineOffIcon

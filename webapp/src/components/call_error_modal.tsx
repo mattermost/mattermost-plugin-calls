@@ -1,17 +1,12 @@
 import React, {ComponentProps} from 'react';
-
-import {Modal} from 'react-bootstrap';
-
+import {ModalHeader} from 'react-bootstrap';
 import {useDispatch, useSelector} from 'react-redux';
-
 import styled from 'styled-components';
 
 import GenericModal from 'src/components/generic_modal';
 import {clearClientError} from 'src/actions';
 import {getClientError} from 'src/selectors';
-
 import LaptopAlertSVG from 'src/components/icons/laptop_alert_svg';
-
 import {
     rtcPeerErr,
     rtcPeerCloseErr,
@@ -120,7 +115,7 @@ export const CallErrorModal = (props: Props) => {
             handleConfirm={onConfirm}
             contentPadding={'48px 32px'}
             components={{
-                Header: Header as any,
+                Header: Header as never,
                 FooterContainer,
             }}
         >
@@ -131,28 +126,28 @@ export const CallErrorModal = (props: Props) => {
     );
 };
 
-const Header = styled(Modal.Header)`
-  display: flex;
-  justify-content: center;
+const Header = styled(ModalHeader)`
+    display: flex;
+    justify-content: center;
 `;
 
 const FooterContainer = styled.div`
-  display: flex;
-  justify-content: center;
+    display: flex;
+    justify-content: center;
 `;
 
 const StyledGenericModal = styled(GenericModal)`
-  width: 512px;
+    width: 512px;
 `;
 
 const ColumnContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 
-  span {
-    margin: 8px 0;
-  }
+    span {
+        margin: 8px 0;
+    }
 `;

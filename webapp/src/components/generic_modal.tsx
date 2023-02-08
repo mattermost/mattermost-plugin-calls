@@ -4,7 +4,7 @@
 import styled from 'styled-components';
 import classNames from 'classnames';
 import React from 'react';
-import {Modal} from 'react-bootstrap';
+import {Modal, ModalHeader} from 'react-bootstrap';
 import {FormattedMessage} from 'react-intl';
 
 import {DestructiveButton, PrimaryButton, TertiaryButton} from 'src/components/buttons';
@@ -29,7 +29,7 @@ type Props = {
     enforceFocus?: boolean;
     footer?: React.ReactNode;
     components?: Partial<{
-        Header: typeof Modal.Header;
+        Header: typeof ModalHeader;
         FooterContainer: typeof DefaultFooterContainer;
     }>;
     children?: React.ReactNode;

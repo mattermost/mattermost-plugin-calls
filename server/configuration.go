@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"reflect"
 	"strconv"
@@ -31,6 +32,8 @@ import (
 type configuration struct {
 	// The IP (or hostname) to be used as the host ICE candidate.
 	ICEHostOverride string
+	// The IP address used by the RTC server to listen on.
+	UDPServerAddress string
 	// UDP port used by the RTC server to listen to.
 	UDPServerPort *int
 	// The URL to a running RTCD service instance that should host the calls.
@@ -211,6 +214,10 @@ func (c *configuration) SetDefaults() {
 }
 
 func (c *configuration) IsValid() error {
+	if c.UDPServerAddress != "" && net.ParseIP(c.UDPServerAddress) == nil {
+		return fmt.Errorf("UDPServerAddress parsing failed")
+	}
+
 	if c.UDPServerPort == nil {
 		return fmt.Errorf("UDPServerPort should not be nil")
 	}
@@ -238,6 +245,7 @@ func (c *configuration) IsValid() error {
 func (c *configuration) Clone() *configuration {
 	var cfg configuration
 
+	cfg.UDPServerAddress = c.UDPServerAddress
 	cfg.ICEHostOverride = c.ICEHostOverride
 	cfg.RTCDServiceURL = c.RTCDServiceURL
 	cfg.JobServiceURL = c.JobServiceURL
