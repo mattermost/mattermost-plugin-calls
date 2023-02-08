@@ -78,7 +78,7 @@ test.describe('start new call', () => {
         await devPage.leaveCall();
     });
 
-    test.only('cannot start call twice', async ({page, context}) => {
+    test('cannot start call twice', async ({page, context}) => {
         await page.locator('#post_textbox').fill('/call start');
         await page.locator('[data-testid=SendMessageButton]').click();
         await expect(page.locator('#calls-widget')).toBeVisible();
