@@ -37,7 +37,7 @@ export default class CallsClient extends EventEmitter {
     private readonly onDeviceChange: () => void;
     private readonly onBeforeUnload: () => void;
     private closed = false;
-    private initTime = Date.now();
+    public initTime = Date.now();
 
     constructor(config: CallsClientConfig) {
         super();
@@ -161,6 +161,10 @@ export default class CallsClient extends EventEmitter {
 
         try {
             await this.initAudio();
+            if (this.closed) {
+                this.cleanup();
+                return;
+            }
         } catch (err) {
             this.emit('error', err);
         }
@@ -381,12 +385,7 @@ export default class CallsClient extends EventEmitter {
             this.peer = null;
         }
 
-        this.streams.forEach((s) => {
-            s.getTracks().forEach((track) => {
-                track.stop();
-                track.dispatchEvent(new Event('ended'));
-            });
-        });
+        this.cleanup();
 
         if (this.ws) {
             this.ws.send('leave');
@@ -395,6 +394,15 @@ export default class CallsClient extends EventEmitter {
         }
 
         this.emit('close', err);
+    }
+
+    private cleanup() {
+        this.streams.forEach((s) => {
+            s.getTracks().forEach((track) => {
+                track.stop();
+                track.dispatchEvent(new Event('ended'));
+            });
+        });
     }
 
     public isMuted() {
