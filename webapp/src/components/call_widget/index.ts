@@ -70,7 +70,7 @@ const mapStateToProps = (state: GlobalState) => {
         profilesMap,
         picturesMap,
         statuses: voiceUsersStatuses(state) || {},
-        callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
+        callStartAt: voiceChannelCallStartAt(state, channel?.id) || Number(window.callsClient?.initTime),
         callHostID: voiceChannelCallHostID(state, channel?.id) || '',
         callHostChangeAt: voiceChannelCallHostChangeAt(state, channel?.id) || 0,
         callRecording: callRecording(state, channel?.id),
