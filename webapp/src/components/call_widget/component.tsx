@@ -50,6 +50,7 @@ import CallDuration from './call_duration';
 import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
+import LoadingOverlay from './loading_overlay';
 
 import './component.scss';
 
@@ -112,6 +113,7 @@ interface State {
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
     recDisclaimerDismissedAt: number,
+    connected: boolean,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -259,6 +261,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEls: [],
             alerts: CallAlertStatesDefault,
             recDisclaimerDismissedAt: 0,
+            connected: false,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -369,6 +372,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient?.on('connect', () => {
+            this.setState({connected: true});
+
             if (this.props.global) {
                 sendDesktopEvent('calls-joined-call', {
                     callID: window.callsClient?.channelID,
@@ -1481,7 +1486,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <div style={{display: 'flex', flexDirection: 'column-reverse'}}>
                     {joinedUsers}
                 </div>
-                {this.state.showUsersJoined.includes(this.props.currentUserID) &&
+                {this.state.connected &&
                     <div className='calls-notification-bar calls-slide-top'>
                         {notificationContent}
                     </div>
@@ -1691,6 +1696,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 style={mainStyle}
                 ref={this.node}
             >
+                <LoadingOverlay visible={this.state.connected}/>
 
                 <div
                     ref={this.menuNode}
