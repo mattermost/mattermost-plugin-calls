@@ -314,7 +314,7 @@ func (p *Plugin) removeSession(us *session) error {
 
 	// Check if call has ended.
 	if prevState.Call != nil && currState.Call == nil {
-		dur, err := p.updateCallThreadEnded(prevState.Call.ThreadID)
+		dur, err := p.updateCallPostEnded(prevState.Call.PostID)
 		if err != nil {
 			return err
 		}
