@@ -87,7 +87,8 @@ test.describe('start new call', () => {
         await page.locator('[data-testid=SendMessageButton]').click();
         await expect(page.locator('#calls-widget')).toBeVisible();
 
-        await expect(page.locator('#postCreateFooter').filter({has: page.getByText('A call is already ongoing in the channel.')})).toBeVisible();
+        await expect(page.locator('#calls_generic_error').filter({has: page.getByText('A call is already ongoing in the channel.')})).toBeVisible();
+        await page.keyboard.press('Escape');
 
         await page.locator('#post_textbox').fill('/call leave');
         await page.locator('[data-testid=SendMessageButton]').click();
