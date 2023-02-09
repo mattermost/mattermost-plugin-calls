@@ -2,6 +2,8 @@
 
 import axios from 'axios';
 
+import {defineMessage} from 'react-intl';
+
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
@@ -18,6 +20,7 @@ import {
     displayCallsTestModeUser,
     startCallRecording,
     stopCallRecording,
+    displayGenericErrorModal,
 } from 'src/actions';
 
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
@@ -250,7 +253,11 @@ export default class Plugin {
             case 'start':
                 if (subCmd === 'start') {
                     if (voiceConnectedUsersInChannel(store.getState(), args.channel_id).length > 0) {
-                        return {error: {message: 'A call is already ongoing in the channel.'}};
+                        store.dispatch(displayGenericErrorModal(
+                            defineMessage({defaultMessage: 'Unable to start call'}),
+                            defineMessage({defaultMessage: 'A call is already ongoing in the channel.'}),
+                        ));
+                        return {};
                     }
                 }
                 if (!connectedID) {
@@ -263,10 +270,21 @@ export default class Plugin {
                         await joinCall(args.channel_id, team_id, title, args.root_id);
                         return {};
                     } catch (e) {
-                        return {error: {message: e.message}};
+                        // TODO: map error messages to translatable strings so we can
+                        // actually show something better than a generic error.
+                        store.dispatch(displayGenericErrorModal(
+                            defineMessage({defaultMessage: 'Unable to join call'}),
+                            defineMessage({defaultMessage: 'An internal error occurred preventing you to join the call. Please try again.'}),
+                        ));
+                        return {};
                     }
                 }
-                return {error: {message: 'You\'re already connected to a call in the current channel.'}};
+
+                store.dispatch(displayGenericErrorModal(
+                    defineMessage({defaultMessage: 'Unable to join call'}),
+                    defineMessage({defaultMessage: 'You\'re already connected to a call in the current channel.'}),
+                ));
+                return {};
             case 'leave':
                 if (connectedID && args.channel_id === connectedID) {
                     if (window.callsClient) {
@@ -277,15 +295,27 @@ export default class Plugin {
                         return {};
                     }
                 }
-                return {error: {message: 'You\'re not connected to a call in the current channel.'}};
+                store.dispatch(displayGenericErrorModal(
+                    defineMessage({defaultMessage: 'Unable to leave the call'}),
+                    defineMessage({defaultMessage: 'You\'re not connected to a call in the current channel.'}),
+                ));
+                return {};
             case 'end':
                 if (voiceConnectedUsersInChannel(store.getState(), args.channel_id)?.length === 0) {
-                    return {error: {message: 'No ongoing call in the channel.'}};
+                    store.dispatch(displayGenericErrorModal(
+                        defineMessage({defaultMessage: 'Unable to end the call'}),
+                        defineMessage({defaultMessage: 'There\'s no ongoing call in the channel.'}),
+                    ));
+                    return {};
                 }
 
                 if (!isCurrentUserSystemAdmin(store.getState()) &&
                     getCurrentUserId(store.getState()) !== voiceChannelCallOwnerID(store.getState(), args.channel_id)) {
-                    return {error: {message: 'You don\'t have permission to end the call. Please ask the call owner to end call.'}};
+                    store.dispatch(displayGenericErrorModal(
+                        defineMessage({defaultMessage: 'Unable to end the call'}),
+                        defineMessage({defaultMessage: 'You don\'t have permission to end the call. Please ask the call owner to end call.'}),
+                    ));
+                    return {};
                 }
 
                 store.dispatch({
@@ -322,12 +352,19 @@ export default class Plugin {
                 return {message: `/call stats ${btoa(data)}`, args};
             }
             case 'recording': {
-                if (fields.length < 3) {
+                if (fields.length < 3 || (fields[2] !== 'start' && fields[2] !== 'stop')) {
                     break;
                 }
 
+                const startErrorTitle = defineMessage({defaultMessage: 'Unable to start recording'});
+                const stopErrorTitle = defineMessage({defaultMessage: 'Unable to stop recording'});
+
                 if (args.channel_id !== connectedID) {
-                    return {error: {message: 'You\'re not connected to a call in the current channel.'}};
+                    store.dispatch(displayGenericErrorModal(
+                        fields[2] === 'start' ? startErrorTitle : stopErrorTitle,
+                        defineMessage({defaultMessage: 'You\'re not connected to a call in the current channel.'}),
+                    ));
+                    return {};
                 }
 
                 const state = store.getState();
@@ -336,11 +373,19 @@ export default class Plugin {
 
                 if (fields[2] === 'start') {
                     if (recording?.start_at > recording?.end_at) {
-                        return {error: {message: 'A recording is already in progress.'}};
+                        store.dispatch(displayGenericErrorModal(
+                            startErrorTitle,
+                            defineMessage({defaultMessage: 'A recording is already in progress.'}),
+                        ));
+                        return {};
                     }
 
                     if (!isHost) {
-                        return {error: {message: 'You don\'t have permissions to start a recording. Please ask the call host to start a recording.'}};
+                        store.dispatch(displayGenericErrorModal(
+                            startErrorTitle,
+                            defineMessage({defaultMessage: 'You don\'t have permissions to start a recording. Please ask the call host to start a recording.'}),
+                        ));
+                        return {};
                     }
 
                     await store.dispatch(startCallRecording(connectedID));
@@ -348,11 +393,19 @@ export default class Plugin {
 
                 if (fields[2] === 'stop') {
                     if (!recording || recording?.end_at > recording?.start_at) {
-                        return {error: {message: 'No recording is in progress.'}};
+                        store.dispatch(displayGenericErrorModal(
+                            stopErrorTitle,
+                            defineMessage({defaultMessage: 'No recording is in progress.'}),
+                        ));
+                        return {};
                     }
 
                     if (!isHost) {
-                        return {error: {message: 'You don\'t have permissions to stop the recording. Please ask the call host to stop the recording.'}};
+                        store.dispatch(displayGenericErrorModal(
+                            stopErrorTitle,
+                            defineMessage({defaultMessage: 'You don\'t have permissions to stop the recording. Please ask the call host to stop the recording.'}),
+                        ));
+                        return {};
                     }
 
                     await stopCallRecording(connectedID);

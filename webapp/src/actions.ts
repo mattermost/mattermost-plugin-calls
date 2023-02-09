@@ -1,6 +1,8 @@
 import {Dispatch} from 'redux';
 import axios from 'axios';
 
+import {MessageDescriptor} from 'react-intl';
+
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {Client4} from 'mattermost-redux/client';
@@ -26,6 +28,7 @@ import {
     CallErrorModal,
 } from 'src/components/call_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
+import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 
 import {
     SHOW_EXPANDED_VIEW,
@@ -246,6 +249,21 @@ export const displayCallsTestModeUser = () => {
         dispatch(modals.openModal({
             modalId: IDTestModeUser,
             dialogType: CallsInTestModeModal,
+        }));
+
+        return {};
+    };
+};
+
+export const displayGenericErrorModal = (title: MessageDescriptor, message: MessageDescriptor) => {
+    return async (dispatch: DispatchFunc) => {
+        dispatch(modals.openModal({
+            modalId: IDGenericErrorModal,
+            dialogType: GenericErrorModal,
+            dialogProps: {
+                title,
+                message,
+            },
         }));
 
         return {};
