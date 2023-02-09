@@ -19,8 +19,9 @@ import (
 )
 
 const jobServiceConfigKey = "jobservice_config"
-const recordingJobRunner = "mattermost/calls-recorder:v0.2.2"
 const runnerUpdateLockTimeout = 2 * time.Minute
+
+var recordingJobRunner = ""
 
 type jobService struct {
 	ctx    *Plugin
