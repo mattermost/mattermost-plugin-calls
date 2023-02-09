@@ -35,6 +35,8 @@ import ICEHostOverride from 'src/components/admin_console_settings/ice_host_over
 
 import {UserState} from 'src/types/types';
 
+import {DisabledCallsErr} from 'src/constants';
+
 import {
     handleUserConnected,
     handleUserDisconnected,
@@ -270,11 +272,13 @@ export default class Plugin {
                         await joinCall(args.channel_id, team_id, title, args.root_id);
                         return {};
                     } catch (e) {
-                        // TODO: map error messages to translatable strings so we can
-                        // actually show something better than a generic error.
+                        let msg = defineMessage({defaultMessage: 'An internal error occurred preventing you to join the call. Please try again.'});
+                        if (e === DisabledCallsErr) {
+                            msg = defineMessage({defaultMessage: 'Calls are disabled in this channel.'});
+                        }
                         store.dispatch(displayGenericErrorModal(
-                            defineMessage({defaultMessage: 'Unable to join call'}),
-                            defineMessage({defaultMessage: 'An internal error occurred preventing you to join the call. Please try again.'}),
+                            defineMessage({defaultMessage: 'Unable to start or join call'}),
+                            msg,
                         ));
                         return {};
                     }
@@ -479,7 +483,7 @@ export default class Plugin {
 
             if (explicitlyDisabled) {
                 // UI should not have shown, so this is a response to a slash command.
-                throw Error('Cannot start or join call: calls are disabled in this channel.');
+                throw DisabledCallsErr;
             }
 
             // We are in TestMode (DefaultEnabled=false)
