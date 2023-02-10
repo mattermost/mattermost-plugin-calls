@@ -15,7 +15,6 @@ import {UserState} from 'src/types/types';
 import {showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 
 import {
-    connectedChannelID,
     voiceUsersStatuses,
     voiceChannelCallStartAt,
     voiceChannelScreenSharingID,
@@ -33,7 +32,11 @@ import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
 import CallWidget from './component';
 
 const mapStateToProps = (state: GlobalState) => {
-    const channel = getChannel(state, connectedChannelID(state));
+    // Using the channelID from the client since we could connect before
+    // receiving the user connected event and still want to go ahead and show the widget.
+    // Also, it would be possible to lose the event altogether if connecting to
+    // the call while in a ws reconnection handler.
+    const channel = getChannel(state, String(window.callsClient?.channelID));
     const currentUserID = getCurrentUserId(state);
 
     const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
@@ -67,7 +70,7 @@ const mapStateToProps = (state: GlobalState) => {
         profilesMap,
         picturesMap,
         statuses: voiceUsersStatuses(state) || {},
-        callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
+        callStartAt: voiceChannelCallStartAt(state, channel?.id) || Number(window.callsClient?.initTime),
         callHostID: voiceChannelCallHostID(state, channel?.id) || '',
         callHostChangeAt: voiceChannelCallHostChangeAt(state, channel?.id) || 0,
         callRecording: callRecording(state, channel?.id),

@@ -103,7 +103,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 	}
 
 	var recState recordingState
-	var threadID string
+	var postID string
 	if err := p.kvSetAtomicChannelState(callID, func(state *channelState) (*channelState, error) {
 		if state == nil {
 			return nil, fmt.Errorf("channel state is missing from store")
@@ -126,7 +126,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 			recState.CreatorID = userID
 			recState.InitAt = time.Now().UnixMilli()
 			state.Call.Recording = &recState
-			threadID = state.Call.ThreadID
+			postID = state.Call.PostID
 		} else if action == "stop" {
 			recState = *state.Call.Recording
 			recState.EndAt = time.Now().UnixMilli()
@@ -160,7 +160,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 			"callID":   callID,
 			"recState": recState.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
-		recJobID, err := p.jobService.RunRecordingJob(callID, threadID, p.botSession.Token)
+		recJobID, err := p.jobService.RunRecordingJob(callID, postID, p.botSession.Token)
 		if err != nil {
 			// resetting state in case the job failed to run
 			if err := p.kvSetAtomicChannelState(callID, func(state *channelState) (*channelState, error) {

@@ -50,6 +50,7 @@ import CallDuration from './call_duration';
 import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
+import LoadingOverlay from './loading_overlay';
 
 import './component.scss';
 
@@ -112,6 +113,7 @@ interface State {
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
     recDisclaimerDismissedAt: number,
+    connected: boolean,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -259,6 +261,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEls: [],
             alerts: CallAlertStatesDefault,
             recDisclaimerDismissedAt: 0,
+            connected: false,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -369,6 +372,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient?.on('connect', () => {
+            this.setState({connected: true});
+
             if (this.props.global) {
                 sendDesktopEvent('calls-joined-call', {
                     callID: window.callsClient?.channelID,
@@ -999,6 +1004,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const currentDevice = deviceType === 'input' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
 
+        // Note: this is system default, not the concept of default that we save in local storage in client.ts
+        const makeDeviceLabel = (device: MediaDeviceInfo) => {
+            if (device.deviceId.startsWith('default') && !device.label.startsWith('Default')) {
+                return `Default - ${device.label}`;
+            }
+            return device.label;
+        };
+
         const deviceList = devices.map((device) => {
             return (
                 <li
@@ -1017,7 +1030,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 width: '100%',
                             }}
                         >
-                            {device.label}
+                            {makeDeviceLabel(device)}
                         </span>
                     </button>
                 </li>
@@ -1481,7 +1494,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <div style={{display: 'flex', flexDirection: 'column-reverse'}}>
                     {joinedUsers}
                 </div>
-                {this.state.showUsersJoined.includes(this.props.currentUserID) &&
+                {this.state.connected &&
                     <div className='calls-notification-bar calls-slide-top'>
                         {notificationContent}
                     </div>
@@ -1691,6 +1704,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 style={mainStyle}
                 ref={this.node}
             >
+                <LoadingOverlay visible={this.state.connected}/>
 
                 <div
                     ref={this.menuNode}

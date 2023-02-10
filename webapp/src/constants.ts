@@ -40,3 +40,5 @@ export const CallRecordingDisclaimerStrings: {[key: string]: {[key: string]: str
         body: 'Host has started recording this meeting. By staying in the meeting you give consent to being recorded.',
     },
 };
+
+export const DisabledCallsErr = new Error('Cannot start or join call: calls are disabled in this channel.');
