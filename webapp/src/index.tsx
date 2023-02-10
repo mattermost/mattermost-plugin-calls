@@ -2,6 +2,8 @@
 
 import axios from 'axios';
 
+import {defineMessage} from 'react-intl';
+
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
@@ -16,6 +18,9 @@ import {
     displayCallErrorModal,
     showScreenSourceModal,
     displayCallsTestModeUser,
+    startCallRecording,
+    stopCallRecording,
+    displayGenericErrorModal,
 } from 'src/actions';
 
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
@@ -29,6 +34,8 @@ import UDPServerAddress from 'src/components/admin_console_settings/udp_server_a
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 
 import {UserState} from 'src/types/types';
+
+import {DisabledCallsErr} from 'src/constants';
 
 import {
     handleUserConnected,
@@ -61,7 +68,10 @@ import {
     isCloudStarter,
     channelHasCall,
     callsExplicitlyEnabled,
-    callsExplicitlyDisabled, hasPermissionsToEnableCalls,
+    callsExplicitlyDisabled,
+    hasPermissionsToEnableCalls,
+    voiceChannelCallHostID,
+    callRecording,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -245,7 +255,11 @@ export default class Plugin {
             case 'start':
                 if (subCmd === 'start') {
                     if (voiceConnectedUsersInChannel(store.getState(), args.channel_id).length > 0) {
-                        return {error: {message: 'A call is already ongoing in the channel.'}};
+                        store.dispatch(displayGenericErrorModal(
+                            defineMessage({defaultMessage: 'Unable to start call'}),
+                            defineMessage({defaultMessage: 'A call is already ongoing in the channel.'}),
+                        ));
+                        return {};
                     }
                 }
                 if (!connectedID) {
@@ -255,13 +269,26 @@ export default class Plugin {
                     }
                     const team_id = args?.team_id || getChannel(store.getState(), args.channel_id).team_id;
                     try {
-                        await joinCall(args.channel_id, team_id, title);
+                        await joinCall(args.channel_id, team_id, title, args.root_id);
                         return {};
                     } catch (e) {
-                        return {error: {message: e.message}};
+                        let msg = defineMessage({defaultMessage: 'An internal error occurred preventing you to join the call. Please try again.'});
+                        if (e === DisabledCallsErr) {
+                            msg = defineMessage({defaultMessage: 'Calls are disabled in this channel.'});
+                        }
+                        store.dispatch(displayGenericErrorModal(
+                            defineMessage({defaultMessage: 'Unable to start or join call'}),
+                            msg,
+                        ));
+                        return {};
                     }
                 }
-                return {error: {message: 'You\'re already connected to a call in the current channel.'}};
+
+                store.dispatch(displayGenericErrorModal(
+                    defineMessage({defaultMessage: 'Unable to join call'}),
+                    defineMessage({defaultMessage: 'You\'re already connected to a call in the current channel.'}),
+                ));
+                return {};
             case 'leave':
                 if (connectedID && args.channel_id === connectedID) {
                     if (window.callsClient) {
@@ -272,15 +299,27 @@ export default class Plugin {
                         return {};
                     }
                 }
-                return {error: {message: 'You\'re not connected to a call in the current channel.'}};
+                store.dispatch(displayGenericErrorModal(
+                    defineMessage({defaultMessage: 'Unable to leave the call'}),
+                    defineMessage({defaultMessage: 'You\'re not connected to a call in the current channel.'}),
+                ));
+                return {};
             case 'end':
                 if (voiceConnectedUsersInChannel(store.getState(), args.channel_id)?.length === 0) {
-                    return {error: {message: 'No ongoing call in the channel.'}};
+                    store.dispatch(displayGenericErrorModal(
+                        defineMessage({defaultMessage: 'Unable to end the call'}),
+                        defineMessage({defaultMessage: 'There\'s no ongoing call in the channel.'}),
+                    ));
+                    return {};
                 }
 
                 if (!isCurrentUserSystemAdmin(store.getState()) &&
                     getCurrentUserId(store.getState()) !== voiceChannelCallOwnerID(store.getState(), args.channel_id)) {
-                    return {error: {message: 'You don\'t have permission to end the call. Please ask the call owner to end call.'}};
+                    store.dispatch(displayGenericErrorModal(
+                        defineMessage({defaultMessage: 'Unable to end the call'}),
+                        defineMessage({defaultMessage: 'You don\'t have permission to end the call. Please ask the call owner to end call.'}),
+                    ));
+                    return {};
                 }
 
                 store.dispatch({
@@ -316,12 +355,73 @@ export default class Plugin {
                 const data = sessionStorage.getItem('calls_client_stats') || '{}';
                 return {message: `/call stats ${btoa(data)}`, args};
             }
+            case 'recording': {
+                if (fields.length < 3 || (fields[2] !== 'start' && fields[2] !== 'stop')) {
+                    break;
+                }
+
+                const startErrorTitle = defineMessage({defaultMessage: 'Unable to start recording'});
+                const stopErrorTitle = defineMessage({defaultMessage: 'Unable to stop recording'});
+
+                if (args.channel_id !== connectedID) {
+                    store.dispatch(displayGenericErrorModal(
+                        fields[2] === 'start' ? startErrorTitle : stopErrorTitle,
+                        defineMessage({defaultMessage: 'You\'re not connected to a call in the current channel.'}),
+                    ));
+                    return {};
+                }
+
+                const state = store.getState();
+                const isHost = voiceChannelCallHostID(state, connectedID) === getCurrentUserId(state);
+                const recording = callRecording(state, connectedID);
+
+                if (fields[2] === 'start') {
+                    if (recording?.start_at > recording?.end_at) {
+                        store.dispatch(displayGenericErrorModal(
+                            startErrorTitle,
+                            defineMessage({defaultMessage: 'A recording is already in progress.'}),
+                        ));
+                        return {};
+                    }
+
+                    if (!isHost) {
+                        store.dispatch(displayGenericErrorModal(
+                            startErrorTitle,
+                            defineMessage({defaultMessage: 'You don\'t have permissions to start a recording. Please ask the call host to start a recording.'}),
+                        ));
+                        return {};
+                    }
+
+                    await store.dispatch(startCallRecording(connectedID));
+                }
+
+                if (fields[2] === 'stop') {
+                    if (!recording || recording?.end_at > recording?.start_at) {
+                        store.dispatch(displayGenericErrorModal(
+                            stopErrorTitle,
+                            defineMessage({defaultMessage: 'No recording is in progress.'}),
+                        ));
+                        return {};
+                    }
+
+                    if (!isHost) {
+                        store.dispatch(displayGenericErrorModal(
+                            stopErrorTitle,
+                            defineMessage({defaultMessage: 'You don\'t have permissions to stop the recording. Please ask the call host to stop the recording.'}),
+                        ));
+                        return {};
+                    }
+
+                    await stopCallRecording(connectedID);
+                }
+                break;
+            }
             }
 
             return {message, args};
         });
 
-        const connectToCall = async (channelId: string, teamId: string, title?: string) => {
+        const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
             try {
                 const users = voiceConnectedUsers(store.getState());
                 if (users && users.length > 0) {
@@ -338,7 +438,7 @@ export default class Plugin {
             }
 
             if (!connectedChannelID(store.getState())) {
-                connectCall(channelId, title);
+                connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
                 // this is done in the call_start ws event handler.
@@ -352,7 +452,7 @@ export default class Plugin {
             }
         };
 
-        const joinCall = async (channelId: string, teamId: string, title?: string) => {
+        const joinCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
             // Anyone can join a call already in progress.
             // If explicitly enabled, everyone can start calls.
             // In LiveMode (DefaultEnabled=true):
@@ -377,19 +477,19 @@ export default class Plugin {
                     return;
                 }
 
-                await connectToCall(channelId, teamId, title);
+                await connectToCall(channelId, teamId, title, rootId);
                 return;
             }
 
             if (explicitlyDisabled) {
                 // UI should not have shown, so this is a response to a slash command.
-                throw Error('Cannot start or join call: calls are disabled in this channel.');
+                throw DisabledCallsErr;
             }
 
             // We are in TestMode (DefaultEnabled=false)
             if (isCurrentUserSystemAdmin(store.getState())) {
                 // Rely on server side to send ephemeral message.
-                await connectToCall(channelId, teamId, title);
+                await connectToCall(channelId, teamId, title, rootId);
             } else {
                 store.dispatch(displayCallsTestModeUser());
             }
@@ -428,7 +528,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('UDPServerPort', UDPServerPort);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
 
-        const connectCall = async (channelID: string, title?: string) => {
+        const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             if (shouldRenderDesktopWidget()) {
                 logDebug('sending join call message to desktop app');
                 sendDesktopEvent('calls-join-call', {
@@ -475,7 +575,7 @@ export default class Plugin {
                     }
                 });
 
-                window.callsClient.init(channelID, title).catch((err: Error) => {
+                window.callsClient.init(channelID, title, rootId).catch((err: Error) => {
                     logErr(err);
                     store.dispatch(displayCallErrorModal(channelID, err));
                     delete window.callsClient;
@@ -590,65 +690,75 @@ export default class Plugin {
                     type: RECEIVED_CHANNEL_STATE,
                     data: {id: channelID, enabled: resp.data.enabled},
                 });
+
+                const call = resp.data.call;
+                if (!call) {
+                    return;
+                }
+
+                store.dispatch({
+                    type: VOICE_CHANNEL_CALL_START,
+                    data: {
+                        channelID,
+                        startAt: call.start_at,
+                        ownerID: call.owner_id,
+                        hostID: call.host_id,
+                    },
+                });
+
                 store.dispatch({
                     type: VOICE_CHANNEL_USERS_CONNECTED,
                     data: {
-                        users: resp.data.call?.users,
+                        users: call.users || [],
                         channelID,
                     },
                 });
-                if (resp.data.call?.thread_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_ROOT_POST,
-                        data: {
-                            channelID,
-                            rootPost: resp.data.call?.thread_id,
-                        },
-                    });
-                }
-                if (resp.data.call?.host_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_CALL_HOST,
-                        data: {
-                            channelID,
-                            hostID: resp.data.call?.host_id,
-                        },
-                    });
-                }
 
-                if (resp.data.call?.users && resp.data.call?.users.length > 0) {
+                store.dispatch({
+                    type: VOICE_CHANNEL_ROOT_POST,
+                    data: {
+                        channelID,
+                        rootPost: call.thread_id,
+                    },
+                });
+
+                store.dispatch({
+                    type: VOICE_CHANNEL_CALL_HOST,
+                    data: {
+                        channelID,
+                        hostID: call.host_id,
+                    },
+                });
+
+                if (call.users && call.users.length > 0) {
                     store.dispatch({
                         type: VOICE_CHANNEL_PROFILES_CONNECTED,
                         data: {
-                            profiles: await getProfilesByIds(store.getState(), resp.data.call?.users),
+                            profiles: await getProfilesByIds(store.getState(), call.users),
                             channelID,
                         },
                     });
                 }
 
-                if (resp.data.call?.recording) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_CALL_RECORDING_STATE,
-                        data: {
-                            callID: channelID,
-                            recState: resp.data.call?.recording,
-                        },
-                    });
-                }
+                store.dispatch({
+                    type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+                    data: {
+                        callID: channelID,
+                        recState: call.recording,
+                    },
+                });
 
-                if (resp.data.call?.screen_sharing_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_USER_SCREEN_ON,
-                        data: {
-                            channelID,
-                            userID: resp.data.call?.screen_sharing_id,
-                        },
-                    });
-                }
+                store.dispatch({
+                    type: VOICE_CHANNEL_USER_SCREEN_ON,
+                    data: {
+                        channelID,
+                        userID: call.screen_sharing_id,
+                    },
+                });
 
                 const userStates: Record<string, UserState> = {};
-                const users = resp.data.call?.users || [];
-                const states = resp.data.call?.states || [];
+                const users = call.users || [];
+                const states = call.states || [];
                 for (let i = 0; i < users.length; i++) {
                     userStates[users[i]] = {...states[i], id: users[i]};
                 }

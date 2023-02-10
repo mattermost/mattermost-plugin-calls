@@ -267,14 +267,21 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64, title string) (string, error) {
+func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title, threadID string) (string, string, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
-		return "", appErr
+		return "", "", appErr
 	}
 
+	cfg := p.API.GetConfig()
+	if cfg == nil {
+		return "", "", fmt.Errorf("failed to get configuration")
+	}
+
+	showFullName := cfg.PrivacySettings.ShowFullName != nil && *cfg.PrivacySettings.ShowFullName
+
 	var postMsg string
-	if user.FirstName != "" && user.LastName != "" {
+	if user.FirstName != "" && user.LastName != "" && showFullName {
 		postMsg = fmt.Sprintf("%s %s started a call", user.FirstName, user.LastName)
 	} else {
 		postMsg = fmt.Sprintf("%s started a call", user.Username)
@@ -289,6 +296,7 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64, tit
 	post := &model.Post{
 		UserId:    userID,
 		ChannelId: channelID,
+		RootId:    threadID,
 		Message:   postMsg,
 		Type:      "custom_calls",
 		Props: map[string]interface{}{
@@ -300,7 +308,10 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64, tit
 
 	createdPost, appErr := p.API.CreatePost(post)
 	if appErr != nil {
-		return "", appErr
+		return "", "", appErr
+	}
+	if threadID == "" {
+		threadID = createdPost.Id
 	}
 
 	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
@@ -311,18 +322,19 @@ func (p *Plugin) startNewCallThread(userID, channelID string, startAt int64, tit
 			return nil, fmt.Errorf("call is missing from channel state")
 		}
 
-		state.Call.ThreadID = createdPost.Id
+		state.Call.PostID = createdPost.Id
+		state.Call.ThreadID = threadID
 		return state, nil
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return createdPost.Id, nil
+	return createdPost.Id, threadID, nil
 }
 
-func (p *Plugin) updateCallThreadEnded(threadID string) (float64, error) {
-	post, appErr := p.API.GetPost(threadID)
+func (p *Plugin) updateCallPostEnded(postID string) (float64, error) {
+	post, appErr := p.API.GetPost(postID)
 	if appErr != nil {
 		return 0, appErr
 	}

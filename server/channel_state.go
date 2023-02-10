@@ -35,6 +35,7 @@ type callState struct {
 	Sessions        map[string]struct{}   `json:"sessions,omitempty"`
 	OwnerID         string                `json:"owner_id"`
 	ThreadID        string                `json:"thread_id"`
+	PostID          string                `json:"post_id"`
 	ScreenSharingID string                `json:"screen_sharing_id"`
 	ScreenStreamID  string                `json:"screen_stream_id"`
 	ScreenStartAt   int64                 `json:"screen_start_at"`
@@ -61,6 +62,7 @@ type CallStateClient struct {
 	Users           []string              `json:"users"`
 	States          []UserStateClient     `json:"states,omitempty"`
 	ThreadID        string                `json:"thread_id"`
+	PostID          string                `json:"post_id"`
 	ScreenSharingID string                `json:"screen_sharing_id"`
 	OwnerID         string                `json:"owner_id"`
 	HostID          string                `json:"host_id"`
@@ -187,6 +189,7 @@ func (cs *callState) getClientState(botID string) *CallStateClient {
 		Users:           users,
 		States:          states,
 		ThreadID:        cs.ThreadID,
+		PostID:          cs.PostID,
 		ScreenSharingID: cs.ScreenSharingID,
 		OwnerID:         cs.OwnerID,
 		HostID:          cs.HostID,
@@ -295,7 +298,7 @@ func (p *Plugin) cleanCallState(channelID string) error {
 		state.NodeID = ""
 
 		if state.Call != nil {
-			if _, err := p.updateCallThreadEnded(state.Call.ThreadID); err != nil {
+			if _, err := p.updateCallPostEnded(state.Call.PostID); err != nil {
 				p.LogError(err.Error())
 			}
 		}

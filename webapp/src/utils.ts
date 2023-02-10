@@ -136,7 +136,7 @@ export function alphaSortProfiles(elA: UserProfile, elB: UserProfile) {
     return nameA.localeCompare(nameB);
 }
 
-export function stateSortProfiles(profiles: UserProfile[], statuses: { [key: string]: UserState }, presenterID: string) {
+export function stateSortProfiles(profiles: UserProfile[], statuses: { [key: string]: UserState }, presenterID: string, considerReaction = false) {
     return (elA: UserProfile, elB: UserProfile) => {
         let stateA = statuses[elA.id];
         let stateB = statuses[elB.id];
@@ -176,6 +176,16 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: { [key: str
             return 1;
         } else if (stateA.raised_hand && stateB.raised_hand) {
             return stateA.raised_hand - stateB.raised_hand;
+        }
+
+        if (considerReaction) {
+            if (stateA.reaction && !stateB.reaction) {
+                return -1;
+            } else if (stateB.reaction && !stateA.reaction) {
+                return 1;
+            } else if (stateA.reaction && stateB.reaction) {
+                return stateA.reaction.timestamp - stateB.reaction.timestamp;
+            }
         }
 
         return 0;
