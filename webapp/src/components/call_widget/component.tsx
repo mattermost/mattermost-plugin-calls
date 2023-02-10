@@ -1004,6 +1004,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const currentDevice = deviceType === 'input' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
 
+        // Note: this is system default, not the concept of default that we save in local storage in client.ts
+        const makeDeviceLabel = (device: MediaDeviceInfo) => {
+            if (device.deviceId.startsWith('default') && !device.label.startsWith('Default')) {
+                return `Default - ${device.label}`;
+            }
+            return device.label;
+        };
+
         const deviceList = devices.map((device) => {
             return (
                 <li
@@ -1022,7 +1030,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 width: '100%',
                             }}
                         >
-                            {device.label}
+                            {makeDeviceLabel(device)}
                         </span>
                     </button>
                 </li>
