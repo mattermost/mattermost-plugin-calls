@@ -316,9 +316,11 @@ func (u *user) initRTC() error {
 	})
 
 	pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		rtcpSendErr := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
-		if rtcpSendErr != nil {
-			log.Printf(rtcpSendErr.Error())
+		if track.Kind() == webrtc.RTPCodecTypeVideo {
+			rtcpSendErr := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
+			if rtcpSendErr != nil {
+				log.Printf(rtcpSendErr.Error())
+			}
 		}
 
 		codecName := strings.Split(track.Codec().RTPCodecCapability.MimeType, "/")[1]
