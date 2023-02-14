@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import styled, {css} from 'styled-components';
 
 export type Props = {
@@ -6,8 +6,21 @@ export type Props = {
 }
 
 export default function LoadingOverlay(props: Props) {
+    const [animationEnded, setAnimationEnded] = useState(false);
+
+    if (!props.visible && animationEnded) {
+        return null;
+    }
+
+    const onAnimationEnd = () => {
+        setAnimationEnded(true);
+    };
+
     return (
-        <Container visible={props.visible}>
+        <Container
+            visible={props.visible}
+            onAnimationEnd={onAnimationEnd}
+        >
             <Body>
                 <Spinner size={16}/>
                 <Text>{'Connecting to the call...'}</Text>
@@ -27,8 +40,9 @@ const Container = styled.div<{visible: boolean}>`
   border-radius: 4px;
   z-index: 1;
   background: rgba(var(--center-channel-bg-rgb), 0.7);
+  app-region: drag;
 
-  ${({visible}) => visible && css`
+  ${({visible}) => !visible && css`
       visibility: hidden;
       opacity: 0;
       transition: visibility 0s 0.3s, opacity 0.3s ease-out;
