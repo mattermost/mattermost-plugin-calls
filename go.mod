@@ -5,9 +5,9 @@ go 1.18
 require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/mattermost/mattermost-server/v6 v6.0.0-20221122212622-0509e78744bf
-	github.com/pion/ice/v2 v2.2.13 // indirect
+	github.com/pion/ice/v2 v2.3.0 // indirect
 	github.com/pion/rtcp v1.2.10
-	github.com/pion/webrtc/v3 v3.1.42
+	github.com/pion/webrtc/v3 v3.1.55
 	github.com/prometheus/client_golang v1.13.0
 	github.com/stretchr/testify v1.8.1
 )
@@ -79,17 +79,17 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
 	github.com/pion/datachannel v1.5.5 // indirect
-	github.com/pion/dtls/v2 v2.1.5 // indirect
+	github.com/pion/dtls/v2 v2.2.4 // indirect
 	github.com/pion/logging v0.2.2 // indirect
-	github.com/pion/mdns v0.0.5 // indirect
+	github.com/pion/mdns v0.0.7 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/sctp v1.8.6 // indirect
 	github.com/pion/sdp/v3 v3.0.6 // indirect
-	github.com/pion/srtp/v2 v2.0.11 // indirect
-	github.com/pion/stun v0.3.5 // indirect
-	github.com/pion/transport v0.14.1 // indirect
-	github.com/pion/turn/v2 v2.0.9 // indirect
-	github.com/pion/udp v0.1.2 // indirect
+	github.com/pion/srtp/v2 v2.0.12 // indirect
+	github.com/pion/stun v0.4.0 // indirect
+	github.com/pion/transport/v2 v2.0.1 // indirect
+	github.com/pion/turn/v2 v2.1.0 // indirect
+	github.com/pion/udp v0.1.4 // indirect
 	github.com/plar/go-adaptive-radix-tree v1.0.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
@@ -107,11 +107,11 @@ require (
 	github.com/wiggin77/srslog v1.0.1 // indirect
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	github.com/yuin/goldmark v1.5.3 // indirect
-	golang.org/x/crypto v0.5.0 // indirect
+	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/exp v0.0.0-20200908183739-ae8ad444f925 // indirect
-	golang.org/x/net v0.5.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
-	golang.org/x/text v0.6.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
 	google.golang.org/grpc v1.51.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
