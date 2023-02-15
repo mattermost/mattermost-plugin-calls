@@ -113,7 +113,7 @@ interface State {
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
     recDisclaimerDismissedAt: number,
-    connected: boolean,
+    connecting: boolean,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -261,7 +261,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEls: [],
             alerts: CallAlertStatesDefault,
             recDisclaimerDismissedAt: 0,
-            connected: false,
+            connecting: true,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -316,6 +316,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
             showUsersJoined: [this.props.currentUserID],
+            connecting: Boolean(window.callsClient?.isConnecting()),
         });
 
         setTimeout(() => {
@@ -372,7 +373,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient?.on('connect', () => {
-            this.setState({connected: true});
+            this.setState({connecting: false});
 
             if (this.props.global) {
                 sendDesktopEvent('calls-joined-call', {
@@ -1494,7 +1495,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <div style={{display: 'flex', flexDirection: 'column-reverse'}}>
                     {joinedUsers}
                 </div>
-                {this.state.connected &&
+                {!this.state.connecting &&
                     <div className='calls-notification-bar calls-slide-top'>
                         {notificationContent}
                     </div>
@@ -1704,7 +1705,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 style={mainStyle}
                 ref={this.node}
             >
-                <LoadingOverlay visible={this.state.connected}/>
+                <LoadingOverlay visible={this.state.connecting}/>
 
                 <div
                     ref={this.menuNode}

@@ -37,6 +37,7 @@ export default class CallsClient extends EventEmitter {
     private readonly onDeviceChange: () => void;
     private readonly onBeforeUnload: () => void;
     private closed = false;
+    private connected = false;
     public initTime = Date.now();
 
     constructor(config: CallsClientConfig) {
@@ -266,6 +267,7 @@ export default class CallsClient extends EventEmitter {
             peer.on('connect', () => {
                 logDebug('rtc connected');
                 this.emit('connect');
+                this.connected = true;
             });
 
             peer.on('close', () => {
@@ -588,5 +590,9 @@ export default class CallsClient extends EventEmitter {
 
     public getAudioDevices() {
         return this.audioDevices;
+    }
+
+    public isConnecting() {
+        return !this.connected && !this.closed;
     }
 }
