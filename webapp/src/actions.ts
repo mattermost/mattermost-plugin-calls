@@ -98,6 +98,16 @@ export const getCallsConfig = (): ActionFunc => {
     });
 };
 
+export const postLicenseChanged = (): ActionFunc => {
+    return bindClientFunc({
+        clientFunc: () => Client4.doFetch<CallsConfig>(
+            `${getPluginPath()}/cloud-license-changed`,
+            {method: 'post'},
+        ),
+        onSuccess: [RECEIVED_CALLS_CONFIG],
+    });
+};
+
 export const notifyAdminCloudFreeTrial = async () => {
     return Client4.doFetch(
         `${getPluginPath()}/cloud-notify-admins`,

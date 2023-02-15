@@ -425,22 +425,8 @@ func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request
 // handleConfig returns the client configuration, and cloud license information
 // that isn't exposed to clients yet on the webapp
 func (p *Plugin) handleConfig(w http.ResponseWriter) error {
-	skuShortName := "starter"
-	license := p.pluginAPI.System.GetLicense()
-	if license != nil {
-		skuShortName = license.SkuShortName
-	}
-
-	type config struct {
-		clientConfig
-		SkuShortName string `json:"sku_short_name"`
-	}
-	ret := config{
-		clientConfig: p.getConfiguration().getClientConfig(),
-		SkuShortName: skuShortName,
-	}
-
 	w.Header().Set("Content-Type", "application/json")
+	ret := p.getClientConfiguration()
 	if err := json.NewEncoder(w).Encode(ret); err != nil {
 		return fmt.Errorf("error encoding config: %w", err)
 	}
@@ -563,6 +549,13 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if matches := callRecordingActionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
 			p.handleRecordingAction(w, r, matches[1], matches[2])
+			return
+		}
+
+		if r.URL.Path == "/cloud-license-changed" {
+			if err := p.handleCloudLicenseChanged(w); err != nil {
+				p.handleError(w, err)
+			}
 			return
 		}
 	}

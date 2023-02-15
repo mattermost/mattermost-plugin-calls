@@ -11,6 +11,7 @@ import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-re
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
+import WebsocketEvents from 'mattermost-redux/constants/websocket';
 
 import {
     displayFreeTrial,
@@ -53,6 +54,7 @@ import {
     handleUserReaction,
     handleCallHostChanged,
     handleCallRecordingState,
+    handleLicenseChanged,
 } from './websocket_handlers';
 
 import {
@@ -214,6 +216,10 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_state`, (ev) => {
             handleCallRecordingState(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(WebsocketEvents.LICENSE_CHANGED, () => {
+            handleLicenseChanged(store);
         });
     }
 

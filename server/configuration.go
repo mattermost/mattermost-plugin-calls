@@ -78,6 +78,8 @@ type clientConfig struct {
 	EnableRecordings *bool
 	// The maximum duration (in minutes) for call recordings.
 	MaxRecordingDuration *int
+	// The SkuShortName is not known to the client normally, so we're adding it manually.
+	SkuShortName string `json:"sku_short_name"`
 }
 
 const (
@@ -163,20 +165,6 @@ func (pr PortsRange) IsValid() error {
 		return errors.New("min port must be less than max port")
 	}
 	return nil
-}
-
-func (c *configuration) getClientConfig() clientConfig {
-	return clientConfig{
-		AllowEnableCalls:     model.NewBool(true), // always true
-		DefaultEnabled:       c.DefaultEnabled,
-		ICEServers:           c.ICEServers,
-		ICEServersConfigs:    c.getICEServers(true),
-		MaxCallParticipants:  c.MaxCallParticipants,
-		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
-		AllowScreenSharing:   c.AllowScreenSharing,
-		EnableRecordings:     c.EnableRecordings,
-		MaxRecordingDuration: c.MaxRecordingDuration,
-	}
 }
 
 func (c *configuration) SetDefaults() {
@@ -331,6 +319,28 @@ func (p *Plugin) getConfiguration() *configuration {
 	}
 
 	return p.configuration.Clone()
+}
+
+func (p *Plugin) getClientConfiguration() *clientConfig {
+	skuShortName := "starter"
+	license := p.pluginAPI.System.GetLicense()
+	if license != nil {
+		skuShortName = license.SkuShortName
+	}
+	c := p.getConfiguration()
+
+	return &clientConfig{
+		AllowEnableCalls:     model.NewBool(true), // always true
+		DefaultEnabled:       c.DefaultEnabled,
+		ICEServers:           c.ICEServers,
+		ICEServersConfigs:    c.getICEServers(true),
+		MaxCallParticipants:  c.MaxCallParticipants,
+		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
+		AllowScreenSharing:   c.AllowScreenSharing,
+		EnableRecordings:     c.EnableRecordings,
+		MaxRecordingDuration: c.MaxRecordingDuration,
+		SkuShortName:         skuShortName,
+	}
 }
 
 // setConfiguration replaces the active configuration under lock.

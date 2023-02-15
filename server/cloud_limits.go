@@ -102,6 +102,15 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 	return nil
 }
 
+func (p *Plugin) handleCloudLicenseChanged(w http.ResponseWriter) error {
+	// Set the overrides and update the server side's configuration
+	if err := p.OnConfigurationChange(); err != nil {
+		p.pluginAPI.Log.Warn("tried to set new configuration", "error", err)
+	}
+
+	return p.handleConfig(w)
+}
+
 func (p *Plugin) getSystemBotID() (string, error) {
 	botID, err := p.pluginAPI.Bot.EnsureBot(&model.Bot{
 		Username:    model.BotSystemBotUsername,

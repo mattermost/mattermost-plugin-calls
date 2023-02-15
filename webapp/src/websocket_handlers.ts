@@ -13,6 +13,8 @@ import {
 } from 'src/types/types';
 import {REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 
+import {postLicenseChanged} from 'src/actions';
+
 import {Store} from './types/mattermost-webapp';
 import {
     VOICE_CHANNEL_USER_MUTED,
@@ -287,4 +289,8 @@ export function handleCallRecordingState(store: Store, ev: WebSocketMessage<Call
             recState: ev.data.recState,
         },
     });
+}
+
+export function handleLicenseChanged(store: Store) {
+    store.dispatch(postLicenseChanged());
 }
