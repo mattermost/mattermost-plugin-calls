@@ -393,7 +393,7 @@ test.describe('switching products', () => {
         await expect(devPage.page.locator('#calls-widget')).toBeVisible();
 
         await devPage.page.locator('#calls-widget-participants-button').click();
-        const participantsList = devPage.page.locator('#calls-widget-participants-menu');
+        const participantsList = devPage.page.locator('#calls-widget-participants-list');
         await expect(participantsList).toBeVisible();
         expect(await participantsList.screenshot()).toMatchSnapshot('calls-widget-participants-list-boards.png');
 
