@@ -528,6 +528,17 @@ func (u *user) handleSignal(ev *model.WebSocketEvent) {
 
 	} else if t == "offer" {
 		log.Printf("%s: sdp offer", u.cfg.username)
+
+		if u.pc.SignalingState() != webrtc.SignalingStateStable {
+			log.Printf("%s: signaling conflict on offer, queuing", u.cfg.username)
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				log.Printf("%s: applying previously queued offer", u.cfg.username)
+				u.handleSignal(ev)
+			}()
+			return
+		}
+
 		if err := u.pc.SetRemoteDescription(webrtc.SessionDescription{
 			Type: webrtc.SDPTypeOffer,
 			SDP:  data["sdp"].(string),
