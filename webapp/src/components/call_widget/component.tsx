@@ -299,14 +299,38 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.sendGlobalWidgetBounds();
     }
 
+    private handleDesktopEvents = (ev: MessageEvent) => {
+        if (ev.origin !== window.origin) {
+            return;
+        }
+
+        if (ev.data.type === 'calls-error' && ev.data.message.err === 'screen-permissions') {
+            logDebug('screen permissions error');
+            this.setState({
+                alerts: {
+                    ...this.state.alerts,
+                    missingScreenPermissions: {
+                        ...this.state.alerts.missingScreenPermissions,
+                        active: true,
+                        show: true,
+                    },
+                },
+            });
+        } else if (ev.data.type === 'calls-widget-share-screen') {
+            this.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
+        }
+    }
+
     public componentDidMount() {
         if (this.props.global) {
             window.visualViewport.addEventListener('resize', this.onViewportResize);
             this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
             this.menuResizeObserver.observe(this.menuNode.current!);
+            window.addEventListener('message', this.handleDesktopEvents);
         } else {
             document.addEventListener('mouseup', this.onMouseUp, false);
         }
+
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
 
@@ -419,6 +443,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     public componentWillUnmount() {
         if (this.props.global) {
             window.visualViewport.removeEventListener('resize', this.onViewportResize);
+            window.removeEventListener('message', this.handleDesktopEvents);
         } else {
             document.removeEventListener('mouseup', this.onMouseUp, false);
         }
@@ -544,6 +569,35 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     };
 
+    private shareScreen = async (sourceID: string, withAudio: boolean) => {
+        const state = {} as State;
+        const stream = await window.callsClient?.shareScreen(sourceID, hasExperimentalFlag());
+        if (stream) {
+            state.screenStream = stream;
+            state.alerts = {
+                ...this.state.alerts,
+                missingScreenPermissions: {
+                    ...this.state.alerts.missingScreenPermissions,
+                    active: false,
+                    show: false,
+                },
+            };
+        } else {
+            state.alerts = {
+                ...this.state.alerts,
+                missingScreenPermissions: {
+                    ...this.state.alerts.missingScreenPermissions,
+                    active: true,
+                    show: true,
+                },
+            };
+        }
+
+        this.setState({
+            ...state,
+        });
+    }
+
     onShareScreenToggle = async (fromShortcut?: boolean) => {
         if (!this.props.allowScreenSharing) {
             return;
@@ -562,27 +616,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     this.props.showScreenSourceModal();
                 }
             } else {
-                const stream = await window.callsClient?.shareScreen('', hasExperimentalFlag());
-                if (stream) {
-                    state.screenStream = stream;
-                    state.alerts = {
-                        ...this.state.alerts,
-                        missingScreenPermissions: {
-                            ...this.state.alerts.missingScreenPermissions,
-                            active: false,
-                            show: false,
-                        },
-                    };
-                } else {
-                    state.alerts = {
-                        ...this.state.alerts,
-                        missingScreenPermissions: {
-                            ...this.state.alerts.missingScreenPermissions,
-                            active: true,
-                            show: true,
-                        },
-                    };
-                }
+                await this.shareScreen('', hasExperimentalFlag());
             }
             this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
