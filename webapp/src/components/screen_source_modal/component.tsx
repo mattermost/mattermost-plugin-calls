@@ -195,15 +195,15 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             return;
         }
 
-        if (event.data.type !== 'desktop-sources-result') {
-            return;
+        if (event.data.type === 'desktop-sources-result') {
+            const sources = event.data.message;
+            this.setState({
+                sources,
+                selected: sources[0]?.id || '',
+            });
+        } else if (event.data.type === 'calls-error' && event.data.message.err === 'screen-permissions') {
+            this.props.hideScreenSourceModal();
         }
-
-        const sources = event.data.message;
-        this.setState({
-            sources,
-            selected: sources[0]?.id || '',
-        });
     };
 
     render() {
