@@ -34,6 +34,9 @@ export const CallErrorModal = (props: Props) => {
     const onRejoinClick = (ev: React.MouseEvent) => {
         ev.preventDefault();
         window.postMessage({type: 'connectCall', channelID: props.channelID}, window.origin);
+        if (props.onHide) {
+            props.onHide();
+        }
     };
 
     const onConfirm = () => {

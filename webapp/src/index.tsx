@@ -600,7 +600,7 @@ export default class Plugin {
                     data: {channelID: ev.data.message.callID},
                 });
             } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error') {
-                store.dispatch(displayCallErrorModal(ev.data.message.channelID, new Error(ev.data.message.errMsg)));
+                store.dispatch(displayCallErrorModal(ev.data.message.callID, new Error(ev.data.message.errMsg)));
             }
         };
         window.addEventListener('message', windowEventHandler);
