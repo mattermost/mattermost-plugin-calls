@@ -46,10 +46,18 @@ export const CallErrorModal = (props: Props) => {
         return null;
     };
 
+    const onTroubleShootingClick = (ev: React.MouseEvent) => {
+        ev.preventDefault();
+        window.open('https://docs.mattermost.com/channels/make-calls.html#troubleshooting', '_blank');
+    };
+
     const troubleShootingMsg = (
         <React.Fragment>
             {' Check the '}
-            <a href='https://docs.mattermost.com/channels/make-calls.html#troubleshooting'>{'troubleshooting section'}</a>
+            <a
+                href='https://docs.mattermost.com/channels/make-calls.html#troubleshooting'
+                onClick={onTroubleShootingClick}
+            >{'troubleshooting section'}</a>
             {' if the problem persists.'}
         </React.Fragment>
     );
