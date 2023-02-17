@@ -39,7 +39,6 @@ import {
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_END_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
-    RECEIVED_CLIENT_ERROR,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
 
@@ -163,24 +162,14 @@ export const endCall = (channelID: string) => {
 };
 
 export const displayCallErrorModal = (channelID: string, err: Error) => (dispatch: Dispatch<GenericAction>) => {
-    dispatch({
-        type: RECEIVED_CLIENT_ERROR,
-        data: {
-            channelID,
-            err,
-        },
-    });
     dispatch(modals.openModal({
         modalId: CallErrorModalID,
         dialogType: CallErrorModal,
+        dialogProps: {
+            channelID,
+            err,
+        },
     }));
-};
-
-export const clearClientError = () => (dispatch: Dispatch<GenericAction>) => {
-    dispatch({
-        type: RECEIVED_CLIENT_ERROR,
-        data: null,
-    });
 };
 
 export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => {

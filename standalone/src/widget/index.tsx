@@ -79,8 +79,16 @@ async function initStoreWidget(store: Store, channelID: string) {
     }
 }
 
-function deinitWidget() {
+function deinitWidget(err?: Error) {
     playSound('leave_self');
+
+    if (err) {
+        sendDesktopEvent('calls-error', {
+            err: 'client-error',
+            callID: window.callsClient?.channelID,
+            errMsg: err.message,
+        });
+    }
 
     // Using setTimeout to give the app enough time to play the sound before
     // closing the widget window.
@@ -93,7 +101,7 @@ function deinitWidget() {
         }
         logDebug('sending leave call message to desktop app');
         sendDesktopEvent('calls-leave-call');
-    }, 200);
+    }, 250);
 }
 
 init({
