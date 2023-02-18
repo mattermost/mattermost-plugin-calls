@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 
 export type Props = {
+    id: string,
     text: string,
     textSize: number,
     icon: React.ReactNode,
@@ -17,6 +18,7 @@ export type Props = {
 export default function Badge(props: Props) {
     return (
         <Container
+            data-testid={props.id}
             bgColor={props.bgColor}
             size={props.textSize}
             margin={props.margin}

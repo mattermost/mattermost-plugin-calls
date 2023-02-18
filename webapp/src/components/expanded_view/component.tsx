@@ -723,6 +723,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         return (
             <Badge
+                id={'calls-recording-badge'}
                 text={'REC'}
                 textSize={12}
                 gap={6}

@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import CompassIcon from 'src/components/icons/compassIcon';
 
 type Props = {
+    id: string,
     type: string,
     icon: string | React.ReactNode,
     iconFill?: string,
@@ -43,6 +44,7 @@ export default function WidgetBanner(props: Props) {
 
     return (
         <Banner
+            data-testid={props.id}
             color={colorMap[props.type]}
             bgColor={bgMap[props.type]}
             fadeIn={!closing && !declining}

@@ -1394,6 +1394,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         return (
             <WidgetBanner
+                id={'calls-widget-banner-recording'}
                 key={'widget_banner_recording_disclaimer'}
                 type='info'
                 icon={icon}
@@ -1432,6 +1433,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <React.Fragment>
                 <Badge
+                    id={'calls-recording-badge'}
                     text={'REC'}
                     textSize={11}
                     gap={2}
@@ -1455,6 +1457,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             return (
                 <WidgetBanner
+                    id={'calls-widget-banner-alert'}
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
                     header={alertConfig.bannerText}
