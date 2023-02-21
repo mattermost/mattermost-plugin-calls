@@ -775,7 +775,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     style={this.style.screenSharingPanel as CSSProperties}
                 >
                     <div
-                        style={{position: 'relative', width: '80%', background: '#C4C4C4'}}
+                        style={{position: 'relative', width: '80%', maxHeight: '188px', background: '#C4C4C4'}}
                     >
                         <video
                             id='screen-player'
