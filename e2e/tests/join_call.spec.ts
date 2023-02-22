@@ -2,7 +2,9 @@ import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
-import {startCall} from '../utils';
+import {startCall, getUserIdxForTest} from '../utils';
+
+const userIdx = getUserIdxForTest();
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -10,11 +12,11 @@ test.beforeEach(async ({page, context}) => {
 });
 
 test.describe('join call', () => {
-    test.use({storageState: userState.users[2].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('channel header button', async ({page}) => {
         // start a call
-        const userPage = await startCall(userState.users[3].storageStatePath);
+        const userPage = await startCall(userState.users[userIdx + 1].storageStatePath);
 
         const devPage = new PlaywrightDevPage(page);
         await devPage.joinCall();
@@ -25,7 +27,7 @@ test.describe('join call', () => {
 
     test('channel toast', async ({page}) => {
         // start a call
-        const userPage = await startCall(userState.users[3].storageStatePath);
+        const userPage = await startCall(userState.users[userIdx + 1].storageStatePath);
 
         await page.locator('.post__body').last().scrollIntoViewIfNeeded();
 
@@ -43,7 +45,7 @@ test.describe('join call', () => {
 
     test('call thread', async ({page}) => {
         // start a call
-        const userPage = await startCall(userState.users[3].storageStatePath);
+        const userPage = await startCall(userState.users[userIdx + 1].storageStatePath);
 
         const joinCallButton = page.locator('.post__body').last().locator('button:has-text("Join call")');
         await expect(joinCallButton).toBeVisible();

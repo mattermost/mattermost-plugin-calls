@@ -2,9 +2,11 @@ import {test, expect, chromium} from '@playwright/test';
 
 import {userState, baseURL, defaultTeam, pluginID} from '../constants';
 
-import {getChannelNameForTest, startCall} from '../utils';
+import {getChannelNameForTest, getUserIdxForTest, startCall} from '../utils';
 
 import PlaywrightDevPage from '../page';
+
+const userIdx = getUserIdxForTest();
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -12,10 +14,10 @@ test.beforeEach(async ({page, context}) => {
 });
 
 test.describe('screen sharing', () => {
-    test.use({storageState: userState.users[2].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('share screen button', async ({page}) => {
-        const userPage = await startCall(userState.users[3].storageStatePath);
+        const userPage = await startCall(userState.users[userIdx + 1].storageStatePath);
 
         const devPage = new PlaywrightDevPage(page);
         await devPage.joinCall();
@@ -44,7 +46,7 @@ test.describe('screen sharing', () => {
     });
 
     test('share screen keyboard shortcut', async ({page}) => {
-        const userPage = await startCall(userState.users[3].storageStatePath);
+        const userPage = await startCall(userState.users[userIdx + 1].storageStatePath);
 
         const devPage = new PlaywrightDevPage(page);
         await devPage.joinCall();
@@ -83,10 +85,10 @@ test.describe('screen sharing', () => {
 });
 
 test.describe('sending voice', () => {
-    test.use({storageState: userState.users[2].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('unmuting', async ({page}) => {
-        const userPage = await startCall(userState.users[3].storageStatePath);
+        const userPage = await startCall(userState.users[userIdx + 1].storageStatePath);
 
         const devPage = new PlaywrightDevPage(page);
         await devPage.joinCall();

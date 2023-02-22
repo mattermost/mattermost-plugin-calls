@@ -2,10 +2,12 @@ import {test, expect} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
-import {getChannelNameForTest} from '../utils';
+import {getChannelNameForTest, getUserIdxForTest} from '../utils';
+
+const userIdx = getUserIdxForTest();
 
 test.describe('popout window', () => {
-    test.use({storageState: userState.users[4].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('popout opens muted', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -27,7 +29,7 @@ test.describe('popout window', () => {
 
     test('popout opens in a DM channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[0].username);
+        await devPage.gotoDM(userState.users[userIdx + 1].username);
         await devPage.startCall();
 
         const [popOut, _] = await Promise.all([
@@ -83,7 +85,7 @@ test.describe('popout window', () => {
 
     test('supports chat in a DM channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[0].username);
+        await devPage.gotoDM(userState.users[userIdx + 1].username);
         await devPage.startCall();
 
         const [popOut, _] = await Promise.all([
