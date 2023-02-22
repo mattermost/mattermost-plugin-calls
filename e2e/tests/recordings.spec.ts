@@ -37,7 +37,7 @@ test.describe('call recordings', () => {
         await page.getByTestId('calls-widget-banner-recording').locator('.icon-close').click();
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeHidden();
 
-        // Give it a few of seconds to produce a decent recording.
+        // Give it a few of seconds to produce a decent recording
         await devPage.wait(4000);
 
         // stop recording
@@ -48,10 +48,11 @@ test.describe('call recordings', () => {
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing...');
 
-        // verify recording file has been posted by the bot
-        await expect(page.locator('.post__header').last()).toContainText('calls');
-        await expect(page.locator('.post__header').last()).toContainText('BOT');
-        await expect(page.locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
+        // verify recording file has been posted by the bot (assumes CRT enabled)
+        await page.locator('.post__body').last().locator('.ThreadFooter button.ReplyButton').click();
+        await expect(page.locator('.ThreadViewer').locator('.post__header').last()).toContainText('calls');
+        await expect(page.locator('.ThreadViewer').locator('.post__header').last()).toContainText('BOT');
+        await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
 
         // leave call
         await devPage.leaveCall();
