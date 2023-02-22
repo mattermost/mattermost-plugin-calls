@@ -357,7 +357,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEl.autoplay = true;
             audioEl.style.display = 'none';
             audioEl.onerror = (err) => logErr(err);
-            audioEl.id = voiceTrack.id;
+            audioEl.setAttribute('data-testid', voiceTrack.id);
 
             const deviceID = window.callsClient?.currentAudioOutputDevice?.deviceId;
             if (deviceID) {
@@ -467,7 +467,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             screenStream = window.callsClient?.getLocalScreenStream();
         }
 
-        const hasScreenTrackChanged = screenStream && this.state.screenStream?.getVideoTracks()[0].id !== screenStream.getVideoTracks()[0].id;
+        const hasScreenTrackChanged = screenStream && this.state.screenStream?.getVideoTracks()[0]?.id !== screenStream.getVideoTracks()[0]?.id;
         if ((screenStream && !this.state.screenStream) || hasScreenTrackChanged) {
             // eslint-disable-next-line react/no-did-update-set-state
             this.setState({screenStream});
@@ -753,6 +753,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         }}
                     >
                         <button
+                            data-testid='calls-widget-stop-screenshare'
                             className='cursor--pointer style--none'
                             style={{
                                 display: 'flex',

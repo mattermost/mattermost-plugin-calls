@@ -24,6 +24,8 @@ const config: PlaywrightTestConfig = {
             args: [
                 '--use-fake-device-for-media-stream',
                 '--use-fake-ui-for-media-stream',
+                '--auto-select-desktop-capture-source="Entire screen"',
+                '--use-file-for-fake-audio-capture=./assets/sample.wav',
             ],
         },
     },
