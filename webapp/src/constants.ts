@@ -42,3 +42,5 @@ export const CallRecordingDisclaimerStrings: {[key: string]: {[key: string]: str
 };
 
 export const DisabledCallsErr = new Error('Cannot start or join call: calls are disabled in this channel.');
+
+export const supportedLocales = [];

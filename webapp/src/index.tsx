@@ -10,8 +10,9 @@ import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entiti
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
+import {isMinimumServerVersion} from 'mattermost-redux/utils/helpers';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
+import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
 
 import {batchActions} from 'redux-batched-actions';
 
@@ -109,8 +110,10 @@ import {
     shouldRenderDesktopWidget,
     sendDesktopEvent,
     getChannelURL,
+    fetchTranslationsFile,
+    fetchTranslationsFilesSync,
 } from './utils';
-import {logErr, logDebug} from './log';
+import {logErr, logWarn, logDebug} from './log';
 import {
     JOIN_CALL,
     keyToAction,
@@ -132,7 +135,7 @@ import {
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
-import {PluginRegistry, Store} from './types/mattermost-webapp';
+import {PluginRegistry, Store, Translations} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
@@ -222,7 +225,25 @@ export default class Plugin {
         });
     }
 
-    public async initialize(registry: PluginRegistry, store: Store): Promise<void> {
+    public initialize(registry: PluginRegistry, store: Store) {
+        if (!isMinimumServerVersion(getServerVersion(store.getState()), 7, 9, 0)) {
+            // synchronously loading all translation files to support earlier server versions.
+            let translations: Record<string, Translations> = {};
+            try {
+                translations = fetchTranslationsFilesSync();
+            } catch (err) {
+                logErr('failed to fetch translations files', err);
+            }
+            registry.registerTranslations((locale: string) => {
+                logDebug(`registering translations for locale '${locale}'`);
+                return translations[locale] || {};
+            });
+        }
+
+        this.init(registry, store);
+    }
+
+    private async init(registry: PluginRegistry, store: Store): Promise<void> {
         // Setting the base URL if present, in case MM is running under a subpath.
         if (window.basename) {
             Client4.setUrl(window.basename);
@@ -238,6 +259,11 @@ export default class Plugin {
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
         registry.registerGlobalComponent(EndCallModal);
+
+        if (isMinimumServerVersion(getServerVersion(store.getState()), 7, 9, 0)) {
+            // new server versions support dynamic fetching.
+            registry.registerTranslations(fetchTranslationsFile);
+        }
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             return slashCommandsHandler(store, joinCall, message, args);
