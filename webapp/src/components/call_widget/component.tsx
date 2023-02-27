@@ -1,5 +1,6 @@
 /* eslint-disable max-lines */
 import React, {CSSProperties} from 'react';
+import {IntlShape} from 'react-intl';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {compareSemVer} from 'semver-parser';
 
@@ -15,7 +16,7 @@ import {Store} from 'src/types/mattermost-webapp';
 
 import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallRecordingState, UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
-import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent} from 'src/utils';
+import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
 import {
     keyToAction,
     LEAVE_CALL,
@@ -55,6 +56,7 @@ import LoadingOverlay from './loading_overlay';
 import './component.scss';
 
 interface Props {
+    intl: IntlShape,
     store: Store,
     theme: Theme,
     currentUserID: string,
@@ -738,6 +740,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const {formatMessage} = this.props.intl;
+
         const isSharing = this.props.screenSharingID === this.props.currentUserID;
 
         let profile;
@@ -748,7 +752,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         }
 
-        const msg = isSharing ? 'You are sharing your screen' : `You are viewing ${getUserDisplayName(profile as UserProfile)}'s screen`;
+        const msg = isSharing ?
+            formatMessage({defaultMessage: 'You are sharing your screen'}) :
+            formatMessage({defaultMessage: 'You are viewing {presenter}\'s screen'}, {presenter: getUserDisplayName(profile)});
+
         return (
             <div
                 className='Menu'
@@ -785,7 +792,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             }}
                             onClick={() => this.onShareScreenToggle()}
                         >
-                            {'Stop sharing'}
+                            {formatMessage({defaultMessage: 'Stop sharing'})}
                         </button>
                     </div>
                 }
@@ -828,7 +835,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             <PopOutIcon
                                 style={{width: '16px', height: '16px', fill: 'white', marginRight: '8px'}}
                             />
-                            <span>{'Pop out'}</span>
+                            <span>{formatMessage({defaultMessage: 'Pop out'})}</span>
                         </button>
 
                     </div>
@@ -849,6 +856,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     renderScreenShareButton = () => {
+        const {formatMessage} = this.props.intl;
         const sharingID = this.props.screenSharingID;
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
@@ -861,11 +869,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
-        let shareScreenTooltipText = isSharing ? 'Stop presenting' : 'Start presenting';
+        let shareScreenTooltipText = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'});
         if (noScreenPermissions) {
-            shareScreenTooltipText = CallAlertConfigs.missingScreenPermissions.tooltipText;
+            shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText);
         }
-        const shareScreenTooltipSubtext = noScreenPermissions ? CallAlertConfigs.missingScreenPermissions.tooltipSubtext : '';
+        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext) : '';
 
         return (
             <WidgetButton
@@ -884,6 +892,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     renderSpeaking = () => {
+        const {formatMessage} = this.props.intl;
         let speakingProfile;
         for (let i = 0; i < this.props.profiles.length; i++) {
             const profile = this.props.profiles[i];
@@ -896,8 +905,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <div style={{fontSize: '12px', display: 'flex', whiteSpace: 'pre'}}>
                 <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                    {speakingProfile ? getUserDisplayName(speakingProfile) : 'No one'}
-                    <span style={{fontWeight: 400}}>{' is talking...'}</span>
+                    {speakingProfile ? getUserDisplayName(speakingProfile) : formatMessage({defaultMessage: 'No one'})}
+                    <span style={{fontWeight: 400}}>{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking...'})}</span>
                 </span>
             </div>
         );
@@ -907,6 +916,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (!this.state.showParticipantsList) {
             return null;
         }
+
+        const {formatMessage} = this.props.intl;
 
         const renderParticipants = () => {
             return this.props.profiles.map((profile) => {
@@ -945,7 +956,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                         whiteSpace: 'pre-wrap',
                                     }}
                                 >
-                                    {' (you)'}
+                                    {untranslatable(' ')}{formatMessage({defaultMessage: '(you)'})}
                                 </span>
                             }
                         </span>
@@ -1024,7 +1035,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         className='MenuHeader'
                         style={{paddingBottom: '4px', color: this.props.theme.centerChannelColor}}
                     >
-                        {'Participants'}
+                        {formatMessage({defaultMessage: 'Participants'})}
                     </li>
                     {renderParticipants()}
                 </ul>
@@ -1048,6 +1059,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     renderAudioDevicesList = (deviceType: string, devices: MediaDeviceInfo[]) => {
+        const {formatMessage} = this.props.intl;
+
         if (deviceType === 'input' && !this.state.showAudioInputDevicesMenu) {
             return null;
         }
@@ -1061,7 +1074,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // Note: this is system default, not the concept of default that we save in local storage in client.ts
         const makeDeviceLabel = (device: MediaDeviceInfo) => {
             if (device.deviceId.startsWith('default') && !device.label.startsWith('Default')) {
-                return `Default - ${device.label}`;
+                return formatMessage({defaultMessage: 'Default - {deviceLabel}'}, {deviceLabel: device.label});
             }
             return device.label;
         };
@@ -1114,17 +1127,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const {formatMessage} = this.props.intl;
+
         const currentDevice = deviceType === 'input' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
         const DeviceIcon = deviceType === 'input' ? UnmutedIcon : SpeakerIcon;
 
         const noInputDevices = deviceType === 'input' && this.state.devices.inputs?.length === 0;
         const noAudioPermissions = deviceType === 'input' && this.state.alerts.missingAudioInputPermissions.active;
 
-        let label = currentDevice?.label || 'Default';
+        let label = currentDevice?.label || formatMessage({defaultMessage: 'Default'});
         if (noAudioPermissions) {
-            label = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
+            label = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText);
         } else if (noInputDevices) {
-            label = CallAlertConfigs.missingAudioInput.tooltipText;
+            label = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText);
         }
 
         const onClickHandler = () => {
@@ -1191,7 +1206,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 className='MenuItem__primary-text'
                                 style={{padding: '0'}}
                             >
-                                {deviceType === 'input' ? 'Microphone' : 'Audio Output'}
+                                {deviceType === 'input' ? formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio Output'})}
                             </span>
                             {devices.length > 0 &&
                                 <ShowMoreIcon
@@ -1224,6 +1239,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     renderScreenSharingMenuItem = () => {
+        const {formatMessage} = this.props.intl;
         const sharingID = this.props.screenSharingID;
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
@@ -1266,7 +1282,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 unavailable={noPermissions}
                                 margin={'0 8px 0 0'}
                             />
-                            <span>{isSharing ? 'Stop presenting' : 'Start presenting'}</span>
+                            <span>{isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'})}</span>
                         </div>
 
                         {noPermissions &&
@@ -1279,7 +1295,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                     whiteSpace: 'initial',
                                 }}
                             >
-                                {CallAlertConfigs.missingScreenPermissions.tooltipText}
+                                {formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText)}
                             </span>
                         }
 
@@ -1354,6 +1370,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     renderRecordingDisclaimer = () => {
+        const {formatMessage} = this.props.intl;
         const isHost = this.props.callHostID === this.props.currentUserID;
         const dismissedAt = this.state.recDisclaimerDismissedAt;
         const recording = this.props.callRecording;
@@ -1383,9 +1400,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        let header = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header;
-        let body = CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body;
-        let confirmText = isHost ? 'Dismiss' : 'Understood';
+        let header = formatMessage(CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header);
+        let body = formatMessage(CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body);
+        let confirmText = isHost ? formatMessage({defaultMessage: 'Dismiss'}) : formatMessage({defaultMessage: 'Understood'});
         let icon = (
             <RecordCircleOutlineIcon
                 size={12}
@@ -1394,12 +1411,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (hasRecEnded) {
             confirmText = '';
-            header = 'Recording has stopped. Processing...';
-            body = 'You can find the recording in this call\'s chat thread once it\'s finished processing.';
+            header = formatMessage({defaultMessage: 'Recording has stopped. Processing...'});
+            body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it\'s finished processing.'});
         }
 
         if (recording?.err) {
-            header = 'Something went wrong with the recording';
+            header = formatMessage({defaultMessage: 'Something went wrong with the recording'});
             body = recording?.err;
             icon = (
                 <CompassIcon
@@ -1422,7 +1439,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 header={header}
                 body={body}
                 confirmText={confirmText}
-                declineText={isHost ? null : 'Leave call'}
+                declineText={isHost ? null : formatMessage({defaultMessage: 'Leave call'})}
                 onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
                 onDecline={this.onDisconnectClick}
             />
@@ -1460,12 +1477,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     color={hasRecStarted ? '#D24B4E' : 'rgb(var(--center-channel-color-rgb))'}
                     loading={!hasRecStarted}
                 />
-                <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
+                <div style={{margin: '0 2px 0 4px'}}>{untranslatable('•')}</div>
             </React.Fragment>
         );
     };
 
     renderAlertBanners = () => {
+        const {formatMessage} = this.props.intl;
         return Object.entries(this.state.alerts).map((keyVal) => {
             const [alertID, alertState] = keyVal;
             if (!alertState.show) {
@@ -1479,7 +1497,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     id={'calls-widget-banner-alert'}
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
-                    header={alertConfig.bannerText}
+                    header={formatMessage(alertConfig.bannerText)}
                     onClose={() => {
                         this.setState({
                             alerts: {
@@ -1501,22 +1519,29 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const {formatMessage} = this.props.intl;
+
         const isMuted = window.callsClient?.isMuted();
         const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
-        const notificationContent = (
-            <React.Fragment>
-                <span>{`You are ${isMuted ? 'muted' : 'unmuted'}. Click `}</span>
-                <MuteIcon
-                    style={{
-                        width: '11px',
-                        height: '11px',
-                        fill: isMuted ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : '#3DB887',
-                    }}
-                    stroke={isMuted ? 'rgb(var(--dnd-indicator-rgb))' : '#3DB887'}
-                />
-                <span>{` to ${isMuted ? 'unmute' : 'mute'}.`}</span>
-            </React.Fragment>
+
+        const muteIcon = (
+            <MuteIcon
+                style={{
+                    width: '11px',
+                    height: '11px',
+                    fill: isMuted ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : '#3DB887',
+                }}
+                stroke={isMuted ? 'rgb(var(--dnd-indicator-rgb))' : '#3DB887'}
+            />
         );
+
+        const notificationContent = isMuted ?
+            formatMessage({
+                defaultMessage: 'You are muted. Click <muteIcon/> to unmute.',
+            }, {muteIcon}) :
+            formatMessage({
+                defaultMessage: 'You are unmuted. Click <muteIcon/> to mute.',
+            }, {muteIcon});
 
         const joinedUsers = this.state.showUsersJoined.map((userID) => {
             if (userID === this.props.currentUserID) {
@@ -1541,7 +1566,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         url={picture}
                         style={{margin: '0 8px'}}
                     />
-                    {`${getUserDisplayName(profile)} has joined the call.`}
+                    {formatMessage({defaultMessage: '{participant} has joined the call.'}, {participant: getUserDisplayName(profile)})}
                 </div>
             );
         });
@@ -1697,7 +1722,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     renderChannelName = (widerWidget: boolean) => {
         return (
             <React.Fragment>
-                <div style={{margin: '0 2px 0 4px'}}>{'•'}</div>
+                <div style={{margin: '0 2px 0 4px'}}>{untranslatable('•')}</div>
 
                 <a
                     href={this.props.channelURL}
@@ -1729,18 +1754,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const {formatMessage} = this.props.intl;
+
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
         const MuteIcon = window.callsClient.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
-        let muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
+        let muteTooltipText = window.callsClient.isMuted() ?
+            formatMessage({defaultMessage: 'Click to unmute'}) :
+            formatMessage({defaultMessage: 'Click to mute'});
         let muteTooltipSubtext = '';
         if (noInputDevices) {
-            muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText;
-            muteTooltipSubtext = CallAlertConfigs.missingAudioInput.tooltipSubtext;
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext);
         }
         if (noAudioPermissions) {
-            muteTooltipText = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
-            muteTooltipSubtext = CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext;
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext);
         }
 
         const widerWidget = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
@@ -1753,7 +1782,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const ShowIcon = window.desktop && !this.props.global ? ExpandIcon : PopOutIcon;
 
         const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
-        const handTooltipText = window.callsClient.isHandRaised ? 'Click to lower hand' : 'Click to raise hand';
+        const handTooltipText = window.callsClient.isHandRaised ?
+            formatMessage({defaultMessage: 'Click to lower hand'}) :
+            formatMessage({defaultMessage: 'Click to raise hand'});
 
         return (
             <div
@@ -1815,7 +1846,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             placement='top'
                             overlay={
                                 <Tooltip id='tooltip-mute'>
-                                    {this.state.showParticipantsList ? 'Hide participants' : 'Show participants'}
+                                    {this.state.showParticipantsList ?
+                                        formatMessage({defaultMessage: 'Hide participants'}) :
+                                        formatMessage({defaultMessage: 'Show participants'})}
                                     <Shortcut shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}/>
                                 </Tooltip>
                             }
@@ -1905,7 +1938,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             placement='top'
                             overlay={
                                 <Tooltip id='tooltip-leave'>
-                                    {'Click to leave call'}
+                                    {formatMessage({defaultMessage: 'Click to leave call'})}
                                     <Shortcut shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}/>
                                 </Tooltip>
                             }

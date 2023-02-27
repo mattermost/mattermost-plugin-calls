@@ -14,7 +14,7 @@ import {
     voiceUsersStatuses,
 } from 'src/selectors';
 import {Emoji} from 'src/components/emoji/emoji';
-import {getUserDisplayName} from 'src/utils';
+import {getUserDisplayName, untranslatable} from 'src/utils';
 import CompassIcon from 'src/components/icons/compassIcon';
 
 interface Props {
@@ -87,7 +87,7 @@ export const ReactionStream = ({forceLeft}: Props) => {
                     }}
                 />
                 <Bold>{participants}</Bold>
-                <span>{` ${formatMessage({defaultMessage: 'raised a hand'})}`}</span>
+                <span>{untranslatable(' ')}{formatMessage({defaultMessage: 'raised a hand'})}</span>
             </ReactionChip>);
     }
 

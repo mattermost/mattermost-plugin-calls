@@ -408,8 +408,8 @@ export default class Plugin {
                     wsURL: getWSConnectionURL(getConfig(store.getState())),
                     iceServers: iceConfigs,
                 });
-                const globalComponentID = registry.registerGlobalComponent(CallWidget);
-                const rootComponentID = registry.registerRootComponent(ExpandedView);
+                const globalComponentID = registry.registerGlobalComponent(injectIntl(CallWidget));
+                const rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
                 window.callsClient.on('close', (err?: Error) => {
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);

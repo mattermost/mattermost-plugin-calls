@@ -30,6 +30,7 @@ import {
     hasExperimentalFlag,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
+    untranslatable,
 } from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
 import {
@@ -830,7 +831,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 style={{margin: '4px'}}
                                 startAt={this.props.callStartAt}
                             />
-                            <span style={{margin: '4px'}}>{'•'}</span>
+                            <span style={{margin: '4px'}}>{untranslatable('•')}</span>
                             <span style={{margin: '4px'}}>
                                 {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.profiles.length})}
                             </span>
@@ -1029,7 +1030,7 @@ const isActiveElementInteractable = () => {
 
 const UnreadIndicator = ({mentions}: { mentions?: number }) => {
     return (
-        <UnreadDot>{mentions && mentions > 99 ? '99+' : mentions || null}</UnreadDot>
+        <UnreadDot>{mentions && mentions > 99 ? untranslatable('99+') : mentions || null}</UnreadDot>
     );
 };
 
