@@ -416,3 +416,7 @@ export function fetchTranslationsFilesSync() {
     }
     return translations;
 }
+
+export function untranslatable(msg: string) {
+    return msg;
+}
