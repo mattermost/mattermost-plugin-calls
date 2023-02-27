@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
+import {useIntl} from 'react-intl';
 import styled, {css} from 'styled-components';
 import {useSelector} from 'react-redux';
 
@@ -22,6 +23,7 @@ interface Props {
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = ({forceLeft}: Props) => {
+    const {formatMessage} = useIntl();
     const currentUserID = useSelector(getCurrentUserId);
 
     const statuses = useSelector(voiceUsersStatuses);
@@ -36,7 +38,10 @@ export const ReactionStream = ({forceLeft}: Props) => {
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
         const emoji = <Emoji emoji={reaction.emoji}/>;
-        const user = reaction.user_id === currentUserID ? 'You' : reaction.displayName || 'Someone';
+        const user = reaction.user_id === currentUserID ?
+            formatMessage({defaultMessage: 'You'}) :
+            reaction.displayName || formatMessage({defaultMessage: 'Someone'});
+
         return (
             <ReactionChip key={reaction.timestamp + reaction.user_id}>
                 <span>{emoji}</span>
@@ -49,7 +54,7 @@ export const ReactionStream = ({forceLeft}: Props) => {
     // add hands up
     let elements = [];
     const getName = (user_id: string) => {
-        return user_id === currentUserID ? 'You' : getUserDisplayName(profileMap[user_id]);
+        return user_id === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[user_id]);
     };
     let participants: string;
     if (handsup?.length) {
@@ -64,7 +69,7 @@ export const ReactionStream = ({forceLeft}: Props) => {
             participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${getName(handsup[2])}`;
             break;
         default:
-            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${handsup?.length - 2} others`;
+            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${handsup?.length - 2} ${formatMessage({defaultMessage: 'others'})}`;
             break;
         }
 
@@ -82,7 +87,7 @@ export const ReactionStream = ({forceLeft}: Props) => {
                     }}
                 />
                 <Bold>{participants}</Bold>
-                <span>{' raised a hand'}</span>
+                <span>{` ${formatMessage({defaultMessage: 'raised a hand'})}`}</span>
             </ReactionChip>);
     }
 

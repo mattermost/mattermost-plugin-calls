@@ -2,7 +2,7 @@
 
 import axios from 'axios';
 
-import {defineMessage} from 'react-intl';
+import {defineMessage, injectIntl} from 'react-intl';
 import {AnyAction} from 'redux';
 
 import {Client4} from 'mattermost-redux/client';
@@ -255,7 +255,7 @@ export default class Plugin {
         registry.registerChannelToastComponent(ChannelCallToast);
         registry.registerPostTypeComponent('custom_calls', PostType);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
-        registry.registerNeedsTeamRoute('/expanded', ExpandedView);
+        registry.registerNeedsTeamRoute('/expanded', injectIntl(ExpandedView));
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
         registry.registerGlobalComponent(EndCallModal);

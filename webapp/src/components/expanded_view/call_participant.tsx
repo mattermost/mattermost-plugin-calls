@@ -1,4 +1,5 @@
 import React from 'react';
+import {useIntl} from 'react-intl';
 
 import {CSSObject} from 'styled-components';
 
@@ -20,6 +21,7 @@ export type Props = {
 }
 
 export default function CallParticipant(props: Props) {
+    const {formatMessage} = useIntl();
     const MuteIcon = props.isMuted ? MutedIcon : UnmutedIcon;
 
     if (!props.pictureURL) {
@@ -102,7 +104,7 @@ export default function CallParticipant(props: Props) {
                         lineHeight: '16px',
                     }}
                 >
-                    {'Host'}
+                    {formatMessage({defaultMessage: 'Host'})}
                 </span>
             }
         </li>

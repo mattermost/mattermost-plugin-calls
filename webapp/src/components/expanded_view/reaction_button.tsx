@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {forwardRef, useImperativeHandle, useState} from 'react';
+import {useIntl} from 'react-intl';
 import styled, {css} from 'styled-components';
 import {OverlayTrigger} from 'react-bootstrap';
 import EmojiPicker, {
@@ -41,6 +42,7 @@ interface Props {
 export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     const [showPicker, setShowPicker] = useState(false);
     const [showBar, setShowBar] = useState(false);
+    const {formatMessage} = useIntl();
 
     useImperativeHandle(ref, () => ({
         toggle() {
@@ -49,7 +51,9 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     }));
 
     const callsClient = getCallsClient();
-    const addReactionText = showBar ? 'Close Reactions' : 'Add Reaction';
+    const addReactionText = showBar ?
+        formatMessage({defaultMessage: 'Close Reactions'}) :
+        formatMessage({defaultMessage: 'Add Reaction'});
 
     const handleUserPicksEmoji = (ecd: EmojiClickData) => {
         const emojiData: EmojiData = {
@@ -70,7 +74,9 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
         }
     };
     const isHandRaised = Boolean(callsClient?.isHandRaised);
-    const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
+    const raiseHandText = isHandRaised ?
+        formatMessage({defaultMessage: 'Lower hand'}) :
+        formatMessage({defaultMessage: 'Raise hand'});
     const handIcon = isHandRaised ? (
         <HandRightOutlineOffIcon
             size={18}
