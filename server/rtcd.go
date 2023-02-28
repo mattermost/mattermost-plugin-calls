@@ -88,10 +88,6 @@ func (p *Plugin) newRTCDClientManager(rtcdURL string) (m *rtcdClientManager, err
 			return nil, err
 		}
 
-		if err := m.versionCheck(client); err != nil {
-			return nil, fmt.Errorf("version compatibility check failed: %w", err)
-		}
-
 		if err := m.addHost(ip.String(), client); err != nil {
 			return nil, fmt.Errorf("failed to add host: %w", err)
 		}
@@ -157,11 +153,6 @@ func (m *rtcdClientManager) hostsChecker() {
 					client, err := m.newRTCDClient(m.rtcdURL, ip, getDialFn(ip, m.rtcdPort))
 					if err != nil {
 						m.ctx.LogError(fmt.Sprintf("failed to create new client: %s", err.Error()), "host", ip)
-						continue
-					}
-
-					if err := m.versionCheck(client); err != nil {
-						m.ctx.LogError(fmt.Sprintf("version compatibility check failed: %s", err.Error()), "host", ip)
 						continue
 					}
 
@@ -270,6 +261,7 @@ func (m *rtcdClientManager) Send(msg rtcd.ClientMessage, callID string) error {
 
 	var client *rtcd.Client
 	if h == nil {
+		m.ctx.LogDebug("creating client for missing host on send", "host", host)
 		client, err = m.newRTCDClient(m.rtcdURL, host, getDialFn(host, m.rtcdPort))
 		if err != nil {
 			return fmt.Errorf("failed to create new client: %w", err)
@@ -397,6 +389,13 @@ func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.Dial
 	clientCfg, client, err := m.registerRTCDClient(clientCfg, reconnectCb, dialFn)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := m.versionCheck(client); err != nil {
+		if err := client.Close(); err != nil {
+			m.ctx.LogError(fmt.Sprintf("failed to close client: %s", err.Error()))
+		}
+		return nil, fmt.Errorf("version compatibility check failed: %w", err)
 	}
 
 	return client, nil
