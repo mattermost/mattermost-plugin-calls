@@ -324,7 +324,8 @@ func (m *rtcdClientManager) versionCheck(client *rtcd.Client) error {
 	}
 
 	// Always support dev builds.
-	if info.BuildVersion == "" || strings.HasPrefix(info.BuildVersion, "dev") {
+	if info.BuildVersion == "" || info.BuildVersion == "master" || strings.HasPrefix(info.BuildVersion, "dev") {
+		m.ctx.LogInfo("skipping version compatibility check", "buildVersion", info.BuildVersion)
 		return nil
 	}
 
