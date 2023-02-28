@@ -139,10 +139,7 @@ func (m *rtcdClientManager) hostsChecker() {
 
 			// we look for newly advertised hosts we may not have a client for yet.
 			for ip := range ipsMap {
-				m.mut.RLock()
-				_, ok := m.hosts[ip]
-				m.mut.RUnlock()
-				if !ok {
+				if h := m.getHost(ip); h == nil {
 					// create new client
 
 					// We add some jitter to try and avoid multiple clients to attempt
@@ -211,6 +208,12 @@ func (m *rtcdClientManager) addHost(host string, client *rtcd.Client) (err error
 	return nil
 }
 
+func (m *rtcdClientManager) getHost(ip string) *rtcdHost {
+	m.mut.RLock()
+	defer m.mut.RUnlock()
+	return m.hosts[ip]
+}
+
 // GetHostForNewCall returns the host to which a new call should be routed.
 // It performs a simple round-robin strategy based on number of calls.
 // New calls are routed to the non-flagged host with the smaller count.
@@ -255,12 +258,8 @@ func (m *rtcdClientManager) Send(msg rtcd.ClientMessage, callID string) error {
 	}
 	host := state.Call.RTCDHost
 
-	m.mut.RLock()
-	h := m.hosts[host]
-	m.mut.RUnlock()
-
 	var client *rtcd.Client
-	if h == nil {
+	if h := m.getHost(host); h == nil {
 		m.ctx.LogDebug("creating client for missing host on send", "host", host)
 		client, err = m.newRTCDClient(m.rtcdURL, host, getDialFn(host, m.rtcdPort))
 		if err != nil {
@@ -356,6 +355,18 @@ func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.Dial
 				m.ctx.LogError("failed to remove rtcd client: %w", err)
 			}
 			return fmt.Errorf("max reconnection attempts reached, removing client")
+		}
+
+		h := m.getHost(host)
+		if h == nil {
+			return fmt.Errorf("host is missing")
+		}
+
+		if h.isFlagged() {
+			if err := m.removeHost(host); err != nil {
+				m.ctx.LogError("failed to remove rtcd client: %w", err)
+			}
+			return fmt.Errorf("host was flagged")
 		}
 
 		// On disconnect, it's possible the rtcd server restarted
@@ -640,4 +651,10 @@ func (m *rtcdClientManager) clientReader(client *rtcd.Client) {
 			}
 		}
 	}
+}
+
+func (h *rtcdHost) isFlagged() bool {
+	h.mut.RLock()
+	defer h.mut.RUnlock()
+	return h.flagged
 }
