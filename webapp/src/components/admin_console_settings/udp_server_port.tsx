@@ -16,7 +16,7 @@ const UDPServerPort = (props: CustomComponentProps) => {
     const config = useSelector(getConfig);
 
     // If RTCD is configured then this setting doesn't apply and should be hidden.
-    if (config.PluginSettings?.Plugins[manifest.id].rtcdserviceurl?.length > 0) {
+    if (config.PluginSettings?.Plugins[manifest.id]?.rtcdserviceurl?.length > 0) {
         return null;
     }
 
