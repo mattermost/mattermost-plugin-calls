@@ -167,14 +167,14 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
         document.addEventListener('keyup', this.keyboardClose, true);
         document.addEventListener('click', this.closeOnBlur, true);
 
-        window.addEventListener('message', this.handleDesktopCapturerMessage);
+        window.addEventListener('message', this.handleDesktopEvents);
     }
 
     componentWillUnmount() {
         document.removeEventListener('keyup', this.keyboardClose, true);
         document.removeEventListener('click', this.closeOnBlur, true);
 
-        window.removeEventListener('message', this.handleDesktopCapturerMessage);
+        window.removeEventListener('message', this.handleDesktopEvents);
     }
 
     componentDidUpdate(prevProps: Props) {
@@ -190,16 +190,20 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
         }
     }
 
-    handleDesktopCapturerMessage = (event: MessageEvent) => {
-        if (event.data.type !== 'desktop-sources-result') {
+    handleDesktopEvents = (ev: MessageEvent) => {
+        if (ev.origin !== window.origin) {
             return;
         }
 
-        const sources = event.data.message;
-        this.setState({
-            sources,
-            selected: sources[0]?.id || '',
-        });
+        if (ev.data.type === 'desktop-sources-result') {
+            const sources = ev.data.message;
+            this.setState({
+                sources,
+                selected: sources[0]?.id || '',
+            });
+        } else if (ev.data.type === 'calls-error' && ev.data.message.err === 'screen-permissions') {
+            this.props.hideScreenSourceModal();
+        }
     };
 
     render() {

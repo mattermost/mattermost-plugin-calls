@@ -26,6 +26,7 @@ export default class CallsClient extends EventEmitter {
     public ws: WebSocketClient | null;
     private localScreenTrack: MediaStreamTrack | null = null;
     private remoteScreenTrack: MediaStreamTrack | null = null;
+    private remoteVoiceTracks: MediaStreamTrack[];
     public currentAudioInputDevice: MediaDeviceInfo | null = null;
     public currentAudioOutputDevice: MediaDeviceInfo | null = null;
     private voiceTrackAdded: boolean;
@@ -37,6 +38,7 @@ export default class CallsClient extends EventEmitter {
     private readonly onDeviceChange: () => void;
     private readonly onBeforeUnload: () => void;
     private closed = false;
+    private connected = false;
     public initTime = Date.now();
 
     constructor(config: CallsClientConfig) {
@@ -48,6 +50,7 @@ export default class CallsClient extends EventEmitter {
         this.currentAudioInputDevice = null;
         this.voiceTrackAdded = false;
         this.streams = [];
+        this.remoteVoiceTracks = [];
         this.stream = null;
         this.audioDevices = {inputs: [], outputs: []};
         this.isHandRaised = false;
@@ -257,6 +260,7 @@ export default class CallsClient extends EventEmitter {
 
                 if (remoteStream.getAudioTracks().length > 0) {
                     this.emit('remoteVoiceStream', remoteStream);
+                    this.remoteVoiceTracks.push(...remoteStream.getAudioTracks());
                 } else if (remoteStream.getVideoTracks().length > 0) {
                     this.emit('remoteScreenStream', remoteStream);
                     this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
@@ -266,6 +270,7 @@ export default class CallsClient extends EventEmitter {
             peer.on('connect', () => {
                 logDebug('rtc connected');
                 this.emit('connect');
+                this.connected = true;
             });
 
             peer.on('close', () => {
@@ -461,10 +466,20 @@ export default class CallsClient extends EventEmitter {
     }
 
     public getRemoteScreenStream(): MediaStream|null {
-        if (!this.remoteScreenTrack) {
+        if (!this.remoteScreenTrack || this.remoteScreenTrack.readyState !== 'live') {
             return null;
         }
         return new MediaStream([this.remoteScreenTrack]);
+    }
+
+    public getRemoteVoiceTracks(): MediaStreamTrack[] {
+        const tracks = [];
+        for (const track of this.remoteVoiceTracks) {
+            if (track.readyState === 'live') {
+                tracks.push(track);
+            }
+        }
+        return tracks;
     }
 
     public setScreenStream(screenStream: MediaStream) {
@@ -584,5 +599,9 @@ export default class CallsClient extends EventEmitter {
 
     public getAudioDevices() {
         return this.audioDevices;
+    }
+
+    public isConnecting() {
+        return !this.connected && !this.closed;
     }
 }

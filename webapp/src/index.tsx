@@ -3,6 +3,7 @@
 import axios from 'axios';
 
 import {defineMessage} from 'react-intl';
+import {AnyAction} from 'redux';
 
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
@@ -11,6 +12,8 @@ import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-re
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
+
+import {batchActions} from 'redux-batched-actions';
 
 import {
     displayFreeTrial,
@@ -599,6 +602,8 @@ export default class Plugin {
                     type: DESKTOP_WIDGET_CONNECTED,
                     data: {channelID: ev.data.message.callID},
                 });
+            } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error') {
+                store.dispatch(displayCallErrorModal(ev.data.message.callID, new Error(ev.data.message.errMsg)));
             }
         };
         window.addEventListener('message', windowEventHandler);
@@ -626,11 +631,12 @@ export default class Plugin {
             );
         };
 
-        const fetchChannels = async () => {
+        const fetchChannels = async (): Promise<AnyAction[]> => {
+            const actions = [];
             try {
                 const resp = await axios.get(`${getPluginPath()}/channels`);
                 for (let i = 0; i < resp.data.length; i++) {
-                    store.dispatch({
+                    actions.push({
                         type: VOICE_CHANNEL_USERS_CONNECTED,
                         data: {
                             users: resp.data[i].call?.users,
@@ -638,7 +644,7 @@ export default class Plugin {
                         },
                     });
                     if (!voiceChannelCallStartAt(store.getState(), resp.data[i].channel_id)) {
-                        store.dispatch({
+                        actions.push({
                             type: VOICE_CHANNEL_CALL_START,
                             data: {
                                 channelID: resp.data[i].channel_id,
@@ -652,12 +658,14 @@ export default class Plugin {
             } catch (err) {
                 logErr(err);
             }
+
+            return actions;
         };
 
-        const fetchChannelData = async (channelID: string) => {
+        const fetchChannelData = async (channelID: string): Promise<AnyAction[]> => {
             if (!channelID) {
                 // Must be Global threads view, or another view that isn't a channel.
-                return;
+                return [];
             }
 
             let channel = getChannel(store.getState(), channelID);
@@ -684,19 +692,21 @@ export default class Plugin {
                 logErr(err);
             }
 
+            const actions = [];
+
             try {
                 const resp = await axios.get(`${getPluginPath()}/${channelID}`);
-                store.dispatch({
+                actions.push({
                     type: RECEIVED_CHANNEL_STATE,
                     data: {id: channelID, enabled: resp.data.enabled},
                 });
 
                 const call = resp.data.call;
                 if (!call) {
-                    return;
+                    return actions;
                 }
 
-                store.dispatch({
+                actions.push({
                     type: VOICE_CHANNEL_CALL_START,
                     data: {
                         channelID,
@@ -706,7 +716,7 @@ export default class Plugin {
                     },
                 });
 
-                store.dispatch({
+                actions.push({
                     type: VOICE_CHANNEL_USERS_CONNECTED,
                     data: {
                         users: call.users || [],
@@ -714,7 +724,7 @@ export default class Plugin {
                     },
                 });
 
-                store.dispatch({
+                actions.push({
                     type: VOICE_CHANNEL_ROOT_POST,
                     data: {
                         channelID,
@@ -722,7 +732,7 @@ export default class Plugin {
                     },
                 });
 
-                store.dispatch({
+                actions.push({
                     type: VOICE_CHANNEL_CALL_HOST,
                     data: {
                         channelID,
@@ -731,7 +741,7 @@ export default class Plugin {
                 });
 
                 if (call.users && call.users.length > 0) {
-                    store.dispatch({
+                    actions.push({
                         type: VOICE_CHANNEL_PROFILES_CONNECTED,
                         data: {
                             profiles: await getProfilesByIds(store.getState(), call.users),
@@ -740,7 +750,7 @@ export default class Plugin {
                     });
                 }
 
-                store.dispatch({
+                actions.push({
                     type: VOICE_CHANNEL_CALL_RECORDING_STATE,
                     data: {
                         callID: channelID,
@@ -748,7 +758,7 @@ export default class Plugin {
                     },
                 });
 
-                store.dispatch({
+                actions.push({
                     type: VOICE_CHANNEL_USER_SCREEN_ON,
                     data: {
                         channelID,
@@ -762,7 +772,7 @@ export default class Plugin {
                 for (let i = 0; i < users.length; i++) {
                     userStates[users[i]] = {...states[i], id: users[i]};
                 }
-                store.dispatch({
+                actions.push({
                     type: VOICE_CHANNEL_USERS_CONNECTED_STATES,
                     data: {
                         states: userStates,
@@ -771,11 +781,13 @@ export default class Plugin {
                 });
             } catch (err) {
                 logErr(err);
-                store.dispatch({
+                actions.push({
                     type: RECEIVED_CHANNEL_STATE,
                     data: {id: channelID, enabled: false},
                 });
             }
+
+            return actions;
         };
 
         let configRetrieved = false;
@@ -792,14 +804,14 @@ export default class Plugin {
                 configRetrieved = true;
             }
 
-            await fetchChannels();
+            const actions = await fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
             if (currChannelId) {
-                fetchChannelData(currChannelId);
+                actions.push(...await fetchChannelData(currChannelId));
             } else {
                 const expandedID = getExpandedChannelID();
                 if (expandedID.length > 0) {
-                    store.dispatch({
+                    actions.push({
                         type: VOICE_CHANNEL_USER_CONNECTED,
                         data: {
                             channelID: expandedID,
@@ -807,9 +819,11 @@ export default class Plugin {
                             currentUserID: getCurrentUserId(store.getState()),
                         },
                     });
-                    fetchChannelData(expandedID);
+                    actions.push(...await fetchChannelData(expandedID));
                 }
             }
+
+            store.dispatch(batchActions(actions));
         };
 
         this.unsubscribers.push(() => {
@@ -849,7 +863,9 @@ export default class Plugin {
                     configRetrieved = true;
                 }
 
-                fetchChannelData(currChannelId);
+                fetchChannelData(currChannelId).then((actions) =>
+                    store.dispatch(batchActions(actions)),
+                );
                 if (currChannelId && Boolean(joinCallParam) && !connectedChannelID(store.getState())) {
                     connectCall(currChannelId);
                 }

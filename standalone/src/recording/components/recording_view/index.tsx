@@ -40,25 +40,36 @@ const RecordingView = () => {
     }
     const callHostID = useSelector((state: GlobalState) => voiceChannelCallHostID(state, channelID)) || '';
 
-    useEffect(() => {
-        window.callsClient?.on('remoteScreenStream', (stream: MediaStream) => {
-            setScreenStream(stream);
-        });
-        window.callsClient?.on('remoteVoiceStream', (stream: MediaStream) => {
-            const voiceTrack = stream.getAudioTracks()[0];
+    const attachVoiceTracks = (tracks: MediaStreamTrack[]) => {
+        for (const track of tracks) {
             const audioEl = document.createElement('audio');
-            audioEl.srcObject = stream;
+            audioEl.srcObject = new MediaStream([track]);
             audioEl.controls = false;
             audioEl.autoplay = true;
             audioEl.style.display = 'none';
             audioEl.onerror = (err) => logErr(err);
             document.body.appendChild(audioEl);
-            voiceTrack.onended = () => {
+            track.onended = () => {
                 audioEl.remove();
             };
+        }
+    };
+
+    useEffect(() => {
+        if (!callsClient) {
+            logErr('callsClient should be defined');
+            return;
+        }
+
+        setScreenStream(callsClient.getRemoteScreenStream());
+        callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+            setScreenStream(stream);
         });
 
-        setScreenStream(callsClient?.getRemoteScreenStream() || null);
+        attachVoiceTracks(callsClient.getRemoteVoiceTracks());
+        callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
+            attachVoiceTracks(stream.getAudioTracks());
+        });
     }, [callsClient]);
 
     useEffect(() => {

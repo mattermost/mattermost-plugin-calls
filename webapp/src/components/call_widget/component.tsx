@@ -113,7 +113,7 @@ interface State {
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
     recDisclaimerDismissedAt: number,
-    connected: boolean,
+    connecting: boolean,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -262,7 +262,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             alerts: CallAlertStatesDefault,
             recDisclaimerDismissedAt: 0,
             screenStream: null,
-            connected: false,
+            connecting: true,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -306,14 +306,74 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.sendGlobalWidgetBounds();
     }
 
+    private handleDesktopEvents = (ev: MessageEvent) => {
+        if (ev.origin !== window.origin) {
+            return;
+        }
+
+        if (ev.data.type === 'calls-error' && ev.data.message.err === 'screen-permissions') {
+            logDebug('screen permissions error');
+            this.setState({
+                alerts: {
+                    ...this.state.alerts,
+                    missingScreenPermissions: {
+                        ...this.state.alerts.missingScreenPermissions,
+                        active: true,
+                        show: true,
+                    },
+                },
+            });
+        } else if (ev.data.type === 'calls-widget-share-screen') {
+            this.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
+        }
+    }
+
+    private attachVoiceTracks(tracks: MediaStreamTrack[]) {
+        const audioEls = [];
+        for (const track of tracks) {
+            const audioEl = document.createElement('audio');
+            audioEl.srcObject = new MediaStream([track]);
+            audioEl.controls = false;
+            audioEl.autoplay = true;
+            audioEl.style.display = 'none';
+            audioEl.onerror = (err) => logErr(err);
+            audioEl.id = track.id;
+
+            const deviceID = window.callsClient?.currentAudioOutputDevice?.deviceId;
+            if (deviceID) {
+                // @ts-ignore - setSinkId is an experimental feature
+                audioEl.setSinkId(deviceID);
+            }
+
+            document.body.appendChild(audioEl);
+            track.onended = () => {
+                audioEl.srcObject = null;
+                audioEl.remove();
+            };
+
+            audioEls.push(audioEl);
+        }
+
+        this.setState({
+            audioEls: [...this.state.audioEls, ...audioEls],
+        });
+    }
+
     public componentDidMount() {
+        if (!window.callsClient) {
+            logErr('callsClient should be defined');
+            return;
+        }
+
         if (this.props.global) {
             window.visualViewport.addEventListener('resize', this.onViewportResize);
             this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
             this.menuResizeObserver.observe(this.menuNode.current!);
+            window.addEventListener('message', this.handleDesktopEvents);
         } else {
             document.addEventListener('mouseup', this.onMouseUp, false);
         }
+
         document.addEventListener('click', this.closeOnBlur, true);
         document.addEventListener('keyup', this.keyboardClose, true);
 
@@ -323,6 +383,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
             showUsersJoined: [this.props.currentUserID],
+            connecting: Boolean(window.callsClient?.isConnecting()),
         });
 
         setTimeout(() => {
@@ -331,46 +392,28 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         }, 5000);
 
-        window.callsClient?.on('remoteVoiceStream', (stream: MediaStream) => {
-            const voiceTrack = stream.getAudioTracks()[0];
-            const audioEl = document.createElement('audio');
-            audioEl.srcObject = stream;
-            audioEl.controls = false;
-            audioEl.autoplay = true;
-            audioEl.style.display = 'none';
-            audioEl.onerror = (err) => logErr(err);
-            audioEl.id = voiceTrack.id;
-
-            const deviceID = window.callsClient?.currentAudioOutputDevice?.deviceId;
-            if (deviceID) {
-                // @ts-ignore - setSinkId is an experimental feature
-                audioEl.setSinkId(deviceID);
-            }
-
-            this.setState({
-                audioEls: [...this.state.audioEls, audioEl],
-            });
-
-            document.body.appendChild(audioEl);
-            voiceTrack.onended = () => {
-                audioEl.srcObject = null;
-                audioEl.remove();
-            };
+        this.attachVoiceTracks(window.callsClient.getRemoteVoiceTracks());
+        window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
+            this.attachVoiceTracks(stream.getAudioTracks());
         });
 
-        window.callsClient?.on('remoteScreenStream', (stream: MediaStream) => {
+        // eslint-disable-next-line react/no-did-mount-set-state
+        this.setState({
+            screenStream: window.callsClient.getRemoteScreenStream(),
+        });
+        window.callsClient.on('remoteScreenStream', (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
         });
 
-        window.callsClient?.on('localScreenStream', (stream: MediaStream) => {
+        window.callsClient.on('localScreenStream', (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
         });
 
-        window.callsClient?.on('devicechange', (devices: AudioDevices) => {
+        window.callsClient.on('devicechange', (devices: AudioDevices) => {
             this.setState({
                 devices,
                 alerts: {
@@ -384,8 +427,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
-        window.callsClient?.on('connect', () => {
-            this.setState({connected: true});
+        window.callsClient.on('connect', () => {
+            this.setState({connecting: false});
 
             if (this.props.global) {
                 sendDesktopEvent('calls-joined-call', {
@@ -401,7 +444,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.setState({currentAudioOutputDevice: window.callsClient?.currentAudioOutputDevice});
         });
 
-        window.callsClient?.on('error', (err: Error) => {
+        window.callsClient.on('error', (err: Error) => {
             if (err === AudioInputPermissionsError) {
                 this.setState({
                     alerts: {
@@ -415,7 +458,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         });
 
-        window.callsClient?.on('initaudio', () => {
+        window.callsClient.on('initaudio', () => {
             this.setState({
                 alerts: {
                     ...this.state.alerts,
@@ -431,6 +474,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     public componentWillUnmount() {
         if (this.props.global) {
             window.visualViewport.removeEventListener('resize', this.onViewportResize);
+            window.removeEventListener('message', this.handleDesktopEvents);
         } else {
             document.removeEventListener('mouseup', this.onMouseUp, false);
         }
@@ -545,6 +589,35 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     };
 
+    private shareScreen = async (sourceID: string, withAudio: boolean) => {
+        const state = {} as State;
+        const stream = await window.callsClient?.shareScreen(sourceID, hasExperimentalFlag());
+        if (stream) {
+            state.screenStream = stream;
+            state.alerts = {
+                ...this.state.alerts,
+                missingScreenPermissions: {
+                    ...this.state.alerts.missingScreenPermissions,
+                    active: false,
+                    show: false,
+                },
+            };
+        } else {
+            state.alerts = {
+                ...this.state.alerts,
+                missingScreenPermissions: {
+                    ...this.state.alerts.missingScreenPermissions,
+                    active: true,
+                    show: true,
+                },
+            };
+        }
+
+        this.setState({
+            ...state,
+        });
+    }
+
     onShareScreenToggle = async (fromShortcut?: boolean) => {
         if (!this.props.allowScreenSharing) {
             return;
@@ -563,27 +636,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     this.props.showScreenSourceModal();
                 }
             } else {
-                const stream = await window.callsClient?.shareScreen('', hasExperimentalFlag());
-                if (stream) {
-                    state.screenStream = stream;
-                    state.alerts = {
-                        ...this.state.alerts,
-                        missingScreenPermissions: {
-                            ...this.state.alerts.missingScreenPermissions,
-                            active: false,
-                            show: false,
-                        },
-                    };
-                } else {
-                    state.alerts = {
-                        ...this.state.alerts,
-                        missingScreenPermissions: {
-                            ...this.state.alerts.missingScreenPermissions,
-                            active: true,
-                            show: true,
-                        },
-                    };
-                }
+                await this.shareScreen('', hasExperimentalFlag());
             }
             this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
@@ -742,7 +795,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     style={this.style.screenSharingPanel as CSSProperties}
                 >
                     <div
-                        style={{position: 'relative', width: '80%', background: '#C4C4C4'}}
+                        style={{position: 'relative', width: '80%', maxHeight: '188px', background: '#C4C4C4'}}
                     >
                         <video
                             id='screen-player'
@@ -1496,7 +1549,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <div style={{display: 'flex', flexDirection: 'column-reverse'}}>
                     {joinedUsers}
                 </div>
-                {this.state.connected &&
+                {!this.state.connecting &&
                     <div className='calls-notification-bar calls-slide-top'>
                         {notificationContent}
                     </div>
@@ -1706,7 +1759,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 style={mainStyle}
                 ref={this.node}
             >
-                <LoadingOverlay visible={this.state.connected}/>
+                <LoadingOverlay visible={this.state.connecting}/>
 
                 <div
                     ref={this.menuNode}

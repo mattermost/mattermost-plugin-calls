@@ -166,7 +166,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             callsClient?.on('close', () => window.close());
 
             // don't allow navigation in expanded window e.g. permalinks in rhs
-            this.#unlockNavigation = props.history.block(() => {
+            this.#unlockNavigation = props.history.block((tx) => {
+                sendDesktopEvent('calls-link-click', {link: tx.pathname});
                 return false;
             });
         } else if (window.desktop) {

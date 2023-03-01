@@ -99,7 +99,7 @@ function connectCall(
     wsURL: string,
     iceConfigs: RTCIceServer[],
     wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void,
-    closeCb?: () => void,
+    closeCb?: (err?: Error) => void,
 ) {
     try {
         if (window.callsClient) {
@@ -113,9 +113,9 @@ function connectCall(
             authToken: getToken(),
         });
 
-        window.callsClient.on('close', () => {
+        window.callsClient.on('close', (err?: Error) => {
             if (closeCb) {
-                closeCb();
+                closeCb(err);
             }
         });
 
@@ -124,7 +124,7 @@ function connectCall(
         }).catch((err: Error) => {
             logErr(err);
             if (closeCb) {
-                closeCb();
+                closeCb(err);
             }
         });
     } catch (err) {

@@ -47,9 +47,6 @@ async function initWidget(store: Store, theme: Theme, channelID: string) {
         case 'register-desktop':
             window.desktop = ev.data.message;
             break;
-        case 'calls-widget-share-screen':
-            window.callsClient?.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
-            break;
         }
     });
     sendDesktopEvent('get-app-version');
@@ -82,8 +79,16 @@ async function initStoreWidget(store: Store, channelID: string) {
     }
 }
 
-function deinitWidget() {
+function deinitWidget(err?: Error) {
     playSound('leave_self');
+
+    if (err) {
+        sendDesktopEvent('calls-error', {
+            err: 'client-error',
+            callID: window.callsClient?.channelID,
+            errMsg: err.message,
+        });
+    }
 
     // Using setTimeout to give the app enough time to play the sound before
     // closing the widget window.
@@ -96,7 +101,7 @@ function deinitWidget() {
         }
         logDebug('sending leave call message to desktop app');
         sendDesktopEvent('calls-leave-call');
-    }, 200);
+    }, 250);
 }
 
 init({
