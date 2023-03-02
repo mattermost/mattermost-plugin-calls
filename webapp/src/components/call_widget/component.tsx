@@ -321,7 +321,43 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
+    private attachVoiceTracks(tracks: MediaStreamTrack[]) {
+        const audioEls = [];
+        for (const track of tracks) {
+            const audioEl = document.createElement('audio');
+            audioEl.srcObject = new MediaStream([track]);
+            audioEl.controls = false;
+            audioEl.autoplay = true;
+            audioEl.style.display = 'none';
+            audioEl.onerror = (err) => logErr(err);
+            audioEl.setAttribute('data-testid', track.id);
+
+            const deviceID = window.callsClient?.currentAudioOutputDevice?.deviceId;
+            if (deviceID) {
+                // @ts-ignore - setSinkId is an experimental feature
+                audioEl.setSinkId(deviceID);
+            }
+
+            document.body.appendChild(audioEl);
+            track.onended = () => {
+                audioEl.srcObject = null;
+                audioEl.remove();
+            };
+
+            audioEls.push(audioEl);
+        }
+
+        this.setState({
+            audioEls: [...this.state.audioEls, ...audioEls],
+        });
+    }
+
     public componentDidMount() {
+        if (!window.callsClient) {
+            logErr('callsClient should be defined');
+            return;
+        }
+
         if (this.props.global) {
             window.visualViewport.addEventListener('resize', this.onViewportResize);
             this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
@@ -349,40 +385,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         }, 5000);
 
-        window.callsClient?.on('remoteVoiceStream', (stream: MediaStream) => {
-            const voiceTrack = stream.getAudioTracks()[0];
-            const audioEl = document.createElement('audio');
-            audioEl.srcObject = stream;
-            audioEl.controls = false;
-            audioEl.autoplay = true;
-            audioEl.style.display = 'none';
-            audioEl.onerror = (err) => logErr(err);
-            audioEl.setAttribute('data-testid', voiceTrack.id);
-
-            const deviceID = window.callsClient?.currentAudioOutputDevice?.deviceId;
-            if (deviceID) {
-                // @ts-ignore - setSinkId is an experimental feature
-                audioEl.setSinkId(deviceID);
-            }
-
-            this.setState({
-                audioEls: [...this.state.audioEls, audioEl],
-            });
-
-            document.body.appendChild(audioEl);
-            voiceTrack.onended = () => {
-                audioEl.srcObject = null;
-                audioEl.remove();
-            };
+        this.attachVoiceTracks(window.callsClient.getRemoteVoiceTracks());
+        window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
+            this.attachVoiceTracks(stream.getAudioTracks());
         });
 
-        window.callsClient?.on('remoteScreenStream', (stream: MediaStream) => {
+        // eslint-disable-next-line react/no-did-mount-set-state
+        this.setState({
+            screenStream: window.callsClient.getRemoteScreenStream(),
+        });
+        window.callsClient.on('remoteScreenStream', (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
         });
 
-        window.callsClient?.on('devicechange', (devices: AudioDevices) => {
+        window.callsClient.on('devicechange', (devices: AudioDevices) => {
             this.setState({
                 devices,
                 alerts: {
@@ -396,7 +414,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
-        window.callsClient?.on('connect', () => {
+        window.callsClient.on('connect', () => {
             this.setState({connecting: false});
 
             if (this.props.global) {
@@ -413,7 +431,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.setState({currentAudioOutputDevice: window.callsClient?.currentAudioOutputDevice});
         });
 
-        window.callsClient?.on('error', (err: Error) => {
+        window.callsClient.on('error', (err: Error) => {
             if (err === AudioInputPermissionsError) {
                 this.setState({
                     alerts: {
@@ -427,7 +445,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         });
 
-        window.callsClient?.on('initaudio', () => {
+        window.callsClient.on('initaudio', () => {
             this.setState({
                 alerts: {
                     ...this.state.alerts,
