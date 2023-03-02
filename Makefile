@@ -59,6 +59,7 @@ gomod-check:
 i18n-check:
 	@echo Checking i18n files
 	cd webapp && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
+	cd standalone && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style
@@ -321,6 +322,7 @@ test-e2e-update-snapshots:
 i18n-extract:
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run extract
+	cd standalone && $(NPM) run extract
 endif
 
 ## Disable the plugin.

@@ -226,7 +226,7 @@ export default class Plugin {
     }
 
     public initialize(registry: PluginRegistry, store: Store) {
-        if (!isMinimumServerVersion(getServerVersion(store.getState()), 7, 9, 0)) {
+        if (!isMinimumServerVersion(getServerVersion(store.getState()), 7, 10, 0)) {
             // synchronously loading all translation files to support earlier server versions.
             let translations: Record<string, Translations> = {};
             try {
@@ -408,7 +408,7 @@ export default class Plugin {
                     wsURL: getWSConnectionURL(getConfig(store.getState())),
                     iceServers: iceConfigs,
                 });
-                const globalComponentID = registry.registerGlobalComponent(injectIntl(CallWidget));
+                const globalComponentID = registry.registerGlobalComponent(CallWidget);
                 const rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
                 window.callsClient.on('close', (err?: Error) => {
                     registry.unregisterComponent(globalComponentID);

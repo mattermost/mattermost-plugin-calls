@@ -12,7 +12,6 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {Theme} from 'mattermost-redux/types/themes';
-import {Store} from 'src/types/mattermost-webapp';
 
 import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallRecordingState, UserState} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
@@ -57,7 +56,6 @@ import './component.scss';
 
 interface Props {
     intl: IntlShape,
-    store: Store,
     theme: Theme,
     currentUserID: string,
     channel: Channel,

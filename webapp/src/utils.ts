@@ -389,7 +389,7 @@ export async function fetchTranslationsFile(locale: string) {
         if (!filename) {
             throw new Error(`translations file not found for locale '${locale}'`);
         }
-        const res = await fetch(getPluginStaticPath() + filename);
+        const res = await fetch(filename.indexOf('/') === 0 ? getPluginStaticPath() + filename : filename);
         const translations = await res.json();
         logDebug(`loaded i18n file for locale '${locale}'`);
         return translations;
