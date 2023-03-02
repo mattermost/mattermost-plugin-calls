@@ -3,6 +3,7 @@ import {defineMessage} from 'react-intl';
 import {CommandArgs} from '@mattermost/types/integrations';
 
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {ActionResult} from 'mattermost-redux/types/actions';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 
@@ -61,13 +62,16 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
                 title = fields.slice(2).join(' ');
             }
 
-            let channel = getChannel(store.getState(), args.channel_id);
-            if (!channel) {
-                await store.dispatch(getChannelAction(args.channel_id));
-                channel = getChannel(store.getState(), args.channel_id);
+            let team_id = args?.team_id;
+            if (!team_id) {
+                let channel = getChannel(store.getState(), args.channel_id);
+                if (!channel) {
+                    const res = await store.dispatch(getChannelAction(args.channel_id)) as ActionResult;
+                    channel = res.data;
+                }
+                team_id = channel?.team_id;
             }
 
-            const team_id = args?.team_id || channel.team_id;
             try {
                 await joinCall(args.channel_id, team_id, title, args.root_id);
                 return {};
