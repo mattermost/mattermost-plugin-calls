@@ -4,6 +4,7 @@ import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
+import {getUserIdxForTest} from '../utils';
 
 declare global {
     interface Window {
@@ -11,6 +12,8 @@ declare global {
         desktop: any,
     }
 }
+
+const userIdx = getUserIdxForTest();
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -50,7 +53,7 @@ test.describe('start/join call in channel with calls disabled', () => {
 });
 
 test.describe('start new call', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('channel header button', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -71,7 +74,7 @@ test.describe('start new call', () => {
 
     test('dm channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[1].username);
+        await devPage.gotoDM(userState.users[userIdx + 1].username);
         await devPage.startCall();
         await devPage.wait(1000);
         expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('dm-calls-widget-bottom-bar.png');
@@ -112,7 +115,7 @@ test.describe('start new call', () => {
         await expect(page.locator('#calls-widget')).toBeVisible();
 
         // verify the call post is created in the thread.
-        await expect(page.locator('#rhsContainer').filter({has: page.getByText(`${userState.users[0].username} started a call`)})).toBeVisible();
+        await expect(page.locator('#rhsContainer').filter({has: page.getByText(`${userState.users[userIdx].username} started a call`)})).toBeVisible();
 
         await page.locator('#reply_textbox').fill('/call leave');
         await page.locator('#reply_textbox').press('Enter');
@@ -131,7 +134,7 @@ test.describe('start new call', () => {
 });
 
 test.describe('desktop', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('screen sharing < 5.1.0', async ({page}) => {
         await page.evaluate(() => {
@@ -182,7 +185,7 @@ test.describe('desktop', () => {
 });
 
 test.describe('auto join link', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('public channel', async ({page, context}) => {
         await page.locator('#post_textbox').fill('/call link');
@@ -206,7 +209,7 @@ test.describe('auto join link', () => {
 
     test('dm channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[1].username);
+        await devPage.gotoDM(userState.users[userIdx + 1].username);
 
         await page.locator('#post_textbox').fill('/call link');
         await page.locator('[data-testid=SendMessageButton]').click();
@@ -229,7 +232,7 @@ test.describe('auto join link', () => {
 });
 
 test.describe('setting audio input device', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('no default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -302,7 +305,7 @@ test.describe('setting audio input device', () => {
 });
 
 test.describe('setting audio output device', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('no default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -375,7 +378,7 @@ test.describe('setting audio output device', () => {
 });
 
 test.describe('switching products', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('boards', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);

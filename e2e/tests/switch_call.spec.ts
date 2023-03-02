@@ -2,6 +2,9 @@ import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
+import {getUserIdxForTest, getChannelNameForTest} from '../utils';
+
+const userIdx = getUserIdxForTest();
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -9,14 +12,13 @@ test.beforeEach(async ({page, context}) => {
 });
 
 test.describe('switch call', () => {
-    test.use({storageState: userState.users[5].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('exit modal - cancel button', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
-        const idx = (parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2) + 1;
-        await page.locator(`#sidebarItem_calls${idx}`).click();
+        await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
 
         const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start Call")');
         await expect(startCallButton).toBeVisible();
@@ -33,8 +35,7 @@ test.describe('switch call', () => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
-        const idx = (parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2) + 1;
-        await page.locator(`#sidebarItem_calls${idx}`).click();
+        await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
 
         const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start Call")');
         await expect(startCallButton).toBeVisible();
@@ -51,8 +52,7 @@ test.describe('switch call', () => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
-        const idx = (parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2) + 1;
-        await page.locator(`#sidebarItem_calls${idx}`).click();
+        await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
 
         const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start Call")');
         await expect(startCallButton).toBeVisible();
@@ -69,8 +69,7 @@ test.describe('switch call', () => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
-        const idx = (parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2) + 1;
-        await page.locator(`#sidebarItem_calls${idx}`).click();
+        await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
 
         const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start Call")');
         await expect(startCallButton).toBeVisible();
@@ -87,8 +86,7 @@ test.describe('switch call', () => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
-        const idx = (parseInt(process.env.TEST_PARALLEL_INDEX as string, 10) * 2) + 1;
-        await page.locator(`#sidebarItem_calls${idx}`).click();
+        await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
 
         const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start Call")');
         await expect(startCallButton).toBeVisible();

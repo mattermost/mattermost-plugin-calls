@@ -20,7 +20,6 @@ export default class PlaywrightDevPage {
     }
 
     async leaveCall() {
-        await expect(this.page.locator('#calls-widget-leave-button')).toBeVisible();
         await this.page.locator('#calls-widget-leave-button').click();
         await expect(this.page.locator('#calls-widget')).toBeHidden();
     }
@@ -30,6 +29,7 @@ export default class PlaywrightDevPage {
         await expect(startCallButton).toBeVisible();
         await startCallButton.click();
         await expect(this.page.locator('#calls-widget')).toBeVisible();
+        await expect(this.page.locator('#calls-widget-loading-overlay')).toBeHidden();
     }
 
     async joinCall() {
@@ -37,6 +37,7 @@ export default class PlaywrightDevPage {
         await expect(joinCallButton).toBeVisible();
         await joinCallButton.click();
         await expect(this.page.locator('#calls-widget')).toBeVisible();
+        await expect(this.page.locator('#calls-widget-loading-overlay')).toBeHidden();
     }
 
     async enableCalls() {

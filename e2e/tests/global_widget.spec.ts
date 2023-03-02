@@ -2,10 +2,10 @@ import {test, expect, chromium} from '@playwright/test';
 
 import {userState, baseURL, defaultTeam, pluginID} from '../constants';
 
-import {getChannelNameForTest} from '../utils';
+import {getChannelNameForTest, getUserIdxForTest} from '../utils';
 
 test.describe('global widget', () => {
-    test.use({storageState: userState.users[6].storageStatePath});
+    test.use({storageState: userState.users[getUserIdxForTest()].storageStatePath});
 
     test('start call', async ({page, request}) => {
         const channelName = getChannelNameForTest();
