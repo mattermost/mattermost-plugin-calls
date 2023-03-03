@@ -30,6 +30,7 @@ import {
 import slashCommandsHandler from 'src/slash_commands';
 
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
+import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
@@ -254,6 +255,7 @@ export default class Plugin {
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
         registry.registerChannelToastComponent(injectIntl(ChannelCallToast));
         registry.registerPostTypeComponent('custom_calls', PostType);
+        registry.registerPostTypeComponent('custom_calls_recording', PostTypeRecording);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
         registry.registerNeedsTeamRoute('/expanded', injectIntl(ExpandedView));
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));

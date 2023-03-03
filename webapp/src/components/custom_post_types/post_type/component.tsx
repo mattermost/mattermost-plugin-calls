@@ -1,12 +1,16 @@
 import React from 'react';
+import {useSelector} from 'react-redux';
 import {useIntl} from 'react-intl';
 import moment from 'moment-timezone';
 import styled from 'styled-components';
 
+import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {Post} from '@mattermost/types/posts';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+
+import {getUser} from 'mattermost-redux/selectors/entities/users';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
@@ -19,6 +23,7 @@ import {
     shouldRenderDesktopWidget,
     sendDesktopEvent,
     untranslatable,
+    getUserDisplayName,
 } from 'src/utils';
 
 interface Props {
@@ -41,6 +46,8 @@ const PostType = ({
     maxParticipants,
 }: Props) => {
     const {formatMessage} = useIntl();
+
+    const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
 
     const onJoinCallClick = () => {
         if (connectedID) {
@@ -148,7 +155,14 @@ const PostType = ({
                             }
                         </CallIndicator>
                         <MessageWrapper>
-                            <Message>{post.message}</Message>
+                            <Message>
+                                { !post.props.end_at &&
+                                    formatMessage({defaultMessage: '{user} started a call'}, {user: getUserDisplayName(user)})
+                                }
+                                { post.props.end_at &&
+                                    formatMessage({defaultMessage: 'Call ended'})
+                                }
+                            </Message>
                             <SubMessage>{subMessage}</SubMessage>
                         </MessageWrapper>
                     </Left>
