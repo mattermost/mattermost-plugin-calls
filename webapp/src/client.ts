@@ -217,7 +217,7 @@ export default class CallsClient extends EventEmitter {
 
             const peer = new RTCPeer({
                 iceServers: this.config.iceServers || [],
-            }, logDebug);
+            }, {logDebug});
 
             this.peer = peer;
 

@@ -8,25 +8,46 @@ import {
 
 const rtcConnFailedErr = new Error('rtc connection failed');
 
+export interface RTCPeerOpts {
+    logDebug: (...args: unknown[]) => void;
+    webrtc?: Webrtc;
+}
+
+export interface Webrtc {
+    MediaStream: typeof MediaStream,
+    RTCPeerConnection: typeof RTCPeerConnection,
+}
+
 export class RTCPeer extends EventEmitter {
     private pc: RTCPeerConnection | null;
-    private readonly senders: {[key: string]: RTCRtpSender};
+    private readonly senders: { [key: string]: RTCRtpSender };
     private readonly logDebug: (...args: unknown[]) => void;
+    private readonly webrtc: Webrtc;
 
     private makingOffer = false;
     private candidates: RTCIceCandidate[] = [];
 
     public connected: boolean;
 
-    constructor(config: RTCPeerConfig, logDebug: (...args: unknown[]) => void) {
+    constructor(config: RTCPeerConfig, opts: RTCPeerOpts) {
         super();
-        this.logDebug = logDebug;
+        this.logDebug = opts.logDebug;
+
+        // use the provided webrtc methods (for mobile), or the build in lib.dom methods (for webapp)
+        if (opts.webrtc) {
+            this.webrtc = opts.webrtc;
+        } else {
+            this.webrtc = {
+                MediaStream,
+                RTCPeerConnection,
+            };
+        }
 
         // We keep a map of track IDs -> RTP sender so that we can easily
         // replace tracks when muting/unmuting.
         this.senders = {};
 
-        this.pc = new RTCPeerConnection(config);
+        this.pc = new this.webrtc.RTCPeerConnection(config);
         this.pc.onnegotiationneeded = () => this.onNegotiationNeeded();
         this.pc.onicecandidate = (ev) => this.onICECandidate(ev);
         this.pc.oniceconnectionstatechange = () => this.onICEConnectionStateChange();
@@ -87,7 +108,7 @@ export class RTCPeer extends EventEmitter {
 
     private onTrack(ev: RTCTrackEvent) {
         if (ev.streams.length === 0) {
-            this.emit('stream', new MediaStream([ev.track]));
+            this.emit('stream', new this.webrtc.MediaStream([ev.track]));
             return;
         }
         this.emit('stream', ev.streams[0]);
