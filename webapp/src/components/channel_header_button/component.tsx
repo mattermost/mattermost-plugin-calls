@@ -1,4 +1,5 @@
 import React from 'react';
+import {useIntl} from 'react-intl';
 
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
@@ -30,6 +31,8 @@ const ChannelHeaderButton = ({
     maxParticipants,
     isChannelArchived,
 }: Props) => {
+    const {formatMessage} = useIntl();
+
     if (!show) {
         return null;
     }
@@ -47,7 +50,7 @@ const ChannelHeaderButton = ({
             <CompassIcon icon='phone-outline'/>
             <div>
                 <span className='call-button-label'>
-                    {hasCall ? 'Join call' : 'Start call'}
+                    {hasCall ? formatMessage({defaultMessage: 'Join call'}) : formatMessage({defaultMessage: 'Start call'})}
                 </span>
             </div>
             {withUpsellIcon &&
@@ -63,7 +66,7 @@ const ChannelHeaderButton = ({
                 rootClose={true}
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
-                        {'Calls are not available in archived channels.'}
+                        {formatMessage({defaultMessage: 'Calls are not available in archived channels.'})}
                     </Tooltip>
                 }
             >
@@ -82,10 +85,10 @@ const ChannelHeaderButton = ({
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
-                            {'Mattermost Cloud Professional feature'}
+                            {formatMessage({defaultMessage: 'Mattermost Cloud Professional feature'})}
                         </Header>
                         <SubHeader>
-                            {'This is a paid feature, available with a free 30-day trial'}
+                            {formatMessage({defaultMessage: 'This is a paid feature, available with a free 30-day trial'})}
                         </SubHeader>
                     </Tooltip>
                 }
@@ -104,22 +107,22 @@ const ChannelHeaderButton = ({
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
-                            {`This call is at its maximum capacity of ${maxParticipants} participants.`}
+                            {formatMessage({defaultMessage: 'This call is at its maximum capacity of {count} {count, plural, =1 {# participant} other {# participants}}.'}, {count: maxParticipants})}
                         </Header>
 
                         {isCloudStarter && !isAdmin &&
                             <SubHeader>
-                                {'Contact your system admin for more information about call capacity.'}
+                                {formatMessage({defaultMessage: 'Contact your system admin for more information about call capacity.'})}
                             </SubHeader>
                         }
                         {isCloudStarter && isAdmin &&
                             <SubHeader>
-                                {`Upgrade to Cloud Professional or Cloud Enterprise to enable group calls with more than ${maxParticipants} participants.`}
+                                {formatMessage({defaultMessage: 'Upgrade to Cloud Professional or Cloud Enterprise to enable group calls with more than {count} {count, plural, =1 {# participant} other {# participants}}.'}, {count: maxParticipants})}
                             </SubHeader>
                         }
                         {isCloudPaid &&
                             <SubHeader>
-                                {`At the moment, ${maxParticipants} is the participant limit for cloud calls.`}
+                                {formatMessage({defaultMessage: 'At the moment, {count} is the participant limit for cloud calls.'}, {count: maxParticipants})}
                             </SubHeader>
                         }
                     </Tooltip>
