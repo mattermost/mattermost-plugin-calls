@@ -260,7 +260,7 @@ export default class Plugin {
         registry.registerGlobalComponent(ScreenSourceModal);
         registry.registerGlobalComponent(EndCallModal);
 
-        if (isMinimumServerVersion(getServerVersion(store.getState()), 7, 9, 0)) {
+        if (isMinimumServerVersion(getServerVersion(store.getState()), 7, 10, 0)) {
             // new server versions support dynamic fetching.
             registry.registerTranslations(fetchTranslationsFile);
         }

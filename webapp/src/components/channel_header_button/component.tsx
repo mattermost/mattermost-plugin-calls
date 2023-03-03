@@ -107,7 +107,7 @@ const ChannelHeaderButton = ({
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         <Header>
-                            {formatMessage({defaultMessage: 'This call is at its maximum capacity of {count} {count, plural, =1 {# participant} other {# participants}}.'}, {count: maxParticipants})}
+                            {formatMessage({defaultMessage: 'This call is at its maximum capacity of {count, plural, =1 {# participant} other {# participants}}.'}, {count: maxParticipants})}
                         </Header>
 
                         {isCloudStarter && !isAdmin &&
@@ -117,7 +117,7 @@ const ChannelHeaderButton = ({
                         }
                         {isCloudStarter && isAdmin &&
                             <SubHeader>
-                                {formatMessage({defaultMessage: 'Upgrade to Cloud Professional or Cloud Enterprise to enable group calls with more than {count} {count, plural, =1 {# participant} other {# participants}}.'}, {count: maxParticipants})}
+                                {formatMessage({defaultMessage: 'Upgrade to Cloud Professional or Cloud Enterprise to enable group calls with more than {count, plural, =1 {# participant} other {# participants}}.'}, {count: maxParticipants})}
                             </SubHeader>
                         }
                         {isCloudPaid &&

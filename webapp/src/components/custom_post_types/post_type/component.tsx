@@ -1,4 +1,5 @@
 import React from 'react';
+import {useIntl} from 'react-intl';
 import moment from 'moment-timezone';
 import styled from 'styled-components';
 
@@ -17,6 +18,7 @@ import {Header, SubHeader} from 'src/components/shared';
 import {
     shouldRenderDesktopWidget,
     sendDesktopEvent,
+    untranslatable,
 } from 'src/utils';
 
 interface Props {
@@ -38,6 +40,8 @@ const PostType = ({
     isCloudPaid,
     maxParticipants,
 }: Props) => {
+    const {formatMessage} = useIntl();
+
     const onJoinCallClick = () => {
         if (connectedID) {
             showSwitchCallModal(post.channel_id);
@@ -58,20 +62,20 @@ const PostType = ({
 
     const recordingsSubMessage = recordings > 0 ? (
         <>
-            <Divider>{'•'}</Divider>
+            <Divider>{untranslatable('•')}</Divider>
             <CompassIcon icon='file-video-outline'/>
-            <span>{`${recordings} recording${recordings > 1 ? 's' : ''} available`}</span>
+            <span>{formatMessage({defaultMessage: '{count, plural, =1 {# recording} other {# recordings}} available'}, {count: recordings})}</span>
         </>
     ) : null;
 
     const subMessage = post.props.end_at ? (
         <>
             <Duration>
-                {`Ended at ${moment(post.props.end_at).format('h:mm A')}`}
+                {formatMessage({defaultMessage: 'Ended at {endTime}'}, {endTime: moment(post.props.end_at).format('h:mm A')})}
             </Duration>
-            <Divider>{'•'}</Divider>
+            <Divider>{untranslatable('•')}</Divider>
             <Duration>
-                {`Lasted ${moment.duration(post.props.end_at - post.props.start_at).humanize(false)}`}
+                {formatMessage({defaultMessage: 'Lasted {callDuration}'}, {callDuration: moment.duration(post.props.end_at - post.props.start_at).humanize(false)})}
             </Duration>
             { recordingsSubMessage }
         </>
@@ -82,7 +86,7 @@ const PostType = ({
     let joinButton = (
         <JoinButton onClick={onJoinCallClick}>
             <CallIcon fill='var(--center-channel-bg)'/>
-            <ButtonText>{'Join call'}</ButtonText>
+            <ButtonText>{formatMessage({defaultMessage: 'Join call'})}</ButtonText>
         </JoinButton>
     );
 
@@ -94,11 +98,11 @@ const PostType = ({
                 overlay={
                     <Tooltip id='tooltip-limit'>
                         <Header>
-                            {`Sorry, participants per call are currently limited to ${maxParticipants}.`}
+                            {formatMessage({defaultMessage: 'Sorry, participants per call are currently limited to {count}.'}, {count: maxParticipants})}
                         </Header>
                         { isCloudPaid &&
                         <SubHeader>
-                            {'This is because Calls is in the Beta phase. We’re working to remove this limit soon.'}
+                            {formatMessage({defaultMessage: 'This is because Calls is in the Beta phase. We’re working to remove this limit soon.'})}
                         </SubHeader>
                         }
                     </Tooltip>
@@ -106,7 +110,7 @@ const PostType = ({
             >
                 <DisabledButton>
                     <CallIcon fill='rgba(var(--center-channel-color-rgb), 0.32)'/>
-                    <ButtonText>{'Join call'}</ButtonText>
+                    <ButtonText>{formatMessage({defaultMessage: 'Join call'})}</ButtonText>
                 </DisabledButton>
             </OverlayTrigger>
         );
@@ -117,7 +121,7 @@ const PostType = ({
     const button = inCall ? (
         <LeaveButton onClick={onLeaveButtonClick}>
             <LeaveCallIcon fill='var(--error-text)'/>
-            <ButtonText>{'Leave call'}</ButtonText>
+            <ButtonText>{formatMessage({defaultMessage: 'Leave call'})}</ButtonText>
         </LeaveButton>
     ) : joinButton;
 
