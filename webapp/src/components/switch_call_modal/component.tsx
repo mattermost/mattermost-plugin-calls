@@ -1,4 +1,5 @@
 import React, {CSSProperties} from 'react';
+import {IntlShape} from 'react-intl';
 
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
@@ -12,6 +13,7 @@ import CompassIcon from 'src/components/icons/compassIcon';
 import './component.scss';
 
 interface Props {
+    intl: IntlShape,
     theme: Theme,
     currentChannel: Channel,
     connectedChannel: Channel,

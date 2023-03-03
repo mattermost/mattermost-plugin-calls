@@ -1,4 +1,5 @@
 import React from 'react';
+import {IntlShape} from 'react-intl';
 import moment from 'moment-timezone';
 
 import {UserProfile} from '@mattermost/types/users';
@@ -7,6 +8,7 @@ import ActiveCallIcon from '../../components/icons/active_call_icon';
 import ConnectedProfiles from '../../components/connected_profiles';
 
 interface Props {
+    intl: IntlShape,
     currChannelID: string,
     connectedID?: string,
     hasCall: boolean,

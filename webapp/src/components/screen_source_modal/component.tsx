@@ -1,4 +1,5 @@
 import React, {CSSProperties} from 'react';
+import {IntlShape} from 'react-intl';
 
 import {Channel} from '@mattermost/types/channels';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
@@ -11,6 +12,7 @@ import './component.scss';
 import {CapturerSource} from 'src/types/types';
 
 interface Props {
+    intl: IntlShape,
     theme: Theme,
     connectedChannel: Channel,
     show: boolean,
