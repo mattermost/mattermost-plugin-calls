@@ -6,9 +6,10 @@ const config: PlaywrightTestConfig = {
     forbidOnly: Boolean(process.env.CI),
     retries: process.env.CI ? 2 : 1,
     workers: 4,
-    timeout: 30 * 1000,
+    fullyParallel: true,
+    timeout: 60 * 1000,
     expect: {
-        timeout: 20 * 1000,
+        timeout: 30 * 1000,
         toMatchSnapshot: {
             maxDiffPixelRatio: 0.05,
         },
@@ -24,6 +25,8 @@ const config: PlaywrightTestConfig = {
             args: [
                 '--use-fake-device-for-media-stream',
                 '--use-fake-ui-for-media-stream',
+                '--auto-select-desktop-capture-source="Entire screen"',
+                '--use-file-for-fake-audio-capture=./assets/sample.wav',
             ],
         },
     },

@@ -330,7 +330,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEl.autoplay = true;
             audioEl.style.display = 'none';
             audioEl.onerror = (err) => logErr(err);
-            audioEl.id = track.id;
+            audioEl.setAttribute('data-testid', track.id);
 
             const deviceID = window.callsClient?.currentAudioOutputDevice?.deviceId;
             if (deviceID) {
@@ -485,7 +485,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             screenStream = window.callsClient?.getLocalScreenStream();
         }
 
-        const hasScreenTrackChanged = screenStream && this.state.screenStream?.getVideoTracks()[0].id !== screenStream.getVideoTracks()[0].id;
+        const hasScreenTrackChanged = screenStream && this.state.screenStream?.getVideoTracks()[0]?.id !== screenStream.getVideoTracks()[0]?.id;
         if ((screenStream && !this.state.screenStream) || hasScreenTrackChanged) {
             // eslint-disable-next-line react/no-did-update-set-state
             this.setState({screenStream});
@@ -771,6 +771,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         }}
                     >
                         <button
+                            data-testid='calls-widget-stop-screenshare'
                             className='cursor--pointer style--none'
                             style={{
                                 display: 'flex',
@@ -1412,6 +1413,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         return (
             <WidgetBanner
+                id={'calls-widget-banner-recording'}
                 key={'widget_banner_recording_disclaimer'}
                 type='info'
                 icon={icon}
@@ -1450,6 +1452,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <React.Fragment>
                 <Badge
+                    id={'calls-recording-badge'}
                     text={'REC'}
                     textSize={11}
                     gap={2}
@@ -1473,6 +1476,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             return (
                 <WidgetBanner
+                    id={'calls-widget-banner-alert'}
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
                     header={alertConfig.bannerText}

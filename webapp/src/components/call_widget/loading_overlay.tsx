@@ -18,6 +18,7 @@ export default function LoadingOverlay(props: Props) {
 
     return (
         <Container
+            data-testid={'calls-widget-loading-overlay'}
             visible={props.visible}
             onAnimationEnd={onAnimationEnd}
         >
