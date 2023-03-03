@@ -258,7 +258,7 @@ export default class Plugin {
         registry.registerNeedsTeamRoute('/expanded', injectIntl(ExpandedView));
         registry.registerGlobalComponent(SwitchCallModal);
         registry.registerGlobalComponent(ScreenSourceModal);
-        registry.registerGlobalComponent(EndCallModal);
+        registry.registerGlobalComponent(injectIntl(EndCallModal));
 
         if (isMinimumServerVersion(getServerVersion(store.getState()), 7, 10, 0)) {
             // new server versions support dynamic fetching.
