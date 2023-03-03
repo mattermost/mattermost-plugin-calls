@@ -58,6 +58,8 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
     };
 
     render() {
+        const {formatMessage} = this.props.intl;
+
         if (!this.props.hasCall || this.state.hidden || this.props.isLimitRestricted) {
             return null;
         }
@@ -77,8 +79,10 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
                             fill='white'
                             style={{margin: '0 4px'}}
                         />
-                        <span style={{margin: '0 4px'}}>{'Join Call'}</span>
-                        <span style={{opacity: '0.80', margin: '0 4px'}}>{`Started ${moment(this.props.startAt).fromNow()}`}</span>
+                        <span style={{margin: '0 4px'}}>{formatMessage({defaultMessage: 'Join Call'})}</span>
+                        <span style={{opacity: '0.80', margin: '0 4px'}}>
+                            {formatMessage({defaultMessage: 'Started {callStartedAt}'}, {callStartedAt: moment(this.props.startAt).fromNow()})}
+                        </span>
                         <div/>
                     </div>
                 </div>
@@ -113,7 +117,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
                             height='24px'
                             viewBox='0 0 24 24'
                             role='img'
-                            aria-label='Close Icon'
+                            aria-label={formatMessage({defaultMessage: 'Close Icon'})}
                         >
                             <path
                                 fillRule='nonzero'
