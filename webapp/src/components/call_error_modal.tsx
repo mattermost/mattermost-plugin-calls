@@ -1,4 +1,5 @@
 import React, {ComponentProps} from 'react';
+import {useIntl} from 'react-intl';
 import {ModalHeader} from 'react-bootstrap';
 import {useDispatch} from 'react-redux';
 import styled from 'styled-components';
@@ -10,6 +11,7 @@ import {
     rtcPeerCloseErr,
     insecureContextErr,
 } from 'src/client';
+import {untranslatable} from 'src/utils';
 
 type CustomProps = {
     channelID?: string,
@@ -21,6 +23,7 @@ type Props = Partial<ComponentProps<typeof GenericModal>> & CustomProps;
 export const CallErrorModalID = 'call-error-modal';
 
 export const CallErrorModal = (props: Props) => {
+    const {formatMessage} = useIntl();
     const dispatch = useDispatch();
 
     if (!props.err) {
@@ -53,45 +56,55 @@ export const CallErrorModal = (props: Props) => {
 
     const troubleShootingMsg = (
         <React.Fragment>
-            {' Check the '}
-            <a
-                href='https://docs.mattermost.com/channels/make-calls.html#troubleshooting'
-                onClick={onTroubleShootingClick}
-            >{'troubleshooting section'}</a>
-            {' if the problem persists.'}
+            { formatMessage(
+                {
+                    defaultMessage: 'Check the <troubleShootingLink>troubleshooting section</troubleShootingLink> if the problem persists.',
+                },
+                {
+                    troubleShootingLink: (text: string) => (
+                        <a
+                            href='https://docs.mattermost.com/channels/make-calls.html#troubleshooting'
+                            onClick={onTroubleShootingClick}
+                        >{text}</a>
+                    ),
+                })}
         </React.Fragment>
     );
 
     const genericMsg = (
         <span>
-            {'Looks like something went wrong with calls. You can restart the app and try again.'}
+            {formatMessage({defaultMessage: 'Looks like something went wrong with calls. You can restart the app and try again.'})}
+            {untranslatable(' ')}
             {troubleShootingMsg}
         </span>
     );
     const genericHeaderMsg = (
         <span>
-            {'Something went wrong with calls'}
+            {formatMessage({defaultMessage: 'Something went wrong with calls'})}
         </span>
     );
 
     let msg = genericMsg;
     let headerMsg = genericHeaderMsg;
-    let confirmMsg = 'Okay';
+    let confirmMsg = formatMessage({defaultMessage: 'Okay'});
 
     switch (props.err.message) {
     case rtcPeerErr.message:
     case rtcPeerCloseErr.message:
         headerMsg = (
-            <span>{'Connection failed'}</span>
+            <span>{formatMessage({defaultMessage: 'Connection failed'})}</span>
         );
         msg = (
             <span>
-                {'There was an error with the connection to the call. Try to '}
-                <a
-                    href=''
-                    onClick={onRejoinClick}
-                >{'re-join'}</a>
-                {' the call.'}
+                {formatMessage({defaultMessage: 'There was an error with the connection to the call. Try to <joinLink>re-join</joinLink> the call.'}, {
+                    joinLink: (text: string) => (
+                        <a
+                            href=''
+                            onClick={onRejoinClick}
+                        >{text}</a>
+                    ),
+                })}
+                {untranslatable(' ')}
                 {troubleShootingMsg}
             </span>
         );
@@ -103,17 +116,17 @@ export const CallErrorModal = (props: Props) => {
                     width={150}
                     height={150}
                 />
-                <span>{'Calls can\'t be initiated in an insecure context'}</span>
+                <span>{formatMessage({defaultMessage: 'Calls can\'t be initiated in an insecure context'})}</span>
             </ColumnContainer>
         );
         msg = (
             <span>
-                {'You need to be using an HTTPS connection to make calls. Visit the documentation for more information.'}
+                {formatMessage({defaultMessage: 'You need to be using an HTTPS connection to make calls. Visit the documentation for more information.'})}
             </span>
         );
         modalProps.showCancel = true;
-        modalProps.cancelButtonText = 'Cancel';
-        confirmMsg = 'Learn more';
+        modalProps.cancelButtonText = formatMessage({defaultMessage: 'Cancel'});
+        confirmMsg = formatMessage({defaultMessage: 'Learn more'});
         break;
     }
 
