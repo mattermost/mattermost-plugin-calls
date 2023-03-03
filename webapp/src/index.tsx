@@ -257,7 +257,7 @@ export default class Plugin {
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
         registry.registerNeedsTeamRoute('/expanded', injectIntl(ExpandedView));
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
-        registry.registerGlobalComponent(ScreenSourceModal);
+        registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
         registry.registerGlobalComponent(injectIntl(EndCallModal));
 
         if (isMinimumServerVersion(getServerVersion(store.getState()), 7, 10, 0)) {
