@@ -181,6 +181,8 @@ standalone-ci:
 .PHONY: bundle
 bundle:
 	rm -rf dist/
+	rm -rf webapp/dist/i18n
+	rm -rf standalone/dist/i18n
 	mkdir -p dist/$(PLUGIN_ID)
 	./build/bin/manifest dist
 ifneq ($(wildcard $(ASSETS_DIR)/.),)

@@ -7,10 +7,10 @@ import {
 } from 'mattermost-redux/selectors/entities/teams';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-
 import {Client4} from 'mattermost-redux/client';
-
+import {isMinimumServerVersion} from 'mattermost-redux/utils/helpers';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
+import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
 import {Team} from '@mattermost/types/teams';
@@ -419,4 +419,9 @@ export function fetchTranslationsFilesSync() {
 
 export function untranslatable(msg: string) {
     return msg;
+}
+
+export function supportsAsyncTranslations(store: Store) {
+    // return isMinimumServerVersion(getServerVersion(store.getState()), 7, 10, 0);
+    return false;
 }

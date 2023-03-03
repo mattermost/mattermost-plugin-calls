@@ -10,9 +10,8 @@ import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entiti
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
-import {isMinimumServerVersion} from 'mattermost-redux/utils/helpers';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
-import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {batchActions} from 'redux-batched-actions';
 
@@ -113,6 +112,7 @@ import {
     getChannelURL,
     fetchTranslationsFile,
     fetchTranslationsFilesSync,
+    supportsAsyncTranslations,
 } from './utils';
 import {logErr, logWarn, logDebug} from './log';
 import {
@@ -227,7 +227,7 @@ export default class Plugin {
     }
 
     public initialize(registry: PluginRegistry, store: Store) {
-        if (!isMinimumServerVersion(getServerVersion(store.getState()), 7, 10, 0)) {
+        if (!supportsAsyncTranslations(store)) {
             // synchronously loading all translation files to support earlier server versions.
             let translations: Record<string, Translations> = {};
             try {
@@ -262,7 +262,7 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
         registry.registerGlobalComponent(injectIntl(EndCallModal));
 
-        if (isMinimumServerVersion(getServerVersion(store.getState()), 7, 10, 0)) {
+        if (supportsAsyncTranslations(store)) {
             // new server versions support dynamic fetching.
             registry.registerTranslations(fetchTranslationsFile);
         }
