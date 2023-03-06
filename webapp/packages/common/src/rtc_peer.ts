@@ -1,27 +1,14 @@
 import {EventEmitter} from 'events';
 
-import {logDebug, logErr} from '../log';
-
-import {
-    RTCPeerConfig,
-} from './types';
+import {RTCPeerConfig, Webrtc} from './types';
 
 const rtcConnFailedErr = new Error('rtc connection failed');
-
-export interface RTCPeerOpts {
-    logDebug: (...args: unknown[]) => void;
-    webrtc?: Webrtc;
-}
-
-export interface Webrtc {
-    MediaStream: typeof MediaStream,
-    RTCPeerConnection: typeof RTCPeerConnection,
-}
 
 export class RTCPeer extends EventEmitter {
     private pc: RTCPeerConnection | null;
     private readonly senders: { [key: string]: RTCRtpSender };
     private readonly logDebug: (...args: unknown[]) => void;
+    private readonly logErr: (...args: unknown[]) => void;
     private readonly webrtc: Webrtc;
 
     private makingOffer = false;
@@ -29,13 +16,14 @@ export class RTCPeer extends EventEmitter {
 
     public connected: boolean;
 
-    constructor(config: RTCPeerConfig, opts: RTCPeerOpts) {
+    constructor(config: RTCPeerConfig) {
         super();
-        this.logDebug = opts.logDebug;
+        this.logDebug = config.logDebug;
+        this.logErr = config.logErr;
 
         // use the provided webrtc methods (for mobile), or the build in lib.dom methods (for webapp)
-        if (opts.webrtc) {
-            this.webrtc = opts.webrtc;
+        if (config.webrtc) {
+            this.webrtc = config.webrtc;
         } else {
             this.webrtc = {
                 MediaStream,
@@ -132,10 +120,10 @@ export class RTCPeer extends EventEmitter {
             // error. In such case we queue them up to be added later.
             if (this.pc.remoteDescription && this.pc.remoteDescription.type) {
                 this.pc.addIceCandidate(msg.candidate).catch((err) => {
-                    logErr('failed to add candidate', err);
+                    this.logErr('failed to add candidate', err);
                 });
             } else {
-                logDebug('received ice candidate before remote description, queuing...');
+                this.logDebug('received ice candidate before remote description, queuing...');
                 this.candidates.push(msg.candidate);
             }
             break;
@@ -147,9 +135,9 @@ export class RTCPeer extends EventEmitter {
         case 'answer':
             await this.pc.setRemoteDescription(msg);
             for (const candidate of this.candidates) {
-                logDebug('adding queued ice candidate');
+                this.logDebug('adding queued ice candidate');
                 this.pc.addIceCandidate(candidate).catch((err) => {
-                    logErr('failed to add candidate', err);
+                    this.logErr('failed to add candidate', err);
                 });
             }
             break;

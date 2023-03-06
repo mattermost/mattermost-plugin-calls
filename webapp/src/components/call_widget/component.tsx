@@ -298,7 +298,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
         this.prevDevicePixelRatio = window.devicePixelRatio;
         this.sendGlobalWidgetBounds();
-    }
+    };
 
     private handleDesktopEvents = (ev: MessageEvent) => {
         if (ev.origin !== window.origin) {
@@ -320,7 +320,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         } else if (ev.data.type === 'calls-widget-share-screen') {
             this.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
         }
-    }
+    };
 
     private attachVoiceTracks(tracks: MediaStreamTrack[]) {
         const audioEls = [];
@@ -360,7 +360,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         if (this.props.global) {
-            window.visualViewport.addEventListener('resize', this.onViewportResize);
+            window.visualViewport?.addEventListener('resize', this.onViewportResize);
             this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
             this.menuResizeObserver.observe(this.menuNode.current!);
             window.addEventListener('message', this.handleDesktopEvents);
@@ -461,7 +461,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     public componentWillUnmount() {
         if (this.props.global) {
-            window.visualViewport.removeEventListener('resize', this.onViewportResize);
+            window.visualViewport?.removeEventListener('resize', this.onViewportResize);
             window.removeEventListener('message', this.handleDesktopEvents);
         } else {
             document.removeEventListener('mouseup', this.onMouseUp, false);
@@ -564,7 +564,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         return bounds;
-    }
+    };
 
     private sendGlobalWidgetBounds = () => {
         const bounds = this.getGlobalWidgetBounds();
@@ -573,7 +573,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             width: Math.ceil(bounds.width),
             height: Math.ceil(bounds.height),
         });
-    }
+    };
 
     private keyboardClose = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
@@ -615,7 +615,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({
             ...state,
         });
-    }
+    };
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
         if (!this.props.allowScreenSharing) {

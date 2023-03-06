@@ -10,13 +10,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { EventEmitter } from 'events';
 const rtcConnFailedErr = new Error('rtc connection failed');
 export class RTCPeer extends EventEmitter {
-    constructor(config, opts) {
+    constructor(config) {
         super();
         this.makingOffer = false;
-        this.logDebug = opts.logDebug;
+        this.candidates = [];
+        this.logDebug = config.logDebug;
+        this.logErr = config.logErr;
         // use the provided webrtc methods (for mobile), or the build in lib.dom methods (for webapp)
-        if (opts.webrtc) {
-            this.webrtc = opts.webrtc;
+        if (config.webrtc) {
+            this.webrtc = config.webrtc;
         }
         else {
             this.webrtc = {
@@ -105,7 +107,18 @@ export class RTCPeer extends EventEmitter {
             }
             switch (msg.type) {
                 case 'candidate':
-                    yield this.pc.addIceCandidate(msg.candidate);
+                    // It's possible that ICE candidates are received moments before
+                    // we set the initial remote description which would cause an
+                    // error. In such case we queue them up to be added later.
+                    if (this.pc.remoteDescription && this.pc.remoteDescription.type) {
+                        this.pc.addIceCandidate(msg.candidate).catch((err) => {
+                            this.logErr('failed to add candidate', err);
+                        });
+                    }
+                    else {
+                        this.logDebug('received ice candidate before remote description, queuing...');
+                        this.candidates.push(msg.candidate);
+                    }
                     break;
                 case 'offer':
                     yield this.pc.setRemoteDescription(msg);
@@ -114,6 +127,12 @@ export class RTCPeer extends EventEmitter {
                     break;
                 case 'answer':
                     yield this.pc.setRemoteDescription(msg);
+                    for (const candidate of this.candidates) {
+                        this.logDebug('adding queued ice candidate');
+                        this.pc.addIceCandidate(candidate).catch((err) => {
+                            this.logErr('failed to add candidate', err);
+                        });
+                    }
                     break;
                 default:
                     throw new Error('invalid signaling data received');

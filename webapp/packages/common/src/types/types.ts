@@ -111,6 +111,14 @@ export type RTCStats = {
 
 export type RTCPeerConfig = {
     iceServers: RTCIceServer[],
+    logDebug: (...args: unknown[]) => void;
+    logErr: (...args: unknown[]) => void;
+    webrtc?: Webrtc;
+}
+
+export interface Webrtc {
+    MediaStream: typeof MediaStream,
+    RTCPeerConnection: typeof RTCPeerConnection,
 }
 
 export type RTCLocalStats = {
