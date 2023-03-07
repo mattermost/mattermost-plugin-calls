@@ -399,29 +399,6 @@ export async function fetchTranslationsFile(locale: string) {
     }
 }
 
-export function fetchTranslationsFilesSync() {
-    const translations: Record<string, Translations> = {};
-    for (const locale of supportedLocales) {
-        // eslint-disable-next-line global-require
-        const filename = require(`../i18n/${locale}.json`).default;
-        if (!filename) {
-            throw new Error(`translations file not found for locale '${locale}'`);
-        }
-        const req = new XMLHttpRequest();
-        req.open('GET', getPluginStaticPath() + filename, false);
-        req.onload = () => {
-            translations[locale] = JSON.parse(req.response);
-        };
-        req.send(null);
-    }
-    return translations;
-}
-
 export function untranslatable(msg: string) {
     return msg;
-}
-
-export function supportsAsyncTranslations(store: Store) {
-    // return isMinimumServerVersion(getServerVersion(store.getState()), 7, 10, 0);
-    return false;
 }

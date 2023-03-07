@@ -94,19 +94,6 @@ module.exports = {
                 ],
             },
             {
-                type: 'javascript/auto',
-                test: /\.json$/,
-                include: [
-                    path.resolve(__dirname, './i18n'),
-                ],
-                exclude: [/en\.json$/],
-                use: [
-                    {
-                        loader: 'file-loader?name=i18n/[name].[contenthash].[ext]',
-                    },
-                ],
-            },
-            {
                 resourceQuery: /inline/,
                 type: 'asset/inline',
             },

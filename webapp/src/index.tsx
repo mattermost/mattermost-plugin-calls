@@ -110,9 +110,6 @@ import {
     shouldRenderDesktopWidget,
     sendDesktopEvent,
     getChannelURL,
-    fetchTranslationsFile,
-    fetchTranslationsFilesSync,
-    supportsAsyncTranslations,
 } from './utils';
 import {logErr, logWarn, logDebug} from './log';
 import {
@@ -226,25 +223,7 @@ export default class Plugin {
         });
     }
 
-    public initialize(registry: PluginRegistry, store: Store) {
-        if (!supportsAsyncTranslations(store)) {
-            // synchronously loading all translation files to support earlier server versions.
-            let translations: Record<string, Translations> = {};
-            try {
-                translations = fetchTranslationsFilesSync();
-            } catch (err) {
-                logErr('failed to fetch translations files', err);
-            }
-            registry.registerTranslations((locale: string) => {
-                logDebug(`registering translations for locale '${locale}'`);
-                return translations[locale] || {};
-            });
-        }
-
-        this.init(registry, store);
-    }
-
-    private async init(registry: PluginRegistry, store: Store): Promise<void> {
+    private initialize(registry: PluginRegistry, store: Store) {
         // Setting the base URL if present, in case MM is running under a subpath.
         if (window.basename) {
             Client4.setUrl(window.basename);
@@ -262,10 +241,18 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
         registry.registerGlobalComponent(injectIntl(EndCallModal));
 
-        if (supportsAsyncTranslations(store)) {
-            // new server versions support dynamic fetching.
-            registry.registerTranslations(fetchTranslationsFile);
-        }
+        registry.registerTranslations((locale: string) => {
+            try {
+                logDebug(`loading translations file for locale '${locale}'`);
+
+                // synchronously loading all translation files from bundle (MM-50811).
+                // eslint-disable-next-line global-require
+                return require(`../i18n/${locale}.json`);
+            } catch (err) {
+                logWarn(`failed to open translations file for locale '${locale}'`, err);
+                return {};
+            }
+        });
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             return slashCommandsHandler(store, joinCall, message, args);
