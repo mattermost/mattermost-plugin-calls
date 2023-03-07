@@ -11,6 +11,7 @@ import {UserProfile} from '@mattermost/types/users';
 import {Team} from '@mattermost/types/teams';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
+import {Theme} from 'mattermost-redux/types/themes';
 
 import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
 
@@ -82,6 +83,7 @@ import './component.scss';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 
 interface Props extends RouteComponentProps {
+    theme: Theme,
     show: boolean,
     currentUserID: string,
     currentTeamID: string,
@@ -151,6 +153,81 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private pushToTalk = false;
 
     #unlockNavigation?: () => void;
+
+    private genStyle: () => Record<string, React.CSSProperties> = () => {
+        return {
+            root: {
+                display: 'flex',
+                width: '100%',
+                height: '100%',
+                zIndex: 1000,
+                background: '#1E1E1E',
+                color: 'white',
+                gridArea: 'center',
+                overflow: 'auto',
+            },
+            main: {
+                display: 'flex',
+                flexDirection: 'column',
+                flex: '1',
+            },
+            closeViewButton: {
+                fontSize: '24px',
+            },
+            participants: {
+                display: 'grid',
+                overflow: 'auto',
+                margin: 'auto',
+                padding: '0',
+            },
+            controls: {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '16px 8px',
+                width: '100%',
+            },
+            centerControls: {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+            },
+            topContainer: {
+                display: 'flex',
+                width: '100%',
+            },
+            topLeftContainer: {
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '16px',
+                lineHeight: '24px',
+                fontWeight: 600,
+                marginLeft: '12px',
+                height: '56px',
+            },
+            screenContainer: {
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                margin: 'auto',
+                maxWidth: 'calc(100% - 16px)',
+            },
+            rhs: {
+                display: 'flex',
+                flexDirection: 'column',
+                width: '300px',
+                background: 'rgba(9, 10, 11, 1)',
+                margin: 0,
+                padding: 0,
+                overflow: 'auto',
+            },
+        };
+    }
+
+    private style = this.genStyle();
 
     constructor(props: Props) {
         super(props);
@@ -385,6 +462,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     public componentDidUpdate(prevProps: Props) {
+        if (prevProps.theme.type !== this.props.theme.type) {
+            this.style = this.genStyle();
+        }
+
         if (window.opener) {
             if (document.title.indexOf('Call') === -1 && this.props.channel) {
                 if (isDMChannel(this.props.channel) && this.props.connectedDMUser) {
@@ -554,7 +635,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return (
             <div
                 style={{
-                    ...styles.screenContainer,
+                    ...this.style.screenContainer,
 
                     // Account for when we display an alert banner.
                     maxHeight: `calc(100% - ${this.shouldRenderAlertBanner() ? 240 : 200}px)`,
@@ -795,18 +876,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             <div
                 ref={this.expandedRootRef}
                 id='calls-expanded-view'
-                style={globalRhsSupported ? styles.root : {
-                    ...styles.root,
+                style={globalRhsSupported ? this.style.root : {
+                    ...this.style.root,
                     position: 'absolute',
                     top: 0,
                     left: 0,
                 }}
             >
-                <div style={styles.main}>
+                <div style={this.style.main}>
                     {this.renderAlertBanner()}
 
-                    <div style={styles.topContainer}>
-                        <div style={styles.topLeftContainer}>
+                    <div style={this.style.topContainer}>
+                        <div style={this.style.topLeftContainer}>
                             {this.renderRecordingBadge()}
                             <CallDuration
                                 style={{margin: '4px'}}
@@ -820,7 +901,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             !window.opener &&
                             <button
                                 className='button-close'
-                                style={styles.closeViewButton}
+                                style={this.style.closeViewButton}
                                 onClick={this.onCloseViewClick}
                             >
                                 <CompassIcon icon='arrow-collapse'/>
@@ -834,7 +915,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <ul
                                 id='calls-expanded-view-participants-grid'
                                 style={{
-                                    ...styles.participants,
+                                    ...this.style.participants,
                                     gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, MaxParticipantsPerRow)}, 1fr)`,
                                 }}
                             >
@@ -845,7 +926,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     {this.props.screenSharingID && this.renderScreenSharingPlayer()}
                     <div
                         id='calls-expanded-view-controls'
-                        style={styles.controls}
+                        style={this.style.controls}
                     >
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start', marginLeft: '16px'}}>
                             <ControlsButton
@@ -867,7 +948,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         </div>
 
-                        <div style={styles.centerControls}>
+                        <div style={this.style.centerControls}>
                             <ControlsButton
                                 id='calls-popout-mute-button'
                                 // eslint-disable-next-line no-undefined
@@ -972,7 +1053,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     </div>
                 </div>
                 {this.state.showParticipantsList &&
-                    <ul style={styles.rhs}>
+                    <ul style={this.style.rhs}>
                         <span
                             style={{
                                 position: 'sticky',
@@ -1042,77 +1123,6 @@ const UnreadDot = styled.span`
         text-align: center;
     }
 `;
-
-const styles: Record<string, CSSObject> = {
-    root: {
-        display: 'flex',
-        width: '100%',
-        height: '100%',
-        zIndex: 1000,
-        background: '#1E1E1E',
-        color: 'white',
-        gridArea: 'center',
-        overflow: 'auto',
-    },
-    main: {
-        display: 'flex',
-        flexDirection: 'column',
-        flex: '1',
-    },
-    closeViewButton: {
-        fontSize: '24px',
-    },
-    participants: {
-        display: 'grid',
-        overflow: 'auto',
-        margin: 'auto',
-        padding: '0',
-    },
-    controls: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px 8px',
-        width: '100%',
-    },
-    centerControls: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    topContainer: {
-        display: 'flex',
-        width: '100%',
-    },
-    topLeftContainer: {
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '16px',
-        lineHeight: '24px',
-        fontWeight: 600,
-        marginLeft: '12px',
-        height: '56px',
-    },
-    screenContainer: {
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        margin: 'auto',
-        maxWidth: 'calc(100% - 16px)',
-    },
-    rhs: {
-        display: 'flex',
-        flexDirection: 'column',
-        width: '300px',
-        background: 'rgba(9, 10, 11, 1)',
-        margin: 0,
-        padding: 0,
-        overflow: 'auto',
-    },
-};
 
 const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean }>`
     #root {
