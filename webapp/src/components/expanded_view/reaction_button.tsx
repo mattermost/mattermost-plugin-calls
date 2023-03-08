@@ -9,7 +9,6 @@ import EmojiPicker, {
     EmojiStyle,
     SkinTonePickerLocation,
     SuggestionMode,
-    Theme,
 } from 'emoji-picker-react';
 
 import {HandRightOutlineIcon, HandRightOutlineOffIcon} from '@mattermost/compass-icons/components';
@@ -101,7 +100,6 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                         skinTonePickerLocation={SkinTonePickerLocation.SEARCH}
                         onEmojiClick={handleUserPicksEmoji}
                         autoFocusSearch={true}
-                        theme={Theme.DARK}
                         previewConfig={{showPreview: false}}
                         suggestedEmojisMode={SuggestionMode.RECENT}
                         height={400}
@@ -228,11 +226,14 @@ const PickerContainer = styled.div`
 
     .EmojiPickerReact {
         --epr-emoji-size: 24px;
-        --epr-bg-color: #090A0B;
-        --epr-category-label-bg-color: #090A0B;
-        --epr-picker-border-color: rgba(221, 223, 228, 0.16);
-        --epr-search-border-color: #5D89EA;
+        --epr-bg-color: var(--center-channel-bg);
+        --epr-category-label-bg-color: var(--center-channel-bg);
+        --epr-picker-border-color: rgba(var(--center-channel-color-rgb), 0.16);
+        --epr-search-border-color: rgba(var(--center-channel-color-rgb), 0.16);
         --epr-picker-border-radius: 4px;
+        --epr-search-input-bg-color: var(--center-channel-bg);
+        --epr-emoji-hover-color: rgba(var(--button-bg-rgb), 0.16);
+        --epr-active-skin-hover-color: rgba(var(--button-bg-rgb), 0.16);
     }
 `;
 
@@ -243,8 +244,9 @@ const Bar = styled.div`
     left: -130px;
     display: flex;
     justify-content: center;
-    background: #090A0B;
-    border: 1px solid rgba(221, 223, 228, 0.16);
+    background: var(--center-channel-bg);
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     border-radius: 4px;
     padding: 8px;
@@ -266,14 +268,15 @@ const HandsButton = styled.button<{ active: boolean }>`
     line-height: 14px;
 
     :hover {
-        background: rgba(221, 223, 228, 0.08);
+        background: rgba(var(--button-bg-rgb), 0.16);
     }
 
     ${({active}) => (active && css`
-        background: rgba(245, 171, 0, 0.24);
+        background: rgba(var(--button-bg-rgb), 0.16);
+        color: var(--button-bg);
 
         :hover {
-            background: rgba(245, 171, 0, 0.40);
+            background: rgba(var(--button-bg-rgb), 0.24);
         }
     `)}
 `;
@@ -287,7 +290,7 @@ const DividerLine = styled.div`
     width: 0;
     margin: 0 2px 0 4px;
     height: 32px;
-    border: 1px solid rgba(221, 223, 228, 0.16);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
 `;
 
 const QuickSelectButton = styled.button<{ active?: boolean }>`
@@ -301,15 +304,15 @@ const QuickSelectButton = styled.button<{ active?: boolean }>`
     margin-left: 2px;
 
     :hover {
-        background: rgba(221, 223, 228, 0.08);
+        background: rgba(var(--button-bg-rgb), 0.16);
     }
 
     ${({active}) => (active && css`
-        background: rgba(93, 137, 234, 0.16);
-        color: #5D89EA;
+        background: rgba(var(--button-bg-rgb), 0.16);
+        color: var(--button-bg);
 
         :hover {
-            background: rgba(93, 137, 234, 0.32);
+            background: rgba(var(--button-bg-rgb), 0.24);
         }
     `)}
 `;
