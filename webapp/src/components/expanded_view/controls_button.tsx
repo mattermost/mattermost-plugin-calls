@@ -60,27 +60,22 @@ export default function ControlsButton(props: Props) {
         >
             <ButtonContainer
                 id={props.id}
+                bgColor={props.bgColor}
                 margin={props.margin}
+                onClick={onClick}
+                disabled={props.disabled}
+                isDisabled={props.disabled}
+                isUnavailable={props.unavailable}
+                fill={props.iconFill}
             >
-                <Button
-                    className='button-center-controls'
-                    // eslint-disable-next-line no-undefined
-                    onClick={onClick}
-                    bgColor={props.bgColor}
-                    isDisabled={props.disabled}
-                    isUnavailable={props.unavailable}
-                    disabled={props.disabled}
-                    fill={props.iconFill}
-                >
-                    <ButtonIcon>
-                        {props.icon}
-                        {props.unavailable &&
-                            <UnavailableIcon>
-                                <CompassIcon icon='close-circle'/>
-                            </UnavailableIcon>
-                        }
-                    </ButtonIcon>
-                </Button>
+                <ButtonIcon>
+                    {props.icon}
+                    {props.unavailable &&
+                        <UnavailableIcon>
+                            <CompassIcon icon='close-circle'/>
+                        </UnavailableIcon>
+                    }
+                </ButtonIcon>
                 {props.text &&
                     <ButtonText>{props.text}</ButtonText>
                 }
@@ -89,32 +84,33 @@ export default function ControlsButton(props: Props) {
     );
 }
 
-const ButtonContainer = styled.div<{ margin?: string }>`
+const ButtonContainer = styled.button<{bgColor: string, margin?: string, isDisabled?: boolean, isUnavailable?: boolean, fill?: string}>`
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     margin: ${({margin}) => margin || '0 8px'};
-`;
+    border-radius: 8px;
+    padding: 12px;
+    border: none;
+    background-color: ${({bgColor}) => bgColor || 'rgba(var(--center-channel-bg-rgb), 0.08)'};
 
-const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailable?: boolean, fill?: string}>`
-  background-color: ${({bgColor}) => bgColor || 'rgba(255, 255, 255, 0.12)'};
+    :hover {
+      color: rgba(28, 88, 217);
+      background: rgba(var(--center-channel-bg-rgb), 0.32);
+    }
 
-  ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-    background-color: rgba(255, 255, 255, 0.08);
-  `}
+    svg {
+      fill: ${({fill}) => fill || 'rgba(var(--center-channel-bg-rgb), 0.56)'};
+      ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
+        fill: rgba(var(--center-channel-bg-rgb), 0.32);
+      `}
+    }
 
-  svg {
-    fill: ${({fill}) => fill || 'white'};
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-      fill: rgba(255, 255, 255, 0.32);
-    `}
-  }
-
-    ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-        :hover {
-            background: rgba(255, 255, 255, 0.08);
-        }
+      :hover {
+          background-color: rgba(var(--center-channel-bg-rgb), 0.08);
+      }
     `}
 `;
 

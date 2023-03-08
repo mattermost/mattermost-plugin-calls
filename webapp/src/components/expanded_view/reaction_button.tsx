@@ -162,13 +162,13 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                 onToggle={toggleReactions}
                 tooltipText={addReactionText}
                 shortcut={reverseKeyMappings.popout[MAKE_REACTION][0]}
-                bgColor={showBar ? '#DDDFE4' : ''}
+                bgColor={showBar ? 'rgba(var(--sidebar-text-active-border-rgb), 0.24)' : ''}
+                iconFill={showBar ? 'rgb(var(--sidebar-text-active-border-rgb))' : ''}
                 icon={
                     <SmileyIcon
                         style={{
-                            width: '24px',
-                            height: '24px',
-                            fill: showBar ? '#090A0B' : '#FFFFFF',
+                            width: '28px',
+                            height: '28px',
                         }}
                     />
                 }

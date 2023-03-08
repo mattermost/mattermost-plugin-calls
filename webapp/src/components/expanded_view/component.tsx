@@ -16,7 +16,7 @@ import {Theme} from 'mattermost-redux/types/themes';
 import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
 
 import {
-    ProductChannelsIcon,
+    MessageTextOutlineIcon,
     RecordCircleOutlineIcon,
     RecordSquareOutlineIcon,
 } from '@mattermost/compass-icons/components';
@@ -214,7 +214,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 fontSize: '16px',
                 lineHeight: '24px',
                 fontWeight: 600,
-                marginLeft: '12px',
+                marginLeft: '20px',
                 height: '56px',
             },
             screenContainer: {
@@ -256,7 +256,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 display: 'flex',
                 flex: 1,
                 overflow: 'auto',
-                background: 'rgb(255, 255, 255, 0.08)',
+                background: 'rgba(var(--button-color-rgb), 0.08)',
                 borderRadius: '8px',
                 margin: '0 12px',
             },
@@ -891,7 +891,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         const participantsText = this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list';
 
-        let chatToolTipText = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID ? 'Click to close chat' : 'Click to open chat';
+        const showChatThread = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID;
+        let chatToolTipText = showChatThread ? 'Click to close chat' : 'Click to open chat';
         const chatToolTipSubtext = '';
         const chatDisabled = Boolean(this.props.channel?.team_id) && this.props.channel.team_id !== this.props.currentTeamID;
         if (chatDisabled) {
@@ -969,13 +970,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 onToggle={() => this.onParticipantsListToggle()}
                                 tooltipText={participantsText}
                                 shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
-                                bgColor={this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.32)' : ''}
+                                bgColor={this.state.showParticipantsList ? 'rgba(var(--sidebar-text-active-border-rgb), 0.24)' : ''}
+                                iconFill={this.state.showParticipantsList ? 'rgb(var(--sidebar-text-active-border-rgb))' : ''}
                                 icon={
                                     <ParticipantsIcon
                                         style={{
-                                            width: '24px',
-                                            height: '24px',
-                                            fill: this.state.showParticipantsList ? 'rgb(28, 88, 217)' : 'white',
+                                            width: '28px',
+                                            height: '28px',
                                         }}
                                     />
                                 }
@@ -996,8 +997,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 icon={
                                     <MuteIcon
                                         style={{
-                                            width: '24px',
-                                            height: '24px',
+                                            width: '28px',
+                                            height: '28px',
                                             fill: isMuted ? '' : 'rgba(61, 184, 135, 1)',
                                         }}
                                     />
@@ -1014,7 +1015,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     // eslint-disable-next-line no-undefined
                                     shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}
                                     iconFill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : ''}
-                                    icon={<RecordIcon size={24}/>}
+                                    icon={<RecordIcon size={28}/>}
                                 />
                             }
 
@@ -1030,8 +1031,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={
                                         <ScreenIcon
                                             style={{
-                                                width: '24px',
-                                                height: '24px',
+                                                width: '28px',
+                                                height: '28px',
                                                 fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : '',
                                             }}
                                         />
@@ -1052,14 +1053,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     onToggle={this.toggleChat}
                                     tooltipText={chatToolTipText}
                                     tooltipSubtext={chatToolTipSubtext}
-                                    // eslint-disable-next-line no-undefined
-                                    shortcut={undefined}
-                                    bgColor={''}
+                                    bgColor={showChatThread ? 'rgba(var(--sidebar-text-active-border-rgb), 0.24)' : ''}
+                                    iconFill={showChatThread ? 'rgb(var(--sidebar-text-active-border-rgb))' : ''}
                                     icon={
                                         <div css={{position: 'relative'}}>
-                                            <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
-                                                size={24}
-                                                color={'white'}
+                                            <MessageTextOutlineIcon
+                                                size={28}
                                             />
                                             {!chatDisabled && isChatUnread && (
                                                 <UnreadIndicator mentions={this.props.threadUnreadMentions}/>
@@ -1079,7 +1078,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 bgColor={'rgb(var(--dnd-indicator-rgb))'}
                                 icon={
                                     <LeaveCallIcon
-                                        style={{width: '24px', height: '24px', fill: 'white'}}
+                                        style={{width: '28px', height: '28px'}}
                                     />
                                 }
                                 margin='0'
@@ -1127,38 +1126,33 @@ const isActiveElementInteractable = () => {
 
 const UnreadIndicator = ({mentions}: { mentions?: number }) => {
     return (
-        <UnreadDot>{mentions && mentions > 99 ? '99+' : mentions || null}</UnreadDot>
+        <UnreadDot>
+            { mentions &&
+            <MentionsCounter>{mentions > 99 ? '99+' : mentions}</MentionsCounter>
+            }
+        </UnreadDot>
     );
 };
 
+const MentionsCounter = styled.span`
+    font-weight: 700;
+    font-size: 8px;
+    color: var(--button-color);
+`;
+
 const UnreadDot = styled.span`
     position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     z-index: 1;
-    top: 0;
-    right: -1px;
-    width: 8px;
-    height: 8px;
-    background: var(--mention-bg);
-    border-radius: 9px;
-    box-shadow: 0 0 0 2px rgb(37 38 42);
-    color: white;
-
-    &:not(:empty) {
-        top: -7px;
-        right: -8px;
-        width: auto;
-        min-width: 20px;
-        height: auto;
-        padding: 0 6px;
-        border-radius: 8px;
-        font-size: 11px;
-        -webkit-font-smoothing: subpixel-antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        font-weight: 700;
-        letter-spacing: 0;
-        line-height: 16px;
-        text-align: center;
-    }
+    top: -4px;
+    right: -4px;
+    width: 15px;
+    height: 12px;
+    background: var(--button-bg);
+    border-radius: 8px;
+    border: 2px solid white;
 `;
 
 const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean }>`
