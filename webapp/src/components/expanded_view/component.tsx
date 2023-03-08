@@ -35,7 +35,6 @@ import {
     hslToRGB,
     rgbToCSS,
 } from 'src/utils';
-import {applyOnyx} from 'src/css_utils';
 import {
     UserState,
     AudioDevices,
@@ -229,11 +228,37 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             rhs: {
                 display: 'flex',
                 flexDirection: 'column',
-                width: '300px',
-                background: 'rgba(9, 10, 11, 1)',
+                width: '280px',
+                background: this.props.theme.centerChannelBg,
+                color: this.props.theme.centerChannelColor,
                 margin: 0,
                 padding: 0,
                 overflow: 'auto',
+            },
+            rhsHeaderContainer: {
+                position: 'sticky',
+                top: '0',
+                background: 'var(--center-channel-bg)',
+            },
+            rhsHeader: {
+                display: 'flex',
+                alignItems: 'center',
+                background: 'rgba(var(--center-channel-color-rgb), 0.04)',
+                borderBottom: '1px solid rgba(var(--center-channel-color-rgb), 0.08)',
+                fontFamily: 'Metropolis, sans-serif',
+                fontWeight: 600,
+                fontSize: '16px',
+                padding: '0 16px',
+                height: '63px',
+                lineHeight: '63px',
+            },
+            centerView: {
+                display: 'flex',
+                flex: 1,
+                overflow: 'auto',
+                background: 'rgb(255, 255, 255, 0.08)',
+                borderRadius: '8px',
+                margin: '0 12px',
             },
         };
     }
@@ -556,7 +581,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (window.opener) {
             // core styling for rhs in expanded window
             document.body.classList.add('app__body');
-            applyOnyx();
 
             if (this.props.selectRhsPost) {
                 // global rhs supported
@@ -738,7 +762,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return (
                 <li
                     key={'participants_rhs_profile_' + profile.id}
-                    style={{display: 'flex', alignItems: 'center', padding: '4px 8px'}}
+                    style={{display: 'flex', alignItems: 'center', padding: '8px 16px'}}
                 >
                     <Avatar
                         size={24}
@@ -750,7 +774,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             marginRight: '8px',
                         }}
                     />
-                    <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
+                    <span style={{fontWeight: 600, fontSize: '14px', lineHeight: '20px', margin: '8px 0'}}>
                         {getUserDisplayName(profile)}{profile.id === this.props.currentUserID && ' (you)'}
                     </span>
 
@@ -921,7 +945,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     </div>
 
                     {!this.props.screenSharingID &&
-                        <div style={{flex: 1, display: 'flex', overflow: 'auto'}}>
+                        <div style={this.style.centerView}>
                             <ReactionStream/>
                             <ul
                                 id='calls-expanded-view-participants-grid'
@@ -1065,15 +1089,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 </div>
                 {this.state.showParticipantsList &&
                     <ul style={this.style.rhs}>
-                        <span
-                            style={{
-                                position: 'sticky',
-                                top: '0',
-                                background: 'inherit',
-                                fontWeight: 600,
-                                padding: '8px',
-                            }}
-                        >{'Participants list'}</span>
+                        <div style={this.style.rhsHeaderContainer}>
+                            <div style={this.style.rhsHeader}>
+                                <span>{'Participants'}</span>
+                                <CloseButton
+                                    className='style--none'
+                                    onClick={() => this.onParticipantsListToggle()}
+                                >
+                                    <CompassIcon icon='close'/>
+                                </CloseButton>
+                            </div>
+                        </div>
                         {this.renderParticipantsRHSList()}
                     </ul>
                 }
@@ -1165,4 +1191,28 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
     #sidebar-right {
         z-index: 1001;
     }
+`;
+
+const CloseButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  color: rgba(var(--center-channel-color-rgb), 0.56);
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+
+  :hover {
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    fill: rgba(var(--center-channel-color-rgb), 0.72);
+  }
+
+  i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
 `;
