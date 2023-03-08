@@ -30,6 +30,10 @@ import {
     hasExperimentalFlag,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
+    hexToRGB,
+    rgbToHSL,
+    hslToRGB,
+    rgbToCSS,
 } from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
 import {
@@ -155,13 +159,20 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     #unlockNavigation?: () => void;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
+        // Base color is Sidebar Hover Background.
+        const baseColorHSL = rgbToHSL(hexToRGB(this.props.theme.sidebarTextHoverBg));
+
+        // Setting lightness to 16 to improve contrast.
+        baseColorHSL.l = 16;
+        const baseColorRGB = hslToRGB(baseColorHSL);
+
         return {
             root: {
                 display: 'flex',
                 width: '100%',
                 height: '100%',
                 zIndex: 1000,
-                background: '#1E1E1E',
+                background: rgbToCSS(baseColorRGB),
                 color: 'white',
                 gridArea: 'center',
                 overflow: 'auto',
