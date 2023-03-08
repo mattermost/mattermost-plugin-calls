@@ -93,7 +93,7 @@ const ButtonContainer = styled.button<{bgColor: string, margin?: string, isDisab
     border-radius: 8px;
     padding: 12px;
     border: none;
-    background-color: ${({bgColor}) => bgColor || 'rgba(var(--center-channel-bg-rgb), 0.08)'};
+    background-color: ${({bgColor}) => bgColor || 'rgba(var(--button-color-rgb), 0.08)'};
 
     :hover {
       color: rgba(28, 88, 217);
@@ -101,15 +101,15 @@ const ButtonContainer = styled.button<{bgColor: string, margin?: string, isDisab
     }
 
     svg {
-      fill: ${({fill}) => fill || 'rgba(var(--center-channel-bg-rgb), 0.56)'};
+      fill: ${({fill}) => fill || 'rgba(var(--button-color-rgb), 0.56)'};
       ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-        fill: rgba(var(--center-channel-bg-rgb), 0.32);
+        fill: rgba(var(--button-color-rgb), 0.32);
       `}
     }
 
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
       :hover {
-          background-color: rgba(var(--center-channel-bg-rgb), 0.08);
+          background-color: rgba(var(--button-color-rgb), 0.08);
       }
     `}
 `;
