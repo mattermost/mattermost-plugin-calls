@@ -1,6 +1,9 @@
 import {
     getWSConnectionURL,
     shouldRenderDesktopWidget,
+    hexToRGB,
+    rgbToHSL,
+    hslToRGB,
 } from './utils';
 
 describe('utils', () => {
@@ -73,6 +76,284 @@ describe('utils', () => {
             };
             expect(shouldRenderDesktopWidget()).toEqual(testCase.expected);
             delete window.desktop;
+        }));
+    });
+
+    describe('hexToRGB', () => {
+        const testCases = [
+            {
+                description: 'empty string',
+                input: '',
+                expected: {},
+                error: 'invalid hex color string \'\'',
+            },
+            {
+                description: 'missing shebang',
+                input: '454545',
+                expected: {},
+                error: 'invalid hex color string \'454545\'',
+            },
+            {
+                description: 'valid color (black)',
+                input: '#000000',
+                expected: {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                },
+            },
+            {
+                description: 'valid color (white)',
+                input: '#ffffff',
+                expected: {
+                    r: 255,
+                    g: 255,
+                    b: 255,
+                },
+            },
+            {
+                description: 'valid color',
+                input: '#2D2D2D',
+                expected: {
+                    r: 45,
+                    g: 45,
+                    b: 45,
+                },
+            },
+        ];
+
+        testCases.forEach((testCase) => it(testCase.description, () => {
+            if (testCase.error) {
+                expect(() => hexToRGB(testCase.input)).toThrow(testCase.error);
+            } else {
+                expect(hexToRGB(testCase.input)).toEqual(testCase.expected);
+            }
+        }));
+    });
+
+    describe('rgbToHSL', () => {
+        const testCases = [
+            {
+                description: 'black',
+                input: {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                },
+                expected: {
+                    h: 0,
+                    s: 0,
+                    l: 0,
+                },
+            },
+            {
+                description: 'white',
+                input: {
+                    r: 255,
+                    g: 255,
+                    b: 255,
+                },
+                expected: {
+                    h: 0,
+                    s: 0,
+                    l: 100,
+                },
+            },
+            {
+                description: 'red',
+                input: {
+                    r: 255,
+                    g: 0,
+                    b: 0,
+                },
+                expected: {
+                    h: 0,
+                    s: 100,
+                    l: 50,
+                },
+            },
+            {
+                description: 'green',
+                input: {
+                    r: 0,
+                    g: 255,
+                    b: 0,
+                },
+                expected: {
+                    h: 120,
+                    s: 100,
+                    l: 50,
+                },
+            },
+            {
+                description: 'blue',
+                input: {
+                    r: 0,
+                    g: 0,
+                    b: 255,
+                },
+                expected: {
+                    h: 240,
+                    s: 100,
+                    l: 50,
+                },
+            },
+            {
+                description: 'orchid',
+                input: {
+                    r: 218,
+                    g: 112,
+                    b: 214,
+                },
+                expected: {
+                    h: 302,
+                    s: 59,
+                    l: 65,
+                },
+            },
+            {
+                description: 'denim',
+                input: {
+                    r: 111,
+                    g: 143,
+                    b: 175,
+                },
+                expected: {
+                    h: 210,
+                    s: 29,
+                    l: 56,
+                },
+            },
+            {
+                description: 'onyx',
+                input: {
+                    r: 53,
+                    g: 57,
+                    b: 53,
+                },
+                expected: {
+                    h: 120,
+                    s: 4,
+                    l: 22,
+                },
+            },
+        ];
+
+        testCases.forEach((testCase) => it(testCase.description, () => {
+            expect(rgbToHSL(testCase.input)).toEqual(testCase.expected);
+        }));
+    });
+
+    describe('hslToRGB', () => {
+        const testCases = [
+            {
+                description: 'black',
+                input: {
+                    h: 0,
+                    s: 0,
+                    l: 0,
+                },
+                expected: {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                },
+            },
+            {
+                description: 'white',
+                input: {
+                    h: 0,
+                    s: 0,
+                    l: 100,
+                },
+                expected: {
+                    r: 255,
+                    g: 255,
+                    b: 255,
+                },
+            },
+            {
+                description: 'red',
+                input: {
+                    h: 0,
+                    s: 100,
+                    l: 50,
+                },
+                expected: {
+                    r: 255,
+                    g: 0,
+                    b: 0,
+                },
+            },
+            {
+                description: 'green',
+                input: {
+                    h: 120,
+                    s: 100,
+                    l: 50,
+                },
+                expected: {
+                    r: 0,
+                    g: 255,
+                    b: 0,
+                },
+            },
+            {
+                description: 'blue',
+                input: {
+                    h: 240,
+                    s: 100,
+                    l: 50,
+                },
+                expected: {
+                    r: 0,
+                    g: 0,
+                    b: 255,
+                },
+            },
+            {
+                description: 'orchid',
+                input: {
+                    h: 302,
+                    s: 59,
+                    l: 65,
+                },
+                expected: {
+                    r: 218,
+                    g: 113,
+                    b: 215,
+                },
+            },
+            {
+                description: 'denim',
+                input: {
+                    h: 210,
+                    s: 29,
+                    l: 56,
+                },
+                expected: {
+                    r: 110,
+                    g: 143,
+                    b: 175,
+                },
+            },
+            {
+                description: 'onyx',
+                input: {
+                    h: 120,
+                    s: 4,
+                    l: 22,
+                },
+                expected: {
+                    r: 54,
+                    g: 58,
+                    b: 54,
+                },
+            },
+        ];
+
+        testCases.forEach((testCase) => it(testCase.description, () => {
+            expect(hslToRGB(testCase.input)).toEqual(testCase.expected);
         }));
     });
 });
