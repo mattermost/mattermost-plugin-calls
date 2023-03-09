@@ -521,6 +521,7 @@ type callRecordingStateAction = {
 const callsRecordings = (state: {[callID: string]: CallRecordingState} = {}, action: callRecordingStateAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
+    case VOICE_CHANNEL_USER_DISCONNECTED:
         return {};
     case VOICE_CHANNEL_CALL_RECORDING_STATE:
         return {
