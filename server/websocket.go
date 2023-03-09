@@ -153,6 +153,7 @@ type EmojiData struct {
 	Name    string `json:"name"`
 	Skin    string `json:"skin,omitempty"`
 	Unified string `json:"unified"`
+	Literal string `json:"literal,omitempty"`
 }
 
 func (ed EmojiData) toMap() map[string]interface{} {
@@ -160,6 +161,7 @@ func (ed EmojiData) toMap() map[string]interface{} {
 		"name":    ed.Name,
 		"skin":    ed.Skin,
 		"unified": ed.Unified,
+		"literal": ed.Literal,
 	}
 }
 

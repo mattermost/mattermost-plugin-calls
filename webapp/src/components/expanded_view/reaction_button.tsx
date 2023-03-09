@@ -52,10 +52,12 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     const addReactionText = showBar ? 'Close Reactions' : 'Add Reaction';
 
     const handleUserPicksEmoji = (ecd: EmojiClickData) => {
+        const name = ecd.names.length > 0 ? ecd.names[0] : '';
         const emojiData: EmojiData = {
-            name: ecd.emoji,
+            name: name.replaceAll(' ', '_'),
             skin: ecd.activeSkinTone,
-            unified: ecd.unified.toUpperCase(),
+            unified: ecd.unified.toLowerCase(),
+            literal: ecd.emoji || '',
         };
         callsClient?.sendUserReaction(emojiData);
     };
@@ -182,7 +184,7 @@ interface QuickSelectProps {
 
 const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
     const onClick = () => {
-        handleClick({emoji: emoji.name, unified: emoji.unified} as EmojiClickData);
+        handleClick({names: [emoji.name], unified: emoji.unified} as EmojiClickData);
     };
 
     return (
