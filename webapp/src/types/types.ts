@@ -71,6 +71,7 @@ export type CallRecordingState = {
     start_at: number,
     end_at: number,
     err?: string,
+    error_at?: number,
 } & BaseData
 
 export type CallRecordingStateData = {
