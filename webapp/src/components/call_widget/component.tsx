@@ -29,6 +29,7 @@ import {CallAlertConfigs, CallRecordingDisclaimerStrings} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import Avatar from 'src/components/avatar/avatar';
 import MutedIcon from 'src/components/icons/muted_icon';
+import MutedIconSimple from 'src/components/icons/muted_icon_simple';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
@@ -162,7 +163,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 alignItems: 'center',
                 width: '100%',
                 background: this.props.theme.centerChannelBg,
-                border: `2px solid rgba(var(--center-channel-color-rgb), 0.16)`,
+                border: '2px solid rgba(var(--center-channel-color-rgb), 0.16)',
                 borderRadius: '8px',
             },
             callInfo: {
@@ -910,23 +911,25 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     isHandRaised = Boolean(status.raised_hand > 0);
                 }
 
-                const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
+                const MuteIcon = isMuted ? MutedIconSimple : UnmutedIcon;
 
                 return (
                     <li
                         className='MenuItem'
                         key={'participants_profile_' + profile.id}
-                        style={{display: 'flex', padding: '1px 16px'}}
+                        style={{display: 'flex', padding: '10px 20px'}}
                     >
                         <Avatar
                             size={24}
                             fontSize={10}
                             url={this.props.picturesMap[profile.id]}
-                            style={{marginRight: '8px'}}
                             borderGlow={isSpeaking}
                         />
 
-                        <span className='MenuItem__primary-text'>
+                        <span
+                            className='MenuItem__primary-text'
+                            style={{padding: '0 8px'}}
+                        >
                             {getUserDisplayName(profile)}
                             {profile.id === this.props.currentUserID &&
                                 <span
@@ -950,41 +953,27 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             }}
                         >
                             {status?.reaction &&
-                                <div
-                                    style={{
-                                        marginBottom: 2,
-                                        marginRight: 4,
-                                    }}
-                                >
-                                    <Emoji
-                                        emoji={status.reaction.emoji}
-                                        size={16}
-                                    />
-                                </div>
+                            <Emoji
+                                emoji={status.reaction.emoji}
+                                size={18}
+                            />
                             }
                             {isHandRaised &&
-                                <CompassIcon
-                                    icon={'hand-right'}
-                                    style={{
-                                        color: 'rgba(255, 188, 66, 1)',
-                                        marginBottom: 2,
-                                        marginLeft: -4,
-                                        fontSize: 16,
-                                    }}
+                                <RaisedHandIcon
+                                    fill='rgba(255, 188, 66, 1)'
                                 />
                             }
 
                             {this.props.screenSharingID === profile.id &&
                                 <ScreenIcon
                                     fill={'rgb(var(--dnd-indicator-rgb))'}
-                                    style={{width: '14px', height: '14px'}}
+                                    style={{width: '18px', height: '18px'}}
                                 />
                             }
 
                             <MuteIcon
-                                fill={isMuted ? '#C4C4C4' : '#3DB887'}
-                                style={{width: '14px', height: '14px'}}
-                                stroke={isMuted ? '#C4C4C4' : '#3DB887'}
+                                fill={isMuted ? 'rgba(var(--center-channel-color-rgb), 0.56)' : '#3DB887'}
+                                style={{width: '18px', height: '18px'}}
                             />
 
                         </span>
@@ -1005,9 +994,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         width: '100%',
                         minWidth: 'revert',
                         maxWidth: 'revert',
-                        maxHeight: '188px',
+                        maxHeight: '218px',
                         overflow: 'auto',
                         position: 'relative',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
+                        boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
                     }}
                 >
                     <li
@@ -1299,7 +1291,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
-    renderProfiles = () => {
+    renderSpeakingProfile = () => {
         let speakingPictureURL;
         for (let i = 0; i < this.props.profiles.length; i++) {
             const profile = this.props.profiles[i];
@@ -1789,7 +1781,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         />
 
                         <div style={this.style.profiles}>
-                            {this.renderProfiles()}
+                            {this.renderSpeakingProfile()}
                         </div>
                         <div style={{width: widerWidget ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
@@ -1825,13 +1817,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                     background: this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.16)' : '',
                                     marginRight: 'auto',
                                     marginLeft: '0',
-                                    width: '41px',
                                     height: '28px',
                                 }}
                                 onClick={() => this.onParticipantsButtonClick()}
                             >
                                 <ParticipantsIcon
-                                    style={{marginRight: '4px', fill: 'currentColor'}}
+                                    style={{marginRight: '4px', fill: 'currentColor', width: '18px', height: '18px'}}
                                 />
 
                                 <span
