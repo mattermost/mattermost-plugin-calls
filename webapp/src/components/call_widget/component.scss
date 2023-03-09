@@ -2,12 +2,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 14px;
-  width: 24px;
-  height: 24px;
   border-radius: 4px;
   color: rgba(var(--center-channel-color-rgb), 0.64);
-  margin: 0 4px;
+  margin: 0 5px;
 
   &.button-controls--wide {
     width: auto;

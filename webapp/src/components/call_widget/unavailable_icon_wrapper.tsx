@@ -29,8 +29,8 @@ const IconWrapper = styled.div<{unavailable: boolean, margin?: string}>`
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   margin: ${({margin}) => margin || 0};
 
   &&& {
@@ -38,8 +38,8 @@ const IconWrapper = styled.div<{unavailable: boolean, margin?: string}>`
     line-height: 28px;
 
     svg {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
 
       ${({unavailable}) => (unavailable) && css`
         fill: rgba(var(--center-channel-color-rgb), 0.32);

@@ -32,6 +32,7 @@ import MutedIcon from 'src/components/icons/muted_icon';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
+import SettingsWheelIcon from 'src/components/icons/settings_wheel';
 import ParticipantsIcon from 'src/components/icons/participants';
 import ShowMoreIcon from 'src/components/icons/show_more';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -136,6 +137,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 zIndex: '1000',
                 userSelect: 'none',
                 color: this.props.theme.centerChannelColor,
+                height: '84px',
             },
             topBar: {
                 background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
@@ -153,18 +155,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 width: '100%',
                 alignItems: 'center',
             },
-            disconnectButton: {
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                color: 'color: rgba(255, 255, 255, 0.8)',
-                fontSize: '14px',
-                margin: '0 8px',
-                width: '24px',
-                height: '24px',
-                borderRadius: '4px',
-                backgroundColor: '#D24B4E',
-            },
             status: {
                 display: 'flex',
                 flexDirection: 'column',
@@ -172,7 +162,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 alignItems: 'center',
                 width: '100%',
                 background: this.props.theme.centerChannelBg,
-                border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.3)}`,
+                border: `2px solid rgba(var(--center-channel-color-rgb), 0.16)`,
                 borderRadius: '8px',
             },
             callInfo: {
@@ -185,7 +175,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             profiles: {
                 display: 'flex',
-                marginRight: '8px',
+                marginRight: '12px',
             },
             menuButton: {
                 display: 'flex',
@@ -213,11 +203,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             leaveCallButton: {
                 display: 'flex',
                 alignItems: 'center',
-                padding: '10px 16px',
                 height: '28px',
+                width: '28px',
                 borderRadius: '4px',
-                color: '#D24B4E',
-                background: 'rgba(var(--dnd-indicator-rgb), 0.08)',
+                background: 'var(--dnd-indicator)',
+                marginRight: '0',
             },
             dotsMenu: {
                 position: 'relative',
@@ -232,8 +222,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 maxHeight: 'calc(100% + 90px)',
             },
             expandButton: {
-                position: 'absolute',
-                right: '8px',
+                position: 'absolute' as const,
+                right: '12px',
                 top: '8px',
                 margin: 0,
             },
@@ -550,7 +540,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             bounds.width = baseWidget.getBoundingClientRect().width + margin;
 
             // Margin on base height is needed to account for the widget being
-            // positioned 2px from the bottom: 2px + 86px (base height) + 2px
+            // positioned 2px from the bottom: 2px + 84px (base height) + 2px
             bounds.height = baseWidget.getBoundingClientRect().height + widgetMenu.getBoundingClientRect().height + margin;
 
             if (widgetMenu.getBoundingClientRect().height > 0) {
@@ -876,7 +866,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 // eslint-disable-next-line no-undefined
                 shortcut={noScreenPermissions ? undefined : reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
-                icon={<ScreenIcon style={{width: '16px', height: '16px', fill}}/>}
+                icon={<ScreenIcon style={{width: '18px', height: '18px', fill}}/>}
                 unavailable={this.state.alerts.missingScreenPermissions.active}
                 disabled={sharingID !== '' && !isSharing}
             />
@@ -1757,6 +1747,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
         const handTooltipText = window.callsClient.isHandRaised ? 'Click to lower hand' : 'Click to raise hand';
 
+        const MenuIcon = widerWidget ? SettingsWheelIcon : HorizontalDotsIcon;
+
         return (
             <div
                 id='calls-widget'
@@ -1783,17 +1775,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         // eslint-disable-next-line no-undefined
                         onMouseDown={this.props.global ? undefined : this.onMouseDown}
                     >
-                        <button
+
+                        <WidgetButton
                             id='calls-widget-expand-button'
-                            className='style--none button-controls button-controls--wide'
-                            style={this.style.expandButton as CSSProperties}
-                            onClick={this.onExpandClick}
-                        >
-                            <ShowIcon
-                                style={{width: '14px', height: '14px'}}
-                                fill={changeOpacity(this.props.theme.centerChannelColor, 0.64)}
-                            />
-                        </button>
+                            style={this.style.expandButton}
+                            onToggle={this.onExpandClick}
+                            bgColor=''
+                            icon={
+                                <ShowIcon
+                                    fill={changeOpacity(this.props.theme.centerChannelColor, 0.64)}
+                                />
+                            }
+                        />
 
                         <div style={this.style.profiles}>
                             {this.renderProfiles()}
@@ -1828,20 +1821,23 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    color: this.state.showParticipantsList ? 'rgba(28, 88, 217, 1)' : '',
-                                    background: this.state.showParticipantsList ? 'rgba(28, 88, 217, 0.12)' : '',
+                                    color: this.state.showParticipantsList ? 'var(--button-bg)' : '',
+                                    background: this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.16)' : '',
                                     marginRight: 'auto',
+                                    marginLeft: '0',
+                                    width: '41px',
+                                    height: '28px',
                                 }}
                                 onClick={() => this.onParticipantsButtonClick()}
                             >
                                 <ParticipantsIcon
-                                    style={{width: '16px', height: '16px', marginRight: '4px'}}
+                                    style={{marginRight: '4px', fill: 'currentColor'}}
                                 />
 
                                 <span
                                     style={{
                                         fontWeight: 600,
-                                        color: changeOpacity(this.props.theme.centerChannelColor, 0.64),
+                                        fontSize: '14px',
                                     }}
                                 >
                                     {this.props.profiles.length}
@@ -1861,8 +1857,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             icon={
                                 <MuteIcon
                                     style={{
-                                        width: '16px',
-                                        height: '16px',
                                         fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)',
                                     }}
                                 />
@@ -1880,8 +1874,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 icon={
                                     <HandIcon
                                         style={{
-                                            width: '16px',
-                                            height: '16px',
                                             fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : '',
                                         }}
                                     />
@@ -1891,16 +1883,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                         {this.props.allowScreenSharing && (widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
 
-                        <button
+                        <WidgetButton
                             id='calls-widget-toggle-menu-button'
-                            className='cursor--pointer style--none button-controls'
-                            style={this.style.menuButton}
-                            onClick={this.onMenuClick}
-                        >
-                            <HorizontalDotsIcon
-                                style={{width: '16px', height: '16px'}}
-                            />
-                        </button>
+                            onToggle={this.onMenuClick}
+                            icon={
+                                <MenuIcon
+                                    style={{
+                                        fill: this.state.showMenu ? 'var(--button-bg)' : '',
+                                    }}
+                                />
+                            }
+                            bgColor={this.state.showMenu ? 'rgba(var(--button-bg-rgb), 0.16)' : ''}
+                        />
 
                         <OverlayTrigger
                             key='leave'
@@ -1915,12 +1909,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                             <button
                                 id='calls-widget-leave-button'
-                                className='style--none button-controls button-controls--wide'
+                                className='style--none button-controls'
                                 style={this.style.leaveCallButton}
                                 onClick={this.onDisconnectClick}
                             >
                                 <LeaveCallIcon
-                                    style={{width: '16px', height: '16px', fill: '#D24B4E'}}
+                                    style={{width: '18px', height: '18px', fill: 'white'}}
                                 />
                             </button>
                         </OverlayTrigger>

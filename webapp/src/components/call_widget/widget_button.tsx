@@ -1,4 +1,4 @@
-import React, {useRef, useState} from 'react';
+import React, {useRef, useState, CSSProperties} from 'react';
 import {Overlay} from 'react-bootstrap';
 import styled, {css} from 'styled-components';
 
@@ -11,13 +11,13 @@ export type Props = {
     id: string,
     icon: React.ReactNode,
     bgColor: string,
-    tooltipText: string,
+    tooltipText?: string,
     tooltipSubtext?: string,
     onToggle?: () => void,
     unavailable?: boolean,
     disabled?: boolean,
-    iconFill?: string,
     shortcut?: string,
+    style?: CSSProperties,
 }
 
 export default function WidgetButton(props: Props) {
@@ -38,12 +38,14 @@ export default function WidgetButton(props: Props) {
                 isDisabled={props.disabled}
                 isUnavailable={props.unavailable}
                 disabled={props.disabled}
+                style={props.style}
             >
                 <UnavailableIconWrapper
                     icon={props.icon}
                     unavailable={Boolean(props.unavailable)}
                 />
             </Button>
+            { props.tooltipText &&
             <Overlay
                 key={props.id}
                 target={target.current as HTMLButtonElement}
@@ -65,6 +67,7 @@ export default function WidgetButton(props: Props) {
                     }
                 </StyledTooltip>
             </Overlay>
+            }
         </>
     );
 }
