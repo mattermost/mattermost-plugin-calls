@@ -82,13 +82,15 @@ export function getChannelURL(state: GlobalState, channel: Channel, teamId: stri
     return channelURL;
 }
 
-export function getUserDisplayName(user: UserProfile | undefined) {
+export function getUserDisplayName(user: UserProfile | undefined, shortForm?: boolean) {
     if (!user) {
         return '';
     }
 
     if (user.first_name && user.last_name) {
-        return user.first_name + ' ' + user.last_name;
+        return shortForm ?
+            `${user.first_name} ${user.last_name[0]}.` :
+            `${user.first_name} ${user.last_name}`;
     }
 
     return user.username;

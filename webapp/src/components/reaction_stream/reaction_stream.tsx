@@ -35,12 +35,16 @@ export const ReactionStream = ({forceLeft}: Props) => {
     const vReactions = useSelector(voiceReactions);
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
-        const emoji = <Emoji emoji={reaction.emoji}/>;
-        const user = reaction.user_id === currentUserID ? 'You' : reaction.displayName || 'Someone';
+        const emoji = (
+            <Emoji
+                emoji={reaction.emoji}
+                size={14}
+            />
+        );
+        const user = reaction.user_id === currentUserID ? 'You' : getUserDisplayName(profileMap[reaction.user_id], true) || 'Someone';
         return (
             <ReactionChip key={reaction.timestamp + reaction.user_id}>
                 <span>{emoji}</span>
-                &nbsp;
                 <span>{user}</span>
             </ReactionChip>
         );
@@ -49,7 +53,7 @@ export const ReactionStream = ({forceLeft}: Props) => {
     // add hands up
     let elements = [];
     const getName = (user_id: string) => {
-        return user_id === currentUserID ? 'You' : getUserDisplayName(profileMap[user_id]);
+        return user_id === currentUserID ? 'You' : getUserDisplayName(profileMap[user_id], true);
     };
     let participants: string;
     if (handsup?.length) {
@@ -78,7 +82,7 @@ export const ReactionStream = ({forceLeft}: Props) => {
                     style={{
                         color: 'rgb(255, 188, 66)',
                         marginBottom: 2,
-                        fontSize: 16,
+                        fontSize: 14,
                     }}
                 />
                 <Bold>{participants}</Bold>
@@ -106,11 +110,12 @@ const ReactionStreamList = styled.div<streamListStyleProps>`
     display: flex;
     flex-direction: column-reverse;
     z-index: 1;
-    margin-left: 10px;
+    margin: 12px;
+    gap: 8px;
     -webkit-mask: -webkit-gradient(#0000, #000);
     mask: linear-gradient(#0000, #0003, #000f);
     ${(props) => props.forceLeft && css`
-        left: 0;
+        left: 12px;
     `}
 `;
 
@@ -122,17 +127,16 @@ const ReactionChip = styled.div<chipProps>`
     display: flex;
     flex-direction: row;
     align-items: center;
-    padding: 0 8px;
-    gap: 2px;
-    max-height: 28px;
-    color: black;
-    background: rgba(221, 223, 228, 0.48);
-    border-radius: 12px;
-    margin: 4px 0;
+    padding: 4px 12px 4px 6px;
+    gap: 5px;
+    max-height: 24px;
+    color: var(--button-color);
+    background: rgba(var(--button-color-rgb), 0.16);
+    border-radius: 16px;
     width: fit-content;
-    font-weight: 400;
+    font-weight: 600;
     font-size: 12px;
-    line-height: 28px;
+    line-height: 20px;
 
     ${(props) => props.highlight && css`
         background: #FFFFFF;
