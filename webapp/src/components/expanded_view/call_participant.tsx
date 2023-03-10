@@ -5,6 +5,7 @@ import {CSSObject} from 'styled-components';
 import CompassIcon from 'src/components/icons/compassIcon';
 import MutedIcon from 'src/components/icons/muted_icon';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import RaisedHandIcon from 'src/components/icons/raised_hand';
 import Avatar from 'src/components/avatar/avatar';
 import {Reaction} from 'src/types/types';
 import {Emoji} from 'src/components/emoji/emoji';
@@ -17,6 +18,7 @@ export type Props = {
     reaction?: Reaction,
     isSpeaking: boolean,
     isHost: boolean,
+    baseBgColor: string,
 }
 
 export default function CallParticipant(props: Props) {
@@ -34,6 +36,7 @@ export default function CallParticipant(props: Props) {
                 justifyContent: 'flex-start',
                 alignItems: 'center',
                 margin: '16px',
+                gap: '12px',
             }}
         >
 
@@ -53,39 +56,36 @@ export default function CallParticipant(props: Props) {
                         alignItems: 'center',
                         bottom: 0,
                         right: 0,
-                        background: 'rgba(50, 50, 50, 1)',
+                        background: props.isMuted ? props.baseBgColor : '#3DB887',
                         borderRadius: '30px',
                         width: '20px',
                         height: '20px',
                     }}
                 >
                     <MuteIcon
-                        fill={props.isMuted ? '#C4C4C4' : '#3DB887'}
+                        fill='white'
                         style={{width: '14px', height: '14px'}}
                     />
                 </div>
                 {props.isHandRaised &&
-                    <>
-                        <div style={styles.reactionBackground}/>
-                        <div style={styles.handRaisedContainer}>
-                            <CompassIcon
-                                icon={'hand-right'}
-                                style={{marginRight: '2px'}}
-                            />
-                        </div>
-                    </>
+                <div style={styles.handRaisedContainer}>
+                    <RaisedHandIcon
+                        style={{
+                            fill: 'rgb(255, 188, 66)',
+                            width: '20px',
+                            height: '20px',
+                        }}
+                    />
+                </div>
                 }
                 {!props.isHandRaised && props.reaction &&
-                    <>
-                        <div style={styles.reactionBackground}/>
-                        <div style={styles.reactionContainer}>
-                            <Emoji emoji={props.reaction.emoji}/>
-                        </div>
-                    </>
+                    <div style={{...styles.reactionContainer, background: props.baseBgColor}}>
+                        <Emoji emoji={props.reaction.emoji}/>
+                    </div>
                 }
             </div>
 
-            <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
+            <span style={{fontWeight: 600, fontSize: '12px', lineHeight: '16px', textAlign: 'center'}}>
                 {props.name}
             </span>
 
@@ -109,18 +109,6 @@ export default function CallParticipant(props: Props) {
 }
 
 const styles: Record<string, CSSObject> = {
-    reactionBackground: {
-        position: 'absolute',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        top: -7,
-        right: -12,
-        background: 'rgba(37, 38, 42, 1)',
-        borderRadius: '30px',
-        width: '30px',
-        height: '30px',
-    },
     reactionContainer: {
         position: 'absolute',
         display: 'flex',
@@ -128,7 +116,6 @@ const styles: Record<string, CSSObject> = {
         alignItems: 'center',
         top: -5,
         right: -10,
-        background: 'rgba(50, 50, 50, 1)',
         borderRadius: '30px',
         width: '25px',
         height: '25px',

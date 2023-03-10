@@ -61,6 +61,7 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import ParticipantsIcon from 'src/components/icons/participants';
 import CallDuration from 'src/components/call_widget/call_duration';
+import RaisedHandIcon from 'src/components/icons/raised_hand';
 import Badge from 'src/components/badge';
 
 import {
@@ -747,6 +748,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     isHandRaised={isHandRaised}
                     reaction={status?.reaction}
                     isHost={profile.id === this.props.callHostID}
+                    baseBgColor={this.style.root.background as string}
                 />
             );
         });
@@ -795,12 +797,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         }}
                     >
                         {isHandRaised &&
-                            <CompassIcon
-                                icon={'hand-right'}
+                            <RaisedHandIcon
                                 style={{
-                                    color: 'rgb(255, 188, 66)',
-                                    marginBottom: 2,
-                                    fontSize: 16,
+                                    fill: 'rgb(255, 188, 66)',
+                                    width: '16px',
+                                    height: '16px',
                                 }}
                             />
                         }

@@ -14,7 +14,7 @@ import {
 } from 'src/selectors';
 import {Emoji} from 'src/components/emoji/emoji';
 import {getUserDisplayName} from 'src/utils';
-import CompassIcon from 'src/components/icons/compassIcon';
+import RaisedHandIcon from 'src/components/icons/raised_hand';
 
 interface Props {
     forceLeft?: boolean;
@@ -77,12 +77,11 @@ export const ReactionStream = ({forceLeft}: Props) => {
                 key={'hands'}
                 highlight={true}
             >
-                <CompassIcon
-                    icon={'hand-right'}
+                <RaisedHandIcon
                     style={{
-                        color: 'rgb(255, 188, 66)',
-                        marginBottom: 2,
-                        fontSize: 14,
+                        fill: 'rgb(255, 188, 66)',
+                        width: '14px',
+                        height: '14px',
                     }}
                 />
                 <Bold>{participants}</Bold>
