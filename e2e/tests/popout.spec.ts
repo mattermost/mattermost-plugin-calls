@@ -67,7 +67,7 @@ test.describe('popout window', () => {
         ]);
         await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
 
-        await popOut.click('#calls-popout-chat-button button');
+        await popOut.click('#calls-popout-chat-button');
 
         await expect(popOut.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
 
@@ -77,7 +77,7 @@ test.describe('popout window', () => {
         await replyTextbox.press('Enter');
         await expect(popOut.locator(`p:has-text("${msg}")`)).toBeVisible();
 
-        await popOut.click('#calls-popout-chat-button button');
+        await popOut.click('#calls-popout-chat-button');
         await expect(popOut.locator('#sidebar-right')).not.toBeVisible();
 
         await popOut.locator('#calls-popout-leave-button').click();
@@ -94,7 +94,7 @@ test.describe('popout window', () => {
         ]);
         await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
 
-        await popOut.click('#calls-popout-chat-button button');
+        await popOut.click('#calls-popout-chat-button');
 
         await expect(popOut.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
 
@@ -104,7 +104,7 @@ test.describe('popout window', () => {
         await replyTextbox.press('Enter');
         await expect(popOut.locator(`p:has-text("${msg}")`)).toBeVisible();
 
-        await popOut.click('#calls-popout-chat-button button');
+        await popOut.click('#calls-popout-chat-button');
         await expect(popOut.locator('#sidebar-right')).not.toBeVisible();
 
         await popOut.locator('#calls-popout-leave-button').click();
