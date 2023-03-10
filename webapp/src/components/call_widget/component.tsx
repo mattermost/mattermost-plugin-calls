@@ -43,6 +43,7 @@ import ExpandIcon from 'src/components/icons/expand';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
+import TickIcon from 'src/components/icons/tick';
 import Shortcut from 'src/components/shortcut';
 import Badge from 'src/components/badge';
 import {AudioInputPermissionsError} from 'src/client';
@@ -217,11 +218,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 maxWidth: 'revert',
                 borderRadius: '8px',
             },
-            audioInputsOutputsMenu: {
+            audioDevicesMenu: {
                 left: 'calc(100% + 4px)',
                 overflow: 'auto',
                 top: 0,
+                width: '280px',
                 maxHeight: 'calc(100% + 90px)',
+                borderRadius: '8px',
+                border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
+                boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
             },
             expandButton: {
                 position: 'absolute' as const,
@@ -1057,18 +1062,37 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     <button
                         className='style--none'
-                        style={{background: device.deviceId === currentDevice?.deviceId ? 'rgba(28, 88, 217, 0.12)' : ''}}
+                        style={{
+                            background: device.deviceId === currentDevice?.deviceId ? 'rgba(28, 88, 217, 0.12)' : '',
+                            lineHeight: '20px',
+                            padding: '8px 20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                        }}
                         onClick={() => (deviceType === 'input' ? this.onAudioInputDeviceClick(device) : this.onAudioOutputDeviceClick(device))}
                     >
                         <span
                             style={{
                                 color: changeOpacity(this.props.theme.centerChannelColor, 0.56),
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 width: '100%',
+                                textOverflow: 'ellipsis',
+                                overflow: 'hidden',
                             }}
                         >
                             {makeDeviceLabel(device)}
                         </span>
+
+                        { device.deviceId === currentDevice?.deviceId &&
+                        <TickIcon
+                            style={{
+                                width: '18px',
+                                height: '18px',
+                                fill: 'var(--button-bg)',
+                            }}
+                        />
+                        }
                     </button>
                 </li>
             );
@@ -1079,7 +1103,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <ul
                     id={`calls-widget-audio-${deviceType}s-menu`}
                     className='Menu__content dropdown-menu'
-                    style={this.style.audioInputsOutputsMenu}
+                    style={this.style.audioDevicesMenu}
                     // eslint-disable-next-line no-undefined
                     ref={this.props.global ? this.audioDevicesMenuRefCb : undefined}
                 >
