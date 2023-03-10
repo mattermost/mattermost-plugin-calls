@@ -1010,7 +1010,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     <li
                         className='MenuHeader'
-                        style={{paddingBottom: '4px', color: this.props.theme.centerChannelColor}}
+                        style={{
+                            position: 'sticky',
+                            top: '0',
+                            transform: 'translateY(-8px)',
+                            paddingTop: '16px',
+                            color: 'var(--center-channel-color)',
+                            background: 'var(--center-channel-bg)',
+                        }}
                     >
                         {'Participants'}
                     </li>
