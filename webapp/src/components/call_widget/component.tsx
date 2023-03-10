@@ -210,11 +210,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 background: 'var(--dnd-indicator)',
                 marginRight: '0',
             },
-            dotsMenu: {
+            settingsMenu: {
                 position: 'relative',
                 width: '100%',
                 minWidth: 'revert',
                 maxWidth: 'revert',
+                borderRadius: '8px',
             },
             audioInputsOutputsMenu: {
                 left: 'calc(100% + 4px)',
@@ -826,7 +827,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <span
                         style={{
                             marginTop: '8px',
-                            color: changeOpacity(this.props.theme.centerChannelColor, 0.72),
+                            color: changeOpacity(this.props.theme.centerChannelColor, 0.56),
                             fontSize: '12px',
                             padding: '0 8px',
                             textAlign: 'center',
@@ -1128,7 +1129,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const buttonStyle: CSSProperties = {
             display: 'flex',
-            flexDirection: 'column',
+            alignItems: 'start',
+            padding: '6px 16px',
             color: isDisabled ? changeOpacity(this.props.theme.centerChannelColor, 0.32) : '',
         };
 
@@ -1149,58 +1151,60 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         onClick={onClickHandler}
                         disabled={isDisabled}
                     >
+
+                        <DeviceIcon
+                            style={{
+                                width: '18px',
+                                height: '18px',
+                                fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
+                            }}
+                        />
+
                         <div
                             style={{
                                 display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'flex-start',
+                                alignItems: 'start',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
                                 width: '100%',
-                                padding: '2px 0',
+                                gap: '4px',
+                                padding: '0 8px',
                             }}
                         >
-                            <UnavailableIconWrapper
-                                icon={(
-                                    <DeviceIcon
-                                        style={{
-                                            fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
-                                        }}
-                                    />
-                                )}
-                                unavailable={isDisabled}
-                                margin={'0 8px 0 0'}
-                            />
                             <span
                                 className='MenuItem__primary-text'
-                                style={{padding: '0'}}
+                                style={{padding: '0', lineHeight: '18px'}}
                             >
                                 {deviceType === 'input' ? 'Microphone' : 'Audio Output'}
                             </span>
-                            {devices.length > 0 &&
-                                <ShowMoreIcon
-                                    style={{
-                                        width: '11px',
-                                        height: '11px',
-                                        marginLeft: 'auto',
-                                        fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
-                                    }}
-                                />
-                            }
+
+                            <span
+                                style={{
+                                    color: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
+                                    fontSize: '12px',
+                                    width: '100%',
+                                    lineHeight: '18px',
+                                    textOverflow: 'ellipsis',
+                                    overflow: 'hidden',
+                                    whiteSpace: isDisabled ? 'initial' : 'nowrap',
+                                }}
+                            >
+                                {label}
+                            </span>
                         </div>
-                        <span
+
+                        {devices.length > 0 &&
+                        <ShowMoreIcon
                             style={{
-                                color: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
-                                fontSize: '12px',
-                                width: '100%',
-                                lineHeight: '16px',
-                                textOverflow: 'ellipsis',
-                                overflow: 'hidden',
-                                whiteSpace: isDisabled ? 'initial' : 'nowrap',
+                                width: '18px',
+                                height: '18px',
+                                fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
                             }}
-                        >
-                            {label}
-                        </span>
+                        />
+                        }
                     </button>
                 </li>
+                {deviceType === 'output' && <li className='MenuGroup menu-divider'/>}
             </React.Fragment>
         );
     };
@@ -1281,7 +1285,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <div className='Menu'>
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={this.style.dotsMenu as CSSProperties}
+                    style={this.style.settingsMenu as CSSProperties}
                 >
                     {this.props.allowScreenSharing && !widerWidget && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}

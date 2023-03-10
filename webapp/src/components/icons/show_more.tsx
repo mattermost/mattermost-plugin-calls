@@ -13,15 +13,12 @@ export default function ShowMore(props: Props) {
     return (
         <svg
             {...props}
-            width='7px'
-            height='10px'
-            viewBox='0 0 7 10'
+            width='16px'
+            height='16px'
+            viewBox='0 0 16 16'
             role='img'
         >
-            <path
-                d='M0.444 8.43805L3.882 5.00005L0.444 1.56205L1.506 0.500048L6.006 5.00005L1.506 9.50005L0.444 8.43805Z'
-            />
+            <path d='M5.444 11.4378L8.882 7.9998L5.444 4.5618L6.506 3.4998L11.006 7.9998L6.506 12.4998L5.444 11.4378Z'/>
         </svg>
     );
 }
-
