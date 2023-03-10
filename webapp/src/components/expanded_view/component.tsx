@@ -132,6 +132,7 @@ interface State {
 
 const StyledMediaController = styled(MediaController)`
     height: 100%;
+    max-height: calc(100% - 32px);
     background-color: transparent;
 `;
 
@@ -219,11 +220,25 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             },
             screenContainer: {
                 display: 'flex',
+                flex: 1,
                 flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'center',
-                margin: 'auto',
                 maxWidth: 'calc(100% - 16px)',
+                background: 'rgba(var(--button-color-rgb), 0.08)',
+                borderRadius: '8px',
+                margin: '0 12px',
+            },
+            screenSharingMsg: {
+                background: rgbToCSS(baseColorRGB),
+                padding: '4px 8px',
+                borderRadius: '12px',
+                lineHeight: '12px',
+                fontSize: '10px',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                color: 'var(--button-color)',
+                margin: '4px',
             },
             rhs: {
                 display: 'flex',
@@ -673,7 +688,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     ...this.style.screenContainer,
 
                     // Account for when we display an alert banner.
-                    maxHeight: `calc(100% - ${this.shouldRenderAlertBanner() ? 240 : 200}px)`,
+                    maxHeight: `calc(100vh - ${this.shouldRenderAlertBanner() ? 180 : 140}px)`,
                 }}
             >
                 <StyledMediaController
@@ -701,15 +716,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </StyledMediaFullscreenButton>
                     </StyledMediaControlBar>
                 </StyledMediaController>
-                <span
-                    style={{
-                        background: 'black',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        color: 'white',
-                        marginTop: '8px',
-                    }}
-                >
+                <span style={this.style.screenSharingMsg}>
                     {msg}
                 </span>
                 <ReactionStream forceLeft={true}/>
