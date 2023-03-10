@@ -23,6 +23,7 @@ import Shortcut from 'src/components/shortcut';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {Emoji} from 'src/components/emoji/emoji';
 import {EmojiData} from 'src/types/types';
+import {EmojiIndicesByAlias} from 'src/emojis/emoji';
 
 const EMOJI_VERSION = '13';
 
@@ -52,9 +53,8 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     const addReactionText = showBar ? 'Close Reactions' : 'Add Reaction';
 
     const handleUserPicksEmoji = (ecd: EmojiClickData) => {
-        const name = ecd.names.length > 0 ? ecd.names[0] : '';
         const emojiData: EmojiData = {
-            name: name.replaceAll(' ', '_'),
+            name: findEmojiName(ecd.names),
             skin: ecd.activeSkinTone,
             unified: ecd.unified.toLowerCase(),
             literal: ecd.emoji || '',
@@ -176,6 +176,25 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
         </div>
     );
 });
+
+const findEmojiName = (names: string[]) => {
+    // make underscore and hyphen versions to cover all possibilities
+    names = names.flatMap((n) => {
+        const ret = [n];
+        ret.push(n.replaceAll(' ', '_'));
+        ret.push(n.replaceAll(' ', '-'));
+
+        // There will be some duplicates, but the map.has check below is far faster than a deduplication, so leaving them.
+        return ret;
+    });
+
+    for (const name of names) {
+        if (EmojiIndicesByAlias.has(name)) {
+            return name;
+        }
+    }
+    return '';
+};
 
 interface QuickSelectProps {
     emoji: EmojiData,
