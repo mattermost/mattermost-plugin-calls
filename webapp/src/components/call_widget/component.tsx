@@ -29,7 +29,6 @@ import {CallAlertConfigs, CallRecordingDisclaimerStrings} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import Avatar from 'src/components/avatar/avatar';
 import MutedIcon from 'src/components/icons/muted_icon';
-import MutedIconSimple from 'src/components/icons/muted_icon_simple';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
@@ -917,7 +916,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     isHandRaised = Boolean(status.raised_hand > 0);
                 }
 
-                const MuteIcon = isMuted ? MutedIconSimple : UnmutedIcon;
+                const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
                 return (
                     <li
@@ -1531,7 +1530,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         height: '11px',
                         fill: isMuted ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : '#3DB887',
                     }}
-                    stroke={isMuted ? 'rgb(var(--dnd-indicator-rgb))' : '#3DB887'}
                 />
                 <span>{` to ${isMuted ? 'unmute' : 'mute'}.`}</span>
             </React.Fragment>

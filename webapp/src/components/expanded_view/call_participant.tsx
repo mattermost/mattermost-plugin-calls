@@ -62,7 +62,6 @@ export default function CallParticipant(props: Props) {
                     <MuteIcon
                         fill={props.isMuted ? '#C4C4C4' : '#3DB887'}
                         style={{width: '14px', height: '14px'}}
-                        stroke={props.isMuted ? '#C4C4C4' : ''}
                     />
                 </div>
                 {props.isHandRaised &&

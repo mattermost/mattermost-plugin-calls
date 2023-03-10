@@ -57,7 +57,6 @@ import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import CompassIcon from 'src/components/icons/compassIcon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
-import MutedIconSimple from 'src/components/icons/muted_icon_simple';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import ParticipantsIcon from 'src/components/icons/participants';
@@ -758,7 +757,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 isHandRaised = Boolean(status.raised_hand > 0);
             }
 
-            const MuteIcon = isMuted ? MutedIconSimple : UnmutedIcon;
+            const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
             return (
                 <li
