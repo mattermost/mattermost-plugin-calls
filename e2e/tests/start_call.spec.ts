@@ -111,14 +111,14 @@ test.describe('start new call', () => {
 
         // send slash command in thread to start a call.
         await page.locator('#reply_textbox').fill('/call start');
-        await page.locator('#reply_textbox').press('Enter');
+        await page.locator('#reply_textbox').press('Control+Enter');
         await expect(page.locator('#calls-widget')).toBeVisible();
 
         // verify the call post is created in the thread.
         await expect(page.locator('#rhsContainer').filter({has: page.getByText(`${userState.users[userIdx].username} started a call`)})).toBeVisible();
 
         await page.locator('#reply_textbox').fill('/call leave');
-        await page.locator('#reply_textbox').press('Enter');
+        await page.locator('#reply_textbox').press('Control+Enter');
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
