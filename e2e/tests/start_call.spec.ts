@@ -118,7 +118,7 @@ test.describe('start new call', () => {
         await expect(page.locator('#rhsContainer').filter({has: page.getByText(`${userState.users[userIdx].username} started a call`)})).toBeVisible();
 
         await page.locator('#reply_textbox').fill('/call leave');
-        await page.locator('#reply_textbox').press('Enter');
+        await page.locator('#reply_textbox').press('Control+Enter');
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
