@@ -111,7 +111,7 @@ test.describe('start new call', () => {
 
         // send slash command in thread to start a call.
         await page.locator('#reply_textbox').fill('/call start');
-        await page.locator('#reply_textbox').press('Enter');
+        await page.locator('#reply_textbox').press('Control+Enter');
         await expect(page.locator('#calls-widget')).toBeVisible();
 
         // verify the call post is created in the thread.
