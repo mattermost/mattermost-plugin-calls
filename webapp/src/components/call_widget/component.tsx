@@ -928,7 +928,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             size={24}
                             fontSize={10}
                             url={this.props.picturesMap[profile.id]}
-                            borderGlow={isSpeaking}
+                            borderGlowWidth={isSpeaking ? 2 : 0}
                         />
 
                         <span

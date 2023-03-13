@@ -781,7 +781,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         size={24}
                         fontSize={10}
                         border={false}
-                        borderGlow={isSpeaking}
+                        borderGlowWidth={isSpeaking ? 2 : 0}
                         url={this.props.pictures[profile.id]}
                         style={{
                             marginRight: '8px',

@@ -44,7 +44,7 @@ export default function CallParticipant(props: Props) {
                     size={50}
                     fontSize={18}
                     border={false}
-                    borderGlow={props.isSpeaking}
+                    borderGlowWidth={props.isSpeaking ? 3 : 0}
                     url={props.pictureURL}
                 />
                 <div

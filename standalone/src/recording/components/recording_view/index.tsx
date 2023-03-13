@@ -189,7 +189,7 @@ const RecordingView = () => {
                     size={20}
                     fontSize={14}
                     border={false}
-                    borderGlow={true}
+                    borderGlowWidth={3}
                     url={pictures[speakingProfile.id]}
                 />
                 <span style={{marginLeft: '8px'}}>{getUserDisplayName(speakingProfile)}</span>
