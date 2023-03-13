@@ -53,8 +53,8 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
 
     const callsClient = getCallsClient();
     const addReactionText = showBar ?
-        formatMessage({defaultMessage: 'Close Reactions'}) :
-        formatMessage({defaultMessage: 'Add Reaction'});
+        formatMessage({defaultMessage: 'Close reactions'}) :
+        formatMessage({defaultMessage: 'Add reaction'});
 
     const handleUserPicksEmoji = (ecd: EmojiClickData) => {
         const emojiData: EmojiData = {

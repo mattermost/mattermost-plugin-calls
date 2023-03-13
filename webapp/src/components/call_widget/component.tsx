@@ -751,8 +751,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         const msg = isSharing ?
-            formatMessage({defaultMessage: 'You are sharing your screen'}) :
-            formatMessage({defaultMessage: 'You are viewing {presenter}\'s screen'}, {presenter: getUserDisplayName(profile)});
+            formatMessage({defaultMessage: 'You\'re sharing your screen'}) :
+            formatMessage({defaultMessage: 'You\'re viewing {presenter}\'s screen'}, {presenter: getUserDisplayName(profile)});
 
         return (
             <div
@@ -1204,7 +1204,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 className='MenuItem__primary-text'
                                 style={{padding: '0'}}
                             >
-                                {deviceType === 'input' ? formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio Output'})}
+                                {deviceType === 'input' ? formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio output'})}
                             </span>
                             {devices.length > 0 &&
                                 <ShowMoreIcon
@@ -1537,10 +1537,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const notificationContent = isMuted ?
             formatMessage({
-                defaultMessage: 'You are muted. Click <muteIcon/> to unmute.',
+                defaultMessage: 'You\'re muted. Select <muteIcon/> to unmute.',
             }, {muteIcon}) :
             formatMessage({
-                defaultMessage: 'You are unmuted. Click <muteIcon/> to mute.',
+                defaultMessage: 'You\'re unmuted. Select <muteIcon/> to mute.',
             }, {muteIcon});
 
         const joinedUsers = this.state.showUsersJoined.map((userID) => {

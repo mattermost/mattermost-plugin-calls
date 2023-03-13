@@ -109,7 +109,7 @@ const PostType = ({
                         </Header>
                         { isCloudPaid &&
                         <SubHeader>
-                            {formatMessage({defaultMessage: 'This is because Calls is in the Beta phase. We’re working to remove this limit soon.'})}
+                            {formatMessage({defaultMessage: 'This is because calls is in the beta phase. We’re working to remove this limit soon.'})}
                         </SubHeader>
                         }
                     </Tooltip>

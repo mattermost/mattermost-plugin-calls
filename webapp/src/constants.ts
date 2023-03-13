@@ -34,12 +34,12 @@ export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
 
 export const CallRecordingDisclaimerStrings: {[key: string]: {[key: string]: MessageDescriptor}} = {
     host: {
-        header: defineMessage({defaultMessage: 'You are recording'}),
-        body: defineMessage({defaultMessage: 'You are recording this meeting. Consider letting everyone know that this meeting is being recorded.'}),
+        header: defineMessage({defaultMessage: 'You\'re recording'}),
+        body: defineMessage({defaultMessage: 'You\'re recording this meeting. Consider letting everyone know that this meeting is being recorded.'}),
     },
     participant: {
         header: defineMessage({defaultMessage: 'Recording is in progress'}),
-        body: defineMessage({defaultMessage: 'Host has started recording this meeting. By staying in the meeting you give consent to being recorded.'}),
+        body: defineMessage({defaultMessage: 'The host has started recording this meeting. By staying in the meeting you give consent to being recorded.'}),
     },
 };
 

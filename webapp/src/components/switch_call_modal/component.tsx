@@ -187,7 +187,7 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
                         <button
                             className='style--none switch-call-modal-join'
                             onClick={this.joinCall}
-                        >{formatMessage({defaultMessage: 'Leave & join new call'})}</button>
+                        >{formatMessage({defaultMessage: 'Leave and join new call'})}</button>
                     </div>
                 </div>
             </div>

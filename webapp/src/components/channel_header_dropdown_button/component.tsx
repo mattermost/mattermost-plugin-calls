@@ -47,7 +47,7 @@ const ChannelHeaderDropdownButton = ({
             <CompassIcon icon='phone-outline'/>
             <div>
                 <span className='call-button-label'>
-                    {hasCall ? formatMessage({defaultMessage: 'Join Call'}) : formatMessage({defaultMessage: 'Start Call'})}
+                    {hasCall ? formatMessage({defaultMessage: 'Join call'}) : formatMessage({defaultMessage: 'Start call'})}
                 </span>
                 <span className='call-button-dropdown-sublabel'>
                     {formatMessage({defaultMessage: 'In this channel'})}

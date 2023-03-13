@@ -554,8 +554,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        const msg = isSharing ? formatMessage({defaultMessage: 'You are sharing your screen'}) :
-            formatMessage({defaultMessage: 'You are viewing {presenterName}\'s screen'}, {presenterName: getUserDisplayName(profile)});
+        const msg = isSharing ? formatMessage({defaultMessage: 'You\'re sharing your screen'}) :
+            formatMessage({defaultMessage: 'You\'re viewing {presenterName}\'s screen'}, {presenterName: getUserDisplayName(profile)});
 
         return (
             <div

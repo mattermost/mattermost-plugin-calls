@@ -81,7 +81,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
                             fill='white'
                             style={{margin: '0 4px'}}
                         />
-                        <span style={{margin: '0 4px'}}>{formatMessage({defaultMessage: 'Join Call'})}</span>
+                        <span style={{margin: '0 4px'}}>{formatMessage({defaultMessage: 'Join call'})}</span>
                         <span style={{opacity: '0.80', margin: '0 4px'}}>
                             {formatMessage({defaultMessage: 'Started {callStartedAt}'}, {callStartedAt: moment(this.props.startAt).fromNow()})}
                         </span>
@@ -119,7 +119,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
                             height='24px'
                             viewBox='0 0 24 24'
                             role='img'
-                            aria-label={formatMessage({defaultMessage: 'Close Icon'})}
+                            aria-label={formatMessage({defaultMessage: 'Close icon'})}
                         >
                             <path
                                 fillRule='nonzero'

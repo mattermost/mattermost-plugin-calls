@@ -96,7 +96,7 @@ const RecordingView = () => {
             return null;
         }
 
-        const msg = `You are viewing ${getUserDisplayName(profile)}'s screen`;
+        const msg = `You're viewing ${getUserDisplayName(profile)}'s screen`;
 
         return (
             <div style={style.screenContainer as CSSProperties}>
