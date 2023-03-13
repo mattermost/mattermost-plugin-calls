@@ -2,6 +2,8 @@
 
 import axios from 'axios';
 
+import React from 'react';
+import ReactDOM from 'react-dom';
 import {defineMessage} from 'react-intl';
 import {AnyAction} from 'redux';
 
@@ -11,6 +13,7 @@ import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
+import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {batchActions} from 'redux-batched-actions';
@@ -228,6 +231,16 @@ export default class Plugin {
             Client4.setUrl(window.basename);
         }
 
+        // Register root DOM element for Calls. This is where the widget will render.
+        if (!document.getElementById('calls')) {
+            const callsRoot = document.createElement('div');
+            callsRoot.setAttribute('id', 'calls');
+            document.body.appendChild(callsRoot);
+        }
+        this.unsubscribers.push(() => {
+            document.getElementById('calls')?.remove();
+        });
+
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
@@ -382,10 +395,24 @@ export default class Plugin {
                     wsURL: getWSConnectionURL(getConfig(store.getState())),
                     iceServers: iceConfigs,
                 });
-                const globalComponentID = registry.registerGlobalComponent(CallWidget);
+
+                ReactDOM.render(
+                    <CallWidget
+                        store={store}
+                        theme={getTheme(store.getState())}
+                    />,
+                    document.getElementById('calls'),
+                );
+                const unmountCallWidget = () => {
+                    const callsRoot = document.getElementById('calls');
+                    if (callsRoot) {
+                        ReactDOM.unmountComponentAtNode(callsRoot);
+                    }
+                };
+
                 const rootComponentID = registry.registerRootComponent(ExpandedView);
                 window.callsClient.on('close', (err?: Error) => {
-                    registry.unregisterComponent(globalComponentID);
+                    unmountCallWidget();
                     registry.unregisterComponent(rootComponentID);
                     if (window.callsClient) {
                         if (err) {
@@ -399,6 +426,7 @@ export default class Plugin {
 
                 window.callsClient.init(channelID, title, rootId).catch((err: Error) => {
                     logErr(err);
+                    unmountCallWidget();
                     store.dispatch(displayCallErrorModal(channelID, err));
                     delete window.callsClient;
                 });

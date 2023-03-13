@@ -2,7 +2,7 @@ import {test, expect, chromium} from '@playwright/test';
 
 import {userState, baseURL, defaultTeam, pluginID} from '../constants';
 
-import {getChannelNameForTest, getUserIdxForTest, startCall} from '../utils';
+import {getUserIdxForTest, startCall} from '../utils';
 
 import PlaywrightDevPage from '../page';
 
