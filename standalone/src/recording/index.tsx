@@ -85,6 +85,10 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
         });
     }
 
+    const rootEl = document.querySelector(':root') as HTMLElement;
+    rootEl?.style.setProperty('--calls-bg', 'black');
+    rootEl?.style.setProperty('--calls-bg-rgb', '0, 0, 0');
+
     ReactDOM.render(
         <Provider store={store}>
             <RecordingView/>

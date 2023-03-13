@@ -156,7 +156,6 @@ const RecordingView = () => {
                     isHandRaised={isHandRaised}
                     reaction={status?.reaction}
                     isHost={profile.id === callHostID}
-                    baseBgColor='black'
                 />
             );
         });
