@@ -1749,7 +1749,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
         const MuteIcon = window.callsClient.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
-        let muteTooltipText = window.callsClient.isMuted() ? 'Click to unmute' : 'Click to mute';
+        let muteTooltipText = window.callsClient.isMuted() ? 'Unmute' : 'Mute';
         let muteTooltipSubtext = '';
         if (noInputDevices) {
             muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText;
@@ -1770,7 +1770,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const ShowIcon = window.desktop && !this.props.global ? ExpandIcon : PopOutIcon;
 
         const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
-        const handTooltipText = window.callsClient.isHandRaised ? 'Click to lower hand' : 'Click to raise hand';
+        const handTooltipText = window.callsClient.isHandRaised ? 'Lower hand' : 'Raise hand';
 
         const MenuIcon = widerWidget ? SettingsWheelIcon : HorizontalDotsIcon;
 
@@ -1925,7 +1925,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             placement='top'
                             overlay={
                                 <Tooltip id='tooltip-leave'>
-                                    {'Click to leave call'}
+                                    {'Leave call'}
                                     <Shortcut shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}/>
                                 </Tooltip>
                             }

@@ -879,7 +879,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isMuted = callsClient.isMuted();
         const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
-        let muteTooltipText = isMuted ? 'Click to unmute' : 'Click to mute';
+        let muteTooltipText = isMuted ? 'Unmute' : 'Mute';
         let muteTooltipSubtext = '';
         if (noInputDevices) {
             muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText;
@@ -903,7 +903,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const participantsText = this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list';
 
         const showChatThread = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID;
-        let chatToolTipText = showChatThread ? 'Click to close chat' : 'Click to open chat';
+        let chatToolTipText = showChatThread ? 'Hide chat' : 'Show chat';
         const chatToolTipSubtext = '';
         const chatDisabled = Boolean(this.props.channel?.team_id) && this.props.channel.team_id !== this.props.currentTeamID;
         if (chatDisabled) {
