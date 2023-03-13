@@ -24,6 +24,7 @@ import Shortcut from 'src/components/shortcut';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {Emoji} from 'src/components/emoji/emoji';
 import {EmojiData} from 'src/types/types';
+import {EmojiIndicesByAlias} from 'src/emojis/emoji';
 
 const EMOJI_VERSION = '13';
 
@@ -57,9 +58,10 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
 
     const handleUserPicksEmoji = (ecd: EmojiClickData) => {
         const emojiData: EmojiData = {
-            name: ecd.emoji,
+            name: findEmojiName(ecd.names),
             skin: ecd.activeSkinTone,
-            unified: ecd.unified.toUpperCase(),
+            unified: ecd.unified.toLowerCase(),
+            literal: ecd.emoji || '',
         };
         callsClient?.sendUserReaction(emojiData);
     };
@@ -181,6 +183,25 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     );
 });
 
+const findEmojiName = (names: string[]) => {
+    // make underscore and hyphen versions to cover all possibilities
+    names = names.flatMap((n) => {
+        const ret = [n];
+        ret.push(n.replaceAll(' ', '_'));
+        ret.push(n.replaceAll(' ', '-'));
+
+        // There will be some duplicates, but the map.has check below is far faster than a deduplication, so leaving them.
+        return ret;
+    });
+
+    for (const name of names) {
+        if (EmojiIndicesByAlias.has(name)) {
+            return name;
+        }
+    }
+    return '';
+};
+
 interface QuickSelectProps {
     emoji: EmojiData,
     handleClick: (e: EmojiClickData) => void
@@ -188,7 +209,7 @@ interface QuickSelectProps {
 
 const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
     const onClick = () => {
-        handleClick({emoji: emoji.name, unified: emoji.unified} as EmojiClickData);
+        handleClick({names: [emoji.name], unified: emoji.unified} as EmojiClickData);
     };
 
     return (

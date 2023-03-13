@@ -1387,9 +1387,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         // If the prompt was dismissed after the recording has started and after the last host change
-        // we don't show this again.
+        // we don't show this again, unless there was a more recent error.
         if (!hasRecEnded && dismissedAt > recording?.start_at && dismissedAt > this.props.callHostChangeAt) {
-            return null;
+            if (!recording?.error_at || dismissedAt > recording.error_at) {
+                return null;
+            }
         }
 
         // If the prompt was dismissed after the recording has ended then we

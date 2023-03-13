@@ -101,9 +101,11 @@ export default function RecordingInfoPrompt(props: Props) {
     }
 
     // If the prompt was dismissed after the recording has started and after the last host change
-    // we don't show this again.
+    // we don't show this again, unless there was a more recent error.
     if (!hasRecEnded && dismissedAt > props.recording?.start_at && dismissedAt > props.hostChangeAt) {
-        return null;
+        if (!props.recording?.error_at || dismissedAt > props.recording.error_at) {
+            return null;
+        }
     }
 
     // If the prompt was dismissed after the recording has ended then we

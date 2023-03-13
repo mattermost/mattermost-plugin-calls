@@ -53,8 +53,9 @@ export type UserRaiseUnraiseHandData = {
 
 export type EmojiData = {
     name: string;
-    skin?: string;
     unified: string;
+    skin?: string;
+    literal?: string;
 } & BaseData
 
 export type UserReactionData = {
@@ -72,6 +73,7 @@ export type CallRecordingState = {
     start_at: number,
     end_at: number,
     err?: string,
+    error_at?: number,
 } & BaseData
 
 export type CallRecordingStateData = {

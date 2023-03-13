@@ -110,6 +110,7 @@ const ReactionStreamList = styled.div<streamListStyleProps>`
     height: 75vh;
     display: flex;
     flex-direction: column-reverse;
+    z-index: 1;
     margin-left: 10px;
     -webkit-mask: -webkit-gradient(#0000, #000);
     mask: linear-gradient(#0000, #0003, #000f);
