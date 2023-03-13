@@ -18,7 +18,6 @@ export type Props = {
     reaction?: Reaction,
     isSpeaking: boolean,
     isHost: boolean,
-    baseBgColor: string,
 }
 
 export default function CallParticipant(props: Props) {
@@ -56,7 +55,7 @@ export default function CallParticipant(props: Props) {
                         alignItems: 'center',
                         bottom: 0,
                         right: 0,
-                        background: props.isMuted ? props.baseBgColor : '#3DB887',
+                        background: props.isMuted ? 'var(--calls-bg)' : '#3DB887',
                         borderRadius: '30px',
                         width: '20px',
                         height: '20px',
@@ -79,7 +78,7 @@ export default function CallParticipant(props: Props) {
                 </div>
                 }
                 {!props.isHandRaised && props.reaction &&
-                    <div style={{...styles.reactionContainer, background: props.baseBgColor}}>
+                    <div style={{...styles.reactionContainer, background: 'var(--calls-bg)'}}>
                         <Emoji emoji={props.reaction.emoji}/>
                     </div>
                 }

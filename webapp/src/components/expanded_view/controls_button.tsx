@@ -10,6 +10,7 @@ export type Props = {
     id: string,
     icon: React.ReactNode,
     bgColor: string,
+    bgColorHover?: string,
     text?: string,
     tooltipText: string,
     tooltipSubtext?: string,
@@ -17,6 +18,7 @@ export type Props = {
     unavailable?: boolean,
     disabled?: boolean,
     iconFill?: string,
+    iconFillHover?: string,
     shortcut?: string,
     margin?: string,
 }
@@ -61,12 +63,14 @@ export default function ControlsButton(props: Props) {
             <ButtonContainer
                 id={props.id}
                 bgColor={props.bgColor}
+                bgColorHover={props.bgColorHover}
                 margin={props.margin}
                 onClick={onClick}
                 disabled={props.disabled}
                 isDisabled={props.disabled}
                 isUnavailable={props.unavailable}
                 fill={props.iconFill}
+                fillHover={props.iconFillHover}
             >
                 <ButtonIcon>
                     {props.icon}
@@ -84,7 +88,17 @@ export default function ControlsButton(props: Props) {
     );
 }
 
-const ButtonContainer = styled.button<{bgColor: string, margin?: string, isDisabled?: boolean, isUnavailable?: boolean, fill?: string}>`
+type ButtonContainerProps = {
+    bgColor: string,
+    bgColorHover?: string,
+    margin?: string,
+    isDisabled?: boolean,
+    isUnavailable?: boolean,
+    fill?: string,
+    fillHover?: string,
+}
+
+const ButtonContainer = styled.button<ButtonContainerProps>`
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -93,11 +107,14 @@ const ButtonContainer = styled.button<{bgColor: string, margin?: string, isDisab
     border-radius: 8px;
     padding: 12px;
     border: none;
-    background-color: ${({bgColor}) => bgColor || 'rgba(var(--button-color-rgb), 0.08)'};
+    background: ${({bgColor}) => bgColor || 'rgba(var(--button-color-rgb), 0.08)'};
 
     :hover {
-      color: rgba(28, 88, 217);
-      background: rgba(var(--center-channel-bg-rgb), 0.32);
+      background: ${({bgColorHover}) => bgColorHover || 'rgba(var(--button-color-rgb), 0.12)'};
+
+      svg {
+        fill: ${({fillHover}) => fillHover || 'var(--button-color)'};
+      }
     }
 
     svg {
@@ -109,7 +126,7 @@ const ButtonContainer = styled.button<{bgColor: string, margin?: string, isDisab
 
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
       :hover {
-          background-color: rgba(var(--button-color-rgb), 0.08);
+          background: rgba(var(--button-color-rgb), 0.08);
       }
     `}
 `;
@@ -134,7 +151,7 @@ const UnavailableIcon = styled.div`
 
     i {
         border-radius: 50%;
-        background-color: rgb(54, 55, 59);
+        background: rgb(54, 55, 59);
     }
 `;
 

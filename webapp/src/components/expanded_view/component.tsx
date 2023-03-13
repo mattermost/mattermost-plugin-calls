@@ -167,13 +167,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         baseColorHSL.l = 16;
         const baseColorRGB = hslToRGB(baseColorHSL);
 
+        // Setting CSS variables for calls background.
+        const rootEl = document.querySelector(':root') as HTMLElement;
+        rootEl?.style.setProperty('--calls-bg', rgbToCSS(baseColorRGB));
+        rootEl?.style.setProperty('--calls-bg-rgb', `${baseColorRGB.r},${baseColorRGB.g},${baseColorRGB.b}`);
+
         return {
             root: {
                 display: 'flex',
                 width: '100%',
                 height: '100%',
                 zIndex: 1000,
-                background: rgbToCSS(baseColorRGB),
+                background: 'var(--calls-bg)',
                 color: 'white',
                 gridArea: 'center',
                 overflow: 'auto',
@@ -231,7 +236,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 margin: '0 12px',
             },
             screenSharingMsg: {
-                background: rgbToCSS(baseColorRGB),
+                background: 'var(--calls-bg)',
                 padding: '4px 8px',
                 borderRadius: '12px',
                 lineHeight: '12px',
@@ -748,7 +753,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     isHandRaised={isHandRaised}
                     reaction={status?.reaction}
                     isHost={profile.id === this.props.callHostID}
-                    baseBgColor={this.style.root.background as string}
                 />
             );
         });
@@ -977,8 +981,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 onToggle={() => this.onParticipantsListToggle()}
                                 tooltipText={participantsText}
                                 shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
-                                bgColor={this.state.showParticipantsList ? 'rgba(var(--sidebar-text-active-border-rgb), 0.24)' : ''}
-                                iconFill={this.state.showParticipantsList ? 'rgb(var(--sidebar-text-active-border-rgb))' : ''}
+                                bgColor={this.state.showParticipantsList ? 'white' : ''}
+                                bgColorHover={this.state.showParticipantsList ? 'rgba(255, 255, 255, 0.92)' : ''}
+                                iconFill={this.state.showParticipantsList ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
+                                iconFillHover={this.state.showParticipantsList ? 'var(--calls-bg)' : ''}
                                 icon={
                                     <ParticipantsIcon
                                         style={{
@@ -1000,13 +1006,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 tooltipSubtext={muteTooltipSubtext}
                                 // eslint-disable-next-line no-undefined
                                 shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
-                                bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
+                                bgColor={isMuted ? 'var(--dnd-indicator)' : 'rgba(61, 184, 135, 0.16)'}
+                                bgColorHover={isMuted ? 'var(--dnd-indicator)' : 'rgba(61, 184, 135, 0.20)'}
+                                iconFill={isMuted ? 'rgba(255, 255, 255, 0.80)' : 'rgba(61, 184, 135, 0.80)'}
+                                iconFillHover={isMuted ? 'white' : 'rgba(61, 184, 135, 0.80)'}
                                 icon={
                                     <MuteIcon
                                         style={{
                                             width: '28px',
                                             height: '28px',
-                                            fill: isMuted ? '' : 'rgba(61, 184, 135, 1)',
                                         }}
                                     />
                                 }
@@ -1018,10 +1026,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     id='calls-popout-record-button'
                                     onToggle={() => this.onRecordToggle()}
                                     tooltipText={recordTooltipText}
-                                    bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
                                     // eslint-disable-next-line no-undefined
                                     shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}
-                                    iconFill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : ''}
+                                    bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.16)' : ''}
+                                    bgColorHover={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.20)' : ''}
+                                    iconFill={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.80)' : ''}
+                                    iconFillHover={isRecording ? 'var(--dnd-indicator)' : ''}
                                     icon={<RecordIcon size={28}/>}
                                 />
                             }
@@ -1034,13 +1044,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     tooltipSubtext={shareScreenTooltipSubtext}
                                     // eslint-disable-next-line no-undefined
                                     shortcut={noScreenPermissions ? undefined : reverseKeyMappings.popout[SHARE_UNSHARE_SCREEN][0]}
-                                    bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                                    bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.16)' : ''}
+                                    bgColorHover={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.20)' : ''}
+                                    iconFill={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.80)' : ''}
+                                    iconFillHover={isSharing ? 'var(--dnd-indicator)' : ''}
                                     icon={
                                         <ScreenIcon
                                             style={{
                                                 width: '28px',
                                                 height: '28px',
-                                                fill: isSharing ? 'rgb(var(--dnd-indicator-rgb))' : '',
                                             }}
                                         />
                                     }
@@ -1060,8 +1072,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     onToggle={this.toggleChat}
                                     tooltipText={chatToolTipText}
                                     tooltipSubtext={chatToolTipSubtext}
-                                    bgColor={showChatThread ? 'rgba(var(--sidebar-text-active-border-rgb), 0.24)' : ''}
-                                    iconFill={showChatThread ? 'rgb(var(--sidebar-text-active-border-rgb))' : ''}
+                                    bgColor={showChatThread ? 'white' : ''}
+                                    bgColorHover={showChatThread ? 'rgba(255, 255, 255, 0.92)' : ''}
+                                    iconFill={showChatThread ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
+                                    iconFillHover={showChatThread ? 'var(--calls-bg)' : ''}
                                     icon={
                                         <div css={{position: 'relative'}}>
                                             <MessageTextOutlineIcon
@@ -1082,7 +1096,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 onToggle={() => this.onDisconnectClick()}
                                 tooltipText={'Leave call'}
                                 shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}
-                                bgColor={'rgb(var(--dnd-indicator-rgb))'}
+                                bgColor={'var(--dnd-indicator)'}
+                                bgColorHover={'var(--dnd-indicator)'}
+                                iconFill={'rgba(255, 255, 255, 0.80)'}
+                                iconFillHover={'white'}
                                 icon={
                                     <LeaveCallIcon
                                         style={{width: '28px', height: '28px'}}
