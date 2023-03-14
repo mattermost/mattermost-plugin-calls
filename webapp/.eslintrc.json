@@ -16,7 +16,8 @@
   "parser": "@babel/eslint-parser",
   "plugins": [
     "react",
-    "import"
+    "import",
+    "formatjs"
   ],
   "env": {
     "browser": true,
@@ -38,9 +39,15 @@
     "import/resolver": "webpack",
     "react": {
         "version": "detect"
+    },
+    "formatjs": {
+        "additionalFunctionNames": "untranslatable"
     }
   },
   "rules": {
+    "formatjs/no-literal-string-in-jsx": [
+      2
+    ],
     "array-bracket-spacing": [
       2,
       "never"

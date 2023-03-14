@@ -7,10 +7,10 @@ import {
 } from 'mattermost-redux/selectors/entities/teams';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-
 import {Client4} from 'mattermost-redux/client';
-
+import {isMinimumServerVersion} from 'mattermost-redux/utils/helpers';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
+import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
 import {Team} from '@mattermost/types/teams';
@@ -23,13 +23,15 @@ import {ClientConfig} from '@mattermost/types/config';
 import {UserState} from '@calls/common/lib/types';
 
 import {pluginId} from './manifest';
-import {logErr, logDebug} from './log';
+import {logErr, logWarn, logDebug} from './log';
 
 import {
     voiceChannelRootPost,
 } from './selectors';
 
-import {Store} from './types/mattermost-webapp';
+import {supportedLocales} from './constants';
+
+import {Store, Translations} from './types/mattermost-webapp';
 
 import LeaveSelfSound from './sounds/leave_self.mp3';
 import JoinUserSound from './sounds/join_user.mp3';
@@ -375,4 +377,28 @@ export function sendDesktopEvent(event: string, data?: Record<string, unknown>) 
 
 export function capitalize(input: string) {
     return input.charAt(0).toUpperCase() + input.slice(1);
+}
+
+export async function fetchTranslationsFile(locale: string) {
+    if (locale === 'en') {
+        return {};
+    }
+    try {
+        // eslint-disable-next-line global-require
+        const filename = require(`../i18n/${locale}.json`).default;
+        if (!filename) {
+            throw new Error(`translations file not found for locale '${locale}'`);
+        }
+        const res = await fetch(filename.indexOf('/') === 0 ? getPluginStaticPath() + filename : filename);
+        const translations = await res.json();
+        logDebug(`loaded i18n file for locale '${locale}'`);
+        return translations;
+    } catch (err) {
+        logWarn(`failed to load i18n file for locale '${locale}':`, err);
+        return {};
+    }
+}
+
+export function untranslatable(msg: string) {
+    return msg;
 }

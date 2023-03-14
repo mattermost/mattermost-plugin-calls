@@ -224,6 +224,7 @@ export const startCallRecording = (callID: string) => (dispatch: Dispatch<Generi
                     start_at: 0,
                     end_at: 0,
                     err: err.message,
+                    error_at: Date.now(),
                 },
             },
         });

@@ -286,6 +286,10 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
 }
 
 export function handleCallRecordingState(store: Store, ev: WebSocketMessage<CallRecordingStateData>) {
+    if (ev.data.recState.err) {
+        ev.data.recState.error_at = Date.now();
+    }
+
     store.dispatch({
         type: VOICE_CHANNEL_CALL_RECORDING_STATE,
         data: {

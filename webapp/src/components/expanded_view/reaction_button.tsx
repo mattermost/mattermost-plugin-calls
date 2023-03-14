@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {forwardRef, useImperativeHandle, useState} from 'react';
+import {useIntl} from 'react-intl';
 import styled, {css} from 'styled-components';
 import {OverlayTrigger} from 'react-bootstrap';
 import EmojiPicker, {
@@ -24,6 +25,7 @@ import {StyledTooltip} from 'src/components/shared';
 import Shortcut from 'src/components/shortcut';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {Emoji} from 'src/components/emoji/emoji';
+import {EmojiIndicesByAlias} from 'src/emojis/emoji';
 
 const EMOJI_VERSION = '13';
 
@@ -42,6 +44,7 @@ interface Props {
 export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     const [showPicker, setShowPicker] = useState(false);
     const [showBar, setShowBar] = useState(false);
+    const {formatMessage} = useIntl();
 
     useImperativeHandle(ref, () => ({
         toggle() {
@@ -50,13 +53,16 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     }));
 
     const callsClient = getCallsClient();
-    const addReactionText = showBar ? 'Close Reactions' : 'Add Reaction';
+    const addReactionText = showBar ?
+        formatMessage({defaultMessage: 'Close reactions'}) :
+        formatMessage({defaultMessage: 'Add reaction'});
 
     const handleUserPicksEmoji = (ecd: EmojiClickData) => {
         const emojiData: EmojiData = {
-            name: ecd.emoji,
+            name: findEmojiName(ecd.names),
             skin: ecd.activeSkinTone,
-            unified: ecd.unified.toUpperCase(),
+            unified: ecd.unified.toLowerCase(),
+            literal: ecd.emoji || '',
         };
         callsClient?.sendUserReaction(emojiData);
     };
@@ -71,7 +77,9 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
         }
     };
     const isHandRaised = Boolean(callsClient?.isHandRaised);
-    const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
+    const raiseHandText = isHandRaised ?
+        formatMessage({defaultMessage: 'Lower hand'}) :
+        formatMessage({defaultMessage: 'Raise hand'});
     const handIcon = isHandRaised ? (
         <HandRightOutlineOffIcon
             size={18}
@@ -176,6 +184,25 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     );
 });
 
+const findEmojiName = (names: string[]) => {
+    // make underscore and hyphen versions to cover all possibilities
+    names = names.flatMap((n) => {
+        const ret = [n];
+        ret.push(n.replaceAll(' ', '_'));
+        ret.push(n.replaceAll(' ', '-'));
+
+        // There will be some duplicates, but the map.has check below is far faster than a deduplication, so leaving them.
+        return ret;
+    });
+
+    for (const name of names) {
+        if (EmojiIndicesByAlias.has(name)) {
+            return name;
+        }
+    }
+    return '';
+};
+
 interface QuickSelectProps {
     emoji: EmojiData,
     handleClick: (e: EmojiClickData) => void
@@ -183,7 +210,7 @@ interface QuickSelectProps {
 
 const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
     const onClick = () => {
-        handleClick({emoji: emoji.name, unified: emoji.unified} as EmojiClickData);
+        handleClick({names: [emoji.name], unified: emoji.unified} as EmojiClickData);
     };
 
     return (

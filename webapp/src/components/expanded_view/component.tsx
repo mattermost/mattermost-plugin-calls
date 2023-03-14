@@ -4,6 +4,7 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
+import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
 import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
@@ -35,6 +36,7 @@ import {
     hasExperimentalFlag,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
+    untranslatable,
 } from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
 
@@ -81,6 +83,7 @@ import './component.scss';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 
 interface Props extends RouteComponentProps {
+    intl: IntlShape,
     show: boolean,
     currentUserID: string,
     currentTeamID: string,
@@ -501,6 +504,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     renderAlertBanner = () => {
+        const {formatMessage} = this.props.intl;
         for (const keyVal of Object.entries(this.state.alerts)) {
             const [alertID, alertState] = keyVal;
             if (!alertState.show) {
@@ -513,7 +517,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <GlobalBanner
                     {...alertConfig}
                     icon={alertConfig.icon}
-                    body={alertConfig.bannerText}
+                    body={formatMessage(alertConfig.bannerText)}
                     onClose={() => {
                         this.setState({
                             alerts: {
@@ -534,6 +538,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     renderScreenSharingPlayer = () => {
         const isSharing = this.props.screenSharingID === this.props.currentUserID;
+        const {formatMessage} = this.props.intl;
 
         let profile;
         if (!isSharing) {
@@ -548,7 +553,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        const msg = isSharing ? 'You are sharing your screen' : `You are viewing ${getUserDisplayName(profile as UserProfile)}'s screen`;
+        const msg = isSharing ? formatMessage({defaultMessage: 'You\'re sharing your screen'}) :
+            formatMessage({defaultMessage: 'You\'re viewing {presenterName}\'s screen'}, {presenterName: getUserDisplayName(profile)});
 
         return (
             <div
@@ -601,6 +607,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     renderParticipants = () => {
+        const {formatMessage} = this.props.intl;
         return this.props.profiles.map((profile) => {
             const status = this.props.statuses[profile.id];
 
@@ -616,7 +623,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return (
                 <CallParticipant
                     key={profile.id}
-                    name={`${getUserDisplayName(profile)}${profile.id === this.props.currentUserID ? ' (you)' : ''}`}
+                    name={`${getUserDisplayName(profile)} ${profile.id === this.props.currentUserID ? formatMessage({defaultMessage: '(you)'}) : ''}`}
                     pictureURL={this.props.pictures[profile.id]}
                     isMuted={isMuted}
                     isSpeaking={isSpeaking}
@@ -629,6 +636,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     renderParticipantsRHSList = () => {
+        const {formatMessage} = this.props.intl;
         return this.props.profiles.map((profile) => {
             const status = this.props.statuses[profile.id];
             let isMuted = true;
@@ -658,7 +666,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         }}
                     />
                     <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
-                        {getUserDisplayName(profile)}{profile.id === this.props.currentUserID && ' (you)'}
+                        {getUserDisplayName(profile)} {profile.id === this.props.currentUserID && formatMessage({defaultMessage: '(you)'})}
                     </span>
 
                     <div
@@ -745,40 +753,51 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const {formatMessage} = this.props.intl;
+
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
         const isMuted = callsClient.isMuted();
         const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
-        let muteTooltipText = isMuted ? 'Click to unmute' : 'Click to mute';
+        let muteTooltipText = isMuted ? formatMessage({defaultMessage: 'Click to unmute'}) : formatMessage({defaultMessage: 'Click to mute'});
         let muteTooltipSubtext = '';
         if (noInputDevices) {
-            muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText;
-            muteTooltipSubtext = CallAlertConfigs.missingAudioInput.tooltipSubtext;
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext);
         }
         if (noAudioPermissions) {
-            muteTooltipText = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
-            muteTooltipSubtext = CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext;
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext);
         }
 
         const sharingID = this.props.screenSharingID;
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
 
-        let shareScreenTooltipText = isSharing ? 'Stop presenting' : 'Start presenting';
+        let shareScreenTooltipText = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'});
         if (noScreenPermissions) {
-            shareScreenTooltipText = CallAlertConfigs.missingScreenPermissions.tooltipText;
+            shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText);
         }
-        const shareScreenTooltipSubtext = noScreenPermissions ? CallAlertConfigs.missingScreenPermissions.tooltipSubtext : '';
+        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext) : '';
 
-        const participantsText = this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list';
+        const participantsText = this.state.showParticipantsList ?
+            formatMessage({defaultMessage: 'Hide participants list'}) :
+            formatMessage({defaultMessage: 'Show participants list'});
 
-        let chatToolTipText = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID ? 'Click to close chat' : 'Click to open chat';
+        let chatToolTipText = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID ?
+            formatMessage({defaultMessage: 'Click to close chat'}) :
+            formatMessage({defaultMessage: 'Click to open chat'});
         const chatToolTipSubtext = '';
         const chatDisabled = Boolean(this.props.channel?.team_id) && this.props.channel.team_id !== this.props.currentTeamID;
         if (chatDisabled) {
-            chatToolTipText = `Chat unavailable: different team selected. Click here to switch back to ${this.props.channelDisplayName} in ${this.props.channelTeam.display_name}.`;
+            chatToolTipText = formatMessage({
+                defaultMessage: 'Chat unavailable: different team selected. Click here to switch back to {channelName} in {teamName}.',
+            }, {
+                channelName: this.props.channelDisplayName,
+                teamName: this.props.channelTeam.display_name,
+            });
         }
 
         const globalRhsSupported = Boolean(this.props.selectRhsPost);
@@ -787,7 +806,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         const isHost = this.props.callHostID === this.props.currentUserID;
         const isRecording = isHost && this.props.callRecording && this.props.callRecording.init_at > 0 && !this.props.callRecording.end_at && !this.props.callRecording.err;
-        const recordTooltipText = isRecording ? 'Stop recording' : 'Record call';
+        const recordTooltipText = isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
         const RecordIcon = isRecording ? RecordSquareOutlineIcon : RecordCircleOutlineIcon;
 
         return (
@@ -811,8 +830,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 style={{margin: '4px'}}
                                 startAt={this.props.callStartAt}
                             />
-                            <span style={{margin: '4px'}}>{'•'}</span>
-                            <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
+                            <span style={{margin: '4px'}}>{untranslatable('•')}</span>
+                            <span style={{margin: '4px'}}>
+                                {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.profiles.length})}
+                            </span>
                             <span style={{flex: 1}}/>
                         </div>
                         {
@@ -957,7 +978,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <ControlsButton
                                 id='calls-popout-leave-button'
                                 onToggle={() => this.onDisconnectClick()}
-                                tooltipText={'Leave call'}
+                                tooltipText={formatMessage({defaultMessage: 'Leave call'})}
                                 shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}
                                 bgColor={'rgb(var(--dnd-indicator-rgb))'}
                                 icon={
@@ -980,7 +1001,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 fontWeight: 600,
                                 padding: '8px',
                             }}
-                        >{'Participants list'}</span>
+                        >{formatMessage({defaultMessage: 'Participants list'})}</span>
                         {this.renderParticipantsRHSList()}
                     </ul>
                 }
@@ -1008,7 +1029,7 @@ const isActiveElementInteractable = () => {
 
 const UnreadIndicator = ({mentions}: { mentions?: number }) => {
     return (
-        <UnreadDot>{mentions && mentions > 99 ? '99+' : mentions || null}</UnreadDot>
+        <UnreadDot>{mentions && mentions > 99 ? untranslatable('99+') : mentions || null}</UnreadDot>
     );
 };
 

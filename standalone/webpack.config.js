@@ -92,6 +92,8 @@ module.exports = {
             'react-bootstrap': path.resolve(__dirname, './node_modules/react-bootstrap'),
             bootstrap: path.resolve(__dirname, './node_modules/bootstrap'),
             'react-redux': path.resolve(__dirname, './node_modules/react-redux'),
+            'react-intl': path.resolve(__dirname, './node_modules/react-intl'),
+            redux: path.resolve(__dirname, './node_modules/redux'),
         },
         fallback: {
             src: path.resolve(__dirname, '../webapp/src'),
@@ -142,6 +144,20 @@ module.exports = {
                         options: {
                             name: 'files/[contenthash].[ext]',
                         },
+                    },
+                ],
+            },
+            {
+                type: 'javascript/auto',
+                test: /\.json$/,
+                include: [
+                    path.resolve(__dirname, './i18n'),
+                    path.resolve(__dirname, '../webapp/i18n'),
+                ],
+                exclude: [/en\.json$/],
+                use: [
+                    {
+                        loader: 'file-loader?name=i18n/[name].[contenthash].[ext]',
                     },
                 ],
             },
