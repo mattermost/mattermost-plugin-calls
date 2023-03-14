@@ -20,7 +20,7 @@ test.describe('keyboard shortcuts', () => {
         const devPage = new PlaywrightDevPage(page);
 
         // Solely needed to wait till the page has loaded.
-        await expect(page.locator('[aria-label="channel header region"] button:has-text("Start Call")')).toBeVisible();
+        await expect(page.locator('[aria-label="channel header region"] button:has-text("Start call")')).toBeVisible();
 
         if (process.platform === 'darwin') {
             await page.keyboard.press('Meta+Alt+S');

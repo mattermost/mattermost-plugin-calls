@@ -2,9 +2,12 @@
 // See LICENSE.txt for license information.
 
 import React, {ChangeEvent} from 'react';
+import {useIntl} from 'react-intl';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const TestMode = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
+
     const leftCol = 'col-sm-4';
     const rightCol = 'col-sm-8';
 
@@ -39,7 +42,7 @@ const TestMode = (props: CustomComponentProps) => {
                         checked={testMode === 'off'}
                         onChange={handleChange}
                     />
-                    {'Off'}
+                    {formatMessage({defaultMessage: 'Off'})}
                 </label>
                 <label className='radio-inline'>
                     <input
@@ -51,7 +54,7 @@ const TestMode = (props: CustomComponentProps) => {
                         checked={testMode === 'on'}
                         onChange={handleChange}
                     />
-                    {'On'}
+                    {formatMessage({defaultMessage: 'On'})}
                 </label>
                 <div
                     data-testid={props.id + 'help-text'}

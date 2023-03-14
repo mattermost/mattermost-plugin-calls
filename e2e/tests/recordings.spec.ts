@@ -31,7 +31,7 @@ test.describe('call recordings', () => {
 
         // very recording start prompt renders correctly
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
-        await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('You are recording');
+        await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('You\'re recording');
 
         // close prompt
         await page.getByTestId('calls-widget-banner-recording').locator('.icon-close').click();

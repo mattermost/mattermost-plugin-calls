@@ -1,3 +1,5 @@
+import {defineMessage, MessageDescriptor} from 'react-intl';
+
 import {
     CallAlertType,
     CallAlertConfig,
@@ -10,35 +12,37 @@ export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
     missingAudioInput: {
         type: CallAlertType.Error,
         icon: 'microphone',
-        bannerText: 'Unable to find a valid audio input device. Try plugging in an audio input device.',
-        tooltipText: 'No audio input devices',
-        tooltipSubtext: 'Try plugging in an audio input device.',
+        bannerText: defineMessage({defaultMessage: 'Unable to find a valid audio input device. Try plugging in an audio input device.'}),
+        tooltipText: defineMessage({defaultMessage: 'No audio input devices'}),
+        tooltipSubtext: defineMessage({defaultMessage: 'Try plugging in an audio input device.'}),
     },
     missingAudioInputPermissions: {
         type: CallAlertType.Error,
         icon: 'microphone',
-        bannerText: 'Allow microphone access to Mattermost.',
-        tooltipText: 'No audio input permissions',
-        tooltipSubtext: 'Allow microphone access to Mattermost.',
+        bannerText: defineMessage({defaultMessage: 'Allow microphone access to Mattermost.'}),
+        tooltipText: defineMessage({defaultMessage: 'No audio input permissions'}),
+        tooltipSubtext: defineMessage({defaultMessage: 'Allow microphone access to Mattermost.'}),
     },
     missingScreenPermissions: {
         type: CallAlertType.Error,
         icon: 'monitor',
-        bannerText: 'Screen recording access is not currently allowed or was cancelled.',
-        tooltipText: 'No screen sharing permissions',
-        tooltipSubtext: 'Allow screen recording access to Mattermost.',
+        bannerText: defineMessage({defaultMessage: 'Screen recording access is not currently allowed or was cancelled.'}),
+        tooltipText: defineMessage({defaultMessage: 'No screen sharing permissions'}),
+        tooltipSubtext: defineMessage({defaultMessage: 'Allow screen recording access to Mattermost.'}),
     },
 };
 
-export const CallRecordingDisclaimerStrings: {[key: string]: {[key: string]: string}} = {
+export const CallRecordingDisclaimerStrings: {[key: string]: {[key: string]: MessageDescriptor}} = {
     host: {
-        header: 'You are recording',
-        body: 'You are recording this meeting. Consider letting everyone know that this meeting is being recorded.',
+        header: defineMessage({defaultMessage: 'You\'re recording'}),
+        body: defineMessage({defaultMessage: 'You\'re recording this meeting. Consider letting everyone know that this meeting is being recorded.'}),
     },
     participant: {
-        header: 'Recording is in progress',
-        body: 'Host has started recording this meeting. By staying in the meeting you give consent to being recorded.',
+        header: defineMessage({defaultMessage: 'Recording is in progress'}),
+        body: defineMessage({defaultMessage: 'The host has started recording this meeting. By staying in the meeting you give consent to being recorded.'}),
     },
 };
 
 export const DisabledCallsErr = new Error('Cannot start or join call: calls are disabled in this channel.');
+
+export const supportedLocales = [];
