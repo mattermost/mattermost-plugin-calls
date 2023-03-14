@@ -74,8 +74,6 @@ export default function InCallPrompt(props: Props) {
 
 const Prompt = styled.div`
   display: flex;
-  position: absolute;
-  bottom: 100px;
   margin: 0 24px;
   background: var(--center-channel-bg);
   border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);

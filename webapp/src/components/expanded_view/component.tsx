@@ -731,7 +731,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <span style={this.style.screenSharingMsg}>
                     {msg}
                 </span>
-                <ReactionStream forceLeft={true}/>
             </div>
         );
     };
@@ -982,7 +981,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                     {!this.props.screenSharingID &&
                         <div style={this.style.centerView}>
-                            <ReactionStream/>
                             <ul
                                 id='calls-expanded-view-participants-grid'
                                 style={{
@@ -1156,13 +1154,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     />
                 }
 
-                <RecordingInfoPrompt
-                    isHost={this.props.callHostID === this.props.currentUserID}
-                    hostChangeAt={this.props.callHostChangeAt}
-                    recording={this.props.callRecording}
-                    recordingMaxDuration={this.props.recordingMaxDuration}
-                    onDecline={this.onDisconnectClick}
-                />
+                <Overlay>
+                    <ReactionStream/>
+                    <RecordingInfoPrompt
+                        isHost={this.props.callHostID === this.props.currentUserID}
+                        hostChangeAt={this.props.callHostChangeAt}
+                        recording={this.props.callRecording}
+                        recordingMaxDuration={this.props.recordingMaxDuration}
+                        onDecline={this.onDisconnectClick}
+                    />
+                </Overlay>
             </div>
         );
     }
@@ -1257,4 +1258,12 @@ const CloseButton = styled.button`
     justify-content: center;
     font-size: 18px;
   }
+`;
+
+const Overlay = styled.div`
+  position: absolute;
+  bottom: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 `;

@@ -17,12 +17,8 @@ import {Emoji} from 'src/components/emoji/emoji';
 import {getUserDisplayName, untranslatable} from 'src/utils';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
 
-interface Props {
-    forceLeft?: boolean;
-}
-
 // add a list of reactions, on top of that add the hands up as the top element
-export const ReactionStream = ({forceLeft}: Props) => {
+export const ReactionStream = () => {
     const {formatMessage} = useIntl();
     const currentUserID = useSelector(getCurrentUserId);
 
@@ -96,30 +92,21 @@ export const ReactionStream = ({forceLeft}: Props) => {
     elements = [...elements, ...reactions];
 
     return (
-        <ReactionStreamList forceLeft={forceLeft}>
+        <ReactionStreamList>
             {elements}
         </ReactionStreamList>
     );
 };
 
-interface streamListStyleProps {
-    forceLeft?: boolean;
-}
-
-const ReactionStreamList = styled.div<streamListStyleProps>`
-    position: absolute;
-    align-self: flex-end;
+const ReactionStreamList = styled.div`
     height: 75vh;
     display: flex;
     flex-direction: column-reverse;
     z-index: 1;
-    margin: 12px;
+    margin: 0 24px;
     gap: 8px;
     -webkit-mask: -webkit-gradient(#0000, #000);
     mask: linear-gradient(#0000, #0003, #000f);
-    ${(props) => props.forceLeft && css`
-        left: 12px;
-    `}
 `;
 
 interface chipProps {
