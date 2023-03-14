@@ -61,6 +61,8 @@ import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import ScreenIcon from 'src/components/icons/screen_icon';
+import ShareScreenIcon from 'src/components/icons/share_screen';
+import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import ParticipantsIcon from 'src/components/icons/participants';
 import CallDuration from 'src/components/call_widget/call_duration';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
@@ -937,6 +939,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isRecording = isHost && this.props.callRecording && this.props.callRecording.init_at > 0 && !this.props.callRecording.end_at && !this.props.callRecording.err;
         const recordTooltipText = isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
         const RecordIcon = isRecording ? RecordSquareOutlineIcon : RecordCircleOutlineIcon;
+        const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
 
         return (
             <div
@@ -1069,7 +1072,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     iconFill={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.80)' : ''}
                                     iconFillHover={isSharing ? 'var(--dnd-indicator)' : ''}
                                     icon={
-                                        <ScreenIcon
+                                        <ShareIcon
                                             style={{
                                                 width: '28px',
                                                 height: '28px',

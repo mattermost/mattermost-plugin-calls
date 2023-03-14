@@ -37,6 +37,8 @@ import ParticipantsIcon from 'src/components/icons/participants';
 import ShowMoreIcon from 'src/components/icons/show_more';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ScreenIcon from 'src/components/icons/screen_icon';
+import ShareScreenIcon from 'src/components/icons/share_screen';
+import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import PopOutIcon from 'src/components/icons/popout';
 import ExpandIcon from 'src/components/icons/expand';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
@@ -869,6 +871,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
         const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext) : '';
 
+        const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
+
         return (
             <WidgetButton
                 id='share-screen'
@@ -878,7 +882,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 // eslint-disable-next-line no-undefined
                 shortcut={noScreenPermissions ? undefined : reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
-                icon={<ScreenIcon style={{width: '18px', height: '18px', fill}}/>}
+                icon={<ShareIcon style={{width: '18px', height: '18px', fill}}/>}
                 unavailable={this.state.alerts.missingScreenPermissions.active}
                 disabled={sharingID !== '' && !isSharing}
             />
@@ -1260,6 +1264,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const isDisabled = Boolean(sharingID !== '' && !isSharing);
         const noPermissions = this.state.alerts.missingScreenPermissions.active;
 
+        const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
+
         return (
             <React.Fragment>
                 <li
@@ -1288,7 +1294,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         >
                             <UnavailableIconWrapper
                                 icon={(
-                                    <ScreenIcon
+                                    <ShareIcon
                                         style={{width: '16px', height: '16px'}}
                                         fill={isSharing ? 'rgb(var(--dnd-indicator-rgb))' : changeOpacity(this.props.theme.centerChannelColor, 0.64)}
                                     />
