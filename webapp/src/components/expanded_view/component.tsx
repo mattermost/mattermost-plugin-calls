@@ -258,6 +258,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 margin: 0,
                 padding: 0,
                 overflow: 'auto',
+                gap: '10px',
             },
             rhsHeaderContainer: {
                 position: 'sticky',
@@ -782,7 +783,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return (
                 <li
                     key={'participants_rhs_profile_' + profile.id}
-                    style={{display: 'flex', alignItems: 'center', padding: '8px 16px'}}
+                    style={{display: 'flex', alignItems: 'center', padding: '8px 16px', gap: '8px'}}
                 >
                     <Avatar
                         size={24}
@@ -790,12 +791,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         border={false}
                         borderGlowWidth={isSpeaking ? 2 : 0}
                         url={this.props.pictures[profile.id]}
-                        style={{
-                            marginRight: '8px',
-                        }}
                     />
 
-                    <span style={{fontWeight: 600, fontSize: '14px', lineHeight: '20px', margin: '8px 0'}}>
+                    <span style={{fontWeight: 600, fontSize: '14px', lineHeight: '20px'}}>
                         {getUserDisplayName(profile)} {profile.id === this.props.currentUserID && formatMessage({defaultMessage: '(you)'})}
                     </span>
 
@@ -805,15 +803,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             justifyContent: 'center',
                             alignItems: 'center',
                             marginLeft: 'auto',
-                            gap: '4px',
+                            gap: '12px',
                         }}
                     >
                         {isHandRaised &&
                             <RaisedHandIcon
                                 style={{
                                     fill: 'rgb(255, 188, 66)',
-                                    width: '16px',
-                                    height: '16px',
+                                    width: '18px',
+                                    height: '18px',
                                 }}
                             />
                         }
@@ -821,13 +819,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         {this.props.screenSharingID === profile.id &&
                             <ScreenIcon
                                 fill={'rgb(var(--dnd-indicator-rgb))'}
-                                style={{width: '14px', height: '14px'}}
+                                style={{width: '18px', height: '18px'}}
                             />
                         }
 
                         <MuteIcon
                             fill={isMuted ? '#C4C4C4' : '#3DB887'}
-                            style={{width: '14px', height: '14px'}}
+                            style={{width: '18px', height: '18px'}}
                         />
 
                     </div>
