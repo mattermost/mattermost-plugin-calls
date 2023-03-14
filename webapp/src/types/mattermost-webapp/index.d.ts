@@ -3,6 +3,10 @@ import {ThunkDispatch} from 'redux-thunk';
 import {GlobalState} from '@mattermost/types/store';
 import {CommandArgs} from '@mattermost/types/integrations';
 
+export type Translations = {
+    [key: string]: string;
+};
+
 export interface PluginRegistry {
     registerPostTypeComponent(typeName: string, component: React.ElementType);
 
@@ -39,6 +43,8 @@ export interface PluginRegistry {
     unregisterReconnectHandler(handler: () => void);
 
     registerAdminConsoleCustomSetting(key: string, component: React.FunctionComponent<CustomComponentProps>, options?: { showTitle: boolean });
+
+    registerTranslations(handler: (locale: string) => Translations | Promise<Translations>);
 }
 
 export type SlashCommandWillBePostedReturn = { error: string } | { message: string, args: CommandArgs } | unknown;

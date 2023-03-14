@@ -2,7 +2,7 @@
 
 import axios from 'axios';
 
-import {defineMessage} from 'react-intl';
+import {defineMessage, injectIntl} from 'react-intl';
 import {AnyAction} from 'redux';
 
 import {Client4} from 'mattermost-redux/client';
@@ -29,6 +29,7 @@ import {
 import slashCommandsHandler from 'src/slash_commands';
 
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
+import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
@@ -110,7 +111,7 @@ import {
     sendDesktopEvent,
     getChannelURL,
 } from './utils';
-import {logErr, logDebug} from './log';
+import {logErr, logWarn, logDebug} from './log';
 import {
     JOIN_CALL,
     keyToAction,
@@ -132,7 +133,7 @@ import {
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
-import {PluginRegistry, Store} from './types/mattermost-webapp';
+import {PluginRegistry, Store, Translations} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
@@ -222,7 +223,7 @@ export default class Plugin {
         });
     }
 
-    public async initialize(registry: PluginRegistry, store: Store): Promise<void> {
+    private initialize(registry: PluginRegistry, store: Store) {
         // Setting the base URL if present, in case MM is running under a subpath.
         if (window.basename) {
             Client4.setUrl(window.basename);
@@ -231,13 +232,27 @@ export default class Plugin {
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
-        registry.registerChannelToastComponent(ChannelCallToast);
+        registry.registerChannelToastComponent(injectIntl(ChannelCallToast));
         registry.registerPostTypeComponent('custom_calls', PostType);
+        registry.registerPostTypeComponent('custom_calls_recording', PostTypeRecording);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
-        registry.registerNeedsTeamRoute('/expanded', ExpandedView);
-        registry.registerGlobalComponent(SwitchCallModal);
-        registry.registerGlobalComponent(ScreenSourceModal);
-        registry.registerGlobalComponent(EndCallModal);
+        registry.registerNeedsTeamRoute('/expanded', injectIntl(ExpandedView));
+        registry.registerGlobalComponent(injectIntl(SwitchCallModal));
+        registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
+        registry.registerGlobalComponent(injectIntl(EndCallModal));
+
+        registry.registerTranslations((locale: string) => {
+            try {
+                logDebug(`loading translations file for locale '${locale}'`);
+
+                // synchronously loading all translation files from bundle (MM-50811).
+                // eslint-disable-next-line global-require
+                return require(`../i18n/${locale}.json`);
+            } catch (err) {
+                logWarn(`failed to open translations file for locale '${locale}'`, err);
+                return {};
+            }
+        });
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             return slashCommandsHandler(store, joinCall, message, args);
@@ -383,7 +398,7 @@ export default class Plugin {
                     iceServers: iceConfigs,
                 });
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
-                const rootComponentID = registry.registerRootComponent(ExpandedView);
+                const rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
                 window.callsClient.on('close', (err?: Error) => {
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);

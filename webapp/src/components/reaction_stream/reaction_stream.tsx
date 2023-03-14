@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
+import {useIntl} from 'react-intl';
 import styled, {css} from 'styled-components';
 import {useSelector} from 'react-redux';
 
@@ -13,7 +14,7 @@ import {
     voiceUsersStatuses,
 } from 'src/selectors';
 import {Emoji} from 'src/components/emoji/emoji';
-import {getUserDisplayName} from 'src/utils';
+import {getUserDisplayName, untranslatable} from 'src/utils';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = ({forceLeft}: Props) => {
+    const {formatMessage} = useIntl();
     const currentUserID = useSelector(getCurrentUserId);
 
     const statuses = useSelector(voiceUsersStatuses);
@@ -39,9 +41,11 @@ export const ReactionStream = ({forceLeft}: Props) => {
             <Emoji
                 emoji={reaction.emoji}
                 size={14}
-            />
-        );
-        const user = reaction.user_id === currentUserID ? 'You' : getUserDisplayName(profileMap[reaction.user_id], true) || 'Someone';
+            />);
+        const user = reaction.user_id === currentUserID ?
+            formatMessage({defaultMessage: 'You'}) :
+            getUserDisplayName(profileMap[reaction.user_id], true) || formatMessage({defaultMessage: 'Someone'});
+
         return (
             <ReactionChip key={reaction.timestamp + reaction.user_id}>
                 <span>{emoji}</span>
@@ -53,7 +57,7 @@ export const ReactionStream = ({forceLeft}: Props) => {
     // add hands up
     let elements = [];
     const getName = (user_id: string) => {
-        return user_id === currentUserID ? 'You' : getUserDisplayName(profileMap[user_id], true);
+        return user_id === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[user_id], true);
     };
     let participants: string;
     if (handsup?.length) {
@@ -68,7 +72,7 @@ export const ReactionStream = ({forceLeft}: Props) => {
             participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${getName(handsup[2])}`;
             break;
         default:
-            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${handsup?.length - 2} others`;
+            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${handsup?.length - 2} ${formatMessage({defaultMessage: 'others'})}`;
             break;
         }
 
@@ -85,7 +89,7 @@ export const ReactionStream = ({forceLeft}: Props) => {
                     }}
                 />
                 <Bold>{participants}</Bold>
-                <span>{' raised a hand'}</span>
+                <span>{untranslatable(' ')}{formatMessage({defaultMessage: 'raised a hand'})}</span>
             </ReactionChip>);
     }
 

@@ -5,6 +5,8 @@
 // Websocket Types
 //
 
+import {MessageDescriptor} from 'react-intl';
+
 export type EmptyData = Record<string, never>;
 
 export type BaseData = {
@@ -226,9 +228,9 @@ export enum CallAlertType {
 export type CallAlertConfig = {
     type: CallAlertType,
     icon: string,
-    bannerText: string,
-    tooltipText: string,
-    tooltipSubtext: string,
+    bannerText: MessageDescriptor,
+    tooltipText: MessageDescriptor,
+    tooltipSubtext: MessageDescriptor,
 }
 
 export type CallAlertState = {
