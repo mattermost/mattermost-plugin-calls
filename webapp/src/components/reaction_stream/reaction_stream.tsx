@@ -84,8 +84,8 @@ export const ReactionStream = ({forceLeft}: Props) => {
                 <RaisedHandIcon
                     style={{
                         fill: 'rgb(255, 188, 66)',
-                        width: '14px',
-                        height: '14px',
+                        width: '18px',
+                        height: '18px',
                     }}
                 />
                 <Bold>{participants}</Bold>
@@ -130,15 +130,15 @@ const ReactionChip = styled.div<chipProps>`
     display: flex;
     flex-direction: row;
     align-items: center;
-    padding: 4px 12px 4px 6px;
-    gap: 5px;
+    padding: 6px 8px;
+    gap: 8px;
     max-height: 24px;
     color: var(--button-color);
     background: rgba(var(--button-color-rgb), 0.16);
     border-radius: 16px;
     width: fit-content;
     font-weight: 600;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 20px;
 
     ${(props) => props.highlight && css`
