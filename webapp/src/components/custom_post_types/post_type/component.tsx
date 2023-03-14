@@ -70,7 +70,10 @@ const PostType = ({
     const recordingsSubMessage = recordings > 0 ? (
         <>
             <Divider>{untranslatable('•')}</Divider>
-            <CompassIcon icon='file-video-outline'/>
+            <CompassIcon
+                icon='file-video-outline'
+                style={{display: 'inline'}}
+            />
             <span>{formatMessage({defaultMessage: '{count, plural, =1 {# recording} other {# recordings}} available'}, {count: recordings})}</span>
         </>
     ) : null;
