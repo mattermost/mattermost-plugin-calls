@@ -23,9 +23,6 @@ import {
 
 import {
     UserState,
-    AudioDevices,
-    CallAlertStates,
-    CallAlertStatesDefault,
     CallRecordingState,
 } from '@calls/common/lib/types';
 
@@ -39,15 +36,12 @@ import {
     untranslatable,
 } from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
-
 import {
     CallAlertConfigs,
 } from 'src/constants';
-
 import {
     stopCallRecording,
 } from 'src/actions';
-
 import * as Telemetry from 'src/types/telemetry';
 import Avatar from 'src/components/avatar/avatar';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
@@ -59,7 +53,6 @@ import ScreenIcon from 'src/components/icons/screen_icon';
 import ParticipantsIcon from 'src/components/icons/participants';
 import CallDuration from 'src/components/call_widget/call_duration';
 import Badge from 'src/components/badge';
-
 import {
     MUTE_UNMUTE,
     RAISE_LOWER_HAND,
@@ -72,6 +65,7 @@ import {
     reverseKeyMappings,
     MAKE_REACTION,
 } from 'src/shortcuts';
+import {AudioDevices, CallAlertStates, CallAlertStatesDefault} from 'src/types/types';
 
 import RecordingInfoPrompt from './recording_info_prompt';
 

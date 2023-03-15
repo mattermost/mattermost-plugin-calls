@@ -26,9 +26,11 @@ import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/enti
 
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 
-import {CallsConfig, CallsUserPreferences, ChannelState, Reaction, UserState} from '@calls/common/lib/types';
+import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
 
 import {getChannelURL} from 'src/utils';
+
+import {CallsUserPreferences, ChannelState} from 'src/types/types';
 
 import {pluginId} from './manifest';
 
