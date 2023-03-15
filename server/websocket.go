@@ -427,8 +427,6 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 	state, err := p.kvGetChannelState(channelID)
 	if err != nil {
 		return err
-	} else if state != nil && state.Call != nil && state.Call.ScreenSharingID == userID {
-		p.publishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
 	handlerID, err := p.getHandlerID()
