@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {ChangeEvent, useState} from 'react';
+import React, {ChangeEvent} from 'react';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 import {useDispatch, useSelector} from 'react-redux';
 
@@ -20,6 +20,7 @@ import {
     OnPremTrialSuccess,
 } from 'src/components/admin_console_settings/rtcd_service_url/modals';
 import {requestOnPremTrialLicense} from 'src/actions';
+import {untranslatable} from 'src/utils';
 import manifest from 'src/manifest';
 
 import {
@@ -81,7 +82,7 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
                 <div className={'control-label ' + leftCol}>
                     <LabelRow>
                         <span>{props.label}</span>
-                        <UpgradePill>{'Enterprise'}</UpgradePill>
+                        <UpgradePill>{untranslatable('Enterprise')}</UpgradePill>
                     </LabelRow>
                 </div>
                 <div className={rightCol}>
@@ -162,7 +163,7 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
                         {props.label}
                     </label>
                     {!cloud &&
-                        <EnterprisePill>{'Enterprise'}</EnterprisePill>
+                        <EnterprisePill>{untranslatable('Enterprise')}</EnterprisePill>
                     }
                 </LabelRow>
             </div>

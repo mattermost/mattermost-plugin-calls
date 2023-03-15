@@ -2,13 +2,13 @@
 // See LICENSE.txt for license information.
 
 import {GlobalState} from '@mattermost/types/lib/store';
-import {Thunk, Action} from 'mattermost-redux/types/actions';
+import {Thunk} from 'mattermost-redux/types/actions';
 
 export const {
     modals,
 
 // @ts-ignore
-}: { modals: any } = global.WebappUtils ?? {};
+}: { modals: {openModal, ModalIdentifiers}} = global.WebappUtils ?? {};
 
 // @ts-ignore
 export const openPricingModal = global.openPricingModal;

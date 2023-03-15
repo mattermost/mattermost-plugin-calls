@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {ChangeEvent, useState} from 'react';
+import React, {ChangeEvent} from 'react';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 import {getConfig} from 'mattermost-redux/selectors/entities/admin';
 import {useSelector} from 'react-redux';
@@ -16,7 +16,7 @@ const ICEHostOverride = (props: CustomComponentProps) => {
     const config = useSelector(getConfig);
 
     // If RTCD is configured then this setting doesn't apply and should be hidden.
-    if (config.PluginSettings?.Plugins[manifest.id].rtcdserviceurl?.length > 0) {
+    if (config.PluginSettings?.Plugins[manifest.id]?.rtcdserviceurl?.length > 0) {
         return null;
     }
 

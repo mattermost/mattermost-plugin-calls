@@ -1,6 +1,6 @@
 import {EventEmitter} from 'events';
 
-import {logDebug} from '../log';
+import {logDebug, logErr} from '../log';
 
 import {
     RTCPeerConfig,
@@ -12,6 +12,7 @@ export default class RTCPeer extends EventEmitter {
     private pc: RTCPeerConnection | null;
     private senders: {[key: string]: RTCRtpSender};
     private makingOffer = false;
+    private candidates: RTCIceCandidate[] = [];
 
     constructor(config: RTCPeerConfig) {
         super();
@@ -95,7 +96,17 @@ export default class RTCPeer extends EventEmitter {
 
         switch (msg.type) {
         case 'candidate':
-            await this.pc.addIceCandidate(msg.candidate);
+            // It's possible that ICE candidates are received moments before
+            // we set the initial remote description which would cause an
+            // error. In such case we queue them up to be added later.
+            if (this.pc.remoteDescription && this.pc.remoteDescription.type) {
+                this.pc.addIceCandidate(msg.candidate).catch((err) => {
+                    logErr('failed to add candidate', err);
+                });
+            } else {
+                logDebug('received ice candidate before remote description, queuing...');
+                this.candidates.push(msg.candidate);
+            }
             break;
         case 'offer':
             await this.pc.setRemoteDescription(msg);
@@ -104,24 +115,30 @@ export default class RTCPeer extends EventEmitter {
             break;
         case 'answer':
             await this.pc.setRemoteDescription(msg);
+            for (const candidate of this.candidates) {
+                logDebug('adding queued ice candidate');
+                this.pc.addIceCandidate(candidate).catch((err) => {
+                    logErr('failed to add candidate', err);
+                });
+            }
             break;
         default:
             throw new Error('invalid signaling data received');
         }
     }
 
-    public async addTrack(track: MediaStreamTrack, stream?: MediaStream) {
+    public async addTrack(track: MediaStreamTrack, stream: MediaStream) {
         if (!this.pc) {
             throw new Error('peer has been destroyed');
         }
-        const sender = await this.pc.addTrack(track, stream!);
+        const sender = await this.pc.addTrack(track, stream);
         if (sender) {
             this.senders[track.id] = sender;
         }
     }
 
     public addStream(stream: MediaStream) {
-        stream.getTracks().forEach(track => {
+        stream.getTracks().forEach((track) => {
             this.addTrack(track, stream);
         });
     }

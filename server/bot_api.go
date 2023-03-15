@@ -175,8 +175,8 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	threadID := info["thread_id"]
-	if threadID == "" {
+	postID := info["thread_id"]
+	if postID == "" {
 		res.Err = "missing thread_id from request body"
 		res.Code = http.StatusBadRequest
 		return
@@ -189,12 +189,19 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	// Update call thread
-	post, appErr := p.API.GetPost(threadID)
+	// Update call post
+	post, appErr := p.API.GetPost(postID)
 	if appErr != nil {
-		res.Err = "failed to get call thread: " + appErr.Error()
+		res.Err = "failed to get call post: " + appErr.Error()
 		res.Code = http.StatusInternalServerError
 		return
+	}
+
+	threadID := post.Id
+
+	// Post in thread
+	if post.RootId != "" {
+		threadID = post.RootId
 	}
 
 	recordings, ok := post.GetProp("recording_files").([]interface{})
@@ -215,7 +222,7 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 
 	startAt, _ := post.GetProp("start_at").(int64)
 	postMsg := "Here's the call recording"
-	if title := post.GetProp("title"); title != "" {
+	if title, _ := post.GetProp("title").(string); title != "" {
 		postMsg = fmt.Sprintf("%s of %s at %s UTC", postMsg, title, time.UnixMilli(startAt).Format("3:04PM"))
 	}
 	post = &model.Post{

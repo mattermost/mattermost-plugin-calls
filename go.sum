@@ -552,8 +552,8 @@ github.com/mailru/easyjson v0.0.0-20190614124828-94de47d64c63/go.mod h1:C1wdFJiN
 github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.7.0/go.mod h1:KAzv3t3aY1NaHWoQz1+4F1ccyAH66Jk7yos7ldAVICs=
 github.com/marstr/guid v1.1.0/go.mod h1:74gB1z2wpxxInTG6yaqA7KrtM0NZ+RbrcqDvYHefzho=
-github.com/mattermost/calls-offloader v0.1.3 h1:jrSF5wWYU887odGKvayGrk+NVep6RvUnN+J4NYb1Wvo=
-github.com/mattermost/calls-offloader v0.1.3/go.mod h1:gI5cKGBiXXVCN1w8m/p7E5RqTpRp2BpFxF7+E6HZoms=
+github.com/mattermost/calls-offloader v0.2.1 h1:wfhr42lXgWTJy3h/9EewthNg83TTt9M0dycWSreYS1M=
+github.com/mattermost/calls-offloader v0.2.1/go.mod h1:eJJvs1U6eU+QYDI+YVGRl92w4ACngx68XxigySPnNyU=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 h1:Khvh6waxG1cHc4Cz5ef9n3XVCxRWpAKUtqg9PJl5+y8=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404/go.mod h1:RyS7FDNQlzF1PsjbJWHRI35exqaKGSO9qD4iv8QjE34=
 github.com/mattermost/ldap v0.0.0-20201202150706-ee0e6284187d h1:/RJ/UV7M5c7L2TQ0KNm4yZxxFvC1nvRz/gY/Daa35aI=
@@ -564,8 +564,8 @@ github.com/mattermost/mattermost-plugin-api v0.1.1 h1:bNnPbWCLWZpT/k2kjUxNnzCfUg
 github.com/mattermost/mattermost-plugin-api v0.1.1/go.mod h1:9yZhtg0bBj3kqSTjXnjYBMZoTsWbe3ajdFMdl9/Jz34=
 github.com/mattermost/mattermost-server/v6 v6.0.0-20221122212622-0509e78744bf h1:a61ZNxW8zYZjNSbH4Y3agqkWcw7AAo7XxXU4i722Ozs=
 github.com/mattermost/mattermost-server/v6 v6.0.0-20221122212622-0509e78744bf/go.mod h1:B9ntfVMlYp1gsCnEKRuM4nMN02l2LQG0+JEPJoSA3mk=
-github.com/mattermost/rtcd v0.8.1-0.20230123143837-0229a4d13dc9 h1:zY+5nenztFcTIOLmom09ZK2S0HZ0H/Htv6tUA6AVzrw=
-github.com/mattermost/rtcd v0.8.1-0.20230123143837-0229a4d13dc9/go.mod h1:obJtR9gnk6jOk6GC1YyOuq7z1DIaIrvwkyPGvYta0tE=
+github.com/mattermost/rtcd v0.8.1-0.20230126170226-df8105fc2cf7 h1:q6MHgAQivEKOzVjUTXZP8SV7esKpDnL2Wgo5NdxKhmI=
+github.com/mattermost/rtcd v0.8.1-0.20230126170226-df8105fc2cf7/go.mod h1:ILcjYUswiuxPSTVNEOEYr+0zj08R0TTZA/YblNPInr0=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-colorable v0.1.9/go.mod h1:u6P/XSegPjTcexA+o6vUJrdnUu04hMope9wVRipJSqc=
 github.com/mattn/go-colorable v0.1.12/go.mod h1:u5H1YNBxpqRaxsYJYSkiCWKzEfiAb1Gb520KVy5xxl4=

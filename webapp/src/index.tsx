@@ -1,5 +1,9 @@
-import React from 'react';
+/* eslint-disable max-lines */
+
 import axios from 'axios';
+
+import {defineMessage, injectIntl} from 'react-intl';
+import {AnyAction} from 'redux';
 
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
@@ -9,15 +13,23 @@ import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels'
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
+import {batchActions} from 'redux-batched-actions';
+
 import {
     displayFreeTrial,
     getCallsConfig,
     displayCallErrorModal,
     showScreenSourceModal,
     displayCallsTestModeUser,
+    startCallRecording,
+    stopCallRecording,
+    displayGenericErrorModal,
 } from 'src/actions';
 
+import slashCommandsHandler from 'src/slash_commands';
+
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
+import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
@@ -26,6 +38,10 @@ import TestMode from 'src/components/admin_console_settings/test_mode';
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
+
+import {UserState} from 'src/types/types';
+
+import {DisabledCallsErr} from 'src/constants';
 
 import {
     handleUserConnected,
@@ -58,7 +74,10 @@ import {
     isCloudStarter,
     channelHasCall,
     callsExplicitlyEnabled,
-    callsExplicitlyDisabled, hasPermissionsToEnableCalls,
+    callsExplicitlyDisabled,
+    hasPermissionsToEnableCalls,
+    voiceChannelCallHostID,
+    callRecording,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -92,7 +111,7 @@ import {
     sendDesktopEvent,
     getChannelURL,
 } from './utils';
-import {logErr, logDebug} from './log';
+import {logErr, logWarn, logDebug} from './log';
 import {
     JOIN_CALL,
     keyToAction,
@@ -114,8 +133,7 @@ import {
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
-
-import {PluginRegistry, SlashCommandWillBePostedReturn, Store} from './types/mattermost-webapp';
+import {PluginRegistry, Store, Translations} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
@@ -124,7 +142,7 @@ export default class Plugin {
         this.unsubscribers = [];
     }
 
-    private registerReconnectHandler(registry: PluginRegistry, store: Store, handler: () => void) {
+    private registerReconnectHandler(registry: PluginRegistry, _store: Store, handler: () => void) {
         registry.registerReconnectHandler(handler);
         this.unsubscribers.push(() => registry.unregisterReconnectHandler(handler));
     }
@@ -205,7 +223,7 @@ export default class Plugin {
         });
     }
 
-    public async initialize(registry: PluginRegistry, store: Store): Promise<void> {
+    private initialize(registry: PluginRegistry, store: Store) {
         // Setting the base URL if present, in case MM is running under a subpath.
         if (window.basename) {
             Client4.setUrl(window.basename);
@@ -214,112 +232,33 @@ export default class Plugin {
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
-        registry.registerChannelToastComponent(ChannelCallToast);
+        registry.registerChannelToastComponent(injectIntl(ChannelCallToast));
         registry.registerPostTypeComponent('custom_calls', PostType);
+        registry.registerPostTypeComponent('custom_calls_recording', PostTypeRecording);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
-        registry.registerNeedsTeamRoute('/expanded', ExpandedView);
-        registry.registerGlobalComponent(SwitchCallModal);
-        registry.registerGlobalComponent(ScreenSourceModal);
-        registry.registerGlobalComponent(EndCallModal);
+        registry.registerNeedsTeamRoute('/expanded', injectIntl(ExpandedView));
+        registry.registerGlobalComponent(injectIntl(SwitchCallModal));
+        registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
+        registry.registerGlobalComponent(injectIntl(EndCallModal));
 
-        registry.registerSlashCommandWillBePostedHook(async (message, args) => {
-            const fullCmd = message.trim();
-            const fields = fullCmd.split(/\s+/);
-            if (fields.length < 2) {
-                return {message, args};
-            }
+        registry.registerTranslations((locale: string) => {
+            try {
+                logDebug(`loading translations file for locale '${locale}'`);
 
-            const rootCmd = fields[0];
-            const subCmd = fields[1];
-
-            if (rootCmd !== '/call') {
-                return {message, args};
-            }
-
-            const connectedID = connectedChannelID(store.getState());
-
-            switch (subCmd) {
-            case 'join':
-            case 'start':
-                if (subCmd === 'start') {
-                    if (voiceConnectedUsersInChannel(store.getState(), args.channel_id).length > 0) {
-                        return {error: {message: 'A call is already ongoing in the channel.'}};
-                    }
-                }
-                if (!connectedID) {
-                    let title = '';
-                    if (fields.length > 2) {
-                        title = fields.slice(2).join(' ');
-                    }
-                    const team_id = args?.team_id || getChannel(store.getState(), args.channel_id).team_id;
-                    try {
-                        await joinCall(args.channel_id, team_id, title);
-                        return {};
-                    } catch (e) {
-                        return {error: {message: e.message}};
-                    }
-                }
-                return {error: {message: 'You\'re already connected to a call in the current channel.'}};
-            case 'leave':
-                if (connectedID && args.channel_id === connectedID) {
-                    if (window.callsClient) {
-                        window.callsClient.disconnect();
-                        return {};
-                    } else if (shouldRenderDesktopWidget()) {
-                        sendDesktopEvent('calls-leave-call', {callID: args.channel_id});
-                        return {};
-                    }
-                }
-                return {error: {message: 'You\'re not connected to a call in the current channel.'}};
-            case 'end':
-                if (voiceConnectedUsersInChannel(store.getState(), args.channel_id)?.length === 0) {
-                    return {error: {message: 'No ongoing call in the channel.'}};
-                }
-
-                if (!isCurrentUserSystemAdmin(store.getState()) &&
-                    getCurrentUserId(store.getState()) !== voiceChannelCallOwnerID(store.getState(), args.channel_id)) {
-                    return {error: {message: 'You don\'t have permission to end the call. Please ask the call owner to end call.'}};
-                }
-
-                store.dispatch({
-                    type: SHOW_END_CALL_MODAL,
-                    data: {
-                        targetID: args.channel_id,
-                    },
-                });
+                // synchronously loading all translation files from bundle (MM-50811).
+                // eslint-disable-next-line global-require
+                return require(`../i18n/${locale}.json`);
+            } catch (err) {
+                logWarn(`failed to open translations file for locale '${locale}'`, err);
                 return {};
-            case 'link':
-                break;
-            case 'experimental':
-                if (fields.length < 3) {
-                    break;
-                }
-                if (fields[2] === 'on') {
-                    window.localStorage.setItem('calls_experimental_features', 'on');
-                    logDebug('experimental features enabled');
-                } else if (fields[2] === 'off') {
-                    logDebug('experimental features disabled');
-                    window.localStorage.removeItem('calls_experimental_features');
-                }
-                break;
-            case 'stats': {
-                if (window.callsClient) {
-                    try {
-                        const stats = await window.callsClient.getStats();
-                        return {message: `/call stats ${btoa(JSON.stringify(stats))}`, args};
-                    } catch (err) {
-                        return {error: {message: err}};
-                    }
-                }
-                const data = sessionStorage.getItem('calls_client_stats') || '{}';
-                return {message: `/call stats ${btoa(data)}`, args};
             }
-            }
-
-            return {message, args};
         });
 
-        const connectToCall = async (channelId: string, teamId: string, title?: string) => {
+        registry.registerSlashCommandWillBePostedHook(async (message, args) => {
+            return slashCommandsHandler(store, joinCall, message, args);
+        });
+
+        const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
             try {
                 const users = voiceConnectedUsers(store.getState());
                 if (users && users.length > 0) {
@@ -336,7 +275,7 @@ export default class Plugin {
             }
 
             if (!connectedChannelID(store.getState())) {
-                connectCall(channelId, title);
+                connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
                 // this is done in the call_start ws event handler.
@@ -350,7 +289,7 @@ export default class Plugin {
             }
         };
 
-        const joinCall = async (channelId: string, teamId: string, title?: string) => {
+        const joinCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
             // Anyone can join a call already in progress.
             // If explicitly enabled, everyone can start calls.
             // In LiveMode (DefaultEnabled=true):
@@ -375,19 +314,19 @@ export default class Plugin {
                     return;
                 }
 
-                await connectToCall(channelId, teamId, title);
+                await connectToCall(channelId, teamId, title, rootId);
                 return;
             }
 
             if (explicitlyDisabled) {
                 // UI should not have shown, so this is a response to a slash command.
-                throw Error('Cannot start or join call: calls are disabled in this channel.');
+                throw DisabledCallsErr;
             }
 
             // We are in TestMode (DefaultEnabled=false)
             if (isCurrentUserSystemAdmin(store.getState())) {
                 // Rely on server side to send ephemeral message.
-                await connectToCall(channelId, teamId, title);
+                await connectToCall(channelId, teamId, title, rootId);
             } else {
                 store.dispatch(displayCallsTestModeUser());
             }
@@ -426,7 +365,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('UDPServerPort', UDPServerPort);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
 
-        const connectCall = async (channelID: string, title?: string) => {
+        const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             if (shouldRenderDesktopWidget()) {
                 logDebug('sending join call message to desktop app');
                 sendDesktopEvent('calls-join-call', {
@@ -459,7 +398,7 @@ export default class Plugin {
                     iceServers: iceConfigs,
                 });
                 const globalComponentID = registry.registerGlobalComponent(CallWidget);
-                const rootComponentID = registry.registerRootComponent(ExpandedView);
+                const rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
                 window.callsClient.on('close', (err?: Error) => {
                     registry.unregisterComponent(globalComponentID);
                     registry.unregisterComponent(rootComponentID);
@@ -473,9 +412,9 @@ export default class Plugin {
                     }
                 });
 
-                window.callsClient.init(channelID, title).catch((err: Error) => {
+                window.callsClient.init(channelID, title, rootId).catch((err: Error) => {
                     logErr(err);
-                    store.dispatch(displayCallErrorModal(window.callsClient.channelID, err));
+                    store.dispatch(displayCallErrorModal(channelID, err));
                     delete window.callsClient;
                 });
             } catch (err) {
@@ -497,6 +436,10 @@ export default class Plugin {
                     type: DESKTOP_WIDGET_CONNECTED,
                     data: {channelID: ev.data.message.callID},
                 });
+            } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error') {
+                store.dispatch(displayCallErrorModal(ev.data.message.callID, new Error(ev.data.message.errMsg)));
+            } else if (ev.data?.type === 'calls-run-slash-command') {
+                slashCommandsHandler(store, joinCall, ev.data.message, ev.data.args);
             }
         };
         window.addEventListener('message', windowEventHandler);
@@ -508,7 +451,7 @@ export default class Plugin {
         const registerChannelHeaderMenuAction = () => {
             channelHeaderMenuID = registry.registerChannelHeaderMenuAction(
                 ChannelHeaderMenuButton,
-                async (channelID) => {
+                async () => {
                     try {
                         const resp = await axios.post(`${getPluginPath()}/${currChannelId}`,
                             {enabled: callsExplicitlyDisabled(store.getState(), currChannelId)},
@@ -524,11 +467,12 @@ export default class Plugin {
             );
         };
 
-        const fetchChannels = async () => {
+        const fetchChannels = async (): Promise<AnyAction[]> => {
+            const actions = [];
             try {
                 const resp = await axios.get(`${getPluginPath()}/channels`);
                 for (let i = 0; i < resp.data.length; i++) {
-                    store.dispatch({
+                    actions.push({
                         type: VOICE_CHANNEL_USERS_CONNECTED,
                         data: {
                             users: resp.data[i].call?.users,
@@ -536,7 +480,7 @@ export default class Plugin {
                         },
                     });
                     if (!voiceChannelCallStartAt(store.getState(), resp.data[i].channel_id)) {
-                        store.dispatch({
+                        actions.push({
                             type: VOICE_CHANNEL_CALL_START,
                             data: {
                                 channelID: resp.data[i].channel_id,
@@ -550,17 +494,19 @@ export default class Plugin {
             } catch (err) {
                 logErr(err);
             }
+
+            return actions;
         };
 
-        const fetchChannelData = async (channelID: string) => {
+        const fetchChannelData = async (channelID: string): Promise<AnyAction[]> => {
             if (!channelID) {
                 // Must be Global threads view, or another view that isn't a channel.
-                return;
+                return [];
             }
 
             let channel = getChannel(store.getState(), channelID);
             if (!channel) {
-                await getChannelAction(channelID)(store.dispatch as any, store.getState);
+                await store.dispatch(getChannelAction(channelID));
                 channel = getChannel(store.getState(), channelID);
             }
 
@@ -582,76 +528,87 @@ export default class Plugin {
                 logErr(err);
             }
 
+            const actions = [];
+
             try {
                 const resp = await axios.get(`${getPluginPath()}/${channelID}`);
-                store.dispatch({
+                actions.push({
                     type: RECEIVED_CHANNEL_STATE,
                     data: {id: channelID, enabled: resp.data.enabled},
                 });
-                store.dispatch({
+
+                const call = resp.data.call;
+                if (!call) {
+                    return actions;
+                }
+
+                actions.push({
+                    type: VOICE_CHANNEL_CALL_START,
+                    data: {
+                        channelID,
+                        startAt: call.start_at,
+                        ownerID: call.owner_id,
+                        hostID: call.host_id,
+                    },
+                });
+
+                actions.push({
                     type: VOICE_CHANNEL_USERS_CONNECTED,
                     data: {
-                        users: resp.data.call?.users,
+                        users: call.users || [],
                         channelID,
                     },
                 });
-                if (resp.data.call?.thread_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_ROOT_POST,
-                        data: {
-                            channelID,
-                            rootPost: resp.data.call?.thread_id,
-                        },
-                    });
-                }
-                if (resp.data.call?.host_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_CALL_HOST,
-                        data: {
-                            channelID,
-                            hostID: resp.data.call?.host_id,
-                        },
-                    });
-                }
 
-                if (resp.data.call?.users && resp.data.call?.users.length > 0) {
-                    store.dispatch({
+                actions.push({
+                    type: VOICE_CHANNEL_ROOT_POST,
+                    data: {
+                        channelID,
+                        rootPost: call.thread_id,
+                    },
+                });
+
+                actions.push({
+                    type: VOICE_CHANNEL_CALL_HOST,
+                    data: {
+                        channelID,
+                        hostID: call.host_id,
+                    },
+                });
+
+                if (call.users && call.users.length > 0) {
+                    actions.push({
                         type: VOICE_CHANNEL_PROFILES_CONNECTED,
                         data: {
-                            profiles: await getProfilesByIds(store.getState(), resp.data.call?.users),
+                            profiles: await getProfilesByIds(store.getState(), call.users),
                             channelID,
                         },
                     });
                 }
 
-                if (resp.data.call?.recording) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_CALL_RECORDING_STATE,
-                        data: {
-                            callID: channelID,
-                            recState: resp.data.call?.recording,
-                        },
-                    });
-                }
+                actions.push({
+                    type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+                    data: {
+                        callID: channelID,
+                        recState: call.recording,
+                    },
+                });
 
-                if (resp.data.call?.screen_sharing_id) {
-                    store.dispatch({
-                        type: VOICE_CHANNEL_USER_SCREEN_ON,
-                        data: {
-                            channelID,
-                            userID: resp.data.call?.screen_sharing_id,
-                        },
-                    });
-                }
+                actions.push({
+                    type: VOICE_CHANNEL_USER_SCREEN_ON,
+                    data: {
+                        channelID,
+                        userID: call.screen_sharing_id,
+                    },
+                });
 
-                // TODO: we should use types here, could cause trouble in the future.
-                const userStates = {} as any;
-                const users = resp.data.call?.users || [];
-                const states = resp.data.call?.states || [];
+                const userStates: Record<string, UserState> = {};
+                const users = call.users || [];
+                const states = call.states || [];
                 for (let i = 0; i < users.length; i++) {
                     userStates[users[i]] = {...states[i], id: users[i]};
                 }
-                store.dispatch({
+                actions.push({
                     type: VOICE_CHANNEL_USERS_CONNECTED_STATES,
                     data: {
                         states: userStates,
@@ -660,11 +617,13 @@ export default class Plugin {
                 });
             } catch (err) {
                 logErr(err);
-                store.dispatch({
+                actions.push({
                     type: RECEIVED_CHANNEL_STATE,
                     data: {id: channelID, enabled: false},
                 });
             }
+
+            return actions;
         };
 
         let configRetrieved = false;
@@ -681,14 +640,14 @@ export default class Plugin {
                 configRetrieved = true;
             }
 
-            fetchChannels();
+            const actions = await fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
             if (currChannelId) {
-                fetchChannelData(currChannelId);
+                actions.push(...await fetchChannelData(currChannelId));
             } else {
                 const expandedID = getExpandedChannelID();
                 if (expandedID.length > 0) {
-                    await store.dispatch({
+                    actions.push({
                         type: VOICE_CHANNEL_USER_CONNECTED,
                         data: {
                             channelID: expandedID,
@@ -696,9 +655,11 @@ export default class Plugin {
                             currentUserID: getCurrentUserId(store.getState()),
                         },
                     });
-                    fetchChannelData(expandedID);
+                    actions.push(...await fetchChannelData(expandedID));
                 }
             }
+
+            store.dispatch(batchActions(actions));
         };
 
         this.unsubscribers.push(() => {
@@ -738,7 +699,9 @@ export default class Plugin {
                     configRetrieved = true;
                 }
 
-                fetchChannelData(currChannelId);
+                fetchChannelData(currChannelId).then((actions) =>
+                    store.dispatch(batchActions(actions)),
+                );
                 if (currChannelId && Boolean(joinCallParam) && !connectedChannelID(store.getState())) {
                     connectCall(currChannelId);
                 }
@@ -774,10 +737,12 @@ declare global {
     interface Window {
         registerPlugin(id: string, plugin: Plugin): void,
 
-        callsClient: any,
+        callsClient?: CallsClient,
         webkitAudioContext: AudioContext,
         basename: string,
-        desktop: any,
+        desktop?: {
+            version?: string | null;
+        },
         screenSharingTrackId: string,
     }
 

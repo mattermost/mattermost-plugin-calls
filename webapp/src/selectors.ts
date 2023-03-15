@@ -267,8 +267,6 @@ export const callsUserPreferences = (state: GlobalState): CallsUserPreferences =
 export const shouldPlayJoinUserSound = (state: GlobalState): boolean =>
     numUsersInConnectedChannel(state) < callsUserPreferences(state).joinSoundParticipantsThreshold;
 
-export const getClientError = (state: GlobalState) => pluginState(state).clientErr;
-
 export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
     const license = getLicense(state);
     const enterprise = license.SkuShortName === LicenseSkus.E20 || license.SkuShortName === LicenseSkus.Enterprise;

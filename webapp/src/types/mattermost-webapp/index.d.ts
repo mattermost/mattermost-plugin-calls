@@ -3,28 +3,51 @@ import {ThunkDispatch} from 'redux-thunk';
 import {GlobalState} from '@mattermost/types/store';
 import {CommandArgs} from '@mattermost/types/integrations';
 
+export type Translations = {
+    [key: string]: string;
+};
+
 export interface PluginRegistry {
     registerPostTypeComponent(typeName: string, component: React.ElementType);
+
     registerReducer(reducer: Reducer);
+
     registerGlobalComponent(component: React.ElementType);
+
     registerRootComponent(component: React.ElementType);
+
     registerSidebarChannelLinkLabelComponent(component: React.ElementType);
+
     registerChannelToastComponent(component: React.ElementType);
+
     registerChannelHeaderButtonAction(component: React.ElementType, fn: (channel: Channel) => void);
+
     registerChannelHeaderMenuAction(component: React.ElementType, fn: (channelID: string) => void);
+
     registerWebSocketEventHandler(evType: string, fn: (event: WebSocketEvent) => void);
+
     registerCustomRoute(route: string, component: React.ElementType);
+
     registerNeedsTeamRoute(route: string, component: React.ElementType);
+
     registerSlashCommandWillBePostedHook(hook: (message: string, args: CommandArgs) => SlashCommandWillBePostedReturn);
+
     registerCallButtonAction(button: React.ElementType, dropdownButton: React.ElementType, fn: (channel: Channel) => void);
+
     unregisterComponent(componentID: string);
+
     unregisterPostTypeComponent(componentID: string);
+
     registerReconnectHandler(handler: () => void);
+
     unregisterReconnectHandler(handler: () => void);
-    registerAdminConsoleCustomSetting(key: string, component: React.FunctionComponent<CustomComponentProps>, options?: {showTitle: boolean});
+
+    registerAdminConsoleCustomSetting(key: string, component: React.FunctionComponent<CustomComponentProps>, options?: { showTitle: boolean });
+
+    registerTranslations(handler: (locale: string) => Translations | Promise<Translations>);
 }
 
-export type SlashCommandWillBePostedReturn = {error: string} | {message: string, args: CommandArgs} | {};
+export type SlashCommandWillBePostedReturn = { error: string } | { message: string, args: CommandArgs } | unknown;
 
 export interface CustomComponentProps {
     id: string;
@@ -46,6 +69,7 @@ export interface CustomComponentProps {
 /**
  * Emulated Store type used in mattermost-webapp/mattermost-redux
  */
-export type Store = BaseStore<GlobalState> & {dispatch: Dispatch}
+export type Store = BaseStore<GlobalState> & { dispatch: Dispatch }
 
+// eslint-disable-next-line
 export type Dispatch = ThunkDispatch<GlobalState, any, any>

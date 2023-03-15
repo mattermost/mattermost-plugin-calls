@@ -1,22 +1,21 @@
 import React from 'react';
-import PropTypes from 'prop-types';
-
+import {useIntl} from 'react-intl';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-
-import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
+import {Theme} from 'mattermost-redux/types/themes';
 
-import {getUserDisplayName, getUsersList} from '../../utils';
-
-import ActiveCallIcon from '../../components/icons/active_call_icon';
+import {getUsersList} from 'src/utils';
+import ActiveCallIcon from 'src/components/icons/active_call_icon';
 
 interface Props {
-    theme: any,
+    theme: Theme,
     hasCall: boolean,
     profiles: UserProfile[],
 }
 
 const ChannelLinkLabel = (props: Props) => {
+    const {formatMessage} = useIntl();
+
     if (props.hasCall) {
         return (
             <OverlayTrigger
@@ -25,7 +24,7 @@ const ChannelLinkLabel = (props: Props) => {
                     <Tooltip
                         id='call-profiles'
                     >
-                        {getUsersList(props.profiles) + (props.profiles.length > 1 ? ' are' : ' is') + ' on the call'}
+                        {formatMessage({defaultMessage: '{list} {count, plural, =1 {is} other {are}} on the call'}, {count: props.profiles.length, list: getUsersList(props.profiles)})}
                     </Tooltip>
                 }
             >

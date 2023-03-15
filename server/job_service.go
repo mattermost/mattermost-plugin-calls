@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-api/cluster"
+	"github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/mattermost/rtcd/service/random"
 
@@ -19,8 +20,9 @@ import (
 )
 
 const jobServiceConfigKey = "jobservice_config"
-const recordingJobRunner = "mattermost/calls-recorder:v0.2.2"
 const runnerUpdateLockTimeout = 2 * time.Minute
+
+var recordingJobRunner = ""
 
 type jobService struct {
 	ctx    *Plugin
@@ -232,7 +234,7 @@ func (s *jobService) UpdateJobRunner(runner string) error {
 	return s.client.UpdateJobRunner(runner)
 }
 
-func (s *jobService) RunRecordingJob(callID, threadID, authToken string) (string, error) {
+func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, error) {
 	cfg := s.ctx.getConfiguration()
 	if cfg == nil {
 		return "", fmt.Errorf("failed to get plugin configuration")
@@ -243,7 +245,14 @@ func (s *jobService) RunRecordingJob(callID, threadID, authToken string) (string
 		return "", fmt.Errorf("failed to get server configuration")
 	}
 
-	siteURL := *serverCfg.ServiceSettings.SiteURL
+	var siteURL string
+	if serverCfg.ServiceSettings.SiteURL == nil {
+		s.ctx.LogWarn("SiteURL is not set, using default")
+		siteURL = model.ServiceSettingsDefaultSiteURL
+	} else {
+		siteURL = *serverCfg.ServiceSettings.SiteURL
+	}
+
 	maxDuration := int64(*cfg.MaxRecordingDuration * 60)
 
 	job, err := s.RunJob(offloader.JobConfig{
@@ -253,7 +262,7 @@ func (s *jobService) RunRecordingJob(callID, threadID, authToken string) (string
 		InputData: (&offloader.RecordingJobInputData{
 			SiteURL:   siteURL,
 			CallID:    callID,
-			ThreadID:  threadID,
+			ThreadID:  postID,
 			AuthToken: authToken,
 		}).ToMap(),
 	})

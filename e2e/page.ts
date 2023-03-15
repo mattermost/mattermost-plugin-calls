@@ -20,30 +20,31 @@ export default class PlaywrightDevPage {
     }
 
     async leaveCall() {
-        await expect(this.page.locator('#calls-widget-leave-button')).toBeVisible();
         await this.page.locator('#calls-widget-leave-button').click();
         await expect(this.page.locator('#calls-widget')).toBeHidden();
     }
 
     async startCall() {
-        const startCallButton = this.page.locator('[aria-label="channel header region"] button:has-text("Start Call")');
+        const startCallButton = this.page.locator('[aria-label="channel header region"] button:has-text("Start call")');
         await expect(startCallButton).toBeVisible();
         await startCallButton.click();
         await expect(this.page.locator('#calls-widget')).toBeVisible();
+        await expect(this.page.locator('#calls-widget-loading-overlay')).toBeHidden();
     }
 
     async joinCall() {
-        const joinCallButton = this.page.locator('[aria-label="channel header region"] button:has-text("Join Call")');
+        const joinCallButton = this.page.locator('[aria-label="channel header region"] button:has-text("Join call")');
         await expect(joinCallButton).toBeVisible();
         await joinCallButton.click();
         await expect(this.page.locator('#calls-widget')).toBeVisible();
+        await expect(this.page.locator('#calls-widget-loading-overlay')).toBeHidden();
     }
 
     async enableCalls() {
         const channelHeaderButton = this.page.locator('#channelHeaderDropdownButton');
         await expect(channelHeaderButton).toBeVisible();
         await channelHeaderButton.click();
-        const enableCallsButton = this.page.locator('#channelHeaderDropdownMenu button:has-text("Enable Calls")');
+        const enableCallsButton = this.page.locator('#channelHeaderDropdownMenu button:has-text("Enable calls")');
         await expect(enableCallsButton).toBeVisible();
         await enableCallsButton.click();
     }
@@ -52,7 +53,7 @@ export default class PlaywrightDevPage {
         const channelHeaderButton = this.page.locator('#channelHeaderDropdownButton');
         await expect(channelHeaderButton).toBeVisible();
         await channelHeaderButton.click();
-        const disableCallsButton = this.page.locator('#channelHeaderDropdownMenu button:has-text("Disable Calls")');
+        const disableCallsButton = this.page.locator('#channelHeaderDropdownMenu button:has-text("Disable calls")');
         await expect(disableCallsButton).toBeVisible();
         await disableCallsButton.click();
     }

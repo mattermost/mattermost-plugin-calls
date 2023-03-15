@@ -4,6 +4,9 @@
 package main
 
 import (
+	"math/rand"
+	"time"
+
 	"golang.org/x/time/rate"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
@@ -23,6 +26,7 @@ var rudderDataplaneURL string
 const clusterEventQueueSize = 4096
 
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
 	plugin.ClientMain(&Plugin{
 		stopCh:      make(chan struct{}),
 		clusterEvCh: make(chan model.PluginClusterEvent, clusterEventQueueSize),

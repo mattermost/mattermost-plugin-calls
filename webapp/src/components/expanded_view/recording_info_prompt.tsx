@@ -1,5 +1,5 @@
-import React, {CSSProperties, useState, useEffect} from 'react';
-import moment from 'moment-timezone';
+import React, {useState, useEffect, useCallback} from 'react';
+import {useIntl} from 'react-intl';
 
 import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
 
@@ -38,17 +38,17 @@ export default function RecordingInfoPrompt(props: Props) {
         return () => clearInterval(interval);
     });
 
-    const getMinutesLeftBeforeEnd = () => {
+    const getMinutesLeftBeforeEnd = useCallback(() => {
         if (!props.recording?.start_at) {
             return 0;
         }
         const callDurationMinutes = (Date.now() - props.recording.start_at) / (1000 * 60);
         return Math.round(props.recordingMaxDuration - callDurationMinutes);
-    };
+    }, [props.recording?.start_at, props.recordingMaxDuration]);
 
     const [dismissedAt, updateDismissedAt] = useState(0);
-
     const [recordingWillEndSoon, updateRecordingWillEndSoon] = useState(0);
+
     useEffect(() => {
         if (!props.isHost || !props.recording || props.recording.start_at === 0 || props.recording.end_at !== 0 || recordingWillEndSoon !== 0) {
             return;
@@ -57,9 +57,11 @@ export default function RecordingInfoPrompt(props: Props) {
         if (getMinutesLeftBeforeEnd() <= minutesLeftThreshold) {
             updateRecordingWillEndSoon(Date.now());
         }
-    });
+    }, [props.isHost, props.recording, recordingWillEndSoon, getMinutesLeftBeforeEnd]);
 
     const hasRecEnded = props.recording?.end_at;
+
+    const {formatMessage} = useIntl();
 
     if (props.isHost && !hasRecEnded && recordingWillEndSoon > dismissedAt) {
         return (
@@ -74,9 +76,13 @@ export default function RecordingInfoPrompt(props: Props) {
                 }
                 iconFill='rgb(var(--dnd-indicator-rgb))'
                 iconColor='rgb(var(--dnd-indicator-rgb))'
-                header={`Calls can be recorded for up to ${props.recordingMaxDuration} minutes`}
-                body={`Your recording will end in ${getMinutesLeftBeforeEnd()} minutes.`}
-                confirmText={'Dismiss'}
+                header={formatMessage({
+                    defaultMessage: 'Calls can be recorded for up to {count, plural, =1 {# minute} other {# minutes}}.',
+                }, {count: props.recordingMaxDuration})}
+                body={formatMessage({
+                    defaultMessage: 'Your recording will end in {count, plural, =1 {# minute} other {# minutes}}.'}
+                , {count: getMinutesLeftBeforeEnd()})}
+                confirmText={formatMessage({defaultMessage: 'Dismiss'})}
                 onClose={() => updateDismissedAt(Date.now())}
             />
         );
@@ -94,37 +100,39 @@ export default function RecordingInfoPrompt(props: Props) {
         return null;
     }
 
-    // If the prompt was dismissed after the call has started and after the last host change
-    // we don't show this again.
+    // If the prompt was dismissed after the recording has started and after the last host change
+    // we don't show this again, unless there was a more recent error.
     if (!hasRecEnded && dismissedAt > props.recording?.start_at && dismissedAt > props.hostChangeAt) {
-        return null;
+        if (!props.recording?.error_at || dismissedAt > props.recording.error_at) {
+            return null;
+        }
     }
 
-    // If the prompt was dismissed after the call has ended then we
+    // If the prompt was dismissed after the recording has ended then we
     // don't show this again.
     if (hasRecEnded && dismissedAt > props.recording?.end_at) {
         return null;
     }
 
-    let header = CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].header;
-    let body = CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].body;
-    let confirmText = props.isHost ? 'Dismiss' : 'Understood';
+    let header = formatMessage(CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].header);
+    let body = formatMessage(CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].body);
+    let confirmText = props.isHost ? formatMessage({defaultMessage: 'Dismiss'}) : formatMessage({defaultMessage: 'Understood'});
     let icon = (
         <RecordCircleOutlineIcon
             size={18}
         />);
-    const declineText = props.isHost ? '' : 'Leave call';
+    const declineText = props.isHost ? '' : formatMessage({defaultMessage: 'Leave call'});
 
     if (hasRecEnded) {
         confirmText = '';
-        header = 'Recording has stopped. Processing...';
-        body = 'You can find the recording in this call\'s chat thread once it\'s finished processing.';
+        header = formatMessage({defaultMessage: 'Recording has stopped. Processing...'});
+        body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it\'s finished processing.'});
     }
 
     let error = '';
     if (props.recording?.err) {
-        header = 'Something went wrong with the recording';
-        body = 'Please try to record again. You can also contact your system admin for troubleshooting help.';
+        header = formatMessage({defaultMessage: 'Something went wrong with the recording'});
+        body = formatMessage({defaultMessage: 'Please try to record again. You can also contact your system admin for troubleshooting help.'});
         error = capitalize(props.recording?.err);
 
         icon = (

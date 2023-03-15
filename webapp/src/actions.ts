@@ -1,29 +1,21 @@
 import {Dispatch} from 'redux';
 import axios from 'axios';
 
+import {MessageDescriptor} from 'react-intl';
+
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
-
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
-
 import {Client4} from 'mattermost-redux/client';
-
-import {CloudCustomer} from '@mattermost/types/cloud';
-
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
-
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
-
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
-
 import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
-
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
 import {CallsConfig} from 'src/types/types';
 import * as Telemetry from 'src/types/telemetry';
 import {getPluginPath} from 'src/utils';
-
 import {modals, openPricingModal} from 'src/webapp_globals';
 import {
     CloudFreeTrialModalAdmin,
@@ -31,13 +23,12 @@ import {
     IDAdmin,
     IDUser,
 } from 'src/cloud_pricing/modals';
-
 import {
     CallErrorModalID,
     CallErrorModal,
 } from 'src/components/call_error_modal';
-
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
+import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 
 import {
     SHOW_EXPANDED_VIEW,
@@ -48,7 +39,6 @@ import {
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_END_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
-    RECEIVED_CLIENT_ERROR,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
 
@@ -114,18 +104,6 @@ export const notifyAdminCloudFreeTrial = async () => {
     );
 };
 
-export const requestCloudTrial = async () => {
-    try {
-        await Client4.doFetchWithResponse<CloudCustomer>(
-            `${Client4.getCloudRoute()}/request-trial`,
-            {method: 'put'},
-        );
-    } catch (error) {
-        return false;
-    }
-    return true;
-};
-
 export const displayFreeTrial = () => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         const isAdmin = isCurrentUserSystemAdmin(getState());
@@ -184,27 +162,17 @@ export const endCall = (channelID: string) => {
 };
 
 export const displayCallErrorModal = (channelID: string, err: Error) => (dispatch: Dispatch<GenericAction>) => {
-    dispatch({
-        type: RECEIVED_CLIENT_ERROR,
-        data: {
-            channelID,
-            err,
-        },
-    });
     dispatch(modals.openModal({
         modalId: CallErrorModalID,
         dialogType: CallErrorModal,
+        dialogProps: {
+            channelID,
+            err,
+        },
     }));
 };
 
-export const clearClientError = () => (dispatch: Dispatch<GenericAction>) => {
-    dispatch({
-        type: RECEIVED_CLIENT_ERROR,
-        data: null,
-    });
-};
-
-export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => {
+export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
         const config = getConfig(getState());
         if (config.DiagnosticsEnabled !== 'true') {
@@ -252,6 +220,7 @@ export const startCallRecording = (callID: string) => (dispatch: Dispatch<Generi
                     start_at: 0,
                     end_at: 0,
                     err: err.message,
+                    error_at: Date.now(),
                 },
             },
         });
@@ -270,6 +239,21 @@ export const displayCallsTestModeUser = () => {
         dispatch(modals.openModal({
             modalId: IDTestModeUser,
             dialogType: CallsInTestModeModal,
+        }));
+
+        return {};
+    };
+};
+
+export const displayGenericErrorModal = (title: MessageDescriptor, message: MessageDescriptor) => {
+    return async (dispatch: DispatchFunc) => {
+        dispatch(modals.openModal({
+            modalId: IDGenericErrorModal,
+            dialogType: GenericErrorModal,
+            dialogProps: {
+                title,
+                message,
+            },
         }));
 
         return {};

@@ -1,8 +1,10 @@
 import React, {CSSProperties} from 'react';
+import {IntlShape} from 'react-intl';
 
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {Theme} from 'mattermost-redux/types/themes';
 
 import {isDMChannel, isGMChannel, getUserDisplayName} from 'src/utils';
 import {endCall} from 'src/actions';
@@ -11,7 +13,8 @@ import CompassIcon from 'src/components/icons/compassIcon';
 import './component.scss';
 
 interface Props {
-    theme: any,
+    intl: IntlShape,
+    theme: Theme,
     show: boolean,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
@@ -24,7 +27,7 @@ interface State {
 }
 
 export default class EndCallModal extends React.PureComponent<Props, State> {
-    private node: React.RefObject<HTMLDivElement>;
+    private readonly node: React.RefObject<HTMLDivElement>;
     private style = {
         main: {
             position: 'absolute',
@@ -92,7 +95,7 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
         if (this.props.show && e.key === 'Escape') {
             this.hideModal();
         }
-    }
+    };
 
     private closeOnBlur = (e: Event) => {
         if (!this.props.show) {
@@ -102,7 +105,7 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
             return;
         }
         this.hideModal();
-    }
+    };
 
     private endCall = () => {
         endCall(this.props.channel.id).then(() => {
@@ -112,12 +115,12 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
                 errorMsg: err.response && err.response.data ? err.response.data.err : err.toString(),
             });
         });
-    }
+    };
 
     private hideModal = () => {
         this.setState({errorMsg: ''});
         this.props.hideEndCallModal();
-    }
+    };
 
     componentDidMount() {
         document.addEventListener('keyup', this.keyboardClose, true);
@@ -130,6 +133,8 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
     }
 
     render() {
+        const {formatMessage} = this.props.intl;
+
         if (!this.props.show) {
             return null;
         }
@@ -137,21 +142,18 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
         let msg;
         if (isDMChannel(this.props.channel)) {
             msg = (<React.Fragment>
-                {'Are you sure you want to end a call with '}
-                <span style={{fontWeight: 600}}>{getUserDisplayName(this.props.connectedDMUser)}</span>
-                {'?'}
+                {formatMessage({defaultMessage: 'Are you sure you want to end a call with <participant>{name}</participant>?'},
+                    {name: getUserDisplayName(this.props.connectedDMUser), participant: (name: string) => (<span style={{fontWeight: 600}}>{name}</span>)})}
             </React.Fragment>);
         } else if (isGMChannel(this.props.channel)) {
             msg = (<React.Fragment>
-                {'Are you sure you want to end a call with '}
-                <span style={{fontWeight: 600}}>{this.props.channel.display_name}</span>
-                {'?'}
+                {formatMessage({defaultMessage: 'Are you sure you want to end a call with <participants>{names}</participants>?'},
+                    {names: this.props.channel.display_name, participants: (names: string) => (<span style={{fontWeight: 600}}>{names}</span>)})}
             </React.Fragment>);
         } else {
             msg = (<React.Fragment>
-                {`Are you sure you want to end a call with ${this.props.connectedUsers.length} participants in `}
-                <span style={{fontWeight: 600}}>{this.props.channel.display_name}</span>
-                {'?'}
+                {formatMessage({defaultMessage: 'Are you sure you want to end a call with {count, plural, =1 {# participant} other {# participants}} in {channelName}?'},
+                    {count: this.props.connectedUsers.length, channelName: this.props.channel.display_name})}
             </React.Fragment>);
         }
 
@@ -170,7 +172,7 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
                     </button>
                     <div style={this.style.header as CSSProperties}>
                         <span style={this.style.title}>
-                            {'End call'}
+                            {formatMessage({defaultMessage: 'End call'})}
                         </span>
                     </div>
                     <div style={this.style.body as CSSProperties}>
@@ -179,7 +181,7 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
 
                     { this.state.errorMsg &&
                     <div style={this.style.error as CSSProperties}>
-                        { `An error has occurred: ${this.state.errorMsg}` }
+                        { formatMessage({defaultMessage: 'An error has occurred: {errorMsg}'}, {errorMsg: this.state.errorMsg}) }
                     </div>
                     }
 
@@ -187,11 +189,11 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
                         <button
                             className='style--none end-call-modal-cancel'
                             onClick={this.hideModal}
-                        >{'Cancel'}</button>
+                        >{formatMessage({defaultMessage: 'Cancel'})}</button>
                         <button
                             className='style--none end-call-modal-confirm'
                             onClick={this.endCall}
-                        >{'End call'}</button>
+                        >{formatMessage({defaultMessage: 'End call'})}</button>
                     </div>
                 </div>
             </div>

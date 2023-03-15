@@ -1,9 +1,10 @@
 import React, {useState} from 'react';
-import styled, {css} from 'styled-components';
+import styled from 'styled-components';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 
 type Props = {
+    id: string,
     type: string,
     icon: string | React.ReactNode,
     iconFill?: string,
@@ -43,6 +44,7 @@ export default function WidgetBanner(props: Props) {
 
     return (
         <Banner
+            data-testid={props.id}
             color={colorMap[props.type]}
             bgColor={bgMap[props.type]}
             fadeIn={!closing && !declining}
@@ -131,7 +133,7 @@ const Banner = styled.div<{color: string, bgColor: string, fadeIn: boolean}>`
   align-items: flex-start;
   width: 100%;
   background-color: ${({bgColor}) => bgColor};
-  box-shadow: 0px 8px 24px rgba(var(--center-channel-color-rgb), 0.12);
+  box-shadow: 0 8px 24px rgba(var(--center-channel-color-rgb), 0.12);
   padding: 5px 8px;
   border-radius: 4px;
   color: ${({color}) => color};

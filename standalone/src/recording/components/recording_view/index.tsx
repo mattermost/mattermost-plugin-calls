@@ -2,13 +2,14 @@
 // See LICENSE.txt for license information.
 
 import React, {CSSProperties, useEffect, useRef, useState} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
 import {GlobalState} from '@mattermost/types/lib/store';
 import {UserProfile} from '@mattermost/types/users';
 
 import {logErr} from 'plugin/log';
-import {alphaSortProfiles, getUserDisplayName, stateSortProfiles} from 'plugin/utils';
+import {alphaSortProfiles, getUserDisplayName, stateSortProfiles, untranslatable} from 'plugin/utils';
 import {UserState} from 'plugin/types/types';
 import Avatar from 'plugin/components/avatar/avatar';
 import CallParticipant from 'plugin/components/expanded_view/call_participant';
@@ -24,10 +25,11 @@ import Timestamp from './timestamp';
 const MaxParticipantsPerRow = 10;
 
 const RecordingView = () => {
+    const {formatMessage} = useIntl();
     const screenPlayerRef = useRef<HTMLVideoElement>(null);
     const [screenStream, setScreenStream] = useState<MediaStream|null>(null);
     const callsClient = window.callsClient;
-    const channelID = callsClient?.channelID;
+    const channelID = callsClient?.channelID || '';
     const screenSharingID = useSelector((state: GlobalState) => voiceChannelScreenSharingID(state, channelID)) || '';
     const statuses = useSelector(voiceUsersStatuses);
     const profiles = sortedProfiles(useSelector(voiceConnectedProfiles), statuses, screenSharingID);
@@ -40,25 +42,36 @@ const RecordingView = () => {
     }
     const callHostID = useSelector((state: GlobalState) => voiceChannelCallHostID(state, channelID)) || '';
 
-    useEffect(() => {
-        window.callsClient.on('remoteScreenStream', (stream: MediaStream) => {
-            setScreenStream(stream);
-        });
-        window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
-            const voiceTrack = stream.getAudioTracks()[0];
+    const attachVoiceTracks = (tracks: MediaStreamTrack[]) => {
+        for (const track of tracks) {
             const audioEl = document.createElement('audio');
-            audioEl.srcObject = stream;
+            audioEl.srcObject = new MediaStream([track]);
             audioEl.controls = false;
             audioEl.autoplay = true;
             audioEl.style.display = 'none';
             audioEl.onerror = (err) => logErr(err);
             document.body.appendChild(audioEl);
-            voiceTrack.onended = () => {
+            track.onended = () => {
                 audioEl.remove();
             };
-        });
+        }
+    };
+
+    useEffect(() => {
+        if (!callsClient) {
+            logErr('callsClient should be defined');
+            return;
+        }
 
         setScreenStream(callsClient.getRemoteScreenStream());
+        callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+            setScreenStream(stream);
+        });
+
+        attachVoiceTracks(callsClient.getRemoteVoiceTracks());
+        callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
+            attachVoiceTracks(stream.getAudioTracks());
+        });
     }, [callsClient]);
 
     useEffect(() => {
@@ -83,7 +96,7 @@ const RecordingView = () => {
             return null;
         }
 
-        const msg = `You are viewing ${getUserDisplayName(profile)}'s screen`;
+        const msg = `You're viewing ${getUserDisplayName(profile)}'s screen`;
 
         return (
             <div style={style.screenContainer as CSSProperties}>
@@ -182,7 +195,7 @@ const RecordingView = () => {
                     url={pictures[speakingProfile.id]}
                 />
                 <span style={{marginLeft: '8px'}}>{getUserDisplayName(speakingProfile)}</span>
-                <span style={{fontWeight: 400}}>{' is talking...'}</span>
+                <span style={{fontWeight: 400}}>{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking...'})}</span>
             </div>
         );
     };
@@ -214,7 +227,9 @@ const RecordingView = () => {
                 style={style.footer}
             >
                 <Timestamp/>
-                <span style={{marginLeft: '4px'}}>{`• ${profiles.length} participants`}</span>
+                <span style={{marginLeft: '4px'}}>
+                    {untranslatable('• ')}{formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: profiles.length})}
+                </span>
                 { hasScreenShare && renderSpeaking() }
             </div>
         </div>
@@ -224,7 +239,7 @@ const RecordingView = () => {
 export default RecordingView;
 
 const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}, screenSharingID: string) => {
-    return [...profiles].sort(alphaSortProfiles(profiles)).sort(stateSortProfiles(profiles, statuses, screenSharingID));
+    return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID));
 };
 
 const style = {

@@ -1,4 +1,5 @@
 import React from 'react';
+import {IntlShape} from 'react-intl';
 import moment from 'moment-timezone';
 
 import {UserProfile} from '@mattermost/types/users';
@@ -7,6 +8,7 @@ import ActiveCallIcon from '../../components/icons/active_call_icon';
 import ConnectedProfiles from '../../components/connected_profiles';
 
 interface Props {
+    intl: IntlShape,
     currChannelID: string,
     connectedID?: string,
     hasCall: boolean,
@@ -51,13 +53,15 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
             return;
         }
         window.postMessage({type: 'connectCall', channelID: this.props.currChannelID}, window.origin);
-    }
+    };
 
     onDismissClick = () => {
         this.setState({hidden: true});
-    }
+    };
 
     render() {
+        const {formatMessage} = this.props.intl;
+
         if (!this.props.hasCall || this.state.hidden || this.props.isLimitRestricted) {
             return null;
         }
@@ -77,8 +81,10 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
                             fill='white'
                             style={{margin: '0 4px'}}
                         />
-                        <span style={{margin: '0 4px'}}>{'Join Call'}</span>
-                        <span style={{opacity: '0.80', margin: '0 4px'}}>{`Started ${moment(this.props.startAt).fromNow()}`}</span>
+                        <span style={{margin: '0 4px'}}>{formatMessage({defaultMessage: 'Join call'})}</span>
+                        <span style={{opacity: '0.80', margin: '0 4px'}}>
+                            {formatMessage({defaultMessage: 'Started {callStartedAt}'}, {callStartedAt: moment(this.props.startAt).fromNow()})}
+                        </span>
                         <div/>
                     </div>
                 </div>
@@ -113,7 +119,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
                             height='24px'
                             viewBox='0 0 24 24'
                             role='img'
-                            aria-label='Close Icon'
+                            aria-label={formatMessage({defaultMessage: 'Close icon'})}
                         >
                             <path
                                 fillRule='nonzero'

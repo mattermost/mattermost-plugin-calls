@@ -47,7 +47,6 @@ import {
     HIDE_END_CALL_MODAL,
     RECEIVED_CHANNEL_STATE,
     RECEIVED_CALLS_USER_PREFERENCES,
-    RECEIVED_CLIENT_ERROR,
     DESKTOP_WIDGET_CONNECTED,
     VOICE_CHANNEL_USER_REACTED,
     VOICE_CHANNEL_USER_REACTED_TIMEOUT,
@@ -305,6 +304,7 @@ const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
         return state;
     case VOICE_CHANNEL_USER_DISCONNECTED:
         if (state[action.data.channelID]) {
+            // eslint-disable-next-line
             const {[action.data.userID]: omit, ...res} = state[action.data.channelID];
             return {
                 ...state,
@@ -521,6 +521,7 @@ type callRecordingStateAction = {
 const callsRecordings = (state: {[callID: string]: CallRecordingState} = {}, action: callRecordingStateAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
+    case VOICE_CHANNEL_USER_DISCONNECTED:
         return {};
     case VOICE_CHANNEL_CALL_RECORDING_STATE:
         return {
@@ -595,6 +596,14 @@ const voiceChannelScreenSharingID = (state: { [channelID: string]: string } = {}
             ...state,
             [action.data.channelID]: action.data.userID,
         };
+    case VOICE_CHANNEL_USER_DISCONNECTED: {
+        // If the user who disconnected matches the one sharing we
+        // want to fallthrough and clear the state.
+        if (action.data.userID !== state[action.data.channelID]) {
+            return state;
+        }
+    }
+    // eslint-disable-next-line no-fallthrough
     case VOICE_CHANNEL_CALL_END:
     case VOICE_CHANNEL_USER_SCREEN_OFF:
         return {
@@ -680,20 +689,6 @@ const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { typ
     }
 };
 
-type clientError = {
-    channelID: string,
-    err: Error,
-}
-
-const clientErr = (state = null, action: { type: string, data: clientError }) => {
-    switch (action.type) {
-    case RECEIVED_CLIENT_ERROR:
-        return action.data;
-    default:
-        return state;
-    }
-};
-
 export default combineReducers({
     channelState,
     voiceConnectedChannels,
@@ -710,6 +705,5 @@ export default combineReducers({
     voiceChannelRootPost,
     callsConfig,
     callsUserPreferences,
-    clientErr,
     callsRecordings,
 });

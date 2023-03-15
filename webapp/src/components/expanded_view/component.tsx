@@ -1,8 +1,10 @@
 /* eslint-disable max-lines */
+
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
+import {IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 
@@ -13,7 +15,11 @@ import {Post} from '@mattermost/types/posts';
 
 import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
 
-import {ProductChannelsIcon, RecordCircleOutlineIcon, RecordSquareOutlineIcon} from '@mattermost/compass-icons/components';
+import {
+    ProductChannelsIcon,
+    RecordCircleOutlineIcon,
+    RecordSquareOutlineIcon,
+} from '@mattermost/compass-icons/components';
 
 import {RouteComponentProps} from 'react-router-dom';
 
@@ -24,6 +30,7 @@ import {
     hasExperimentalFlag,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
+    untranslatable,
 } from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
 import {
@@ -40,7 +47,7 @@ import {
 
 import {
     stopCallRecording,
-} from '../../actions';
+} from 'src/actions';
 
 import * as Telemetry from 'src/types/telemetry';
 import Avatar from 'src/components/avatar/avatar';
@@ -77,6 +84,7 @@ import './component.scss';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 
 interface Props extends RouteComponentProps {
+    intl: IntlShape,
     show: boolean,
     currentUserID: string,
     currentTeamID: string,
@@ -107,7 +115,7 @@ interface Props extends RouteComponentProps {
     threadUnreadReplies: number | undefined,
     threadUnreadMentions: number | undefined,
     rhsSelectedThreadID?: string,
-    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
     allowScreenSharing: boolean,
     recordingsEnabled: boolean,
     recordingMaxDuration: number,
@@ -121,20 +129,20 @@ interface State {
 }
 
 const StyledMediaController = styled(MediaController)`
-	height: 100%;
-	background-color: transparent;
+    height: 100%;
+    background-color: transparent;
 `;
 
 const StyledMediaControlBar = styled(MediaControlBar)`
-	display: flex;
-	flex-direction: row;
-	justify-content: flex-end;
-	background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    background-color: rgba(0, 0, 0, 0.5);
 `;
 
 const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
-	font-size: 18px;
-	background-color: transparent;
+    font-size: 18px;
+    background-color: transparent;
 `;
 
 const MaxParticipantsPerRow = 4;
@@ -159,10 +167,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         if (window.opener) {
             const callsClient = window.opener.callsClient;
-            callsClient.on('close', () => window.close());
+            callsClient?.on('close', () => window.close());
 
             // don't allow navigation in expanded window e.g. permalinks in rhs
-            this.#unlockNavigation = props.history.block(() => {
+            this.#unlockNavigation = props.history.block((tx) => {
+                sendDesktopEvent('calls-link-click', {link: tx.pathname});
                 return false;
             });
         } else if (window.desktop) {
@@ -181,7 +190,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     getCallsClient = () => {
         return window.opener ? window.opener.callsClient : window.callsClient;
-    }
+    };
 
     handleBlur = () => {
         if (this.pushToTalk) {
@@ -189,7 +198,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.pushToTalk = false;
             this.forceUpdate();
         }
-    }
+    };
 
     handleKeyUp = (ev: KeyboardEvent) => {
         if (isActiveElementInteractable() && !this.expandedRootRef.current?.contains(document.activeElement)) {
@@ -208,7 +217,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             ev.preventDefault();
             ev.stopImmediatePropagation();
         }
-    }
+    };
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
@@ -250,7 +259,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.onRecordToggle(true);
             break;
         }
-    }
+    };
 
     setDevices = (devices: AudioDevices) => {
         this.setState({
@@ -263,7 +272,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 },
             },
         });
-    }
+    };
 
     onDisconnectClick = () => {
         this.props.hideExpandedView();
@@ -274,19 +283,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 window.close();
             }
         }
-    }
+    };
 
     onMuteToggle = () => {
         if (this.pushToTalk) {
             return;
         }
         const callsClient = this.getCallsClient();
-        if (callsClient.isMuted()) {
+        if (callsClient?.isMuted()) {
             callsClient.unmute();
         } else {
-            callsClient.mute();
+            callsClient?.mute();
         }
-    }
+    };
 
     onRecordToggle = async (fromShortcut?: boolean) => {
         if (!this.props.callRecording || this.props.callRecording.end_at > 0) {
@@ -296,7 +305,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             await stopCallRecording(this.props.channel.id);
             this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
-    }
+    };
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
         if (!this.props.allowScreenSharing) {
@@ -304,7 +313,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
         const callsClient = this.getCallsClient();
         if (this.props.screenSharingID === this.props.currentUserID) {
-            callsClient.unshareScreen();
+            callsClient?.unshareScreen();
             this.setState({
                 screenStream: null,
             });
@@ -320,10 +329,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 if (window.opener && stream) {
                     window.screenSharingTrackId = stream.getVideoTracks()[0].id;
                 }
-                callsClient.setScreenStream(stream);
-                state.screenStream = stream;
-
                 if (stream) {
+                    callsClient?.setScreenStream(stream);
+                    state.screenStream = stream;
+
                     state.alerts = {
                         ...this.state.alerts,
                         missingScreenPermissions: {
@@ -347,18 +356,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
             this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
-    }
+    };
 
     onRaiseHandToggle = (fromShortcut?: boolean) => {
         const callsClient = this.getCallsClient();
-        if (callsClient.isHandRaised) {
+        if (callsClient?.isHandRaised) {
             this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
-            callsClient.unraiseHand();
+            callsClient?.unraiseHand();
         } else {
             this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
-            callsClient.raiseHand();
+            callsClient?.raiseHand();
         }
-    }
+    };
 
     onParticipantsListToggle = (fromShortcut?: boolean) => {
         const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
@@ -366,7 +375,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
         });
-    }
+    };
 
     onCloseViewClick = () => {
         if (window.opener) {
@@ -376,9 +385,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         // This desktop (pre-global widget)'s window.
         this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
         this.props.hideExpandedView();
-    }
+    };
 
-    public componentDidUpdate(prevProps: Props, prevState: State) {
+    public componentDidUpdate(prevProps: Props) {
         if (window.opener) {
             if (document.title.indexOf('Call') === -1 && this.props.channel) {
                 if (isDMChannel(this.props.channel) && this.props.connectedDMUser) {
@@ -410,12 +419,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     public componentDidMount() {
+        const callsClient = this.getCallsClient();
+        if (!callsClient) {
+            return;
+        }
+
         // keyboard shortcuts
         window.addEventListener('keydown', this.handleKBShortcuts, true);
         window.addEventListener('keyup', this.handleKeyUp, true);
         window.addEventListener('blur', this.handleBlur, true);
 
-        const callsClient = this.getCallsClient();
         callsClient.on('remoteScreenStream', (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
@@ -478,7 +491,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             // open thread
             this.props.selectRhsPost?.(this.props.threadID);
         }
-    }
+    };
 
     public componentWillUnmount() {
         window.removeEventListener('keydown', this.handleKBShortcuts, true);
@@ -489,9 +502,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     shouldRenderAlertBanner = () => {
         return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
-    }
+    };
 
     renderAlertBanner = () => {
+        const {formatMessage} = this.props.intl;
         for (const keyVal of Object.entries(this.state.alerts)) {
             const [alertID, alertState] = keyVal;
             if (!alertState.show) {
@@ -504,7 +518,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <GlobalBanner
                     {...alertConfig}
                     icon={alertConfig.icon}
-                    body={alertConfig.bannerText}
+                    body={formatMessage(alertConfig.bannerText)}
                     onClose={() => {
                         this.setState({
                             alerts: {
@@ -521,10 +535,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         return null;
-    }
+    };
 
     renderScreenSharingPlayer = () => {
         const isSharing = this.props.screenSharingID === this.props.currentUserID;
+        const {formatMessage} = this.props.intl;
 
         let profile;
         if (!isSharing) {
@@ -539,7 +554,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        const msg = isSharing ? 'You are sharing your screen' : `You are viewing ${getUserDisplayName(profile as UserProfile)}'s screen`;
+        const msg = isSharing ? formatMessage({defaultMessage: 'You\'re sharing your screen'}) :
+            formatMessage({defaultMessage: 'You\'re viewing {presenterName}\'s screen'}, {presenterName: getUserDisplayName(profile)});
 
         return (
             <div
@@ -589,9 +605,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <ReactionStream forceLeft={true}/>
             </div>
         );
-    }
+    };
 
     renderParticipants = () => {
+        const {formatMessage} = this.props.intl;
         return this.props.profiles.map((profile) => {
             const status = this.props.statuses[profile.id];
 
@@ -607,7 +624,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return (
                 <CallParticipant
                     key={profile.id}
-                    name={`${getUserDisplayName(profile)}${profile.id === this.props.currentUserID ? ' (you)' : ''}`}
+                    name={`${getUserDisplayName(profile)} ${profile.id === this.props.currentUserID ? formatMessage({defaultMessage: '(you)'}) : ''}`}
                     pictureURL={this.props.pictures[profile.id]}
                     isMuted={isMuted}
                     isSpeaking={isSpeaking}
@@ -617,10 +634,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 />
             );
         });
-    }
+    };
 
     renderParticipantsRHSList = () => {
-        return this.props.profiles.map((profile, idx) => {
+        const {formatMessage} = this.props.intl;
+        return this.props.profiles.map((profile) => {
             const status = this.props.statuses[profile.id];
             let isMuted = true;
             let isSpeaking = false;
@@ -635,7 +653,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
             return (
                 <li
-                    key={'participants_rhs_profile_' + idx}
+                    key={'participants_rhs_profile_' + profile.id}
                     style={{display: 'flex', alignItems: 'center', padding: '4px 8px'}}
                 >
                     <Avatar
@@ -649,7 +667,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         }}
                     />
                     <span style={{fontWeight: 600, fontSize: '12px', margin: '8px 0'}}>
-                        {getUserDisplayName(profile)}{profile.id === this.props.currentUserID && ' (you)'}
+                        {getUserDisplayName(profile)} {profile.id === this.props.currentUserID && formatMessage({defaultMessage: '(you)'})}
                     </span>
 
                     <div
@@ -689,7 +707,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 </li>
             );
         });
-    }
+    };
 
     renderRecordingBadge = () => {
         // This should not render if:
@@ -713,6 +731,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         return (
             <Badge
+                id={'calls-recording-badge'}
                 text={'REC'}
                 textSize={12}
                 gap={6}
@@ -723,7 +742,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 loading={!hasRecStarted}
             />
         );
-    }
+    };
 
     render() {
         if ((!this.props.show || !window.callsClient) && !window.opener) {
@@ -735,40 +754,51 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const {formatMessage} = this.props.intl;
+
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
         const isMuted = callsClient.isMuted();
         const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
-        let muteTooltipText = isMuted ? 'Click to unmute' : 'Click to mute';
+        let muteTooltipText = isMuted ? formatMessage({defaultMessage: 'Click to unmute'}) : formatMessage({defaultMessage: 'Click to mute'});
         let muteTooltipSubtext = '';
         if (noInputDevices) {
-            muteTooltipText = CallAlertConfigs.missingAudioInput.tooltipText;
-            muteTooltipSubtext = CallAlertConfigs.missingAudioInput.tooltipSubtext;
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext);
         }
         if (noAudioPermissions) {
-            muteTooltipText = CallAlertConfigs.missingAudioInputPermissions.tooltipText;
-            muteTooltipSubtext = CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext;
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext);
         }
 
         const sharingID = this.props.screenSharingID;
         const currentID = this.props.currentUserID;
         const isSharing = sharingID === currentID;
 
-        let shareScreenTooltipText = isSharing ? 'Stop presenting' : 'Start presenting';
+        let shareScreenTooltipText = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'});
         if (noScreenPermissions) {
-            shareScreenTooltipText = CallAlertConfigs.missingScreenPermissions.tooltipText;
+            shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText);
         }
-        const shareScreenTooltipSubtext = noScreenPermissions ? CallAlertConfigs.missingScreenPermissions.tooltipSubtext : '';
+        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext) : '';
 
-        const participantsText = this.state.showParticipantsList ? 'Hide participants list' : 'Show participants list';
+        const participantsText = this.state.showParticipantsList ?
+            formatMessage({defaultMessage: 'Hide participants list'}) :
+            formatMessage({defaultMessage: 'Show participants list'});
 
-        let chatToolTipText = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID ? 'Click to close chat' : 'Click to open chat';
+        let chatToolTipText = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID ?
+            formatMessage({defaultMessage: 'Click to close chat'}) :
+            formatMessage({defaultMessage: 'Click to open chat'});
         const chatToolTipSubtext = '';
         const chatDisabled = Boolean(this.props.channel?.team_id) && this.props.channel.team_id !== this.props.currentTeamID;
         if (chatDisabled) {
-            chatToolTipText = `Chat unavailable: different team selected. Click here to switch back to ${this.props.channelDisplayName} in ${this.props.channelTeam.display_name}.`;
+            chatToolTipText = formatMessage({
+                defaultMessage: 'Chat unavailable: different team selected. Click here to switch back to {channelName} in {teamName}.',
+            }, {
+                channelName: this.props.channelDisplayName,
+                teamName: this.props.channelTeam.display_name,
+            });
         }
 
         const globalRhsSupported = Boolean(this.props.selectRhsPost);
@@ -777,7 +807,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         const isHost = this.props.callHostID === this.props.currentUserID;
         const isRecording = isHost && this.props.callRecording && this.props.callRecording.init_at > 0 && !this.props.callRecording.end_at && !this.props.callRecording.err;
-        const recordTooltipText = isRecording ? 'Stop recording' : 'Record call';
+        const recordTooltipText = isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
         const RecordIcon = isRecording ? RecordSquareOutlineIcon : RecordCircleOutlineIcon;
 
         return (
@@ -796,13 +826,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                     <div style={styles.topContainer}>
                         <div style={styles.topLeftContainer}>
-                            { this.renderRecordingBadge() }
+                            {this.renderRecordingBadge()}
                             <CallDuration
                                 style={{margin: '4px'}}
                                 startAt={this.props.callStartAt}
                             />
-                            <span style={{margin: '4px'}}>{'•'}</span>
-                            <span style={{margin: '4px'}}>{`${this.props.profiles.length} participants`}</span>
+                            <span style={{margin: '4px'}}>{untranslatable('•')}</span>
+                            <span style={{margin: '4px'}}>
+                                {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.profiles.length})}
+                            </span>
                             <span style={{flex: 1}}/>
                         </div>
                         {
@@ -878,7 +910,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 unavailable={noInputDevices || noAudioPermissions}
                             />
 
-                            { isHost && this.props.recordingsEnabled &&
+                            {isHost && this.props.recordingsEnabled &&
                                 <ControlsButton
                                     id='calls-popout-record-button'
                                     onToggle={() => this.onRecordToggle()}
@@ -947,7 +979,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <ControlsButton
                                 id='calls-popout-leave-button'
                                 onToggle={() => this.onDisconnectClick()}
-                                tooltipText={'Leave call'}
+                                tooltipText={formatMessage({defaultMessage: 'Leave call'})}
                                 shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}
                                 bgColor={'rgb(var(--dnd-indicator-rgb))'}
                                 icon={
@@ -970,7 +1002,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 fontWeight: 600,
                                 padding: '8px',
                             }}
-                        >{'Participants list'}</span>
+                        >{formatMessage({defaultMessage: 'Participants list'})}</span>
                         {this.renderParticipantsRHSList()}
                     </ul>
                 }
@@ -998,14 +1030,14 @@ const isActiveElementInteractable = () => {
 
 const UnreadIndicator = ({mentions}: { mentions?: number }) => {
     return (
-        <UnreadDot>{mentions && mentions > 99 ? '99+' : mentions || null}</UnreadDot>
+        <UnreadDot>{mentions && mentions > 99 ? untranslatable('99+') : mentions || null}</UnreadDot>
     );
 };
 
 const UnreadDot = styled.span`
     position: absolute;
     z-index: 1;
-    top: 0px;
+    top: 0;
     right: -1px;
     width: 8px;
     height: 8px;

@@ -1,32 +1,32 @@
 import React, {ComponentProps} from 'react';
-
-import {Modal} from 'react-bootstrap';
-
-import {useDispatch, useSelector} from 'react-redux';
-
+import {useIntl} from 'react-intl';
+import {ModalHeader} from 'react-bootstrap';
+import {useDispatch} from 'react-redux';
 import styled from 'styled-components';
 
 import GenericModal from 'src/components/generic_modal';
-import {clearClientError} from 'src/actions';
-import {getClientError} from 'src/selectors';
-
 import LaptopAlertSVG from 'src/components/icons/laptop_alert_svg';
-
 import {
     rtcPeerErr,
     rtcPeerCloseErr,
     insecureContextErr,
 } from 'src/client';
+import {untranslatable} from 'src/utils';
 
-type Props = Partial<ComponentProps<typeof GenericModal>>;
+type CustomProps = {
+    channelID?: string,
+    err: Error,
+};
+
+type Props = Partial<ComponentProps<typeof GenericModal>> & CustomProps;
 
 export const CallErrorModalID = 'call-error-modal';
 
 export const CallErrorModal = (props: Props) => {
+    const {formatMessage} = useIntl();
     const dispatch = useDispatch();
-    const clientErr = useSelector(getClientError);
 
-    if (!clientErr) {
+    if (!props.err) {
         return null;
     }
 
@@ -36,77 +36,97 @@ export const CallErrorModal = (props: Props) => {
 
     const onRejoinClick = (ev: React.MouseEvent) => {
         ev.preventDefault();
-        window.postMessage({type: 'connectCall', channelID: clientErr.channelID}, window.origin);
-        dispatch(clearClientError());
+        window.postMessage({type: 'connectCall', channelID: props.channelID}, window.origin);
+        if (props.onHide) {
+            props.onHide();
+        }
     };
 
     const onConfirm = () => {
-        if (clientErr.err === insecureContextErr) {
+        if (props.err.message === insecureContextErr.message) {
             window.open('https://docs.mattermost.com/configure/calls-deployment.html', '_blank');
         }
         return null;
     };
 
+    const onTroubleShootingClick = (ev: React.MouseEvent) => {
+        ev.preventDefault();
+        window.open('https://docs.mattermost.com/channels/make-calls.html#troubleshooting', '_blank');
+    };
+
     const troubleShootingMsg = (
         <React.Fragment>
-            {' Check the '}
-            <a href='https://docs.mattermost.com/channels/make-calls.html#troubleshooting'>{'troubleshooting section'}</a>
-            {' if the problem persists.'}
+            { formatMessage(
+                {
+                    defaultMessage: 'Check the <troubleShootingLink>troubleshooting section</troubleShootingLink> if the problem persists.',
+                },
+                {
+                    troubleShootingLink: (text: string) => (
+                        <a
+                            href='https://docs.mattermost.com/channels/make-calls.html#troubleshooting'
+                            onClick={onTroubleShootingClick}
+                        >{text}</a>
+                    ),
+                })}
         </React.Fragment>
     );
 
     const genericMsg = (
         <span>
-            {'Looks like something went wrong with calls. You can restart the app and try again.'}
+            {formatMessage({defaultMessage: 'Looks like something went wrong with calls. You can restart the app and try again.'})}
+            {untranslatable(' ')}
             {troubleShootingMsg}
         </span>
     );
     const genericHeaderMsg = (
         <span>
-            {'Something went wrong with calls'}
+            {formatMessage({defaultMessage: 'Something went wrong with calls'})}
         </span>
     );
 
     let msg = genericMsg;
     let headerMsg = genericHeaderMsg;
-    let confirmMsg = 'Okay';
+    let confirmMsg = formatMessage({defaultMessage: 'Okay'});
 
-    switch (clientErr.err) {
-    case rtcPeerErr:
-    case rtcPeerCloseErr:
+    switch (props.err.message) {
+    case rtcPeerErr.message:
+    case rtcPeerCloseErr.message:
         headerMsg = (
-            <span>{'Connection failed'}</span>
+            <span>{formatMessage({defaultMessage: 'Connection failed'})}</span>
         );
         msg = (
             <span>
-                {'There was an error with the connection to the call. Try to '}
-                <a
-                    href=''
-                    onClick={onRejoinClick}
-                >{'re-join'}</a>
-                {' the call.'}
+                {formatMessage({defaultMessage: 'There was an error with the connection to the call. Try to <joinLink>re-join</joinLink> the call.'}, {
+                    joinLink: (text: string) => (
+                        <a
+                            href=''
+                            onClick={onRejoinClick}
+                        >{text}</a>
+                    ),
+                })}
+                {untranslatable(' ')}
                 {troubleShootingMsg}
             </span>
         );
         break;
-    case insecureContextErr:
+    case insecureContextErr.message:
         headerMsg = (
             <ColumnContainer>
                 <LaptopAlertSVG
                     width={150}
                     height={150}
                 />
-                <span>{'Calls can\'t be initiated in an insecure context'}</span>
+                <span>{formatMessage({defaultMessage: 'Calls can\'t be initiated in an insecure context'})}</span>
             </ColumnContainer>
         );
         msg = (
             <span>
-                {'You need to be using an HTTPS connection to make calls. Visit the documentation for more information.'}
+                {formatMessage({defaultMessage: 'You need to be using an HTTPS connection to make calls. Visit the documentation for more information.'})}
             </span>
         );
         modalProps.showCancel = true;
-        modalProps.cancelButtonText = 'Cancel';
-        confirmMsg = 'Learn more';
+        modalProps.cancelButtonText = formatMessage({defaultMessage: 'Cancel'});
+        confirmMsg = formatMessage({defaultMessage: 'Learn more'});
         break;
     }
 
@@ -116,11 +136,11 @@ export const CallErrorModal = (props: Props) => {
             id={CallErrorModalID}
             modalHeaderText={headerMsg}
             confirmButtonText={confirmMsg}
-            onHide={() => dispatch(clearClientError())}
+            onHide={() => null}
             handleConfirm={onConfirm}
             contentPadding={'48px 32px'}
             components={{
-                Header: Header as any,
+                Header: Header as never,
                 FooterContainer,
             }}
         >
@@ -131,28 +151,29 @@ export const CallErrorModal = (props: Props) => {
     );
 };
 
-const Header = styled(Modal.Header)`
-  display: flex;
-  justify-content: center;
+const Header = styled(ModalHeader)`
+    display: flex;
+    justify-content: center;
 `;
 
 const FooterContainer = styled.div`
-  display: flex;
-  justify-content: center;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
 `;
 
 const StyledGenericModal = styled(GenericModal)`
-  width: 512px;
+    width: 512px;
 `;
 
 const ColumnContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 
-  span {
-    margin: 8px 0;
-  }
+    span {
+        margin: 8px 0;
+    }
 `;

@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {forwardRef, useImperativeHandle, useState} from 'react';
+import {useIntl} from 'react-intl';
 import styled, {css} from 'styled-components';
 import {OverlayTrigger} from 'react-bootstrap';
 import EmojiPicker, {
@@ -23,19 +24,9 @@ import Shortcut from 'src/components/shortcut';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {Emoji} from 'src/components/emoji/emoji';
 import {EmojiData} from 'src/types/types';
+import {EmojiIndicesByAlias} from 'src/emojis/emoji';
 
 const EMOJI_VERSION = '13';
-const EMOJI_SKINTONE_MAP = new Map([[1, ''], [2, '1F3FB'], [3, '1F3FC'], [4, '1F3FD'], [5, '1F3FE'], [6, '1F3FF']]);
-
-interface EmojiPickEvent {
-    id: string;
-    keywords?: string[]
-    name?: string;
-    native?: string;
-    shortcodes?: string;
-    skin?: number;
-    unified: string;
-}
 
 const getCallsClient = () => {
     return window.opener ? window.opener.callsClient : window.callsClient;
@@ -46,12 +37,13 @@ export type ReactionButtonRef = {
 };
 
 interface Props {
-    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, any>) => void,
+    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
 }
 
 export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     const [showPicker, setShowPicker] = useState(false);
     const [showBar, setShowBar] = useState(false);
+    const {formatMessage} = useIntl();
 
     useImperativeHandle(ref, () => ({
         toggle() {
@@ -60,28 +52,33 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     }));
 
     const callsClient = getCallsClient();
-    const addReactionText = showBar ? 'Close Reactions' : 'Add Reaction';
+    const addReactionText = showBar ?
+        formatMessage({defaultMessage: 'Close reactions'}) :
+        formatMessage({defaultMessage: 'Add reaction'});
 
     const handleUserPicksEmoji = (ecd: EmojiClickData) => {
         const emojiData: EmojiData = {
-            name: ecd.emoji,
+            name: findEmojiName(ecd.names),
             skin: ecd.activeSkinTone,
-            unified: ecd.unified.toUpperCase(),
+            unified: ecd.unified.toLowerCase(),
+            literal: ecd.emoji || '',
         };
-        callsClient.sendUserReaction(emojiData);
+        callsClient?.sendUserReaction(emojiData);
     };
 
     const onRaiseHandToggle = () => {
         if (isHandRaised) {
             trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.ExpandedView, {initiator: 'button'});
-            callsClient.unraiseHand();
+            callsClient?.unraiseHand();
         } else {
             trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.ExpandedView, {initiator: 'button'});
-            callsClient.raiseHand();
+            callsClient?.raiseHand();
         }
     };
-    const isHandRaised = callsClient.isHandRaised;
-    const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
+    const isHandRaised = Boolean(callsClient?.isHandRaised);
+    const raiseHandText = isHandRaised ?
+        formatMessage({defaultMessage: 'Lower hand'}) :
+        formatMessage({defaultMessage: 'Raise hand'});
     const handIcon = isHandRaised ? (
         <HandRightOutlineOffIcon
             size={18}
@@ -186,6 +183,25 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     );
 });
 
+const findEmojiName = (names: string[]) => {
+    // make underscore and hyphen versions to cover all possibilities
+    names = names.flatMap((n) => {
+        const ret = [n];
+        ret.push(n.replaceAll(' ', '_'));
+        ret.push(n.replaceAll(' ', '-'));
+
+        // There will be some duplicates, but the map.has check below is far faster than a deduplication, so leaving them.
+        return ret;
+    });
+
+    for (const name of names) {
+        if (EmojiIndicesByAlias.has(name)) {
+            return name;
+        }
+    }
+    return '';
+};
+
 interface QuickSelectProps {
     emoji: EmojiData,
     handleClick: (e: EmojiClickData) => void
@@ -193,7 +209,7 @@ interface QuickSelectProps {
 
 const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
     const onClick = () => {
-        handleClick({emoji: emoji.name, unified: emoji.unified} as EmojiClickData);
+        handleClick({names: [emoji.name], unified: emoji.unified} as EmojiClickData);
     };
 
     return (

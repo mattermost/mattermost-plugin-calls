@@ -316,9 +316,11 @@ func (u *user) initRTC() error {
 	})
 
 	pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		rtcpSendErr := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
-		if rtcpSendErr != nil {
-			log.Printf(rtcpSendErr.Error())
+		if track.Kind() == webrtc.RTPCodecTypeVideo {
+			rtcpSendErr := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
+			if rtcpSendErr != nil {
+				log.Printf(rtcpSendErr.Error())
+			}
 		}
 
 		codecName := strings.Split(track.Codec().RTPCodecCapability.MimeType, "/")[1]
@@ -416,6 +418,17 @@ func (u *user) handleSignal(ev *model.WebSocketEvent) {
 
 	} else if t == "offer" {
 		log.Printf("%s: sdp offer", u.cfg.username)
+
+		if u.pc.SignalingState() != webrtc.SignalingStateStable {
+			log.Printf("%s: signaling conflict on offer, queuing", u.cfg.username)
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				log.Printf("%s: applying previously queued offer", u.cfg.username)
+				u.handleSignal(ev)
+			}()
+			return
+		}
+
 		if err := u.pc.SetRemoteDescription(webrtc.SessionDescription{
 			Type: webrtc.SDPTypeOffer,
 			SDP:  data["sdp"].(string),

@@ -16,7 +16,8 @@
   "parser": "babel-eslint",
   "plugins": [
     "react",
-    "import"
+    "import",
+    "formatjs"
   ],
   "env": {
     "browser": true,
@@ -38,9 +39,15 @@
     "import/resolver": "webpack",
     "react": {
         "version": "detect"
+    },
+    "formatjs": {
+        "additionalFunctionNames": "untranslatable"
     }
   },
   "rules": {
+    "formatjs/no-literal-string-in-jsx": [
+      2
+    ],
     "array-bracket-spacing": [
       2,
       "never"
@@ -379,7 +386,7 @@
     "no-useless-return": 2,
     "no-var": 0,
     "no-void": 2,
-    "no-warning-comments": 1,
+    "no-warning-comments": 0,
     "no-whitespace-before-property": 2,
     "no-with": 2,
     "object-curly-newline": 0,

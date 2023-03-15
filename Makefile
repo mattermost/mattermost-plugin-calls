@@ -54,9 +54,16 @@ gomod-check:
 	@echo Checking go mod files consistency
 	go mod tidy -v && git --no-pager diff --exit-code go.mod go.sum || (echo "Please run \"go mod tidy\" and commit the changes in go.mod and go.sum." && exit 1)
 
+## Check i18 files
+.PHONY: i18n-check
+i18n-check:
+	@echo Checking i18n files
+	cd webapp && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
+	cd standalone && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
+
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: apply golangci-lint webapp/node_modules standalone/node_modules gomod-check
+check-style: apply golangci-lint webapp/node_modules standalone/node_modules gomod-check i18n-check
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
@@ -164,6 +171,8 @@ endif
 .PHONY: bundle
 bundle:
 	rm -rf dist/
+	rm -rf webapp/dist/i18n
+	rm -rf standalone/dist/i18n
 	mkdir -p dist/$(PLUGIN_ID)
 	./build/bin/manifest dist
 ifneq ($(wildcard $(ASSETS_DIR)/.),)
@@ -307,6 +316,7 @@ test-e2e-update-snapshots:
 i18n-extract:
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run extract
+	cd standalone && $(NPM) run extract
 endif
 
 ## Disable the plugin.
