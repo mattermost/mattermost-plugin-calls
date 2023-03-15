@@ -55,7 +55,7 @@ commands:
       - run:
           name: Getting JavaScript dependencies
           command: |
-            cd webapp
+            cd standalone
             NODE_ENV=development npm ci --ignore-scripts --no-save
       - save_cache:
           name: Save npm cache
