@@ -17,12 +17,44 @@ import (
 	"github.com/mattermost/rtcd/service/random"
 
 	offloader "github.com/mattermost/calls-offloader/service"
+	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 )
 
 const jobServiceConfigKey = "jobservice_config"
 const runnerUpdateLockTimeout = 2 * time.Minute
 
-var recordingJobRunner = ""
+var (
+	recordingJobRunner  = ""
+	recorderBaseConfigs = map[string]recorder.RecorderConfig{
+		"low": {
+			Width:        1280,
+			Height:       720,
+			VideoRate:    2000,
+			AudioRate:    64,
+			FrameRate:    15,
+			VideoPreset:  recorder.H264PresetVeryFast,
+			OutputFormat: recorder.AVFormatMP4,
+		},
+		"medium": {
+			Width:        1280,
+			Height:       720,
+			VideoRate:    2000,
+			AudioRate:    64,
+			FrameRate:    20,
+			VideoPreset:  recorder.H264PresetFaster,
+			OutputFormat: recorder.AVFormatMP4,
+		},
+		"high": {
+			Width:        1920,
+			Height:       1080,
+			VideoRate:    3000,
+			AudioRate:    128,
+			FrameRate:    30,
+			VideoPreset:  recorder.H264PresetFast,
+			OutputFormat: recorder.AVFormatMP4,
+		},
+	}
+)
 
 type jobService struct {
 	ctx    *Plugin
@@ -255,16 +287,17 @@ func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, 
 
 	maxDuration := int64(*cfg.MaxRecordingDuration * 60)
 
+	baseRecorderCfg := recorderBaseConfigs[cfg.RecordingQuality]
+	baseRecorderCfg.SiteURL = siteURL
+	baseRecorderCfg.CallID = callID
+	baseRecorderCfg.ThreadID = postID
+	baseRecorderCfg.AuthToken = authToken
+
 	job, err := s.RunJob(offloader.JobConfig{
 		Type:           offloader.JobTypeRecording,
 		MaxDurationSec: maxDuration,
 		Runner:         recordingJobRunner,
-		InputData: (&offloader.RecordingJobInputData{
-			SiteURL:   siteURL,
-			CallID:    callID,
-			ThreadID:  postID,
-			AuthToken: authToken,
-		}).ToMap(),
+		InputData:      baseRecorderCfg.ToMap(),
 	})
 	if err != nil {
 		return "", err

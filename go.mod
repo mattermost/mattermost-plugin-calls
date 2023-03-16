@@ -14,7 +14,8 @@ require (
 
 require (
 	github.com/Masterminds/semver v1.5.0
-	github.com/mattermost/calls-offloader v0.2.1
+	github.com/mattermost/calls-offloader v0.2.2-0.20230316012259-ef3cd9d56544
+	github.com/mattermost/calls-recorder v0.2.6-0.20230316032025-ada9181318d9
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.1.1
 	github.com/mattermost/rtcd v0.8.1-0.20230126170226-df8105fc2cf7
@@ -42,7 +43,6 @@ require (
 	github.com/dyatlov/go-opengraph/opengraph v0.0.0-20220524092352-606d7b1e5f8a // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
-	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/gofrs/flock v0.8.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -58,7 +58,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.1 // indirect
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 // indirect
-	github.com/mattermost/ldap v0.0.0-20201202150706-ee0e6284187d // indirect
+	github.com/mattermost/ldap v3.0.4+incompatible // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
@@ -113,6 +113,7 @@ require (
 	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
 	google.golang.org/grpc v1.51.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
+	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
