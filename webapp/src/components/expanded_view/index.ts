@@ -30,7 +30,7 @@ import {
     voiceUsersStatuses,
 } from 'src/selectors';
 
-import {UserState} from 'src/types/types';
+import {UserState} from '@calls/common/lib/types';
 
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
 
