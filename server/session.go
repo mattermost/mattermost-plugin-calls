@@ -14,8 +14,11 @@ import (
 )
 
 const (
-	msgChSize = 20
+	msgChSize            = 20
+	startCheckRetryLimit = 10
 )
+
+var errStartIncomplete = errors.New("tried to join a call that has not sent call_start event")
 
 type session struct {
 	userID         string
@@ -73,7 +76,12 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 
 	botID := p.getBotID()
 
-	err := p.kvSetAtomicChannelState(channel.Id, func(state *channelState) (*channelState, error) {
+	setupUserSession := func(state *channelState) (*channelState, error) {
+		// if we have previous state, but call hasn't finished starting, wait until it has
+		if state != nil && state.Call != nil && !state.Call.StartComplete {
+			return nil, errStartIncomplete
+		}
+
 		if state == nil {
 			state = &channelState{}
 		}
@@ -146,9 +154,35 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 
 		currState = *state
 		return state, nil
-	})
+	}
 
-	return currState, prevState, err
+	retries := 0
+	for {
+		err := p.kvSetAtomicChannelState(channel.Id, setupUserSession)
+		if errors.Is(err, errStartIncomplete) && retries < startCheckRetryLimit {
+			// Wait a moment until the wsEventCallStart has been sent to avoid a race condition where
+			// another user's wsEventUserConnected is sent before the wsEventCallStart
+			time.Sleep(100 * time.Millisecond)
+			retries++
+			continue
+		}
+
+		return currState, prevState, err
+	}
+}
+
+func (p *Plugin) callStartComplete(channelID string) error {
+	return p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+		if state == nil {
+			return nil, errors.New("channel state should not be nil")
+		}
+		if state.Call == nil {
+			return nil, errors.New("call state should not be nil")
+		}
+
+		state.Call.StartComplete = true
+		return state, nil
+	})
 }
 
 func (p *Plugin) userCanStartOrJoin(userID string, state *channelState) bool {

@@ -533,6 +533,10 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 			"owner_id":  state.Call.OwnerID,
 			"host_id":   state.Call.HostID,
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+		if err := p.callStartComplete(channelID); err != nil {
+			return err
+		}
 	}
 
 	handlerID, err := p.getHandlerID()

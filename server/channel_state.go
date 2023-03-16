@@ -43,6 +43,7 @@ type callState struct {
 	RTCDHost        string                `json:"rtcd_host"`
 	HostID          string                `json:"host_id"`
 	Recording       *recordingState       `json:"recording,omitempty"`
+	StartComplete   bool                  `json:"start_complete"`
 }
 
 type channelState struct {
