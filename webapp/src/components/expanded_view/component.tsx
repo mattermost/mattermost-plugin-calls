@@ -26,6 +26,8 @@ import {
     CallRecordingState,
 } from '@calls/common/lib/types';
 
+import {Emoji} from 'src/components/emoji/emoji';
+
 import {
     getUserDisplayName,
     getScreenStream,
@@ -672,6 +674,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             gap: '4px',
                         }}
                     >
+                        {status?.reaction &&
+                            <div
+                                style={{
+                                    marginBottom: 4,
+                                    marginRight: 2,
+                                }}
+                            >
+                                <Emoji
+                                    emoji={status.reaction.emoji}
+                                    size={16}
+                                />
+                            </div>
+                        }
                         {isHandRaised &&
                             <CompassIcon
                                 icon={'hand-right'}
