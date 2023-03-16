@@ -1,3 +1,4 @@
+import {UserState} from '@calls/common/lib/types';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 
@@ -29,8 +30,6 @@ import {
     voiceConnectedProfiles,
     voiceUsersStatuses,
 } from 'src/selectors';
-
-import {UserState} from '@calls/common/lib/types';
 
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
 
