@@ -12,7 +12,7 @@ import {withRouter} from 'react-router-dom';
 
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 
-import {UserState} from 'src/types/types';
+import {UserState} from '@calls/common/lib/types';
 
 import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from 'src/utils';
 

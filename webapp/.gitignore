@@ -1,3 +1,7 @@
+dist
+lib
+!packages/common/lib
 .eslintcache
 junit.xml
 node_modules
+*.tsbuildinfo

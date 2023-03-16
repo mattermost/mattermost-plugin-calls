@@ -13,7 +13,8 @@ import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {Theme} from 'mattermost-redux/types/themes';
 
-import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallRecordingState, UserState} from 'src/types/types';
+import {CallRecordingState, UserState} from '@calls/common/lib/types';
+
 import * as Telemetry from 'src/types/telemetry';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
 import {
@@ -45,6 +46,7 @@ import Shortcut from 'src/components/shortcut';
 import Badge from 'src/components/badge';
 import {AudioInputPermissionsError} from 'src/client';
 import {Emoji} from 'src/components/emoji/emoji';
+import {AudioDevices, CallAlertStates, CallAlertStatesDefault} from 'src/types/types';
 
 import CallDuration from './call_duration';
 import WidgetBanner from './widget_banner';
@@ -297,7 +299,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
         this.prevDevicePixelRatio = window.devicePixelRatio;
         this.sendGlobalWidgetBounds();
-    }
+    };
 
     private handleDesktopEvents = (ev: MessageEvent) => {
         if (ev.origin !== window.origin) {
@@ -319,7 +321,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         } else if (ev.data.type === 'calls-widget-share-screen') {
             this.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
         }
-    }
+    };
 
     private attachVoiceTracks(tracks: MediaStreamTrack[]) {
         const audioEls = [];
@@ -359,7 +361,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         if (this.props.global) {
-            window.visualViewport.addEventListener('resize', this.onViewportResize);
+            window.visualViewport?.addEventListener('resize', this.onViewportResize);
             this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
             this.menuResizeObserver.observe(this.menuNode.current!);
             window.addEventListener('message', this.handleDesktopEvents);
@@ -460,7 +462,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     public componentWillUnmount() {
         if (this.props.global) {
-            window.visualViewport.removeEventListener('resize', this.onViewportResize);
+            window.visualViewport?.removeEventListener('resize', this.onViewportResize);
             window.removeEventListener('message', this.handleDesktopEvents);
         } else {
             document.removeEventListener('mouseup', this.onMouseUp, false);
@@ -563,7 +565,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         return bounds;
-    }
+    };
 
     private sendGlobalWidgetBounds = () => {
         const bounds = this.getGlobalWidgetBounds();
@@ -572,7 +574,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             width: Math.ceil(bounds.width),
             height: Math.ceil(bounds.height),
         });
-    }
+    };
 
     private keyboardClose = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
@@ -614,7 +616,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({
             ...state,
         });
-    }
+    };
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
         if (!this.props.allowScreenSharing) {
