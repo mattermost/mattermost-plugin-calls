@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@babel/core": "7.16.0",
+    "@babel/eslint-parser": "7.19.1",
     "@babel/plugin-proposal-class-properties": "7.16.0",
     "@babel/plugin-proposal-object-rest-spread": "7.16.0",
     "@babel/plugin-proposal-optional-chaining": "7.14.5",
@@ -34,20 +35,20 @@
     "@types/shallow-equals": "1.0.0",
     "@types/simple-peer": "9.11.3",
     "@types/styled-components": "5.1.25",
-    "@typescript-eslint/eslint-plugin": "4.33.0",
-    "@typescript-eslint/parser": "4.33.0",
-    "babel-eslint": "10.1.0",
+    "@typescript-eslint/eslint-plugin": "5.49.0",
+    "@typescript-eslint/parser": "5.49.0",
     "babel-loader": "8.2.3",
     "babel-plugin-formatjs": "10.4.0",
     "babel-plugin-styled-components": "2.0.6",
     "babel-plugin-typescript-to-proptypes": "2.0.0",
     "css-loader": "5.2.6",
-    "eslint": "7.31.0",
+    "eslint": "8.33.0",
     "eslint-import-resolver-webpack": "0.13.1",
     "eslint-plugin-formatjs": "4.9.0",
-    "eslint-plugin-import": "2.23.4",
-    "eslint-plugin-react": "7.24.0",
-    "eslint-plugin-react-hooks": "4.3.0",
+    "eslint-plugin-import": "2.27.5",
+    "eslint-plugin-react": "7.32.2",
+    "eslint-plugin-react-hooks": "4.6.0",
+    "eslint-plugin-unused-imports": "2.0.0",
     "file-loader": "6.2.0",
     "html-webpack-plugin": "5.5.0",
     "jest": "27.0.6",
@@ -60,10 +61,12 @@
     "redux-thunk": "2.4.1",
     "sass-loader": "12.1.0",
     "style-loader": "3.0.0",
+    "typescript": "4.9.5",
     "webpack": "5.41.1",
     "webpack-cli": "4.7.2"
   },
   "dependencies": {
+    "@calls/common": "github:mattermost/calls-common#02c52be",
     "@mattermost/compass-icons": "0.1.31",
     "@mattermost/types": "6.7.0-0",
     "@msgpack/msgpack": "2.7.1",
@@ -76,7 +79,6 @@
     "react-redux": "7.2.4",
     "redux": "4.2.0",
     "semver-parser": "4.0.0",
-    "styled-components": "5.3.5",
-    "typescript": "4.3.4"
+    "styled-components": "5.3.5"
   }
 }

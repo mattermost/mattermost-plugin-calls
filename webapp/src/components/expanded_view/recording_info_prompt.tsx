@@ -3,11 +3,9 @@ import {useIntl} from 'react-intl';
 
 import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
 
-import CompassIcon from 'src/components/icons/compassIcon';
+import {CallRecordingState} from '@calls/common/lib/types';
 
-import {
-    CallRecordingState,
-} from 'src/types/types';
+import CompassIcon from 'src/components/icons/compassIcon';
 
 import {
     CallRecordingDisclaimerStrings,

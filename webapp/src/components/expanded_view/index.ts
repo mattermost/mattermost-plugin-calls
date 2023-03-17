@@ -1,50 +1,39 @@
-import {connect} from 'react-redux';
+import {UserState} from '@calls/common/lib/types';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 
+import {Client4} from 'mattermost-redux/client';
+
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 
-import {Client4} from 'mattermost-redux/client';
+import {getThread} from 'mattermost-redux/selectors/entities/threads';
+import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
+import {connect} from 'react-redux';
 
 import {withRouter} from 'react-router-dom';
 
-import {getThread} from 'mattermost-redux/selectors/entities/threads';
-
-import {UserState} from 'src/types/types';
-
-import {alphaSortProfiles, stateSortProfiles, isDMChannel, getUserIdFromDM} from 'src/utils';
-
+import {hideExpandedView, prefetchThread, showScreenSourceModal, startCallRecording, trackEvent} from 'src/actions';
 import {
-    closeRhs,
-    selectRhsPost,
-    getIsRhsOpen,
-    getRhsSelectedPostId,
-} from 'src/webapp_globals';
-import {
-    hideExpandedView,
-    prefetchThread,
-    showScreenSourceModal,
-    trackEvent,
-    startCallRecording,
-} from 'src/actions';
-import {
-    expandedView,
-    voiceChannelCallStartAt,
+    allowScreenSharing,
+    callRecording,
     connectedChannelID,
+    expandedView,
+    getChannelUrlAndDisplayName,
+    recordingMaxDuration,
+    recordingsEnabled,
+    voiceChannelCallHostChangeAt,
+    voiceChannelCallHostID,
+    voiceChannelCallStartAt,
+    voiceChannelRootPost,
+    voiceChannelScreenSharingID,
     voiceConnectedProfiles,
     voiceUsersStatuses,
-    voiceChannelScreenSharingID,
-    voiceChannelRootPost,
-    getChannelUrlAndDisplayName,
-    allowScreenSharing,
-    voiceChannelCallHostID,
-    callRecording,
-    recordingsEnabled,
-    recordingMaxDuration,
-    voiceChannelCallHostChangeAt,
 } from 'src/selectors';
+
+import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
+
+import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
 
 import ExpandedView from './component';
 
@@ -57,7 +46,7 @@ const mapStateToProps = (state: GlobalState) => {
     const threadID = voiceChannelRootPost(state, channel?.id);
 
     const sortedProfiles = (profiles: UserProfile[], statuses: { [key: string]: UserState }) => {
-        return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID));
+        return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
     };
 
     const statuses = voiceUsersStatuses(state);
