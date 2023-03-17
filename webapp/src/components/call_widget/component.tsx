@@ -589,8 +589,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     };
 
-    private shareScreen = async (sourceID: string, withAudio: boolean) => {
-        const state = {} as State;
+    private shareScreen = async (sourceID: string, _withAudio: boolean) => {
+        const state = {} as State; //
         const stream = await window.callsClient?.shareScreen(sourceID, hasExperimentalFlag());
         if (stream) {
             state.screenStream = stream;
@@ -752,9 +752,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         }
 
-        const msg = isSharing ?
-            formatMessage({defaultMessage: 'You\'re sharing your screen'}) :
-            formatMessage({defaultMessage: 'You\'re viewing {presenter}\'s screen'}, {presenter: getUserDisplayName(profile)});
+        const msg = isSharing ? formatMessage({defaultMessage: 'You\'re sharing your screen'}) : formatMessage({defaultMessage: 'You\'re viewing {presenter}\'s screen'}, {presenter: getUserDisplayName(profile)});
 
         return (
             <div
@@ -1537,13 +1535,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             />
         );
 
-        const notificationContent = isMuted ?
-            formatMessage({
-                defaultMessage: 'You\'re muted. Select <muteIcon/> to unmute.',
-            }, {muteIcon}) :
-            formatMessage({
-                defaultMessage: 'You\'re unmuted. Select <muteIcon/> to mute.',
-            }, {muteIcon});
+        const notificationContent = isMuted ? formatMessage({
+            defaultMessage: 'You\'re muted. Select <muteIcon/> to unmute.',
+        }, {muteIcon}) : formatMessage({
+            defaultMessage: 'You\'re unmuted. Select <muteIcon/> to mute.',
+        }, {muteIcon});
 
         const joinedUsers = this.state.showUsersJoined.map((userID) => {
             if (userID === this.props.currentUserID) {
@@ -1761,9 +1757,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
         const MuteIcon = window.callsClient.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
-        let muteTooltipText = window.callsClient.isMuted() ?
-            formatMessage({defaultMessage: 'Click to unmute'}) :
-            formatMessage({defaultMessage: 'Click to mute'});
+        let muteTooltipText = window.callsClient.isMuted() ? formatMessage({defaultMessage: 'Click to unmute'}) : formatMessage({defaultMessage: 'Click to mute'});
         let muteTooltipSubtext = '';
         if (noInputDevices) {
             muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText);
@@ -1784,9 +1778,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const ShowIcon = window.desktop && !this.props.global ? ExpandIcon : PopOutIcon;
 
         const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
-        const handTooltipText = window.callsClient.isHandRaised ?
-            formatMessage({defaultMessage: 'Click to lower hand'}) :
-            formatMessage({defaultMessage: 'Click to raise hand'});
+        const handTooltipText = window.callsClient.isHandRaised ? formatMessage({defaultMessage: 'Click to lower hand'}) : formatMessage({defaultMessage: 'Click to raise hand'});
 
         return (
             <div
@@ -1848,9 +1840,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             placement='top'
                             overlay={
                                 <Tooltip id='tooltip-mute'>
-                                    {this.state.showParticipantsList ?
-                                        formatMessage({defaultMessage: 'Hide participants'}) :
-                                        formatMessage({defaultMessage: 'Show participants'})}
+                                    {this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'})}
                                     <Shortcut shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}/>
                                 </Tooltip>
                             }
