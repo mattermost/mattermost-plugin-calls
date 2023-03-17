@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+
 const exec = require('child_process').exec;
 const path = require('path');
 

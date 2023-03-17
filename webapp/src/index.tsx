@@ -2,7 +2,7 @@
 
 import axios from 'axios';
 
-import {defineMessage, injectIntl} from 'react-intl';
+import {injectIntl} from 'react-intl';
 import {AnyAction} from 'redux';
 
 import {Client4} from 'mattermost-redux/client';
@@ -15,15 +15,14 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {batchActions} from 'redux-batched-actions';
 
+import {UserState} from '@calls/common/lib/types';
+
 import {
     displayFreeTrial,
     getCallsConfig,
     displayCallErrorModal,
     showScreenSourceModal,
     displayCallsTestModeUser,
-    startCallRecording,
-    stopCallRecording,
-    displayGenericErrorModal,
 } from 'src/actions';
 
 import slashCommandsHandler from 'src/slash_commands';
@@ -38,8 +37,6 @@ import TestMode from 'src/components/admin_console_settings/test_mode';
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
-
-import {UserState} from 'src/types/types';
 
 import {DisabledCallsErr} from 'src/constants';
 
@@ -66,7 +63,6 @@ import {
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
     voiceChannelCallStartAt,
-    voiceChannelCallOwnerID,
     isLimitRestricted,
     iceServers,
     needsTURNCredentials,
@@ -76,8 +72,6 @@ import {
     callsExplicitlyEnabled,
     callsExplicitlyDisabled,
     hasPermissionsToEnableCalls,
-    voiceChannelCallHostID,
-    callRecording,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -128,12 +122,11 @@ import {
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
-    SHOW_END_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
-import {PluginRegistry, Store, Translations} from './types/mattermost-webapp';
+import {PluginRegistry, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];

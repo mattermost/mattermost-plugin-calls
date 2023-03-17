@@ -13,7 +13,8 @@ import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {Theme} from 'mattermost-redux/types/themes';
 
-import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallRecordingState, UserState} from 'src/types/types';
+import {CallRecordingState, UserState} from '@calls/common/lib/types';
+
 import * as Telemetry from 'src/types/telemetry';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
 import {
@@ -49,6 +50,7 @@ import Shortcut from 'src/components/shortcut';
 import Badge from 'src/components/badge';
 import {AudioInputPermissionsError} from 'src/client';
 import {Emoji} from 'src/components/emoji/emoji';
+import {AudioDevices, CallAlertStates, CallAlertStatesDefault} from 'src/types/types';
 
 import CallDuration from './call_duration';
 import WidgetBanner from './widget_banner';
@@ -295,7 +297,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
         this.prevDevicePixelRatio = window.devicePixelRatio;
         this.sendGlobalWidgetBounds();
-    }
+    };
 
     private handleDesktopEvents = (ev: MessageEvent) => {
         if (ev.origin !== window.origin) {
@@ -317,7 +319,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         } else if (ev.data.type === 'calls-widget-share-screen') {
             this.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
         }
-    }
+    };
 
     private attachVoiceTracks(tracks: MediaStreamTrack[]) {
         const audioEls = [];
@@ -357,7 +359,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         if (this.props.global) {
-            window.visualViewport.addEventListener('resize', this.onViewportResize);
+            window.visualViewport?.addEventListener('resize', this.onViewportResize);
             this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
             this.menuResizeObserver.observe(this.menuNode.current!);
             window.addEventListener('message', this.handleDesktopEvents);
@@ -458,7 +460,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     public componentWillUnmount() {
         if (this.props.global) {
-            window.visualViewport.removeEventListener('resize', this.onViewportResize);
+            window.visualViewport?.removeEventListener('resize', this.onViewportResize);
             window.removeEventListener('message', this.handleDesktopEvents);
         } else {
             document.removeEventListener('mouseup', this.onMouseUp, false);
@@ -561,7 +563,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         return bounds;
-    }
+    };
 
     private sendGlobalWidgetBounds = () => {
         const bounds = this.getGlobalWidgetBounds();
@@ -570,7 +572,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             width: Math.ceil(bounds.width),
             height: Math.ceil(bounds.height),
         });
-    }
+    };
 
     private keyboardClose = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
@@ -585,7 +587,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     };
 
-    private shareScreen = async (sourceID: string, withAudio: boolean) => {
+    private shareScreen = async (sourceID: string, _withAudio: boolean) => {
         const state = {} as State;
         const stream = await window.callsClient?.shareScreen(sourceID, hasExperimentalFlag());
         if (stream) {
@@ -612,7 +614,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({
             ...state,
         });
-    }
+    };
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
         if (!this.props.allowScreenSharing) {
@@ -748,9 +750,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         }
 
-        const msg = isSharing ?
-            formatMessage({defaultMessage: 'You\'re sharing your screen'}) :
-            formatMessage({defaultMessage: 'You\'re viewing {presenter}\'s screen'}, {presenter: getUserDisplayName(profile)});
+        const msg = isSharing ? formatMessage({defaultMessage: 'You\'re sharing your screen'}) : formatMessage({defaultMessage: 'You\'re viewing {presenter}\'s screen'}, {presenter: getUserDisplayName(profile)});
 
         return (
             <div
@@ -1556,13 +1556,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             />
         );
 
-        const notificationContent = isMuted ?
-            formatMessage({
-                defaultMessage: 'You\'re muted. Select <muteIcon/> to unmute.',
-            }, {muteIcon}) :
-            formatMessage({
-                defaultMessage: 'You\'re unmuted. Select <muteIcon/> to mute.',
-            }, {muteIcon});
+        const notificationContent = isMuted ? formatMessage({
+            defaultMessage: 'You\'re muted. Select <muteIcon/> to unmute.',
+        }, {muteIcon}) : formatMessage({
+            defaultMessage: 'You\'re unmuted. Select <muteIcon/> to mute.',
+        }, {muteIcon});
 
         const joinedUsers = this.state.showUsersJoined.map((userID) => {
             if (userID === this.props.currentUserID) {
@@ -1873,9 +1871,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             placement='top'
                             overlay={
                                 <Tooltip id='tooltip-mute'>
-                                    {this.state.showParticipantsList ?
-                                        formatMessage({defaultMessage: 'Hide participants'}) :
-                                        formatMessage({defaultMessage: 'Show participants'})}
+                                    {this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'})}
                                     <Shortcut shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}/>
                                 </Tooltip>
                             }

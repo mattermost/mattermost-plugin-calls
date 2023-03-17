@@ -8,9 +8,7 @@ import {
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {Client4} from 'mattermost-redux/client';
-import {isMinimumServerVersion} from 'mattermost-redux/utils/helpers';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
-import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
 import {Team} from '@mattermost/types/teams';
@@ -20,7 +18,9 @@ import {UserProfile} from '@mattermost/types/users';
 import {GlobalState} from '@mattermost/types/store';
 import {ClientConfig} from '@mattermost/types/config';
 
-import {UserState, ColorRGB, ColorHSL} from './types/types';
+import {UserState} from '@calls/common/lib/types';
+
+import {ColorRGB, ColorHSL} from './types/types';
 
 import {pluginId} from './manifest';
 import {logErr, logWarn, logDebug} from './log';
@@ -29,9 +29,7 @@ import {
     voiceChannelRootPost,
 } from './selectors';
 
-import {supportedLocales} from './constants';
-
-import {Store, Translations} from './types/mattermost-webapp';
+import {Store} from './types/mattermost-webapp';
 
 import LeaveSelfSound from './sounds/leave_self.mp3';
 import JoinUserSound from './sounds/join_user.mp3';
