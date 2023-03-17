@@ -480,3 +480,25 @@ export function hslToRGB(c: ColorHSL) {
 export function rgbToCSS(c: ColorRGB) {
     return `rgb(${c.r},${c.g},${c.b})`;
 }
+
+export function setCallsGlobalCSSVars(baseColor: string) {
+    // Base color is Sidebar Hover Background.
+    const baseColorHSL = rgbToHSL(hexToRGB(baseColor));
+
+    // Setting lightness to 16 to improve contrast.
+    baseColorHSL.l = 16;
+    const baseColorRGB = hslToRGB(baseColorHSL);
+
+    // badgeBG is baseColor with a 0.16 opacity white overlay on top.
+    const badgeBgRGB = {
+        r: Math.round(baseColorRGB.r + (255 * 0.16)),
+        g: Math.round(baseColorRGB.g + (255 * 0.16)),
+        b: Math.round(baseColorRGB.b + (255 * 0.16)),
+    };
+
+    // Setting CSS variables for calls background.
+    const rootEl = document.querySelector(':root') as HTMLElement;
+    rootEl?.style.setProperty('--calls-bg', rgbToCSS(baseColorRGB));
+    rootEl?.style.setProperty('--calls-bg-rgb', `${baseColorRGB.r},${baseColorRGB.g},${baseColorRGB.b}`);
+    rootEl?.style.setProperty('--calls-badge-bg', rgbToCSS(badgeBgRGB));
+}

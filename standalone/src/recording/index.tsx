@@ -15,7 +15,7 @@ import {WebSocketMessage} from '@mattermost/types/websocket';
 
 import {UserConnectedData, WebsocketEventData} from '@calls/common/lib/types';
 
-import {getProfilesByIds, getPluginPath, fetchTranslationsFile} from 'plugin/utils';
+import {getProfilesByIds, getPluginPath, fetchTranslationsFile, setCallsGlobalCSSVars} from 'plugin/utils';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {voiceConnectedProfilesInChannel} from 'plugin/selectors';
@@ -88,9 +88,7 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
         });
     }
 
-    const rootEl = document.querySelector(':root') as HTMLElement;
-    rootEl?.style.setProperty('--calls-bg', 'black');
-    rootEl?.style.setProperty('--calls-bg-rgb', '0, 0, 0');
+    setCallsGlobalCSSVars(theme.sidebarTextHoverBg);
 
     const locale = getCurrentUserLocale(store.getState()) || 'en';
     let messages;

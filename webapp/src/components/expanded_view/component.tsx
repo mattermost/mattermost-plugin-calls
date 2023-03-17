@@ -37,10 +37,7 @@ import {
     sendDesktopEvent,
     shouldRenderDesktopWidget,
     untranslatable,
-    hexToRGB,
-    rgbToHSL,
-    hslToRGB,
-    rgbToCSS,
+    setCallsGlobalCSSVars,
 } from 'src/utils';
 import {
     CallAlertConfigs,
@@ -160,17 +157,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     #unlockNavigation?: () => void;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
-        // Base color is Sidebar Hover Background.
-        const baseColorHSL = rgbToHSL(hexToRGB(this.props.theme.sidebarTextHoverBg));
-
-        // Setting lightness to 16 to improve contrast.
-        baseColorHSL.l = 16;
-        const baseColorRGB = hslToRGB(baseColorHSL);
-
-        // Setting CSS variables for calls background.
-        const rootEl = document.querySelector(':root') as HTMLElement;
-        rootEl?.style.setProperty('--calls-bg', rgbToCSS(baseColorRGB));
-        rootEl?.style.setProperty('--calls-bg-rgb', `${baseColorRGB.r},${baseColorRGB.g},${baseColorRGB.b}`);
+        setCallsGlobalCSSVars(this.props.theme.sidebarTextHoverBg);
 
         return {
             root: {
