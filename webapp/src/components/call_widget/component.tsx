@@ -590,7 +590,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     private shareScreen = async (sourceID: string, _withAudio: boolean) => {
-        const state = {} as State; //
+        const state = {} as State;
         const stream = await window.callsClient?.shareScreen(sourceID, hasExperimentalFlag());
         if (stream) {
             state.screenStream = stream;
