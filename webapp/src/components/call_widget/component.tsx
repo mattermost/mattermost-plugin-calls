@@ -44,6 +44,7 @@ import PopOutIcon from 'src/components/icons/popout';
 import ExpandIcon from 'src/components/icons/expand';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
+import HandEmoji from 'src/components/icons/hand';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
 import TickIcon from 'src/components/icons/tick';
 import Shortcut from 'src/components/shortcut';
@@ -935,10 +936,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <li
                         className='MenuItem'
                         key={'participants_profile_' + profile.id}
-                        style={{display: 'flex', padding: '10px 20px'}}
+                        style={{display: 'flex', padding: '8px 16px', gap: '12px'}}
                     >
                         <Avatar
-                            size={24}
+                            size={20}
                             fontSize={10}
                             url={this.props.picturesMap[profile.id]}
                             borderGlowWidth={isSpeaking ? 2 : 0}
@@ -946,13 +947,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                         <span
                             className='MenuItem__primary-text'
-                            style={{padding: '0 8px'}}
+                            style={{padding: '0', lineHeight: '16px', fontSize: '12px'}}
                         >
                             {getUserDisplayName(profile)}
                             {profile.id === this.props.currentUserID &&
                                 <span
                                     style={{
-                                        color: changeOpacity(this.props.theme.centerChannelColor, 0.56),
+                                        color: 'rgba(var(--center-channel-color-rgb), 0.56)',
                                         whiteSpace: 'pre-wrap',
                                     }}
                                 >
@@ -967,31 +968,32 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 justifyContent: 'center',
                                 alignItems: 'center',
                                 marginLeft: 'auto',
-                                gap: '4px',
+                                gap: '14px',
                             }}
                         >
                             {status?.reaction &&
                             <Emoji
                                 emoji={status.reaction.emoji}
-                                size={18}
+                                size={14}
                             />
                             }
                             {isHandRaised &&
-                                <RaisedHandIcon
+                                <HandEmoji
                                     fill='rgba(255, 188, 66, 1)'
+                                    style={{width: '14px', height: '14px'}}
                                 />
                             }
 
                             {this.props.screenSharingID === profile.id &&
                                 <ScreenIcon
                                     fill={'rgb(var(--dnd-indicator-rgb))'}
-                                    style={{width: '18px', height: '18px'}}
+                                    style={{width: '14px', height: '14px'}}
                                 />
                             }
 
                             <MuteIcon
                                 fill={isMuted ? 'rgba(var(--center-channel-color-rgb), 0.56)' : '#3DB887'}
-                                style={{width: '18px', height: '18px'}}
+                                style={{width: '14px', height: '14px'}}
                             />
 
                         </span>

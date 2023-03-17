@@ -57,7 +57,7 @@ import ShareScreenIcon from 'src/components/icons/share_screen';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import ParticipantsIcon from 'src/components/icons/participants';
 import CallDuration from 'src/components/call_widget/call_duration';
-import RaisedHandIcon from 'src/components/icons/raised_hand';
+import HandEmoji from 'src/components/icons/hand';
 import CollapseIcon from 'src/components/icons/collapse';
 import Badge from 'src/components/badge';
 import {
@@ -806,7 +806,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </div>
                         }
                         {isHandRaised &&
-                            <RaisedHandIcon
+                            <HandEmoji
                                 style={{
                                     fill: 'rgb(255, 188, 66)',
                                     width: '18px',

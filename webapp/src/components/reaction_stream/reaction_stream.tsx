@@ -15,7 +15,7 @@ import {
 } from 'src/selectors';
 import {Emoji} from 'src/components/emoji/emoji';
 import {getUserDisplayName, untranslatable} from 'src/utils';
-import RaisedHandIcon from 'src/components/icons/raised_hand';
+import HandEmoji from 'src/components/icons/hand';
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = () => {
@@ -77,7 +77,7 @@ export const ReactionStream = () => {
                 key={'hands'}
                 highlight={true}
             >
-                <RaisedHandIcon
+                <HandEmoji
                     style={{
                         fill: 'rgb(255, 188, 66)',
                         width: '18px',

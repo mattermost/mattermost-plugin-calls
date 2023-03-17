@@ -7,7 +7,7 @@ import {Reaction} from '@calls/common/lib/types';
 
 import MutedIcon from 'src/components/icons/muted_icon';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
-import RaisedHandIcon from 'src/components/icons/raised_hand';
+import HandEmoji from 'src/components/icons/hand';
 import Avatar from 'src/components/avatar/avatar';
 import {Emoji} from 'src/components/emoji/emoji';
 
@@ -70,7 +70,7 @@ export default function CallParticipant(props: Props) {
                 </div>
                 {props.isHandRaised &&
                 <div style={styles.handRaisedContainer}>
-                    <RaisedHandIcon
+                    <HandEmoji
                         style={{
                             fill: 'rgb(255, 188, 66)',
                             width: '20px',
