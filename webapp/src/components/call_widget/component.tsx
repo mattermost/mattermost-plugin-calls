@@ -147,11 +147,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             topBar: {
                 background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
-                padding: '0 12px',
+                padding: '6px 12px',
                 display: 'flex',
+                gap: '12px',
                 width: '100%',
                 alignItems: 'center',
-                height: '44px',
                 cursor: 'move',
             },
             bottomBar: {
@@ -174,14 +174,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             callInfo: {
                 display: 'flex',
                 alignItems: 'center',
-                fontSize: '11px',
-                lineHeight: '11px',
+                fontSize: '10px',
+                lineHeight: '16px',
                 color: changeOpacity(this.props.theme.centerChannelColor, 0.64),
-                marginTop: '3px',
-            },
-            profiles: {
-                display: 'flex',
-                marginRight: '12px',
             },
             menuButton: {
                 display: 'flex',
@@ -1851,9 +1846,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             }
                         />
 
-                        <div style={this.style.profiles}>
-                            {this.renderSpeakingProfile()}
-                        </div>
+                        {this.renderSpeakingProfile()}
+
                         <div style={{width: widerWidget ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
