@@ -5,13 +5,14 @@ import {EventEmitter} from 'events';
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
-import {CallsClientConfig, AudioDevices, CallsClientStats, TrackInfo, EmojiData} from 'src/types/types';
+import {parseRTCStats, RTCPeer} from '@calls/common';
+import {EmojiData} from '@calls/common/lib/types';
 
-import RTCPeer from './rtcpeer';
+import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo} from 'src/types/types';
+
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
-import {logErr, logDebug} from './log';
+import {logErr, logDebug, logWarn, logInfo} from './log';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
-import {parseRTCStats} from './rtc_stats';
 
 export const AudioInputPermissionsError = new Error('missing audio input permissions');
 export const AudioInputMissingError = new Error('no audio input available');
@@ -218,6 +219,12 @@ export default class CallsClient extends EventEmitter {
 
             const peer = new RTCPeer({
                 iceServers: this.config.iceServers || [],
+                logger: {
+                    logDebug,
+                    logErr,
+                    logWarn,
+                    logInfo,
+                },
             });
 
             this.peer = peer;

@@ -6,10 +6,11 @@
     "check-types": "tsc"
   },
   "devDependencies": {
+    "@babel/core": "^7.20.12",
+    "@babel/eslint-parser": "^7.19.1",
     "@playwright/test": "^1.28.1",
-    "@typescript-eslint/eslint-plugin": "^5.8.0",
-    "babel-eslint": "^10.1.0",
-    "eslint": "^8.5.0",
-    "eslint-plugin-import": "^2.25.3"
+    "@typescript-eslint/eslint-plugin": "5.49.0",
+    "eslint": "^8.33.0",
+    "eslint-plugin-import": "2.27.5"
   }
 }

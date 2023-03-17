@@ -5,7 +5,9 @@
 
 import React from 'react';
 import {IntlShape} from 'react-intl';
+import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
+import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 
 import {UserProfile} from '@mattermost/types/users';
@@ -13,15 +15,18 @@ import {Team} from '@mattermost/types/teams';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 
-import styled, {createGlobalStyle, css, CSSObject} from 'styled-components';
-
 import {
     ProductChannelsIcon,
     RecordCircleOutlineIcon,
     RecordSquareOutlineIcon,
 } from '@mattermost/compass-icons/components';
 
-import {RouteComponentProps} from 'react-router-dom';
+import {
+    UserState,
+    CallRecordingState,
+} from '@calls/common/lib/types';
+
+import {Emoji} from 'src/components/emoji/emoji';
 
 import {
     getUserDisplayName,
@@ -34,21 +39,11 @@ import {
 } from 'src/utils';
 import {applyOnyx} from 'src/css_utils';
 import {
-    UserState,
-    AudioDevices,
-    CallAlertStates,
-    CallAlertStatesDefault,
-    CallRecordingState,
-} from 'src/types/types';
-
-import {
     CallAlertConfigs,
 } from 'src/constants';
-
 import {
     stopCallRecording,
 } from 'src/actions';
-
 import * as Telemetry from 'src/types/telemetry';
 import Avatar from 'src/components/avatar/avatar';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
@@ -60,7 +55,6 @@ import ScreenIcon from 'src/components/icons/screen_icon';
 import ParticipantsIcon from 'src/components/icons/participants';
 import CallDuration from 'src/components/call_widget/call_duration';
 import Badge from 'src/components/badge';
-
 import {
     MUTE_UNMUTE,
     RAISE_LOWER_HAND,
@@ -73,6 +67,7 @@ import {
     reverseKeyMappings,
     MAKE_REACTION,
 } from 'src/shortcuts';
+import {AudioDevices, CallAlertStates, CallAlertStatesDefault} from 'src/types/types';
 
 import RecordingInfoPrompt from './recording_info_prompt';
 
@@ -679,6 +674,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             gap: '4px',
                         }}
                     >
+                        {status?.reaction &&
+                            <div
+                                style={{
+                                    marginBottom: 4,
+                                    marginRight: 2,
+                                }}
+                            >
+                                <Emoji
+                                    emoji={status.reaction.emoji}
+                                    size={16}
+                                />
+                            </div>
+                        }
                         {isHandRaised &&
                             <CompassIcon
                                 icon={'hand-right'}
@@ -961,7 +969,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     shortcut={undefined}
                                     bgColor={''}
                                     icon={
-                                        <div css={{position: 'relative'}}>
+                                        <div style={{position: 'relative'}}>
                                             <ProductChannelsIcon // TODO use 'icon-message-text-outline' once added
                                                 size={24}
                                                 color={'white'}
