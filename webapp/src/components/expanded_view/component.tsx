@@ -224,6 +224,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 margin: '0 12px',
             },
             screenSharingMsg: {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
                 background: 'var(--calls-bg)',
                 padding: '4px 8px',
                 borderRadius: '12px',
@@ -716,6 +719,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     </StyledMediaControlBar>
                 </StyledMediaController>
                 <span style={this.style.screenSharingMsg}>
+                    <ScreenIcon
+                        fill={'rgba(255, 255, 255, 0.56)'}
+                        style={{width: '12px', height: '12px'}}
+                    />
                     {msg}
                 </span>
             </div>
