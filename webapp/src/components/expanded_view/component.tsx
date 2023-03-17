@@ -58,6 +58,7 @@ import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import ParticipantsIcon from 'src/components/icons/participants';
 import CallDuration from 'src/components/call_widget/call_duration';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
+import CollapseIcon from 'src/components/icons/collapse';
 import Badge from 'src/components/badge';
 import {
     MUTE_UNMUTE,
@@ -176,7 +177,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 flex: '1',
             },
             closeViewButton: {
-                fontSize: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '40px',
+                marginLeft: 'auto',
             },
             participants: {
                 display: 'grid',
@@ -198,18 +204,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             },
             topContainer: {
                 display: 'flex',
-                width: '100%',
-            },
-            topLeftContainer: {
-                flex: 1,
-                display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '16px',
                 lineHeight: '24px',
                 fontWeight: 600,
-                marginLeft: '20px',
                 height: '56px',
+                padding: '0 20px',
             },
             screenContainer: {
                 display: 'flex',
@@ -497,12 +498,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     onCloseViewClick = () => {
+        this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
+
         if (window.opener) {
+            window.close();
             return;
         }
 
-        // This desktop (pre-global widget)'s window.
-        this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
         this.props.hideExpandedView();
     };
 
@@ -951,28 +953,29 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     {this.renderAlertBanner()}
 
                     <div style={this.style.topContainer}>
-                        <div style={this.style.topLeftContainer}>
-                            {this.renderRecordingBadge()}
-                            <CallDuration
-                                style={{margin: '4px'}}
-                                startAt={this.props.callStartAt}
+                        {this.renderRecordingBadge()}
+                        <CallDuration
+                            style={{margin: '4px'}}
+                            startAt={this.props.callStartAt}
+                        />
+                        <span style={{margin: '4px'}}>{untranslatable('•')}</span>
+                        <span style={{margin: '4px'}}>
+                            {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.profiles.length})}
+                        </span>
+
+                        <button
+                            className='button-close'
+                            style={this.style.closeViewButton}
+                            onClick={this.onCloseViewClick}
+                        >
+                            <CollapseIcon
+                                style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    fill: 'white',
+                                }}
                             />
-                            <span style={{margin: '4px'}}>{untranslatable('•')}</span>
-                            <span style={{margin: '4px'}}>
-                                {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.profiles.length})}
-                            </span>
-                            <span style={{flex: 1}}/>
-                        </div>
-                        {
-                            !window.opener &&
-                            <button
-                                className='button-close'
-                                style={this.style.closeViewButton}
-                                onClick={this.onCloseViewClick}
-                            >
-                                <CompassIcon icon='arrow-collapse'/>
-                            </button>
-                        }
+                        </button>
                     </div>
 
                     {!this.props.screenSharingID &&
