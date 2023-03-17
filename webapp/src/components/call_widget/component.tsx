@@ -1554,9 +1554,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
 
         const notificationContent = isMuted ? formatMessage({
-            defaultMessage: 'You\'re muted. Select <muteIcon/> to unmute.',
+            defaultMessage: 'You\'re muted. Select {muteIcon} to unmute.',
         }, {muteIcon}) : formatMessage({
-            defaultMessage: 'You\'re unmuted. Select <muteIcon/> to mute.',
+            defaultMessage: 'You\'re unmuted. Select {muteIcon} to mute.',
         }, {muteIcon});
 
         const joinedUsers = this.state.showUsersJoined.map((userID) => {
