@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {forwardRef, useImperativeHandle, useState} from 'react';
+import {useIntl} from 'react-intl';
 import styled, {css} from 'styled-components';
 import {OverlayTrigger} from 'react-bootstrap';
 import EmojiPicker, {
@@ -14,6 +15,8 @@ import EmojiPicker, {
 
 import {HandRightOutlineIcon, HandRightOutlineOffIcon} from '@mattermost/compass-icons/components';
 
+import {EmojiData} from '@calls/common/lib/types';
+
 import ControlsButton from 'src/components/expanded_view/controls_button';
 import {MAKE_REACTION, RAISE_LOWER_HAND, reverseKeyMappings} from 'src/shortcuts';
 import SmileyIcon from 'src/components/icons/smiley_icon';
@@ -22,7 +25,6 @@ import {StyledTooltip} from 'src/components/shared';
 import Shortcut from 'src/components/shortcut';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {Emoji} from 'src/components/emoji/emoji';
-import {EmojiData} from 'src/types/types';
 import {EmojiIndicesByAlias} from 'src/emojis/emoji';
 
 const EMOJI_VERSION = '13';
@@ -42,6 +44,7 @@ interface Props {
 export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     const [showPicker, setShowPicker] = useState(false);
     const [showBar, setShowBar] = useState(false);
+    const {formatMessage} = useIntl();
 
     useImperativeHandle(ref, () => ({
         toggle() {
@@ -50,7 +53,9 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
     }));
 
     const callsClient = getCallsClient();
-    const addReactionText = showBar ? 'Close Reactions' : 'Add Reaction';
+    const addReactionText = showBar ?
+        formatMessage({defaultMessage: 'Close reactions'}) :
+        formatMessage({defaultMessage: 'Add reaction'});
 
     const handleUserPicksEmoji = (ecd: EmojiClickData) => {
         const emojiData: EmojiData = {
@@ -72,7 +77,9 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
         }
     };
     const isHandRaised = Boolean(callsClient?.isHandRaised);
-    const raiseHandText = isHandRaised ? 'Lower hand' : 'Raise hand';
+    const raiseHandText = isHandRaised ?
+        formatMessage({defaultMessage: 'Lower hand'}) :
+        formatMessage({defaultMessage: 'Raise hand'});
     const handIcon = isHandRaised ? (
         <HandRightOutlineOffIcon
             size={18}

@@ -20,7 +20,7 @@ test.describe('switch call', () => {
 
         await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
 
-        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start Call")');
+        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start call")');
         await expect(startCallButton).toBeVisible();
         await startCallButton.click();
         await expect(page.locator('#calls-switch-call-modal')).toBeVisible();
@@ -37,7 +37,7 @@ test.describe('switch call', () => {
 
         await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
 
-        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start Call")');
+        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start call")');
         await expect(startCallButton).toBeVisible();
         await startCallButton.click();
         await expect(page.locator('#calls-switch-call-modal')).toBeVisible();
@@ -54,7 +54,7 @@ test.describe('switch call', () => {
 
         await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
 
-        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start Call")');
+        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start call")');
         await expect(startCallButton).toBeVisible();
         await startCallButton.click();
         await expect(page.locator('#calls-switch-call-modal')).toBeVisible();
@@ -71,7 +71,7 @@ test.describe('switch call', () => {
 
         await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
 
-        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start Call")');
+        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start call")');
         await expect(startCallButton).toBeVisible();
         await startCallButton.click();
         await expect(page.locator('#calls-switch-call-modal')).toBeVisible();
@@ -88,7 +88,7 @@ test.describe('switch call', () => {
 
         await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
 
-        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start Call")');
+        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start call")');
         await expect(startCallButton).toBeVisible();
         await startCallButton.click();
         await expect(page.locator('#calls-switch-call-modal')).toBeVisible();

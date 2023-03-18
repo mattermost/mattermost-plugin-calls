@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
+import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 
 import {Store} from 'plugin/types/mattermost-webapp';
@@ -8,15 +9,17 @@ import {UserProfile} from '@mattermost/types/users';
 import {Client4} from 'mattermost-redux/client';
 import {ChannelTypes} from 'mattermost-redux/action_types';
 import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/users';
+import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 
 import {WebSocketMessage} from '@mattermost/types/websocket';
 
-import {getProfilesByIds, getPluginPath} from 'plugin/utils';
+import {UserConnectedData, WebsocketEventData} from '@calls/common/lib/types';
+
+import {getProfilesByIds, getPluginPath, fetchTranslationsFile} from 'plugin/utils';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {voiceConnectedProfilesInChannel} from 'plugin/selectors';
 import {VOICE_CHANNEL_USER_CONNECTED} from 'src/action_types';
-import {UserConnectedData, WebsocketEventData} from 'src/types/types';
 
 import recordingReducer from 'src/recording/reducers';
 
@@ -85,9 +88,26 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
         });
     }
 
+    const locale = getCurrentUserLocale(store.getState()) || 'en';
+    let messages;
+    if (locale !== 'en') {
+        try {
+            messages = await fetchTranslationsFile(locale);
+        } catch (err) {
+            logErr('failed to fetch translations files', err);
+        }
+    }
+
     ReactDOM.render(
         <Provider store={store}>
-            <RecordingView/>
+            <IntlProvider
+                locale={locale}
+                key={locale}
+                defaultLocale='en'
+                messages={messages}
+            >
+                <RecordingView/>
+            </IntlProvider>
         </Provider>,
         document.getElementById('root'),
     );

@@ -106,6 +106,7 @@ jobs:
   lint:
     executor:
       name: default
+    resource_class: large
     steps:
       - checkout
       - install-golangci-lint
@@ -148,6 +149,7 @@ jobs:
   build:
     executor:
       name: default
+    resource_class: large
     steps:
       - checkout
       - install-node-npm

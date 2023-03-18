@@ -1,4 +1,5 @@
 import React, {CSSProperties} from 'react';
+import {IntlShape} from 'react-intl';
 
 import {Channel} from '@mattermost/types/channels';
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
@@ -11,6 +12,7 @@ import './component.scss';
 import {CapturerSource} from 'src/types/types';
 
 interface Props {
+    intl: IntlShape,
     theme: Theme,
     connectedChannel: Channel,
     show: boolean,
@@ -207,6 +209,8 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
     };
 
     render() {
+        const {formatMessage} = this.props.intl;
+
         if (!this.props.show || this.state.sources.length === 0) {
             return null;
         }
@@ -219,7 +223,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                 >
                     <div style={this.style.header as CSSProperties}>
                         <span style={this.style.title}>
-                            {'Choose what to share'}
+                            {formatMessage({defaultMessage: 'Choose what to share'})}
                         </span>
                         <button
                             className='style--none screen-source-modal-close'
@@ -237,11 +241,11 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                         <button
                             className='style--none screen-source-modal-cancel'
                             onClick={this.hide}
-                        >{'Cancel'}</button>
+                        >{formatMessage({defaultMessage: 'Cancel'})}</button>
                         <button
                             className='style--none screen-source-modal-join'
                             onClick={this.shareScreen}
-                        >{'Share'}</button>
+                        >{formatMessage({defaultMessage: 'Share'})}</button>
                     </div>
                 </div>
             </div>

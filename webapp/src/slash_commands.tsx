@@ -4,7 +4,7 @@ import {CommandArgs} from '@mattermost/types/integrations';
 
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {ActionResult} from 'mattermost-redux/types/actions';
-import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 
 import {
@@ -76,7 +76,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
                 await joinCall(args.channel_id, team_id, title, args.root_id);
                 return {};
             } catch (e) {
-                let msg = defineMessage({defaultMessage: 'An internal error occurred preventing you to join the call. Please try again.'});
+                let msg = defineMessage({defaultMessage: 'An internal error occurred and prevented you from joining the call. Please try again.'});
                 if (e === DisabledCallsErr) {
                     msg = defineMessage({defaultMessage: 'Calls are disabled in this channel.'});
                 }
@@ -191,7 +191,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             if (!isHost) {
                 store.dispatch(displayGenericErrorModal(
                     startErrorTitle,
-                    defineMessage({defaultMessage: 'You don\'t have permissions to start a recording. Please ask the call host to start a recording.'}),
+                    defineMessage({defaultMessage: 'You don\'t have permission to start a recording. Please ask the call host to start a recording.'}),
                 ));
                 return {};
             }
@@ -211,7 +211,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             if (!isHost) {
                 store.dispatch(displayGenericErrorModal(
                     stopErrorTitle,
-                    defineMessage({defaultMessage: 'You don\'t have permissions to stop the recording. Please ask the call host to stop the recording.'}),
+                    defineMessage({defaultMessage: 'You don\'t have permission to stop the recording. Please ask the call host to stop the recording.'}),
                 ));
                 return {};
             }

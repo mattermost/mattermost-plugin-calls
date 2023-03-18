@@ -7,9 +7,7 @@ import {
 } from 'mattermost-redux/selectors/entities/teams';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-
 import {Client4} from 'mattermost-redux/client';
-
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 
@@ -20,10 +18,10 @@ import {UserProfile} from '@mattermost/types/users';
 import {GlobalState} from '@mattermost/types/store';
 import {ClientConfig} from '@mattermost/types/config';
 
-import {UserState} from './types/types';
+import {UserState} from '@calls/common/lib/types';
 
 import {pluginId} from './manifest';
-import {logErr, logDebug} from './log';
+import {logErr, logWarn, logDebug} from './log';
 
 import {
     voiceChannelRootPost,
@@ -375,4 +373,28 @@ export function sendDesktopEvent(event: string, data?: Record<string, unknown>) 
 
 export function capitalize(input: string) {
     return input.charAt(0).toUpperCase() + input.slice(1);
+}
+
+export async function fetchTranslationsFile(locale: string) {
+    if (locale === 'en') {
+        return {};
+    }
+    try {
+        // eslint-disable-next-line global-require
+        const filename = require(`../i18n/${locale}.json`).default;
+        if (!filename) {
+            throw new Error(`translations file not found for locale '${locale}'`);
+        }
+        const res = await fetch(filename.indexOf('/') === 0 ? getPluginStaticPath() + filename : filename);
+        const translations = await res.json();
+        logDebug(`loaded i18n file for locale '${locale}'`);
+        return translations;
+    } catch (err) {
+        logWarn(`failed to load i18n file for locale '${locale}':`, err);
+        return {};
+    }
+}
+
+export function untranslatable(msg: string) {
+    return msg;
 }

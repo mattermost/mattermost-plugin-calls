@@ -4,7 +4,9 @@ import axios from 'axios';
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-import {defineMessage} from 'react-intl';
+import {injectIntl} from 'react-intl';
+import {Provider} from 'react-redux';
+
 import {AnyAction} from 'redux';
 
 import {Client4} from 'mattermost-redux/client';
@@ -18,20 +20,20 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {batchActions} from 'redux-batched-actions';
 
+import {UserState} from '@calls/common/lib/types';
+
 import {
     displayFreeTrial,
     getCallsConfig,
     displayCallErrorModal,
     showScreenSourceModal,
     displayCallsTestModeUser,
-    startCallRecording,
-    stopCallRecording,
-    displayGenericErrorModal,
 } from 'src/actions';
 
 import slashCommandsHandler from 'src/slash_commands';
 
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
+import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
@@ -40,8 +42,6 @@ import TestMode from 'src/components/admin_console_settings/test_mode';
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
-
-import {UserState} from 'src/types/types';
 
 import {DisabledCallsErr} from 'src/constants';
 
@@ -68,7 +68,6 @@ import {
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
     voiceChannelCallStartAt,
-    voiceChannelCallOwnerID,
     isLimitRestricted,
     iceServers,
     needsTURNCredentials,
@@ -78,8 +77,6 @@ import {
     callsExplicitlyEnabled,
     callsExplicitlyDisabled,
     hasPermissionsToEnableCalls,
-    voiceChannelCallHostID,
-    callRecording,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -113,7 +110,7 @@ import {
     sendDesktopEvent,
     getChannelURL,
 } from './utils';
-import {logErr, logDebug} from './log';
+import {logErr, logWarn, logDebug} from './log';
 import {
     JOIN_CALL,
     keyToAction,
@@ -130,7 +127,6 @@ import {
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
-    SHOW_END_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
@@ -225,7 +221,7 @@ export default class Plugin {
         });
     }
 
-    public async initialize(registry: PluginRegistry, store: Store): Promise<void> {
+    private initialize(registry: PluginRegistry, store: Store) {
         // Setting the base URL if present, in case MM is running under a subpath.
         if (window.basename) {
             Client4.setUrl(window.basename);
@@ -244,13 +240,27 @@ export default class Plugin {
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
-        registry.registerChannelToastComponent(ChannelCallToast);
+        registry.registerChannelToastComponent(injectIntl(ChannelCallToast));
         registry.registerPostTypeComponent('custom_calls', PostType);
+        registry.registerPostTypeComponent('custom_calls_recording', PostTypeRecording);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
-        registry.registerNeedsTeamRoute('/expanded', ExpandedView);
-        registry.registerGlobalComponent(SwitchCallModal);
-        registry.registerGlobalComponent(ScreenSourceModal);
-        registry.registerGlobalComponent(EndCallModal);
+        registry.registerNeedsTeamRoute('/expanded', injectIntl(ExpandedView));
+        registry.registerGlobalComponent(injectIntl(SwitchCallModal));
+        registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
+        registry.registerGlobalComponent(injectIntl(EndCallModal));
+
+        registry.registerTranslations((locale: string) => {
+            try {
+                logDebug(`loading translations file for locale '${locale}'`);
+
+                // synchronously loading all translation files from bundle (MM-50811).
+                // eslint-disable-next-line global-require
+                return require(`../i18n/${locale}.json`);
+            } catch (err) {
+                logWarn(`failed to open translations file for locale '${locale}'`, err);
+                return {};
+            }
+        });
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             return slashCommandsHandler(store, joinCall, message, args);
@@ -397,10 +407,11 @@ export default class Plugin {
                 });
 
                 ReactDOM.render(
-                    <CallWidget
-                        store={store}
-                        theme={getTheme(store.getState())}
-                    />,
+                    <Provider store={store}>
+                        <CallWidget
+                            theme={getTheme(store.getState())}
+                        />
+                    </Provider>,
                     document.getElementById('calls'),
                 );
                 const unmountCallWidget = () => {
@@ -410,7 +421,8 @@ export default class Plugin {
                     }
                 };
 
-                const rootComponentID = registry.registerRootComponent(ExpandedView);
+                const rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
+
                 window.callsClient.on('close', (err?: Error) => {
                     unmountCallWidget();
                     registry.unregisterComponent(rootComponentID);

@@ -3,18 +3,16 @@ import {combineReducers} from 'redux';
 
 import {UserProfile} from '@mattermost/types/users';
 
-import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
-
 import {
-    CallsConfigDefault,
     CallsConfig,
     UserState,
-    CallsUserPreferences,
-    CallsUserPreferencesDefault,
     Reaction,
     CallRecordingState,
-    ChannelState,
-} from './types/types';
+} from '@calls/common/lib/types';
+
+import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
+
+import {CallsConfigDefault, CallsUserPreferences, CallsUserPreferencesDefault, ChannelState} from 'src/types/types';
 
 import {
     VOICE_CHANNEL_USER_CONNECTED,
@@ -596,6 +594,14 @@ const voiceChannelScreenSharingID = (state: { [channelID: string]: string } = {}
             ...state,
             [action.data.channelID]: action.data.userID,
         };
+    case VOICE_CHANNEL_USER_DISCONNECTED: {
+        // If the user who disconnected matches the one sharing we
+        // want to fallthrough and clear the state.
+        if (action.data.userID !== state[action.data.channelID]) {
+            return state;
+        }
+    }
+    // eslint-disable-next-line no-fallthrough
     case VOICE_CHANNEL_CALL_END:
     case VOICE_CHANNEL_USER_SCREEN_OFF:
         return {

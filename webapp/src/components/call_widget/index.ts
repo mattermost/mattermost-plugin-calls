@@ -1,3 +1,4 @@
+import {injectIntl} from 'react-intl';
 import {bindActionCreators, Dispatch} from 'redux';
 import {connect} from 'react-redux';
 
@@ -10,7 +11,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {Client4} from 'mattermost-redux/client';
 
-import {UserState} from 'src/types/types';
+import {UserState} from '@calls/common/lib/types';
 
 import {showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 
@@ -86,5 +87,5 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     trackEvent,
 }, dispatch);
 
-export default connect(mapStateToProps, mapDispatchToProps)(CallWidget);
+export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(CallWidget));
 
