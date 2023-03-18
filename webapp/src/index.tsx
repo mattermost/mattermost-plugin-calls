@@ -4,7 +4,7 @@ import axios from 'axios';
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-import {injectIntl} from 'react-intl';
+import {injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 
 import {AnyAction} from 'redux';
@@ -13,6 +13,7 @@ import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
@@ -109,8 +110,9 @@ import {
     shouldRenderDesktopWidget,
     sendDesktopEvent,
     getChannelURL,
+    getTranslations,
 } from './utils';
-import {logErr, logWarn, logDebug} from './log';
+import {logErr, logDebug} from './log';
 import {
     JOIN_CALL,
     keyToAction,
@@ -250,16 +252,7 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(EndCallModal));
 
         registry.registerTranslations((locale: string) => {
-            try {
-                logDebug(`loading translations file for locale '${locale}'`);
-
-                // synchronously loading all translation files from bundle (MM-50811).
-                // eslint-disable-next-line global-require
-                return require(`../i18n/${locale}.json`);
-            } catch (err) {
-                logWarn(`failed to open translations file for locale '${locale}'`, err);
-                return {};
-            }
+            return getTranslations(locale);
         });
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
@@ -406,11 +399,20 @@ export default class Plugin {
                     iceServers: iceConfigs,
                 });
 
+                const locale = getCurrentUserLocale(store.getState()) || 'en';
+
                 ReactDOM.render(
                     <Provider store={store}>
-                        <CallWidget
-                            theme={getTheme(store.getState())}
-                        />
+                        <IntlProvider
+                            locale={locale}
+                            key={locale}
+                            defaultLocale='en'
+                            messages={getTranslations(locale)}
+                        >
+                            <CallWidget
+                                theme={getTheme(store.getState())}
+                            />
+                        </IntlProvider>
                     </Provider>,
                     document.getElementById('calls'),
                 );

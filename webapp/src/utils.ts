@@ -398,3 +398,16 @@ export async function fetchTranslationsFile(locale: string) {
 export function untranslatable(msg: string) {
     return msg;
 }
+
+export function getTranslations(locale: string) {
+    try {
+        logDebug(`loading translations file for locale '${locale}'`);
+
+        // synchronously loading all translation files from bundle (MM-50811).
+        // eslint-disable-next-line global-require
+        return require(`../i18n/${locale}.json`);
+    } catch (err) {
+        logWarn(`failed to open translations file for locale '${locale}'`, err);
+        return {};
+    }
+}
