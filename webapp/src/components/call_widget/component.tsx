@@ -1751,6 +1751,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
                             maxWidth: widerWidget ? '22ch' : '12ch',
+                            fontWeight: 600,
                         }}
                     >
                         {this.props.channelDisplayName}
