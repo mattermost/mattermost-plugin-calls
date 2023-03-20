@@ -4,7 +4,7 @@ import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
-import {getUserIdxForTest} from '../utils';
+import {getUserIdxForTest, getChannelNamesForTest} from '../utils';
 
 declare global {
     interface Window {
@@ -15,7 +15,11 @@ declare global {
 
 const userIdx = getUserIdxForTest();
 
-test.beforeEach(async ({page, context}) => {
+test.beforeEach(async ({page, context}, info) => {
+    // Small optimization to avoid loading an unnecessary channel.
+    if (info.title === 'system console') {
+        return;
+    }
     const devPage = new PlaywrightDevPage(page);
     await devPage.goto();
 });
@@ -399,6 +403,36 @@ test.describe('switching products', () => {
         const participantsList = devPage.page.locator('#calls-widget-participants-list');
         await expect(participantsList).toBeVisible();
         expect(await participantsList.screenshot()).toMatchSnapshot('calls-widget-participants-list-boards.png');
+
+        await devPage.leaveCall();
+    });
+});
+
+test.describe('switching views', () => {
+    test.use({storageState: userState.admin.storageStatePath});
+
+    test('system console', async ({page}) => {
+        // Using the second channel allocated for the test to avoid a potential
+        // race condition with a previous test making use of the system admin.
+        const channelName = getChannelNamesForTest()[1];
+        const devPage = new PlaywrightDevPage(page);
+        devPage.goToChannel(channelName);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        // Switch to admin console
+        await devPage.page.locator('#product_switch_menu').click();
+        await expect(devPage.page.locator('#product-switcher-menu-dropdown')).toBeVisible();
+        await devPage.page.locator('#product-switcher-menu-dropdown').locator('li', {hasText: 'System Console'}).click();
+
+        // Verify widget is still rendered
+        await expect(devPage.page.locator('#calls-widget')).toBeVisible();
+
+        // Switch back to channel
+        await devPage.page.locator('a.backstage-navbar__back').click();
+
+        // Verify widget is still rendered
+        await expect(devPage.page.locator('#calls-widget')).toBeVisible();
 
         await devPage.leaveCall();
     });

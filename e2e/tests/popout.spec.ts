@@ -2,7 +2,7 @@ import {test, expect} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
-import {getChannelNameForTest, getUserIdxForTest} from '../utils';
+import {getChannelNamesForTest, getUserIdxForTest} from '../utils';
 
 const userIdx = getUserIdxForTest();
 
@@ -50,8 +50,8 @@ test.describe('popout window', () => {
             page.click('#calls-widget-expand-button'),
         ]);
         await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
-        await expect(popOut).toHaveTitle(`Call - ${getChannelNameForTest()}`);
-        await expect(page).not.toHaveTitle(`Call - ${getChannelNameForTest()}`);
+        await expect(popOut).toHaveTitle(`Call - ${getChannelNamesForTest()[0]}`);
+        await expect(page).not.toHaveTitle(`Call - ${getChannelNamesForTest()[0]}`);
 
         await popOut.locator('#calls-popout-leave-button').click();
     });

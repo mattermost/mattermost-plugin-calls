@@ -2,7 +2,7 @@ import {expect, Page} from '@playwright/test';
 
 import {baseURL, defaultTeam} from './constants';
 
-import {getChannelNameForTest} from './utils';
+import {getChannelNamesForTest} from './utils';
 
 export default class PlaywrightDevPage {
     readonly page: Page;
@@ -12,7 +12,11 @@ export default class PlaywrightDevPage {
     }
 
     async goto() {
-        await this.page.goto(`${baseURL}/${defaultTeam}/channels/${getChannelNameForTest()}`);
+        await this.page.goto(`${baseURL}/${defaultTeam}/channels/${getChannelNamesForTest()[0]}`);
+    }
+
+    async goToChannel(name: string) {
+        await this.page.goto(`${baseURL}/${defaultTeam}/channels/${name}`);
     }
 
     async gotoDM(username: string) {
