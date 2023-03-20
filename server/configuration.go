@@ -426,6 +426,11 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 			*cfg.MaxCallParticipants = cloudPaidMaxParticipantsDefault
 		}
 	}
+
+	cfg.ICEHostOverride = strings.TrimSpace(cfg.ICEHostOverride)
+	cfg.UDPServerAddress = strings.TrimSpace(cfg.UDPServerAddress)
+	cfg.RTCDServiceURL = strings.TrimSpace(cfg.RTCDServiceURL)
+	cfg.JobServiceURL = strings.TrimSpace(cfg.JobServiceURL)
 }
 
 func (p *Plugin) isSingleHandler() bool {

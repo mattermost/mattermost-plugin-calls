@@ -122,7 +122,7 @@ async function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEv
         store.dispatch({
             type: RECEIVED_CALL_PROFILE_IMAGES,
             data: {
-                channelID: ev.broadcast.channel_id,
+                channelID: ev.data.channelID,
                 profileImages: await fetchProfileImages(profiles),
             },
         });

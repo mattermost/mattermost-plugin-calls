@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {CSSProperties, useEffect, useRef, useState} from 'react';
+import React, {CSSProperties, useEffect, useState, useCallback} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
@@ -27,7 +27,7 @@ const MaxParticipantsPerRow = 10;
 
 const RecordingView = () => {
     const {formatMessage} = useIntl();
-    const screenPlayerRef = useRef<HTMLVideoElement>(null);
+    const [screenPlayerNode, setScreenPlayerNode] = useState<HTMLVideoElement|null>(null);
     const [screenStream, setScreenStream] = useState<MediaStream|null>(null);
     const callsClient = window.callsClient;
     const channelID = callsClient?.channelID || '';
@@ -76,10 +76,14 @@ const RecordingView = () => {
     }, [callsClient]);
 
     useEffect(() => {
-        if (screenStream && screenPlayerRef.current && screenPlayerRef.current?.srcObject !== screenStream) {
-            screenPlayerRef.current.srcObject = screenStream;
+        if (screenStream && screenPlayerNode && screenPlayerNode.srcObject !== screenStream) {
+            screenPlayerNode.srcObject = screenStream;
         }
-    }, [screenStream]);
+    }, [screenStream, screenPlayerNode]);
+
+    const screenRefCb = useCallback((node) => {
+        setScreenPlayerNode(node);
+    }, []);
 
     if (!callsClient) {
         return null;
@@ -102,7 +106,7 @@ const RecordingView = () => {
         return (
             <div style={style.screenContainer as CSSProperties}>
                 <video
-                    ref={screenPlayerRef}
+                    ref={screenRefCb}
                     id='screen-player'
                     width='100%'
                     height='100%'
