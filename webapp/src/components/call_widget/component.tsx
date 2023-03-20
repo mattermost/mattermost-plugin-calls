@@ -132,7 +132,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private readonly screenPlayer = React.createRef<HTMLVideoElement>();
     private prevDevicePixelRatio = 0;
 
-    private genStyle = () => {
+    private genStyle: () => Record<string, React.CSSProperties> = () => {
         return {
             main: {
                 position: 'fixed',
@@ -140,10 +140,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 bottom: `${this.props.position ? this.props.position.bottom : 12}px`,
                 left: `${this.props.position ? this.props.position.left : 12}px`,
                 lineHeight: '16px',
-                zIndex: '1000',
+                zIndex: 1000,
                 userSelect: 'none',
                 color: this.props.theme.centerChannelColor,
-                height: '84px',
             },
             topBar: {
                 background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
@@ -161,15 +160,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 width: '100%',
                 alignItems: 'center',
             },
-            status: {
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+            frame: {
                 width: '100%',
                 background: this.props.theme.centerChannelBg,
-                border: '2px solid rgba(var(--center-channel-color-rgb), 0.16)',
                 borderRadius: '8px',
+                boxShadow: '0px 0px 0px 2px rgba(var(--center-channel-color-rgb), 0.16)',
             },
             callInfo: {
                 display: 'flex',
@@ -534,8 +529,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const widget = this.node.current;
 
         if (widget) {
-            const widgetMenu = widget.children[0];
-            const baseWidget = widget.children[1];
+            const widgetMenu = widget.children[1];
+            const baseWidget = widget.children[2];
 
             // No strict need to be pixel perfect here since the window will be transparent
             // and better to overestimate slightly to avoid the widget possibly being cut.
@@ -790,7 +785,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={this.style.screenSharingPanel as CSSProperties}
+                    style={this.style.screenSharingPanel}
                 >
                     <div
                         style={{position: 'relative', width: '80%', maxHeight: '188px', background: '#C4C4C4'}}
@@ -1332,7 +1327,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <div className='Menu'>
                 <ul
                     className='Menu__content dropdown-menu'
-                    style={this.style.settingsMenu as CSSProperties}
+                    style={this.style.settingsMenu}
                 >
                     {this.props.allowScreenSharing && !widerWidget && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
@@ -1792,7 +1787,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const widerWidget = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
         const mainStyle = {
-            ...this.style.main as CSSProperties,
+            ...this.style.main,
             width: widerWidget ? '280px' : '216px',
             ...(this.props.global && {appRegion: 'drag'}),
         };
@@ -1827,7 +1822,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {this.renderMenu(widerWidget)}
                 </div>
 
-                <div style={this.style.status as CSSProperties}>
+                <div style={this.style.frame}>
                     <div
                         style={this.style.topBar}
                         // eslint-disable-next-line no-undefined
