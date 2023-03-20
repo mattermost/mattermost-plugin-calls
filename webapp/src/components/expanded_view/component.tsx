@@ -1034,10 +1034,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 tooltipSubtext={muteTooltipSubtext}
                                 // eslint-disable-next-line no-undefined
                                 shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
-                                bgColor={isMuted ? 'var(--dnd-indicator)' : 'rgba(61, 184, 135, 0.16)'}
-                                bgColorHover={isMuted ? 'var(--dnd-indicator)' : 'rgba(61, 184, 135, 0.20)'}
-                                iconFill={isMuted ? 'rgba(255, 255, 255, 0.80)' : 'rgba(61, 184, 135, 0.80)'}
-                                iconFillHover={isMuted ? 'white' : 'rgba(61, 184, 135, 0.80)'}
+                                bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
+                                bgColorHover={isMuted ? '' : 'rgba(61, 184, 135, 0.20)'}
+                                iconFill={isMuted ? '' : 'rgba(61, 184, 135, 0.80)'}
+                                iconFillHover={isMuted ? '' : 'rgba(61, 184, 135, 0.80)'}
                                 icon={
                                     <MuteIcon
                                         style={{
