@@ -423,11 +423,21 @@ export default class Plugin {
                     }
                 };
 
-                const rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
+                // DEPRECATED
+                let rootComponentID: string;
+
+                // This is only needed to support desktop versions < 5.3 that
+                // didn't implement the global widget and mounted the expanded view
+                // on top of the center channel view.
+                if (window.desktop) {
+                    rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
+                }
 
                 window.callsClient.on('close', (err?: Error) => {
                     unmountCallWidget();
-                    registry.unregisterComponent(rootComponentID);
+                    if (window.desktop) {
+                        registry.unregisterComponent(rootComponentID);
+                    }
                     if (window.callsClient) {
                         if (err) {
                             store.dispatch(displayCallErrorModal(window.callsClient.channelID, err));
