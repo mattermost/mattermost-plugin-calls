@@ -2,7 +2,7 @@ import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
-import {getUserIdxForTest, getChannelNameForTest} from '../utils';
+import {getUserIdxForTest} from '../utils';
 
 const userIdx = getUserIdxForTest();
 

@@ -2,8 +2,6 @@ import {test, expect, chromium} from '@playwright/test';
 
 import {userState, baseURL, defaultTeam, pluginID} from '../constants';
 
-import {getChannelNameForTest} from '../utils';
-
 import PlaywrightDevPage from '../page';
 
 test.beforeEach(async ({page, context}) => {
@@ -15,8 +13,6 @@ test.describe('call recordings', () => {
     test.use({storageState: userState.users[6].storageStatePath});
 
     test('recording - slash command', async ({page}) => {
-        const channelName = getChannelNameForTest();
-
         // start call
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
