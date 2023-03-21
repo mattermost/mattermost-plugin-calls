@@ -1,7 +1,6 @@
 /* eslint-disable max-lines */
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {compareSemVer} from 'semver-parser';
 
 import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
@@ -47,7 +46,6 @@ import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import HandEmoji from 'src/components/icons/hand';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
 import TickIcon from 'src/components/icons/tick';
-import Shortcut from 'src/components/shortcut';
 import Badge from 'src/components/badge';
 import {AudioInputPermissionsError} from 'src/client';
 import {Emoji} from 'src/components/emoji/emoji';
@@ -159,6 +157,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 justifyContent: 'flex-end',
                 width: '100%',
                 alignItems: 'center',
+                gap: '6px',
             },
             frame: {
                 width: '100%',
@@ -196,15 +195,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 minWidth: 'revert',
                 maxWidth: 'revert',
             },
-            leaveCallButton: {
-                display: 'flex',
-                alignItems: 'center',
-                height: '28px',
-                width: '28px',
-                borderRadius: '4px',
-                background: 'var(--dnd-indicator)',
-                marginRight: '0',
-            },
             settingsMenu: {
                 position: 'relative',
                 width: '100%',
@@ -224,7 +214,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             expandButton: {
                 position: 'absolute' as const,
-                right: '12px',
+                right: '6px',
                 top: '8px',
                 margin: 0,
             },
@@ -872,7 +862,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 tooltipSubtext={shareScreenTooltipSubtext}
                 // eslint-disable-next-line no-undefined
                 shortcut={noScreenPermissions ? undefined : reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}
-                bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.12)' : ''}
+                bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.16)' : ''}
                 icon={<ShareIcon style={{width: '18px', height: '18px', fill}}/>}
                 unavailable={this.state.alerts.missingScreenPermissions.active}
                 disabled={sharingID !== '' && !isSharing}
@@ -1076,7 +1066,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <button
                         className='style--none'
                         style={{
-                            background: device.deviceId === currentDevice?.deviceId ? 'rgba(28, 88, 217, 0.12)' : '',
+                            background: device.deviceId === currentDevice?.deviceId ? 'rgba(28, 88, 217, 0.08)' : '',
                             lineHeight: '20px',
                             padding: '8px 20px',
                             display: 'flex',
@@ -1174,7 +1164,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         };
 
         if ((deviceType === 'input' && this.state.showAudioInputDevicesMenu) || (deviceType === 'output' && this.state.showAudioOutputDevicesMenu)) {
-            buttonStyle.background = 'rgba(var(--center-channel-color-rgb), 0.1)';
+            buttonStyle.background = 'rgba(var(--center-channel-color-rgb), 0.08)';
         }
 
         return (
@@ -1858,44 +1848,32 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         className='calls-widget-bottom-bar'
                         style={this.style.bottomBar}
                     >
-                        <OverlayTrigger
-                            key='participants'
-                            placement='top'
-                            overlay={
-                                <Tooltip id='tooltip-mute'>
-                                    {this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'})}
-                                    <Shortcut shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}/>
-                                </Tooltip>
-                            }
-                        >
-                            <button
-                                className='style--none button-controls button-controls--wide'
-                                id='calls-widget-participants-button'
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    color: this.state.showParticipantsList ? 'var(--button-bg)' : '',
-                                    background: this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.16)' : '',
-                                    marginRight: 'auto',
-                                    marginLeft: '0',
-                                    height: '28px',
-                                }}
-                                onClick={() => this.onParticipantsButtonClick()}
-                            >
-                                <ParticipantsIcon
-                                    style={{marginRight: '4px', fill: 'currentColor', width: '18px', height: '18px'}}
-                                />
 
-                                <span
-                                    style={{
-                                        fontWeight: 600,
-                                        fontSize: '14px',
-                                    }}
-                                >
-                                    {this.props.profiles.length}
-                                </span>
-                            </button>
-                        </OverlayTrigger>
+                        <WidgetButton
+                            id='calls-widget-participants-button'
+                            onToggle={this.onParticipantsButtonClick}
+                            bgColor={this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
+                            tooltipText={this.state.showParticipantsList ?
+                                formatMessage({defaultMessage: 'Hide participants'}) :
+                                formatMessage({defaultMessage: 'Show participants'})}
+                            shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
+                            icon={
+                                <ParticipantsIcon
+                                    style={{width: '18px', height: '18px', fill: this.state.showParticipantsList ? 'var(--button-bg)' : ''}}
+                                />
+                            }
+                            style={{marginRight: 'auto'}}
+                        >
+                            <span
+                                style={{
+                                    fontWeight: 600,
+                                    fontSize: '14px',
+                                    color: this.state.showParticipantsList ? 'var(--button-bg)' : '',
+                                }}
+                            >
+                                {this.props.profiles.length}
+                            </span>
+                        </WidgetButton>
 
                         <WidgetButton
                             id='voice-mute-unmute'
@@ -1945,32 +1923,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                     }}
                                 />
                             }
-                            bgColor={this.state.showMenu ? 'rgba(var(--button-bg-rgb), 0.16)' : ''}
+                            bgColor={this.state.showMenu ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
                         />
 
-                        <OverlayTrigger
-                            key='leave'
-                            placement='top'
-                            overlay={
-                                <Tooltip id='tooltip-leave'>
-                                    {formatMessage({defaultMessage: 'Leave call'})}
-                                    <Shortcut shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}/>
-                                </Tooltip>
-                            }
-                        >
-
-                            <button
-                                id='calls-widget-leave-button'
-                                className='style--none button-controls'
-                                style={this.style.leaveCallButton}
-                                onClick={this.onDisconnectClick}
-                            >
+                        <WidgetButton
+                            id='calls-widget-leave-button'
+                            onToggle={this.onDisconnectClick}
+                            icon={
                                 <LeaveCallIcon
                                     style={{width: '18px', height: '18px', fill: 'white'}}
                                 />
-                            </button>
-                        </OverlayTrigger>
-
+                            }
+                            bgColor='var(--dnd-indicator)'
+                            bgColorHover='var(--dnd-indicator)'
+                            shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
+                            tooltipText={formatMessage({defaultMessage: 'Leave call'})}
+                        />
                     </div>
                 </div>
             </div>
