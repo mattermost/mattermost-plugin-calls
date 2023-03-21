@@ -235,7 +235,15 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 			return
 		}
 
-		p.LogInfo("call state is still in store, force ending it")
+		p.LogInfo("call state is still in store, force ending it", "channelID", channelID)
+
+		if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
+			p.LogInfo("recording is in progress, force ending it", "jobID", state.Call.Recording.JobID)
+
+			if err := p.jobService.StopJob(state.Call.Recording.JobID); err != nil {
+				p.LogError("failed to stop recording job", "error", err.Error(), "jobID", state.Call.Recording.JobID)
+			}
+		}
 
 		for connID := range state.Call.Sessions {
 			if err := p.closeRTCSession(userID, connID, channelID, state.NodeID); err != nil {
