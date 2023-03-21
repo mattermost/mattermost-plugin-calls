@@ -310,7 +310,7 @@ func (p *Plugin) removeSession(us *session) error {
 		// We still want to try to stop the recording in case the bot session disconnected without
 		// actually exiting the job.
 		if err := p.jobService.StopJob(currState.Call.Recording.JobID); err != nil {
-			p.LogError("failed to stop recording job", "error", err.Error(), "jobID", currState.Call.Recording.JobID)
+			p.LogError("failed to stop recording job", "error", err.Error(), "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
 		}
 
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
@@ -323,7 +323,7 @@ func (p *Plugin) removeSession(us *session) error {
 	if currState.Call != nil && currState.Call.Recording != nil && len(currState.Call.Users) == 1 && currState.Call.Users[p.getBotID()] != nil {
 		p.LogDebug("all users left call with recording in progress, stopping", "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
 		if err := p.jobService.StopJob(currState.Call.Recording.JobID); err != nil {
-			p.LogError("failed to stop recording job", "error", err.Error(), "jobID", currState.Call.Recording.JobID)
+			p.LogError("failed to stop recording job", "error", err.Error(), "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
 		}
 	}
 

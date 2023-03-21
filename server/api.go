@@ -238,10 +238,10 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 		p.LogInfo("call state is still in store, force ending it", "channelID", channelID)
 
 		if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
-			p.LogInfo("recording is in progress, force ending it", "jobID", state.Call.Recording.JobID)
+			p.LogInfo("recording is in progress, force ending it", "channelID", channelID, "jobID", state.Call.Recording.JobID)
 
 			if err := p.jobService.StopJob(state.Call.Recording.JobID); err != nil {
-				p.LogError("failed to stop recording job", "error", err.Error(), "jobID", state.Call.Recording.JobID)
+				p.LogError("failed to stop recording job", "error", err.Error(), "channelID", channelID, "jobID", state.Call.Recording.JobID)
 			}
 		}
 
