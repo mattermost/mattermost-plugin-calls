@@ -373,6 +373,7 @@ export default class Plugin {
                     callID: channelID,
                     title,
                     channelURL: getChannelURL(store.getState(), getChannel(store.getState(), channelID), getCurrentTeamId(store.getState())),
+                    rootID: rootId,
                 });
                 return;
             }

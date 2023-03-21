@@ -73,6 +73,7 @@ import {
     getCallID,
     getCallTitle,
     getToken,
+    getRootID,
 } from './common';
 import {applyTheme} from './theme_utils';
 import {ChannelState} from './types/calls';
@@ -96,6 +97,7 @@ function setBasename() {
 function connectCall(
     channelID: string,
     callTitle: string,
+    rootID: string,
     wsURL: string,
     iceConfigs: RTCIceServer[],
     wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void,
@@ -119,7 +121,7 @@ function connectCall(
             }
         });
 
-        window.callsClient.init(channelID, callTitle).then(() => {
+        window.callsClient.init(channelID, callTitle, rootID).then(() => {
             window.callsClient?.ws?.on('event', wsEventHandler);
         }).catch((err: Error) => {
             logErr(err);
@@ -239,6 +241,7 @@ export default async function init(cfg: InitConfig) {
     }
 
     const callTitle = getCallTitle();
+    const rootID = getRootID();
 
     // Setting the base URL if present, in case MM is running under a subpath.
     if (window.basename) {
@@ -277,7 +280,7 @@ export default async function init(cfg: InitConfig) {
         iceConfigs.push(...configs);
     }
 
-    connectCall(channelID, callTitle, getWSConnectionURL(getConfig(store.getState())), iceConfigs, (ev) => {
+    connectCall(channelID, callTitle, rootID, getWSConnectionURL(getConfig(store.getState())), iceConfigs, (ev) => {
         switch (ev.event) {
         case 'hello':
             store.dispatch(setServerVersion((ev.data as HelloData).server_version));
