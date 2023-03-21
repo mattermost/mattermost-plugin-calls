@@ -14,8 +14,8 @@ require (
 
 require (
 	github.com/Masterminds/semver v1.5.0
-	github.com/mattermost/calls-offloader v0.2.2-0.20230316012259-ef3cd9d56544
-	github.com/mattermost/calls-recorder v0.2.6-0.20230316032025-ada9181318d9
+	github.com/mattermost/calls-offloader v0.2.2
+	github.com/mattermost/calls-recorder v0.3.0
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.1.1
 	github.com/mattermost/rtcd v0.8.1-0.20230126170226-df8105fc2cf7
