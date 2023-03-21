@@ -2,12 +2,12 @@ import {chromium} from '@playwright/test';
 
 import PlaywrightDevPage from './page';
 
-export function getChannelNameForTest() {
+export function getChannelNamesForTest() {
     let idx = 0;
     if (process.env.TEST_PARALLEL_INDEX) {
         idx = parseInt(String(process.env.TEST_PARALLEL_INDEX), 10) * 2;
     }
-    return `calls${idx}`;
+    return [`calls${idx}`, `calls${idx + 1}`];
 }
 
 export function getUserIdxForTest() {

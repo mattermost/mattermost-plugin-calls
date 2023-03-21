@@ -13,12 +13,13 @@ import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 
 import {WebSocketMessage} from '@mattermost/types/websocket';
 
+import {UserConnectedData, WebsocketEventData} from '@calls/common/lib/types';
+
 import {getProfilesByIds, getPluginPath, fetchTranslationsFile} from 'plugin/utils';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {voiceConnectedProfilesInChannel} from 'plugin/selectors';
 import {VOICE_CHANNEL_USER_CONNECTED} from 'src/action_types';
-import {UserConnectedData, WebsocketEventData} from 'src/types/types';
 
 import recordingReducer from 'src/recording/reducers';
 

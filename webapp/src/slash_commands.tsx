@@ -4,7 +4,7 @@ import {CommandArgs} from '@mattermost/types/integrations';
 
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {ActionResult} from 'mattermost-redux/types/actions';
-import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 
 import {

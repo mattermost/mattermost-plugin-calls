@@ -2,18 +2,26 @@
 
 import axios from 'axios';
 
-import {defineMessage, injectIntl} from 'react-intl';
+import React from 'react';
+import ReactDOM from 'react-dom';
+import {injectIntl, IntlProvider} from 'react-intl';
+import {Provider} from 'react-redux';
+
 import {AnyAction} from 'redux';
 
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
+import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {batchActions} from 'redux-batched-actions';
+
+import {UserState} from '@calls/common/lib/types';
 
 import {
     displayFreeTrial,
@@ -21,9 +29,6 @@ import {
     displayCallErrorModal,
     showScreenSourceModal,
     displayCallsTestModeUser,
-    startCallRecording,
-    stopCallRecording,
-    displayGenericErrorModal,
 } from 'src/actions';
 
 import slashCommandsHandler from 'src/slash_commands';
@@ -38,8 +43,6 @@ import TestMode from 'src/components/admin_console_settings/test_mode';
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
-
-import {UserState} from 'src/types/types';
 
 import {DisabledCallsErr} from 'src/constants';
 
@@ -66,7 +69,6 @@ import {
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
     voiceChannelCallStartAt,
-    voiceChannelCallOwnerID,
     isLimitRestricted,
     iceServers,
     needsTURNCredentials,
@@ -76,8 +78,6 @@ import {
     callsExplicitlyEnabled,
     callsExplicitlyDisabled,
     hasPermissionsToEnableCalls,
-    voiceChannelCallHostID,
-    callRecording,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -110,8 +110,9 @@ import {
     shouldRenderDesktopWidget,
     sendDesktopEvent,
     getChannelURL,
+    getTranslations,
 } from './utils';
-import {logErr, logWarn, logDebug} from './log';
+import {logErr, logDebug} from './log';
 import {
     JOIN_CALL,
     keyToAction,
@@ -128,12 +129,11 @@ import {
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
-    SHOW_END_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
-import {PluginRegistry, Store, Translations} from './types/mattermost-webapp';
+import {PluginRegistry, Store} from './types/mattermost-webapp';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
@@ -229,6 +229,16 @@ export default class Plugin {
             Client4.setUrl(window.basename);
         }
 
+        // Register root DOM element for Calls. This is where the widget will render.
+        if (!document.getElementById('calls')) {
+            const callsRoot = document.createElement('div');
+            callsRoot.setAttribute('id', 'calls');
+            document.body.appendChild(callsRoot);
+        }
+        this.unsubscribers.push(() => {
+            document.getElementById('calls')?.remove();
+        });
+
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
@@ -242,16 +252,7 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(EndCallModal));
 
         registry.registerTranslations((locale: string) => {
-            try {
-                logDebug(`loading translations file for locale '${locale}'`);
-
-                // synchronously loading all translation files from bundle (MM-50811).
-                // eslint-disable-next-line global-require
-                return require(`../i18n/${locale}.json`);
-            } catch (err) {
-                logWarn(`failed to open translations file for locale '${locale}'`, err);
-                return {};
-            }
+            return getTranslations(locale);
         });
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
@@ -372,6 +373,7 @@ export default class Plugin {
                     callID: channelID,
                     title,
                     channelURL: getChannelURL(store.getState(), getChannel(store.getState(), channelID), getCurrentTeamId(store.getState())),
+                    rootID: rootId,
                 });
                 return;
             }
@@ -397,11 +399,46 @@ export default class Plugin {
                     wsURL: getWSConnectionURL(getConfig(store.getState())),
                     iceServers: iceConfigs,
                 });
-                const globalComponentID = registry.registerGlobalComponent(CallWidget);
-                const rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
+
+                const locale = getCurrentUserLocale(store.getState()) || 'en';
+
+                ReactDOM.render(
+                    <Provider store={store}>
+                        <IntlProvider
+                            locale={locale}
+                            key={locale}
+                            defaultLocale='en'
+                            messages={getTranslations(locale)}
+                        >
+                            <CallWidget
+                                theme={getTheme(store.getState())}
+                            />
+                        </IntlProvider>
+                    </Provider>,
+                    document.getElementById('calls'),
+                );
+                const unmountCallWidget = () => {
+                    const callsRoot = document.getElementById('calls');
+                    if (callsRoot) {
+                        ReactDOM.unmountComponentAtNode(callsRoot);
+                    }
+                };
+
+                // DEPRECATED
+                let rootComponentID: string;
+
+                // This is only needed to support desktop versions < 5.3 that
+                // didn't implement the global widget and mounted the expanded view
+                // on top of the center channel view.
+                if (window.desktop) {
+                    rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
+                }
+
                 window.callsClient.on('close', (err?: Error) => {
-                    registry.unregisterComponent(globalComponentID);
-                    registry.unregisterComponent(rootComponentID);
+                    unmountCallWidget();
+                    if (window.desktop) {
+                        registry.unregisterComponent(rootComponentID);
+                    }
                     if (window.callsClient) {
                         if (err) {
                             store.dispatch(displayCallErrorModal(window.callsClient.channelID, err));
@@ -414,6 +451,7 @@ export default class Plugin {
 
                 window.callsClient.init(channelID, title, rootId).catch((err: Error) => {
                     logErr(err);
+                    unmountCallWidget();
                     store.dispatch(displayCallErrorModal(channelID, err));
                     delete window.callsClient;
                 });

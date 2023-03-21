@@ -1,7 +1,6 @@
 import React, {ComponentProps} from 'react';
 import {useIntl} from 'react-intl';
 import {ModalHeader} from 'react-bootstrap';
-import {useDispatch} from 'react-redux';
 import styled from 'styled-components';
 
 import GenericModal from 'src/components/generic_modal';
@@ -24,7 +23,6 @@ export const CallErrorModalID = 'call-error-modal';
 
 export const CallErrorModal = (props: Props) => {
     const {formatMessage} = useIntl();
-    const dispatch = useDispatch();
 
     if (!props.err) {
         return null;
