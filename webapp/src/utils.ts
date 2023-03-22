@@ -1,37 +1,31 @@
-import {parseSemVer} from 'semver-parser';
-
-import {
-    getCurrentRelativeTeamUrl,
-    getCurrentTeamId,
-    getTeam,
-} from 'mattermost-redux/selectors/entities/teams';
-
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {Client4} from 'mattermost-redux/client';
-import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
-import {setThreadFollow} from 'mattermost-redux/actions/threads';
-
-import {Team} from '@mattermost/types/teams';
+import {UserState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
-import {UserProfile} from '@mattermost/types/users';
-
-import {GlobalState} from '@mattermost/types/store';
 import {ClientConfig} from '@mattermost/types/config';
 
-import {UserState} from '@calls/common/lib/types';
+import {GlobalState} from '@mattermost/types/store';
+
+import {Team} from '@mattermost/types/teams';
+import {UserProfile} from '@mattermost/types/users';
+import {setThreadFollow} from 'mattermost-redux/actions/threads';
+import {Client4} from 'mattermost-redux/client';
+import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
+
+import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
+
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {parseSemVer} from 'semver-parser';
+
+import {logDebug, logErr, logWarn} from './log';
 
 import {pluginId} from './manifest';
-import {logErr, logWarn, logDebug} from './log';
 
-import {
-    voiceChannelRootPost,
-} from './selectors';
-
-import {Store} from './types/mattermost-webapp';
+import {voiceChannelRootPost} from './selectors';
+import JoinSelfSound from './sounds/join_self.mp3';
+import JoinUserSound from './sounds/join_user.mp3';
 
 import LeaveSelfSound from './sounds/leave_self.mp3';
-import JoinUserSound from './sounds/join_user.mp3';
-import JoinSelfSound from './sounds/join_self.mp3';
+
+import {Store} from './types/mattermost-webapp';
 
 export function getPluginStaticPath() {
     return `${window.basename || ''}/static/plugins/${pluginId}`;
