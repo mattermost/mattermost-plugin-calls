@@ -162,18 +162,18 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: { [key: str
             };
         }
 
-        if (stateA.unmuted && !stateB.unmuted) {
-            return -1;
-        } else if (stateB.unmuted && !stateA.unmuted) {
-            return 1;
-        }
-
         if (stateA.raised_hand && !stateB.raised_hand) {
             return -1;
         } else if (stateB.raised_hand && !stateA.raised_hand) {
             return 1;
         } else if (stateA.raised_hand && stateB.raised_hand) {
             return stateA.raised_hand - stateB.raised_hand;
+        }
+
+        if (stateA.unmuted && !stateB.unmuted) {
+            return -1;
+        } else if (stateB.unmuted && !stateA.unmuted) {
+            return 1;
         }
 
         if (considerReaction) {
