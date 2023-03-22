@@ -414,6 +414,15 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 	select {
 	case <-us.wsReconnectCh:
 		p.LogDebug("reconnected, returning", "userID", userID, "connID", connID, "channelID", channelID)
+
+		// Clearing the previous session since it gets copied over after
+		// successful reconnect.
+		p.mut.Lock()
+		if p.sessions[connID] == us {
+			p.LogDebug("clearing session after reconnect", "userID", userID, "connID", connID, "channelID", channelID)
+			delete(p.sessions, connID)
+		}
+		p.mut.Unlock()
 		return nil
 	case <-us.leaveCh:
 		p.LogDebug("user left call", "userID", userID, "connID", connID, "channelID", us.channelID)
@@ -649,6 +658,14 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 	var rtc bool
 	p.mut.Lock()
 	us := p.sessions[connID]
+
+	// Covering the edge case of a client getting a new connection ID even if reconnecting
+	// to the same instance/node. In such case we need to use the previous connection ID
+	// to find the existing session.
+	if us == nil {
+		us = p.sessions[prevConnID]
+	}
+
 	if us != nil {
 		rtc = us.rtc
 		if atomic.CompareAndSwapInt32(&us.wsReconnected, 0, 1) {
@@ -660,7 +677,17 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 			return fmt.Errorf("session already reconnected")
 		}
 	} else {
-		p.LogDebug("session not found", "connID", connID)
+		if p.isHA() {
+			// If we are running in HA this case can be expected as it's likely the
+			// reconnect happened on a different node which is not storing the
+			// original session.
+			p.LogDebug("session not found", "userID", userID, "connID", connID, "channelID", channelID,
+				"originalConnID", originalConnID)
+		} else {
+			// If not running in HA, this should not happen.
+			p.LogError("session not found", "userID", userID, "connID", connID, "channelID", channelID,
+				"originalConnID", originalConnID)
+		}
 	}
 
 	us = newUserSession(userID, channelID, connID, rtc)
