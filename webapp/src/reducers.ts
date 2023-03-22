@@ -516,16 +516,33 @@ type callRecordingStateAction = {
     },
 }
 
-const callsRecordings = (state: {[callID: string]: CallRecordingState} = {}, action: callRecordingStateAction) => {
+type userDisconnectedAction = {
+    type: string,
+    data: {
+        channelID: string,
+        userID: string,
+        currentUserID: string,
+    },
+}
+
+const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, action: callRecordingStateAction | userDisconnectedAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
-    case VOICE_CHANNEL_USER_DISCONNECTED:
         return {};
-    case VOICE_CHANNEL_CALL_RECORDING_STATE:
+    case VOICE_CHANNEL_USER_DISCONNECTED: {
+        const theAction = action as userDisconnectedAction;
+        if (theAction.data.currentUserID === theAction.data.userID) {
+            return {};
+        }
+        return state;
+    }
+    case VOICE_CHANNEL_CALL_RECORDING_STATE: {
+        const theAction = action as callRecordingStateAction;
         return {
             ...state,
-            [action.data.callID]: action.data.recState,
+            [theAction.data.callID]: theAction.data.recState,
         };
+    }
     default:
         return state;
     }
