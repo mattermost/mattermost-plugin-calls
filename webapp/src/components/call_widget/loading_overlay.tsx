@@ -26,7 +26,7 @@ export default function LoadingOverlay(props: Props) {
         >
             <Body>
                 <Spinner size={16}/>
-                <Text>{formatMessage({defaultMessage: 'Connecting to the call...'})}</Text>
+                <Text>{formatMessage({defaultMessage: 'Connecting to the call…'})}</Text>
             </Body>
         </Container>
     );

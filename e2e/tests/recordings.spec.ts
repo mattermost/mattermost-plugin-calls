@@ -42,7 +42,7 @@ test.describe('call recordings', () => {
 
         // very recording ended prompt renders correctly
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
-        await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing...');
+        await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing…');
 
         // verify recording file has been posted by the bot (assumes CRT enabled)
         await page.locator('.post__body').last().locator('.ThreadFooter button.ReplyButton').click();
