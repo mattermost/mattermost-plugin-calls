@@ -114,6 +114,7 @@ function connectCall(
             iceServers: iceConfigs,
             authToken: getToken(),
         });
+        window.currentCallData = CurrentCallDataDefault;
 
         window.callsClient.on('close', (err?: Error) => {
             if (closeCb) {
@@ -352,6 +353,7 @@ declare global {
             version?: string | null;
         },
         screenSharingTrackId: string,
+        currentCallData?: CurrentCallData,
     }
 
     interface HTMLVideoElement {

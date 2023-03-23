@@ -262,7 +262,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showUsersJoined: [],
             audioEls: [],
             alerts: CallAlertStatesDefault,
-            recDisclaimerDismissedAt: 0,
+            recDisclaimerDismissedAt: window.currentCallData?.recording.promptDismissedAt || 0,
             connecting: true,
         };
         this.node = React.createRef();
@@ -1440,7 +1440,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 body={body}
                 confirmText={confirmText}
                 declineText={isHost ? null : formatMessage({defaultMessage: 'Leave call'})}
-                onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
+                onClose={() => {
+                    this.setState({recDisclaimerDismissedAt: Date.now()});
+                    if (window.currentCallData) {
+                        window.currentCallData.recording.promptDismissedAt = Date.now();
+                    }
+                }}
                 onDecline={this.onDisconnectClick}
             />
         );

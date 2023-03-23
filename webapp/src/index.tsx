@@ -45,6 +45,7 @@ import UDPServerAddress from 'src/components/admin_console_settings/udp_server_a
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 
 import {DisabledCallsErr} from 'src/constants';
+import {CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     handleUserConnected,
@@ -399,6 +400,7 @@ export default class Plugin {
                     wsURL: getWSConnectionURL(getConfig(store.getState())),
                     iceServers: iceConfigs,
                 });
+                window.currentCallData = CurrentCallDataDefault;
 
                 const locale = getCurrentUserLocale(store.getState()) || 'en';
 
@@ -445,6 +447,7 @@ export default class Plugin {
                         }
                         window.callsClient.destroy();
                         delete window.callsClient;
+                        delete window.currentCallData;
                         playSound('leave_self');
                     }
                 });
@@ -782,6 +785,7 @@ declare global {
             version?: string | null;
         },
         screenSharingTrackId: string,
+        currentCallData?: CurrentCallData,
     }
 
     interface HTMLVideoElement {

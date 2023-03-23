@@ -44,7 +44,7 @@ export default function RecordingInfoPrompt(props: Props) {
         return Math.round(props.recordingMaxDuration - callDurationMinutes);
     }, [props.recording?.start_at, props.recordingMaxDuration]);
 
-    const [dismissedAt, updateDismissedAt] = useState(0);
+    const [dismissedAt, updateDismissedAt] = useState(() => (window.opener ? window.opener.currentCallData?.recording.promptDismissedAt || 0 : 0));
     const [recordingWillEndSoon, updateRecordingWillEndSoon] = useState(0);
 
     useEffect(() => {
@@ -60,6 +60,13 @@ export default function RecordingInfoPrompt(props: Props) {
     const hasRecEnded = props.recording?.end_at;
 
     const {formatMessage} = useIntl();
+
+    const updateDismissed = () => {
+        updateDismissedAt(Date.now());
+        if (window.opener && window.opener.currentCallData) {
+            window.opener.currentCallData.recording.promptDismissedAt = Date.now();
+        }
+    };
 
     if (props.isHost && !hasRecEnded && recordingWillEndSoon > dismissedAt) {
         return (
@@ -81,7 +88,7 @@ export default function RecordingInfoPrompt(props: Props) {
                     defaultMessage: 'Your recording will end in {count, plural, =1 {# minute} other {# minutes}}.'}
                 , {count: getMinutesLeftBeforeEnd()})}
                 confirmText={formatMessage({defaultMessage: 'Dismiss'})}
-                onClose={() => updateDismissedAt(Date.now())}
+                onClose={updateDismissed}
             />
         );
     }
@@ -153,7 +160,7 @@ export default function RecordingInfoPrompt(props: Props) {
             error={error}
             confirmText={confirmText}
             declineText={declineText}
-            onClose={() => updateDismissedAt(Date.now())}
+            onClose={updateDismissed}
             onDecline={props.onDecline}
         />
     );

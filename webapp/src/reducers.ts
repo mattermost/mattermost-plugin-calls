@@ -565,7 +565,7 @@ const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, actio
             [action.data.channelID]: {
                 ...state[action.data.channelID],
                 hostID: action.data.hostID,
-                hostChangeAt: Date.now(),
+                hostChangeAt: action.data.hostChangeAt || state[action.data.channelID].hostChangeAt,
             },
         };
     case VOICE_CHANNEL_CALL_START:
