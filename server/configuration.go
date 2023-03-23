@@ -461,6 +461,16 @@ func (p *Plugin) isSingleHandler() bool {
 	return !isHA || (isHA && hasEnvVar)
 }
 
+func (p *Plugin) isHA() bool {
+	cfg := p.API.GetConfig()
+
+	if cfg == nil {
+		return false
+	}
+
+	return cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
+}
+
 func (c *configuration) getICEServers(forClient bool) ICEServersConfigs {
 	var iceServers ICEServersConfigs
 
