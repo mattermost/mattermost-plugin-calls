@@ -1,39 +1,31 @@
-import {parseSemVer} from 'semver-parser';
-
-import {
-    getCurrentRelativeTeamUrl,
-    getCurrentTeamId,
-    getTeam,
-} from 'mattermost-redux/selectors/entities/teams';
-
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-
-import {Client4} from 'mattermost-redux/client';
-
-import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
-import {setThreadFollow} from 'mattermost-redux/actions/threads';
-
-import {Team} from '@mattermost/types/teams';
+import {UserState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
-import {UserProfile} from '@mattermost/types/users';
-
-import {GlobalState} from '@mattermost/types/store';
 import {ClientConfig} from '@mattermost/types/config';
 
-import {UserState} from './types/types';
+import {GlobalState} from '@mattermost/types/store';
+
+import {Team} from '@mattermost/types/teams';
+import {UserProfile} from '@mattermost/types/users';
+import {setThreadFollow} from 'mattermost-redux/actions/threads';
+import {Client4} from 'mattermost-redux/client';
+import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
+
+import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
+
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {parseSemVer} from 'semver-parser';
+
+import {logDebug, logErr, logWarn} from './log';
 
 import {pluginId} from './manifest';
-import {logErr, logDebug} from './log';
 
-import {
-    voiceChannelRootPost,
-} from './selectors';
-
-import {Store} from './types/mattermost-webapp';
+import {voiceChannelRootPost} from './selectors';
+import JoinSelfSound from './sounds/join_self.mp3';
+import JoinUserSound from './sounds/join_user.mp3';
 
 import LeaveSelfSound from './sounds/leave_self.mp3';
-import JoinUserSound from './sounds/join_user.mp3';
-import JoinSelfSound from './sounds/join_self.mp3';
+
+import {Store} from './types/mattermost-webapp';
 
 export function getPluginStaticPath() {
     return `${window.basename || ''}/static/plugins/${pluginId}`;
@@ -164,18 +156,18 @@ export function stateSortProfiles(profiles: UserProfile[], statuses: { [key: str
             };
         }
 
-        if (stateA.unmuted && !stateB.unmuted) {
-            return -1;
-        } else if (stateB.unmuted && !stateA.unmuted) {
-            return 1;
-        }
-
         if (stateA.raised_hand && !stateB.raised_hand) {
             return -1;
         } else if (stateB.raised_hand && !stateA.raised_hand) {
             return 1;
         } else if (stateA.raised_hand && stateB.raised_hand) {
             return stateA.raised_hand - stateB.raised_hand;
+        }
+
+        if (stateA.unmuted && !stateB.unmuted) {
+            return -1;
+        } else if (stateB.unmuted && !stateA.unmuted) {
+            return 1;
         }
 
         if (considerReaction) {
@@ -375,4 +367,41 @@ export function sendDesktopEvent(event: string, data?: Record<string, unknown>) 
 
 export function capitalize(input: string) {
     return input.charAt(0).toUpperCase() + input.slice(1);
+}
+
+export async function fetchTranslationsFile(locale: string) {
+    if (locale === 'en') {
+        return {};
+    }
+    try {
+        // eslint-disable-next-line global-require
+        const filename = require(`../i18n/${locale}.json`).default;
+        if (!filename) {
+            throw new Error(`translations file not found for locale '${locale}'`);
+        }
+        const res = await fetch(filename.indexOf('/') === 0 ? getPluginStaticPath() + filename : filename);
+        const translations = await res.json();
+        logDebug(`loaded i18n file for locale '${locale}'`);
+        return translations;
+    } catch (err) {
+        logWarn(`failed to load i18n file for locale '${locale}':`, err);
+        return {};
+    }
+}
+
+export function untranslatable(msg: string) {
+    return msg;
+}
+
+export function getTranslations(locale: string) {
+    try {
+        logDebug(`loading translations file for locale '${locale}'`);
+
+        // synchronously loading all translation files from bundle (MM-50811).
+        // eslint-disable-next-line global-require
+        return require(`../i18n/${locale}.json`);
+    } catch (err) {
+        logWarn(`failed to open translations file for locale '${locale}'`, err);
+        return {};
+    }
 }

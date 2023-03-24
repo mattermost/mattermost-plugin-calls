@@ -1,15 +1,17 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {CSSProperties, useEffect, useRef, useState} from 'react';
+import React, {CSSProperties, useEffect, useState, useCallback} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
-import {GlobalState} from '@mattermost/types/lib/store';
+import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 
+import {UserState} from '@calls/common/lib/types';
+
 import {logErr} from 'plugin/log';
-import {alphaSortProfiles, getUserDisplayName, stateSortProfiles} from 'plugin/utils';
-import {UserState} from 'plugin/types/types';
+import {alphaSortProfiles, getUserDisplayName, stateSortProfiles, untranslatable} from 'plugin/utils';
 import Avatar from 'plugin/components/avatar/avatar';
 import CallParticipant from 'plugin/components/expanded_view/call_participant';
 import {voiceChannelCallHostID, voiceChannelScreenSharingID, voiceConnectedProfiles, voiceUsersStatuses} from 'src/selectors';
@@ -24,7 +26,8 @@ import Timestamp from './timestamp';
 const MaxParticipantsPerRow = 10;
 
 const RecordingView = () => {
-    const screenPlayerRef = useRef<HTMLVideoElement>(null);
+    const {formatMessage} = useIntl();
+    const [screenPlayerNode, setScreenPlayerNode] = useState<HTMLVideoElement|null>(null);
     const [screenStream, setScreenStream] = useState<MediaStream|null>(null);
     const callsClient = window.callsClient;
     const channelID = callsClient?.channelID || '';
@@ -73,10 +76,14 @@ const RecordingView = () => {
     }, [callsClient]);
 
     useEffect(() => {
-        if (screenStream && screenPlayerRef.current && screenPlayerRef.current?.srcObject !== screenStream) {
-            screenPlayerRef.current.srcObject = screenStream;
+        if (screenStream && screenPlayerNode && screenPlayerNode.srcObject !== screenStream) {
+            screenPlayerNode.srcObject = screenStream;
         }
-    }, [screenStream]);
+    }, [screenStream, screenPlayerNode]);
+
+    const screenRefCb = useCallback((node) => {
+        setScreenPlayerNode(node);
+    }, []);
 
     if (!callsClient) {
         return null;
@@ -94,12 +101,12 @@ const RecordingView = () => {
             return null;
         }
 
-        const msg = `You are viewing ${getUserDisplayName(profile)}'s screen`;
+        const msg = `You're viewing ${getUserDisplayName(profile)}'s screen`;
 
         return (
             <div style={style.screenContainer as CSSProperties}>
                 <video
-                    ref={screenPlayerRef}
+                    ref={screenRefCb}
                     id='screen-player'
                     width='100%'
                     height='100%'
@@ -193,7 +200,7 @@ const RecordingView = () => {
                     url={pictures[speakingProfile.id]}
                 />
                 <span style={{marginLeft: '8px'}}>{getUserDisplayName(speakingProfile)}</span>
-                <span style={{fontWeight: 400}}>{' is talking...'}</span>
+                <span style={{fontWeight: 400}}>{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
             </div>
         );
     };
@@ -225,7 +232,9 @@ const RecordingView = () => {
                 style={style.footer}
             >
                 <Timestamp/>
-                <span style={{marginLeft: '4px'}}>{`• ${profiles.length} participants`}</span>
+                <span style={{marginLeft: '4px'}}>
+                    {untranslatable('• ')}{formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: profiles.length})}
+                </span>
                 { hasScreenShare && renderSpeaking() }
             </div>
         </div>

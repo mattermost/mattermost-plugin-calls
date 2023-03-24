@@ -3,14 +3,20 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {WebSocketMessage} from '@mattermost/types/websocket';
 
 import {
-    CallHostChangedData, CallRecordingStateData,
+    CallHostChangedData,
+    CallRecordingStateData,
     CallStartData,
     EmptyData,
     Reaction,
     UserConnectedData,
     UserDisconnectedData,
-    UserMutedUnmutedData, UserRaiseUnraiseHandData, UserReactionData, UserScreenOnOffData, UserVoiceOnOffData,
-} from 'src/types/types';
+    UserMutedUnmutedData,
+    UserRaiseUnraiseHandData,
+    UserReactionData,
+    UserScreenOnOffData,
+    UserVoiceOnOffData,
+} from '@calls/common/lib/types';
+
 import {REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 
 import {Store} from './types/mattermost-webapp';
@@ -280,6 +286,10 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
 }
 
 export function handleCallRecordingState(store: Store, ev: WebSocketMessage<CallRecordingStateData>) {
+    if (ev.data.recState.err) {
+        ev.data.recState.error_at = Date.now();
+    }
+
     store.dispatch({
         type: VOICE_CHANNEL_CALL_RECORDING_STATE,
         data: {

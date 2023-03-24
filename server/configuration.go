@@ -426,6 +426,11 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 			*cfg.MaxCallParticipants = cloudPaidMaxParticipantsDefault
 		}
 	}
+
+	cfg.ICEHostOverride = strings.TrimSpace(cfg.ICEHostOverride)
+	cfg.UDPServerAddress = strings.TrimSpace(cfg.UDPServerAddress)
+	cfg.RTCDServiceURL = strings.TrimSpace(cfg.RTCDServiceURL)
+	cfg.JobServiceURL = strings.TrimSpace(cfg.JobServiceURL)
 }
 
 func (p *Plugin) isSingleHandler() bool {
@@ -447,6 +452,16 @@ func (p *Plugin) isSingleHandler() bool {
 	hasEnvVar := os.Getenv("MM_CALLS_IS_HANDLER") != ""
 
 	return !isHA || (isHA && hasEnvVar)
+}
+
+func (p *Plugin) isHA() bool {
+	cfg := p.API.GetConfig()
+
+	if cfg == nil {
+		return false
+	}
+
+	return cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
 }
 
 func (c *configuration) getICEServers(forClient bool) ICEServersConfigs {

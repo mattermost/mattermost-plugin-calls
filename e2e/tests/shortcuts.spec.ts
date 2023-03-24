@@ -4,6 +4,9 @@ import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
+import {getUserIdxForTest} from '../utils';
+
+const userIdx = getUserIdxForTest();
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -11,13 +14,13 @@ test.beforeEach(async ({page, context}) => {
 });
 
 test.describe('keyboard shortcuts', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('join/leave call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
 
         // Solely needed to wait till the page has loaded.
-        await expect(page.locator('[aria-label="channel header region"] button:has-text("Start Call")')).toBeVisible();
+        await expect(page.locator('[aria-label="channel header region"] button:has-text("Start call")')).toBeVisible();
 
         if (process.platform === 'darwin') {
             await page.keyboard.press('Meta+Alt+S');

@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -76,17 +77,21 @@ type config struct {
 	duration      time.Duration
 	unmuted       bool
 	screenSharing bool
+	recording     bool
 	simulcast     bool
 }
 
 type user struct {
+	userID      string
 	cfg         config
+	client      *model.Client4
 	pc          *webrtc.PeerConnection
 	dc          *webrtc.DataChannel
 	connectedCh chan struct{}
 	doneCh      chan struct{}
 	iceCh       chan webrtc.ICECandidateInit
 	initCh      chan struct{}
+	isHost      bool
 
 	// WebSocket
 	wsCloseCh chan struct{}
@@ -193,6 +198,23 @@ func (u *user) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 			}
 		}
 	}
+}
+
+func (u *user) startRecording() error {
+	log.Printf("%s: starting recording", u.cfg.username)
+	res, err := u.client.DoAPIRequest(http.MethodPost,
+		fmt.Sprintf("%s/plugins/com.mattermost.calls/calls/%s/recording/start", u.client.URL, u.cfg.channelID), "", "")
+	defer res.Body.Close()
+
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+
+	if res.StatusCode == 200 {
+		return nil
+	}
+
+	return fmt.Errorf("unexpected status code %d", res.StatusCode)
 }
 
 func (u *user) transmitScreen(simulcast bool) {
@@ -420,6 +442,14 @@ func (u *user) initRTC() error {
 		if connectionState == webrtc.ICEConnectionStateConnected {
 			log.Printf("%s: rtc connected", u.cfg.username)
 			close(u.connectedCh)
+
+			if u.cfg.recording && u.isHost {
+				if err := u.startRecording(); err != nil {
+					log.Printf("%s: failed to start recording: %s", u.cfg.username, err)
+				} else {
+					log.Printf("%s: recording started successfully", u.cfg.username)
+				}
+			}
 		}
 
 		if connectionState == webrtc.ICEConnectionStateDisconnected || connectionState == webrtc.ICEConnectionStateFailed {
@@ -661,6 +691,16 @@ func (u *user) wsListen(authToken string) {
 
 			wsServerSeq = ev.GetSequence() + 1
 
+			if ev.EventType() == "custom_com.mattermost.calls_call_start" {
+				channelID, _ := ev.GetData()["channelID"].(string)
+				hostID, _ := ev.GetData()["host_id"].(string)
+				if channelID == u.cfg.channelID && hostID == u.userID {
+					log.Printf("%s: I am call host", u.cfg.username)
+					u.isHost = true
+				}
+				continue
+			}
+
 			if connID, ok := ev.GetData()["connID"].(string); !ok || (connID != wsConnID && connID != originalConnID) {
 				continue
 			}
@@ -711,6 +751,7 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 
 	var user *model.User
 	client := model.NewAPIv4Client(u.cfg.siteURL)
+	u.client = client
 	// login (or create) user
 	user, _, err := client.Login(u.cfg.username, u.cfg.password)
 	appErr, ok := err.(*model.AppError)
@@ -730,13 +771,14 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 		if err != nil {
 			return err
 		}
-		_, _, err = client.Login(u.cfg.username, u.cfg.password)
+		user, _, err = client.Login(u.cfg.username, u.cfg.password)
 		if err != nil {
 			return err
 		}
 	}
 
 	log.Printf("%s: logged in", u.cfg.username)
+	u.userID = user.Id
 
 	// join team
 	_, _, err = client.AddTeamMember(u.cfg.teamID, user.Id)
@@ -794,6 +836,7 @@ func main() {
 	var numScreenSharing int
 	var numCalls int
 	var numUsersPerCall int
+	var numRecordings int
 	var simulcast bool
 
 	flag.StringVar(&teamID, "team", "", "The team ID to start calls in")
@@ -803,6 +846,7 @@ func main() {
 	flag.StringVar(&userPassword, "user-password", "testPass123$", "user password")
 	flag.IntVar(&numUnmuted, "unmuted", 0, "The number of unmuted users per call")
 	flag.IntVar(&numScreenSharing, "screen-sharing", 0, "The number of users screen-sharing")
+	flag.IntVar(&numRecordings, "recordings", 0, "The number of calls to record")
 	flag.IntVar(&offset, "offset", 0, "The user offset")
 	flag.IntVar(&numCalls, "calls", 1, "The number of calls to start")
 	flag.IntVar(&numUsersPerCall, "users-per-call", 1, "The number of participants per call")
@@ -863,6 +907,10 @@ func main() {
 		log.Fatalf("screen-sharing cannot be greater than the number of calls")
 	}
 
+	if numRecordings > numCalls {
+		log.Fatalf("recordings cannot be greater than the number of calls")
+	}
+
 	adminClient := model.NewAPIv4Client(siteURL)
 	_, _, err = adminClient.Login(adminUsername, adminPassword)
 	if err != nil {
@@ -919,7 +967,7 @@ func main() {
 	for j := 0; j < numCalls; j++ {
 		log.Printf("starting call in %s", channels[j].DisplayName)
 		for i := 0; i < numUsersPerCall; i++ {
-			go func(idx int, channelID string, teamID string, channelType model.ChannelType, unmuted, screenSharing bool) {
+			go func(idx int, channelID string, teamID string, channelType model.ChannelType, unmuted, screenSharing, recording bool) {
 				username := fmt.Sprintf("%s%d", userPrefix, idx)
 				if unmuted {
 					log.Printf("%s: going to transmit voice", username)
@@ -947,6 +995,7 @@ func main() {
 					duration:      dur,
 					unmuted:       unmuted,
 					screenSharing: screenSharing,
+					recording:     recording,
 					simulcast:     simulcast,
 				}
 
@@ -954,7 +1003,7 @@ func main() {
 				if err := user.Connect(stopCh, channelType); err != nil {
 					log.Printf("connectUser failed: %s", err.Error())
 				}
-			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, channels[j].Type, i < numUnmuted, i == 0 && j < numScreenSharing)
+			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, channels[j].Type, i < numUnmuted, i == 0 && j < numScreenSharing, j < numRecordings)
 		}
 	}
 

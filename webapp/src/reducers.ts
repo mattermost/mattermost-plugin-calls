@@ -1,56 +1,48 @@
 /* eslint-disable max-lines */
-import {combineReducers} from 'redux';
+import {CallRecordingState, CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
 
 import {UserProfile} from '@mattermost/types/users';
+import {combineReducers} from 'redux';
 
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 
-import {
-    CallsConfigDefault,
-    CallsConfig,
-    UserState,
-    CallsUserPreferences,
-    CallsUserPreferencesDefault,
-    Reaction,
-    CallRecordingState,
-    ChannelState,
-} from './types/types';
+import {CallsConfigDefault, CallsUserPreferences, CallsUserPreferencesDefault, ChannelState} from 'src/types/types';
 
 import {
+    DESKTOP_WIDGET_CONNECTED,
+    HIDE_END_CALL_MODAL,
+    HIDE_EXPANDED_VIEW,
+    HIDE_SCREEN_SOURCE_MODAL,
+    HIDE_SWITCH_CALL_MODAL,
+    RECEIVED_CALLS_CONFIG,
+    RECEIVED_CALLS_USER_PREFERENCES,
+    RECEIVED_CHANNEL_STATE,
+    SHOW_END_CALL_MODAL,
+    SHOW_EXPANDED_VIEW,
+    SHOW_SCREEN_SOURCE_MODAL,
+    SHOW_SWITCH_CALL_MODAL,
+    VOICE_CHANNEL_CALL_END,
+    VOICE_CHANNEL_CALL_HOST,
+    VOICE_CHANNEL_CALL_RECORDING_STATE,
+    VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_PROFILE_CONNECTED,
+    VOICE_CHANNEL_PROFILES_CONNECTED,
+    VOICE_CHANNEL_ROOT_POST,
+    VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_DISCONNECTED,
-    VOICE_CHANNEL_USERS_CONNECTED,
-    VOICE_CHANNEL_USERS_CONNECTED_STATES,
-    VOICE_CHANNEL_PROFILES_CONNECTED,
-    VOICE_CHANNEL_PROFILE_CONNECTED,
     VOICE_CHANNEL_USER_MUTED,
-    VOICE_CHANNEL_USER_UNMUTED,
-    VOICE_CHANNEL_USER_VOICE_ON,
-    VOICE_CHANNEL_USER_VOICE_OFF,
-    VOICE_CHANNEL_CALL_START,
-    VOICE_CHANNEL_CALL_END,
-    VOICE_CHANNEL_USER_SCREEN_ON,
-    VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
-    VOICE_CHANNEL_USER_UNRAISE_HAND,
-    VOICE_CHANNEL_UNINIT,
-    VOICE_CHANNEL_ROOT_POST,
-    VOICE_CHANNEL_CALL_HOST,
-    SHOW_EXPANDED_VIEW,
-    HIDE_EXPANDED_VIEW,
-    SHOW_SWITCH_CALL_MODAL,
-    HIDE_SWITCH_CALL_MODAL,
-    SHOW_SCREEN_SOURCE_MODAL,
-    HIDE_SCREEN_SOURCE_MODAL,
-    RECEIVED_CALLS_CONFIG,
-    SHOW_END_CALL_MODAL,
-    HIDE_END_CALL_MODAL,
-    RECEIVED_CHANNEL_STATE,
-    RECEIVED_CALLS_USER_PREFERENCES,
-    DESKTOP_WIDGET_CONNECTED,
     VOICE_CHANNEL_USER_REACTED,
     VOICE_CHANNEL_USER_REACTED_TIMEOUT,
-    VOICE_CHANNEL_CALL_RECORDING_STATE,
+    VOICE_CHANNEL_USER_SCREEN_OFF,
+    VOICE_CHANNEL_USER_SCREEN_ON,
+    VOICE_CHANNEL_USER_UNMUTED,
+    VOICE_CHANNEL_USER_UNRAISE_HAND,
+    VOICE_CHANNEL_USER_VOICE_OFF,
+    VOICE_CHANNEL_USER_VOICE_ON,
+    VOICE_CHANNEL_USERS_CONNECTED,
+    VOICE_CHANNEL_USERS_CONNECTED_STATES,
 } from './action_types';
 
 interface channelStateAction {
@@ -228,7 +220,7 @@ interface usersStatusesAction {
 interface userReactionsState {
     [channelID: string]: {
         reactions: Reaction[],
-    }
+    };
 }
 
 const queueReactions = (state: Reaction[], reaction: Reaction) => {
@@ -518,15 +510,33 @@ type callRecordingStateAction = {
     },
 }
 
-const callsRecordings = (state: {[callID: string]: CallRecordingState} = {}, action: callRecordingStateAction) => {
+type userDisconnectedAction = {
+    type: string,
+    data: {
+        channelID: string,
+        userID: string,
+        currentUserID: string,
+    },
+}
+
+const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, action: callRecordingStateAction | userDisconnectedAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
-    case VOICE_CHANNEL_CALL_RECORDING_STATE:
+    case VOICE_CHANNEL_USER_DISCONNECTED: {
+        const theAction = action as userDisconnectedAction;
+        if (theAction.data.currentUserID === theAction.data.userID) {
+            return {};
+        }
+        return state;
+    }
+    case VOICE_CHANNEL_CALL_RECORDING_STATE: {
+        const theAction = action as callRecordingStateAction;
         return {
             ...state,
-            [action.data.callID]: action.data.recState,
+            [theAction.data.callID]: theAction.data.recState,
         };
+    }
     default:
         return state;
     }
@@ -545,7 +555,7 @@ interface callStateAction {
     data: callState,
 }
 
-const voiceChannelCalls = (state: {[channelID: string]: callState} = {}, action: callStateAction) => {
+const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, action: callStateAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
@@ -595,6 +605,14 @@ const voiceChannelScreenSharingID = (state: { [channelID: string]: string } = {}
             ...state,
             [action.data.channelID]: action.data.userID,
         };
+    case VOICE_CHANNEL_USER_DISCONNECTED: {
+        // If the user who disconnected matches the one sharing we
+        // want to fallthrough and clear the state.
+        if (action.data.userID !== state[action.data.channelID]) {
+            return state;
+        }
+    }
+    // eslint-disable-next-line no-fallthrough
     case VOICE_CHANNEL_CALL_END:
     case VOICE_CHANNEL_USER_SCREEN_OFF:
         return {

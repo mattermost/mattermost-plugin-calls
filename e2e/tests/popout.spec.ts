@@ -2,10 +2,12 @@ import {test, expect} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
-import {getChannelNameForTest} from '../utils';
+import {getChannelNamesForTest, getUserIdxForTest} from '../utils';
+
+const userIdx = getUserIdxForTest();
 
 test.describe('popout window', () => {
-    test.use({storageState: userState.users[4].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('popout opens muted', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -27,7 +29,7 @@ test.describe('popout window', () => {
 
     test('popout opens in a DM channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[0].username);
+        await devPage.gotoDM(userState.users[userIdx + 1].username);
         await devPage.startCall();
 
         const [popOut, _] = await Promise.all([
@@ -48,8 +50,8 @@ test.describe('popout window', () => {
             page.click('#calls-widget-expand-button'),
         ]);
         await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
-        await expect(popOut).toHaveTitle(`Call - ${getChannelNameForTest()}`);
-        await expect(page).not.toHaveTitle(`Call - ${getChannelNameForTest()}`);
+        await expect(popOut).toHaveTitle(`Call - ${getChannelNamesForTest()[0]}`);
+        await expect(page).not.toHaveTitle(`Call - ${getChannelNamesForTest()[0]}`);
 
         await popOut.locator('#calls-popout-leave-button').click();
     });
@@ -83,7 +85,7 @@ test.describe('popout window', () => {
 
     test('supports chat in a DM channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[0].username);
+        await devPage.gotoDM(userState.users[userIdx + 1].username);
         await devPage.startCall();
 
         const [popOut, _] = await Promise.all([

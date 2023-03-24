@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import {useIntl} from 'react-intl';
 import styled, {css} from 'styled-components';
 
 export type Props = {
@@ -6,6 +7,7 @@ export type Props = {
 }
 
 export default function LoadingOverlay(props: Props) {
+    const {formatMessage} = useIntl();
     const [animationEnded, setAnimationEnded] = useState(false);
 
     if (!props.visible && animationEnded) {
@@ -18,12 +20,13 @@ export default function LoadingOverlay(props: Props) {
 
     return (
         <Container
+            data-testid={'calls-widget-loading-overlay'}
             visible={props.visible}
             onAnimationEnd={onAnimationEnd}
         >
             <Body>
                 <Spinner size={16}/>
-                <Text>{'Connecting to the call...'}</Text>
+                <Text>{formatMessage({defaultMessage: 'Connecting to the call…'})}</Text>
             </Body>
         </Container>
     );

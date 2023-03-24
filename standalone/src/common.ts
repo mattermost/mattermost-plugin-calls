@@ -8,6 +8,11 @@ export function getCallTitle() {
     return params.get('title') || '';
 }
 
+export function getRootID() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('root_id') || '';
+}
+
 export function getToken() {
     if (!window.location.hash) {
         return '';

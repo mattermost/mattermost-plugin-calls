@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-api/cluster"
+	"github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/mattermost/rtcd/service/random"
 
@@ -244,7 +245,14 @@ func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, 
 		return "", fmt.Errorf("failed to get server configuration")
 	}
 
-	siteURL := *serverCfg.ServiceSettings.SiteURL
+	var siteURL string
+	if serverCfg.ServiceSettings.SiteURL == nil {
+		s.ctx.LogWarn("SiteURL is not set, using default")
+		siteURL = model.ServiceSettingsDefaultSiteURL
+	} else {
+		siteURL = *serverCfg.ServiceSettings.SiteURL
+	}
+
 	maxDuration := int64(*cfg.MaxRecordingDuration * 60)
 
 	job, err := s.RunJob(offloader.JobConfig{

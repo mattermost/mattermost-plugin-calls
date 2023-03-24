@@ -1,12 +1,14 @@
 import React from 'react';
+import {useIntl} from 'react-intl';
 
 import {CSSObject} from 'styled-components';
+
+import {Reaction} from '@calls/common/lib/types';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 import MutedIcon from 'src/components/icons/muted_icon';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import Avatar from 'src/components/avatar/avatar';
-import {Reaction} from 'src/types/types';
 import {Emoji} from 'src/components/emoji/emoji';
 
 export type Props = {
@@ -20,6 +22,7 @@ export type Props = {
 }
 
 export default function CallParticipant(props: Props) {
+    const {formatMessage} = useIntl();
     const MuteIcon = props.isMuted ? MutedIcon : UnmutedIcon;
 
     if (!props.pictureURL) {
@@ -102,7 +105,7 @@ export default function CallParticipant(props: Props) {
                         lineHeight: '16px',
                     }}
                 >
-                    {'Host'}
+                    {formatMessage({defaultMessage: 'Host'})}
                 </span>
             }
         </li>
