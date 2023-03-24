@@ -78,6 +78,8 @@ type clientConfig struct {
 	EnableRecordings *bool
 	// The maximum duration (in minutes) for call recordings.
 	MaxRecordingDuration *int
+	// When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.
+	EnableSimulcast *bool
 }
 
 const (
@@ -176,6 +178,7 @@ func (c *configuration) getClientConfig() clientConfig {
 		AllowScreenSharing:   c.AllowScreenSharing,
 		EnableRecordings:     c.EnableRecordings,
 		MaxRecordingDuration: c.MaxRecordingDuration,
+		EnableSimulcast:      c.EnableSimulcast,
 	}
 }
 
@@ -207,6 +210,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.MaxRecordingDuration == nil {
 		c.MaxRecordingDuration = model.NewInt(defaultRecDurationMinutes)
+	}
+	if c.EnableSimulcast == nil {
+		c.EnableSimulcast = new(bool)
 	}
 }
 
@@ -292,6 +298,10 @@ func (c *configuration) Clone() *configuration {
 
 	if c.MaxRecordingDuration != nil {
 		cfg.MaxRecordingDuration = model.NewInt(*c.MaxRecordingDuration)
+	}
+
+	if c.EnableSimulcast != nil {
+		cfg.EnableSimulcast = model.NewBool(*c.EnableSimulcast)
 	}
 
 	return &cfg

@@ -78,6 +78,7 @@ import {
     callsExplicitlyEnabled,
     callsExplicitlyDisabled,
     hasPermissionsToEnableCalls,
+    callsConfig,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -384,8 +385,9 @@ export default class Plugin {
                     return;
                 }
 
-                const iceConfigs = [...iceServers(store.getState())];
-                if (needsTURNCredentials(store.getState())) {
+                const state = store.getState();
+                const iceConfigs = [...iceServers(state)];
+                if (needsTURNCredentials(state)) {
                     logDebug('turn credentials needed');
                     try {
                         const resp = await axios.get(`${getPluginPath()}/turn-credentials`);
@@ -396,11 +398,12 @@ export default class Plugin {
                 }
 
                 window.callsClient = new CallsClient({
-                    wsURL: getWSConnectionURL(getConfig(store.getState())),
+                    wsURL: getWSConnectionURL(getConfig(state)),
                     iceServers: iceConfigs,
+                    simulcast: callsConfig(state).EnableSimulcast,
                 });
 
-                const locale = getCurrentUserLocale(store.getState()) || 'en';
+                const locale = getCurrentUserLocale(state) || 'en';
 
                 ReactDOM.render(
                     <Provider store={store}>
@@ -411,7 +414,7 @@ export default class Plugin {
                             messages={getTranslations(locale)}
                         >
                             <CallWidget
-                                theme={getTheme(store.getState())}
+                                theme={getTheme(state)}
                             />
                         </IntlProvider>
                     </Provider>,

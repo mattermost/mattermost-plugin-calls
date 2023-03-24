@@ -15,6 +15,7 @@ export const CallsConfigDefault: CallsConfig = {
     EnableRecordings: false,
     MaxRecordingDuration: 60,
     sku_short_name: '',
+    EnableSimulcast: false,
 };
 
 export type ChannelState = {
@@ -26,6 +27,7 @@ export type CallsClientConfig = {
     wsURL: string;
     authToken?: string;
     iceServers: RTCIceServer[];
+    simulcast?: boolean;
 }
 
 export type AudioDevices = {

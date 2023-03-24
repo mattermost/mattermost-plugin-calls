@@ -225,6 +225,7 @@ export default class CallsClient extends EventEmitter {
                     logWarn,
                     logInfo,
                 },
+                simulcast: this.config.simulcast,
             });
 
             this.peer = peer;
