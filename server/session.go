@@ -286,6 +286,12 @@ func (p *Plugin) removeSession(us *session) error {
 		p.publishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
 			"userID": us.userID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+
+		// If the removed user was sharing we should send out a screen off event.
+		if prevState.Call.ScreenSharingID != "" && (currState.Call == nil || currState.Call.ScreenSharingID == "") {
+			p.LogDebug("removed session was sharing, sending screen off event", "userID", us.userID, "connID", us.connID)
+			p.publishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+		}
 	}
 
 	// Checking if the host has changed.
@@ -298,6 +304,15 @@ func (p *Plugin) removeSession(us *session) error {
 	// Checking if the recording has ended due to the bot leaving.
 	if prevState.Call != nil && prevState.Call.Recording != nil && currState.Call != nil && currState.Call.Recording != nil &&
 		currState.Call.Recording.EndAt > prevState.Call.Recording.EndAt {
+
+		p.LogDebug("recording bot left the call, attempting to stop job", "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
+
+		// We still want to try to stop the recording in case the bot session disconnected without
+		// actually exiting the job.
+		if err := p.jobService.StopJob(currState.Call.Recording.JobID); err != nil {
+			p.LogError("failed to stop recording job", "error", err.Error(), "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
+		}
+
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   us.channelID,
 			"recState": currState.Call.Recording.getClientState().toMap(),
@@ -308,13 +323,13 @@ func (p *Plugin) removeSession(us *session) error {
 	if currState.Call != nil && currState.Call.Recording != nil && len(currState.Call.Users) == 1 && currState.Call.Users[p.getBotID()] != nil {
 		p.LogDebug("all users left call with recording in progress, stopping", "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
 		if err := p.jobService.StopJob(currState.Call.Recording.JobID); err != nil {
-			p.LogError("failed to stop recording job", "error", err.Error(), "jobID", currState.Call.Recording.JobID)
+			p.LogError("failed to stop recording job", "error", err.Error(), "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
 		}
 	}
 
 	// Check if call has ended.
 	if prevState.Call != nil && currState.Call == nil {
-		dur, err := p.updateCallThreadEnded(prevState.Call.ThreadID)
+		dur, err := p.updateCallPostEnded(prevState.Call.PostID)
 		if err != nil {
 			return err
 		}

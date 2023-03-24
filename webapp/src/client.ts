@@ -5,15 +5,14 @@ import {EventEmitter} from 'events';
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
-import {CallsClientConfig, AudioDevices, CallsClientStats, TrackInfo, EmojiData} from 'src/types/types';
+import {parseRTCStats, RTCPeer, RTCMonitor} from '@calls/common';
+import {EmojiData} from '@calls/common/lib/types';
 
-import RTCPeer from './rtcpeer';
-import RTCMonitor from './rtc_monitor';
+import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo} from 'src/types/types';
 
 import {getScreenStream, setSDPMaxVideoBW} from './utils';
-import {logErr, logDebug} from './log';
+import {logErr, logDebug, logWarn, logInfo} from './log';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
-import {parseRTCStats} from './rtc_stats';
 
 export const AudioInputPermissionsError = new Error('missing audio input permissions');
 export const AudioInputMissingError = new Error('no audio input available');
@@ -30,6 +29,7 @@ export default class CallsClient extends EventEmitter {
     public ws: WebSocketClient | null;
     private localScreenTrack: MediaStreamTrack | null = null;
     private remoteScreenTrack: MediaStreamTrack | null = null;
+    private remoteVoiceTracks: MediaStreamTrack[];
     public currentAudioInputDevice: MediaDeviceInfo | null = null;
     public currentAudioOutputDevice: MediaDeviceInfo | null = null;
     private voiceTrackAdded: boolean;
@@ -41,7 +41,8 @@ export default class CallsClient extends EventEmitter {
     private readonly onDeviceChange: () => void;
     private readonly onBeforeUnload: () => void;
     private closed = false;
-    private initTime = Date.now();
+    private connected = false;
+    public initTime = Date.now();
     private rtcMonitor: RTCMonitor | null = null;
 
     constructor(config: CallsClientConfig) {
@@ -53,6 +54,7 @@ export default class CallsClient extends EventEmitter {
         this.currentAudioInputDevice = null;
         this.voiceTrackAdded = false;
         this.streams = [];
+        this.remoteVoiceTracks = [];
         this.stream = null;
         this.audioDevices = {inputs: [], outputs: []};
         this.isHandRaised = false;
@@ -154,7 +156,7 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
-    public async init(channelID: string, title?: string) {
+    public async init(channelID: string, title?: string, rootId?: string) {
         this.channelID = channelID;
 
         if (!window.isSecureContext) {
@@ -166,6 +168,10 @@ export default class CallsClient extends EventEmitter {
 
         try {
             await this.initAudio();
+            if (this.closed) {
+                this.cleanup();
+                return;
+            }
         } catch (err) {
             this.emit('error', err);
         }
@@ -206,6 +212,7 @@ export default class CallsClient extends EventEmitter {
                 ws.send('join', {
                     channelID,
                     title,
+                    threadID: rootId,
                 });
             }
         });
@@ -215,14 +222,27 @@ export default class CallsClient extends EventEmitter {
 
             const peer = new RTCPeer({
                 iceServers: this.config.iceServers || [],
+                logger: {
+                    logDebug,
+                    logErr,
+                    logWarn,
+                    logInfo,
+                },
             });
 
             this.peer = peer;
 
-            this.rtcMonitor = new RTCMonitor(peer, {
+            this.rtcMonitor = new RTCMonitor({
+                peer,
+                logger: {
+                    logDebug,
+                    logErr,
+                    logWarn,
+                    logInfo,
+                },
                 monitorInterval: rtcMonitorInterval,
             });
-            this.rtcMonitor.on('mos', (mos) => this.emit('mos', mos));
+            this.rtcMonitor.on('mos', (mos: number) => this.emit('mos', mos));
 
             peer.on('offer', (sdp) => {
                 logDebug(`local signal: ${JSON.stringify(sdp)}`);
@@ -262,6 +282,7 @@ export default class CallsClient extends EventEmitter {
 
                 if (remoteStream.getAudioTracks().length > 0) {
                     this.emit('remoteVoiceStream', remoteStream);
+                    this.remoteVoiceTracks.push(...remoteStream.getAudioTracks());
                 } else if (remoteStream.getVideoTracks().length > 0) {
                     this.emit('remoteScreenStream', remoteStream);
                     this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
@@ -271,8 +292,8 @@ export default class CallsClient extends EventEmitter {
             peer.on('connect', () => {
                 logDebug('rtc connected');
                 this.emit('connect');
-
                 this.rtcMonitor?.start();
+                this.connected = true;
             });
 
             peer.on('close', () => {
@@ -396,12 +417,7 @@ export default class CallsClient extends EventEmitter {
             this.peer = null;
         }
 
-        this.streams.forEach((s) => {
-            s.getTracks().forEach((track) => {
-                track.stop();
-                track.dispatchEvent(new Event('ended'));
-            });
-        });
+        this.cleanup();
 
         if (this.ws) {
             this.ws.send('leave');
@@ -410,6 +426,15 @@ export default class CallsClient extends EventEmitter {
         }
 
         this.emit('close', err);
+    }
+
+    private cleanup() {
+        this.streams.forEach((s) => {
+            s.getTracks().forEach((track) => {
+                track.stop();
+                track.dispatchEvent(new Event('ended'));
+            });
+        });
     }
 
     public isMuted() {
@@ -482,10 +507,20 @@ export default class CallsClient extends EventEmitter {
     }
 
     public getRemoteScreenStream(): MediaStream|null {
-        if (!this.remoteScreenTrack) {
+        if (!this.remoteScreenTrack || this.remoteScreenTrack.readyState !== 'live') {
             return null;
         }
         return new MediaStream([this.remoteScreenTrack]);
+    }
+
+    public getRemoteVoiceTracks(): MediaStreamTrack[] {
+        const tracks = [];
+        for (const track of this.remoteVoiceTracks) {
+            if (track.readyState === 'live') {
+                tracks.push(track);
+            }
+        }
+        return tracks;
     }
 
     public setScreenStream(screenStream: MediaStream) {
@@ -603,5 +638,9 @@ export default class CallsClient extends EventEmitter {
 
     public getAudioDevices() {
         return this.audioDevices;
+    }
+
+    public isConnecting() {
+        return !this.connected && !this.closed;
     }
 }

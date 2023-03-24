@@ -4,6 +4,7 @@ import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {userState} from '../constants';
+import {getUserIdxForTest, getChannelNamesForTest} from '../utils';
 
 declare global {
     interface Window {
@@ -12,7 +13,13 @@ declare global {
     }
 }
 
-test.beforeEach(async ({page, context}) => {
+const userIdx = getUserIdxForTest();
+
+test.beforeEach(async ({page, context}, info) => {
+    // Small optimization to avoid loading an unnecessary channel.
+    if (info.title === 'system console') {
+        return;
+    }
     const devPage = new PlaywrightDevPage(page);
     await devPage.goto();
 });
@@ -27,9 +34,9 @@ test.describe('start/join call in channel with calls disabled', () => {
         await page.locator('#post_textbox').fill('/call start');
         await page.locator('[data-testid=SendMessageButton]').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
-        await expect(page.locator('#create_post div.has-error label')).toBeVisible();
-        const text = await page.textContent('#create_post div.has-error label');
-        expect(text).toBe('Cannot start or join call: calls are disabled in this channel.');
+
+        await expect(page.locator('#calls_generic_error').filter({has: page.getByText('Calls are disabled in this channel.')})).toBeVisible();
+        await page.keyboard.press('Escape');
 
         await devPage.enableCalls();
     });
@@ -41,16 +48,16 @@ test.describe('start/join call in channel with calls disabled', () => {
         await page.locator('#post_textbox').fill('/call join');
         await page.locator('[data-testid=SendMessageButton]').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
-        await expect(page.locator('#create_post div.has-error label')).toBeVisible();
-        const text = await page.textContent('#create_post div.has-error label');
-        expect(text).toBe('Cannot start or join call: calls are disabled in this channel.');
+
+        await expect(page.locator('#calls_generic_error').filter({has: page.getByText('Calls are disabled in this channel.')})).toBeVisible();
+        await page.keyboard.press('Escape');
 
         await devPage.enableCalls();
     });
 });
 
 test.describe('start new call', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('channel header button', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -71,16 +78,89 @@ test.describe('start new call', () => {
 
     test('dm channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[1].username);
+        await devPage.gotoDM(userState.users[userIdx + 1].username);
         await devPage.startCall();
         await devPage.wait(1000);
         expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('dm-calls-widget-bottom-bar.png');
         await devPage.leaveCall();
     });
+
+    test('cannot start call twice', async ({page, context}) => {
+        await page.locator('#post_textbox').fill('/call start');
+        await page.locator('[data-testid=SendMessageButton]').click();
+        await expect(page.locator('#calls-widget')).toBeVisible();
+
+        await page.locator('#post_textbox').fill('/call start');
+        await page.locator('[data-testid=SendMessageButton]').click();
+        await expect(page.locator('#calls-widget')).toBeVisible();
+
+        await expect(page.locator('#calls_generic_error').filter({has: page.getByText('A call is already ongoing in the channel.')})).toBeVisible();
+        await page.keyboard.press('Escape');
+
+        await page.locator('#post_textbox').fill('/call leave');
+        await page.locator('[data-testid=SendMessageButton]').click();
+        await expect(page.locator('#calls-widget')).toBeHidden();
+    });
+
+    test('slash command from existing thread', async ({page, context}) => {
+        // create a test thread
+        await page.locator('#post_textbox').fill('test thread');
+        await page.locator('[data-testid=SendMessageButton]').click();
+        const post = page.locator('.post-message__text').last();
+        await expect(post).toBeVisible();
+
+        // open RHS
+        await post.click();
+        await expect(page.locator('#rhsContainer')).toBeVisible();
+
+        // send slash command in thread to start a call.
+        await page.locator('#reply_textbox').fill('/call start');
+        await page.locator('#reply_textbox').press('Control+Enter');
+        await expect(page.locator('#calls-widget')).toBeVisible();
+
+        // verify the call post is created in the thread.
+        await expect(page.locator('#rhsContainer').filter({has: page.getByText(`${userState.users[userIdx].username} started a call`)})).toBeVisible();
+
+        await page.locator('#reply_textbox').fill('/call leave');
+        await page.locator('#reply_textbox').press('Control+Enter');
+        await expect(page.locator('#calls-widget')).toBeHidden();
+    });
+
+    test('verify no one is talking…', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        await expect(page.locator('#calls-widget').filter({has: page.getByText('No one is talking…')})).toBeVisible();
+
+        await devPage.leaveCall();
+    });
+
+    test('ws reconnect', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        const reconnected = await page.evaluate(() => {
+            return new Promise((resolve) => {
+                window.callsClient.ws.on('open', (connID: string, originalConnID: string, isReconnect: boolean) => {
+                    resolve(isReconnect);
+                });
+                window.callsClient.ws.ws.close();
+            });
+        });
+
+        expect(reconnected).toBe(true);
+
+        // Waiting a bit to make extra sure connection won't close after a timeout.
+        await devPage.wait(15000);
+
+        await devPage.leaveCall();
+    });
 });
 
 test.describe('desktop', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('screen sharing < 5.1.0', async ({page}) => {
         await page.evaluate(() => {
@@ -131,7 +211,7 @@ test.describe('desktop', () => {
 });
 
 test.describe('auto join link', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('public channel', async ({page, context}) => {
         await page.locator('#post_textbox').fill('/call link');
@@ -155,7 +235,7 @@ test.describe('auto join link', () => {
 
     test('dm channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[1].username);
+        await devPage.gotoDM(userState.users[userIdx + 1].username);
 
         await page.locator('#post_textbox').fill('/call link');
         await page.locator('[data-testid=SendMessageButton]').click();
@@ -178,7 +258,7 @@ test.describe('auto join link', () => {
 });
 
 test.describe('setting audio input device', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('no default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -251,7 +331,7 @@ test.describe('setting audio input device', () => {
 });
 
 test.describe('setting audio output device', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('no default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -324,7 +404,7 @@ test.describe('setting audio output device', () => {
 });
 
 test.describe('switching products', () => {
-    test.use({storageState: userState.users[0].storageStatePath});
+    test.use({storageState: userState.users[userIdx].storageStatePath});
 
     test('boards', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -342,9 +422,39 @@ test.describe('switching products', () => {
         await expect(devPage.page.locator('#calls-widget')).toBeVisible();
 
         await devPage.page.locator('#calls-widget-participants-button').click();
-        const participantsList = devPage.page.locator('#calls-widget-participants-menu');
+        const participantsList = devPage.page.locator('#calls-widget-participants-list');
         await expect(participantsList).toBeVisible();
         expect(await participantsList.screenshot()).toMatchSnapshot('calls-widget-participants-list-boards.png');
+
+        await devPage.leaveCall();
+    });
+});
+
+test.describe('switching views', () => {
+    test.use({storageState: userState.admin.storageStatePath});
+
+    test('system console', async ({page}) => {
+        // Using the second channel allocated for the test to avoid a potential
+        // race condition with a previous test making use of the system admin.
+        const channelName = getChannelNamesForTest()[1];
+        const devPage = new PlaywrightDevPage(page);
+        devPage.goToChannel(channelName);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        // Switch to admin console
+        await devPage.page.locator('#product_switch_menu').click();
+        await expect(devPage.page.locator('#product-switcher-menu-dropdown')).toBeVisible();
+        await devPage.page.locator('#product-switcher-menu-dropdown').locator('li', {hasText: 'System Console'}).click();
+
+        // Verify widget is still rendered
+        await expect(devPage.page.locator('#calls-widget')).toBeVisible();
+
+        // Switch back to channel
+        await devPage.page.locator('a.backstage-navbar__back').click();
+
+        // Verify widget is still rendered
+        await expect(devPage.page.locator('#calls-widget')).toBeVisible();
 
         await devPage.leaveCall();
     });

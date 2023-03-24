@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 
 export type Props = {
+    id: string,
     text: string,
     textSize: number,
     icon: React.ReactNode,
@@ -17,6 +18,7 @@ export type Props = {
 export default function Badge(props: Props) {
     return (
         <Container
+            data-testid={props.id}
             bgColor={props.bgColor}
             size={props.textSize}
             margin={props.margin}
@@ -70,7 +72,7 @@ const Spinner = styled.span<{size: number}>`
   height: ${({size}) => size}px;
   border-radius: 50%;
   display: inline-block;
-  border-top: 2px solid #FFF;
+  border-top: 2px solid currentColor;
   border-right: 2px solid transparent;
   box-sizing: border-box;
   animation: spin 1s linear infinite;

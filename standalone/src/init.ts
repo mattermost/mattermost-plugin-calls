@@ -67,12 +67,13 @@ import {
     UserState,
     UserVoiceOnOffData,
     WebsocketEventData,
-} from 'src/types/types';
+} from '@calls/common/lib/types';
 
 import {
     getCallID,
     getCallTitle,
     getToken,
+    getRootID,
 } from './common';
 import {applyTheme} from './theme_utils';
 import {ChannelState} from './types/calls';
@@ -96,10 +97,11 @@ function setBasename() {
 function connectCall(
     channelID: string,
     callTitle: string,
+    rootID: string,
     wsURL: string,
     iceConfigs: RTCIceServer[],
     wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void,
-    closeCb?: () => void,
+    closeCb?: (err?: Error) => void,
 ) {
     try {
         if (window.callsClient) {
@@ -113,18 +115,18 @@ function connectCall(
             authToken: getToken(),
         });
 
-        window.callsClient.on('close', () => {
+        window.callsClient.on('close', (err?: Error) => {
             if (closeCb) {
-                closeCb();
+                closeCb(err);
             }
         });
 
-        window.callsClient.init(channelID, callTitle).then(() => {
+        window.callsClient.init(channelID, callTitle, rootID).then(() => {
             window.callsClient?.ws?.on('event', wsEventHandler);
         }).catch((err: Error) => {
             logErr(err);
             if (closeCb) {
-                closeCb();
+                closeCb(err);
             }
         });
     } catch (err) {
@@ -239,6 +241,7 @@ export default async function init(cfg: InitConfig) {
     }
 
     const callTitle = getCallTitle();
+    const rootID = getRootID();
 
     // Setting the base URL if present, in case MM is running under a subpath.
     if (window.basename) {
@@ -277,7 +280,7 @@ export default async function init(cfg: InitConfig) {
         iceConfigs.push(...configs);
     }
 
-    connectCall(channelID, callTitle, getWSConnectionURL(getConfig(store.getState())), iceConfigs, (ev) => {
+    connectCall(channelID, callTitle, rootID, getWSConnectionURL(getConfig(store.getState())), iceConfigs, (ev) => {
         switch (ev.event) {
         case 'hello':
             store.dispatch(setServerVersion((ev.data as HelloData).server_version));
@@ -323,7 +326,6 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_user_reacted`:
             handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);
-
             break;
         default:
         }

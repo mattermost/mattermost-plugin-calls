@@ -26,8 +26,11 @@ import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/enti
 
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 
+import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
+
 import {getChannelURL} from 'src/utils';
-import {CallsConfig, CallsUserPreferences, ChannelState, Reaction, UserState} from 'src/types/types';
+
+import {CallsUserPreferences, ChannelState} from 'src/types/types';
 
 import {pluginId} from './manifest';
 
@@ -266,8 +269,6 @@ export const callsUserPreferences = (state: GlobalState): CallsUserPreferences =
 
 export const shouldPlayJoinUserSound = (state: GlobalState): boolean =>
     numUsersInConnectedChannel(state) < callsUserPreferences(state).joinSoundParticipantsThreshold;
-
-export const getClientError = (state: GlobalState) => pluginState(state).clientErr;
 
 export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
     const license = getLicense(state);

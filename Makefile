@@ -54,9 +54,16 @@ gomod-check:
 	@echo Checking go mod files consistency
 	go mod tidy -v && git --no-pager diff --exit-code go.mod go.sum || (echo "Please run \"go mod tidy\" and commit the changes in go.mod and go.sum." && exit 1)
 
+## Check i18 files
+.PHONY: i18n-check
+i18n-check:
+	@echo Checking i18n files
+	cd webapp && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
+	cd standalone && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
+
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: apply golangci-lint webapp/node_modules standalone/node_modules gomod-check
+check-style: apply golangci-lint webapp/node_modules standalone/node_modules gomod-check i18n-check
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
@@ -160,20 +167,12 @@ else
 	cd standalone && $(NPM) run debug;
 endif
 
-## Builds the webapp on ci -- dependencies are handled by the npm-dependencies step in ci
-.PHONY: webapp-ci
-webapp-ci:
-	cd webapp && $(NPM) run build
-
-## Builds the standalone apps on ci -- dependencies are handled by the npm-dependencies step in ci
-.PHONY: standalone-ci
-standalone-ci:
-	cd standalone && $(NPM) run build
-
 ## Generates a tar bundle of the plugin for install.
 .PHONY: bundle
 bundle:
 	rm -rf dist/
+	rm -rf webapp/dist/i18n
+	rm -rf standalone/dist/i18n
 	mkdir -p dist/$(PLUGIN_ID)
 	./build/bin/manifest dist
 ifneq ($(wildcard $(ASSETS_DIR)/.),)
@@ -199,11 +198,13 @@ endif
 
 ## Builds and bundles the plugin.
 .PHONY: dist
-dist:	apply server webapp standalone bundle
+dist:
 
-## Builds and bundles the plugin on ci.
-.PHONY: dist-ci
-dist-ci:	apply server-ci webapp-ci standalone-ci bundle
+ifeq ($(CI),true)
+dist: apply server-ci webapp standalone bundle
+else
+dist: apply server webapp standalone bundle
+endif
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
@@ -270,6 +271,16 @@ gotestsum:
 
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
+
+ifeq ($(CI),true)
+test-ci: apply webapp/node_modules standalone/node_modules gotestsum
+ifneq ($(HAS_SERVER),)
+	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./...
+endif
+ifneq ($(HAS_WEBAPP),)
+	cd webapp && $(NPM) run test;
+endif
+else
 test: apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/...
@@ -280,16 +291,6 @@ endif
 ifneq ($(wildcard ./build/sync/plan/.),)
 	cd ./build/sync && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
 endif
-
-## Runs any lints and unit tests defined for the server and webapp, if they exist, optimized
-## for a CI environment.
-.PHONY: test-ci
-test-ci: apply webapp/node_modules standalone/node_modules gotestsum
-ifneq ($(HAS_SERVER),)
-	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./...
-endif
-ifneq ($(HAS_WEBAPP),)
-	cd webapp && $(NPM) run test;
 endif
 
 ## Creates a coverage report for the server code.
@@ -315,6 +316,7 @@ test-e2e-update-snapshots:
 i18n-extract:
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run extract
+	cd standalone && $(NPM) run extract
 endif
 
 ## Disable the plugin.

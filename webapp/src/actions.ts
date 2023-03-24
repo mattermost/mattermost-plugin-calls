@@ -1,6 +1,8 @@
 import {Dispatch} from 'redux';
 import axios from 'axios';
 
+import {MessageDescriptor} from 'react-intl';
+
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {Client4} from 'mattermost-redux/client';
@@ -11,7 +13,10 @@ import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
-import {CallsConfig} from 'src/types/types';
+import {ClientError} from 'mattermost-redux/client/client4';
+
+import {CallsConfig} from '@calls/common/lib/types';
+
 import * as Telemetry from 'src/types/telemetry';
 import {getPluginPath} from 'src/utils';
 import {modals, openPricingModal} from 'src/webapp_globals';
@@ -26,6 +31,7 @@ import {
     CallErrorModal,
 } from 'src/components/call_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
+import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 
 import {
     SHOW_EXPANDED_VIEW,
@@ -36,7 +42,6 @@ import {
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_END_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
-    RECEIVED_CLIENT_ERROR,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
 
@@ -150,7 +155,8 @@ export const requestOnPremTrialLicense = async (users: number, termsAccepted: bo
         return {data: response};
     } catch (e) {
         // In the event that the status code returned is 451, this request has been blocked because it originated from an embargoed country
-        return {error: e.message, data: {status: e.status_code}};
+        const err = e as ClientError;
+        return {error: err.message, data: {status: err.status_code}};
     }
 };
 
@@ -160,24 +166,14 @@ export const endCall = (channelID: string) => {
 };
 
 export const displayCallErrorModal = (channelID: string, err: Error) => (dispatch: Dispatch<GenericAction>) => {
-    dispatch({
-        type: RECEIVED_CLIENT_ERROR,
-        data: {
-            channelID,
-            err,
-        },
-    });
     dispatch(modals.openModal({
         modalId: CallErrorModalID,
         dialogType: CallErrorModal,
+        dialogProps: {
+            channelID,
+            err,
+        },
     }));
-};
-
-export const clearClientError = () => (dispatch: Dispatch<GenericAction>) => {
-    dispatch({
-        type: RECEIVED_CLIENT_ERROR,
-        data: null,
-    });
 };
 
 export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => {
@@ -228,6 +224,7 @@ export const startCallRecording = (callID: string) => (dispatch: Dispatch<Generi
                     start_at: 0,
                     end_at: 0,
                     err: err.message,
+                    error_at: Date.now(),
                 },
             },
         });
@@ -246,6 +243,21 @@ export const displayCallsTestModeUser = () => {
         dispatch(modals.openModal({
             modalId: IDTestModeUser,
             dialogType: CallsInTestModeModal,
+        }));
+
+        return {};
+    };
+};
+
+export const displayGenericErrorModal = (title: MessageDescriptor, message: MessageDescriptor) => {
+    return async (dispatch: DispatchFunc) => {
+        dispatch(modals.openModal({
+            modalId: IDGenericErrorModal,
+            dialogType: GenericErrorModal,
+            dialogProps: {
+                title,
+                message,
+            },
         }));
 
         return {};

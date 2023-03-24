@@ -53,6 +53,11 @@ func (p *Plugin) LogError(msg string, keyValuePairs ...interface{}) {
 	p.API.LogError(msg, args...)
 }
 
+func (p *Plugin) LogWarn(msg string, keyValuePairs ...interface{}) {
+	args := append([]interface{}{"origin", getErrOrigin()}, keyValuePairs...)
+	p.API.LogWarn(msg, args...)
+}
+
 type logger struct {
 	p *Plugin
 }

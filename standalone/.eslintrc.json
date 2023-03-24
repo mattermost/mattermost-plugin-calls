@@ -1,7 +1,8 @@
 {
   "extends": [
-      "eslint:recommended",
-      "plugin:react-hooks/recommended"
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:react-hooks/recommended"
   ],
   "parserOptions": {
     "ecmaVersion": 8,
@@ -13,10 +14,13 @@
       "experimentalObjectRestSpread": true
     }
   },
-  "parser": "babel-eslint",
+  "parser": "@typescript-eslint/parser",
   "plugins": [
+    "@typescript-eslint",
     "react",
-    "import"
+    "import",
+    "formatjs",
+    "unused-imports"
   ],
   "env": {
     "browser": true,
@@ -37,10 +41,16 @@
   "settings": {
     "import/resolver": "webpack",
     "react": {
-        "version": "detect"
+      "version": "detect"
+    },
+    "formatjs": {
+      "additionalFunctionNames": "untranslatable"
     }
   },
   "rules": {
+    "formatjs/no-literal-string-in-jsx": [
+      2
+    ],
     "array-bracket-spacing": [
       2,
       "never"
@@ -103,7 +113,7 @@
     ],
     "dot-location": [
       2,
-      "object"
+      "property"
     ],
     "dot-notation": 2,
     "eqeqeq": [
@@ -133,7 +143,8 @@
     "global-require": 2,
     "guard-for-in": 2,
     "id-blacklist": 0,
-    "import/no-unresolved": 0, // ts handles this better
+    "import/no-unresolved": 0,
+    // ts handles this better
     "import/order": [
       "error",
       {
@@ -333,11 +344,9 @@
     ],
     "no-self-compare": 2,
     "no-sequences": 2,
-    "no-shadow": [
-      2,
-      {
-        "hoist": "functions"
-      }
+    "no-shadow": "off",
+    "@typescript-eslint/no-shadow": [
+      "error"
     ],
     "no-shadow-restricted-names": 2,
     "no-spaced-func": 2,
@@ -367,11 +376,15 @@
     "no-unsafe-finally": 2,
     "no-unsafe-negation": 2,
     "no-unused-expressions": 2,
-    "no-unused-vars": [
-      2,
+    "no-unused-vars": "off",
+    "unused-imports/no-unused-imports": "error",
+    "unused-imports/no-unused-vars": [
+      "warn",
       {
         "vars": "all",
-        "args": "after-used"
+        "varsIgnorePattern": "^_",
+        "args": "after-used",
+        "argsIgnorePattern": "^_"
       }
     ],
     "no-use-before-define": 0,
@@ -383,7 +396,7 @@
     "no-useless-return": 2,
     "no-var": 0,
     "no-void": 2,
-    "no-warning-comments": 1,
+    "no-warning-comments": 0,
     "no-whitespace-before-property": 2,
     "no-with": 2,
     "object-curly-newline": 0,
@@ -628,7 +641,10 @@
   },
   "overrides": [
     {
-      "files": ["**/*.tsx", "**/*.ts"],
+      "files": [
+        "**/*.tsx",
+        "**/*.ts"
+      ],
       "extends": "plugin:@typescript-eslint/recommended",
       "rules": {
         "@typescript-eslint/ban-ts-ignore": 0,
@@ -653,16 +669,33 @@
             "variables": false
           }
         ],
+        "@typescript-eslint/no-unused-vars": "off",
+        "unused-imports/no-unused-imports": "error",
+        "unused-imports/no-unused-vars": [
+          "error",
+          {
+            "vars": "all",
+            "varsIgnorePattern": "^_",
+            "args": "after-used",
+            "argsIgnorePattern": "^_"
+          }
+        ],
         "react/jsx-filename-extension": [
           1,
           {
-            "extensions": [".jsx", ".tsx"]
+            "extensions": [
+              ".jsx",
+              ".tsx"
+            ]
           }
         ]
       }
     },
     {
-      "files": ["tests/**", "**/*.test.*"],
+      "files": [
+        "tests/**",
+        "**/*.test.*"
+      ],
       "env": {
         "jest": true
       },

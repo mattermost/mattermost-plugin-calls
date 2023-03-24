@@ -108,6 +108,7 @@ async function globalSetup(config: FullConfig) {
         {user_id: userID, category: 'recommended_next_steps', name: 'hide', value: 'true'},
         {user_id: userID, category: 'insights', name: 'insights_tutorial_state', value: '{"insights_modal_viewed":true}'},
         {user_id: userID, category: 'drafts', name: 'drafts_tour_tip_showed', value: '{"drafts_tour_tip_showed":true}'},
+        {user_id: userID, category: 'crt_thread_pane_step', name: userID, value: '999'},
     ];
 
     // set admin preferences

@@ -1,5 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
+import {IntlProvider} from 'react-intl';
+import {Provider} from 'react-redux';
 
 import {Store} from 'plugin/types/mattermost-webapp';
 import {Theme} from 'mattermost-redux/types/themes';
@@ -8,6 +10,7 @@ import {getTeam as getTeamAction, selectTeam} from 'mattermost-redux/actions/tea
 import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redux/actions/channels';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 
 import {getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
@@ -15,10 +18,12 @@ import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_ut
 import {
     sendDesktopEvent,
     playSound,
+    fetchTranslationsFile,
 } from 'plugin/utils';
 
 import {
     logDebug,
+    logErr,
 } from 'plugin/log';
 
 import {
@@ -47,20 +52,36 @@ async function initWidget(store: Store, theme: Theme, channelID: string) {
         case 'register-desktop':
             window.desktop = ev.data.message;
             break;
-        case 'calls-widget-share-screen':
-            window.callsClient?.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
-            break;
         }
     });
     sendDesktopEvent('get-app-version');
 
+    const locale = getCurrentUserLocale(store.getState()) || 'en';
+
+    let messages;
+    if (locale !== 'en') {
+        try {
+            messages = await fetchTranslationsFile(locale);
+        } catch (err) {
+            logErr('failed to fetch translations files', err);
+        }
+    }
+
     ReactDOM.render(
-        <CallWidget
-            store={store}
-            theme={theme}
-            global={true}
-            position={{bottom: 2, left: 2}}
-        />,
+        <Provider store={store}>
+            <IntlProvider
+                locale={locale}
+                key={locale}
+                defaultLocale='en'
+                messages={messages}
+            >
+                <CallWidget
+                    theme={theme}
+                    global={true}
+                    position={{bottom: 2, left: 2}}
+                />
+            </IntlProvider>
+        </Provider>,
         document.getElementById('root'),
     );
 }
@@ -82,8 +103,16 @@ async function initStoreWidget(store: Store, channelID: string) {
     }
 }
 
-function deinitWidget() {
+function deinitWidget(err?: Error) {
     playSound('leave_self');
+
+    if (err) {
+        sendDesktopEvent('calls-error', {
+            err: 'client-error',
+            callID: window.callsClient?.channelID,
+            errMsg: err.message,
+        });
+    }
 
     // Using setTimeout to give the app enough time to play the sound before
     // closing the widget window.
@@ -96,7 +125,7 @@ function deinitWidget() {
         }
         logDebug('sending leave call message to desktop app');
         sendDesktopEvent('calls-leave-call');
-    }, 200);
+    }, 250);
 }
 
 init({
