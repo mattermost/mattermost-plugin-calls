@@ -885,7 +885,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <div style={{fontSize: '12px', display: 'flex', whiteSpace: 'pre'}}>
                 <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
                     {speakingProfile ? getUserDisplayName(speakingProfile) : formatMessage({defaultMessage: 'No one'})}
-                    <span style={{fontWeight: 400}}>{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking...'})}</span>
+                    <span style={{fontWeight: 400}}>{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
                 </span>
             </div>
         );
@@ -1415,7 +1415,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (hasRecEnded) {
             confirmText = '';
-            header = formatMessage({defaultMessage: 'Recording has stopped. Processing...'});
+            header = formatMessage({defaultMessage: 'Recording has stopped. Processing…'});
             body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it\'s finished processing.'});
         }
 

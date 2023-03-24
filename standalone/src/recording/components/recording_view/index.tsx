@@ -200,7 +200,7 @@ const RecordingView = () => {
                     url={pictures[speakingProfile.id]}
                 />
                 <span style={{marginLeft: '8px'}}>{getUserDisplayName(speakingProfile)}</span>
-                <span style={{fontWeight: 400}}>{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking...'})}</span>
+                <span style={{fontWeight: 400}}>{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
             </div>
         );
     };

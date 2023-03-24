@@ -126,12 +126,34 @@ test.describe('start new call', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('verify no one is talking', async ({page}) => {
+    test('verify no one is talking…', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
         await devPage.wait(1000);
 
-        await expect(page.locator('#calls-widget').filter({has: page.getByText('No one is talking...')})).toBeVisible();
+        await expect(page.locator('#calls-widget').filter({has: page.getByText('No one is talking…')})).toBeVisible();
+
+        await devPage.leaveCall();
+    });
+
+    test('ws reconnect', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        const reconnected = await page.evaluate(() => {
+            return new Promise((resolve) => {
+                window.callsClient.ws.on('open', (connID: string, originalConnID: string, isReconnect: boolean) => {
+                    resolve(isReconnect);
+                });
+                window.callsClient.ws.ws.close();
+            });
+        });
+
+        expect(reconnected).toBe(true);
+
+        // Waiting a bit to make extra sure connection won't close after a timeout.
+        await devPage.wait(15000);
 
         await devPage.leaveCall();
     });
