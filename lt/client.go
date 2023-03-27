@@ -854,7 +854,7 @@ func main() {
 	flag.StringVar(&joinDuration, "join-duration", "30s", "The amount of time it takes for all participants to join their calls")
 	flag.StringVar(&adminUsername, "admin-username", "sysadmin", "The username of a system admin account")
 	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "The password of a system admin account")
-	flag.BoolVar(&simulcast, "simulcast", true, "Whether or not to enable simulcast for screen")
+	flag.BoolVar(&simulcast, "simulcast", false, "Whether or not to enable simulcast for screen")
 
 	flag.Parse()
 
