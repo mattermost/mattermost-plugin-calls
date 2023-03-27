@@ -1349,6 +1349,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <Avatar
                         size={24}
                         fontSize={10}
+                        border={false}
                         url={speakingPictureURL}
                     />
                 }
@@ -1359,6 +1360,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         size={24}
                         fontSize={10}
                         icon='account-outline'
+                        border={false}
                         style={{
                             background: changeOpacity(this.props.theme.centerChannelColor, 0.16),
                             color: changeOpacity(this.props.theme.centerChannelColor, 0.48),
@@ -1566,6 +1568,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         fontSize={8}
                         url={picture}
                         style={{margin: '0 8px'}}
+                        border={false}
                     />
                     {formatMessage({defaultMessage: '{participant} has joined the call.'}, {participant: getUserDisplayName(profile)})}
                 </div>
