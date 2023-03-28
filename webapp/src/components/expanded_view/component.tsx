@@ -17,12 +17,6 @@ import {Post} from '@mattermost/types/posts';
 import {Theme} from 'mattermost-redux/types/themes';
 
 import {
-    MessageTextOutlineIcon,
-    RecordCircleOutlineIcon,
-    RecordSquareOutlineIcon,
-} from '@mattermost/compass-icons/components';
-
-import {
     UserState,
     CallRecordingState,
 } from '@calls/common/lib/types';
@@ -59,6 +53,9 @@ import ParticipantsIcon from 'src/components/icons/participants';
 import CallDuration from 'src/components/call_widget/call_duration';
 import HandEmoji from 'src/components/icons/hand';
 import CollapseIcon from 'src/components/icons/collapse';
+import ChatThreadIcon from 'src/components/icons/chat_thread';
+import RecordSquareIcon from 'src/components/icons/record_square';
+import RecordCircleIcon from 'src/components/icons/record_circle';
 import Badge from 'src/components/badge';
 import {
     MUTE_UNMUTE,
@@ -182,6 +179,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 justifyContent: 'center',
                 width: '40px',
                 height: '40px',
+                borderRadius: '4px',
                 marginLeft: 'auto',
             },
             participants: {
@@ -816,8 +814,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <HandEmoji
                                 style={{
                                     fill: 'rgb(255, 188, 66)',
-                                    width: '18px',
-                                    height: '18px',
+                                    width: '16px',
+                                    height: '16px',
                                 }}
                             />
                         }
@@ -825,13 +823,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         {this.props.screenSharingID === profile.id &&
                             <ScreenIcon
                                 fill={'rgb(var(--dnd-indicator-rgb))'}
-                                style={{width: '18px', height: '18px'}}
+                                style={{width: '16px', height: '16px'}}
                             />
                         }
 
                         <MuteIcon
                             fill={isMuted ? '#C4C4C4' : '#3DB887'}
-                            style={{width: '18px', height: '18px'}}
+                            style={{width: '16px', height: '16px'}}
                         />
 
                     </div>
@@ -868,7 +866,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 gap={6}
                 margin={'0 12px 0 0'}
                 padding={'8px 6px'}
-                icon={(<RecordCircleOutlineIcon size={12}/>)}
+                icon={(<RecordCircleIcon style={{width: '12px', height: '12px'}}/>)}
                 bgColor={hasRecStarted ? '#D24B4E' : 'rgba(221, 223, 228, 0.04)'}
                 loading={!hasRecStarted}
             />
@@ -942,7 +940,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isHost = this.props.callHostID === this.props.currentUserID;
         const isRecording = isHost && this.props.callRecording && this.props.callRecording.init_at > 0 && !this.props.callRecording.end_at && !this.props.callRecording.err;
         const recordTooltipText = isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
-        const RecordIcon = isRecording ? RecordSquareOutlineIcon : RecordCircleOutlineIcon;
+        const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
 
         return (
@@ -1049,21 +1047,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 unavailable={noInputDevices || noAudioPermissions}
                             />
 
-                            {isHost && this.props.recordingsEnabled &&
-                                <ControlsButton
-                                    id='calls-popout-record-button'
-                                    onToggle={() => this.onRecordToggle()}
-                                    tooltipText={recordTooltipText}
-                                    // eslint-disable-next-line no-undefined
-                                    shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}
-                                    bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.16)' : ''}
-                                    bgColorHover={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.20)' : ''}
-                                    iconFill={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.80)' : ''}
-                                    iconFillHover={isRecording ? 'var(--dnd-indicator)' : ''}
-                                    icon={<RecordIcon size={28}/>}
-                                />
-                            }
-
                             {this.props.allowScreenSharing &&
                                 <ControlsButton
                                     id='calls-popout-screenshare-button'
@@ -1089,6 +1072,21 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 />
                             }
 
+                            {isHost && this.props.recordingsEnabled &&
+                                <ControlsButton
+                                    id='calls-popout-record-button'
+                                    onToggle={() => this.onRecordToggle()}
+                                    tooltipText={recordTooltipText}
+                                    // eslint-disable-next-line no-undefined
+                                    shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}
+                                    bgColor={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.16)' : ''}
+                                    bgColorHover={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.20)' : ''}
+                                    iconFill={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.80)' : ''}
+                                    iconFillHover={isRecording ? 'var(--dnd-indicator)' : ''}
+                                    icon={<RecordIcon style={{width: '28px', height: '28px'}}/>}
+                                />
+                            }
+
                             <ReactionButton
                                 ref={this.emojiButtonRef}
                                 trackEvent={this.props.trackEvent}
@@ -1106,8 +1104,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     iconFillHover={showChatThread ? 'var(--calls-bg)' : ''}
                                     icon={
                                         <div style={{position: 'relative'}}>
-                                            <MessageTextOutlineIcon
-                                                size={28}
+                                            <ChatThreadIcon
+                                                style={{width: '28px', height: '28px'}}
                                             />
                                             {!chatDisabled && isChatUnread && (
                                                 <UnreadIndicator mentions={this.props.threadUnreadMentions}/>

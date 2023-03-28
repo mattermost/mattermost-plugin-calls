@@ -36,7 +36,7 @@ export const ReactionStream = () => {
         const emoji = (
             <Emoji
                 emoji={reaction.emoji}
-                size={14}
+                size={18}
             />);
         const user = reaction.user_id === currentUserID ?
             formatMessage({defaultMessage: 'You'}) :
@@ -84,8 +84,10 @@ export const ReactionStream = () => {
                         height: '18px',
                     }}
                 />
-                <Bold>{participants}</Bold>
-                <span>{untranslatable(' ')}{formatMessage({defaultMessage: 'raised a hand'})}</span>
+                <span>
+                    <Bold>{participants}</Bold>
+                    <span>{untranslatable(' ')}{formatMessage({defaultMessage: 'raised a hand'})}</span>
+                </span>
             </ReactionChip>);
     }
 
@@ -115,11 +117,9 @@ interface chipProps {
 
 const ReactionChip = styled.div<chipProps>`
     display: flex;
-    flex-direction: row;
     align-items: center;
     padding: 6px 8px;
     gap: 8px;
-    max-height: 24px;
     color: var(--button-color);
     background: rgba(var(--button-color-rgb), 0.16);
     border-radius: 16px;

@@ -9,16 +9,16 @@ type Props = {
     style?: CSSProperties,
 }
 
-export default function TickIcon(props: Props) {
+export default function RecordSqareIcon(props: Props) {
     return (
         <svg
             style={props.style}
-            className={props.className}
             fill={props.fill}
-            viewBox='1.63 3.19 13.12 10.06'
+            viewBox='2 2 20 20'
             role='img'
         >
-            <path d='M14.75 4.2558L5.75 13.2558L1.628 9.1158L2.69 8.0718L5.75 11.1318L13.688 3.1938L14.75 4.2558Z'/>
+            <path d='M12,20c-4.418,0-8-3.582-8-8s3.582-8,8-8s8,3.582,8,8S16.418,20,12,20 M12,2C6.477,2,2,6.477,2,12s4.477,10,10,10 	s10-4.477,10-10S17.523,2,12,2 M16,16H8V8h8V16z'/>
         </svg>
     );
 }
+

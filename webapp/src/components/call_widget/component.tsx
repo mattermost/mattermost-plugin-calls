@@ -3,7 +3,6 @@ import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 
-import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
 import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
@@ -46,6 +45,7 @@ import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import HandEmoji from 'src/components/icons/hand';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
 import TickIcon from 'src/components/icons/tick';
+import RecordCircleIcon from 'src/components/icons/record_circle';
 import Badge from 'src/components/badge';
 import {AudioInputPermissionsError} from 'src/client';
 import {Emoji} from 'src/components/emoji/emoji';
@@ -161,7 +161,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             frame: {
                 width: '100%',
-                background: this.props.theme.centerChannelBg,
+                background: 'var(--center-channel-bg)',
                 borderRadius: '8px',
                 boxShadow: '0px 0px 0px 2px rgba(var(--center-channel-color-rgb), 0.16)',
             },
@@ -863,7 +863,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 // eslint-disable-next-line no-undefined
                 shortcut={noScreenPermissions ? undefined : reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.16)' : ''}
-                icon={<ShareIcon style={{width: '18px', height: '18px', fill}}/>}
+                icon={<ShareIcon style={{fill}}/>}
                 unavailable={this.state.alerts.missingScreenPermissions.active}
                 disabled={sharingID !== '' && !isSharing}
             />
@@ -1090,8 +1090,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         { device.deviceId === currentDevice?.deviceId &&
                         <TickIcon
                             style={{
-                                width: '18px',
-                                height: '18px',
+                                width: '16px',
+                                height: '16px',
                                 fill: 'var(--button-bg)',
                             }}
                         />
@@ -1183,9 +1183,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                         <DeviceIcon
                             style={{
-                                width: '18px',
-                                height: '18px',
+                                width: '16px',
+                                height: '16px',
                                 fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
+                                flexShrink: 0,
                             }}
                         />
 
@@ -1410,8 +1411,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         let body = formatMessage(CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body);
         let confirmText = isHost ? formatMessage({defaultMessage: 'Dismiss'}) : formatMessage({defaultMessage: 'Understood'});
         let icon = (
-            <RecordCircleOutlineIcon
-                size={12}
+            <RecordCircleIcon
+                style={{width: '12px', height: '12px'}}
             />
         );
 
@@ -1479,7 +1480,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     text={'REC'}
                     textSize={11}
                     gap={2}
-                    icon={(<RecordCircleOutlineIcon size={11}/>)}
+                    icon={(<RecordCircleIcon style={{width: '11px', height: '11px'}}/>)}
                     color={hasRecStarted ? '#D24B4E' : 'rgb(var(--center-channel-color-rgb))'}
                     loading={!hasRecStarted}
                 />
@@ -1862,7 +1863,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
                             icon={
                                 <ParticipantsIcon
-                                    style={{width: '18px', height: '18px', fill: this.state.showParticipantsList ? 'var(--button-bg)' : ''}}
+                                    style={{fill: this.state.showParticipantsList ? 'var(--button-bg)' : ''}}
                                 />
                             }
                             style={{marginRight: 'auto'}}
@@ -1934,7 +1935,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             onToggle={this.onDisconnectClick}
                             icon={
                                 <LeaveCallIcon
-                                    style={{width: '18px', height: '18px', fill: 'white'}}
+                                    style={{fill: 'white'}}
                                 />
                             }
                             bgColor='var(--dnd-indicator)'

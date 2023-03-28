@@ -30,14 +30,16 @@ const IconWrapper = styled.div<{unavailable: boolean, margin?: string}>`
   justify-content: center;
   align-items: center;
   margin: ${({margin}) => margin || 0};
+  width: 18px;
+  height: 18px;
 
   &&& {
     position: relative;
     line-height: 28px;
 
     svg {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
 
       ${({unavailable}) => (unavailable) && css`
         fill: rgba(var(--center-channel-color-rgb), 0.32);

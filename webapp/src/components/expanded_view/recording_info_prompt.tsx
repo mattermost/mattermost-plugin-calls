@@ -1,11 +1,10 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {useIntl} from 'react-intl';
 
-import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
-
 import {CallRecordingState} from '@calls/common/lib/types';
 
 import CompassIcon from 'src/components/icons/compassIcon';
+import RecordCircleIcon from 'src/components/icons/record_circle';
 
 import {
     CallRecordingDisclaimerStrings,
@@ -116,8 +115,8 @@ export default function RecordingInfoPrompt(props: Props) {
     let body = formatMessage(CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].body);
     let confirmText = props.isHost ? formatMessage({defaultMessage: 'Dismiss'}) : formatMessage({defaultMessage: 'Understood'});
     let icon = (
-        <RecordCircleOutlineIcon
-            size={18}
+        <RecordCircleIcon
+            style={{width: '18px', height: '18px'}}
         />);
     const declineText = props.isHost ? '' : formatMessage({defaultMessage: 'Leave call'});
 
