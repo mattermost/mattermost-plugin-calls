@@ -76,7 +76,6 @@ async function initWidget(store: Store, theme: Theme, channelID: string) {
                 messages={messages}
             >
                 <CallWidget
-                    theme={theme}
                     global={true}
                     position={{bottom: 2, left: 2}}
                 />

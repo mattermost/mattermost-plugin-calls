@@ -16,7 +16,6 @@ import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-re
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
-import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {batchActions} from 'redux-batched-actions';
@@ -410,9 +409,7 @@ export default class Plugin {
                             defaultLocale='en'
                             messages={getTranslations(locale)}
                         >
-                            <CallWidget
-                                theme={getTheme(store.getState())}
-                            />
+                            <CallWidget/>
                         </IntlProvider>
                     </Provider>,
                     document.getElementById('calls'),

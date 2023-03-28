@@ -7,9 +7,7 @@ import {UserProfile} from '@mattermost/types/users';
 import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
-import {Theme} from 'mattermost-redux/types/themes';
 
 import {CallRecordingState, UserState} from '@calls/common/lib/types';
 
@@ -61,7 +59,6 @@ import './component.scss';
 
 interface Props {
     intl: IntlShape,
-    theme: Theme,
     currentUserID: string,
     channel: Channel,
     team: Team,
@@ -140,10 +137,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 lineHeight: '16px',
                 zIndex: 1000,
                 userSelect: 'none',
-                color: this.props.theme.centerChannelColor,
+                color: 'var(--center-channel-color)',
             },
             topBar: {
-                background: changeOpacity(this.props.theme.centerChannelColor, 0.04),
+                background: 'rgba(var(--center-channel-color-rgb), 0.04)',
                 padding: '6px 12px',
                 display: 'flex',
                 gap: '12px',
@@ -170,13 +167,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 alignItems: 'center',
                 fontSize: '10px',
                 lineHeight: '16px',
-                color: changeOpacity(this.props.theme.centerChannelColor, 0.64),
+                color: 'rgba(var(--center-channel-color-rgb), 0.64)',
             },
             menuButton: {
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                color: changeOpacity(this.props.theme.centerChannelColor, 0.8),
+                color: 'rgba(var(--center-channel-color-rgb), 0.8)',
                 fontSize: '14px',
                 width: 'auto',
                 padding: '0 6px',
@@ -184,7 +181,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             menu: {
                 position: 'absolute',
                 background: 'white',
-                color: this.props.theme.centerChannelColor,
+                color: 'var(--center-channel-color)',
             },
             screenSharingPanel: {
                 position: 'relative',
@@ -457,10 +454,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentDidUpdate(prevProps: Props) {
-        if (prevProps.theme.type !== this.props.theme.type) {
-            this.style = this.genStyle();
-        }
-
         let screenStream = this.state.screenStream;
         if (this.props.screenSharingID === this.props.currentUserID) {
             screenStream = window.callsClient?.getLocalScreenStream();
@@ -762,7 +755,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 justifyContent: 'center',
                                 alignItems: 'center',
                                 padding: '8px 16px',
-                                background: 'rgb(var(--dnd-indicator-rgb))',
+                                background: 'var(--dnd-indicator)',
                                 color: 'white',
                                 borderRadius: '4px',
                                 fontWeight: 600,
@@ -819,7 +812,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <span
                         style={{
                             marginTop: '8px',
-                            color: changeOpacity(this.props.theme.centerChannelColor, 0.56),
+                            color: 'rgba(var(--center-channel-color-rgb), 0.56)',
                             fontSize: '12px',
                             padding: '0 8px',
                             textAlign: 'center',
@@ -842,7 +835,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (isSharing) {
             fill = 'rgb(var(--dnd-indicator-rgb))';
         } else if (sharingID) {
-            fill = changeOpacity(this.props.theme.centerChannelColor, 0.34);
+            fill = 'rgba(var(--center-channel-color-rgb), 0.34)';
         }
 
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
@@ -1077,7 +1070,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         <span
                             style={{
-                                color: changeOpacity(this.props.theme.centerChannelColor, 0.56),
+                                color: 'rgba(var(--center-channel-color-rgb), 0.56)',
                                 fontSize: '14px',
                                 width: '100%',
                                 textOverflow: 'ellipsis',
@@ -1160,7 +1153,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             display: 'flex',
             alignItems: 'start',
             padding: '6px 16px',
-            color: isDisabled ? changeOpacity(this.props.theme.centerChannelColor, 0.32) : '',
+            color: isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : '',
         };
 
         if ((deviceType === 'input' && this.state.showAudioInputDevicesMenu) || (deviceType === 'output' && this.state.showAudioOutputDevicesMenu)) {
@@ -1185,7 +1178,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             style={{
                                 width: '16px',
                                 height: '16px',
-                                fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
+                                fill: isDisabled ?
+                                    'rgba(var(--center-channel-color-rgb), 0.32)' :
+                                    'rgba(var(--center-channel-color-rgb), 0.56)',
                                 flexShrink: 0,
                             }}
                         />
@@ -1210,7 +1205,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                             <span
                                 style={{
-                                    color: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
+                                    color: isDisabled ?
+                                        'rgba(var(--center-channel-color-rgb), 0.32)' :
+                                        'rgba(var(--center-channel-color-rgb), 0.56)',
                                     fontSize: '12px',
                                     width: '100%',
                                     lineHeight: '18px',
@@ -1228,7 +1225,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             style={{
                                 width: '18px',
                                 height: '18px',
-                                fill: changeOpacity(this.props.theme.centerChannelColor, isDisabled ? 0.32 : 0.56),
+                                fill: isDisabled ?
+                                    'rgba(var(--center-channel-color-rgb), 0.32)' :
+                                    'rgba(var(--center-channel-color-rgb), 0.56)',
                             }}
                         />
                         }
@@ -1260,7 +1259,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={{
                             display: 'flex',
                             flexDirection: 'column',
-                            color: isDisabled || noPermissions ? changeOpacity(this.props.theme.centerChannelColor, 0.34) : '',
+                            color: isDisabled || noPermissions ? 'rgba(var(--center-channel-color-rgb), 0.32)' : '',
                         }}
                         disabled={isDisabled}
                         onClick={() => this.onShareScreenToggle()}
@@ -1279,7 +1278,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 icon={(
                                     <ShareIcon
                                         style={{width: '16px', height: '16px'}}
-                                        fill={isSharing ? 'rgb(var(--dnd-indicator-rgb))' : changeOpacity(this.props.theme.centerChannelColor, 0.64)}
+                                        fill={isSharing ? 'rgb(var(--dnd-indicator-rgb))' : 'rgba(var(--center-channel-color-rgb), 0.64)'}
                                     />
                                 )}
                                 unavailable={noPermissions}
@@ -1291,7 +1290,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         {noPermissions &&
                             <span
                                 style={{
-                                    color: changeOpacity(this.props.theme.centerChannelColor, 0.32),
+                                    color: 'rgba(var(--center-channel-color-rgb), 0.32)',
                                     fontSize: '12px',
                                     width: '100%',
                                     lineHeight: '16px',
@@ -1363,8 +1362,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         icon='account-outline'
                         border={false}
                         style={{
-                            background: changeOpacity(this.props.theme.centerChannelColor, 0.16),
-                            color: changeOpacity(this.props.theme.centerChannelColor, 0.48),
+                            background: 'rgba(var(--center-channel-color-rgb), 0.16)',
+                            color: 'rgba(var(--center-channel-color-rgb), 0.48)',
                             fontSize: '14px',
                         }}
                     />
@@ -1536,7 +1535,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 style={{
                     width: '11px',
                     height: '11px',
-                    fill: isMuted ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : '#3DB887',
+                    fill: isMuted ? 'var(--center-channel-color)' : '#3DB887',
                 }}
             />
         );
@@ -1831,7 +1830,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             bgColor=''
                             icon={
                                 <ShowIcon
-                                    fill={changeOpacity(this.props.theme.centerChannelColor, 0.64)}
+                                    fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
                                 />
                             }
                         />
