@@ -141,15 +141,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             topBar: {
                 background: 'rgba(var(--center-channel-color-rgb), 0.04)',
-                padding: '6px 12px',
+                padding: '7px 8px',
                 display: 'flex',
-                gap: '12px',
+                gap: '10px',
                 width: '100%',
                 alignItems: 'center',
                 cursor: 'move',
             },
             bottomBar: {
-                padding: '6px 8px',
+                padding: '8px',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 width: '100%',
@@ -165,7 +165,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             callInfo: {
                 display: 'flex',
                 alignItems: 'center',
-                fontSize: '10px',
+                fontSize: '11px',
                 lineHeight: '16px',
                 color: 'rgba(var(--center-channel-color-rgb), 0.64)',
             },
@@ -208,12 +208,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 borderRadius: '8px',
                 border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
                 boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
-            },
-            expandButton: {
-                position: 'absolute' as const,
-                right: '6px',
-                top: '8px',
-                margin: 0,
             },
         };
     };
@@ -524,7 +518,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             bounds.width = baseWidget.getBoundingClientRect().width + margin;
 
             // Margin on base height is needed to account for the widget being
-            // positioned 2px from the bottom: 2px + 84px (base height) + 2px
+            // positioned 2px from the bottom: 2px + 94px (base height) + 2px
             bounds.height = baseWidget.getBoundingClientRect().height + widgetMenu.getBoundingClientRect().height + margin;
 
             if (widgetMenu.getBoundingClientRect().height > 0) {
@@ -875,7 +869,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         }
         return (
-            <div style={{fontSize: '12px', display: 'flex', whiteSpace: 'pre'}}>
+            <div style={{fontSize: '14px', lineHeight: '20px', display: 'flex', whiteSpace: 'pre'}}>
                 <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
                     {speakingProfile ? getUserDisplayName(speakingProfile) : formatMessage({defaultMessage: 'No one'})}
                     <span style={{fontWeight: 400}}>{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
@@ -1347,8 +1341,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                     speakingPictureURL &&
                     <Avatar
-                        size={24}
-                        fontSize={10}
+                        size={32}
                         border={false}
                         url={speakingPictureURL}
                     />
@@ -1357,14 +1350,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 {
                     !speakingPictureURL &&
                     <Avatar
-                        size={24}
-                        fontSize={10}
+                        size={32}
                         icon='account-outline'
                         border={false}
                         style={{
                             background: 'rgba(var(--center-channel-color-rgb), 0.16)',
                             color: 'rgba(var(--center-channel-color-rgb), 0.48)',
-                            fontSize: '14px',
+                            fontSize: '18px',
                         }}
                     />
                 }
@@ -1723,7 +1715,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     };
 
-    renderChannelName = (widerWidget: boolean) => {
+    renderChannelName = () => {
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{untranslatable('•')}</div>
@@ -1732,7 +1724,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     href={this.props.channelURL}
                     onClick={this.onChannelLinkClick}
                     className='calls-channel-link'
-                    style={{appRegion: 'no-drag', padding: '0'} as CSSProperties}
+                    style={{appRegion: 'no-drag', padding: '0', minWidth: 0} as CSSProperties}
                 >
                     {isOpenChannel(this.props.channel) && <CompassIcon icon='globe'/>}
                     {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
@@ -1743,7 +1735,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            maxWidth: widerWidget ? '22ch' : '12ch',
                             fontWeight: 600,
                         }}
                     >
@@ -1822,10 +1813,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         // eslint-disable-next-line no-undefined
                         onMouseDown={this.props.global ? undefined : this.onMouseDown}
                     >
+                        {this.renderSpeakingProfile()}
+
+                        <div style={{width: widerWidget ? '184px' : '120px'}}>
+                            {this.renderSpeaking()}
+                            <div style={this.style.callInfo}>
+                                {this.renderRecordingBadge()}
+                                <CallDuration startAt={this.props.callStartAt}/>
+                                {this.renderChannelName()}
+                            </div>
+                        </div>
 
                         <WidgetButton
                             id='calls-widget-expand-button'
-                            style={this.style.expandButton}
                             onToggle={this.onExpandClick}
                             bgColor=''
                             icon={
@@ -1834,17 +1834,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 />
                             }
                         />
-
-                        {this.renderSpeakingProfile()}
-
-                        <div style={{width: widerWidget ? '200px' : '136px'}}>
-                            {this.renderSpeaking()}
-                            <div style={this.style.callInfo}>
-                                {this.renderRecordingBadge()}
-                                <CallDuration startAt={this.props.callStartAt}/>
-                                {this.renderChannelName(widerWidget)}
-                            </div>
-                        </div>
                     </div>
 
                     <div
