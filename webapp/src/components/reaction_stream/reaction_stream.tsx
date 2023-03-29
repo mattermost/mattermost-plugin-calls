@@ -118,7 +118,7 @@ interface chipProps {
 const ReactionChip = styled.div<chipProps>`
     display: flex;
     align-items: center;
-    padding: 6px 8px;
+    padding: 6px 16px 6px 8px;
     gap: 8px;
     color: var(--button-color);
     background: rgba(var(--button-color-rgb), 0.16);
