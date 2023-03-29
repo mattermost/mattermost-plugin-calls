@@ -51,10 +51,12 @@ import {
     handleUserUnraisedHand,
     handleCallHostChanged,
     handleUserReaction,
+    handleCallRecordingState,
 } from 'plugin/websocket_handlers';
 
 import {
     CallHostChangedData,
+    CallRecordingStateData,
     CallStartData,
     EmptyData,
     HelloData,
@@ -327,6 +329,9 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_user_reacted`:
             handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);
+            break;
+        case `custom_${pluginId}_call_recording_state`:
+            handleCallRecordingState(store, ev as WebSocketMessage<CallRecordingStateData>);
             break;
         default:
         }
