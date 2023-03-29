@@ -1,3 +1,7 @@
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {WebSocketMessage} from '@mattermost/types/websocket';
+
 import {
     CallHostChangedData,
     CallRecordingStateData,
@@ -12,38 +16,42 @@ import {
     UserScreenOnOffData,
     UserVoiceOnOffData,
 } from '@calls/common/lib/types';
-import {WebSocketMessage} from '@mattermost/types/websocket';
-import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 
+import {Store} from './types/mattermost-webapp';
 import {
-    VOICE_CHANNEL_CALL_END,
-    VOICE_CHANNEL_CALL_HOST,
-    VOICE_CHANNEL_CALL_RECORDING_STATE,
-    VOICE_CHANNEL_CALL_START,
-    VOICE_CHANNEL_PROFILE_CONNECTED,
-    VOICE_CHANNEL_ROOT_POST,
+    VOICE_CHANNEL_USER_MUTED,
+    VOICE_CHANNEL_USER_UNMUTED,
     VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_DISCONNECTED,
-    VOICE_CHANNEL_USER_MUTED,
+    VOICE_CHANNEL_PROFILE_CONNECTED,
+    VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_CALL_END,
+    VOICE_CHANNEL_ROOT_POST,
+    VOICE_CHANNEL_USER_VOICE_ON,
+    VOICE_CHANNEL_USER_VOICE_OFF,
+    VOICE_CHANNEL_USER_SCREEN_ON,
+    VOICE_CHANNEL_USER_SCREEN_OFF,
     VOICE_CHANNEL_USER_RAISE_HAND,
+    VOICE_CHANNEL_USER_UNRAISE_HAND,
     VOICE_CHANNEL_USER_REACTED,
     VOICE_CHANNEL_USER_REACTED_TIMEOUT,
-    VOICE_CHANNEL_USER_SCREEN_OFF,
-    VOICE_CHANNEL_USER_SCREEN_ON,
-    VOICE_CHANNEL_USER_UNMUTED,
-    VOICE_CHANNEL_USER_UNRAISE_HAND,
-    VOICE_CHANNEL_USER_VOICE_OFF,
-    VOICE_CHANNEL_USER_VOICE_ON,
+    VOICE_CHANNEL_CALL_HOST,
+    VOICE_CHANNEL_CALL_RECORDING_STATE,
 } from './action_types';
+import {
+    getProfilesByIds,
+    playSound,
+    followThread, getUserDisplayName,
+} from './utils';
+import {
+    connectedChannelID,
+    idToProfileInConnectedChannel,
+    shouldPlayJoinUserSound,
+} from './selectors';
 
 import {logErr} from './log';
-import {connectedChannelID, idToProfileInConnectedChannel, shouldPlayJoinUserSound} from './selectors';
-
-import {Store} from './types/mattermost-webapp';
-import {followThread, getProfilesByIds, getUserDisplayName, playSound} from './utils';
 
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
