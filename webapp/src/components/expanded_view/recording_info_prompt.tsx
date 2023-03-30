@@ -70,6 +70,7 @@ export default function RecordingInfoPrompt(props: Props) {
     if (props.isHost && !hasRecEnded && recordingWillEndSoon > disclaimerDismissedAt) {
         return (
             <InCallPrompt
+                testId={'recording-will-end-soon'}
                 icon={
                     <CompassIcon
                         icon='alert-outline'
@@ -118,6 +119,7 @@ export default function RecordingInfoPrompt(props: Props) {
         return null;
     }
 
+    let testId = 'banner-recording';
     let header = formatMessage(CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].header);
     let body = formatMessage(CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].body);
     let confirmText = props.isHost ? formatMessage({defaultMessage: 'Dismiss'}) : formatMessage({defaultMessage: 'Understood'});
@@ -129,12 +131,14 @@ export default function RecordingInfoPrompt(props: Props) {
 
     if (hasRecEnded) {
         confirmText = '';
+        testId = 'banner-recording-stopped';
         header = formatMessage({defaultMessage: 'Recording has stopped. Processing…'});
         body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it\'s finished processing.'});
     }
 
     let error = '';
     if (props.recording?.err) {
+        testId = 'banner-recording-error';
         header = formatMessage({defaultMessage: 'Something went wrong with the recording'});
         body = formatMessage({defaultMessage: 'Please try to record again. You can also contact your system admin for troubleshooting help.'});
         error = capitalize(props.recording?.err);
@@ -151,6 +155,7 @@ export default function RecordingInfoPrompt(props: Props) {
 
     return (
         <InCallPrompt
+            testId={testId}
             icon={icon}
             iconFill='rgb(var(--dnd-indicator-rgb))'
             iconColor='rgb(var(--dnd-indicator-rgb))'
