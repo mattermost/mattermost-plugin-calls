@@ -45,7 +45,7 @@ import UDPServerAddress from 'src/components/admin_console_settings/udp_server_a
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 
 import {DisabledCallsErr} from 'src/constants';
-import {CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
+import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     handleUserConnected,
@@ -786,6 +786,7 @@ declare global {
         },
         screenSharingTrackId: string,
         currentCallData?: CurrentCallData,
+        callActions?: CallActions,
     }
 
     interface HTMLVideoElement {

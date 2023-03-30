@@ -70,6 +70,7 @@ import {
     UserVoiceOnOffData,
     WebsocketEventData,
 } from '@calls/common/lib/types';
+import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     getCallID,
@@ -359,6 +360,7 @@ declare global {
         },
         screenSharingTrackId: string,
         currentCallData?: CurrentCallData,
+        callActions?: CallActions,
     }
 
     interface HTMLVideoElement {

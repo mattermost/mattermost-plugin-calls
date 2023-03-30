@@ -3,13 +3,12 @@ import {useIntl} from 'react-intl';
 
 import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
 
-import {CallRecordingState} from '@calls/common/lib/types';
-
 import CompassIcon from 'src/components/icons/compassIcon';
 
 import {
     CallRecordingDisclaimerStrings,
 } from 'src/constants';
+import {CallRecordingReduxState} from 'src/types/types';
 
 import {
     capitalize,
@@ -20,9 +19,10 @@ import InCallPrompt from './in_call_prompt';
 type Props = {
     isHost: boolean,
     hostChangeAt: number,
-    recording?: CallRecordingState,
+    recording?: CallRecordingReduxState,
     recordingMaxDuration: number,
     onDecline: () => void;
+    promptDismissed: () => void;
 }
 
 const minutesLeftThreshold = 10;
@@ -44,7 +44,6 @@ export default function RecordingInfoPrompt(props: Props) {
         return Math.round(props.recordingMaxDuration - callDurationMinutes);
     }, [props.recording?.start_at, props.recordingMaxDuration]);
 
-    const [dismissedAt, updateDismissedAt] = useState(() => (window.opener ? window.opener.currentCallData?.recording.promptDismissedAt || 0 : 0));
     const [recordingWillEndSoon, updateRecordingWillEndSoon] = useState(0);
 
     useEffect(() => {
@@ -59,16 +58,16 @@ export default function RecordingInfoPrompt(props: Props) {
 
     const hasRecEnded = props.recording?.end_at;
 
+    // Unfortunately we cannot update the local redux state immediately because the props.channel is not available,
+    // so we have to check which is more up to date and use that.
+    let disclaimerDismissedAt = props.recording?.prompt_dismissed_at || 0;
+    if (window.opener && window.opener.currentCallData?.recordingPromptDismissedAt > disclaimerDismissedAt) {
+        disclaimerDismissedAt = window.opener.currentCallData?.recordingPromptDismissedAt;
+    }
+
     const {formatMessage} = useIntl();
 
-    const updateDismissed = () => {
-        updateDismissedAt(Date.now());
-        if (window.opener && window.opener.currentCallData) {
-            window.opener.currentCallData.recording.promptDismissedAt = Date.now();
-        }
-    };
-
-    if (props.isHost && !hasRecEnded && recordingWillEndSoon > dismissedAt) {
+    if (props.isHost && !hasRecEnded && recordingWillEndSoon > disclaimerDismissedAt) {
         return (
             <InCallPrompt
                 icon={
@@ -88,7 +87,7 @@ export default function RecordingInfoPrompt(props: Props) {
                     defaultMessage: 'Your recording will end in {count, plural, =1 {# minute} other {# minutes}}.'}
                 , {count: getMinutesLeftBeforeEnd()})}
                 confirmText={formatMessage({defaultMessage: 'Dismiss'})}
-                onClose={updateDismissed}
+                onClose={props.promptDismissed}
             />
         );
     }
@@ -107,15 +106,15 @@ export default function RecordingInfoPrompt(props: Props) {
 
     // If the prompt was dismissed after the recording has started and after the last host change
     // we don't show this again, unless there was a more recent error.
-    if (!hasRecEnded && dismissedAt > props.recording?.start_at && dismissedAt > props.hostChangeAt) {
-        if (!props.recording?.error_at || dismissedAt > props.recording.error_at) {
+    if (!hasRecEnded && disclaimerDismissedAt > props.recording?.start_at && disclaimerDismissedAt > props.hostChangeAt) {
+        if (!props.recording?.error_at || disclaimerDismissedAt > props.recording.error_at) {
             return null;
         }
     }
 
     // If the prompt was dismissed after the recording has ended then we
     // don't show this again.
-    if (hasRecEnded && dismissedAt > props.recording?.end_at) {
+    if (hasRecEnded && disclaimerDismissedAt > props.recording?.end_at) {
         return null;
     }
 
@@ -160,7 +159,7 @@ export default function RecordingInfoPrompt(props: Props) {
             error={error}
             confirmText={confirmText}
             declineText={declineText}
-            onClose={updateDismissed}
+            onClose={props.promptDismissed}
             onDecline={props.onDecline}
         />
     );
