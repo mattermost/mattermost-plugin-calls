@@ -903,18 +903,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <li
                         className='MenuItem'
                         key={'participants_profile_' + profile.id}
-                        style={{display: 'flex', padding: '8px 16px', gap: '12px'}}
+                        style={{display: 'flex', padding: '10px 16px', gap: '12px'}}
                     >
                         <Avatar
                             size={20}
-                            fontSize={10}
+                            fontSize={14}
                             url={this.props.picturesMap[profile.id]}
                             borderGlowWidth={isSpeaking ? 2 : 0}
                         />
 
                         <span
                             className='MenuItem__primary-text'
-                            style={{padding: '0', lineHeight: '16px', fontSize: '12px'}}
+                            style={{padding: '0', lineHeight: '20px', fontSize: '14px'}}
                         >
                             {getUserDisplayName(profile)}
                             {profile.id === this.props.currentUserID &&
@@ -981,7 +981,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         width: '100%',
                         minWidth: 'revert',
                         maxWidth: 'revert',
-                        maxHeight: '218px',
+                        maxHeight: '200px',
                         overflow: 'auto',
                         position: 'relative',
                         borderRadius: '8px',
@@ -1736,6 +1736,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
                             fontWeight: 600,
+                            letterSpacing: '0.02em',
                         }}
                     >
                         {this.props.channelDisplayName}
@@ -1819,7 +1820,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 {this.renderRecordingBadge()}
-                                <CallDuration startAt={this.props.callStartAt}/>
+                                <CallDuration
+                                    startAt={this.props.callStartAt}
+                                    style={{letterSpacing: '0.02em'}}
+                                />
                                 {this.renderChannelName()}
                             </div>
                         </div>
