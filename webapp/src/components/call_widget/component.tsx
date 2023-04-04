@@ -87,6 +87,7 @@ interface Props {
         bottom: number,
         left: number,
     },
+    wider: boolean,
 }
 
 interface DraggingState {
@@ -1302,7 +1303,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
-    renderMenu = (widerWidget: boolean) => {
+    renderMenu = () => {
         if (!this.state.showMenu) {
             return null;
         }
@@ -1313,7 +1314,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='Menu__content dropdown-menu'
                     style={this.style.settingsMenu}
                 >
-                    {this.props.allowScreenSharing && !widerWidget && this.renderScreenSharingMenuItem()}
+                    {this.props.allowScreenSharing && !this.props.wider && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
                 </ul>
@@ -1771,10 +1772,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext);
         }
 
-        const widerWidget = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
         const mainStyle = {
             ...this.style.main,
-            width: widerWidget ? '280px' : '216px',
+            width: this.props.wider ? '280px' : '216px',
             ...(this.props.global && {appRegion: 'drag'}),
         };
 
@@ -1782,7 +1782,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
 
-        const MenuIcon = widerWidget ? SettingsWheelIcon : HorizontalDotsIcon;
+        const MenuIcon = this.props.wider ? SettingsWheelIcon : HorizontalDotsIcon;
 
         const handTooltipText = window.callsClient.isHandRaised ?
             formatMessage({defaultMessage: 'Lower hand'}) :
@@ -1805,7 +1805,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {this.renderRecordingDisclaimer()}
                     {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
-                    {this.renderMenu(widerWidget)}
+                    {this.renderMenu()}
                 </div>
 
                 <div style={this.style.frame}>
@@ -1816,7 +1816,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         {this.renderSpeakingProfile()}
 
-                        <div style={{width: widerWidget ? '184px' : '120px'}}>
+                        <div style={{width: this.props.wider ? '184px' : '120px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 {this.renderRecordingBadge()}
@@ -1907,7 +1907,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             />
                         }
 
-                        {this.props.allowScreenSharing && (widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
+                        {this.props.allowScreenSharing && (this.props.wider || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <WidgetButton
                             id='calls-widget-toggle-menu-button'
