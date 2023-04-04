@@ -100,6 +100,10 @@ a.calls-channel-link {
   position: static;
   border: none;
   box-shadow: none;
+
+  button:hover {
+    background: rgba(var(--center-channel-color-rgb), 0.1);
+  }
 }
 
 #calls-widget button {
