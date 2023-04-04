@@ -130,7 +130,7 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                             active={isHandRaised}
                         >
                             {handIcon}
-                            <HandText active={isHandRaised}>{raiseHandText}</HandText>
+                            <HandText>{raiseHandText}</HandText>
                         </HandsButton>
                     </OverlayTrigger>
                     <QuickSelectContainer>
@@ -296,13 +296,9 @@ const HandsButton = styled.button<{ active: boolean }>`
     `)}
 `;
 
-const HandText = styled.span<{ active: boolean }>`
+const HandText = styled.span`
     white-space: nowrap;
     color: var(--center-channel-color);
-
-    ${({active}) => (active && css`
-        color: rgba(255, 188, 31, 1);
-    `)}
 `;
 
 const QuickSelectContainer = styled.div`
