@@ -1508,12 +1508,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         return (
-            <React.Fragment>
-                <div style={{display: 'flex', flexDirection: 'column-reverse', gap: '4px'}}>
-                    {joinedUsers}
-                </div>
+            <div style={{display: 'flex', flexDirection: 'column-reverse', gap: '4px'}}>
                 <JoinNotification visible={!this.state.connecting}/>
-            </React.Fragment>
+                {joinedUsers}
+            </div>
         );
     };
 

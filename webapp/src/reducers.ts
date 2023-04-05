@@ -726,11 +726,6 @@ const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: conne
             ...state,
             [action.data.channelID]: state[action.data.channelID]?.filter((val) => val !== action.data.userID),
         };
-    case VOICE_CHANNEL_USERS_CONNECTED:
-        return {
-            ...state,
-            [action.data.channelID]: action.data.users,
-        };
     case VOICE_CHANNEL_CALL_END:
         return {
             ...state,
