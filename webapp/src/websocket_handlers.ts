@@ -17,7 +17,7 @@ import {
     UserVoiceOnOffData,
 } from '@calls/common/lib/types';
 
-import {REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
+import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 
 import {Store} from './types/mattermost-webapp';
 import {
@@ -39,6 +39,7 @@ import {
     VOICE_CHANNEL_USER_REACTED_TIMEOUT,
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
+    VOICE_CHANNEL_USER_JOINED_TIMEOUT,
 } from './action_types';
 import {
     getProfilesByIds,
@@ -136,6 +137,16 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
             currentUserID,
         },
     });
+
+    setTimeout(() => {
+        store.dispatch({
+            type: VOICE_CHANNEL_USER_JOINED_TIMEOUT,
+            data: {
+                channelID,
+                userID,
+            },
+        });
+    }, JOINED_USER_NOTIFICATION_TIMEOUT);
 
     try {
         store.dispatch({

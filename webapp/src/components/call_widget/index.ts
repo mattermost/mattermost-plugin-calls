@@ -26,6 +26,7 @@ import {
     voiceChannelCallHostID,
     callRecording,
     voiceChannelCallHostChangeAt,
+    recentlyJoinedUsers,
 } from 'src/selectors';
 
 import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
@@ -78,6 +79,7 @@ const mapStateToProps = (state: GlobalState) => {
         screenSharingID,
         allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),
+        recentlyJoinedUsers: recentlyJoinedUsers(state, channel?.id),
     };
 };
 

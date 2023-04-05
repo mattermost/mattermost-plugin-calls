@@ -23,6 +23,7 @@ export const VOICE_CHANNEL_ROOT_POST = pluginId + '_voice_channel_root_post';
 export const VOICE_CHANNEL_CALL_HOST = pluginId + '_voice_channel_call_host';
 export const VOICE_CHANNEL_CALL_RECORDING_STATE = pluginId + '_voice_channel_call_recording_state';
 export const VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED = pluginId + '_voice_channel_call_rec_prompt_dismissed';
+export const VOICE_CHANNEL_USER_JOINED_TIMEOUT = pluginId + '_voice_channel_user_joined_timeout';
 
 export const SHOW_EXPANDED_VIEW = pluginId + '_show_expanded_view';
 export const HIDE_EXPANDED_VIEW = pluginId + '_hide_expanded_view';
