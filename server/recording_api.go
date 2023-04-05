@@ -194,6 +194,8 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 			return
 		}
 
+		p.LogDebug("recording job started successfully", "jobID", recJobID, "callID", callID)
+
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
 			"recState": recState.getClientState().toMap(),
