@@ -149,6 +149,10 @@ export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
     return pluginState(state).voiceChannelRootPost[channelID];
 };
 
+export const recentlyJoinedUsers = (state: GlobalState, channelID: string): string[] => {
+    return pluginState(state).recentlyJoinedUsers[channelID] || [];
+};
+
 //
 // Config logic
 //

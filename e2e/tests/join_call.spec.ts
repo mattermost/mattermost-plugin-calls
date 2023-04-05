@@ -36,7 +36,12 @@ test.describe('join call', () => {
         expect(await joinCallToast.screenshot()).toMatchSnapshot('channel-toast.png');
 
         await joinCallToast.click();
+
+        await expect(userPage.page.getByTestId('call-joined-participant-notification')).toBeVisible();
+        await expect(userPage.page.getByTestId('call-joined-participant-notification')).toContainText(userState.users[userIdx].username + ' has joined the call.');
+
         await expect(page.locator('#calls-widget')).toBeVisible();
+
         const devPage = new PlaywrightDevPage(page);
         await devPage.leaveCall();
 

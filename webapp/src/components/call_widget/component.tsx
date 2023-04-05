@@ -88,6 +88,7 @@ interface Props {
         bottom: number,
         left: number,
     },
+    recentlyJoinedUsers: string[],
 }
 
 interface DraggingState {
@@ -112,7 +113,6 @@ interface State {
     showAudioOutputDevicesMenu?: boolean,
     dragging: DraggingState,
     expandedViewWindow: Window | null,
-    showUsersJoined: string[],
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
     recDisclaimerDismissedAt: number,
@@ -260,7 +260,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offY: 0,
             },
             expandedViewWindow: null,
-            showUsersJoined: [],
             audioEls: [],
             alerts: CallAlertStatesDefault,
             recDisclaimerDismissedAt: 0,
@@ -376,18 +375,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // keyboard shortcuts
         document.addEventListener('keydown', this.handleKBShortcuts, true);
 
-        // eslint-disable-next-line react/no-did-mount-set-state
-        this.setState({
-            showUsersJoined: [this.props.currentUserID],
-            connecting: Boolean(window.callsClient?.isConnecting()),
-        });
-
-        setTimeout(() => {
-            this.setState({
-                showUsersJoined: this.state.showUsersJoined.filter((userID) => userID !== this.props.currentUserID),
-            });
-        }, 5000);
-
         this.attachVoiceTracks(window.callsClient.getRemoteVoiceTracks());
         window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
             this.attachVoiceTracks(stream.getAudioTracks());
@@ -496,39 +483,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer.current?.srcObject !== this.state.screenStream) {
             this.screenPlayer.current.srcObject = this.state.screenStream;
-        }
-
-        let ids: string[] = [];
-        const currIDs = Object.keys(this.props.statuses);
-        const prevIDs = Object.keys(prevProps.statuses);
-        if (currIDs.length > prevIDs.length) {
-            ids = currIDs;
-            if (prevIDs.length === 0) {
-                return;
-            }
-        } else if (currIDs.length < prevIDs.length) {
-            ids = prevIDs;
-        }
-        if (ids.length > 0) {
-            const statuses = this.props.statuses;
-            const prevStatuses = prevProps.statuses;
-            for (let i = 0; i < ids.length; i++) {
-                const userID = ids[i];
-                if (statuses[userID] && !prevStatuses[userID]) {
-                    // eslint-disable-next-line react/no-did-update-set-state
-                    this.setState({
-                        showUsersJoined: [
-                            ...this.state.showUsersJoined,
-                            userID,
-                        ],
-                    });
-                    setTimeout(() => {
-                        this.setState({
-                            showUsersJoined: this.state.showUsersJoined.filter((id) => id !== userID),
-                        });
-                    }, 5000);
-                }
-            }
         }
     }
 
@@ -1523,7 +1477,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const {formatMessage} = this.props.intl;
 
-        const joinedUsers = this.state.showUsersJoined.map((userID) => {
+        const joinedUsers = this.props.recentlyJoinedUsers.map((userID) => {
             if (userID === this.props.currentUserID) {
                 return null;
             }
@@ -1539,21 +1493,23 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='calls-notification-bar calls-slide-top'
                     style={{justifyContent: 'flex-start'}}
                     key={profile.id}
+                    data-testid={'call-joined-participant-notification'}
                 >
                     <Avatar
                         size={16}
                         fontSize={8}
                         url={picture}
-                        style={{margin: '0 8px'}}
                     />
-                    {formatMessage({defaultMessage: '{participant} has joined the call.'}, {participant: getUserDisplayName(profile)})}
+                    <span style={{overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                        {formatMessage({defaultMessage: '{participant} has joined the call.'}, {participant: getUserDisplayName(profile)})}
+                    </span>
                 </div>
             );
         });
 
         return (
             <React.Fragment>
-                <div style={{display: 'flex', flexDirection: 'column-reverse'}}>
+                <div style={{display: 'flex', flexDirection: 'column-reverse', gap: '4px'}}>
                     {joinedUsers}
                 </div>
                 <JoinNotification visible={!this.state.connecting}/>
