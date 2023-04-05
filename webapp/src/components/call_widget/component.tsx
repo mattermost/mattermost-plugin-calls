@@ -53,6 +53,7 @@ import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import LoadingOverlay from './loading_overlay';
+import JoinNotification from './join_notification';
 
 import './component.scss';
 
@@ -545,22 +546,23 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             // No strict need to be pixel perfect here since the window will be transparent
             // and better to overestimate slightly to avoid the widget possibly being cut.
-            const margin = 4;
+            const hMargin = 4;
+            const vMargin = 2;
 
             // Margin on base width is needed to account for the widget being
             // positioned 2px from the left: 2px + 280px (base width) + 2px
-            bounds.width = baseWidget.getBoundingClientRect().width + margin;
+            bounds.width = baseWidget.getBoundingClientRect().width + hMargin;
 
             // Margin on base height is needed to account for the widget being
             // positioned 2px from the bottom: 2px + 86px (base height) + 2px
-            bounds.height = baseWidget.getBoundingClientRect().height + widgetMenu.getBoundingClientRect().height + margin;
+            bounds.height = baseWidget.getBoundingClientRect().height + widgetMenu.getBoundingClientRect().height + vMargin;
 
             if (widgetMenu.getBoundingClientRect().height > 0) {
-                bounds.height += margin;
+                bounds.height += vMargin;
             }
 
             if (this.audioMenu) {
-                bounds.width += this.audioMenu.getBoundingClientRect().width + margin;
+                bounds.width += this.audioMenu.getBoundingClientRect().width + hMargin;
             }
         }
 
@@ -1521,26 +1523,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const {formatMessage} = this.props.intl;
 
-        const isMuted = window.callsClient?.isMuted();
-        const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
-
-        const muteIcon = (
-            <MuteIcon
-                style={{
-                    width: '11px',
-                    height: '11px',
-                    fill: isMuted ? changeOpacity(this.props.theme.centerChannelColor, 1.0) : '#3DB887',
-                }}
-                stroke={isMuted ? 'rgb(var(--dnd-indicator-rgb))' : '#3DB887'}
-            />
-        );
-
-        const notificationContent = isMuted ? formatMessage({
-            defaultMessage: 'You\'re muted. Select <muteIcon/> to unmute.',
-        }, {muteIcon}) : formatMessage({
-            defaultMessage: 'You\'re unmuted. Select <muteIcon/> to mute.',
-        }, {muteIcon});
-
         const joinedUsers = this.state.showUsersJoined.map((userID) => {
             if (userID === this.props.currentUserID) {
                 return null;
@@ -1574,11 +1556,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <div style={{display: 'flex', flexDirection: 'column-reverse'}}>
                     {joinedUsers}
                 </div>
-                {!this.state.connecting &&
-                    <div className='calls-notification-bar calls-slide-top'>
-                        {notificationContent}
-                    </div>
-                }
+                <JoinNotification visible={!this.state.connecting}/>
             </React.Fragment>
         );
     };
