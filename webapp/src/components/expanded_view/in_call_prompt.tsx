@@ -66,7 +66,10 @@ export default function InCallPrompt(props: Props) {
 
             { props.onClose &&
             <span>
-                <CloseButton onClick={props.onClose}>
+                <CloseButton
+                    data-testid={'popout-prompt-close'}
+                    onClick={props.onClose}
+                >
                     <CompassIcon icon='close'/>
                 </CloseButton>
             </span>

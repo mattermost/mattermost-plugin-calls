@@ -137,7 +137,7 @@ test.describe('popout window', () => {
         await expect(popOut.getByTestId('banner-recording')).toContainText('You\'re recording');
 
         // close prompt on widget
-        await page.getByTestId('calls-widget-banner-recording').locator('.icon-close').click();
+        await page.getByTestId('calls-widget-banner-close').click();
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeHidden();
 
         // should close prompt on popout as well
@@ -166,7 +166,7 @@ test.describe('popout window', () => {
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing…');
 
         // close prompt on widget
-        await page.getByTestId('calls-widget-banner-recording').locator('.icon-close').click();
+        await page.getByTestId('calls-widget-banner-close').click();
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeHidden();
 
         // should close prompt on popout as well
@@ -204,7 +204,7 @@ test.describe('popout window', () => {
         await expect(popOut.getByTestId('banner-recording')).toContainText('You\'re recording');
 
         // close prompt on popout
-        await popOut.getByTestId('banner-recording').locator('.icon-close').click();
+        await popOut.getByTestId('popout-prompt-close').click();
         await expect(popOut.getByTestId('banner-recording')).toBeHidden();
 
         // should close prompt on widget as well
@@ -233,7 +233,7 @@ test.describe('popout window', () => {
         await expect(popOut2.getByTestId('banner-recording-stopped')).toContainText('Recording has stopped. Processing…');
 
         // close prompt on popout
-        await popOut2.getByTestId('banner-recording-stopped').locator('.icon-close').click();
+        await popOut2.getByTestId('popout-prompt-close').click();
         await expect(popOut2.getByTestId('banner-recording-stopped')).toBeHidden();
 
         // should close prompt on widget as well
