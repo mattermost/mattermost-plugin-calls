@@ -153,17 +153,17 @@ test.describe('popout window', () => {
         await expect(popOut2.locator('#calls-expanded-view')).toBeVisible();
 
         // prompt should not be visible, wait a couple seconds to make sure state has settled down
-        await popOut2.waitForTimeout(2000);
+        await popOut2.waitForTimeout(5000);
         await expect(popOut2.getByTestId('banner-recording')).toBeHidden();
 
         // stop recording
         await popOut2.locator('#calls-popout-record-button').click();
 
-        // very recording ended prompt renders correctly on widget and in popout
-        await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
-        await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing…');
+        // verify recording ended prompt renders correctly on widget and in popout
         await expect(popOut2.getByTestId('banner-recording-stopped')).toBeVisible();
         await expect(popOut2.getByTestId('banner-recording-stopped')).toContainText('Recording has stopped. Processing…');
+        await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
+        await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing…');
 
         // close prompt on widget
         await page.getByTestId('calls-widget-banner-recording').locator('.icon-close').click();
@@ -220,13 +220,13 @@ test.describe('popout window', () => {
         await expect(popOut2.locator('#calls-expanded-view')).toBeVisible();
 
         // prompt should not be visible, wait a couple seconds to make sure state has settled down
-        await popOut2.waitForTimeout(2000);
+        await popOut2.waitForTimeout(5000);
         await expect(popOut2.getByTestId('banner-recording')).toBeHidden();
 
         // stop recording
         await popOut2.locator('#calls-popout-record-button').click();
 
-        // very recording ended prompt renders correctly on widget and in popout
+        // verify recording ended prompt renders correctly on widget and in popout
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing…');
         await expect(popOut2.getByTestId('banner-recording-stopped')).toBeVisible();
