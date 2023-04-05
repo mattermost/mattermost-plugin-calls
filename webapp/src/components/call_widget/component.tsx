@@ -13,7 +13,7 @@ import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {Theme} from 'mattermost-redux/types/themes';
 
-import {CallRecordingState, UserState} from '@calls/common/lib/types';
+import {UserState} from '@calls/common/lib/types';
 
 import * as Telemetry from 'src/types/telemetry';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
@@ -46,7 +46,12 @@ import Shortcut from 'src/components/shortcut';
 import Badge from 'src/components/badge';
 import {AudioInputPermissionsError} from 'src/client';
 import {Emoji} from 'src/components/emoji/emoji';
-import {AudioDevices, CallAlertStates, CallAlertStatesDefault} from 'src/types/types';
+import {
+    AudioDevices,
+    CallAlertStates,
+    CallAlertStatesDefault,
+    CallRecordingReduxState,
+} from 'src/types/types';
 
 import CallDuration from './call_duration';
 import WidgetBanner from './widget_banner';
@@ -76,12 +81,13 @@ interface Props {
     callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
-    callRecording?: CallRecordingState,
+    callRecording?: CallRecordingReduxState,
     screenSharingID: string,
     show: boolean,
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
+    recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     allowScreenSharing: boolean,
     global?: true,
     position?: {
@@ -115,7 +121,6 @@ interface State {
     showUsersJoined: string[],
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
-    recDisclaimerDismissedAt: number,
     connecting: boolean,
 }
 
@@ -263,7 +268,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showUsersJoined: [],
             audioEls: [],
             alerts: CallAlertStatesDefault,
-            recDisclaimerDismissedAt: 0,
             connecting: true,
         };
         this.node = React.createRef();
@@ -375,6 +379,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         // keyboard shortcuts
         document.addEventListener('keydown', this.handleKBShortcuts, true);
+
+        // set cross-window actions
+        window.callActions = {
+            setRecordingPromptDismissedAt: this.props.recordingPromptDismissedAt,
+        };
 
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
@@ -618,6 +627,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({
             ...state,
         });
+    };
+
+    dismissRecordingPrompt = () => {
+        // Dismiss our prompt.
+        this.props.recordingPromptDismissedAt(this.props.channel.id, Date.now());
+
+        // Dismiss the expanded window's prompt.
+        this.state.expandedViewWindow?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
     };
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
@@ -1372,8 +1389,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     renderRecordingDisclaimer = () => {
         const {formatMessage} = this.props.intl;
         const isHost = this.props.callHostID === this.props.currentUserID;
-        const dismissedAt = this.state.recDisclaimerDismissedAt;
         const recording = this.props.callRecording;
+        const dismissedAt = recording?.prompt_dismissed_at || 0;
         const hasRecEnded = recording?.end_at;
 
         // Nothing to show if the recording hasn't started yet, unless there
@@ -1442,7 +1459,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 body={body}
                 confirmText={confirmText}
                 declineText={isHost ? null : formatMessage({defaultMessage: 'Leave call'})}
-                onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
+                onClose={this.dismissRecordingPrompt}
                 onDecline={this.onDisconnectClick}
             />
         );
@@ -1638,6 +1655,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.props.trackEvent(Telemetry.Event.OpenExpandedView, Telemetry.Source.Widget, {initiator: 'button'});
 
         // TODO: remove this as soon as we support opening a window from desktop app.
+        // Reminder: the first condition is for the old desktop app, pre-global widget. The else path is the webapp.
         if (window.desktop && !this.props.global) {
             this.props.showExpandedView();
         } else {

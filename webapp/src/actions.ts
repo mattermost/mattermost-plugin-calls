@@ -43,6 +43,7 @@ import {
     HIDE_END_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
+    VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -236,6 +237,20 @@ export const stopCallRecording = async (callID: string) => {
         `${getPluginPath()}/calls/${callID}/recording/stop`,
         {method: 'post'},
     );
+};
+
+export const recordingPromptDismissedAt = (callID: string, dismissedAt: number) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
+        data: {
+            callID,
+            dismissedAt,
+        },
+    });
+
+    if (window.currentCallData) {
+        window.currentCallData.recordingPromptDismissedAt = dismissedAt;
+    }
 };
 
 export const displayCallsTestModeUser = () => {

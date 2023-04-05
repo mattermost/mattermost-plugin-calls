@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import CompassIcon from 'src/components/icons/compassIcon';
 
 export type Props = {
+    testId: string,
     icon: string | React.ReactNode,
     iconFill?: string,
     iconColor?: string,
@@ -18,7 +19,7 @@ export type Props = {
 
 export default function InCallPrompt(props: Props) {
     return (
-        <Prompt>
+        <Prompt data-testid={props.testId}>
             <Icon
                 fill={props.iconFill}
                 color={props.iconColor}
@@ -65,7 +66,10 @@ export default function InCallPrompt(props: Props) {
 
             { props.onClose &&
             <span>
-                <CloseButton onClick={props.onClose}>
+                <CloseButton
+                    data-testid={'popout-prompt-close'}
+                    onClick={props.onClose}
+                >
                     <CompassIcon icon='close'/>
                 </CloseButton>
             </span>

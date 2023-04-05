@@ -281,6 +281,7 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
         data: {
             channelID,
             hostID: ev.data.hostID,
+            hostChangeAt: Date.now(),
         },
     });
 }
