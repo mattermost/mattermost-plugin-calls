@@ -152,8 +152,6 @@ test.describe('popout window', () => {
         ]);
         await expect(popOut2.locator('#calls-expanded-view')).toBeVisible();
 
-        // prompt should not be visible, wait a couple seconds to make sure state has settled down
-        await popOut2.waitForTimeout(5000);
         await expect(popOut2.getByTestId('banner-recording')).toBeHidden();
 
         // stop recording
@@ -219,8 +217,6 @@ test.describe('popout window', () => {
         ]);
         await expect(popOut2.locator('#calls-expanded-view')).toBeVisible();
 
-        // prompt should not be visible, wait a couple seconds to make sure state has settled down
-        await popOut2.waitForTimeout(5000);
         await expect(popOut2.getByTestId('banner-recording')).toBeHidden();
 
         // stop recording
