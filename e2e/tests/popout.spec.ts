@@ -118,7 +118,7 @@ test.describe('popout window', () => {
         await devPage.goto();
         await devPage.startCall();
 
-        let [popOut, _] = await Promise.all([
+        const [popOut] = await Promise.all([
             context.waitForEvent('page'),
             page.click('#calls-widget-expand-button'),
         ]);
@@ -146,31 +146,31 @@ test.describe('popout window', () => {
         // close and reopen popout
         await popOut.close();
         await expect(popOut.isClosed()).toBeTruthy();
-        [popOut, _] = await Promise.all([
+        const [popOut2] = await Promise.all([
             context.waitForEvent('page'),
             page.click('#calls-widget-expand-button'),
         ]);
-        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+        await expect(popOut2.locator('#calls-expanded-view')).toBeVisible();
 
         // prompt should not be visible, wait a couple seconds to make sure state has settled down
-        await popOut.waitForTimeout(2000);
-        await expect(popOut.getByTestId('banner-recording')).toBeHidden();
+        await popOut2.waitForTimeout(2000);
+        await expect(popOut2.getByTestId('banner-recording')).toBeHidden();
 
         // stop recording
-        await popOut.locator('#calls-popout-record-button').click();
+        await popOut2.locator('#calls-popout-record-button').click();
 
         // very recording ended prompt renders correctly on widget and in popout
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing…');
-        await expect(popOut.getByTestId('banner-recording-stopped')).toBeVisible();
-        await expect(popOut.getByTestId('banner-recording-stopped')).toContainText('Recording has stopped. Processing…');
+        await expect(popOut2.getByTestId('banner-recording-stopped')).toBeVisible();
+        await expect(popOut2.getByTestId('banner-recording-stopped')).toContainText('Recording has stopped. Processing…');
 
         // close prompt on widget
         await page.getByTestId('calls-widget-banner-recording').locator('.icon-close').click();
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeHidden();
 
         // should close prompt on popout as well
-        await expect(popOut.getByTestId('banner-recording-stopped')).toBeHidden();
+        await expect(popOut2.getByTestId('banner-recording-stopped')).toBeHidden();
 
         // leave call
         await page.locator('#calls-widget-leave-button').click();
@@ -185,7 +185,7 @@ test.describe('popout window', () => {
         await devPage.goto();
         await devPage.startCall();
 
-        let [popOut, _] = await Promise.all([
+        const [popOut] = await Promise.all([
             context.waitForEvent('page'),
             page.click('#calls-widget-expand-button'),
         ]);
@@ -213,28 +213,28 @@ test.describe('popout window', () => {
         // close and reopen popout
         await popOut.close();
         await expect(popOut.isClosed()).toBeTruthy();
-        [popOut, _] = await Promise.all([
+        const [popOut2] = await Promise.all([
             context.waitForEvent('page'),
             page.click('#calls-widget-expand-button'),
         ]);
-        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+        await expect(popOut2.locator('#calls-expanded-view')).toBeVisible();
 
         // prompt should not be visible, wait a couple seconds to make sure state has settled down
-        await popOut.waitForTimeout(2000);
-        await expect(popOut.getByTestId('banner-recording')).toBeHidden();
+        await popOut2.waitForTimeout(2000);
+        await expect(popOut2.getByTestId('banner-recording')).toBeHidden();
 
         // stop recording
-        await popOut.locator('#calls-popout-record-button').click();
+        await popOut2.locator('#calls-popout-record-button').click();
 
         // very recording ended prompt renders correctly on widget and in popout
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing…');
-        await expect(popOut.getByTestId('banner-recording-stopped')).toBeVisible();
-        await expect(popOut.getByTestId('banner-recording-stopped')).toContainText('Recording has stopped. Processing…');
+        await expect(popOut2.getByTestId('banner-recording-stopped')).toBeVisible();
+        await expect(popOut2.getByTestId('banner-recording-stopped')).toContainText('Recording has stopped. Processing…');
 
         // close prompt on popout
-        await popOut.getByTestId('banner-recording-stopped').locator('.icon-close').click();
-        await expect(popOut.getByTestId('banner-recording-stopped')).toBeHidden();
+        await popOut2.getByTestId('banner-recording-stopped').locator('.icon-close').click();
+        await expect(popOut2.getByTestId('banner-recording-stopped')).toBeHidden();
 
         // should close prompt on widget as well
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeHidden();
