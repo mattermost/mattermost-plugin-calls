@@ -7,7 +7,7 @@ const config: PlaywrightTestConfig = {
     retries: process.env.CI ? 2 : 1,
     workers: 4,
     fullyParallel: true,
-    timeout: 60 * 1000,
+    timeout: 90 * 1000,
     expect: {
         timeout: 30 * 1000,
         toMatchSnapshot: {

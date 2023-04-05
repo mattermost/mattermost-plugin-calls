@@ -70,6 +70,7 @@ import {
     UserVoiceOnOffData,
     WebsocketEventData,
 } from '@calls/common/lib/types';
+import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     getCallID,
@@ -116,6 +117,7 @@ function connectCall(
             iceServers: iceConfigs,
             authToken: getToken(),
         });
+        window.currentCallData = CurrentCallDataDefault;
 
         window.callsClient.on('close', (err?: Error) => {
             if (closeCb) {
@@ -357,6 +359,8 @@ declare global {
             version?: string | null;
         },
         screenSharingTrackId: string,
+        currentCallData?: CurrentCallData,
+        callActions?: CallActions,
     }
 
     interface HTMLVideoElement {

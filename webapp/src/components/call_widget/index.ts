@@ -13,7 +13,7 @@ import {Client4} from 'mattermost-redux/client';
 
 import {UserState} from '@calls/common/lib/types';
 
-import {showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
+import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 
 import {
     voiceUsersStatuses,
@@ -87,6 +87,7 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     showExpandedView,
     showScreenSourceModal,
     trackEvent,
+    recordingPromptDismissedAt,
 }, dispatch);
 
 export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(CallWidget));

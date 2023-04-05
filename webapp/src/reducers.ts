@@ -23,6 +23,7 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     VOICE_CHANNEL_CALL_END,
     VOICE_CHANNEL_CALL_HOST,
+    VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_CALL_START,
     VOICE_CHANNEL_PROFILE_CONNECTED,
@@ -520,14 +521,24 @@ type userDisconnectedAction = {
     },
 }
 
-const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, action: callRecordingStateAction | userDisconnectedAction) => {
+type disclaimerDismissedAction = {
+    type: string,
+    data: {
+        callID: string,
+        dismissedAt: number,
+    }
+}
+
+const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, action: callRecordingStateAction | userDisconnectedAction | disclaimerDismissedAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
     case VOICE_CHANNEL_USER_DISCONNECTED: {
         const theAction = action as userDisconnectedAction;
         if (theAction.data.currentUserID === theAction.data.userID) {
-            return {};
+            const nextState = {...state};
+            delete nextState[theAction.data.channelID];
+            return nextState;
         }
         return state;
     }
@@ -535,7 +546,20 @@ const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, a
         const theAction = action as callRecordingStateAction;
         return {
             ...state,
-            [theAction.data.callID]: theAction.data.recState,
+            [theAction.data.callID]: {
+                ...state[theAction.data.callID],
+                ...theAction.data.recState,
+            },
+        };
+    }
+    case VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED: {
+        const theAction = action as disclaimerDismissedAction;
+        return {
+            ...state,
+            [theAction.data.callID]: {
+                ...state[theAction.data.callID],
+                prompt_dismissed_at: theAction.data.dismissedAt,
+            },
         };
     }
     default:
@@ -566,7 +590,7 @@ const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, actio
             [action.data.channelID]: {
                 ...state[action.data.channelID],
                 hostID: action.data.hostID,
-                hostChangeAt: Date.now(),
+                hostChangeAt: action.data.hostChangeAt || state[action.data.channelID].hostChangeAt,
             },
         };
     case VOICE_CHANNEL_CALL_START:
