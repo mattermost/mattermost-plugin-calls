@@ -84,7 +84,7 @@ const Button = styled.button<{bgColor: string, bgColorHover?: string, isDisabled
   gap: 3px;
   color: rgba(var(--center-channel-color-rgb), 0.64);
 
-  &&&:hover {
+  &&&&:hover {
     background: ${({bgColorHover}) => bgColorHover || 'rgba(var(--center-channel-color-rgb), 0.12)'};
   }
 
