@@ -13,5 +13,8 @@ permissions:
 
 jobs:
   plugin-cd:
-    uses: mattermost/actions-workflows/.github/workflows/plugin-cd.yml@main
     secrets: inherit
+    env:
+      RUDDER_DATAPLANE_URL: ${{ secrets.MM_RUDDER_DATAPLANE_URL }}
+      RUDDER_WRITE_KEY: ${{ secrets.MM_RUDDER_CALLS_PROD }}
+    uses: mattermost/actions-workflows/.github/workflows/plugin-cd.yml@main
