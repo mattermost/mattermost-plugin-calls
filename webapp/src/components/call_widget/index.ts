@@ -8,7 +8,7 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {getTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getTeam, getCurrentTeamId, getMyTeams} from 'mattermost-redux/selectors/entities/teams';
 import {Client4} from 'mattermost-redux/client';
 
 import {UserState} from '@calls/common/lib/types';
@@ -80,6 +80,7 @@ const mapStateToProps = (state: GlobalState) => {
         allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),
         recentlyJoinedUsers: recentlyJoinedUsers(state, channel?.id),
+        wider: getMyTeams(state)?.length > 1,
     };
 };
 

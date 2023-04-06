@@ -95,6 +95,7 @@ interface Props {
         left: number,
     },
     recentlyJoinedUsers: string[],
+    wider: boolean,
 }
 
 interface DraggingState {
@@ -1282,7 +1283,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
-    renderMenu = (widerWidget: boolean) => {
+    renderMenu = () => {
         if (!this.state.showMenu) {
             return null;
         }
@@ -1293,7 +1294,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='Menu__content dropdown-menu'
                     style={this.style.dotsMenu as CSSProperties}
                 >
-                    {this.props.allowScreenSharing && !widerWidget && this.renderScreenSharingMenuItem()}
+                    {this.props.allowScreenSharing && !this.props.wider && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
                 </ul>
@@ -1672,7 +1673,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     };
 
-    renderChannelName = (widerWidget: boolean) => {
+    renderChannelName = () => {
         return (
             <React.Fragment>
                 <div style={{margin: '0 2px 0 4px'}}>{untranslatable('•')}</div>
@@ -1692,7 +1693,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            maxWidth: widerWidget ? '22ch' : '12ch',
+                            maxWidth: this.props.wider ? '22ch' : '12ch',
                         }}
                     >
                         {this.props.channelDisplayName}
@@ -1723,10 +1724,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext);
         }
 
-        const widerWidget = Boolean(document.querySelector('.team-sidebar')) || Boolean(this.props.global);
         const mainStyle = {
             ...this.style.main as CSSProperties,
-            width: widerWidget ? '280px' : '216px',
+            width: this.props.wider ? '280px' : '216px',
             ...(this.props.global && {appRegion: 'drag'}),
         };
 
@@ -1752,7 +1752,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {this.renderRecordingDisclaimer()}
                     {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
                     {this.renderParticipantsList()}
-                    {this.renderMenu(widerWidget)}
+                    {this.renderMenu()}
                 </div>
 
                 <div style={this.style.status as CSSProperties}>
@@ -1776,12 +1776,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <div style={this.style.profiles}>
                             {this.renderProfiles()}
                         </div>
-                        <div style={{width: widerWidget ? '200px' : '136px'}}>
+                        <div style={{width: this.props.wider ? '200px' : '136px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 {this.renderRecordingBadge()}
                                 <CallDuration startAt={this.props.callStartAt}/>
-                                {this.renderChannelName(widerWidget)}
+                                {this.renderChannelName()}
                             </div>
                         </div>
                     </div>
@@ -1867,7 +1867,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             />
                         }
 
-                        {this.props.allowScreenSharing && (widerWidget || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
+                        {this.props.allowScreenSharing && (this.props.wider || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <button
                             id='calls-widget-toggle-menu-button'
