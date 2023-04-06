@@ -43,12 +43,12 @@
   justify-content: center;
   align-items: center;
   border-radius: 6px;
-  padding: 2px;
+  padding: 2px 4px;
   font-size: 11px;
   color: rgba(var(--center-channel-color-rgb), 0.64);
   background: rgba(var(--center-channel-bg-rgb), 0.8);
   white-space: pre;
-  margin-top: 4px;
+  gap: 4px;
 }
 
 a.calls-channel-link {

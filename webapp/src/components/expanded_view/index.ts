@@ -13,7 +13,14 @@ import {connect} from 'react-redux';
 
 import {withRouter} from 'react-router-dom';
 
-import {hideExpandedView, prefetchThread, showScreenSourceModal, startCallRecording, trackEvent} from 'src/actions';
+import {
+    hideExpandedView,
+    prefetchThread,
+    recordingPromptDismissedAt,
+    showScreenSourceModal,
+    startCallRecording,
+    trackEvent,
+} from 'src/actions';
 import {
     allowScreenSharing,
     callRecording,
@@ -103,6 +110,7 @@ const mapDispatchToProps = {
     prefetchThread,
     trackEvent,
     startCallRecording,
+    recordingPromptDismissedAt,
 };
 
 export default withRouter(connect(mapStateToProps, mapDispatchToProps)(ExpandedView));

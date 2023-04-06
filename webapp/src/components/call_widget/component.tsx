@@ -9,7 +9,7 @@ import {Team} from '@mattermost/types/teams';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 
-import {CallRecordingState, UserState} from '@calls/common/lib/types';
+import {UserState} from '@calls/common/lib/types';
 
 import * as Telemetry from 'src/types/telemetry';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
@@ -47,13 +47,19 @@ import RecordCircleIcon from 'src/components/icons/record_circle';
 import Badge from 'src/components/badge';
 import {AudioInputPermissionsError} from 'src/client';
 import {Emoji} from 'src/components/emoji/emoji';
-import {AudioDevices, CallAlertStates, CallAlertStatesDefault} from 'src/types/types';
+import {
+    AudioDevices,
+    CallAlertStates,
+    CallAlertStatesDefault,
+    CallRecordingReduxState,
+} from 'src/types/types';
 
 import CallDuration from './call_duration';
 import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import LoadingOverlay from './loading_overlay';
+import JoinNotification from './join_notification';
 
 import './component.scss';
 
@@ -75,18 +81,20 @@ interface Props {
     callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
-    callRecording?: CallRecordingState,
+    callRecording?: CallRecordingReduxState,
     screenSharingID: string,
     show: boolean,
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
+    recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     allowScreenSharing: boolean,
     global?: true,
     position?: {
         bottom: number,
         left: number,
     },
+    recentlyJoinedUsers: string[],
     wider: boolean,
 }
 
@@ -112,10 +120,8 @@ interface State {
     showAudioOutputDevicesMenu?: boolean,
     dragging: DraggingState,
     expandedViewWindow: Window | null,
-    showUsersJoined: string[],
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
-    recDisclaimerDismissedAt: number,
     connecting: boolean,
 }
 
@@ -230,10 +236,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offY: 0,
             },
             expandedViewWindow: null,
-            showUsersJoined: [],
             audioEls: [],
             alerts: CallAlertStatesDefault,
-            recDisclaimerDismissedAt: 0,
             connecting: true,
         };
         this.node = React.createRef();
@@ -346,17 +350,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // keyboard shortcuts
         document.addEventListener('keydown', this.handleKBShortcuts, true);
 
+        // set cross-window actions
+        window.callActions = {
+            setRecordingPromptDismissedAt: this.props.recordingPromptDismissedAt,
+        };
+
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
-            showUsersJoined: [this.props.currentUserID],
             connecting: Boolean(window.callsClient?.isConnecting()),
         });
-
-        setTimeout(() => {
-            this.setState({
-                showUsersJoined: this.state.showUsersJoined.filter((userID) => userID !== this.props.currentUserID),
-            });
-        }, 5000);
 
         this.attachVoiceTracks(window.callsClient.getRemoteVoiceTracks());
         window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
@@ -448,7 +450,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         document.removeEventListener('keydown', this.handleKBShortcuts, true);
     }
 
-    public componentDidUpdate(prevProps: Props) {
+    public componentDidUpdate() {
         let screenStream = this.state.screenStream;
         if (this.props.screenSharingID === this.props.currentUserID) {
             screenStream = window.callsClient?.getLocalScreenStream();
@@ -462,39 +464,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer.current?.srcObject !== this.state.screenStream) {
             this.screenPlayer.current.srcObject = this.state.screenStream;
-        }
-
-        let ids: string[] = [];
-        const currIDs = Object.keys(this.props.statuses);
-        const prevIDs = Object.keys(prevProps.statuses);
-        if (currIDs.length > prevIDs.length) {
-            ids = currIDs;
-            if (prevIDs.length === 0) {
-                return;
-            }
-        } else if (currIDs.length < prevIDs.length) {
-            ids = prevIDs;
-        }
-        if (ids.length > 0) {
-            const statuses = this.props.statuses;
-            const prevStatuses = prevProps.statuses;
-            for (let i = 0; i < ids.length; i++) {
-                const userID = ids[i];
-                if (statuses[userID] && !prevStatuses[userID]) {
-                    // eslint-disable-next-line react/no-did-update-set-state
-                    this.setState({
-                        showUsersJoined: [
-                            ...this.state.showUsersJoined,
-                            userID,
-                        ],
-                    });
-                    setTimeout(() => {
-                        this.setState({
-                            showUsersJoined: this.state.showUsersJoined.filter((id) => id !== userID),
-                        });
-                    }, 5000);
-                }
-            }
         }
     }
 
@@ -512,22 +481,23 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             // No strict need to be pixel perfect here since the window will be transparent
             // and better to overestimate slightly to avoid the widget possibly being cut.
-            const margin = 4;
+            const hMargin = 4;
+            const vMargin = 2;
 
             // Margin on base width is needed to account for the widget being
             // positioned 2px from the left: 2px + 280px (base width) + 2px
-            bounds.width = baseWidget.getBoundingClientRect().width + margin;
+            bounds.width = baseWidget.getBoundingClientRect().width + hMargin;
 
             // Margin on base height is needed to account for the widget being
             // positioned 2px from the bottom: 2px + 94px (base height) + 2px
-            bounds.height = baseWidget.getBoundingClientRect().height + widgetMenu.getBoundingClientRect().height + margin;
+            bounds.height = baseWidget.getBoundingClientRect().height + widgetMenu.getBoundingClientRect().height + vMargin;
 
             if (widgetMenu.getBoundingClientRect().height > 0) {
-                bounds.height += margin;
+                bounds.height += vMargin;
             }
 
             if (this.audioMenu) {
-                bounds.width += this.audioMenu.getBoundingClientRect().width + margin;
+                bounds.width += this.audioMenu.getBoundingClientRect().width + hMargin;
             }
         }
 
@@ -583,6 +553,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({
             ...state,
         });
+    };
+
+    dismissRecordingPrompt = () => {
+        // Dismiss our prompt.
+        this.props.recordingPromptDismissedAt(this.props.channel.id, Date.now());
+
+        // Dismiss the expanded window's prompt.
+        this.state.expandedViewWindow?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
     };
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
@@ -1369,8 +1347,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     renderRecordingDisclaimer = () => {
         const {formatMessage} = this.props.intl;
         const isHost = this.props.callHostID === this.props.currentUserID;
-        const dismissedAt = this.state.recDisclaimerDismissedAt;
         const recording = this.props.callRecording;
+        const dismissedAt = recording?.prompt_dismissed_at || 0;
         const hasRecEnded = recording?.end_at;
 
         // Nothing to show if the recording hasn't started yet, unless there
@@ -1439,7 +1417,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 body={body}
                 confirmText={confirmText}
                 declineText={isHost ? null : formatMessage({defaultMessage: 'Leave call'})}
-                onClose={() => this.setState({recDisclaimerDismissedAt: Date.now()})}
+                onClose={this.dismissRecordingPrompt}
                 onDecline={this.onDisconnectClick}
             />
         );
@@ -1520,26 +1498,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const {formatMessage} = this.props.intl;
 
-        const isMuted = window.callsClient?.isMuted();
-        const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
-
-        const muteIcon = (
-            <MuteIcon
-                style={{
-                    width: '11px',
-                    height: '11px',
-                    fill: isMuted ? 'var(--center-channel-color)' : '#3DB887',
-                }}
-            />
-        );
-
-        const notificationContent = isMuted ? formatMessage({
-            defaultMessage: 'You\'re muted. Select {muteIcon} to unmute.',
-        }, {muteIcon}) : formatMessage({
-            defaultMessage: 'You\'re unmuted. Select {muteIcon} to mute.',
-        }, {muteIcon});
-
-        const joinedUsers = this.state.showUsersJoined.map((userID) => {
+        const joinedUsers = this.props.recentlyJoinedUsers.map((userID) => {
             if (userID === this.props.currentUserID) {
                 return null;
             }
@@ -1555,30 +1514,26 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='calls-notification-bar calls-slide-top'
                     style={{justifyContent: 'flex-start'}}
                     key={profile.id}
+                    data-testid={'call-joined-participant-notification'}
                 >
                     <Avatar
                         size={16}
                         fontSize={8}
                         url={picture}
-                        style={{margin: '0 8px'}}
                         border={false}
                     />
-                    {formatMessage({defaultMessage: '{participant} has joined the call.'}, {participant: getUserDisplayName(profile)})}
+                    <span style={{overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                        {formatMessage({defaultMessage: '{participant} has joined the call.'}, {participant: getUserDisplayName(profile)})}
+                    </span>
                 </div>
             );
         });
 
         return (
-            <React.Fragment>
-                <div style={{display: 'flex', flexDirection: 'column-reverse'}}>
-                    {joinedUsers}
-                </div>
-                {!this.state.connecting &&
-                    <div className='calls-notification-bar calls-slide-top'>
-                        {notificationContent}
-                    </div>
-                }
-            </React.Fragment>
+            <div style={{display: 'flex', flexDirection: 'column-reverse', gap: '4px'}}>
+                <JoinNotification visible={!this.state.connecting}/>
+                {joinedUsers}
+            </div>
         );
     };
 
@@ -1659,6 +1614,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.props.trackEvent(Telemetry.Event.OpenExpandedView, Telemetry.Source.Widget, {initiator: 'button'});
 
         // TODO: remove this as soon as we support opening a window from desktop app.
+        // Reminder: the first condition is for the old desktop app, pre-global widget. The else path is the webapp.
         if (window.desktop && !this.props.global) {
             this.props.showExpandedView();
         } else {

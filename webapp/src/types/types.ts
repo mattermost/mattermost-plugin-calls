@@ -1,9 +1,8 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {MessageDescriptor} from 'react-intl';
-
 import {CallsConfig, RTCStats} from '@calls/common/lib/types';
+import {MessageDescriptor} from 'react-intl';
 
 export const CallsConfigDefault: CallsConfig = {
     ICEServers: [],
@@ -94,11 +93,39 @@ export const CallAlertStatesDefault = {
     },
 };
 
+export type CallRecordingReduxState = {
+    init_at: number;
+    start_at: number;
+    end_at: number;
+    err?: string;
+    error_at?: number;
+    prompt_dismissed_at?: number;
+}
+
 export type CapturerSource = {
     id: string;
     name: string;
     thumbnailURL: string;
     display_id: string;
+}
+
+// currentCallData (of type CurrentCallData) is attached to the widget's window to keep persistent data across
+// the various call windows. As a simple rule, if a child window (eg, ExpandedViewWindow) sets data,
+// set it directly in the window.opener.currentCallData, and read that data when needing up-to-date
+// data. The widget needs to set/read data on its window.currentCallData object.
+// Reminder: obviously this is not reactive; setting data will not update the other window.
+export type CurrentCallData = {
+    recordingPromptDismissedAt: number;
+}
+
+export const CurrentCallDataDefault: CurrentCallData = {
+    recordingPromptDismissedAt: 0,
+};
+
+// Similar to currentCallData, callActions is a cross-window function to trigger a change in that
+// owning window. recordingPromptDismissedAt should be set by that window's init function or constructor.
+export type CallActions = {
+    setRecordingPromptDismissedAt: (callId: string, dismissedAt: number) => void;
 }
 
 export type ColorRGB = {
