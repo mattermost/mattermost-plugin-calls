@@ -3,13 +3,12 @@ import {useIntl} from 'react-intl';
 
 import {RecordCircleOutlineIcon} from '@mattermost/compass-icons/components';
 
-import {CallRecordingState} from '@calls/common/lib/types';
-
 import CompassIcon from 'src/components/icons/compassIcon';
 
 import {
     CallRecordingDisclaimerStrings,
 } from 'src/constants';
+import {CallRecordingReduxState} from 'src/types/types';
 
 import {
     capitalize,
@@ -20,9 +19,10 @@ import InCallPrompt from './in_call_prompt';
 type Props = {
     isHost: boolean,
     hostChangeAt: number,
-    recording?: CallRecordingState,
+    recording?: CallRecordingReduxState,
     recordingMaxDuration: number,
     onDecline: () => void;
+    promptDismissed: () => void;
 }
 
 const minutesLeftThreshold = 10;
@@ -44,7 +44,6 @@ export default function RecordingInfoPrompt(props: Props) {
         return Math.round(props.recordingMaxDuration - callDurationMinutes);
     }, [props.recording?.start_at, props.recordingMaxDuration]);
 
-    const [dismissedAt, updateDismissedAt] = useState(0);
     const [recordingWillEndSoon, updateRecordingWillEndSoon] = useState(0);
 
     useEffect(() => {
@@ -59,11 +58,19 @@ export default function RecordingInfoPrompt(props: Props) {
 
     const hasRecEnded = props.recording?.end_at;
 
+    // Unfortunately we cannot update the local redux state immediately because the props.channel is not available,
+    // so we have to check which is more up to date and use that.
+    let disclaimerDismissedAt = props.recording?.prompt_dismissed_at || 0;
+    if (window.opener && window.opener.currentCallData?.recordingPromptDismissedAt > disclaimerDismissedAt) {
+        disclaimerDismissedAt = window.opener.currentCallData?.recordingPromptDismissedAt;
+    }
+
     const {formatMessage} = useIntl();
 
-    if (props.isHost && !hasRecEnded && recordingWillEndSoon > dismissedAt) {
+    if (props.isHost && !hasRecEnded && recordingWillEndSoon > disclaimerDismissedAt) {
         return (
             <InCallPrompt
+                testId={'recording-will-end-soon'}
                 icon={
                     <CompassIcon
                         icon='alert-outline'
@@ -81,7 +88,7 @@ export default function RecordingInfoPrompt(props: Props) {
                     defaultMessage: 'Your recording will end in {count, plural, =1 {# minute} other {# minutes}}.'}
                 , {count: getMinutesLeftBeforeEnd()})}
                 confirmText={formatMessage({defaultMessage: 'Dismiss'})}
-                onClose={() => updateDismissedAt(Date.now())}
+                onClose={props.promptDismissed}
             />
         );
     }
@@ -100,18 +107,19 @@ export default function RecordingInfoPrompt(props: Props) {
 
     // If the prompt was dismissed after the recording has started and after the last host change
     // we don't show this again, unless there was a more recent error.
-    if (!hasRecEnded && dismissedAt > props.recording?.start_at && dismissedAt > props.hostChangeAt) {
-        if (!props.recording?.error_at || dismissedAt > props.recording.error_at) {
+    if (!hasRecEnded && disclaimerDismissedAt > props.recording?.start_at && disclaimerDismissedAt > props.hostChangeAt) {
+        if (!props.recording?.error_at || disclaimerDismissedAt > props.recording.error_at) {
             return null;
         }
     }
 
     // If the prompt was dismissed after the recording has ended then we
     // don't show this again.
-    if (hasRecEnded && dismissedAt > props.recording?.end_at) {
+    if (hasRecEnded && disclaimerDismissedAt > props.recording?.end_at) {
         return null;
     }
 
+    let testId = 'banner-recording';
     let header = formatMessage(CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].header);
     let body = formatMessage(CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].body);
     let confirmText = props.isHost ? formatMessage({defaultMessage: 'Dismiss'}) : formatMessage({defaultMessage: 'Understood'});
@@ -123,12 +131,14 @@ export default function RecordingInfoPrompt(props: Props) {
 
     if (hasRecEnded) {
         confirmText = '';
+        testId = 'banner-recording-stopped';
         header = formatMessage({defaultMessage: 'Recording has stopped. Processing…'});
         body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it\'s finished processing.'});
     }
 
     let error = '';
     if (props.recording?.err) {
+        testId = 'banner-recording-error';
         header = formatMessage({defaultMessage: 'Something went wrong with the recording'});
         body = formatMessage({defaultMessage: 'Please try to record again. You can also contact your system admin for troubleshooting help.'});
         error = capitalize(props.recording?.err);
@@ -145,6 +155,7 @@ export default function RecordingInfoPrompt(props: Props) {
 
     return (
         <InCallPrompt
+            testId={testId}
             icon={icon}
             iconFill='rgb(var(--dnd-indicator-rgb))'
             iconColor='rgb(var(--dnd-indicator-rgb))'
@@ -153,7 +164,7 @@ export default function RecordingInfoPrompt(props: Props) {
             error={error}
             confirmText={confirmText}
             declineText={declineText}
-            onClose={() => updateDismissedAt(Date.now())}
+            onClose={props.promptDismissed}
             onDecline={props.onDecline}
         />
     );

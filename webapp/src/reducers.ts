@@ -23,6 +23,7 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     VOICE_CHANNEL_CALL_END,
     VOICE_CHANNEL_CALL_HOST,
+    VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_CALL_START,
     VOICE_CHANNEL_PROFILE_CONNECTED,
@@ -43,6 +44,7 @@ import {
     VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_USERS_CONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
+    VOICE_CHANNEL_USER_JOINED_TIMEOUT,
 } from './action_types';
 
 interface channelStateAction {
@@ -519,14 +521,24 @@ type userDisconnectedAction = {
     },
 }
 
-const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, action: callRecordingStateAction | userDisconnectedAction) => {
+type disclaimerDismissedAction = {
+    type: string,
+    data: {
+        callID: string,
+        dismissedAt: number,
+    }
+}
+
+const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, action: callRecordingStateAction | userDisconnectedAction | disclaimerDismissedAction) => {
     switch (action.type) {
     case VOICE_CHANNEL_UNINIT:
         return {};
     case VOICE_CHANNEL_USER_DISCONNECTED: {
         const theAction = action as userDisconnectedAction;
         if (theAction.data.currentUserID === theAction.data.userID) {
-            return {};
+            const nextState = {...state};
+            delete nextState[theAction.data.channelID];
+            return nextState;
         }
         return state;
     }
@@ -534,7 +546,20 @@ const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, a
         const theAction = action as callRecordingStateAction;
         return {
             ...state,
-            [theAction.data.callID]: theAction.data.recState,
+            [theAction.data.callID]: {
+                ...state[theAction.data.callID],
+                ...theAction.data.recState,
+            },
+        };
+    }
+    case VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED: {
+        const theAction = action as disclaimerDismissedAction;
+        return {
+            ...state,
+            [theAction.data.callID]: {
+                ...state[theAction.data.callID],
+                prompt_dismissed_at: theAction.data.dismissedAt,
+            },
         };
     }
     default:
@@ -565,7 +590,7 @@ const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, actio
             [action.data.channelID]: {
                 ...state[action.data.channelID],
                 hostID: action.data.hostID,
-                hostChangeAt: Date.now(),
+                hostChangeAt: action.data.hostChangeAt || state[action.data.channelID].hostChangeAt,
             },
         };
     case VOICE_CHANNEL_CALL_START:
@@ -698,6 +723,48 @@ const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { typ
     }
 };
 
+interface recentlyJoinedUsersState {
+    [channelID: string]: string[],
+}
+
+const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: connectedChannelsAction) => {
+    switch (action.type) {
+    case VOICE_CHANNEL_UNINIT:
+        return {};
+    case VOICE_CHANNEL_USER_CONNECTED:
+        if (!state[action.data.channelID]) {
+            return {
+                ...state,
+                [action.data.channelID]: [action.data.userID],
+            };
+        }
+        return {
+            ...state,
+            [action.data.channelID]: [
+                ...state[action.data.channelID],
+                action.data.userID,
+            ],
+        };
+    case VOICE_CHANNEL_USER_DISCONNECTED:
+        return {
+            ...state,
+            [action.data.channelID]: state[action.data.channelID]?.filter((val) => val !== action.data.userID),
+        };
+    case VOICE_CHANNEL_CALL_END:
+        return {
+            ...state,
+            [action.data.channelID]: [],
+        };
+    case VOICE_CHANNEL_USER_JOINED_TIMEOUT:
+        return {
+            ...state,
+            [action.data.channelID]: state[action.data.channelID]?.filter((val) => val !== action.data.userID),
+        };
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     channelState,
     voiceConnectedChannels,
@@ -715,4 +782,5 @@ export default combineReducers({
     callsConfig,
     callsUserPreferences,
     callsRecordings,
+    recentlyJoinedUsers,
 });

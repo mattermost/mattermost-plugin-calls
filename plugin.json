@@ -139,11 +139,33 @@
                 "type": "number",
                 "default": 60,
                 "help_text": "The maximum duration (in minutes) for call recordings. Value must be in the range [15, 180]."
+            },
+            {
+                "key": "RecordingQuality",
+                "display_name": "Call recording quality",
+                "type": "dropdown",
+                "default": "medium",
+                "help_text": "The audio and video quality of call recordings.\n Note: this setting can affect the overall performance of the job service and the number of concurrent recording jobs that can be run.",
+                "options": [
+                    {
+                      "display_name": "Low",
+                      "value": "low"
+                    },
+                    {
+                      "display_name": "Medium",
+                      "value": "medium"
+                    },
+                    {
+                      "display_name": "High",
+                      "value": "high"
+                    }
+                ],
+                "hosting": "on-prem"
             }
         ]
     },
     "props": {
         "min_rtcd_version": "v0.9.0",
-        "calls_recorder_version": "v0.2.5"
+        "calls_recorder_version": "v0.3.1"
     }
 }

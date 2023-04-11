@@ -48,6 +48,8 @@ type configuration struct {
 	ServerSideTURN *bool
 	// The URL to a running calls-offloader job service instance.
 	JobServiceURL string
+	// The audio and video quality of call recordings.
+	RecordingQuality string
 
 	clientConfig
 }
@@ -241,6 +243,10 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("MaxRecordingDuration is not valid: range should be [%d, %d]", minRecDurationMinutes, maxRecDurationMinutes)
 	}
 
+	if _, ok := recorderBaseConfigs[c.RecordingQuality]; !ok {
+		return fmt.Errorf("RecordingQuality is not valid")
+	}
+
 	return nil
 }
 
@@ -253,6 +259,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.RTCDServiceURL = c.RTCDServiceURL
 	cfg.JobServiceURL = c.JobServiceURL
 	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
+	cfg.RecordingQuality = c.RecordingQuality
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)

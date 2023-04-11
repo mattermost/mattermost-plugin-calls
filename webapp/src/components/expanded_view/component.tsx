@@ -23,7 +23,6 @@ import {
 
 import {
     UserState,
-    CallRecordingState,
 } from '@calls/common/lib/types';
 
 import {Emoji} from 'src/components/emoji/emoji';
@@ -67,7 +66,12 @@ import {
     reverseKeyMappings,
     MAKE_REACTION,
 } from 'src/shortcuts';
-import {AudioDevices, CallAlertStates, CallAlertStatesDefault} from 'src/types/types';
+import {
+    AudioDevices,
+    CallAlertStates,
+    CallAlertStatesDefault,
+    CallRecordingReduxState,
+} from 'src/types/types';
 
 import RecordingInfoPrompt from './recording_info_prompt';
 
@@ -93,7 +97,7 @@ interface Props extends RouteComponentProps {
     callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
-    callRecording?: CallRecordingState,
+    callRecording?: CallRecordingReduxState,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
     selectRhsPost?: (postID: string) => void,
@@ -115,6 +119,7 @@ interface Props extends RouteComponentProps {
     recordingsEnabled: boolean,
     recordingMaxDuration: number,
     startCallRecording: (callID: string) => void,
+    recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
 }
 
 interface State {
@@ -168,6 +173,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 sendDesktopEvent('calls-link-click', {link: tx.pathname});
                 return false;
             });
+
+            // Set the inter-window actions
+            window.callActions = {
+                setRecordingPromptDismissedAt: this.props.recordingPromptDismissedAt,
+            };
+
+            // Set the current state
         } else if (window.desktop) {
             // TODO: remove this as soon as we support opening a window from desktop app.
             props.history.listen((_, action) => {
@@ -299,7 +311,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     onRecordToggle = async (fromShortcut?: boolean) => {
-        if (!this.props.callRecording || this.props.callRecording.end_at > 0) {
+        if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at > 0) {
             await this.props.startCallRecording(this.props.channel.id);
             this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
@@ -499,6 +511,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.removeEventListener('blur', this.handleBlur, true);
         this.#unlockNavigation?.();
     }
+
+    dismissRecordingPrompt = () => {
+        // Dismiss our prompt.
+        this.props.recordingPromptDismissedAt(this.props.channel.id, Date.now());
+
+        // Dismiss the parent window's prompt.
+        window.opener?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
+    };
 
     shouldRenderAlertBanner = () => {
         return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
@@ -1031,6 +1051,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     recording={this.props.callRecording}
                     recordingMaxDuration={this.props.recordingMaxDuration}
                     onDecline={this.onDisconnectClick}
+                    promptDismissed={this.dismissRecordingPrompt}
                 />
             </div>
         );

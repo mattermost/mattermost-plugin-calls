@@ -51,10 +51,12 @@ import {
     handleUserUnraisedHand,
     handleCallHostChanged,
     handleUserReaction,
+    handleCallRecordingState,
 } from 'plugin/websocket_handlers';
 
 import {
     CallHostChangedData,
+    CallRecordingStateData,
     CallStartData,
     EmptyData,
     HelloData,
@@ -68,6 +70,7 @@ import {
     UserVoiceOnOffData,
     WebsocketEventData,
 } from '@calls/common/lib/types';
+import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     getCallID,
@@ -114,6 +117,7 @@ function connectCall(
             iceServers: iceConfigs,
             authToken: getToken(),
         });
+        window.currentCallData = CurrentCallDataDefault;
 
         window.callsClient.on('close', (err?: Error) => {
             if (closeCb) {
@@ -327,6 +331,9 @@ export default async function init(cfg: InitConfig) {
         case `custom_${pluginId}_user_reacted`:
             handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);
             break;
+        case `custom_${pluginId}_call_recording_state`:
+            handleCallRecordingState(store, ev as WebSocketMessage<CallRecordingStateData>);
+            break;
         default:
         }
 
@@ -352,6 +359,8 @@ declare global {
             version?: string | null;
         },
         screenSharingTrackId: string,
+        currentCallData?: CurrentCallData,
+        callActions?: CallActions,
     }
 
     interface HTMLVideoElement {
