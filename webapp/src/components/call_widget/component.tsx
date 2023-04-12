@@ -187,8 +187,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             menu: {
                 position: 'absolute',
-                background: 'white',
-                color: 'var(--center-channel-color)',
+                bottom: 'calc(100% + 4px)',
+                width: '100%',
+                zIndex: -1,
+                appRegion: 'drag',
             },
             screenSharingPanel: {
                 position: 'relative',
@@ -1754,7 +1756,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                 <div
                     ref={this.menuNode}
-                    style={{position: 'absolute', bottom: 'calc(100% + 4px)', width: '100%', zIndex: -1}}
+                    style={this.style.menu}
                 >
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
