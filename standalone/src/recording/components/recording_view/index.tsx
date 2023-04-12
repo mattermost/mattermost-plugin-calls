@@ -106,10 +106,9 @@ const RecordingView = () => {
         return (
             <div style={style.screenContainer as CSSProperties}>
                 <video
+                    style={style.screenPlayer}
                     ref={screenRefCb}
                     id='screen-player'
-                    width='100%'
-                    height='100%'
                     muted={true}
                     autoPlay={true}
                     onClick={(ev) => ev.preventDefault()}
@@ -136,7 +135,6 @@ const RecordingView = () => {
                     />
                     <span>{msg}</span>
                 </div>
-                <ReactionStream/>
             </div>
         );
     };
@@ -214,7 +212,6 @@ const RecordingView = () => {
         >
             { !hasScreenShare &&
                 <div style={style.main as CSSProperties}>
-                    <ReactionStream/>
                     <ul
                         id='calls-recording-view-participants-grid'
                         style={{
@@ -236,6 +233,10 @@ const RecordingView = () => {
                     {untranslatable('• ')}{formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: profiles.length})}
                 </span>
                 { hasScreenShare && renderSpeaking() }
+            </div>
+
+            <div style={style.reactionsContainer}>
+                <ReactionStream/>
             </div>
         </div>
     );
@@ -277,7 +278,15 @@ const style = {
         justifyContent: 'center',
         alignItems: 'center',
         width: '100%',
-        height: '100%',
+        height: 'calc(100vh - 32px)',
+    },
+    screenPlayer: {
+        width: '100%',
+        minHeight: '100%',
+    },
+    reactionsContainer: {
+        position: 'absolute',
+        bottom: '48px',
     },
     footer: {
         display: 'flex',
