@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {CSSProperties, useEffect, useState, useCallback} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
@@ -104,7 +104,7 @@ const RecordingView = () => {
         const msg = `You're viewing ${getUserDisplayName(profile)}'s screen`;
 
         return (
-            <div style={style.screenContainer as CSSProperties}>
+            <div style={style.screenContainer}>
                 <video
                     style={style.screenPlayer}
                     ref={screenRefCb}
@@ -208,10 +208,10 @@ const RecordingView = () => {
     return (
         <div
             id='calls-recording-view'
-            style={style.root as CSSProperties}
+            style={style.root}
         >
             { !hasScreenShare &&
-                <div style={style.main as CSSProperties}>
+                <div style={style.main}>
                     <ul
                         id='calls-recording-view-participants-grid'
                         style={{
@@ -297,4 +297,4 @@ const style = {
         fontSize: '14px',
         padding: '6px',
     },
-};
+} as Record<string, React.CSSProperties>;
