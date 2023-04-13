@@ -43,10 +43,12 @@ export const ReactionStream = () => {
             getUserDisplayName(profileMap[reaction.user_id], true) || formatMessage({defaultMessage: 'Someone'});
 
         return (
-            <ReactionChip key={reaction.timestamp + reaction.user_id}>
-                <span>{emoji}</span>
-                <span>{user}</span>
-            </ReactionChip>
+            <ReactionChipOverlay key={reaction.timestamp + reaction.user_id}>
+                <ReactionChip>
+                    <span>{emoji}</span>
+                    <span>{user}</span>
+                </ReactionChip>
+            </ReactionChipOverlay>
         );
     });
 
@@ -115,13 +117,18 @@ interface chipProps {
     highlight?: boolean;
 }
 
+const ReactionChipOverlay = styled.div`
+    background: var(--calls-bg);
+    border-radius: 16px;
+`;
+
 const ReactionChip = styled.div<chipProps>`
     display: flex;
     align-items: center;
     padding: 6px 16px 6px 8px;
     gap: 8px;
-    color: var(--button-color);
-    background: rgba(var(--button-color-rgb), 0.16);
+    color: white;
+    background: rgba(255, 255, 255, 0.16);
     border-radius: 16px;
     width: fit-content;
     font-weight: 600;
