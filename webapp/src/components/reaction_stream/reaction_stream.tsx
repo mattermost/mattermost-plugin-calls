@@ -120,6 +120,7 @@ interface chipProps {
 const ReactionChipOverlay = styled.div`
     background: var(--calls-bg);
     border-radius: 16px;
+    width: fit-content;
 `;
 
 const ReactionChip = styled.div<chipProps>`
