@@ -200,6 +200,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 width: '100%',
                 minWidth: 'revert',
                 maxWidth: 'revert',
+                borderRadius: '8px',
             },
             settingsMenu: {
                 position: 'relative',
