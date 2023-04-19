@@ -8,12 +8,13 @@ export enum Event {
     RaiseHand = 'user_raise_hand',
     LowerHand = 'user_lower_hand',
     OpenChannelLink = 'user_open_channel_link',
-    StartRecording = 'start_recording',
-    StopRecording = 'stop_recording',
+    StartRecording = 'user_start_recording',
+    StopRecording = 'user_stop_recording',
 }
 
 export enum Source {
     Widget = 'widget',
     ExpandedView = 'expanded_view',
+    SlashCommand = 'slash_command',
 }
 
