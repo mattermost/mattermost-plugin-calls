@@ -86,6 +86,8 @@ const (
 	defaultRecDurationMinutes = 60
 	minRecDurationMinutes     = 15
 	maxRecDurationMinutes     = 180
+	minAllowedUDPPort         = 80
+	maxAllowedUDPPort         = 49151
 )
 
 type ICEServers []string
@@ -123,47 +125,6 @@ func (is *ICEServers) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	*is = strings.Split(strings.TrimSpace(unquoted), ",")
-	return nil
-}
-
-type PortsRange string
-
-func (pr PortsRange) MinPort() uint16 {
-	parts := strings.Split(string(pr), "-")
-	if len(parts) != 2 {
-		return 0
-	}
-	val, err := strconv.Atoi(parts[0])
-	if err != nil || val < 0 || val > 65536 {
-		return 0
-	}
-	return uint16(val)
-}
-
-func (pr PortsRange) MaxPort() uint16 {
-	parts := strings.Split(string(pr), "-")
-	if len(parts) != 2 {
-		return 0
-	}
-	val, err := strconv.Atoi(parts[1])
-	if err != nil || val < 0 || val > 65536 {
-		return 0
-	}
-	return uint16(val)
-}
-
-func (pr PortsRange) IsValid() error {
-	if pr == "" {
-		return errors.New("invalid empty input")
-	}
-	minPort := pr.MinPort()
-	maxPort := pr.MaxPort()
-	if minPort == 0 || maxPort == 0 {
-		return errors.New("port range is not valid")
-	}
-	if minPort >= maxPort {
-		return errors.New("min port must be less than max port")
-	}
 	return nil
 }
 
@@ -210,6 +171,9 @@ func (c *configuration) SetDefaults() {
 	if c.MaxRecordingDuration == nil {
 		c.MaxRecordingDuration = model.NewInt(defaultRecDurationMinutes)
 	}
+	if c.RecordingQuality == "" {
+		c.RecordingQuality = "medium"
+	}
 }
 
 func (c *configuration) IsValid() error {
@@ -221,8 +185,8 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("UDPServerPort should not be nil")
 	}
 
-	if *c.UDPServerPort < 1024 || *c.UDPServerPort > 49151 {
-		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [1024, 49151]", *c.UDPServerPort)
+	if *c.UDPServerPort < minAllowedUDPPort || *c.UDPServerPort > maxAllowedUDPPort {
+		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [%d, %d]", *c.UDPServerPort, minAllowedUDPPort, maxAllowedUDPPort)
 	}
 
 	if c.MaxCallParticipants == nil || *c.MaxCallParticipants < 0 {
