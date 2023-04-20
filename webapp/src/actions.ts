@@ -1,5 +1,4 @@
 import {Dispatch} from 'redux';
-import axios from 'axios';
 
 import {MessageDescriptor} from 'react-intl';
 
@@ -162,8 +161,10 @@ export const requestOnPremTrialLicense = async (users: number, termsAccepted: bo
 };
 
 export const endCall = (channelID: string) => {
-    return axios.post(`${getPluginPath()}/calls/${channelID}/end`, null,
-        {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+    return Client4.doFetch(
+        `${getPluginPath()}/calls/${channelID}/end`,
+        {method: 'post'},
+    );
 };
 
 export const displayCallErrorModal = (channelID: string, err: Error) => (dispatch: Dispatch<GenericAction>) => {
