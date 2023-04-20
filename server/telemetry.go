@@ -31,6 +31,8 @@ var (
 		"user_raise_hand",
 		"user_lower_hand",
 		"user_open_channel_link",
+		"user_start_recording",
+		"user_stop_recording",
 	}
 	telemetryClientTypesMap  map[string]struct{}
 	telemetryClientEventsMap map[string]struct{}
