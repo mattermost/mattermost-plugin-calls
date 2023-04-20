@@ -4,71 +4,118 @@
 package main
 
 import (
-	"github.com/mattermost/mattermost-server/v6/model"
 	"testing"
 
+	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/stretchr/testify/require"
 )
 
-func TestPortsRangeIsValid(t *testing.T) {
+func TestConfigurationIsValid(t *testing.T) {
+	var defaultConfig configuration
+	defaultConfig.SetDefaults()
+
 	tcs := []struct {
-		name          string
-		input         PortsRange
-		expectedError string
+		name  string
+		input configuration
+		err   string
 	}{
 		{
-			name:          "empty input",
-			input:         PortsRange(""),
-			expectedError: "invalid empty input",
+			name:  "empty",
+			input: configuration{},
+			err:   "UDPServerPort should not be nil",
 		},
 		{
-			name:          "not a range",
-			input:         PortsRange("1000"),
-			expectedError: "port range is not valid",
+			name: "invalid UDPServerAddress",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.UDPServerAddress = "invalid"
+				return cfg
+			}(),
+			err: "UDPServerAddress parsing failed",
 		},
 		{
-			name:          "not a range",
-			input:         PortsRange("1000 2000"),
-			expectedError: "port range is not valid",
+			name: "missing UDPServerPort",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.UDPServerPort = nil
+				return cfg
+			}(),
+			err: "UDPServerPort should not be nil",
 		},
 		{
-			name:          "not a range",
-			input:         PortsRange("1000/2000"),
-			expectedError: "port range is not valid",
+			name: "UDPServerPort not in range",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.UDPServerPort = model.NewInt(45)
+				return cfg
+			}(),
+			err: "UDPServerPort is not valid: 45 is not in allowed range [80, 49151]",
 		},
 		{
-			name:          "not a range",
-			input:         PortsRange("1000-2000-3000"),
-			expectedError: "port range is not valid",
+			name: "udp port in range",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.UDPServerPort = model.NewInt(443)
+				return cfg
+			}(),
 		},
 		{
-			name:          "bad min port",
-			input:         PortsRange("0-2000"),
-			expectedError: "port range is not valid",
+			name: "invalid MaxCallParticipants",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.MaxCallParticipants = model.NewInt(-1)
+				return cfg
+			}(),
+			err: "MaxCallParticipants is not valid",
 		},
 		{
-			name:          "bad max port",
-			input:         PortsRange("1000-90000"),
-			expectedError: "port range is not valid",
+			name: "invalid TURNCredentialsExpirationMinutes",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.TURNCredentialsExpirationMinutes = model.NewInt(-1)
+				return cfg
+			}(),
+			err: "TURNCredentialsExpirationMinutes is not valid",
 		},
 		{
-			name:          "bad min port",
-			input:         PortsRange("1000-500"),
-			expectedError: "min port must be less than max port",
+			name: "MaxRecordingDuration not in range",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.MaxRecordingDuration = model.NewInt(1)
+				return cfg
+			}(),
+			err: "MaxRecordingDuration is not valid: range should be [15, 180]",
 		},
 		{
-			name:  "valid",
-			input: PortsRange("10000-11000"),
+			name: "invalid RecordingQuality",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.RecordingQuality = "invalid"
+				return cfg
+			}(),
+			err: "RecordingQuality is not valid",
+		},
+		{
+			name:  "defaults",
+			input: defaultConfig,
 		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.IsValid()
-			if tc.expectedError == "" {
+			if tc.err == "" {
 				require.NoError(t, err)
 			} else {
-				require.EqualError(t, err, tc.expectedError)
+				require.EqualError(t, err, tc.err)
 			}
 		})
 	}
