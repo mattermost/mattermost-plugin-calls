@@ -833,7 +833,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         {isHandRaised &&
                             <HandEmoji
                                 style={{
-                                    fill: 'rgb(255, 188, 66)',
+                                    fill: 'var(--away-indicator)',
                                     width: '16px',
                                     height: '16px',
                                 }}

@@ -72,7 +72,7 @@ export default function CallParticipant(props: Props) {
                 <div style={styles.handRaisedContainer}>
                     <HandEmoji
                         style={{
-                            fill: 'rgb(255, 188, 66)',
+                            fill: 'var(--away-indicator)',
                             width: '20px',
                             height: '20px',
                         }}
@@ -130,7 +130,7 @@ const styles: Record<string, CSSObject> = {
         top: -5,
         right: -10,
         background: 'white',
-        color: 'rgba(255, 188, 66, 1)',
+        color: 'var(--away-indicator)',
         borderRadius: '30px',
         width: '25px',
         height: '25px',

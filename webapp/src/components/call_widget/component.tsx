@@ -928,7 +928,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             }
                             {isHandRaised &&
                                 <HandEmoji
-                                    fill='rgba(255, 188, 66, 1)'
+                                    fill='var(--away-indicator)'
                                     style={{width: '14px', height: '14px'}}
                                 />
                             }
@@ -1855,11 +1855,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 onToggle={() => this.onRaiseHandToggle()}
                                 shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
                                 tooltipText={handTooltipText}
-                                bgColor={window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
+                                bgColor={window.callsClient.isHandRaised ? 'rgba(var(--away-indicator-rgb), 0.16)' : ''}
                                 icon={
                                     <HandIcon
                                         style={{
-                                            fill: window.callsClient.isHandRaised ? 'rgba(255, 188, 66, 1)' : '',
+                                            fill: window.callsClient.isHandRaised ? 'var(--away-indicator)' : '',
                                         }}
                                     />
                                 }

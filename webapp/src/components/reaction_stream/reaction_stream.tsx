@@ -81,7 +81,7 @@ export const ReactionStream = () => {
             >
                 <HandEmoji
                     style={{
-                        fill: 'rgb(255, 188, 66)',
+                        fill: 'var(--away-indicator)',
                         width: '18px',
                         height: '18px',
                     }}

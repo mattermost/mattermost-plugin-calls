@@ -81,9 +81,9 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
         formatMessage({defaultMessage: 'Raise hand'});
     const handIcon = isHandRaised ? (
         <UnraisedHandIcon
-            style={{width: '20px', height: '20px', fill: 'rgba(255, 188, 66, 1)'}}
+            style={{width: '20px', height: '20px', fill: 'var(--away-indicator)'}}
         />
-    ) : <HandEmoji style={{width: '20px', height: '20px', fill: 'rgba(255, 188, 66, 1)'}}/>;
+    ) : <HandEmoji style={{width: '20px', height: '20px', fill: 'var(--away-indicator)'}}/>;
 
     const toggleShowPicker = () => {
         setShowPicker((showing) => !showing);
