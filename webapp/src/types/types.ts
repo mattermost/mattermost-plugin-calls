@@ -128,3 +128,15 @@ export const CurrentCallDataDefault: CurrentCallData = {
 export type CallActions = {
     setRecordingPromptDismissedAt: (callId: string, dismissedAt: number) => void;
 }
+
+export type ColorRGB = {
+    r: number,
+    g: number,
+    b: number,
+};
+
+export type ColorHSL = {
+    h: number,
+    s: number,
+    l: number,
+};

@@ -1,40 +1,3 @@
-%button-controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 14px;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  color: rgba(var(--center-channel-color-rgb), 0.64);
-  margin: 0 4px;
-
-  &.button-controls--wide {
-    width: auto;
-    padding: 0 6px;
-  }
-}
-
-.button-controls {
-  @extend %button-controls;
-
-  &:hover {
-    background: rgba(var(--center-channel-color-rgb), 0.12);
-  }
-
-  svg {
-    fill: rgba(var(--center-channel-color-rgb), 0.64);
-  }
-}
-
-.button-controls-disabled {
-  @extend %button-controls;
-
-  svg {
-    color: rgba(var(--center-channel-color-rgb), 0.34);
-  }
-}
-
 .calls-slide-top {
 	-webkit-animation: slide-top 4s ease-in-out 0.2s both;
 	        animation: slide-top 4s ease-in-out 0.2s both;
@@ -137,14 +100,14 @@ a.calls-channel-link {
   position: static;
   border: none;
   box-shadow: none;
+
+  button:hover {
+    background: rgba(var(--center-channel-color-rgb), 0.1);
+  }
 }
 
 #calls-widget button {
   app-region: no-drag;
-}
-
-#calls-widget button:hover {
-  background: rgba(var(--center-channel-color-rgb), 0.1);
 }
 
 #calls-widget-audio-input-button:hover:disabled, #calls-widget-audio-output-button:hover:disabled {

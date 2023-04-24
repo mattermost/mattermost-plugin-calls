@@ -9,16 +9,16 @@ type Props = {
     style?: CSSProperties,
 }
 
-export default function ScreenIcon(props: Props) {
+export default function UnshareScreenIcon(props: Props) {
     return (
         <svg
             style={props.style}
             className={props.className}
             fill={props.fill}
-            viewBox='1 2 22 20'
+            viewBox='0 1.58 23 22.17'
             role='img'
         >
-            <path d='M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z'/>
+            <path d='M14,18v2h2v2H8v-2h2v-2H3c-1.105,0-2-0.895-2-2V4L0,3l1.41-1.42l20.75,20.76l-1.41,1.41L15,18H14 M3,16h10L3,6V16 M21,2 	c1.105,0,2,0.895,2,2v12c0,1.105-0.895,2-2,2h-0.34l-2-2H21V4H6.66l-2-2H21z'/>
         </svg>
     );
 }
