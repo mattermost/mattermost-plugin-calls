@@ -211,7 +211,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 			"recState": recState.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
-		if err := p.jobService.StopJob(recState.JobID); err != nil {
+		if err := p.jobService.StopJob(callID); err != nil {
 			res.Err = "failed to stop recording job: " + err.Error()
 			res.Code = http.StatusInternalServerError
 			return

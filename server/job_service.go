@@ -17,6 +17,7 @@ import (
 	"github.com/mattermost/rtcd/service/random"
 
 	offloader "github.com/mattermost/calls-offloader/service"
+	"github.com/mattermost/calls-offloader/service/job"
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 )
 
@@ -232,15 +233,20 @@ func (p *Plugin) newJobService(serviceURL string) (*jobService, error) {
 	}, nil
 }
 
-func (s *jobService) RunJob(cfg offloader.JobConfig) (offloader.Job, error) {
+func (s *jobService) RunJob(cfg job.Config) (job.Job, error) {
 	return s.client.CreateJob(cfg)
 }
 
-func (s *jobService) StopJob(jobID string) error {
-	return s.client.StopJob(jobID)
+func (s *jobService) StopJob(channelID string) error {
+	// Since MM-52346, stopping a job really means signaling the bot it's time to leave
+	// the call. We do this implicitly by sending a fake call end event.
+	s.ctx.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{
+		"channelID": channelID,
+	}, &model.WebsocketBroadcast{UserId: s.ctx.getBotID(), ReliableClusterSend: true})
+	return nil
 }
 
-func (s *jobService) GetJob(jobID string) (offloader.Job, error) {
+func (s *jobService) GetJob(jobID string) (job.Job, error) {
 	return s.client.GetJob(jobID)
 }
 
@@ -263,7 +269,9 @@ func (s *jobService) UpdateJobRunner(runner string) error {
 	}
 	defer mutex.Unlock()
 
-	return s.client.UpdateJobRunner(runner)
+	return s.client.Init(job.ServiceConfig{
+		Runner: runner,
+	})
 }
 
 func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, error) {
@@ -293,8 +301,8 @@ func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, 
 	baseRecorderCfg.ThreadID = postID
 	baseRecorderCfg.AuthToken = authToken
 
-	job, err := s.RunJob(offloader.JobConfig{
-		Type:           offloader.JobTypeRecording,
+	job, err := s.RunJob(job.Config{
+		Type:           job.TypeRecording,
 		MaxDurationSec: maxDuration,
 		Runner:         recordingJobRunner,
 		InputData:      baseRecorderCfg.ToMap(),
