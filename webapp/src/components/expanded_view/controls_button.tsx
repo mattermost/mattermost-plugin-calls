@@ -10,6 +10,7 @@ export type Props = {
     id: string,
     icon: React.ReactNode,
     bgColor: string,
+    bgColorHover?: string,
     text?: string,
     tooltipText: string,
     tooltipSubtext?: string,
@@ -17,6 +18,7 @@ export type Props = {
     unavailable?: boolean,
     disabled?: boolean,
     iconFill?: string,
+    iconFillHover?: string,
     shortcut?: string,
     margin?: string,
 }
@@ -60,27 +62,24 @@ export default function ControlsButton(props: Props) {
         >
             <ButtonContainer
                 id={props.id}
+                bgColor={props.bgColor}
+                bgColorHover={props.bgColorHover}
                 margin={props.margin}
+                onClick={onClick}
+                disabled={props.disabled}
+                isDisabled={props.disabled}
+                isUnavailable={props.unavailable}
+                fill={props.iconFill}
+                fillHover={props.iconFillHover}
             >
-                <Button
-                    className='button-center-controls'
-                    // eslint-disable-next-line no-undefined
-                    onClick={onClick}
-                    bgColor={props.bgColor}
-                    isDisabled={props.disabled}
-                    isUnavailable={props.unavailable}
-                    disabled={props.disabled}
-                    fill={props.iconFill}
-                >
-                    <ButtonIcon>
-                        {props.icon}
-                        {props.unavailable &&
-                            <UnavailableIcon>
-                                <CompassIcon icon='close-circle'/>
-                            </UnavailableIcon>
-                        }
-                    </ButtonIcon>
-                </Button>
+                <ButtonIcon>
+                    {props.icon}
+                    {props.unavailable &&
+                        <UnavailableIcon>
+                            <CompassIcon icon='close-circle'/>
+                        </UnavailableIcon>
+                    }
+                </ButtonIcon>
                 {props.text &&
                     <ButtonText>{props.text}</ButtonText>
                 }
@@ -89,32 +88,46 @@ export default function ControlsButton(props: Props) {
     );
 }
 
-const ButtonContainer = styled.div<{ margin?: string }>`
+type ButtonContainerProps = {
+    bgColor: string,
+    bgColorHover?: string,
+    margin?: string,
+    isDisabled?: boolean,
+    isUnavailable?: boolean,
+    fill?: string,
+    fillHover?: string,
+}
+
+const ButtonContainer = styled.button<ButtonContainerProps>`
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     margin: ${({margin}) => margin || '0 8px'};
-`;
+    border-radius: 8px;
+    padding: 12px;
+    border: none;
+    background: ${({bgColor}) => bgColor || 'rgba(var(--button-color-rgb), 0.08)'};
 
-const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailable?: boolean, fill?: string}>`
-  background-color: ${({bgColor}) => bgColor || 'rgba(255, 255, 255, 0.12)'};
+    :hover {
+      background: ${({bgColorHover}) => bgColorHover || 'rgba(var(--button-color-rgb), 0.12)'};
 
-  ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-    background-color: rgba(255, 255, 255, 0.08);
-  `}
+      svg {
+        fill: ${({fillHover}) => fillHover || 'var(--button-color)'};
+      }
+    }
 
-  svg {
-    fill: ${({fill}) => fill || 'white'};
+    svg {
+      fill: ${({fill}) => fill || 'rgba(var(--button-color-rgb), 0.56)'};
+      ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
+        fill: rgba(var(--button-color-rgb), 0.32);
+      `}
+    }
+
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-      fill: rgba(255, 255, 255, 0.32);
-    `}
-  }
-
-    ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-        :hover {
-            background: rgba(255, 255, 255, 0.08);
-        }
+      :hover {
+          background: rgba(var(--button-color-rgb), 0.08);
+      }
     `}
 `;
 
@@ -138,7 +151,7 @@ const UnavailableIcon = styled.div`
 
     i {
         border-radius: 50%;
-        background-color: rgb(54, 55, 59);
+        background: rgb(54, 55, 59);
     }
 `;
 

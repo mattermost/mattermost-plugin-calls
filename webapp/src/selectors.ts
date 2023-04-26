@@ -30,7 +30,7 @@ import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
 
 import {getChannelURL} from 'src/utils';
 
-import {CallsUserPreferences, ChannelState} from 'src/types/types';
+import {CallRecordingReduxState, CallsUserPreferences, ChannelState} from 'src/types/types';
 
 import {pluginId} from './manifest';
 
@@ -129,7 +129,7 @@ export const voiceChannelScreenSharingID = (state: GlobalState, channelID: strin
     return pluginState(state).voiceChannelScreenSharingID[channelID];
 };
 
-export const callRecording = (state: GlobalState, callID: string) => {
+export const callRecording = (state: GlobalState, callID: string): CallRecordingReduxState => {
     return pluginState(state).callsRecordings[callID];
 };
 
@@ -147,6 +147,10 @@ export const screenSourceModal = (state: GlobalState) => {
 
 export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
     return pluginState(state).voiceChannelRootPost[channelID];
+};
+
+export const recentlyJoinedUsers = (state: GlobalState, channelID: string): string[] => {
+    return pluginState(state).recentlyJoinedUsers[channelID] || [];
 };
 
 //

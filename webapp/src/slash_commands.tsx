@@ -7,10 +7,13 @@ import {ActionResult} from 'mattermost-redux/types/actions';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 
+import * as Telemetry from 'src/types/telemetry';
+
 import {
     startCallRecording,
     stopCallRecording,
     displayGenericErrorModal,
+    trackEvent,
 } from 'src/actions';
 import {SHOW_END_CALL_MODAL} from 'src/action_types';
 import {DisabledCallsErr} from 'src/constants';
@@ -180,6 +183,8 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         const recording = callRecording(state, connectedID);
 
         if (fields[2] === 'start') {
+            trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.SlashCommand)(store.dispatch, store.getState);
+
             if (recording?.start_at > recording?.end_at) {
                 store.dispatch(displayGenericErrorModal(
                     startErrorTitle,
@@ -200,6 +205,8 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         if (fields[2] === 'stop') {
+            trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.SlashCommand)(store.dispatch, store.getState);
+
             if (!recording || recording?.end_at > recording?.start_at) {
                 store.dispatch(displayGenericErrorModal(
                     stopErrorTitle,

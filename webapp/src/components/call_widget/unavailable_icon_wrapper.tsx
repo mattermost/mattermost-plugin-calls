@@ -29,9 +29,9 @@ const IconWrapper = styled.div<{unavailable: boolean, margin?: string}>`
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 24px;
-  height: 24px;
   margin: ${({margin}) => margin || 0};
+  width: 18px;
+  height: 18px;
 
   &&& {
     position: relative;
@@ -50,8 +50,8 @@ const IconWrapper = styled.div<{unavailable: boolean, margin?: string}>`
 
 const UnavailableIcon = styled.div`
   position: absolute;
-  top: -45%;
-  right: -20%;
+  top: -60%;
+  right: -50%;
   color: var(--dnd-indicator);
   font-size: 12px;
 

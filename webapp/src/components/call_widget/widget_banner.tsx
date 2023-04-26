@@ -97,6 +97,7 @@ export default function WidgetBanner(props: Props) {
 
             { props.onClose &&
                 <CloseButton
+                    data-testid={'calls-widget-banner-close'}
                     onClick={() => setClosing(true)}
                 >
                     <CompassIcon icon='close'/>

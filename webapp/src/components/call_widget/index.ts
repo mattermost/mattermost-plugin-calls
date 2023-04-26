@@ -8,12 +8,12 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {getTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getTeam, getCurrentTeamId, getMyTeams} from 'mattermost-redux/selectors/entities/teams';
 import {Client4} from 'mattermost-redux/client';
 
 import {UserState} from '@calls/common/lib/types';
 
-import {showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
+import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 
 import {
     voiceUsersStatuses,
@@ -26,6 +26,7 @@ import {
     voiceChannelCallHostID,
     callRecording,
     voiceChannelCallHostChangeAt,
+    recentlyJoinedUsers,
 } from 'src/selectors';
 
 import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
@@ -78,6 +79,8 @@ const mapStateToProps = (state: GlobalState) => {
         screenSharingID,
         allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),
+        recentlyJoinedUsers: recentlyJoinedUsers(state, channel?.id),
+        wider: getMyTeams(state)?.length > 1,
     };
 };
 
@@ -85,6 +88,7 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     showExpandedView,
     showScreenSourceModal,
     trackEvent,
+    recordingPromptDismissedAt,
 }, dispatch);
 
 export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(CallWidget));

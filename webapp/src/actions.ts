@@ -1,5 +1,4 @@
 import {Dispatch} from 'redux';
-import axios from 'axios';
 
 import {MessageDescriptor} from 'react-intl';
 
@@ -43,6 +42,7 @@ import {
     HIDE_END_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
+    VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -161,8 +161,10 @@ export const requestOnPremTrialLicense = async (users: number, termsAccepted: bo
 };
 
 export const endCall = (channelID: string) => {
-    return axios.post(`${getPluginPath()}/calls/${channelID}/end`, null,
-        {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+    return Client4.doFetch(
+        `${getPluginPath()}/calls/${channelID}/end`,
+        {method: 'post'},
+    );
 };
 
 export const displayCallErrorModal = (channelID: string, err: Error) => (dispatch: Dispatch<GenericAction>) => {
@@ -236,6 +238,20 @@ export const stopCallRecording = async (callID: string) => {
         `${getPluginPath()}/calls/${callID}/recording/stop`,
         {method: 'post'},
     );
+};
+
+export const recordingPromptDismissedAt = (callID: string, dismissedAt: number) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
+        data: {
+            callID,
+            dismissedAt,
+        },
+    });
+
+    if (window.currentCallData) {
+        window.currentCallData.recordingPromptDismissedAt = dismissedAt;
+    }
 };
 
 export const displayCallsTestModeUser = () => {

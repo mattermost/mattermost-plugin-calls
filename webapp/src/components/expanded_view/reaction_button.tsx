@@ -10,10 +10,7 @@ import EmojiPicker, {
     EmojiStyle,
     SkinTonePickerLocation,
     SuggestionMode,
-    Theme,
 } from 'emoji-picker-react';
-
-import {HandRightOutlineIcon, HandRightOutlineOffIcon} from '@mattermost/compass-icons/components';
 
 import {EmojiData} from '@calls/common/lib/types';
 
@@ -24,6 +21,8 @@ import * as Telemetry from 'src/types/telemetry';
 import {StyledTooltip} from 'src/components/shared';
 import Shortcut from 'src/components/shortcut';
 import CompassIcon from 'src/components/icons/compassIcon';
+import HandEmoji from 'src/components/icons/hand';
+import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import {Emoji} from 'src/components/emoji/emoji';
 import {EmojiIndicesByAlias} from 'src/emojis/emoji';
 
@@ -81,11 +80,10 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
         formatMessage({defaultMessage: 'Lower hand'}) :
         formatMessage({defaultMessage: 'Raise hand'});
     const handIcon = isHandRaised ? (
-        <HandRightOutlineOffIcon
-            size={18}
-            color={'rgba(255, 188, 66, 1)'}
+        <UnraisedHandIcon
+            style={{width: '20px', height: '20px', fill: 'var(--away-indicator)'}}
         />
-    ) : <HandRightOutlineIcon size={18}/>;
+    ) : <HandEmoji style={{width: '20px', height: '20px', fill: 'var(--away-indicator)'}}/>;
 
     const toggleShowPicker = () => {
         setShowPicker((showing) => !showing);
@@ -108,10 +106,10 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                         skinTonePickerLocation={SkinTonePickerLocation.SEARCH}
                         onEmojiClick={handleUserPicksEmoji}
                         autoFocusSearch={true}
-                        theme={Theme.DARK}
                         previewConfig={{showPreview: false}}
                         suggestedEmojisMode={SuggestionMode.RECENT}
-                        height={400}
+                        height={316}
+                        width={416}
                     />
                 </PickerContainer>
             }
@@ -135,33 +133,34 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                             <HandText>{raiseHandText}</HandText>
                         </HandsButton>
                     </OverlayTrigger>
-                    <DividerLine/>
-                    <QuickSelect
-                        emoji={{name: '+1', unified: '1f44d'}}
-                        handleClick={handleUserPicksEmoji}
-                    />
-                    <QuickSelect
-                        emoji={{name: 'clap', unified: '1f44f'}}
-                        handleClick={handleUserPicksEmoji}
-                    />
-                    <QuickSelect
-                        emoji={{name: 'joy', unified: '1f602'}}
-                        handleClick={handleUserPicksEmoji}
-                    />
-                    <QuickSelect
-                        emoji={{name: 'heart', unified: '2764-fe0f'}}
-                        handleClick={handleUserPicksEmoji}
-                    />
-                    <QuickSelect
-                        emoji={{name: 'tada', unified: '1f389'}}
-                        handleClick={handleUserPicksEmoji}
-                    />
-                    <QuickSelectButton
-                        onClick={toggleShowPicker}
-                        active={showPicker}
-                    >
-                        <CompassIcon icon='emoticon-plus-outline'/>
-                    </QuickSelectButton>
+                    <QuickSelectContainer>
+                        <QuickSelect
+                            emoji={{name: '+1', unified: '1f44d'}}
+                            handleClick={handleUserPicksEmoji}
+                        />
+                        <QuickSelect
+                            emoji={{name: 'clap', unified: '1f44f'}}
+                            handleClick={handleUserPicksEmoji}
+                        />
+                        <QuickSelect
+                            emoji={{name: 'joy', unified: '1f602'}}
+                            handleClick={handleUserPicksEmoji}
+                        />
+                        <QuickSelect
+                            emoji={{name: 'heart', unified: '2764-fe0f'}}
+                            handleClick={handleUserPicksEmoji}
+                        />
+                        <QuickSelect
+                            emoji={{name: 'tada', unified: '1f389'}}
+                            handleClick={handleUserPicksEmoji}
+                        />
+                        <QuickSelectButton
+                            onClick={toggleShowPicker}
+                            active={showPicker}
+                        >
+                            <CompassIcon icon='emoticon-plus-outline'/>
+                        </QuickSelectButton>
+                    </QuickSelectContainer>
                 </Bar>
             }
             <ControlsButton
@@ -169,13 +168,15 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                 onToggle={toggleReactions}
                 tooltipText={addReactionText}
                 shortcut={reverseKeyMappings.popout[MAKE_REACTION][0]}
-                bgColor={showBar ? '#DDDFE4' : ''}
+                bgColor={showBar ? 'white' : ''}
+                bgColorHover={showBar ? 'rgba(255, 255, 255, 0.92)' : ''}
+                iconFill={showBar ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
+                iconFillHover={showBar ? 'var(--calls-bg)' : ''}
                 icon={
                     <SmileyIcon
                         style={{
-                            width: '24px',
-                            height: '24px',
-                            fill: showBar ? '#090A0B' : '#FFFFFF',
+                            width: '28px',
+                            height: '28px',
                         }}
                     />
                 }
@@ -215,15 +216,19 @@ const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
 
     return (
         <QuickSelectButton onClick={onClick}>
-            <Emoji emoji={emoji}/>
+            <Emoji
+                emoji={emoji}
+                size={24}
+            />
         </QuickSelectButton>
     );
 };
 
 const PickerContainer = styled.div`
     position: absolute;
-    top: -462px;
-    left: -129px;
+    z-index: 1;
+    top: -394px;
+    left: -242px;
 
     // style the emoji selector
     &&&&&& {
@@ -235,26 +240,31 @@ const PickerContainer = styled.div`
 
     .EmojiPickerReact {
         --epr-emoji-size: 24px;
-        --epr-bg-color: #090A0B;
-        --epr-category-label-bg-color: #090A0B;
-        --epr-picker-border-color: rgba(221, 223, 228, 0.16);
-        --epr-search-border-color: #5D89EA;
+        --epr-bg-color: var(--center-channel-bg);
+        --epr-category-label-bg-color: var(--center-channel-bg);
+        --epr-picker-border-color: rgba(var(--center-channel-color-rgb), 0.16);
+        --epr-search-border-color: rgba(var(--center-channel-color-rgb), 0.16);
         --epr-picker-border-radius: 4px;
+        --epr-search-input-bg-color: var(--center-channel-bg);
+        --epr-emoji-hover-color: rgba(var(--button-bg-rgb), 0.16);
+        --epr-active-skin-hover-color: rgba(var(--button-bg-rgb), 0.16);
     }
 `;
 
 const Bar = styled.div`
     position: absolute;
-    min-width: 351px; // to match the emoji picker
-    top: -56px;
-    left: -130px;
+    top: -68px;
+    left: -242px;
+    width: 416px;
     display: flex;
     justify-content: center;
-    background: #090A0B;
-    border: 1px solid rgba(221, 223, 228, 0.16);
+    background: var(--center-channel-bg);
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 8px;
+    gap: 8px;
 `;
 
 const HandsButton = styled.button<{ active: boolean }>`
@@ -264,37 +274,38 @@ const HandsButton = styled.button<{ active: boolean }>`
     align-items: center;
     border-radius: 4px;
     background: none;
-    min-width: 120px;
+    padding: 10px;
+    gap: 4px;
 
     font-family: 'Open Sans', sans-serif;
     font-style: normal;
     font-weight: 600;
-    font-size: 14px;
-    line-height: 14px;
+    font-size: 16px;
+    line-height: 16px;
 
     :hover {
-        background: rgba(221, 223, 228, 0.08);
+        background: rgba(var(--center-channel-color-rgb), 0.08);
     }
 
     ${({active}) => (active && css`
-        background: rgba(245, 171, 0, 0.24);
+        background: rgba(255, 188, 31, 0.12);
 
         :hover {
-            background: rgba(245, 171, 0, 0.40);
+            background: rgba(255, 188, 31, 0.2);
         }
     `)}
 `;
 
 const HandText = styled.span`
-    margin: 0 3px;
     white-space: nowrap;
+    color: var(--center-channel-color);
 `;
 
-const DividerLine = styled.div`
-    width: 0;
-    margin: 0 2px 0 4px;
-    height: 32px;
-    border: 1px solid rgba(221, 223, 228, 0.16);
+const QuickSelectContainer = styled.div`
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
 `;
 
 const QuickSelectButton = styled.button<{ active?: boolean }>`
@@ -304,19 +315,24 @@ const QuickSelectButton = styled.button<{ active?: boolean }>`
     align-items: center;
     border-radius: 4px;
     background: none;
-    font-size: 18px;
-    margin-left: 2px;
+    font-size: 24px;
+    line-height: 24px;
+    padding: 8px;
 
     :hover {
-        background: rgba(221, 223, 228, 0.08);
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+    }
+
+    .icon-emoticon-plus-outline:before {
+      margin: 0;
     }
 
     ${({active}) => (active && css`
-        background: rgba(93, 137, 234, 0.16);
-        color: #5D89EA;
+        background: var(--button-bg);
+        color: var(--button-color);
 
         :hover {
-            background: rgba(93, 137, 234, 0.32);
+            background: rgba(var(--button-bg-rgb), 0.92);
         }
     `)}
 `;

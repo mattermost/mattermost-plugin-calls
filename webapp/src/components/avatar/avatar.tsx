@@ -14,7 +14,7 @@ type Props = {
     text?: string;
     icon?: string;
     border?: boolean;
-    borderGlow?: boolean;
+    borderGlowWidth?: number;
 };
 
 type Attrs = HTMLAttributes<HTMLElement>;
@@ -29,7 +29,7 @@ const Avatar = ({
     text,
     icon,
     border = true,
-    borderGlow = false,
+    borderGlowWidth = 0,
     ...attrs
 }: Props & Attrs) => {
     if (text) {
@@ -40,7 +40,7 @@ const Avatar = ({
                 size={size}
                 fontSize={fontSize}
                 border={border}
-                borderGlow={borderGlow}
+                borderGlowWidth={borderGlowWidth}
             />
         );
     }
@@ -52,7 +52,7 @@ const Avatar = ({
                 size={size}
                 fontSize={fontSize}
                 border={border}
-                borderGlow={borderGlow}
+                borderGlowWidth={borderGlowWidth}
             >
                 <CompassIcon icon={icon}/>
             </ProfilePlain>
@@ -67,7 +67,7 @@ const Avatar = ({
             size={size}
             fontSize={fontSize}
             border={border}
-            borderGlow={borderGlow}
+            borderGlowWidth={borderGlowWidth}
         />
     );
 };
@@ -76,7 +76,7 @@ interface ProfileProps {
     size: number;
     fontSize: number;
     border?: boolean;
-    borderGlow?: boolean;
+    borderGlowWidth: number;
 }
 
 const Profile = styled.div<ProfileProps>`
@@ -93,7 +93,7 @@ const Profile = styled.div<ProfileProps>`
     vertical-align: sub;
     background: var(--center-channel-bg);
 
-    ${(props) => props.border && css`
+    ${(props) => props.border && props.borderGlowWidth === 0 && css`
         border: 1px solid var(--center-channel-bg);
     `}
 
@@ -106,9 +106,7 @@ const Profile = styled.div<ProfileProps>`
         margin-left: -${({size}) => size * 0.25}px;
     }
 
-    ${(props) => props.borderGlow && css`
-        box-shadow: 0px 0px 4px 4px rgba(61, 184, 135, 0.8);
-    `}
+    box-shadow: ${({borderGlowWidth}) => borderGlowWidth > 0 ? `0px 0px 0px ${borderGlowWidth}px rgba(61, 184, 135, 0.56)` : 'none'};
 `;
 
 const ProfilePlain = styled(Profile)`

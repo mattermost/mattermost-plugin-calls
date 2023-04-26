@@ -5,7 +5,7 @@ import configureStore from 'mattermost-redux/store';
 import {getMe} from 'mattermost-redux/actions/users';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
-import {getMyTeams} from 'mattermost-redux/actions/teams';
+import {getMyTeams, getMyTeamMembers} from 'mattermost-redux/actions/teams';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
@@ -51,10 +51,12 @@ import {
     handleUserUnraisedHand,
     handleCallHostChanged,
     handleUserReaction,
+    handleCallRecordingState,
 } from 'plugin/websocket_handlers';
 
 import {
     CallHostChangedData,
+    CallRecordingStateData,
     CallStartData,
     EmptyData,
     HelloData,
@@ -68,6 +70,7 @@ import {
     UserVoiceOnOffData,
     WebsocketEventData,
 } from '@calls/common/lib/types';
+import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     getCallID,
@@ -114,6 +117,7 @@ function connectCall(
             iceServers: iceConfigs,
             authToken: getToken(),
         });
+        window.currentCallData = CurrentCallDataDefault;
 
         window.callsClient.on('close', (err?: Error) => {
             if (closeCb) {
@@ -254,7 +258,9 @@ export default async function init(cfg: InitConfig) {
         getMe()(store.dispatch, store.getState),
         getMyPreferences()(store.dispatch, store.getState),
         getMyTeams()(store.dispatch, store.getState),
+        getMyTeamMembers()(store.dispatch, store.getState),
     ]);
+
     if (cfg.initStore) {
         await cfg.initStore(store, channelID);
     }
@@ -327,6 +333,9 @@ export default async function init(cfg: InitConfig) {
         case `custom_${pluginId}_user_reacted`:
             handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);
             break;
+        case `custom_${pluginId}_call_recording_state`:
+            handleCallRecordingState(store, ev as WebSocketMessage<CallRecordingStateData>);
+            break;
         default:
         }
 
@@ -352,6 +361,8 @@ declare global {
             version?: string | null;
         },
         screenSharingTrackId: string,
+        currentCallData?: CurrentCallData,
+        callActions?: CallActions,
     }
 
     interface HTMLVideoElement {
