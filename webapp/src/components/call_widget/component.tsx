@@ -219,6 +219,27 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
                 boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
             },
+            participantsList: {
+                width: '100%',
+                minWidth: 'revert',
+                maxWidth: 'revert',
+                maxHeight: '200px',
+                overflow: 'auto',
+                position: 'relative',
+                borderRadius: '8px',
+                border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
+                boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
+                appRegion: 'no-drag',
+            },
+            participantsListHeader: {
+                position: 'sticky',
+                top: '0',
+                transform: 'translateY(-8px)',
+                paddingTop: '16px',
+                color: 'var(--center-channel-color)',
+                background: 'var(--center-channel-bg)',
+                appRegion: 'drag',
+            },
         };
     };
 
@@ -959,28 +980,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <ul
                     id='calls-widget-participants-list'
                     className='Menu__content dropdown-menu'
-                    style={{
-                        width: '100%',
-                        minWidth: 'revert',
-                        maxWidth: 'revert',
-                        maxHeight: '200px',
-                        overflow: 'auto',
-                        position: 'relative',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
-                        boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
-                    }}
+                    style={this.style.participantsList}
                 >
                     <li
                         className='MenuHeader'
-                        style={{
-                            position: 'sticky',
-                            top: '0',
-                            transform: 'translateY(-8px)',
-                            paddingTop: '16px',
-                            color: 'var(--center-channel-color)',
-                            background: 'var(--center-channel-bg)',
-                        }}
+                        style={this.style.participantsListHeader}
                     >
                         {formatMessage({defaultMessage: 'Participants'})}
                     </li>
