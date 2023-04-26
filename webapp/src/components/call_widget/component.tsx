@@ -969,6 +969,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         borderRadius: '8px',
                         border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
                         boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
+                        appRegion: 'no-drag',
                     }}
                 >
                     <li
@@ -980,6 +981,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             paddingTop: '16px',
                             color: 'var(--center-channel-color)',
                             background: 'var(--center-channel-bg)',
+                            appRegion: 'drag',
                         }}
                     >
                         {formatMessage({defaultMessage: 'Participants'})}
