@@ -1,4 +1,4 @@
-import React, {useRef, useState} from 'react';
+import React, {useRef, useState, CSSProperties} from 'react';
 import {Overlay} from 'react-bootstrap';
 import styled, {css} from 'styled-components';
 
@@ -11,13 +11,15 @@ export type Props = {
     id: string,
     icon: React.ReactNode,
     bgColor: string,
-    tooltipText: string,
+    bgColorHover?: string,
+    tooltipText?: string,
     tooltipSubtext?: string,
     onToggle?: () => void,
     unavailable?: boolean,
     disabled?: boolean,
-    iconFill?: string,
     shortcut?: string,
+    style?: CSSProperties,
+    children?: React.ReactNode,
 }
 
 export default function WidgetButton(props: Props) {
@@ -31,19 +33,23 @@ export default function WidgetButton(props: Props) {
                 id={props.id}
                 onMouseOver={() => setShow(true)}
                 onMouseOut={() => setShow(false)}
-                className='cursor--pointer style--none button-controls'
+                className='cursor--pointer style--none'
                 // eslint-disable-next-line no-undefined
                 onClick={props.disabled ? undefined : props.onToggle}
                 bgColor={props.bgColor}
+                bgColorHover={props.bgColorHover}
                 isDisabled={props.disabled}
                 isUnavailable={props.unavailable}
                 disabled={props.disabled}
+                style={props.style}
             >
                 <UnavailableIconWrapper
                     icon={props.icon}
                     unavailable={Boolean(props.unavailable)}
                 />
+                {props.children || null}
             </Button>
+            { props.tooltipText &&
             <Overlay
                 key={props.id}
                 target={target.current as HTMLButtonElement}
@@ -65,12 +71,29 @@ export default function WidgetButton(props: Props) {
                     }
                 </StyledTooltip>
             </Overlay>
+            }
         </>
     );
 }
 
-const Button = styled.button<{bgColor: string, isDisabled?: boolean, isUnavailable?: boolean}>`
+const Button = styled.button<{bgColor: string, bgColorHover?: string, isDisabled?: boolean, isUnavailable?: boolean}>`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 4px;
+  gap: 3px;
+  color: rgba(var(--center-channel-color-rgb), 0.64);
+
+  &&&&:hover {
+    background: ${({bgColorHover}) => bgColorHover || 'rgba(var(--center-channel-color-rgb), 0.12)'};
+  }
+
+  svg {
+    fill: rgba(var(--center-channel-color-rgb), 0.64);
+  }
+
   &&& {
+    padding: 5px;
     background-color: ${({bgColor}) => bgColor};
 
     ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`

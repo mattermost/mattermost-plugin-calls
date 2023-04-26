@@ -9,7 +9,7 @@ type Props = {
     style?: CSSProperties,
 }
 
-export default function ScreenIcon(props: Props) {
+export default function ShareScreenIcon(props: Props) {
     return (
         <svg
             style={props.style}
@@ -18,7 +18,7 @@ export default function ScreenIcon(props: Props) {
             viewBox='1 2 22 20'
             role='img'
         >
-            <path d='M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z'/>
+            <path d='M23,4v12c0,0.6-0.2,1-0.6,1.5C22,17.8,21.5,18,21,18h-6v-2h6V4H3v12h6v2H3c-0.6,0-1-0.2-1.5-0.6C1.2,17,1,16.6,1,16V4 	c0-0.5,0.2-1,0.6-1.4C2,2.2,2.5,2,3,2h18c0.6,0,1,0.2,1.4,0.6C22.8,3,23,3.4,23,4z M13,13h3l-4-4l-4,4h3v7H8v2h8v-2h-3V13z'/>
         </svg>
     );
 }

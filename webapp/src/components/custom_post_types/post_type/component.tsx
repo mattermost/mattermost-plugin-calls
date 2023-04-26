@@ -130,7 +130,10 @@ const PostType = ({
     const inCall = connectedID === post.channel_id;
     const button = inCall ? (
         <LeaveButton onClick={onLeaveButtonClick}>
-            <LeaveCallIcon fill='var(--error-text)'/>
+            <LeaveCallIcon
+                fill='var(--error-text)'
+                style={{width: '14px', height: '14px'}}
+            />
             <ButtonText>{formatMessage({defaultMessage: 'Leave call'})}</ButtonText>
         </LeaveButton>
     ) : joinButton;

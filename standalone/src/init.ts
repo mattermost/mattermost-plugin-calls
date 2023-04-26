@@ -5,7 +5,7 @@ import configureStore from 'mattermost-redux/store';
 import {getMe} from 'mattermost-redux/actions/users';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
-import {getMyTeams} from 'mattermost-redux/actions/teams';
+import {getMyTeams, getMyTeamMembers} from 'mattermost-redux/actions/teams';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
@@ -258,7 +258,9 @@ export default async function init(cfg: InitConfig) {
         getMe()(store.dispatch, store.getState),
         getMyPreferences()(store.dispatch, store.getState),
         getMyTeams()(store.dispatch, store.getState),
+        getMyTeamMembers()(store.dispatch, store.getState),
     ]);
+
     if (cfg.initStore) {
         await cfg.initStore(store, channelID);
     }

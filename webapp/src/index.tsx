@@ -1,7 +1,5 @@
 /* eslint-disable max-lines */
 
-import axios from 'axios';
-
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {injectIntl, IntlProvider} from 'react-intl';
@@ -16,12 +14,11 @@ import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-re
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
-import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {batchActions} from 'redux-batched-actions';
 
-import {UserState} from '@calls/common/lib/types';
+import {UserState, CallChannelState} from '@calls/common/lib/types';
 
 import {
     displayFreeTrial,
@@ -391,8 +388,7 @@ export default class Plugin {
                 if (needsTURNCredentials(state)) {
                     logDebug('turn credentials needed');
                     try {
-                        const resp = await axios.get(`${getPluginPath()}/turn-credentials`);
-                        iceConfigs.push(...resp.data);
+                        iceConfigs.push(...await Client4.doFetch<RTCIceServer[]>(`${getPluginPath()}/turn-credentials`, {method: 'get'}));
                     } catch (err) {
                         logErr(err);
                     }
@@ -415,9 +411,7 @@ export default class Plugin {
                             defaultLocale='en'
                             messages={getTranslations(locale)}
                         >
-                            <CallWidget
-                                theme={getTheme(state)}
-                            />
+                            <CallWidget/>
                         </IntlProvider>
                     </Provider>,
                     document.getElementById('calls'),
@@ -497,12 +491,14 @@ export default class Plugin {
                 ChannelHeaderMenuButton,
                 async () => {
                     try {
-                        const resp = await axios.post(`${getPluginPath()}/${currChannelId}`,
-                            {enabled: callsExplicitlyDisabled(store.getState(), currChannelId)},
-                            {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+                        const data = await Client4.doFetch<{enabled: boolean}>(`${getPluginPath()}/${currChannelId}`, {
+                            method: 'post',
+                            body: JSON.stringify({enabled: callsExplicitlyDisabled(store.getState(), currChannelId)}),
+                        });
+
                         store.dispatch({
                             type: RECEIVED_CHANNEL_STATE,
-                            data: {id: currChannelId, enabled: resp.data.enabled},
+                            data: {id: currChannelId, enabled: data.enabled},
                         });
                     } catch (err) {
                         logErr(err);
@@ -514,23 +510,24 @@ export default class Plugin {
         const fetchChannels = async (): Promise<AnyAction[]> => {
             const actions = [];
             try {
-                const resp = await axios.get(`${getPluginPath()}/channels`);
-                for (let i = 0; i < resp.data.length; i++) {
+                const data = await Client4.doFetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
+
+                for (let i = 0; i < data.length; i++) {
                     actions.push({
                         type: VOICE_CHANNEL_USERS_CONNECTED,
                         data: {
-                            users: resp.data[i].call?.users,
-                            channelID: resp.data[i].channel_id,
+                            users: data[i].call?.users,
+                            channelID: data[i].channel_id,
                         },
                     });
-                    if (!voiceChannelCallStartAt(store.getState(), resp.data[i].channel_id)) {
+                    if (!voiceChannelCallStartAt(store.getState(), data[i].channel_id)) {
                         actions.push({
                             type: VOICE_CHANNEL_CALL_START,
                             data: {
-                                channelID: resp.data[i].channel_id,
-                                startAt: resp.data[i].call?.start_at,
-                                ownerID: resp.data[i].call?.owner_id,
-                                hostID: resp.data[i].call?.host_id,
+                                channelID: data[i].channel_id,
+                                startAt: data[i].call?.start_at,
+                                ownerID: data[i].call?.owner_id,
+                                hostID: data[i].call?.host_id,
                             },
                         });
                     }
@@ -575,13 +572,13 @@ export default class Plugin {
             const actions = [];
 
             try {
-                const resp = await axios.get(`${getPluginPath()}/${channelID}`);
+                const data = await Client4.doFetch<CallChannelState>(`${getPluginPath()}/${channelID}`, {method: 'get'});
                 actions.push({
                     type: RECEIVED_CHANNEL_STATE,
-                    data: {id: channelID, enabled: resp.data.enabled},
+                    data: {id: channelID, enabled: data.enabled},
                 });
 
-                const call = resp.data.call;
+                const call = data.call;
                 if (!call) {
                     return actions;
                 }

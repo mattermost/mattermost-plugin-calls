@@ -15,14 +15,10 @@ import {
 } from 'src/selectors';
 import {Emoji} from 'src/components/emoji/emoji';
 import {getUserDisplayName, untranslatable} from 'src/utils';
-import CompassIcon from 'src/components/icons/compassIcon';
-
-interface Props {
-    forceLeft?: boolean;
-}
+import HandEmoji from 'src/components/icons/hand';
 
 // add a list of reactions, on top of that add the hands up as the top element
-export const ReactionStream = ({forceLeft}: Props) => {
+export const ReactionStream = () => {
     const {formatMessage} = useIntl();
     const currentUserID = useSelector(getCurrentUserId);
 
@@ -37,24 +33,29 @@ export const ReactionStream = ({forceLeft}: Props) => {
     const vReactions = useSelector(voiceReactions);
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
-        const emoji = <Emoji emoji={reaction.emoji}/>;
+        const emoji = (
+            <Emoji
+                emoji={reaction.emoji}
+                size={18}
+            />);
         const user = reaction.user_id === currentUserID ?
             formatMessage({defaultMessage: 'You'}) :
-            reaction.displayName || formatMessage({defaultMessage: 'Someone'});
+            getUserDisplayName(profileMap[reaction.user_id], true) || formatMessage({defaultMessage: 'Someone'});
 
         return (
-            <ReactionChip key={reaction.timestamp + reaction.user_id}>
-                <span>{emoji}</span>
-                &nbsp;
-                <span>{user}</span>
-            </ReactionChip>
+            <ReactionChipOverlay key={reaction.timestamp + reaction.user_id}>
+                <ReactionChip>
+                    <span>{emoji}</span>
+                    <span>{user}</span>
+                </ReactionChip>
+            </ReactionChipOverlay>
         );
     });
 
     // add hands up
     let elements = [];
     const getName = (user_id: string) => {
-        return user_id === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[user_id]);
+        return user_id === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[user_id], true);
     };
     let participants: string;
     if (handsup?.length) {
@@ -78,66 +79,62 @@ export const ReactionStream = ({forceLeft}: Props) => {
                 key={'hands'}
                 highlight={true}
             >
-                <CompassIcon
-                    icon={'hand-right'}
+                <HandEmoji
                     style={{
-                        color: 'rgb(255, 188, 66)',
-                        marginBottom: 2,
-                        fontSize: 16,
+                        fill: 'var(--away-indicator)',
+                        width: '18px',
+                        height: '18px',
                     }}
                 />
-                <Bold>{participants}</Bold>
-                <span>{untranslatable(' ')}{formatMessage({defaultMessage: 'raised a hand'})}</span>
+                <span>
+                    <Bold>{participants}</Bold>
+                    <span>{untranslatable(' ')}{formatMessage({defaultMessage: 'raised a hand'})}</span>
+                </span>
             </ReactionChip>);
     }
 
     elements = [...elements, ...reactions];
 
     return (
-        <ReactionStreamList forceLeft={forceLeft}>
+        <ReactionStreamList>
             {elements}
         </ReactionStreamList>
     );
 };
 
-interface streamListStyleProps {
-    forceLeft?: boolean;
-}
-
-const ReactionStreamList = styled.div<streamListStyleProps>`
-    position: absolute;
-    align-self: flex-end;
+const ReactionStreamList = styled.div`
     height: 75vh;
     display: flex;
     flex-direction: column-reverse;
     z-index: 1;
-    margin-left: 10px;
+    margin: 0 24px;
+    gap: 8px;
     -webkit-mask: -webkit-gradient(#0000, #000);
     mask: linear-gradient(#0000, #0003, #000f);
-    ${(props) => props.forceLeft && css`
-        left: 0;
-    `}
 `;
 
 interface chipProps {
     highlight?: boolean;
 }
 
+const ReactionChipOverlay = styled.div`
+    background: var(--calls-bg);
+    border-radius: 16px;
+    width: fit-content;
+`;
+
 const ReactionChip = styled.div<chipProps>`
     display: flex;
-    flex-direction: row;
     align-items: center;
-    padding: 0 8px;
-    gap: 2px;
-    max-height: 28px;
-    color: black;
-    background: rgba(221, 223, 228, 0.48);
-    border-radius: 12px;
-    margin: 4px 0;
+    padding: 6px 16px 6px 8px;
+    gap: 8px;
+    color: white;
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 16px;
     width: fit-content;
-    font-weight: 400;
-    font-size: 12px;
-    line-height: 28px;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 20px;
 
     ${(props) => props.highlight && css`
         background: #FFFFFF;

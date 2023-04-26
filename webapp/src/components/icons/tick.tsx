@@ -9,16 +9,16 @@ type Props = {
     style?: CSSProperties,
 }
 
-export default function ShowMore(props: Props) {
+export default function TickIcon(props: Props) {
     return (
         <svg
-            {...props}
-            width='16px'
-            height='16px'
-            viewBox='0 0 16 16'
+            style={props.style}
+            className={props.className}
+            fill={props.fill}
+            viewBox='1.63 3.19 13.12 10.06'
             role='img'
         >
-            <path d='M5.444 11.4378L8.882 7.9998L5.444 4.5618L6.506 3.4998L11.006 7.9998L6.506 12.4998L5.444 11.4378Z'/>
+            <path d='M14.75 4.2558L5.75 13.2558L1.628 9.1158L2.69 8.0718L5.75 11.1318L13.688 3.1938L14.75 4.2558Z'/>
         </svg>
     );
 }

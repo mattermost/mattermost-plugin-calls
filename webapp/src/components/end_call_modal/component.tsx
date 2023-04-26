@@ -3,8 +3,6 @@ import {IntlShape} from 'react-intl';
 
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
-import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
-import {Theme} from 'mattermost-redux/types/themes';
 
 import {isDMChannel, isGMChannel, getUserDisplayName} from 'src/utils';
 import {endCall} from 'src/actions';
@@ -14,7 +12,6 @@ import './component.scss';
 
 interface Props {
     intl: IntlShape,
-    theme: Theme,
     show: boolean,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
@@ -39,7 +36,7 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
             justifyContent: 'center',
             alignItems: 'center',
             zIndex: 10000,
-            background: changeOpacity(this.props.theme.centerChannelColor, 0.64),
+            background: 'rgba(0, 0, 0, 0.64)',
         },
         modal: {
             position: 'relative',
@@ -47,11 +44,11 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
             justifyContent: 'center',
             alignItems: 'center',
             flexDirection: 'column',
-            background: this.props.theme.centerChannelBg,
-            color: this.props.theme.centerChannelColor,
+            background: 'var(--center-channel-bg)',
+            color: 'var(--center-channel-color)',
             borderRadius: '8px',
-            border: `1px solid ${changeOpacity(this.props.theme.centerChannelColor, 0.16)}`,
-            boxShadow: `0px 20px 32px ${changeOpacity(this.props.theme.centerChannelColor, 0.12)}`,
+            border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
+            boxShadow: '0px 20px 32px rgba(var(--center-channel-color-rgb), 0.12)',
             width: '512px',
             padding: '48px 32px',
         },
@@ -79,7 +76,7 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
         },
         error: {
             marginTop: '8px',
-            color: this.props.theme.errorTextColor,
+            color: 'var(--error-text)',
         },
     };
 
