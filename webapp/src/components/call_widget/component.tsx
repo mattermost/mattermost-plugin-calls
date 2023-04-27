@@ -505,15 +505,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             // No strict need to be pixel perfect here since the window will be transparent
             // and better to overestimate slightly to avoid the widget possibly being cut.
-            const hMargin = 4;
-            const vMargin = 2;
+            const hMargin = 6;
+            const vMargin = 6;
 
             // Margin on base width is needed to account for the widget being
-            // positioned 2px from the left: 2px + 280px (base width) + 2px
+            // positioned 2px from the left.
             bounds.width = baseWidget.getBoundingClientRect().width + hMargin;
 
             // Margin on base height is needed to account for the widget being
-            // positioned 2px from the bottom: 2px + 94px (base height) + 2px
+            // positioned 4px from the bottom.
             bounds.height = baseWidget.getBoundingClientRect().height + widgetMenu.getBoundingClientRect().height + vMargin;
 
             if (widgetMenu.getBoundingClientRect().height > 0) {
