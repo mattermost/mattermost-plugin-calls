@@ -6,6 +6,7 @@ import {GlobalState} from '@mattermost/types/store';
 
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
+import {Duration, DurationLikeObject} from 'luxon';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {Client4} from 'mattermost-redux/client';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
@@ -82,9 +83,7 @@ export function getUserDisplayName(user: UserProfile | undefined, shortForm?: bo
     }
 
     if (user.first_name && user.last_name) {
-        return shortForm ?
-            `${user.first_name} ${user.last_name[0]}.` :
-            `${user.first_name} ${user.last_name}`;
+        return shortForm ? `${user.first_name} ${user.last_name[0]}.` : `${user.first_name} ${user.last_name}`;
     }
 
     return user.username;
@@ -508,4 +507,18 @@ export function setCallsGlobalCSSVars(baseColor: string) {
     rootEl?.style.setProperty('--calls-bg', rgbToCSS(baseColorRGB));
     rootEl?.style.setProperty('--calls-bg-rgb', `${baseColorRGB.r},${baseColorRGB.g},${baseColorRGB.b}`);
     rootEl?.style.setProperty('--calls-badge-bg', rgbToCSS(badgeBgRGB));
+}
+
+// Adapted from https://github.com/moment/luxon/issues/1134
+export function toHuman(dur: Duration, smallestUnit = 'seconds', opts = {}): string {
+    const units = ['years', 'months', 'days', 'hours', 'minutes', 'seconds', 'milliseconds'];
+    const smallestIdx = units.indexOf(smallestUnit);
+    const unitsIdxs = units as (keyof DurationLikeObject)[];
+    const entries = Object.entries(
+        dur.shiftTo(...unitsIdxs).normalize().toObject(),
+    ).filter(([_unit, amount], idx) => amount > 0 && idx <= smallestIdx);
+    const dur2 = Duration.fromObject(
+        entries.length === 0 ? {[smallestUnit]: 0} : Object.fromEntries(entries),
+    );
+    return dur2.toHuman(opts);
 }

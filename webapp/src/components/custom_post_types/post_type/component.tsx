@@ -1,7 +1,6 @@
 import React from 'react';
 import {useSelector} from 'react-redux';
 import {useIntl} from 'react-intl';
-import moment from 'moment-timezone';
 import styled from 'styled-components';
 
 import {GlobalState} from '@mattermost/types/store';
@@ -11,6 +10,8 @@ import {Post} from '@mattermost/types/posts';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import {getUser} from 'mattermost-redux/selectors/entities/users';
+
+import {DateTime, Duration as LuxonDuration} from 'luxon';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
@@ -24,6 +25,7 @@ import {
     sendDesktopEvent,
     untranslatable,
     getUserDisplayName,
+    toHuman,
 } from 'src/utils';
 
 interface Props {
@@ -34,6 +36,7 @@ interface Props {
     showSwitchCallModal: (targetID: string) => void,
     isCloudPaid: boolean,
     maxParticipants: number,
+    militaryTime: boolean,
 }
 
 const PostType = ({
@@ -44,8 +47,10 @@ const PostType = ({
     showSwitchCallModal,
     isCloudPaid,
     maxParticipants,
+    militaryTime,
 }: Props) => {
     const {formatMessage} = useIntl();
+    const timeFormat = militaryTime ? DateTime.TIME_24_SIMPLE : DateTime.TIME_SIMPLE;
 
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
 
@@ -81,16 +86,22 @@ const PostType = ({
     const subMessage = post.props.end_at ? (
         <>
             <Duration>
-                {formatMessage({defaultMessage: 'Ended at {endTime}'}, {endTime: moment(post.props.end_at).format('h:mm A')})}
+                {formatMessage(
+                    {defaultMessage: 'Ended at {endTime}'},
+                    {endTime: DateTime.fromMillis(post.props.end_at).toLocaleString(timeFormat)},
+                )}
             </Duration>
             <Divider>{untranslatable('•')}</Divider>
             <Duration>
-                {formatMessage({defaultMessage: 'Lasted {callDuration}'}, {callDuration: moment.duration(post.props.end_at - post.props.start_at).humanize(false)})}
+                {formatMessage(
+                    {defaultMessage: 'Lasted {callDuration}'},
+                    {callDuration: toHuman(LuxonDuration.fromMillis(post.props.end_at - post.props.start_at), 'seconds', {unitDisplay: 'short'})},
+                )}
             </Duration>
-            { recordingsSubMessage }
+            {recordingsSubMessage}
         </>
     ) : (
-        <Duration>{moment(post.props.start_at).fromNow()}</Duration>
+        <Duration>{DateTime.fromMillis(post.props.start_at).toRelative()}</Duration>
     );
 
     let joinButton = (
@@ -110,10 +121,10 @@ const PostType = ({
                         <Header>
                             {formatMessage({defaultMessage: 'Sorry, participants per call are currently limited to {count}.'}, {count: maxParticipants})}
                         </Header>
-                        { isCloudPaid &&
-                        <SubHeader>
-                            {formatMessage({defaultMessage: 'This is because calls is in the beta phase. We’re working to remove this limit soon.'})}
-                        </SubHeader>
+                        {isCloudPaid &&
+                            <SubHeader>
+                                {formatMessage({defaultMessage: 'This is because calls is in the beta phase. We’re working to remove this limit soon.'})}
+                            </SubHeader>
                         }
                     </Tooltip>
                 }
@@ -162,10 +173,10 @@ const PostType = ({
                         </CallIndicator>
                         <MessageWrapper>
                             <Message>
-                                { !post.props.end_at &&
+                                {!post.props.end_at &&
                                     formatMessage({defaultMessage: '{user} started a call'}, {user: getUserDisplayName(user)})
                                 }
-                                { post.props.end_at &&
+                                {post.props.end_at &&
                                     formatMessage({defaultMessage: 'Call ended'})
                                 }
                             </Message>
