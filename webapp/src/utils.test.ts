@@ -1,9 +1,12 @@
+import {Duration} from 'luxon';
+
 import {
     getWSConnectionURL,
     shouldRenderDesktopWidget,
     hexToRGB,
     rgbToHSL,
     hslToRGB,
+    toHuman,
 } from './utils';
 
 describe('utils', () => {
@@ -354,6 +357,50 @@ describe('utils', () => {
 
         testCases.forEach((testCase) => it(testCase.description, () => {
             expect(hslToRGB(testCase.input)).toEqual(testCase.expected);
+        }));
+    });
+
+    describe('toHuman from luxon duration', () => {
+        const testCases = [
+            {
+                description: '0 seconds',
+                input: Duration.fromMillis(0),
+                expected: '0 seconds',
+            },
+            {
+                description: '0 seconds short',
+                input: Duration.fromMillis(0),
+                expected: '0 sec',
+                opts: {unitDisplay: 'short'},
+            },
+            {
+                description: '18 seconds rounded, short',
+                input: Duration.fromMillis(18999),
+                expected: '18 sec',
+                opts: {unitDisplay: 'short'},
+            },
+            {
+                description: '4 min, 45 sec',
+                input: Duration.fromObject({minutes: 4, seconds: 45}),
+                expected: '4 min, 45 sec',
+                opts: {unitDisplay: 'short'},
+            },
+            {
+                description: '1 hour, 22 min, 59 sec',
+                input: Duration.fromObject({hours: 1, minutes: 22, seconds: 59}),
+                expected: '1 hr, 22 min, 59 sec',
+                opts: {unitDisplay: 'short'},
+            },
+            {
+                description: 'neg number = 0 sec',
+                input: Duration.fromMillis(-23),
+                expected: '0 sec',
+                opts: {unitDisplay: 'short'},
+            },
+        ];
+
+        testCases.forEach((testCase) => it(testCase.description, () => {
+            expect(toHuman(testCase.input, 'seconds', testCase.opts || {})).toEqual(testCase.expected);
         }));
     });
 });
