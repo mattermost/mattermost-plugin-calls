@@ -3,20 +3,18 @@ import {useSelector} from 'react-redux';
 
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-import {LabelRow} from 'src/components/admin_console_settings/common';
+import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
-import {isCloud, isOnPremNotEnterprise} from 'src/selectors';
+import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
 
 const RecordingQuality = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
+    const recordingEnabled = useSelector(recordingsEnabled);
 
-    if (cloud || restricted) {
+    if (cloud || restricted || !recordingEnabled) {
         return null;
     }
-
-    const leftCol = 'col-sm-4';
-    const rightCol = 'col-sm-8';
 
     // Webapp doesn't pass the options
     const rawOptions = manifest.settings_schema?.settings.find((e) => e.key === 'RecordingQuality')?.options || [];

@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {ChangeEvent} from 'react';
+import React, {ChangeEvent, useCallback, useEffect, useState} from 'react';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 import {useDispatch, useSelector} from 'react-redux';
 
@@ -19,9 +19,8 @@ import {
     OnPremTrialError,
     OnPremTrialSuccess,
 } from 'src/components/admin_console_settings/recordings/modals';
-import {requestOnPremTrialLicense} from 'src/actions';
+import {requestOnPremTrialLicense, setRecordingsEnabled} from 'src/actions';
 import {untranslatable} from 'src/utils';
-import manifest from 'src/manifest';
 
 import {
     LabelRow,
@@ -31,7 +30,7 @@ import {
     Title,
     Text,
     Footer,
-    FooterText,
+    FooterText, leftCol, rightCol,
 } from 'src/components/admin_console_settings/common';
 
 const EnableRecordings = (props: CustomComponentProps) => {
@@ -39,16 +38,25 @@ const EnableRecordings = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const stats = useSelector(adminStats);
-
-    const leftCol = 'col-sm-4';
-    const rightCol = 'col-sm-8';
-
-    // Webapp doesn't pass the placeholder setting.
-    const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'EnableRecordings')?.placeholder || '';
+    const [enabled, setEnabled] = useState(() => props.value === 'true');
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value === 'true');
+        setEnabled(e.target.value === 'true');
     };
+
+    const onSave = useCallback(async () => {
+        dispatch(setRecordingsEnabled(enabled));
+        return {};
+    }, [dispatch, enabled]);
+
+    useEffect(() => {
+        props.registerSaveAction(onSave);
+
+        return () => {
+            props.unRegisterSaveAction(onSave);
+        };
+    }, [onSave, props]);
 
     const requestLicense = async () => {
         let users = 0;
@@ -178,7 +186,6 @@ const EnableRecordings = (props: CustomComponentProps) => {
                         data-testid={props.id + 'true'}
                         id={props.id + 'true'}
                         type={'radio'}
-                        placeholder={placeholder}
                         value='true'
                         checked={Boolean(props.value)}
                         onChange={handleChange}
@@ -192,7 +199,6 @@ const EnableRecordings = (props: CustomComponentProps) => {
                         data-testid={props.id + 'false'}
                         id={props.id + 'false'}
                         type={'radio'}
-                        placeholder={placeholder}
                         value='false'
                         checked={Boolean(!props.value)}
                         onChange={handleChange}
