@@ -1,3 +1,4 @@
+import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@calls/common';
 import {UserState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
@@ -16,8 +17,6 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {parseSemVer} from 'semver-parser';
 
 import {logDebug, logErr, logWarn} from './log';
-
-import {ColorRGB, ColorHSL} from './types/types';
 
 import {pluginId} from './manifest';
 
@@ -82,9 +81,7 @@ export function getUserDisplayName(user: UserProfile | undefined, shortForm?: bo
     }
 
     if (user.first_name && user.last_name) {
-        return shortForm ?
-            `${user.first_name} ${user.last_name[0]}.` :
-            `${user.first_name} ${user.last_name}`;
+        return shortForm ? `${user.first_name} ${user.last_name[0]}.` : `${user.first_name} ${user.last_name}`;
     }
 
     return user.username;
@@ -410,98 +407,8 @@ export function getTranslations(locale: string) {
     }
 }
 
-export function hexToRGB(h: string) {
-    if (h.length !== 7 || h[0] !== '#') {
-        throw new Error(`invalid hex color string '${h}'`);
-    }
-
-    return {
-        r: parseInt(h[1] + h[2], 16),
-        g: parseInt(h[3] + h[4], 16),
-        b: parseInt(h[5] + h[6], 16),
-    };
-}
-
-export function rgbToHSL(c: ColorRGB) {
-    // normalize components into [0,1]
-    const R = c.r / 255;
-    const G = c.g / 255;
-    const B = c.b / 255;
-
-    // value
-    const V = Math.max(R, G, B);
-
-    // chroma
-    const C = V - Math.min(R, G, B);
-
-    // lightness
-    const L = V - (C / 2);
-
-    // saturation
-    let S = 0;
-    if (L > 0 && L < 1) {
-        S = C / (1 - Math.abs((2 * V) - C - 1));
-    }
-
-    // hue
-    let h = 0;
-    if (C !== 0) {
-        switch (V) {
-        case R:
-            h = 60 * (((G - B) / C) % 6);
-            break;
-        case G:
-            h = 60 * (((B - R) / C) + 2);
-            break;
-        case B:
-            h = 60 * (((R - G) / C) + 4);
-            break;
-        }
-    }
-
-    return {
-        h: Math.round(h >= 0 ? h : h + 360),
-        s: Math.round(S * 100),
-        l: Math.round(L * 100),
-    };
-}
-
-export function hslToRGB(c: ColorHSL) {
-    const H = c.h;
-    const S = c.s / 100;
-    const L = c.l / 100;
-
-    const f = (n: number) => {
-        const k = (n + (H / 30)) % 12;
-        const a = S * Math.min(L, 1 - L);
-        return L - (a * Math.max(-1, Math.min(k - 3, 9 - k, 1)));
-    };
-
-    return {
-        r: Math.round(f(0) * 255),
-        g: Math.round(f(8) * 255),
-        b: Math.round(f(4) * 255),
-    };
-}
-
-export function rgbToCSS(c: ColorRGB) {
-    return `rgb(${c.r},${c.g},${c.b})`;
-}
-
 export function setCallsGlobalCSSVars(baseColor: string) {
-    // Base color is Sidebar Hover Background.
-    const baseColorHSL = rgbToHSL(hexToRGB(baseColor));
-
-    // Setting lightness to 16 to improve contrast.
-    baseColorHSL.l = 16;
-    const baseColorRGB = hslToRGB(baseColorHSL);
-
-    // badgeBG is baseColor with a 0.16 opacity white overlay on top.
-    const badgeBgRGB = {
-        r: Math.round(baseColorRGB.r + (255 * 0.16)),
-        g: Math.round(baseColorRGB.g + (255 * 0.16)),
-        b: Math.round(baseColorRGB.b + (255 * 0.16)),
-    };
+    const {baseColorRGB, badgeBgRGB} = makeCallsBaseAndBadgeRGB(baseColor);
 
     // Setting CSS variables for calls background.
     const rootEl = document.querySelector(':root') as HTMLElement;
