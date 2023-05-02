@@ -130,6 +130,10 @@ import {
     DESKTOP_WIDGET_CONNECTED,
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
+    VOICE_CHANNEL_USER_MUTED,
+    VOICE_CHANNEL_USER_UNMUTED,
+    VOICE_CHANNEL_USER_RAISE_HAND,
+    VOICE_CHANNEL_USER_UNRAISE_HAND,
 } from './action_types';
 import {PluginRegistry, Store} from './types/mattermost-webapp';
 
@@ -444,6 +448,47 @@ export default class Plugin {
                         delete window.currentCallData;
                         playSound('leave_self');
                     }
+                });
+
+                window.callsClient.on('mute', () => {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_USER_MUTED,
+                        data: {
+                            channelID: window.callsClient?.channelID,
+                            userID: getCurrentUserId(store.getState()),
+                        },
+                    });
+                });
+
+                window.callsClient.on('unmute', () => {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_USER_UNMUTED,
+                        data: {
+                            channelID: window.callsClient?.channelID,
+                            userID: getCurrentUserId(store.getState()),
+                        },
+                    });
+                });
+
+                window.callsClient.on('raise_hand', () => {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_USER_RAISE_HAND,
+                        data: {
+                            channelID: window.callsClient?.channelID,
+                            userID: getCurrentUserId(store.getState()),
+                            raised_hand: Date.now(),
+                        },
+                    });
+                });
+
+                window.callsClient.on('lower_hand', () => {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_USER_UNRAISE_HAND,
+                        data: {
+                            channelID: window.callsClient?.channelID,
+                            userID: getCurrentUserId(store.getState()),
+                        },
+                    });
                 });
 
                 window.callsClient.init(channelID, title, rootId).catch((err: Error) => {

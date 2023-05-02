@@ -35,7 +35,6 @@ export default class CallsClient extends EventEmitter {
     private stream: MediaStream | null;
     private audioDevices: AudioDevices;
     public audioTrack: MediaStreamTrack | null;
-    public isHandRaised: boolean;
     private readonly onDeviceChange: () => void;
     private readonly onBeforeUnload: () => void;
     private closed = false;
@@ -54,7 +53,6 @@ export default class CallsClient extends EventEmitter {
         this.remoteVoiceTracks = [];
         this.stream = null;
         this.audioDevices = {inputs: [], outputs: []};
-        this.isHandRaised = false;
         this.channelID = '';
         this.config = config;
         this.onDeviceChange = async () => {
@@ -319,6 +317,10 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('devicechange');
         this.removeAllListeners('error');
         this.removeAllListeners('initaudio');
+        this.removeAllListeners('mute');
+        this.removeAllListeners('unmute');
+        this.removeAllListeners('raise_hand');
+        this.removeAllListeners('lower_hand');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices?.removeEventListener('devicechange', this.onDeviceChange);
     }
@@ -418,13 +420,6 @@ export default class CallsClient extends EventEmitter {
         });
     }
 
-    public isMuted() {
-        if (!this.audioTrack) {
-            return true;
-        }
-        return !this.audioTrack.enabled;
-    }
-
     public mute() {
         if (!this.peer || !this.audioTrack || !this.stream) {
             return;
@@ -435,6 +430,8 @@ export default class CallsClient extends EventEmitter {
         // @ts-ignore: we actually mean (and need) to pass null here
         this.peer.replaceTrack(this.audioTrack.id, null);
         this.audioTrack.enabled = false;
+
+        this.emit('mute');
 
         if (this.ws) {
             this.ws.send('mute');
@@ -466,6 +463,9 @@ export default class CallsClient extends EventEmitter {
             }
             this.audioTrack.enabled = true;
         }
+
+        this.emit('unmute');
+
         if (this.ws) {
             this.ws.send('unmute');
         }
@@ -564,13 +564,13 @@ export default class CallsClient extends EventEmitter {
     }
 
     public raiseHand() {
+        this.emit('raise_hand');
         this.ws?.send('raise_hand');
-        this.isHandRaised = true;
     }
 
     public unraiseHand() {
+        this.emit('lower_hand');
         this.ws?.send('unraise_hand');
-        this.isHandRaised = false;
     }
 
     public sendUserReaction(data: EmojiData) {
