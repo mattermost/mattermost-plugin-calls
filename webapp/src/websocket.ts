@@ -156,6 +156,8 @@ export class WebSocketClient extends EventEmitter {
             } else {
                 this.ws.send(JSON.stringify(msg));
             }
+        } else {
+            logWarn('failed to send message, connection is not open');
         }
     }
 

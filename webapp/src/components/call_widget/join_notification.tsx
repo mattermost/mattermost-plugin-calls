@@ -6,6 +6,7 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 
 export type Props = {
     visible: boolean,
+    isMuted: boolean,
 }
 
 export default function JoinNotification(props: Props) {
@@ -20,20 +21,19 @@ export default function JoinNotification(props: Props) {
         setAnimationEnded(true);
     };
 
-    const isMuted = window.callsClient?.isMuted();
-    const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
+    const MuteIcon = props.isMuted ? MutedIcon : UnmutedIcon;
 
     const muteIcon = (
         <MuteIcon
             style={{
                 width: '11px',
                 height: '11px',
-                fill: isMuted ? 'var(--center-channel-color)' : '#3DB887',
+                fill: props.isMuted ? 'var(--center-channel-color)' : '#3DB887',
             }}
         />
     );
 
-    const notificationContent = isMuted ? formatMessage({
+    const notificationContent = props.isMuted ? formatMessage({
         defaultMessage: 'You\'re muted. Select {muteIcon} to unmute.',
     }, {muteIcon}) : formatMessage({
         defaultMessage: 'You\'re unmuted. Select {muteIcon} to mute.',
