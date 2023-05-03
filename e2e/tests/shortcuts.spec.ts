@@ -55,7 +55,7 @@ test.describe('keyboard shortcuts', () => {
         await toggleMute();
 
         let isMuted = await page.evaluate(() => {
-            return window.callsClient.isMuted();
+            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
         });
         if (isMuted) {
             test.fail();
@@ -65,7 +65,7 @@ test.describe('keyboard shortcuts', () => {
         await toggleMute();
 
         isMuted = await page.evaluate(() => {
-            return window.callsClient.isMuted();
+            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
         });
         if (!isMuted) {
             test.fail();
@@ -88,10 +88,20 @@ test.describe('keyboard shortcuts', () => {
             }
         };
 
+        await page.evaluate(() => {
+            window.callsClient.on('raise_hand', () => {
+                window.isHandRaised = true;
+            });
+
+            window.callsClient.on('lower_hand', () => {
+                window.isHandRaised = false;
+            });
+        });
+
         await toggleHand();
 
         let isHandRaised = await page.evaluate(() => {
-            return window.callsClient.isHandRaised;
+            return window.isHandRaised;
         });
         if (!isHandRaised) {
             test.fail();
@@ -101,7 +111,7 @@ test.describe('keyboard shortcuts', () => {
         await toggleHand();
 
         isHandRaised = await page.evaluate(() => {
-            return window.callsClient.isHandRaised;
+            return window.isHandRaised;
         });
         if (isHandRaised) {
             test.fail();
@@ -157,7 +167,7 @@ test.describe('keyboard shortcuts', () => {
         await page.keyboard.press('Space');
         await expect(participantsList).toBeVisible();
         let isMuted = await page.evaluate(() => {
-            return window.callsClient.isMuted();
+            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
         });
         if (isMuted) {
             test.fail();
@@ -172,7 +182,7 @@ test.describe('keyboard shortcuts', () => {
         }
 
         isMuted = await page.evaluate(() => {
-            return window.callsClient.isMuted();
+            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
         });
         if (!isMuted) {
             test.fail();
