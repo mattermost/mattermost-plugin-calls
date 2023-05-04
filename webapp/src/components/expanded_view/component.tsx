@@ -160,7 +160,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     #unlockNavigation?: () => void;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
-        setCallsGlobalCSSVars(this.props.theme.sidebarTextHoverBg);
+        setCallsGlobalCSSVars(this.props.theme.sidebarBg);
 
         return {
             root: {

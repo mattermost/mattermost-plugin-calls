@@ -88,7 +88,7 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
         });
     }
 
-    setCallsGlobalCSSVars(theme.sidebarTextHoverBg);
+    setCallsGlobalCSSVars(theme.sidebarBg);
 
     const locale = getCurrentUserLocale(store.getState()) || 'en';
     let messages;
