@@ -206,6 +206,10 @@ func (p *Plugin) newJobService(serviceURL string) (*jobService, error) {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
+	if err := p.jobServiceVersionCheck(client); err != nil {
+		return nil, err
+	}
+
 	err = client.Login(cfg.ClientID, cfg.AuthKey)
 	if err == nil {
 		return &jobService{
@@ -312,4 +316,33 @@ func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, 
 	}
 
 	return job.ID, nil
+}
+
+func (p *Plugin) jobServiceVersionCheck(client *offloader.Client) error {
+	// Version compatibility check.
+	info, err := client.GetVersionInfo()
+	if err != nil {
+		return fmt.Errorf("failed to get job service version info: %w", err)
+	}
+
+	minServiceVersion, ok := manifest.Props["min_offloader_version"].(string)
+	if !ok {
+		return fmt.Errorf("failed to get min_offloader_version from manifest")
+	}
+
+	// Always support dev builds.
+	if info.BuildVersion == "" || info.BuildVersion == "master" || strings.HasPrefix(info.BuildVersion, "dev") {
+		p.LogInfo("skipping version compatibility check", "buildVersion", info.BuildVersion)
+		return nil
+	}
+
+	if err := checkMinVersion(minServiceVersion, info.BuildVersion); err != nil {
+		return fmt.Errorf("minimum version check failed: %w", err)
+	}
+
+	p.LogDebug("job service version compatibility check succeeded",
+		"min_offloader_version", minServiceVersion,
+		"curr_offloader_version", info.BuildVersion)
+
+	return nil
 }

@@ -572,8 +572,8 @@ github.com/mailru/easyjson v0.7.0/go.mod h1:KAzv3t3aY1NaHWoQz1+4F1ccyAH66Jk7yos7
 github.com/mailru/easyjson v0.7.7 h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0=
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/marstr/guid v1.1.0/go.mod h1:74gB1z2wpxxInTG6yaqA7KrtM0NZ+RbrcqDvYHefzho=
-github.com/mattermost/calls-offloader v0.2.4-0.20230425234542-9125a63f69b8 h1:1Ob0sbT+zbE6tJeio4i7x1fc/7tlo1ssJLldC8tjRUk=
-github.com/mattermost/calls-offloader v0.2.4-0.20230425234542-9125a63f69b8/go.mod h1:GKhQ1cH7aMToSmOz3+ySN3++bhZzN5I8ugibDq08N5c=
+github.com/mattermost/calls-offloader v0.2.4-0.20230504145741-4d4b2a42c954 h1:NJ7ND3fnPEQKjQcwF8qTIMYeo/9Mhw5iUh8V71PJ5ew=
+github.com/mattermost/calls-offloader v0.2.4-0.20230504145741-4d4b2a42c954/go.mod h1:GKhQ1cH7aMToSmOz3+ySN3++bhZzN5I8ugibDq08N5c=
 github.com/mattermost/calls-recorder v0.3.0 h1:AFCyDwPeVLGjk4F3UQKmVhCp0o+0rGU6Prm6am0b7AQ=
 github.com/mattermost/calls-recorder v0.3.0/go.mod h1:hYhKgCc28uzcpkJjuja4tiLBfuPSCSQ6QHGkRFVygKM=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 h1:Khvh6waxG1cHc4Cz5ef9n3XVCxRWpAKUtqg9PJl5+y8=
