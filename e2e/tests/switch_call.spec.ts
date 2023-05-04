@@ -1,10 +1,7 @@
 import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {userState} from '../constants';
-import {getUserIdxForTest} from '../utils';
-
-const userIdx = getUserIdxForTest();
+import {getUserStoragesForTest, getUserIdxForTest} from '../utils';
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -12,7 +9,8 @@ test.beforeEach(async ({page, context}) => {
 });
 
 test.describe('switch call', () => {
-    test.use({storageState: userState.users[userIdx].storageStatePath});
+    const userIdx = getUserIdxForTest();
+    test.use({storageState: getUserStoragesForTest()[0]});
 
     test('exit modal - cancel button', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
