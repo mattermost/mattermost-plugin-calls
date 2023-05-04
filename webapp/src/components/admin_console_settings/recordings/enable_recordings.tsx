@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {ChangeEvent, useCallback, useEffect, useState} from 'react';
+import React, {ChangeEvent, useEffect, useState} from 'react';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 import {useDispatch, useSelector} from 'react-redux';
 
@@ -38,25 +38,19 @@ const EnableRecordings = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const stats = useSelector(adminStats);
-    const [enabled, setEnabled] = useState(() => props.value === 'true');
+
+    // @ts-ignore -- this is complaining b/c value is supposed to be string, but... it can be bool!
+    const [enabled, setEnabled] = useState(() => props.value === 'true' || props.value === true);
+
+    // Update global state with a local state change, or props change (eg, remounting)
+    useEffect(() => {
+        dispatch(setRecordingsEnabled(enabled));
+    }, [dispatch, enabled]);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value === 'true');
         setEnabled(e.target.value === 'true');
     };
-
-    const onSave = useCallback(async () => {
-        dispatch(setRecordingsEnabled(enabled));
-        return {};
-    }, [dispatch, enabled]);
-
-    useEffect(() => {
-        props.registerSaveAction(onSave);
-
-        return () => {
-            props.unRegisterSaveAction(onSave);
-        };
-    }, [onSave, props]);
 
     const requestLicense = async () => {
         let users = 0;
