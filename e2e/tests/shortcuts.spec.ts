@@ -3,10 +3,7 @@ import {readFile} from 'fs/promises';
 import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {userState} from '../constants';
-import {getUserIdxForTest} from '../utils';
-
-const userIdx = getUserIdxForTest();
+import {getUserStoragesForTest} from '../utils';
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -14,7 +11,7 @@ test.beforeEach(async ({page, context}) => {
 });
 
 test.describe('keyboard shortcuts', () => {
-    test.use({storageState: userState.users[userIdx].storageStatePath});
+    test.use({storageState: getUserStoragesForTest()[0]});
 
     test('join/leave call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
