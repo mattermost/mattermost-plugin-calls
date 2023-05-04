@@ -1,10 +1,10 @@
 import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {userState} from '../constants';
-import {startCall, getUserIdxForTest} from '../utils';
+import {startCall, getUserStoragesForTest, getUsernamesForTest} from '../utils';
 
-const userIdx = getUserIdxForTest();
+const userStorages = getUserStoragesForTest();
+const usernames = getUsernamesForTest();
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -12,11 +12,11 @@ test.beforeEach(async ({page, context}) => {
 });
 
 test.describe('join call', () => {
-    test.use({storageState: userState.users[userIdx].storageStatePath});
+    test.use({storageState: userStorages[0]});
 
     test('channel header button', async ({page}) => {
         // start a call
-        const userPage = await startCall(userState.users[userIdx + 1].storageStatePath);
+        const userPage = await startCall(userStorages[1]);
 
         const devPage = new PlaywrightDevPage(page);
         await devPage.joinCall();
@@ -27,7 +27,7 @@ test.describe('join call', () => {
 
     test('channel toast', async ({page}) => {
         // start a call
-        const userPage = await startCall(userState.users[userIdx + 1].storageStatePath);
+        const userPage = await startCall(userStorages[1]);
 
         await page.locator('.post__body').last().scrollIntoViewIfNeeded();
 
@@ -38,7 +38,7 @@ test.describe('join call', () => {
         await joinCallToast.click();
 
         await expect(userPage.page.getByTestId('call-joined-participant-notification')).toBeVisible();
-        await expect(userPage.page.getByTestId('call-joined-participant-notification')).toContainText(userState.users[userIdx].username + ' has joined the call.');
+        await expect(userPage.page.getByTestId('call-joined-participant-notification')).toContainText(usernames[0] + ' has joined the call.');
 
         await expect(page.locator('#calls-widget')).toBeVisible();
 
@@ -50,7 +50,7 @@ test.describe('join call', () => {
 
     test('call thread', async ({page}) => {
         // start a call
-        const userPage = await startCall(userState.users[userIdx + 1].storageStatePath);
+        const userPage = await startCall(userStorages[1]);
 
         const joinCallButton = page.locator('.post__body').last().locator('button:has-text("Join call")');
         await expect(joinCallButton).toBeVisible();
