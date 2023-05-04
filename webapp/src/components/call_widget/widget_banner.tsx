@@ -217,6 +217,7 @@ const Icon = styled.div<{fill?: string, color?: string}>`
 const CloseButton = styled(Icon)`
   cursor: pointer;
   margin-top: 4px;
+  app-region: no-drag;
 
   :hover {
     background: rgba(var(--center-channel-color-rgb), 0.08);

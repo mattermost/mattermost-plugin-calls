@@ -3,17 +3,12 @@ import {readFile} from 'fs/promises';
 import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {userState} from '../constants';
-import {getUserIdxForTest, getChannelNamesForTest} from '../utils';
+import {getChannelNamesForTest, getUsernamesForTest, getUserStoragesForTest} from '../utils';
 
-declare global {
-    interface Window {
-        callsClient: any,
-        desktop: any,
-    }
-}
+import {adminState} from '../constants';
 
-const userIdx = getUserIdxForTest();
+const userStorages = getUserStoragesForTest();
+const usernames = getUsernamesForTest();
 
 test.beforeEach(async ({page, context}, info) => {
     // Small optimization to avoid loading an unnecessary channel.
@@ -25,7 +20,7 @@ test.beforeEach(async ({page, context}, info) => {
 });
 
 test.describe('start/join call in channel with calls disabled', () => {
-    test.use({storageState: userState.admin.storageStatePath});
+    test.use({storageState: adminState.storageStatePath});
 
     test('/call start', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -57,7 +52,7 @@ test.describe('start/join call in channel with calls disabled', () => {
 });
 
 test.describe('start new call', () => {
-    test.use({storageState: userState.users[userIdx].storageStatePath});
+    test.use({storageState: userStorages[0]});
 
     test('channel header button', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -78,7 +73,7 @@ test.describe('start new call', () => {
 
     test('dm channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[userIdx + 1].username);
+        await devPage.gotoDM(usernames[1]);
         await devPage.startCall();
         await devPage.wait(1000);
         expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('dm-calls-widget-bottom-bar.png');
@@ -119,7 +114,7 @@ test.describe('start new call', () => {
         await expect(page.locator('#calls-widget')).toBeVisible();
 
         // verify the call post is created in the thread.
-        await expect(page.locator('#rhsContainer').filter({has: page.getByText(`${userState.users[userIdx].username} started a call`)})).toBeVisible();
+        await expect(page.locator('#rhsContainer').filter({has: page.getByText(`${usernames[0]} started a call`)})).toBeVisible();
 
         await page.locator('#reply_textbox').fill('/call leave');
         await page.locator('#reply_textbox').press('Control+Enter');
@@ -160,7 +155,7 @@ test.describe('start new call', () => {
 });
 
 test.describe('desktop', () => {
-    test.use({storageState: userState.users[userIdx].storageStatePath});
+    test.use({storageState: userStorages[0]});
 
     test('screen sharing < 5.1.0', async ({page}) => {
         await page.evaluate(() => {
@@ -211,7 +206,7 @@ test.describe('desktop', () => {
 });
 
 test.describe('auto join link', () => {
-    test.use({storageState: userState.users[userIdx].storageStatePath});
+    test.use({storageState: userStorages[0]});
 
     test('public channel', async ({page, context}) => {
         await page.locator('#post_textbox').fill('/call link');
@@ -235,7 +230,7 @@ test.describe('auto join link', () => {
 
     test('dm channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[userIdx + 1].username);
+        await devPage.gotoDM(usernames[1]);
 
         await page.locator('#post_textbox').fill('/call link');
         await page.locator('[data-testid=SendMessageButton]').click();
@@ -258,7 +253,7 @@ test.describe('auto join link', () => {
 });
 
 test.describe('setting audio input device', () => {
-    test.use({storageState: userState.users[userIdx].storageStatePath});
+    test.use({storageState: userStorages[0]});
 
     test('no default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -331,7 +326,7 @@ test.describe('setting audio input device', () => {
 });
 
 test.describe('setting audio output device', () => {
-    test.use({storageState: userState.users[userIdx].storageStatePath});
+    test.use({storageState: userStorages[0]});
 
     test('no default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -404,7 +399,7 @@ test.describe('setting audio output device', () => {
 });
 
 test.describe('switching products', () => {
-    test.use({storageState: userState.users[userIdx].storageStatePath});
+    test.use({storageState: userStorages[0]});
 
     test('boards', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -431,7 +426,7 @@ test.describe('switching products', () => {
 });
 
 test.describe('switching views', () => {
-    test.use({storageState: userState.admin.storageStatePath});
+    test.use({storageState: adminState.storageStatePath});
 
     test('system console', async ({page}) => {
         // Using the second channel allocated for the test to avoid a potential
