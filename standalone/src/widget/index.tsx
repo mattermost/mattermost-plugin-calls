@@ -77,7 +77,7 @@ async function initWidget(store: Store, theme: Theme, channelID: string) {
             >
                 <CallWidget
                     global={true}
-                    position={{bottom: 2, left: 2}}
+                    position={{bottom: 4, left: 2}}
                 />
             </IntlProvider>
         </Provider>,
