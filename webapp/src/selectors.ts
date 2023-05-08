@@ -156,7 +156,7 @@ export const recentlyJoinedUsers = (state: GlobalState, channelID: string): stri
 //
 // Config logic
 //
-const callsConfig = (state: GlobalState): CallsConfig =>
+export const callsConfig = (state: GlobalState): CallsConfig =>
     pluginState(state).callsConfig;
 
 export const iceServers = (state: GlobalState): RTCIceServer[] =>

@@ -10,7 +10,7 @@ import {EmojiData} from '@calls/common/lib/types';
 
 import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo} from 'src/types/types';
 
-import {getScreenStream, setSDPMaxVideoBW} from './utils';
+import {getScreenStream} from './utils';
 import {logErr, logDebug, logWarn, logInfo} from './log';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 
@@ -223,6 +223,7 @@ export default class CallsClient extends EventEmitter {
                     logWarn,
                     logInfo,
                 },
+                simulcast: this.config.simulcast,
             });
 
             this.peer = peer;
@@ -236,13 +237,13 @@ export default class CallsClient extends EventEmitter {
 
             peer.on('answer', (sdp) => {
                 logDebug(`local signal: ${JSON.stringify(sdp)}`);
-
                 ws.send('sdp', {
                     data: deflate(JSON.stringify(sdp)),
                 }, true);
             });
 
             peer.on('candidate', (candidate) => {
+                logDebug(`local candidate: ${JSON.stringify(candidate)}`);
                 ws.send('ice', {
                     data: JSON.stringify(candidate),
                 });
@@ -295,13 +296,6 @@ export default class CallsClient extends EventEmitter {
                 logDebug('remote signal', data);
             }
             if (msg.type === 'answer' || msg.type === 'offer' || msg.type === 'candidate') {
-                if (msg.type === 'answer' || msg.type === 'offer') {
-                    const sdp = setSDPMaxVideoBW(msg.sdp, 1000);
-                    if (sdp !== msg.sdp) {
-                        msg.sdp = sdp;
-                        data = JSON.stringify(msg);
-                    }
-                }
                 if (this.peer) {
                     await this.peer.signal(data);
                 }
@@ -314,6 +308,7 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('connect');
         this.removeAllListeners('remoteVoiceStream');
         this.removeAllListeners('remoteScreenStream');
+        this.removeAllListeners('localScreenStream');
         this.removeAllListeners('devicechange');
         this.removeAllListeners('error');
         this.removeAllListeners('initaudio');
@@ -523,8 +518,7 @@ export default class CallsClient extends EventEmitter {
                 return;
             }
 
-            // @ts-ignore: we actually mean to pass null here
-            this.peer.replaceTrack(screenTrack.id, null);
+            this.peer.removeTrack(screenTrack.id);
             this.ws.send('screen_off');
         };
 
@@ -536,6 +530,8 @@ export default class CallsClient extends EventEmitter {
                 screenStreamID: screenStream.id,
             }),
         });
+
+        this.emit('localScreenStream', screenStream);
     }
 
     public async shareScreen(sourceID?: string, withAudio?: boolean) {

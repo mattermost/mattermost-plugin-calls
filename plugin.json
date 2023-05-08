@@ -104,6 +104,13 @@
                 "help_text": "When set to true it allows call participants to share their screen."
             },
             {
+                "key": "EnableSimulcast",
+                "display_name": "Enable simulcast for screen sharing (Experimental)",
+                "type": "bool",
+                "default": false,
+                "help_text": "When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality."
+            },
+            {
                 "key": "RTCDServiceURL",
                 "display_name": "RTCD service URL",
                 "type": "text",
@@ -158,7 +165,7 @@
         ]
     },
     "props": {
-        "min_rtcd_version": "v0.9.0",
+        "min_rtcd_version": "v0.10.1",
         "calls_recorder_version": "v0.3.1"
     }
 }
