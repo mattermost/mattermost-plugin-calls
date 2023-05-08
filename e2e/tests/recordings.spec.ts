@@ -1,6 +1,8 @@
 import {test, expect, chromium} from '@playwright/test';
 
-import {userState, baseURL, defaultTeam, pluginID} from '../constants';
+import {baseURL, defaultTeam, pluginID} from '../constants';
+
+import {getUserStoragesForTest} from '../utils';
 
 import PlaywrightDevPage from '../page';
 
@@ -10,7 +12,7 @@ test.beforeEach(async ({page, context}) => {
 });
 
 test.describe('call recordings', () => {
-    test.use({storageState: userState.users[6].storageStatePath});
+    test.use({storageState: getUserStoragesForTest()[0]});
 
     test('recording - slash command', async ({page}) => {
         // start call

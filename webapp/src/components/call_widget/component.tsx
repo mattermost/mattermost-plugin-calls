@@ -507,15 +507,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             // No strict need to be pixel perfect here since the window will be transparent
             // and better to overestimate slightly to avoid the widget possibly being cut.
-            const hMargin = 4;
-            const vMargin = 2;
+            const hMargin = 6;
+            const vMargin = 6;
 
             // Margin on base width is needed to account for the widget being
-            // positioned 2px from the left: 2px + 280px (base width) + 2px
+            // positioned 2px from the left.
             bounds.width = baseWidget.getBoundingClientRect().width + hMargin;
 
             // Margin on base height is needed to account for the widget being
-            // positioned 2px from the bottom: 2px + 94px (base height) + 2px
+            // positioned 4px from the bottom.
             bounds.height = baseWidget.getBoundingClientRect().height + widgetMenu.getBoundingClientRect().height + vMargin;
 
             if (widgetMenu.getBoundingClientRect().height > 0) {
@@ -628,13 +628,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             document.activeElement.blur();
         }
 
-        const isMuted = window.callsClient.isMuted();
-        if (isMuted) {
+        if (this.isMuted()) {
             window.callsClient.unmute();
         } else {
             window.callsClient.mute();
         }
     };
+
+    isMuted() {
+        const currUserState = this.props.statuses[this.props.currentUserID];
+        return currUserState ? !currUserState.unmuted : true;
+    }
+
+    isHandRaised() {
+        const currUserState = this.props.statuses[this.props.currentUserID];
+        return currUserState ? currUserState.raised_hand > 0 : false;
+    }
 
     onDisconnectClick = () => {
         if (this.state.expandedViewWindow) {
@@ -1540,7 +1549,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         return (
             <div style={{display: 'flex', flexDirection: 'column-reverse', gap: '4px'}}>
-                <JoinNotification visible={!this.state.connecting}/>
+                <JoinNotification
+                    visible={!this.state.connecting}
+                    isMuted={this.isMuted()}
+                />
                 {joinedUsers}
             </div>
         );
@@ -1661,7 +1673,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             document.activeElement.blur();
         }
 
-        if (window.callsClient.isHandRaised) {
+        if (this.isHandRaised()) {
             window.callsClient.unraiseHand();
             this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
@@ -1721,9 +1733,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
-        const MuteIcon = window.callsClient.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
-        let muteTooltipText = window.callsClient.isMuted() ?
+        const MuteIcon = this.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
+
+        let muteTooltipText = this.isMuted() ?
             formatMessage({defaultMessage: 'Unmute'}) :
             formatMessage({defaultMessage: 'Mute'});
         let muteTooltipSubtext = '';
@@ -1745,11 +1758,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const ShowIcon = window.desktop && !this.props.global ? ExpandIcon : PopOutIcon;
 
-        const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
+        const HandIcon = this.isHandRaised() ? UnraisedHandIcon : RaisedHandIcon;
 
         const MenuIcon = this.props.wider ? SettingsWheelIcon : HorizontalDotsIcon;
 
-        const handTooltipText = window.callsClient.isHandRaised ?
+        const handTooltipText = this.isHandRaised() ?
             formatMessage({defaultMessage: 'Lower hand'}) :
             formatMessage({defaultMessage: 'Raise hand'});
 
@@ -1844,11 +1857,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
                             tooltipText={muteTooltipText}
                             tooltipSubtext={muteTooltipSubtext}
-                            bgColor={window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
+                            bgColor={this.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
                             icon={
                                 <MuteIcon
                                     style={{
-                                        fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)',
+                                        fill: this.isMuted() ? '' : 'rgba(61, 184, 135, 1)',
                                     }}
                                 />
                             }
@@ -1861,11 +1874,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 onToggle={() => this.onRaiseHandToggle()}
                                 shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
                                 tooltipText={handTooltipText}
-                                bgColor={window.callsClient.isHandRaised ? 'rgba(var(--away-indicator-rgb), 0.16)' : ''}
+                                bgColor={this.isHandRaised() ? 'rgba(var(--away-indicator-rgb), 0.16)' : ''}
                                 icon={
                                     <HandIcon
                                         style={{
-                                            fill: window.callsClient.isHandRaised ? 'var(--away-indicator)' : '',
+                                            fill: this.isHandRaised() ? 'var(--away-indicator)' : '',
                                         }}
                                     />
                                 }

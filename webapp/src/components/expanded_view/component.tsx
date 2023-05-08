@@ -160,7 +160,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     #unlockNavigation?: () => void;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
-        setCallsGlobalCSSVars(this.props.theme.sidebarTextHoverBg);
+        setCallsGlobalCSSVars(this.props.theme.sidebarBg);
 
         return {
             root: {
@@ -429,12 +429,22 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return;
         }
         const callsClient = this.getCallsClient();
-        if (callsClient?.isMuted()) {
+        if (this.isMuted()) {
             callsClient.unmute();
         } else {
             callsClient?.mute();
         }
     };
+
+    isMuted() {
+        const currUserState = this.props.statuses[this.props.currentUserID];
+        return currUserState ? !currUserState.unmuted : true;
+    }
+
+    isHandRaised() {
+        const currUserState = this.props.statuses[this.props.currentUserID];
+        return currUserState ? currUserState.raised_hand > 0 : false;
+    }
 
     onRecordToggle = async (fromShortcut?: boolean) => {
         if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at > 0) {
@@ -499,7 +509,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     onRaiseHandToggle = (fromShortcut?: boolean) => {
         const callsClient = this.getCallsClient();
-        if (callsClient?.isHandRaised) {
+        if (this.isHandRaised()) {
             this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
             callsClient?.unraiseHand();
         } else {
@@ -909,7 +919,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
-        const isMuted = callsClient.isMuted();
+        const isMuted = this.isMuted();
         const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
         let muteTooltipText = isMuted ? formatMessage({defaultMessage: 'Unmute'}) : formatMessage({defaultMessage: 'Mute'});
