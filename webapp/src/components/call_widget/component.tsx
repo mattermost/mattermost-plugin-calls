@@ -112,7 +112,7 @@ interface State {
     showMenu: boolean,
     showParticipantsList: boolean,
     screenSharingID?: string,
-    screenStream?: MediaStream | null,
+    screenStream: MediaStream | null,
     currentAudioInputDevice?: MediaDeviceInfo | null,
     currentAudioOutputDevice?: MediaDeviceInfo | null,
     devices?: AudioDevices,
@@ -131,7 +131,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private audioMenu: HTMLUListElement | null = null;
     private menuResizeObserver: ResizeObserver | null = null;
     private audioMenuResizeObserver: ResizeObserver | null = null;
-    private readonly screenPlayer = React.createRef<HTMLVideoElement>();
+    private screenPlayer: HTMLVideoElement | null = null;
     private prevDevicePixelRatio = 0;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
@@ -263,11 +263,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEls: [],
             alerts: CallAlertStatesDefault,
             connecting: true,
+            screenStream: null,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
-        this.screenPlayer = React.createRef();
     }
+
+    setScreenPlayerRef = (node: HTMLVideoElement) => {
+        if (node && this.state.screenStream) {
+            node.srcObject = this.state.screenStream;
+        }
+        this.screenPlayer = node;
+    };
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
         if (!this.props.show) {
@@ -399,6 +406,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
+        window.callsClient.on('localScreenStream', (stream: MediaStream) => {
+            this.setState({
+                screenStream: stream,
+            });
+        });
+
         window.callsClient.on('devicechange', (devices: AudioDevices) => {
             this.setState({
                 devices,
@@ -474,20 +487,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         document.removeEventListener('keydown', this.handleKBShortcuts, true);
     }
 
-    public componentDidUpdate() {
-        let screenStream = this.state.screenStream;
-        if (this.props.screenSharingID === this.props.currentUserID) {
-            screenStream = window.callsClient?.getLocalScreenStream();
-        }
-
-        const hasScreenTrackChanged = screenStream && this.state.screenStream?.getVideoTracks()[0]?.id !== screenStream.getVideoTracks()[0]?.id;
-        if ((screenStream && !this.state.screenStream) || hasScreenTrackChanged) {
-            // eslint-disable-next-line react/no-did-update-set-state
-            this.setState({screenStream});
-        }
-
-        if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer.current?.srcObject !== this.state.screenStream) {
-            this.screenPlayer.current.srcObject = this.state.screenStream;
+    public componentDidUpdate(prevProps: Props, prevState: State) {
+        if (this.screenPlayer && this.state.screenStream !== prevState.screenStream) {
+            this.screenPlayer.srcObject = this.state.screenStream;
         }
     }
 
@@ -781,7 +783,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         <video
                             id='screen-player'
-                            ref={this.screenPlayer}
+                            ref={this.setScreenPlayerRef}
                             width='100%'
                             height='100%'
                             autoPlay={true}

@@ -152,10 +152,10 @@ const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
 const MaxParticipantsPerRow = 4;
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
-    private readonly screenPlayer = React.createRef<HTMLVideoElement>();
     private readonly emojiButtonRef: React.RefObject<ReactionButtonRef>;
     private expandedRootRef = React.createRef<HTMLDivElement>();
     private pushToTalk = false;
+    private screenPlayer : HTMLVideoElement | null = null;
 
     #unlockNavigation?: () => void;
 
@@ -283,7 +283,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     constructor(props: Props) {
         super(props);
-        this.screenPlayer = React.createRef();
         this.emojiButtonRef = React.createRef();
         this.state = {
             screenStream: null,
@@ -320,6 +319,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         }
     }
+
+    setScreenPlayerRef = (node: HTMLVideoElement) => {
+        if (node && this.state.screenStream) {
+            node.srcObject = this.state.screenStream;
+        }
+        this.screenPlayer = node;
+    };
 
     getCallsClient = () => {
         return window.opener ? window.opener.callsClient : window.callsClient;
@@ -531,11 +537,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.props.hideExpandedView();
     };
 
-    public componentDidUpdate(prevProps: Props) {
-        if (prevProps.theme.type !== this.props.theme.type) {
-            this.style = this.genStyle();
-        }
-
+    public componentDidUpdate(prevProps: Props, prevState: State) {
         if (window.opener) {
             if (document.title.indexOf('Call') === -1 && this.props.channel) {
                 if (isDMChannel(this.props.channel) && this.props.connectedDMUser) {
@@ -555,14 +557,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer.current?.srcObject !== this.state.screenStream) {
-            this.screenPlayer.current.srcObject = this.state.screenStream;
-        }
-
-        const localScreenStream = this.getCallsClient()?.getLocalScreenStream();
-        if (localScreenStream && this.state.screenStream?.getVideoTracks()[0].id !== localScreenStream.getVideoTracks()[0].id) {
-            // eslint-disable-next-line react/no-did-update-set-state
-            this.setState({screenStream: localScreenStream});
+        if (this.screenPlayer && this.state.screenStream !== prevState.screenStream) {
+            this.screenPlayer.srcObject = this.state.screenStream;
         }
     }
 
@@ -578,6 +574,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.addEventListener('blur', this.handleBlur, true);
 
         callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+            this.setState({
+                screenStream: stream,
+            });
+        });
+        callsClient.on('localScreenStream', (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
@@ -727,7 +728,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <video
                         id='screen-player'
                         slot='media'
-                        ref={this.screenPlayer}
+                        ref={this.setScreenPlayerRef}
                         muted={true}
                         autoPlay={true}
                         onClick={(ev) => ev.preventDefault()}
