@@ -18,7 +18,7 @@ require (
 	github.com/mattermost/calls-recorder v0.3.0
 	github.com/mattermost/logr/v2 v2.0.15
 	github.com/mattermost/mattermost-plugin-api v0.1.1
-	github.com/mattermost/rtcd v0.10.0
+	github.com/mattermost/rtcd v0.10.1
 	github.com/pion/interceptor v0.1.12
 	github.com/pion/rtp v1.7.13
 	github.com/pkg/errors v0.9.1

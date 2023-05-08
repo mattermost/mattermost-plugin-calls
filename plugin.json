@@ -165,7 +165,7 @@
         ]
     },
     "props": {
-        "min_rtcd_version": "v0.9.0",
+        "min_rtcd_version": "v0.10.1",
         "calls_recorder_version": "v0.3.1"
     }
 }
