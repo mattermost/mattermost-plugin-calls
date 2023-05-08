@@ -26,6 +26,7 @@ export type CallsClientConfig = {
     wsURL: string;
     authToken?: string;
     iceServers: RTCIceServer[];
+    simulcast?: boolean;
 }
 
 export type AudioDevices = {
