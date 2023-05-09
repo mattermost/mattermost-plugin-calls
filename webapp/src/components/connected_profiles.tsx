@@ -3,7 +3,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import {UserProfile} from '@mattermost/types/users';
 
-import {getUsersList} from '../utils';
+import {getUsersList, getUserDisplayName} from '../utils';
 
 import Avatar from './avatar/avatar';
 
@@ -29,7 +29,7 @@ const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSiz
                 key={'call_thread_profile_' + profile.id}
                 overlay={
                     <Tooltip id='tooltip-username'>
-                        {profile.username}
+                        {getUserDisplayName(profile)}
                     </Tooltip>
                 }
             >
