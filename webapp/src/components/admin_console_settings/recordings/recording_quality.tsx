@@ -1,17 +1,13 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
-// See LICENSE.txt for license information.
-
 import React, {ChangeEvent} from 'react';
-import {CustomComponentProps} from 'src/types/mattermost-webapp';
 import {useSelector} from 'react-redux';
 
+import {CustomComponentProps} from 'src/types/mattermost-webapp';
+
+import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
 import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
-import {
-    LabelRow, leftCol, rightCol,
-} from 'src/components/admin_console_settings/common';
 
-const MaxRecordingDuration = (props: CustomComponentProps) => {
+const RecordingQuality = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const recordingEnabled = useSelector(recordingsEnabled);
@@ -20,11 +16,22 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
         return null;
     }
 
-    // Webapp doesn't pass the placeholder setting.
-    const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'MaxRecordingDuration')?.placeholder || '';
+    // Webapp doesn't pass the options
+    const rawOptions = manifest.settings_schema?.settings.find((e) => e.key === 'RecordingQuality')?.options || [];
+    const options = [];
+    for (const {display_name, value} of rawOptions) {
+        options.push(
+            <option
+                value={value}
+                key={value}
+            >
+                {display_name}
+            </option>,
+        );
+    }
 
-    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        props.onChange(props.id, parseInt(e.target.value, 10));
+    const handleChange = (e: ChangeEvent<HTMLSelectElement>) => {
+        props.onChange(props.id, e.target.value);
     };
 
     return (
@@ -43,16 +50,16 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
                 </LabelRow>
             </div>
             <div className={rightCol}>
-                <input
-                    data-testid={props.id + 'number'}
-                    id={props.id}
+                <select
+                    data-testid={props.id + 'dropdown'}
                     className='form-control'
-                    type={'number'}
-                    placeholder={placeholder}
+                    id={props.id}
                     value={props.value}
                     onChange={handleChange}
                     disabled={props.disabled}
-                />
+                >
+                    {options}
+                </select>
                 <div
                     data-testid={props.id + 'help-text'}
                     className='help-text'
@@ -64,4 +71,4 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
     );
 };
 
-export default MaxRecordingDuration;
+export default RecordingQuality;

@@ -27,6 +27,7 @@ import {
     showScreenSourceModal,
     displayCallsTestModeUser,
 } from 'src/actions';
+import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
 
 import slashCommandsHandler from 'src/slash_commands';
 
@@ -363,6 +364,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
         registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
         registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
+        registry.registerAdminConsoleCustomSetting('RecordingQuality', RecordingQuality);
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
         registry.registerAdminConsoleCustomSetting('UDPServerAddress', UDPServerAddress);
