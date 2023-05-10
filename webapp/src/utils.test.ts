@@ -1,4 +1,5 @@
 import {Duration} from 'luxon';
+import {createIntl} from 'react-intl';
 
 import {
     getWSConnectionURL,
@@ -84,19 +85,23 @@ describe('utils', () => {
             {
                 description: '0 seconds',
                 input: Duration.fromMillis(0),
-                expected: '0 seconds',
+                expected: 'a few seconds',
             },
             {
                 description: '0 seconds short',
                 input: Duration.fromMillis(0),
-                expected: '0 sec',
+                expected: 'a few seconds',
                 opts: {unitDisplay: 'short'},
             },
             {
-                description: '18 seconds rounded, short',
-                input: Duration.fromMillis(18999),
-                expected: '18 sec',
-                opts: {unitDisplay: 'short'},
+                description: '43 seconds',
+                input: Duration.fromObject({seconds: 43}),
+                expected: 'a few seconds',
+            },
+            {
+                description: '44 seconds',
+                input: Duration.fromObject({seconds: 44}),
+                expected: '1 minute',
             },
             {
                 description: '4 min, 45 sec',
@@ -105,7 +110,12 @@ describe('utils', () => {
                 opts: {unitDisplay: 'short'},
             },
             {
-                description: '1 hour, 22 min, 59 sec',
+                description: '4 minutes, 45 seconds',
+                input: Duration.fromObject({minutes: 4, seconds: 45}),
+                expected: '4 minutes, 45 seconds',
+            },
+            {
+                description: '1 hr, 22 min, 59 sec',
                 input: Duration.fromObject({hours: 1, minutes: 22, seconds: 59}),
                 expected: '1 hr, 22 min, 59 sec',
                 opts: {unitDisplay: 'short'},
@@ -113,13 +123,31 @@ describe('utils', () => {
             {
                 description: 'neg number = 0 sec',
                 input: Duration.fromMillis(-23),
-                expected: '0 sec',
-                opts: {unitDisplay: 'short'},
+                expected: 'a few seconds',
+            },
+            {
+                description: '3 hours, 1 minute',
+                input: Duration.fromObject({hours: 3, minutes: 1, seconds: 59}),
+                expected: '3 hours, 1 minute',
+                smallestUnit: 'minutes',
+            },
+            {
+                description: '1 hour, 59 seconds',
+                input: Duration.fromObject({hours: 1, seconds: 59}),
+                expected: '1 hour, 59 seconds',
+            },
+            {
+                description: '1 hour',
+                input: Duration.fromObject({hours: 1, minutes: 59, seconds: 59}),
+                expected: '1 hour',
+                smallestUnit: 'hours',
             },
         ];
 
+        const intl = createIntl({locale: 'en-us'});
+
         testCases.forEach((testCase) => it(testCase.description, () => {
-            expect(toHuman(testCase.input, 'seconds', testCase.opts || {})).toEqual(testCase.expected);
+            expect(toHuman(intl, testCase.input, testCase.smallestUnit || 'seconds', testCase.opts || {})).toEqual(testCase.expected);
         }));
     });
 });

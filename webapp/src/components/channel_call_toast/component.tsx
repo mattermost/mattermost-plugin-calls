@@ -1,6 +1,6 @@
+import {DateTime} from 'luxon';
 import React from 'react';
 import {IntlShape} from 'react-intl';
-import moment from 'moment-timezone';
 
 import {UserProfile} from '@mattermost/types/users';
 
@@ -83,7 +83,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
                         />
                         <span style={{margin: '0 4px'}}>{formatMessage({defaultMessage: 'Join call'})}</span>
                         <span style={{opacity: '0.80', margin: '0 4px'}}>
-                            {formatMessage({defaultMessage: 'Started {callStartedAt}'}, {callStartedAt: moment(this.props.startAt).fromNow()})}
+                            {formatMessage({defaultMessage: 'Started {callStartedAt}'}, {callStartedAt: DateTime.fromMillis(this.props.startAt || Date.now()).toRelative()})}
                         </span>
                         <div/>
                     </div>

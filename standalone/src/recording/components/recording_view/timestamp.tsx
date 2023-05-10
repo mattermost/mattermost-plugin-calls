@@ -1,12 +1,12 @@
+import {DateTime} from 'luxon';
 import React, {CSSProperties, useState, useEffect} from 'react';
-import moment from 'moment-timezone';
 
 type Props = {
     style?: CSSProperties,
 }
 
 function getTimestamp() {
-    return moment.utc().format('YYYY-MM-DD HH:mm') + ' UTC';
+    return DateTime.utc().toFormat('YYYY-MM-DD HH:mm') + ' UTC';
 }
 
 export default function Timestamp(props: Props) {

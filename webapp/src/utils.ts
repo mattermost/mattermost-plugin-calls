@@ -15,6 +15,7 @@ import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities
 import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 
 import {logDebug, logErr, logWarn} from './log';
@@ -418,8 +419,18 @@ export function setCallsGlobalCSSVars(baseColor: string) {
     rootEl?.style.setProperty('--calls-badge-bg', rgbToCSS(badgeBgRGB));
 }
 
+// momentjs's 'a few seconds' threshold
+const aFewSecondsThreshold = Duration.fromObject({seconds: 44});
+const oneMinute = Duration.fromObject({minutes: 1});
+
 // Adapted from https://github.com/moment/luxon/issues/1134
-export function toHuman(dur: Duration, smallestUnit = 'seconds', opts = {}): string {
+export function toHuman(intl: IntlShape, dur: Duration, smallestUnit = 'seconds', opts = {}): string {
+    if (dur < aFewSecondsThreshold) {
+        return intl.formatMessage({defaultMessage: 'a few seconds'});
+    } else if (dur < oneMinute) {
+        dur = oneMinute;
+    }
+
     const units = ['years', 'months', 'days', 'hours', 'minutes', 'seconds', 'milliseconds'];
     const smallestIdx = units.indexOf(smallestUnit);
     const unitsIdxs = units as (keyof DurationLikeObject)[];

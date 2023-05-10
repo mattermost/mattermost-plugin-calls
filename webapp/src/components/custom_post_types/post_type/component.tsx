@@ -49,7 +49,8 @@ const PostType = ({
     maxParticipants,
     militaryTime,
 }: Props) => {
-    const {formatMessage} = useIntl();
+    const intl = useIntl();
+    const {formatMessage} = intl;
     const hourCycle: 'h23' | 'h12' = militaryTime ? 'h23' : 'h12';
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
@@ -96,7 +97,7 @@ const PostType = ({
             <Duration>
                 {formatMessage(
                     {defaultMessage: 'Lasted {callDuration}'},
-                    {callDuration: toHuman(LuxonDuration.fromMillis(post.props.end_at - post.props.start_at), 'minutes', {unitDisplay: 'short'})},
+                    {callDuration: toHuman(intl, LuxonDuration.fromMillis(post.props.end_at - post.props.start_at), 'minutes', {unitDisplay: 'long'})},
                 )}
             </Duration>
             {recordingsSubMessage}
