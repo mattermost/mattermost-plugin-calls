@@ -1,10 +1,10 @@
-import {DateTime} from 'luxon';
 import React from 'react';
 import {IntlShape} from 'react-intl';
 
 import {UserProfile} from '@mattermost/types/users';
 
 import Timestamp from 'src/components/timestamp';
+import {callStartedTimestampFn} from 'src/utils';
 
 import ActiveCallIcon from '../../components/icons/active_call_icon';
 import ConnectedProfiles from '../../components/connected_profiles';
@@ -50,7 +50,7 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
         }
     }
 
-    timestampFn = () => DateTime.fromMillis(this.props.startAt || Date.now()).toRelative() || '';
+    timestampFn = () => callStartedTimestampFn(this.props.intl, this.props.startAt);
 
     onJoinCallClick = async () => {
         if (this.props.connectedID) {

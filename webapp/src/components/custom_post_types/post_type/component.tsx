@@ -27,7 +27,7 @@ import {
     sendDesktopEvent,
     untranslatable,
     getUserDisplayName,
-    toHuman,
+    toHuman, callStartedTimestampFn,
 } from 'src/utils';
 
 interface Props {
@@ -59,8 +59,8 @@ const PostType = ({
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
 
     const timestampFn = useCallback(() => {
-        return DateTime.fromMillis(post.props.start_at).toRelative() || '';
-    }, [post.props.start_at]);
+        return callStartedTimestampFn(intl, post.props.start_at);
+    }, [intl, post.props.start_at]);
 
     const onJoinCallClick = () => {
         if (connectedID) {

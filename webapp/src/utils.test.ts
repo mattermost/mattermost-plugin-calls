@@ -2,6 +2,7 @@ import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
 
 import {
+    callStartedTimestampFn,
     getWSConnectionURL,
     shouldRenderDesktopWidget,
     toHuman,
@@ -148,6 +149,52 @@ describe('utils', () => {
 
         testCases.forEach((testCase) => it(testCase.description, () => {
             expect(toHuman(intl, testCase.input, testCase.smallestUnit || 'seconds', testCase.opts || {})).toEqual(testCase.expected);
+        }));
+    });
+
+    describe('callStartedTimestampFn', () => {
+        const testCases = [
+            {
+                description: '0 seconds',
+                input: Date.now(),
+                expected: 'a few seconds ago',
+            },
+            {
+                description: '43 seconds',
+                input: Date.now() - (42.9 * 1000),
+                expected: 'a few seconds ago',
+            },
+            {
+                description: '44 seconds',
+                input: Date.now() - (44 * 1000),
+                expected: '1 minute ago',
+            },
+            {
+                description: '1 minute',
+                input: Date.now() - (1 * 60 * 1000),
+                expected: '1 minute ago',
+            },
+            {
+                description: '2 minutes',
+                input: Date.now() - (2 * 60 * 1000),
+                expected: '2 minutes ago',
+            },
+            {
+                description: '59 minutes -> 59 minutes ago',
+                input: Date.now() - Duration.fromObject({minutes: 59, seconds: 59}).toMillis(),
+                expected: '59 minutes ago',
+            },
+            {
+                description: '1 hour, 22 minutes -> 1 hour ago',
+                input: Date.now() - Duration.fromObject({hours: 1, minutes: 22, seconds: 59}).toMillis(),
+                expected: '1 hour ago',
+            },
+        ];
+
+        const intl = createIntl({locale: 'en-us'});
+
+        testCases.forEach((testCase) => it(testCase.description, () => {
+            expect(callStartedTimestampFn(intl, testCase.input)).toEqual(testCase.expected);
         }));
     });
 });
