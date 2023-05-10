@@ -1,6 +1,7 @@
-import React from 'react';
+import React, {useCallback} from 'react';
 import {useSelector} from 'react-redux';
 import {useIntl} from 'react-intl';
+
 import styled from 'styled-components';
 
 import {GlobalState} from '@mattermost/types/store';
@@ -13,6 +14,7 @@ import {getUser} from 'mattermost-redux/selectors/entities/users';
 
 import {DateTime, Duration as LuxonDuration} from 'luxon';
 
+import Timestamp from 'src/components/timestamp';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
@@ -55,6 +57,10 @@ const PostType = ({
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
+
+    const timestampFn = useCallback(() => {
+        return DateTime.fromMillis(post.props.start_at).toRelative() || '';
+    }, [post.props.start_at]);
 
     const onJoinCallClick = () => {
         if (connectedID) {
@@ -103,7 +109,12 @@ const PostType = ({
             {recordingsSubMessage}
         </>
     ) : (
-        <Duration>{DateTime.fromMillis(post.props.start_at).toRelative()}</Duration>
+        <Duration>
+            <Timestamp
+                timestampFn={timestampFn}
+                interval={5000}
+            />
+        </Duration>
     );
 
     let joinButton = (
