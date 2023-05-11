@@ -2,9 +2,11 @@
 // See LICENSE.txt for license information.
 
 import React, {ChangeEvent} from 'react';
+
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
-import {getConfig} from 'mattermost-redux/selectors/entities/admin';
 import {useSelector} from 'react-redux';
+
+import {rtcdEnabled} from 'src/selectors';
 
 import manifest from 'src/manifest';
 
@@ -13,10 +15,10 @@ import {
 } from 'src/components/admin_console_settings/common';
 
 const ICEHostOverride = (props: CustomComponentProps) => {
-    const config = useSelector(getConfig);
+    const isRtcdEnabled = useSelector(rtcdEnabled);
 
     // If RTCD is configured then this setting doesn't apply and should be hidden.
-    if (config.PluginSettings?.Plugins[manifest.id]?.rtcdserviceurl?.length > 0) {
+    if (isRtcdEnabled) {
         return null;
     }
 

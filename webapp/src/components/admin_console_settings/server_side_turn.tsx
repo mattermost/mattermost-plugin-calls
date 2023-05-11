@@ -1,0 +1,71 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+import React, {ChangeEvent} from 'react';
+import {useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
+
+import {CustomComponentProps} from 'src/types/mattermost-webapp';
+
+import {rtcdEnabled} from 'src/selectors';
+
+import {leftCol, rightCol} from 'src/components/admin_console_settings/common';
+
+export const ServerSideTurn = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
+    const isRtcdEnabled = useSelector(rtcdEnabled);
+
+    // If RTCD is configured then this setting doesn't apply and should be hidden.
+    if (isRtcdEnabled) {
+        return null;
+    }
+
+    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const newVal = e.target.value === 'on';
+
+        // @ts-ignore -- newVal needs to be a boolean, but the signature says 'string'
+        props.onChange(props.id, newVal);
+    };
+
+    return (
+        <div
+            data-testid={props.id}
+            className='form-group'
+        >
+            <label className={'control-label ' + leftCol}>
+                {props.label}
+            </label>
+            <div className={rightCol}>
+                <label className='radio-inline'>
+                    <input
+                        data-testid={props.id + '_on'}
+                        type='radio'
+                        value='on'
+                        id={props.id + '_on'}
+                        name={props.id + '_on'}
+                        checked={props.value === 'on'}
+                        onChange={handleChange}
+                    />
+                    {formatMessage({defaultMessage: 'On'})}
+                </label>
+                <label className='radio-inline'>
+                    <input
+                        data-testid={props.id + '_off'}
+                        type='radio'
+                        value='off'
+                        id={props.id + '_off'}
+                        name={props.id + '_off'}
+                        checked={props.value === 'off'}
+                        onChange={handleChange}
+                    />
+                    {formatMessage({defaultMessage: 'Off'})}
+                </label>
+                <div
+                    data-testid={props.id + 'help-text'}
+                    className='help-text'
+                >
+                    {props.helpText}
+                </div>
+            </div>
+        </div>);
+};
