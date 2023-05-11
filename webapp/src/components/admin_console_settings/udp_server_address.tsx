@@ -15,10 +15,10 @@ import {
 } from 'src/components/admin_console_settings/common';
 
 const UDPServerAddress = (props: CustomComponentProps) => {
-    const isRtcdEnabled = useSelector(rtcdEnabled);
+    const isRTCDEnabled = useSelector(rtcdEnabled);
 
     // If RTCD is configured then this setting doesn't apply and should be hidden.
-    if (isRtcdEnabled) {
+    if (isRTCDEnabled) {
         return null;
     }
 
