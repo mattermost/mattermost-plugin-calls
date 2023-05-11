@@ -1,6 +1,11 @@
+import {Duration} from 'luxon';
+import {createIntl} from 'react-intl';
+
 import {
+    callStartedTimestampFn,
     getWSConnectionURL,
     shouldRenderDesktopWidget,
+    toHuman,
 } from './utils';
 
 describe('utils', () => {
@@ -73,6 +78,123 @@ describe('utils', () => {
             };
             expect(shouldRenderDesktopWidget()).toEqual(testCase.expected);
             delete window.desktop;
+        }));
+    });
+
+    describe('toHuman from luxon duration', () => {
+        const testCases = [
+            {
+                description: '0 seconds',
+                input: Duration.fromMillis(0),
+                expected: 'a few seconds',
+            },
+            {
+                description: '0 seconds short',
+                input: Duration.fromMillis(0),
+                expected: 'a few seconds',
+                opts: {unitDisplay: 'short'},
+            },
+            {
+                description: '43 seconds',
+                input: Duration.fromObject({seconds: 43}),
+                expected: 'a few seconds',
+            },
+            {
+                description: '44 seconds',
+                input: Duration.fromObject({seconds: 44}),
+                expected: '1 minute',
+            },
+            {
+                description: '4 min, 45 sec',
+                input: Duration.fromObject({minutes: 4, seconds: 45}),
+                expected: '4 min, 45 sec',
+                opts: {unitDisplay: 'short'},
+            },
+            {
+                description: '4 minutes, 45 seconds',
+                input: Duration.fromObject({minutes: 4, seconds: 45}),
+                expected: '4 minutes, 45 seconds',
+            },
+            {
+                description: '1 hr, 22 min, 59 sec',
+                input: Duration.fromObject({hours: 1, minutes: 22, seconds: 59}),
+                expected: '1 hr, 22 min, 59 sec',
+                opts: {unitDisplay: 'short'},
+            },
+            {
+                description: 'neg number = 0 sec',
+                input: Duration.fromMillis(-23),
+                expected: 'a few seconds',
+            },
+            {
+                description: '3 hours, 1 minute',
+                input: Duration.fromObject({hours: 3, minutes: 1, seconds: 59}),
+                expected: '3 hours, 1 minute',
+                smallestUnit: 'minutes',
+            },
+            {
+                description: '1 hour, 59 seconds',
+                input: Duration.fromObject({hours: 1, seconds: 59}),
+                expected: '1 hour, 59 seconds',
+            },
+            {
+                description: '1 hour',
+                input: Duration.fromObject({hours: 1, minutes: 59, seconds: 59}),
+                expected: '1 hour',
+                smallestUnit: 'hours',
+            },
+        ];
+
+        const intl = createIntl({locale: 'en-us'});
+
+        testCases.forEach((testCase) => it(testCase.description, () => {
+            expect(toHuman(intl, testCase.input, testCase.smallestUnit || 'seconds', testCase.opts || {})).toEqual(testCase.expected);
+        }));
+    });
+
+    describe('callStartedTimestampFn', () => {
+        const testCases = [
+            {
+                description: '0 seconds',
+                input: Date.now(),
+                expected: 'a few seconds ago',
+            },
+            {
+                description: '43 seconds',
+                input: Date.now() - (42.9 * 1000),
+                expected: 'a few seconds ago',
+            },
+            {
+                description: '44 seconds',
+                input: Date.now() - (44 * 1000),
+                expected: '1 minute ago',
+            },
+            {
+                description: '1 minute',
+                input: Date.now() - (1 * 60 * 1000),
+                expected: '1 minute ago',
+            },
+            {
+                description: '2 minutes',
+                input: Date.now() - (2 * 60 * 1000),
+                expected: '2 minutes ago',
+            },
+            {
+                description: '59 minutes -> 59 minutes ago',
+                input: Date.now() - Duration.fromObject({minutes: 59, seconds: 59}).toMillis(),
+                expected: '59 minutes ago',
+            },
+            {
+                description: '1 hour, 22 minutes -> 1 hour ago',
+                input: Date.now() - Duration.fromObject({hours: 1, minutes: 22, seconds: 59}).toMillis(),
+                expected: '1 hour ago',
+            },
+        ];
+
+        const intl = createIntl({locale: 'en-us'});
+
+        testCases.forEach((testCase) => it(testCase.description, () => {
+            expect(callStartedTimestampFn(intl, testCase.input)).toEqual(testCase.expected);
         }));
     });
 });

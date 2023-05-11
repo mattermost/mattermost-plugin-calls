@@ -1,17 +1,19 @@
+import {Duration} from 'luxon';
 import React, {CSSProperties, useState, useEffect} from 'react';
-import moment from 'moment-timezone';
 
 type Props = {
     startAt: number,
     style?: CSSProperties,
 }
 
+const oneHour = Duration.fromObject({hours: 1});
+
 function getCallDuration(startAt: number) {
-    const dur = moment.utc(moment().diff(moment(startAt)));
-    if (dur.hours() === 0) {
-        return dur.format('mm:ss');
+    const dur = Duration.fromMillis(Date.now() - startAt);
+    if (dur < oneHour) {
+        return dur.toFormat('mm:ss');
     }
-    return dur.format('HH:mm:ss');
+    return dur.toFormat('hh:mm:ss');
 }
 
 export default function CallDuration(props: Props) {
