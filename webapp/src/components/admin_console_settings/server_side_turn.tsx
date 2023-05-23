@@ -7,6 +7,8 @@ import {useSelector} from 'react-redux';
 
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
+import {useHelptext} from 'src/components/admin_console_settings/hooks';
+
 import {rtcdEnabled} from 'src/selectors';
 
 import {leftCol, rightCol} from 'src/components/admin_console_settings/common';
@@ -14,11 +16,7 @@ import {leftCol, rightCol} from 'src/components/admin_console_settings/common';
 export const ServerSideTurn = (props: CustomComponentProps) => {
     const {formatMessage} = useIntl();
     const isRTCDEnabled = useSelector(rtcdEnabled);
-
-    // If RTCD is configured then this setting doesn't apply and should be hidden.
-    if (isRTCDEnabled) {
-        return null;
-    }
+    const helpText = useHelptext(props.helpText);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const newVal = e.target.value === 'on';
@@ -26,6 +24,9 @@ export const ServerSideTurn = (props: CustomComponentProps) => {
         // @ts-ignore -- newVal needs to be a boolean, but the signature says 'string'
         props.onChange(props.id, newVal);
     };
+
+    // @ts-ignore val is a boolean, but the signature says 'string'. (being defensive here, just in case)
+    const checked = props.value === 'on' || props.value === true;
 
     return (
         <div
@@ -43,8 +44,9 @@ export const ServerSideTurn = (props: CustomComponentProps) => {
                         value='on'
                         id={props.id + '_on'}
                         name={props.id + '_on'}
-                        checked={props.value === 'on'}
+                        checked={checked}
                         onChange={handleChange}
+                        disabled={isRTCDEnabled}
                     />
                     {formatMessage({defaultMessage: 'On'})}
                 </label>
@@ -55,8 +57,9 @@ export const ServerSideTurn = (props: CustomComponentProps) => {
                         value='off'
                         id={props.id + '_off'}
                         name={props.id + '_off'}
-                        checked={props.value === 'off'}
+                        checked={!checked}
                         onChange={handleChange}
+                        disabled={isRTCDEnabled}
                     />
                     {formatMessage({defaultMessage: 'Off'})}
                 </label>
@@ -64,7 +67,7 @@ export const ServerSideTurn = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {helpText}
                 </div>
             </div>
         </div>);

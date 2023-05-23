@@ -30,6 +30,48 @@
         "hosting": "on-prem"
       },
       {
+        "key": "UDPServerAddress",
+        "display_name": "RTC Server Address",
+        "type": "text",
+        "help_text": "The IP address used by the RTC server to listen on.",
+        "default": "",
+        "placeholder": "127.0.0.1",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "UDPServerPort",
+        "display_name": "RTC Server Port",
+        "type": "number",
+        "help_text": "The UDP port the RTC server will listen on.",
+        "default": 8443,
+        "placeholder": "8443",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "ICEHostOverride",
+        "display_name": "ICE Host Override",
+        "type": "text",
+        "help_text": "(Optional) The IP (or hostname) to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.",
+        "default": "",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "ServerSideTURN",
+        "display_name": "Server Side TURN",
+        "type": "bool",
+        "default": false,
+        "help_text": "(Optional) When set to on it will pass and use configured TURN candidates to server initiated connections.",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "RTCDServiceURL",
+        "display_name": "RTCD service URL",
+        "type": "text",
+        "help_text": "(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
+        "placeholder": "https://rtcd.example.com",
+        "hosting": "on-prem"
+      },
+      {
         "key": "MaxCallParticipants",
         "display_name": "Max call participants",
         "type": "number",
@@ -75,48 +117,6 @@
         "type": "bool",
         "default": false,
         "help_text": "When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality."
-      },
-      {
-        "key": "RTCDServiceURL",
-        "display_name": "RTCD service URL",
-        "type": "text",
-        "help_text": "(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
-        "placeholder": "https://rtcd.example.com",
-        "hosting": "on-prem"
-      },
-      {
-        "key": "UDPServerAddress",
-        "display_name": "RTC Server Address",
-        "type": "text",
-        "help_text": "The IP address used by the RTC server to listen on.",
-        "default": "",
-        "placeholder": "127.0.0.1",
-        "hosting": "on-prem"
-      },
-      {
-        "key": "UDPServerPort",
-        "display_name": "RTC Server Port",
-        "type": "number",
-        "help_text": "The UDP port the RTC server will listen on.",
-        "default": 8443,
-        "placeholder": "8443",
-        "hosting": "on-prem"
-      },
-      {
-        "key": "ICEHostOverride",
-        "display_name": "ICE Host Override",
-        "type": "text",
-        "help_text": "(Optional) The IP (or hostname) to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.",
-        "default": "",
-        "hosting": "on-prem"
-      },
-      {
-        "key": "ServerSideTURN",
-        "display_name": "Server Side TURN",
-        "type": "bool",
-        "default": false,
-        "help_text": "(Optional) When set to on it will pass and use configured TURN candidates to server initiated connections.",
-        "hosting": "on-prem"
       },
       {
         "key": "EnableRecordings",
