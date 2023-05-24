@@ -9,9 +9,11 @@ export const useHelptext = (propsHelpText: JSX.Element | null) => {
     const {formatMessage} = useIntl();
     const isRTCDEnabled = useSelector(rtcdEnabled);
 
+    if (!isRTCDEnabled) {
+        return propsHelpText;
+    }
+
     const space = untranslatable(' ');
-    const enabledPostfix = formatMessage({defaultMessage: 'Enabled because the <code>RTCD service URL</code> field is empty.'},
-        {code: (text: string) => <code>{text}</code>});
     const disabledPostfix = formatMessage({defaultMessage: 'Disabled because the <code>RTCD service URL</code> field is non-empty.'},
         {code: (text: string) => <code>{text}</code>});
 
@@ -19,7 +21,7 @@ export const useHelptext = (propsHelpText: JSX.Element | null) => {
         <>
             {propsHelpText}
             {space}
-            {isRTCDEnabled ? disabledPostfix : enabledPostfix}
+            {disabledPostfix}
         </>
     );
 };
