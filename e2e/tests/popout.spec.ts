@@ -240,7 +240,7 @@ test.describe('popout window', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test.only('raising hand', async ({page, context}) => {
+    test('raising hand', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
         await devPage.startCall();
