@@ -14,7 +14,7 @@ export const useHelptext = (propsHelpText: JSX.Element | null) => {
     }
 
     const space = untranslatable(' ');
-    const disabledPostfix = formatMessage({defaultMessage: 'Not applicable when the <i>RTCD service URL</i> field is non-empty.'},
+    const disabledPostfix = formatMessage({defaultMessage: 'Not applicable when the <i>RTCD service URL</i> field is in use.'},
         {i: (text: string) => <i>{text}</i>});
 
     return (
