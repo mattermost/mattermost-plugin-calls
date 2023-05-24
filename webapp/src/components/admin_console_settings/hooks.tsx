@@ -14,8 +14,8 @@ export const useHelptext = (propsHelpText: JSX.Element | null) => {
     }
 
     const space = untranslatable(' ');
-    const disabledPostfix = formatMessage({defaultMessage: 'Not applicable when the <i>RTCD service URL</i> field is in use.'},
-        {i: (text: string) => <i>{text}</i>});
+    const disabledPostfix = formatMessage({defaultMessage: 'Not applicable when the <link>RTCD service URL</link> field is in use.'},
+        {link: (text: string) => <a href={'https://docs.mattermost.com/configure/plugins-configuration-settings.html#rtcd-service-url'}>{text}</a>});
 
     return (
         <>
