@@ -239,4 +239,24 @@ test.describe('popout window', () => {
         await page.locator('#calls-widget-leave-button').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
+
+    test.only('raising hand', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.goto();
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-popout-emoji-picker-button')).toBeVisible();
+
+        await popOut.locator('#calls-popout-emoji-picker-button').click();
+
+        await expect(popOut.getByTestId('raise-hand-button')).toBeVisible();
+        await popOut.getByTestId('raise-hand-button').click();
+        await expect(popOut.getByTestId('lower-hand-button')).toBeVisible();
+        await popOut.getByTestId('lower-hand-button').click();
+        await expect(popOut.getByTestId('raise-hand-button')).toBeVisible();
+    });
 });

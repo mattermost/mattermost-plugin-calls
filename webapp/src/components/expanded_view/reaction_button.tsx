@@ -38,9 +38,10 @@ export type ReactionButtonRef = {
 
 interface Props {
     trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
+    isHandRaised: boolean,
 }
 
-export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
+export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref) => {
     const [showPicker, setShowPicker] = useState(false);
     const [showBar, setShowBar] = useState(false);
     const {formatMessage} = useIntl();
@@ -75,7 +76,6 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
             callsClient?.raiseHand();
         }
     };
-    const isHandRaised = Boolean(callsClient?.isHandRaised);
     const raiseHandText = isHandRaised ?
         formatMessage({defaultMessage: 'Lower hand'}) :
         formatMessage({defaultMessage: 'Raise hand'});
@@ -128,6 +128,7 @@ export const ReactionButton = forwardRef(({trackEvent}: Props, ref) => {
                         <HandsButton
                             onClick={onRaiseHandToggle}
                             active={isHandRaised}
+                            data-testid={isHandRaised ? 'lower-hand-button' : 'raise-hand-button'}
                         >
                             {handIcon}
                             <HandText>{raiseHandText}</HandText>
