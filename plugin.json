@@ -56,14 +56,6 @@
         "hosting": "on-prem"
       },
       {
-        "key": "ServerSideTURN",
-        "display_name": "Server Side TURN",
-        "type": "bool",
-        "default": false,
-        "help_text": "(Optional) When set to on it will pass and use configured TURN candidates to server initiated connections.",
-        "hosting": "on-prem"
-      },
-      {
         "key": "RTCDServiceURL",
         "display_name": "RTCD service URL",
         "type": "text",
@@ -102,6 +94,14 @@
         "type": "number",
         "default": 1440,
         "help_text": "(Optional) The number of minutes that the generated TURN credentials will be valid for.",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "ServerSideTURN",
+        "display_name": "Server Side TURN",
+        "type": "bool",
+        "default": false,
+        "help_text": "(Optional) When set to on it will pass and use configured TURN candidates to server initiated connections.",
         "hosting": "on-prem"
       },
       {
