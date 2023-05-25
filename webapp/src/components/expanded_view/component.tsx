@@ -1121,6 +1121,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <ReactionButton
                                 ref={this.emojiButtonRef}
                                 trackEvent={this.props.trackEvent}
+                                isHandRaised={this.isHandRaised()}
                             />
 
                             {globalRhsSupported && (
