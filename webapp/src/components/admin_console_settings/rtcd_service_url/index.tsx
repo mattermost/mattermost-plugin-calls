@@ -32,6 +32,8 @@ import {
     Text,
     Footer,
     FooterText,
+    leftCol,
+    rightCol,
 } from 'src/components/admin_console_settings/common';
 
 const RTCDServiceUrl = (props: CustomComponentProps) => {
@@ -39,9 +41,6 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const stats = useSelector(adminStats);
-
-    const leftCol = 'col-sm-4';
-    const rightCol = 'col-sm-8';
 
     // Webapp doesn't pass the placeholder setting.
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'RTCDServiceURL')?.placeholder || '';

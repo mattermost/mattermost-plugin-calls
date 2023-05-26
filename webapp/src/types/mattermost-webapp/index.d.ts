@@ -60,7 +60,8 @@ export interface CustomComponentProps {
     setByEnv: boolean;
     onChange: (id: string, value: string | boolean | number, confirm?: boolean, doSubmit?: boolean, warning?: boolean) => void;
     saveAction: () => Promise<unknown>;
-    unregisterSaveAction: (saveAction: () => Promise<unknown>) => void;
+    registerSaveAction: (saveAction: () => Promise<{} | {error: {message: string}}>) => void;
+    unRegisterSaveAction: (saveAction: () => Promise<unknown>) => void;
     setSaveNeeded: () => void;
     cancelSubmit: () => void;
     showConfirm: boolean;

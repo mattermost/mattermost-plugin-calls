@@ -7,6 +7,7 @@ import {GlobalState} from '@mattermost/types/store';
 
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
+import {DateTime, Duration, DurationLikeObject} from 'luxon';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {Client4} from 'mattermost-redux/client';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
@@ -14,6 +15,7 @@ import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities
 import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 
 import {logDebug, logErr, logWarn} from './log';
@@ -415,4 +417,40 @@ export function setCallsGlobalCSSVars(baseColor: string) {
     rootEl?.style.setProperty('--calls-bg', rgbToCSS(baseColorRGB));
     rootEl?.style.setProperty('--calls-bg-rgb', `${baseColorRGB.r},${baseColorRGB.g},${baseColorRGB.b}`);
     rootEl?.style.setProperty('--calls-badge-bg', rgbToCSS(badgeBgRGB));
+}
+
+// momentjs's 'a few seconds' threshold
+const aFewSecondsThreshold = 1000 * 44;
+const aFewSecondsDur = Duration.fromObject({milliseconds: aFewSecondsThreshold});
+const oneMinute = Duration.fromObject({minutes: 1});
+
+// Adapted from https://github.com/moment/luxon/issues/1134
+export function toHuman(intl: IntlShape, dur: Duration, smallestUnit = 'seconds', opts = {}): string {
+    if (dur < aFewSecondsDur) {
+        return intl.formatMessage({defaultMessage: 'a few seconds'});
+    } else if (dur < oneMinute) {
+        dur = oneMinute;
+    }
+
+    const units = ['years', 'months', 'days', 'hours', 'minutes', 'seconds', 'milliseconds'];
+    const smallestIdx = units.indexOf(smallestUnit);
+    const unitsIdxs = units as (keyof DurationLikeObject)[];
+    const entries = Object.entries(
+        dur.shiftTo(...unitsIdxs).normalize().toObject(),
+    ).filter(([_unit, amount], idx) => amount > 0 && idx <= smallestIdx);
+    const dur2 = Duration.fromObject(
+        entries.length === 0 ? {[smallestUnit]: 0} : Object.fromEntries(entries),
+    );
+    return dur2.toHuman(opts);
+}
+
+export function callStartedTimestampFn(intl: IntlShape, startAt?: number) {
+    let startAtMillis = startAt || Date.now();
+    if (Date.now() - startAtMillis < aFewSecondsThreshold) {
+        return intl.formatMessage({defaultMessage: 'a few seconds ago'});
+    } else if (Date.now() - startAtMillis < 60 * 1000) {
+        startAtMillis = Date.now() - (60 * 1000);
+    }
+
+    return DateTime.fromMillis(startAtMillis).toRelative() || '';
 }

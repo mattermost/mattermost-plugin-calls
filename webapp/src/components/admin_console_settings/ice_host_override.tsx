@@ -9,7 +9,7 @@ import {useSelector} from 'react-redux';
 import manifest from 'src/manifest';
 
 import {
-    LabelRow,
+    LabelRow, leftCol, rightCol,
 } from 'src/components/admin_console_settings/common';
 
 const ICEHostOverride = (props: CustomComponentProps) => {
@@ -19,9 +19,6 @@ const ICEHostOverride = (props: CustomComponentProps) => {
     if (config.PluginSettings?.Plugins[manifest.id]?.rtcdserviceurl?.length > 0) {
         return null;
     }
-
-    const leftCol = 'col-sm-4';
-    const rightCol = 'col-sm-8';
 
     // Webapp doesn't pass the placeholder setting.
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'ICEHostOverride')?.placeholder || '';

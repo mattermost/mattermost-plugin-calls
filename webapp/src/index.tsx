@@ -27,6 +27,7 @@ import {
     showScreenSourceModal,
     displayCallsTestModeUser,
 } from 'src/actions';
+import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
 
 import slashCommandsHandler from 'src/slash_commands';
 
@@ -76,6 +77,7 @@ import {
     callsExplicitlyEnabled,
     callsExplicitlyDisabled,
     hasPermissionsToEnableCalls,
+    callsConfig,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -362,6 +364,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
         registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
         registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
+        registry.registerAdminConsoleCustomSetting('RecordingQuality', RecordingQuality);
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
         registry.registerAdminConsoleCustomSetting('UDPServerAddress', UDPServerAddress);
@@ -386,8 +389,9 @@ export default class Plugin {
                     return;
                 }
 
-                const iceConfigs = [...iceServers(store.getState())];
-                if (needsTURNCredentials(store.getState())) {
+                const state = store.getState();
+                const iceConfigs = [...iceServers(state)];
+                if (needsTURNCredentials(state)) {
                     logDebug('turn credentials needed');
                     try {
                         iceConfigs.push(...await Client4.doFetch<RTCIceServer[]>(`${getPluginPath()}/turn-credentials`, {method: 'get'}));
@@ -397,12 +401,13 @@ export default class Plugin {
                 }
 
                 window.callsClient = new CallsClient({
-                    wsURL: getWSConnectionURL(getConfig(store.getState())),
+                    wsURL: getWSConnectionURL(getConfig(state)),
                     iceServers: iceConfigs,
+                    simulcast: callsConfig(state).EnableSimulcast,
                 });
                 window.currentCallData = CurrentCallDataDefault;
 
-                const locale = getCurrentUserLocale(store.getState()) || 'en';
+                const locale = getCurrentUserLocale(state) || 'en';
 
                 ReactDOM.render(
                     <Provider store={store}>
