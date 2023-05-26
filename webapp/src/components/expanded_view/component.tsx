@@ -19,6 +19,7 @@ import {Theme} from 'mattermost-redux/types/themes';
 import {
     UserState,
 } from '@calls/common/lib/types';
+import {mosThreshold} from '@calls/common';
 
 import {Emoji} from 'src/components/emoji/emoji';
 
@@ -626,6 +627,29 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 }
             }
         }
+
+        callsClient.on('mos', (mos: number) => {
+            if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: true,
+                            show: true,
+                        },
+                    }});
+            }
+            if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: false,
+                            show: false,
+                        },
+                    }});
+            }
+        });
     }
 
     toggleChat = async () => {
@@ -670,22 +694,27 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
             const alertConfig = CallAlertConfigs[alertID];
 
+            let onClose;
+            if (alertConfig.dismissable) {
+                onClose = () => {
+                    this.setState({
+                        alerts: {
+                            ...this.state.alerts,
+                            [alertID]: {
+                                ...alertState,
+                                show: false,
+                            },
+                        },
+                    });
+                };
+            }
+
             return (
                 <GlobalBanner
                     {...alertConfig}
                     icon={alertConfig.icon}
                     body={formatMessage(alertConfig.bannerText)}
-                    onClose={() => {
-                        this.setState({
-                            alerts: {
-                                ...this.state.alerts,
-                                [alertID]: {
-                                    ...alertState,
-                                    show: false,
-                                },
-                            },
-                        });
-                    }}
+                    onClose={onClose}
                 />
             );
         }
@@ -926,12 +955,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         let muteTooltipSubtext = '';
 
         if (noInputDevices) {
-            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText);
-            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext);
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext!);
         }
         if (noAudioPermissions) {
-            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText);
-            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext);
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext!);
         }
 
         const sharingID = this.props.screenSharingID;
@@ -940,9 +969,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         let shareScreenTooltipText = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'});
         if (noScreenPermissions) {
-            shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText);
+            shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText!);
         }
-        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext) : '';
+        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext!) : '';
 
         const participantsText = this.state.showParticipantsList ?
             formatMessage({defaultMessage: 'Hide participants list'}) :

@@ -10,6 +10,7 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 
 import {UserState} from '@calls/common/lib/types';
+import {mosThreshold} from '@calls/common';
 
 import * as Telemetry from 'src/types/telemetry';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
@@ -468,6 +469,29 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 },
             });
         });
+
+        window.callsClient?.on('mos', (mos: number) => {
+            if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: true,
+                            show: true,
+                        },
+                    }});
+            }
+            if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: false,
+                            show: false,
+                        },
+                    }});
+            }
+        });
     }
 
     public componentWillUnmount() {
@@ -849,9 +873,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
         let shareScreenTooltipText = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'});
         if (noScreenPermissions) {
-            shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText);
+            shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText!);
         }
-        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext) : '';
+        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext!) : '';
 
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
 
@@ -1118,9 +1142,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         let label = currentDevice?.label || formatMessage({defaultMessage: 'Default'});
         if (noAudioPermissions) {
-            label = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText);
+            label = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!);
         } else if (noInputDevices) {
-            label = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText);
+            label = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
         }
 
         const onClickHandler = () => {
@@ -1288,7 +1312,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                     whiteSpace: 'initial',
                                 }}
                             >
-                                {formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText)}
+                                {formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText!)}
                             </span>
                         }
 
@@ -1487,23 +1511,28 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             const alertConfig = CallAlertConfigs[alertID];
 
+            let onClose;
+            if (alertConfig.dismissable) {
+                onClose = () => {
+                    this.setState({
+                        alerts: {
+                            ...this.state.alerts,
+                            [alertID]: {
+                                ...alertState,
+                                show: false,
+                            },
+                        },
+                    });
+                };
+            }
+
             return (
                 <WidgetBanner
                     id={'calls-widget-banner-alert'}
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
                     header={formatMessage(alertConfig.bannerText)}
-                    onClose={() => {
-                        this.setState({
-                            alerts: {
-                                ...this.state.alerts,
-                                [alertID]: {
-                                    ...alertState,
-                                    show: false,
-                                },
-                            },
-                        });
-                    }}
+                    onClose={onClose}
                 />
             );
         });
@@ -1742,12 +1771,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         let muteTooltipSubtext = '';
 
         if (noInputDevices) {
-            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText);
-            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext);
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext!);
         }
         if (noAudioPermissions) {
-            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText);
-            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext);
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext!);
         }
 
         const mainStyle = {
