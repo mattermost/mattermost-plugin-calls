@@ -21,6 +21,7 @@
   "6AKf56": "Join call",
   "6XllQM": "Allow microphone access to Mattermost.",
   "6aGJYU": "There's no ongoing call in the channel.",
+  "6ytNw2": "Not applicable when the <link>RTCD service URL</link> field is in use.",
   "7C5R1Z": "Real-time communication daemon is a service built to offload calls onto your own WebRTC services and efficiently support scalable and secure deployments. <featureLink>Learn more about this feature</featureLink>.",
   "7YIAur": "Calls can be recorded for up to {count, plural, =1 {# minute} other {# minutes}}.",
   "7YLq3n": "a few seconds",

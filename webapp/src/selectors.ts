@@ -186,6 +186,9 @@ export const recordingsEnabled = (state: GlobalState) =>
 export const recordingMaxDuration = (state: GlobalState) =>
     callsConfig(state).MaxRecordingDuration;
 
+export const rtcdEnabled = (state: GlobalState) =>
+    pluginState(state).rtcdEnabled;
+
 //
 // Calls enabled/disabled logic
 //
