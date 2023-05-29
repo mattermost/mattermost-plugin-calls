@@ -465,39 +465,12 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 	return nil
 }
 
-func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) error {
-	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
+func (p *Plugin) handleJoin(userID, connID string, req CallStartRequest) error {
+	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", req.ChannelID)
 
-	// We should go through only if the user has permissions to the requested channel
-	// or if the user is the Calls bot.
-	if !(p.isBot(userID) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost)) {
-		return fmt.Errorf("forbidden")
-	}
-	channel, appErr := p.API.GetChannel(channelID)
-	if appErr != nil {
-		return appErr
-	}
-	if channel.DeleteAt > 0 {
-		return fmt.Errorf("cannot join call in archived channel")
-	}
-
-	if threadID != "" {
-		post, appErr := p.API.GetPost(threadID)
-		if appErr != nil {
-			return appErr
-		}
-
-		if post.ChannelId != channelID {
-			return fmt.Errorf("forbidden")
-		}
-
-		if post.DeleteAt > 0 {
-			return fmt.Errorf("cannot attach call to deleted thread")
-		}
-
-		if post.RootId != "" {
-			return fmt.Errorf("thread is not a root post")
-		}
+	channel, err := p.getChannelForCall(userID, req)
+	if err != nil {
+		return fmt.Errorf("failed to get channel for call: %w", err)
 	}
 
 	state, prevState, err := p.addUserSession(userID, connID, channel)
@@ -505,43 +478,10 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 		return fmt.Errorf("failed to add user session: %w", err)
 	} else if state.Call == nil {
 		return fmt.Errorf("state.Call should not be nil")
-	} else if len(state.Call.Users) == 1 {
-		p.track(evCallStarted, map[string]interface{}{
-			"ParticipantID": userID,
-			"CallID":        state.Call.ID,
-			"ChannelID":     channelID,
-			"ChannelType":   channel.Type,
-		})
-
-		// new call has started
-		// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
-		cfg := p.getConfiguration()
-		if cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
-			p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-			p.pluginAPI.Post.SendEphemeralPost(
-				userID,
-				&model.Post{
-					UserId:    p.botSession.UserId,
-					ChannelId: channelID,
-					Message:   "Currently calls are not enabled for non-admin users. You can change the setting through the system console",
-				},
-			)
-		}
-
-		postID, threadID, err := p.startNewCallPost(userID, channelID, state.Call.StartAt, title, threadID)
-		if err != nil {
+	} else if prevState.Call == nil {
+		if err := p.handleCallStarted(state.Call, req, channel); err != nil {
 			p.LogError(err.Error())
 		}
-
-		// TODO: send all the info attached to a call.
-		p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
-			"channelID": channelID,
-			"start_at":  state.Call.StartAt,
-			"thread_id": threadID,
-			"post_id":   postID,
-			"owner_id":  state.Call.OwnerID,
-			"host_id":   state.Call.HostID,
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
 	handlerID, err := p.getHandlerID()
@@ -553,12 +493,12 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 	}
 	p.LogDebug("got handlerID", "handlerID", handlerID)
 
-	us := newUserSession(userID, channelID, connID, p.rtcdManager == nil && handlerID == p.nodeID)
+	us := newUserSession(userID, req.ChannelID, connID, p.rtcdManager == nil && handlerID == p.nodeID)
 	p.mut.Lock()
 	p.sessions[connID] = us
 	p.mut.Unlock()
 	defer func() {
-		if err := p.handleLeave(us, userID, connID, channelID); err != nil {
+		if err := p.handleLeave(us, userID, connID, req.ChannelID); err != nil {
 			p.LogError(err.Error())
 		}
 	}()
@@ -567,23 +507,23 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 		msg := rtcd.ClientMessage{
 			Type: rtcd.ClientMessageJoin,
 			Data: map[string]string{
-				"callID":    channelID,
+				"callID":    req.ChannelID,
 				"userID":    userID,
 				"sessionID": connID,
 			},
 		}
-		if err := p.rtcdManager.Send(msg, channelID); err != nil {
+		if err := p.rtcdManager.Send(msg, req.ChannelID); err != nil {
 			return fmt.Errorf("failed to send client join message: %w", err)
 		}
 	} else {
 		if handlerID == p.nodeID {
 			cfg := rtc.SessionConfig{
 				GroupID:   "default",
-				CallID:    channelID,
+				CallID:    req.ChannelID,
 				UserID:    userID,
 				SessionID: connID,
 			}
-			p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID)
+			p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", req.ChannelID)
 			if err = p.rtcServer.InitSession(cfg, func() error {
 				if atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
 					close(us.rtcCloseCh)
@@ -597,7 +537,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 			if err := p.sendClusterMessage(clusterMessage{
 				ConnID:    connID,
 				UserID:    userID,
-				ChannelID: channelID,
+				ChannelID: req.ChannelID,
 				SenderID:  p.nodeID,
 			}, clusterMessageTypeConnect, handlerID); err != nil {
 				return fmt.Errorf("failed to send connect message: %w", err)
@@ -611,26 +551,26 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 	p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
 		"userID": userID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-	p.metrics.IncWebSocketConn(channelID)
-	defer p.metrics.DecWebSocketConn(channelID)
+	}, &model.WebsocketBroadcast{ChannelId: req.ChannelID, ReliableClusterSend: true})
+	p.metrics.IncWebSocketConn(req.ChannelID)
+	defer p.metrics.DecWebSocketConn(req.ChannelID)
 	p.track(evCallUserJoined, map[string]interface{}{
 		"ParticipantID": userID,
-		"ChannelID":     channelID,
+		"ChannelID":     req.ChannelID,
 		"CallID":        state.Call.ID,
 	})
 
 	if prevState.Call != nil && state.Call.HostID != prevState.Call.HostID {
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 			"hostID": state.Call.HostID,
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}, &model.WebsocketBroadcast{ChannelId: req.ChannelID, ReliableClusterSend: true})
 	}
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-			"callID":   channelID,
+			"callID":   req.ChannelID,
 			"recState": state.Call.Recording.getClientState().toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}, &model.WebsocketBroadcast{ChannelId: req.ChannelID, ReliableClusterSend: true})
 	}
 
 	p.wsReader(us, handlerID)
@@ -759,16 +699,20 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 
+		data := CallStartRequest{
+			ChannelID: channelID,
+		}
+
 		// Title is optional, so if it's not present,
 		// it will be an empty string.
-		title, _ := req.Data["title"].(string)
+		data.Title, _ = req.Data["title"].(string)
 
 		// ThreadID is optional, so if it's not present,
 		// it will be an empty string.
-		threadID, _ := req.Data["threadID"].(string)
+		data.ThreadID, _ = req.Data["threadID"].(string)
 
 		go func() {
-			if err := p.handleJoin(userID, connID, channelID, title, threadID); err != nil {
+			if err := p.handleJoin(userID, connID, data); err != nil {
 				p.LogWarn(err.Error(), "userID", userID, "connID", connID, "channelID", channelID)
 				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),

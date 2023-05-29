@@ -31,8 +31,8 @@ type callState struct {
 	ID              string                `json:"id"`
 	StartAt         int64                 `json:"create_at"`
 	EndAt           int64                 `json:"end_at"`
-	Users           map[string]*userState `json:"users,omitempty"`
-	Sessions        map[string]struct{}   `json:"sessions,omitempty"`
+	Users           map[string]*userState `json:"users"`
+	Sessions        map[string]struct{}   `json:"sessions"`
 	OwnerID         string                `json:"owner_id"`
 	ThreadID        string                `json:"thread_id"`
 	PostID          string                `json:"post_id"`

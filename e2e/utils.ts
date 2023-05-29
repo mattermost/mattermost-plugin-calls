@@ -1,8 +1,8 @@
-import {chromium} from '@playwright/test';
+import {chromium, APIRequestContext} from '@playwright/test';
 
 import PlaywrightDevPage from './page';
 
-import {userPrefix, channelPrefix} from './constants';
+import {userPrefix, channelPrefix, baseURL, defaultTeam} from './constants';
 
 export function getChannelNamesForTest() {
     let idx = 0;
@@ -38,3 +38,9 @@ export async function startCall(userState: string) {
     return userPage;
 }
 
+export async function getChannelID(request: APIRequestContext, channelIdx?: number) {
+    const channelName = getChannelNamesForTest()[channelIdx || 0];
+    const resp = await request.get(`${baseURL}/api/v4/teams/name/${defaultTeam}/channels/name/${channelName}`);
+    const channel = await resp.json();
+    return channel.id;
+}

@@ -339,6 +339,11 @@ func (p *Plugin) updateCallPostEnded(postID string) (float64, error) {
 		return 0, appErr
 	}
 
+	if prop := post.GetProp("end_at"); prop != nil {
+		// Already ended.
+		return 0, nil
+	}
+
 	postMsg := "Call ended"
 	slackAttachment := model.SlackAttachment{
 		Fallback: postMsg,

@@ -604,6 +604,11 @@ const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, actio
                 hostChangeAt: action.data.startAt,
             },
         };
+    case VOICE_CHANNEL_CALL_END:
+        return {
+            ...state,
+            [action.data.channelID]: null,
+        };
     default:
         return state;
     }

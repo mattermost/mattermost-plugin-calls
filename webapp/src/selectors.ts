@@ -109,8 +109,8 @@ export const voiceUsersStatusesInChannel = (state: GlobalState, channelID: strin
     return pluginState(state).voiceUsersStatuses[channelID] || {};
 };
 
-export const voiceChannelCallStartAt = (state: GlobalState, channelID: string): number | undefined => {
-    return pluginState(state).voiceChannelCalls[channelID]?.startAt;
+export const voiceChannelCallStartAt = (state: GlobalState, channelID: string) => {
+    return pluginState(state).voiceChannelCalls[channelID]?.startAt || 0;
 };
 
 export const voiceChannelCallOwnerID = (state: GlobalState, channelID: string): string | undefined => {
