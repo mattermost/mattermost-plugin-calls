@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mattermost/mattermost-plugin-api/cluster"
+	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/mattermost/rtcd/service/random"

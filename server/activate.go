@@ -8,16 +8,23 @@ import (
 	"os"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 
 	"github.com/mattermost/rtcd/service/rtc"
 
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 func (p *Plugin) createBotSession() (*model.Session, error) {
-	botID, err := p.pluginAPI.Bot.EnsureBot(&model.Bot{
+	m, err := cluster.NewMutex(p.API, "ensure_bot")
+	if err != nil {
+		return nil, err
+	}
+	m.Lock()
+	defer m.Unlock()
+
+	botID, err := p.API.EnsureBotUser(&model.Bot{
 		Username:    "calls",
 		DisplayName: "Calls",
 		Description: "Calls Bot",
@@ -27,14 +34,12 @@ func (p *Plugin) createBotSession() (*model.Session, error) {
 		return nil, err
 	}
 
-	session := &model.Session{
+	session, appErr := p.API.CreateSession(&model.Session{
 		UserId:    botID,
 		ExpiresAt: 0,
-	}
-
-	session, err = p.pluginAPI.Session.Create(session)
-	if err != nil {
-		return nil, err
+	})
+	if appErr != nil {
+		return nil, appErr
 	}
 
 	return session, nil
@@ -48,9 +53,7 @@ func (p *Plugin) OnActivate() error {
 		return fmt.Errorf("disabled by environment flag")
 	}
 
-	pluginAPIClient := pluginapi.NewClient(p.API, p.Driver)
-	p.pluginAPI = pluginAPIClient
-	p.licenseChecker = enterprise.NewLicenseChecker(pluginAPIClient)
+	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
 
 	if p.isSingleHandler() {
 		if err := p.cleanUpState(); err != nil {
@@ -78,7 +81,7 @@ func (p *Plugin) OnActivate() error {
 
 	// On Cloud installations we want calls enabled in all channels so we
 	// override it since the plugin's default is now false.
-	if isCloud(p.pluginAPI.System.GetLicense()) {
+	if isCloud(p.API.GetLicense()) {
 		cfg.DefaultEnabled = new(bool)
 		*cfg.DefaultEnabled = true
 		if err := p.setConfiguration(cfg); err != nil {

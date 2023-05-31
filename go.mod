@@ -17,7 +17,6 @@ require (
 	github.com/mattermost/calls-offloader v0.2.2
 	github.com/mattermost/calls-recorder v0.3.0
 	github.com/mattermost/logr/v2 v2.0.15
-	github.com/mattermost/mattermost-plugin-api v0.1.1
 	github.com/mattermost/rtcd v0.10.1
 	github.com/pion/interceptor v0.1.12
 	github.com/pion/rtp v1.7.13
@@ -35,7 +34,6 @@ require (
 	github.com/abcum/lcp v0.0.0-20201209214815-7a3f3840be81 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
-	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/containerd/containerd v1.5.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

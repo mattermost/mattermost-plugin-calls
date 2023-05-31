@@ -518,7 +518,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 		cfg := p.getConfiguration()
 		if cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
 			p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-			p.pluginAPI.Post.SendEphemeralPost(
+			p.API.SendEphemeralPost(
 				userID,
 				&model.Post{
 					UserId:    p.botSession.UserId,

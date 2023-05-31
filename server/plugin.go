@@ -17,7 +17,6 @@ import (
 
 	"github.com/mattermost/rtcd/service/rtc"
 
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 )
@@ -25,7 +24,6 @@ import (
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
 type Plugin struct {
 	plugin.MattermostPlugin
-	pluginAPI      *pluginapi.Client
 	licenseChecker *enterprise.LicenseChecker
 
 	// configurationLock synchronizes access to the configuration.

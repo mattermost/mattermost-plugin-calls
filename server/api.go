@@ -434,7 +434,7 @@ func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request
 // that isn't exposed to clients yet on the webapp
 func (p *Plugin) handleConfig(w http.ResponseWriter) error {
 	skuShortName := "starter"
-	license := p.pluginAPI.System.GetLicense()
+	license := p.API.GetLicense()
 	if license != nil {
 		skuShortName = license.SkuShortName
 	}
