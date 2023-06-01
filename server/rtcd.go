@@ -23,7 +23,7 @@ import (
 	"github.com/mattermost/rtcd/service/random"
 	"github.com/mattermost/rtcd/service/rtc"
 
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/server/public/model"
 )
 
 const (

@@ -20,7 +20,7 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/lt/ws"
 
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/server/public/model"
 
 	"github.com/pion/interceptor"
 	"github.com/pion/rtcp"
