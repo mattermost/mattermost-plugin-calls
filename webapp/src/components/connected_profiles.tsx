@@ -1,9 +1,10 @@
 import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+import {useIntl} from 'react-intl';
 
 import {UserProfile} from '@mattermost/types/users';
 
-import {getUsersList, getUserDisplayName} from '../utils';
+import {getUserDisplayName} from '../utils';
 
 import Avatar from './avatar/avatar';
 
@@ -21,6 +22,7 @@ const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSiz
     const diff = profiles.length - maxShowedProfiles;
 
     const showedProfiles = diff > 0 ? profiles.slice(0, maxShowedProfiles) : profiles;
+    const {formatList} = useIntl();
 
     const els = showedProfiles.map((profile, idx) => {
         return (
@@ -53,7 +55,7 @@ const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSiz
                     <Tooltip
                         id='call-profiles'
                     >
-                        {getUsersList(profiles)}
+                        {formatList(profiles.map((user) => getUserDisplayName(user)), {type: 'conjunction'})}
                     </Tooltip>
                 }
             >

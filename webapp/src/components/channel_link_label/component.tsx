@@ -4,7 +4,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {UserProfile} from '@mattermost/types/users';
 import {Theme} from 'mattermost-redux/types/themes';
 
-import {getUsersList} from 'src/utils';
+import {getUserDisplayName} from 'src/utils';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 
 interface Props {
@@ -14,7 +14,7 @@ interface Props {
 }
 
 const ChannelLinkLabel = (props: Props) => {
-    const {formatMessage} = useIntl();
+    const {formatMessage, formatList} = useIntl();
 
     if (props.hasCall) {
         return (
@@ -24,7 +24,10 @@ const ChannelLinkLabel = (props: Props) => {
                     <Tooltip
                         id='call-profiles'
                     >
-                        {formatMessage({defaultMessage: '{list} {count, plural, =1 {is} other {are}} on the call'}, {count: props.profiles.length, list: getUsersList(props.profiles)})}
+                        {formatMessage({defaultMessage: '{list} {count, plural, =1 {is} other {are}} on the call'}, {
+                            count: props.profiles.length,
+                            list: formatList(props.profiles.map((user) => getUserDisplayName(user)), {type: 'conjunction'})
+                        })}
                     </Tooltip>
                 }
             >
