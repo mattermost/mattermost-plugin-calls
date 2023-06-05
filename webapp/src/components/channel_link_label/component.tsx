@@ -26,7 +26,7 @@ const ChannelLinkLabel = (props: Props) => {
                     >
                         {formatMessage({defaultMessage: '{list} {count, plural, =1 {is} other {are}} on the call'}, {
                             count: props.profiles.length,
-                            list: formatList(props.profiles.map((user) => getUserDisplayName(user)), {type: 'conjunction'})
+                            list: formatList(props.profiles.map((user) => getUserDisplayName(user)), {type: 'conjunction'}),
                         })}
                     </Tooltip>
                 }
