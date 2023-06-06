@@ -14,12 +14,12 @@ import {
     voiceUsersStatuses,
 } from 'src/selectors';
 import {Emoji} from 'src/components/emoji/emoji';
-import {getUserDisplayName, untranslatable} from 'src/utils';
+import {getUserDisplayName} from 'src/utils';
 import HandEmoji from 'src/components/icons/hand';
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = () => {
-    const {formatMessage} = useIntl();
+    const {formatMessage, formatList} = useIntl();
     const currentUserID = useSelector(getCurrentUserId);
 
     const statuses = useSelector(voiceUsersStatuses);
@@ -57,23 +57,8 @@ export const ReactionStream = () => {
     const getName = (user_id: string) => {
         return user_id === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[user_id], true);
     };
-    let participants: string;
-    if (handsup?.length) {
-        switch (handsup?.length) {
-        case 1:
-            participants = `${getName(handsup[0])}`;
-            break;
-        case 2:
-            participants = `${getName(handsup[0])} & ${getName(handsup[1])}`;
-            break;
-        case 3:
-            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${getName(handsup[2])}`;
-            break;
-        default:
-            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${handsup?.length - 2} ${formatMessage({defaultMessage: 'others'})}`;
-            break;
-        }
 
+    if (handsup?.length) {
         elements.push(
             <ReactionChip
                 key={'hands'}
@@ -87,8 +72,10 @@ export const ReactionStream = () => {
                     }}
                 />
                 <span>
-                    <Bold>{participants}</Bold>
-                    <span>{untranslatable(' ')}{formatMessage({defaultMessage: 'raised a hand'})}</span>
+                    <span>{formatMessage({defaultMessage: '{users} raised a hand'}, {
+                        count: handsup.length,
+                        users: formatList(handsup.map(getName), {type: 'conjunction', style: 'short'}),
+                    })}</span>
                 </span>
             </ReactionChip>);
     }
