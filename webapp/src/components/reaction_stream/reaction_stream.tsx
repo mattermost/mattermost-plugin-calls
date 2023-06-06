@@ -72,10 +72,10 @@ export const ReactionStream = () => {
                     }}
                 />
                 <span>
-                    <span>{formatMessage({defaultMessage: '{users} raised a hand'}, {
+                    {formatMessage({defaultMessage: '{users} raised a hand'}, {
                         count: handsup.length,
-                        users: formatList(handsup.map(getName), {type: 'conjunction', style: 'short'}),
-                    })}</span>
+                        users: <Bold>{formatList(handsup.map(getName), {type: 'conjunction', style: 'short'})}</Bold>,
+                    })}
                 </span>
             </ReactionChip>);
     }
