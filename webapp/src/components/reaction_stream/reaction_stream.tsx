@@ -14,30 +14,28 @@ import {
     voiceUsersStatuses,
 } from 'src/selectors';
 import {Emoji} from 'src/components/emoji/emoji';
-import {getUserDisplayName} from 'src/utils';
+import {getUserDisplayName, split} from 'src/utils';
 import HandEmoji from 'src/components/icons/hand';
+
+const MAX_NAMED_HANDS_UP = 3;
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = () => {
     const {formatMessage, formatList} = useIntl();
-    const currentUserID = useSelector(getCurrentUserId);
 
+    const currentUserID = useSelector(getCurrentUserId);
     const statuses = useSelector(voiceUsersStatuses);
     const profileMap = useSelector(idToProfileInConnectedChannel);
-
-    const handsup = Object.keys(statuses)
-        .flatMap((id) => (statuses[id]?.raised_hand ? [statuses[id]] : []))
-        .sort((a, b) => a.raised_hand - b.raised_hand)
-        .map((u) => u.id);
-
     const vReactions = useSelector(voiceReactions);
+
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
         const emoji = (
             <Emoji
                 emoji={reaction.emoji}
                 size={18}
-            />);
+            />
+        );
         const user = reaction.user_id === currentUserID ?
             formatMessage({defaultMessage: 'You'}) :
             getUserDisplayName(profileMap[reaction.user_id], true) || formatMessage({defaultMessage: 'Someone'});
@@ -52,14 +50,23 @@ export const ReactionStream = () => {
         );
     });
 
-    // add hands up
-    let elements = [];
-    const getName = (user_id: string) => {
-        return user_id === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[user_id], true);
-    };
+    let handsUp;
+    const userIdsHandsUp = Object.keys(statuses)
+        .filter((id) => statuses[id]?.raised_hand)
+        .sort((a, b) => statuses[a].raised_hand - statuses[b].raised_hand);
 
-    if (handsup?.length) {
-        elements.push(
+    if (userIdsHandsUp?.length) {
+        const getName = (userId: string) => {
+            return userId === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[userId], true);
+        };
+        const [displayed, overflowed] = split(userIdsHandsUp, MAX_NAMED_HANDS_UP);
+        const userList = displayed.map(getName);
+
+        if (overflowed) {
+            userList.push(formatMessage({defaultMessage: '{num, plural, one {# other} other {# others}}'}, {num: overflowed.length}));
+        }
+
+        handsUp = (
             <ReactionChip
                 key={'hands'}
                 highlight={true}
@@ -73,18 +80,18 @@ export const ReactionStream = () => {
                 />
                 <span>
                     {formatMessage({defaultMessage: '{users} raised a hand'}, {
-                        count: handsup.length,
-                        users: <Bold>{formatList(handsup.map(getName), {type: 'conjunction', style: 'short'})}</Bold>,
+                        count: userIdsHandsUp.length,
+                        users: <Bold>{formatList(userList, {style: 'short'})}</Bold>,
                     })}
                 </span>
-            </ReactionChip>);
+            </ReactionChip>
+        );
     }
-
-    elements = [...elements, ...reactions];
 
     return (
         <ReactionStreamList>
-            {elements}
+            {handsUp}
+            {reactions}
         </ReactionStreamList>
     );
 };
