@@ -287,8 +287,8 @@ export function hasExperimentalFlag() {
     return window.localStorage.getItem('calls_experimental_features') === 'on';
 }
 
-export function split<T>(list: T[], i: number): [list: T[], overflowed?: T[]] {
-    if (list.length <= i) {
+export function split<T>(list: T[], i: number, pad = false): [list: T[], overflowed?: T[]] {
+    if (list.length <= i + (pad ? 1 : 0)) {
         return [list];
     }
     return [list.slice(0, i), list.slice(i)];

@@ -59,7 +59,7 @@ export const ReactionStream = () => {
         const getName = (userId: string) => {
             return userId === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[userId], true);
         };
-        const [displayed, overflowed] = split(userIdsHandsUp, MAX_NAMED_HANDS_UP);
+        const [displayed, overflowed] = split(userIdsHandsUp, MAX_NAMED_HANDS_UP, true);
         const userList = displayed.map(getName);
 
         if (overflowed) {
