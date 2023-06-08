@@ -118,7 +118,7 @@
       "jest-junit"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!react-native|react-router|mattermost-webapp|semver-parser)"
+      "node_modules/(?!react-native|react-router|mattermost-webapp|semver-parser|@calls)"
     ],
     "setupFiles": [
       "jest-canvas-mock"
