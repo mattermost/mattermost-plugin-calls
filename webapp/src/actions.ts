@@ -1,49 +1,53 @@
-import {Dispatch} from 'redux';
-
-import {MessageDescriptor} from 'react-intl';
-
-import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
+import {CallsConfig} from '@calls/common/lib/types';
+import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
-import {Client4} from 'mattermost-redux/client';
-import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
-import {getThread} from 'mattermost-redux/selectors/entities/threads';
-import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
+import {Client4} from 'mattermost-redux/client';
 
 import {ClientError} from 'mattermost-redux/client/client4';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
+import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getThread} from 'mattermost-redux/selectors/entities/threads';
+import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 
-import {CallsConfig} from '@calls/common/lib/types';
+import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
+
+import {MessageDescriptor} from 'react-intl';
+import {Dispatch} from 'redux';
+import {batchActions} from 'redux-batched-actions';
+
+import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from 'src/cloud_pricing/modals';
+import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
+import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
+import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
+
+import {channelHasCall, incomingCalls, voiceChannelCallDismissedNotification} from 'src/selectors';
 
 import * as Telemetry from 'src/types/telemetry';
-import {getPluginPath} from 'src/utils';
+import {ChannelType} from 'src/types/types';
+import {getPluginPath, isDMChannel, isGMChannel} from 'src/utils';
 import {modals, openPricingModal} from 'src/webapp_globals';
-import {
-    CloudFreeTrialModalAdmin,
-    CloudFreeTrialModalUser,
-    IDAdmin,
-    IDUser,
-} from 'src/cloud_pricing/modals';
-import {
-    CallErrorModalID,
-    CallErrorModal,
-} from 'src/components/call_error_modal';
-import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
-import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 
 import {
-    SHOW_EXPANDED_VIEW,
-    HIDE_EXPANDED_VIEW,
-    SHOW_SWITCH_CALL_MODAL,
-    HIDE_SWITCH_CALL_MODAL,
-    SHOW_SCREEN_SOURCE_MODAL,
-    HIDE_SCREEN_SOURCE_MODAL,
+    ADD_INCOMING_CALL,
+    CALL_HAS_ENDED,
+    HAVE_RANG_FOR_CALL,
     HIDE_END_CALL_MODAL,
+    HIDE_EXPANDED_VIEW,
+    HIDE_SCREEN_SOURCE_MODAL,
+    HIDE_SWITCH_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
-    VOICE_CHANNEL_CALL_RECORDING_STATE,
-    VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
     RECORDINGS_ENABLED,
+    REMOVE_INCOMING_CALL,
+    SHOW_EXPANDED_VIEW,
+    SHOW_SCREEN_SOURCE_MODAL,
+    SHOW_SWITCH_CALL_MODAL,
+    VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
+    VOICE_CHANNEL_CALL_RECORDING_STATE,
+    VOICE_CHANNEL_USER_DISCONNECTED,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -285,5 +289,86 @@ export const displayGenericErrorModal = (title: MessageDescriptor, message: Mess
         }));
 
         return {};
+    };
+};
+
+export function incomingCallOnChannel(channelID: string, hostID: string, startAt: number) {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        let channel = getChannel(getState(), channelID);
+        if (!channel) {
+            const res = await dispatch(loadChannel(channelID));
+            channel = res.data;
+        }
+
+        if (channel && (isDMChannel(channel) || isGMChannel(channel))) {
+            if (voiceChannelCallDismissedNotification(getState(), channelID)) {
+                return;
+            }
+
+            const otherUser = getUser(getState(), hostID);
+            if (!otherUser) {
+                await dispatch(getProfilesByIdsAction([hostID]));
+            }
+
+            // if this is the first call in the list, it should ring.
+            const calls = incomingCalls(getState());
+            const ring = calls.length === 0;
+
+            await dispatch({
+                type: ADD_INCOMING_CALL,
+                data: {
+                    callID: channelID,
+                    hostID,
+                    startAt,
+                    type: isDMChannel(channel) ? ChannelType.DM : ChannelType.GM,
+                    ring,
+                },
+            });
+        }
+    };
+}
+
+export const userDisconnected = (channelID: string, userID: string) => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        await dispatch({
+            type: VOICE_CHANNEL_USER_DISCONNECTED,
+            data: {
+                channelID,
+                userID,
+                currentUserID: getCurrentUserId(getState()),
+            },
+        });
+
+        if (!channelHasCall(getState(), channelID)) {
+            await dispatch({
+                type: CALL_HAS_ENDED,
+                data: {
+                    callID: channelID,
+                },
+            });
+        }
+    };
+};
+
+export const dismissIncomingCallNotification = (callID: string, startAt: number) => {
+    return async (dispatch: DispatchFunc) => {
+        Client4.doFetch(
+            `${getPluginPath()}/calls/${callID}/dismiss-notification`,
+            {method: 'post'},
+        );
+        await dispatch(batchActions([
+            {
+                type: REMOVE_INCOMING_CALL,
+                data: {
+                    callID,
+                },
+            },
+            {
+                type: HAVE_RANG_FOR_CALL,
+                data: {
+                    callUniqueID: `${callID}${startAt}`,
+                },
+            },
+        ]));
     };
 };

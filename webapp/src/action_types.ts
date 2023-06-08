@@ -11,7 +11,6 @@ export const VOICE_CHANNEL_USERS_CONNECTED_STATES = pluginId + '_voice_channel_u
 export const VOICE_CHANNEL_PROFILES_CONNECTED = pluginId + '_voice_channel_profiles_connected';
 export const VOICE_CHANNEL_PROFILE_CONNECTED = pluginId + '_voice_channel_profile_connected';
 export const VOICE_CHANNEL_CALL_START = pluginId + '_voice_channel_call_start';
-export const VOICE_CHANNEL_CALL_END = pluginId + '_voice_channel_call_end';
 export const VOICE_CHANNEL_USER_SCREEN_ON = pluginId + '_voice_channel_screen_on';
 export const VOICE_CHANNEL_USER_SCREEN_OFF = pluginId + '_voice_channel_screen_off';
 export const VOICE_CHANNEL_UNINIT = pluginId + '_voice_channel_uninit';
@@ -33,6 +32,15 @@ export const SHOW_SCREEN_SOURCE_MODAL = pluginId + '_show_screen_source_modal';
 export const HIDE_SCREEN_SOURCE_MODAL = pluginId + '_hide_screen_source_modal';
 export const SHOW_END_CALL_MODAL = pluginId + '_show_end_call_modal';
 export const HIDE_END_CALL_MODAL = pluginId + '_hide_end_call_modal';
+export const ADD_INCOMING_CALL = pluginId + '_add_incoming_call';
+export const REMOVE_INCOMING_CALL = pluginId + '_remove_incoming_call';
+export const HAVE_RANG_FOR_CALL = pluginId + '_have_rang_for_call';
+
+// VOICE_CHANNEL_CALL_END is sent when the `/call end` command is used
+export const VOICE_CHANNEL_CALL_END = pluginId + '_voice_channel_call_end';
+
+// CALL_HAS_ENDED is sent when all participants have disconnected from a call (and when '/call end' is used)
+export const CALL_HAS_ENDED = pluginId + '_call_has_ended';
 
 export const RECEIVED_CALLS_CONFIG = pluginId + '_received_calls_config';
 export const RECORDINGS_ENABLED = pluginId + '_recordings_enabled';

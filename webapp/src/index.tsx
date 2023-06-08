@@ -10,7 +10,11 @@ import {AnyAction} from 'redux';
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {
+    getCurrentUserId,
+    getUser,
+    isCurrentUserSystemAdmin,
+} from 'mattermost-redux/selectors/entities/users';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
@@ -26,8 +30,10 @@ import {
     displayCallErrorModal,
     showScreenSourceModal,
     displayCallsTestModeUser,
+    incomingCallOnChannel,
 } from 'src/actions';
 import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
+import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 
 import slashCommandsHandler from 'src/slash_commands';
 
@@ -78,6 +84,7 @@ import {
     callsExplicitlyDisabled,
     hasPermissionsToEnableCalls,
     callsConfig,
+    incomingCalls,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -111,6 +118,7 @@ import {
     sendDesktopEvent,
     getChannelURL,
     getTranslations,
+    shouldRenderCallsIncoming,
 } from './utils';
 import {logErr, logDebug} from './log';
 import {
@@ -254,6 +262,9 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
         registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
         registry.registerGlobalComponent(injectIntl(EndCallModal));
+        if (shouldRenderCallsIncoming()) {
+            registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
+        }
 
         registry.registerTranslations((locale: string) => {
             return getTranslations(locale);
@@ -575,8 +586,17 @@ export default class Plugin {
                                 startAt: data[i].call?.start_at,
                                 ownerID: data[i].call?.owner_id,
                                 hostID: data[i].call?.host_id,
+                                dismissedNotification: data[i].call?.dismissed_notification || [],
                             },
                         });
+
+                        const callExists = incomingCalls(store.getState()).findIndex((ic) => ic.callID === data[i].channel_id) >= 0;
+                        if (data[i].call && !callExists) {
+                            // This allows us time to load channels and call states
+                            setTimeout(() => {
+                                store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.host_id, data[i].call.start_at));
+                            }, 2000);
+                        }
                     }
                 }
             } catch (err) {

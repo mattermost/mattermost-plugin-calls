@@ -11,6 +11,8 @@ import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from '
 
 import {UserState} from '@calls/common/lib/types';
 
+import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
+
 import * as Telemetry from 'src/types/telemetry';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
 import {
@@ -52,6 +54,7 @@ import {
     CallAlertStates,
     CallAlertStatesDefault,
     CallRecordingReduxState,
+    IncomingCallNotification,
 } from 'src/types/types';
 
 import CallDuration from './call_duration';
@@ -96,6 +99,7 @@ interface Props {
     },
     recentlyJoinedUsers: string[],
     wider: boolean,
+    callsIncoming: IncomingCallNotification[],
 }
 
 interface DraggingState {
@@ -239,6 +243,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 color: 'var(--center-channel-color)',
                 background: 'var(--center-channel-bg)',
                 appRegion: 'drag',
+            },
+            callsIncoming: {
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '5px',
             },
         };
     };
@@ -1169,9 +1178,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             style={{
                                 width: '16px',
                                 height: '16px',
-                                fill: isDisabled ?
-                                    'rgba(var(--center-channel-color-rgb), 0.32)' :
-                                    'rgba(var(--center-channel-color-rgb), 0.56)',
+                                fill: isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)',
                                 flexShrink: 0,
                             }}
                         />
@@ -1196,9 +1203,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                             <span
                                 style={{
-                                    color: isDisabled ?
-                                        'rgba(var(--center-channel-color-rgb), 0.32)' :
-                                        'rgba(var(--center-channel-color-rgb), 0.56)',
+                                    color: isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)',
                                     fontSize: '12px',
                                     width: '100%',
                                     lineHeight: '18px',
@@ -1216,9 +1221,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             style={{
                                 width: '18px',
                                 height: '18px',
-                                fill: isDisabled ?
-                                    'rgba(var(--center-channel-color-rgb), 0.32)' :
-                                    'rgba(var(--center-channel-color-rgb), 0.56)',
+                                fill: isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)',
                             }}
                         />
                         }
@@ -1558,6 +1561,24 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
+    renderIncomingCalls = () => {
+        if (this.props.callsIncoming.length === 0) {
+            return null;
+        }
+
+        return (
+            <div style={this.style.callsIncoming}>
+                {this.props.callsIncoming.map((c) => (
+                    <CallIncomingCondensed
+                        key={c.callID}
+                        call={c}
+                        onWidget={true}
+                    />
+                ))}
+            </div>
+        );
+    };
+
     onMouseDown = (ev: React.MouseEvent<HTMLDivElement>) => {
         document.addEventListener('mousemove', this.onMouseMove, false);
         this.setState({
@@ -1635,7 +1656,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.props.trackEvent(Telemetry.Event.OpenExpandedView, Telemetry.Source.Widget, {initiator: 'button'});
 
         // TODO: remove this as soon as we support opening a window from desktop app.
-        // Reminder: the first condition is for the old desktop app, pre-global widget. The else path is the webapp.
+        // Reminder: the first condition is for the old desktop app, pre-global widget. The else path is the webapp & global widget.
         if (window.desktop && !this.props.global) {
             this.props.showExpandedView();
         } else {
@@ -1736,9 +1757,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const MuteIcon = this.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
-        let muteTooltipText = this.isMuted() ?
-            formatMessage({defaultMessage: 'Unmute'}) :
-            formatMessage({defaultMessage: 'Mute'});
+        let muteTooltipText = this.isMuted() ? formatMessage({defaultMessage: 'Unmute'}) : formatMessage({defaultMessage: 'Mute'});
         let muteTooltipSubtext = '';
 
         if (noInputDevices) {
@@ -1762,9 +1781,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const MenuIcon = this.props.wider ? SettingsWheelIcon : HorizontalDotsIcon;
 
-        const handTooltipText = this.isHandRaised() ?
-            formatMessage({defaultMessage: 'Lower hand'}) :
-            formatMessage({defaultMessage: 'Raise hand'});
+        const handTooltipText = this.isHandRaised() ? formatMessage({defaultMessage: 'Lower hand'}) : formatMessage({defaultMessage: 'Raise hand'});
 
         return (
             <div
@@ -1778,6 +1795,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     ref={this.menuNode}
                     style={this.style.menu}
                 >
+                    {this.renderIncomingCalls()}
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
                     {this.renderRecordingDisclaimer()}
@@ -1827,9 +1845,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             id='calls-widget-participants-button'
                             onToggle={this.onParticipantsButtonClick}
                             bgColor={this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
-                            tooltipText={this.state.showParticipantsList ?
-                                formatMessage({defaultMessage: 'Hide participants'}) :
-                                formatMessage({defaultMessage: 'Show participants'})}
+                            tooltipText={this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'})}
                             shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
                             icon={
                                 <ParticipantsIcon

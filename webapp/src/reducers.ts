@@ -6,7 +6,14 @@ import {combineReducers} from 'redux';
 
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 
-import {CallsConfigDefault, CallsUserPreferences, CallsUserPreferencesDefault, ChannelState} from 'src/types/types';
+import {
+    CallsConfigDefault,
+    CallsUserPreferences,
+    CallsUserPreferencesDefault,
+    ChannelState,
+    ChannelType,
+    IncomingCallNotification,
+} from 'src/types/types';
 
 import {
     DESKTOP_WIDGET_CONNECTED,
@@ -44,7 +51,12 @@ import {
     VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_USERS_CONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
-    VOICE_CHANNEL_USER_JOINED_TIMEOUT, RECORDINGS_ENABLED,
+    VOICE_CHANNEL_USER_JOINED_TIMEOUT,
+    RECORDINGS_ENABLED,
+    ADD_INCOMING_CALL,
+    CALL_HAS_ENDED,
+    REMOVE_INCOMING_CALL,
+    HAVE_RANG_FOR_CALL,
 } from './action_types';
 
 interface channelStateAction {
@@ -573,6 +585,7 @@ interface callState {
     ownerID?: string,
     hostID: string,
     hostChangeAt?: number,
+    dismissedNotification: string[],
 }
 
 interface callStateAction {
@@ -602,6 +615,7 @@ const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, actio
                 ownerID: action.data.ownerID,
                 hostID: action.data.hostID,
                 hostChangeAt: action.data.startAt,
+                dismissedNotification: action.data.dismissedNotification,
             },
         };
     default:
@@ -767,6 +781,49 @@ const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: conne
     }
 };
 
+type IncomingCallAction = {
+    type: string;
+    data: {
+        callID: string;
+        hostID: string;
+        startAt: number;
+        ring: boolean;
+        type: ChannelType;
+    },
+};
+
+const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingCallAction) => {
+    switch (action.type) {
+    case ADD_INCOMING_CALL:
+        return [...state, {...action.data}];
+    case REMOVE_INCOMING_CALL:
+        return state.filter((ic) => ic.callID !== action.data.callID);
+    case CALL_HAS_ENDED:
+        return state.filter((ic) => ic.callID !== action.data.callID);
+    default:
+        return state;
+    }
+};
+
+type HaveRangForCallsAction = {
+    type: string;
+    data: {
+        callUniqueID: string;
+    }
+}
+
+const haveRangForCalls = (state: { [callUniqueID: string]: boolean } = {}, action: HaveRangForCallsAction) => {
+    switch (action.type) {
+    case HAVE_RANG_FOR_CALL:
+        return {
+            ...state,
+            [action.data.callUniqueID]: true,
+        };
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     channelState,
     voiceConnectedChannels,
@@ -785,4 +842,6 @@ export default combineReducers({
     callsUserPreferences,
     callsRecordings,
     recentlyJoinedUsers,
+    incomingCalls,
+    haveRangForCalls,
 });

@@ -6,9 +6,16 @@ import {Thunk} from 'mattermost-redux/types/actions';
 
 export const {
     modals,
+    notificationSounds,
+}: {
+
+    // @ts-ignore
+    modals: { openModal, ModalIdentifiers },
+    notificationSounds: { ring: (sound: string) => void, stopRing: () => void },
+} =
 
 // @ts-ignore
-}: { modals: {openModal, ModalIdentifiers}} = global.WebappUtils ?? {};
+global.WebappUtils ?? {};
 
 // @ts-ignore
 export const openPricingModal = global.openPricingModal;

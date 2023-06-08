@@ -130,14 +130,15 @@ export type CallActions = {
     setRecordingPromptDismissedAt: (callId: string, dismissedAt: number) => void;
 }
 
-export type ColorRGB = {
-    r: number,
-    g: number,
-    b: number,
-};
+export enum ChannelType {
+    DM,
+    GM
+}
 
-export type ColorHSL = {
-    h: number,
-    s: number,
-    l: number,
-};
+export type IncomingCallNotification = {
+    callID: string;
+    hostID: string;
+    startAt: number;
+    type: ChannelType;
+    ring: true;
+}

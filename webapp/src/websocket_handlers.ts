@@ -16,6 +16,9 @@ import {
     UserScreenOnOffData,
     UserVoiceOnOffData,
 } from '@calls/common/lib/types';
+import {batchActions} from 'redux-batched-actions';
+
+import {incomingCallOnChannel, userDisconnected} from 'src/actions';
 
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 
@@ -24,7 +27,6 @@ import {
     VOICE_CHANNEL_USER_MUTED,
     VOICE_CHANNEL_USER_UNMUTED,
     VOICE_CHANNEL_USER_CONNECTED,
-    VOICE_CHANNEL_USER_DISCONNECTED,
     VOICE_CHANNEL_PROFILE_CONNECTED,
     VOICE_CHANNEL_CALL_START,
     VOICE_CHANNEL_CALL_END,
@@ -40,11 +42,13 @@ import {
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
+    CALL_HAS_ENDED,
 } from './action_types';
 import {
     getProfilesByIds,
     playSound,
-    followThread, getUserDisplayName,
+    followThread,
+    getUserDisplayName,
 } from './utils';
 import {
     connectedChannelID,
@@ -59,12 +63,21 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     if (connectedChannelID(store.getState()) === channelID) {
         window.callsClient?.disconnect();
     }
-    store.dispatch({
-        type: VOICE_CHANNEL_CALL_END,
-        data: {
-            channelID,
+
+    store.dispatch(batchActions([
+        {
+            type: VOICE_CHANNEL_CALL_END,
+            data: {
+                channelID,
+            },
         },
-    });
+        {
+            type: CALL_HAS_ENDED,
+            data: {
+                callID: channelID,
+            },
+        },
+    ]));
 }
 
 export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData>) {
@@ -100,20 +113,16 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         if (channel) {
             followThread(store, channel.id, channel.team_id);
         }
+    } else {
+        // the call that started is not the call we're currently in.
+        store.dispatch(incomingCallOnChannel(channelID, ev.data.host_id, ev.data.start_at));
     }
 }
 
 export function handleUserDisconnected(store: Store, ev: WebSocketMessage<UserDisconnectedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
-    store.dispatch({
-        type: VOICE_CHANNEL_USER_DISCONNECTED,
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            currentUserID: getCurrentUserId(store.getState()),
-        },
-    });
+    store.dispatch(userDisconnected(channelID, ev.data.userID));
 }
 
 export async function handleUserConnected(store: Store, ev: WebSocketMessage<UserConnectedData>) {

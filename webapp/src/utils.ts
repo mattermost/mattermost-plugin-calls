@@ -77,6 +77,15 @@ export function getChannelURL(state: GlobalState, channel: Channel, teamId: stri
     return channelURL;
 }
 
+export function shouldRenderCallsIncoming() {
+    const win = window.opener ? window.opener : window;
+    if (win.desktop && window.location.pathname.indexOf('/messages/') === -1) {
+        // don't render when we're in desktop and in boards or playbooks. (can be simplified, but this is clearer)
+        return false;
+    }
+    return true;
+}
+
 export function getUserDisplayName(user: UserProfile | undefined, shortForm?: boolean) {
     if (!user) {
         return '';
@@ -285,6 +294,13 @@ export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
 
 export function hasExperimentalFlag() {
     return window.localStorage.getItem('calls_experimental_features') === 'on';
+}
+
+export function split<T>(list: T[], i: number, pad = false): [list: T[], overflowed?: T[]] {
+    if (list.length <= i + (pad ? 1 : 0)) {
+        return [list];
+    }
+    return [list.slice(0, i), list.slice(i)];
 }
 
 export function getUsersList(profiles: UserProfile[]) {

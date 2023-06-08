@@ -28,21 +28,22 @@ type callStats struct {
 }
 
 type callState struct {
-	ID              string                `json:"id"`
-	StartAt         int64                 `json:"create_at"`
-	EndAt           int64                 `json:"end_at"`
-	Users           map[string]*userState `json:"users,omitempty"`
-	Sessions        map[string]struct{}   `json:"sessions,omitempty"`
-	OwnerID         string                `json:"owner_id"`
-	ThreadID        string                `json:"thread_id"`
-	PostID          string                `json:"post_id"`
-	ScreenSharingID string                `json:"screen_sharing_id"`
-	ScreenStreamID  string                `json:"screen_stream_id"`
-	ScreenStartAt   int64                 `json:"screen_start_at"`
-	Stats           callStats             `json:"stats"`
-	RTCDHost        string                `json:"rtcd_host"`
-	HostID          string                `json:"host_id"`
-	Recording       *recordingState       `json:"recording,omitempty"`
+	ID                    string                `json:"id"`
+	StartAt               int64                 `json:"create_at"`
+	EndAt                 int64                 `json:"end_at"`
+	Users                 map[string]*userState `json:"users,omitempty"`
+	Sessions              map[string]struct{}   `json:"sessions,omitempty"`
+	OwnerID               string                `json:"owner_id"`
+	ThreadID              string                `json:"thread_id"`
+	PostID                string                `json:"post_id"`
+	ScreenSharingID       string                `json:"screen_sharing_id"`
+	ScreenStreamID        string                `json:"screen_stream_id"`
+	ScreenStartAt         int64                 `json:"screen_start_at"`
+	Stats                 callStats             `json:"stats"`
+	RTCDHost              string                `json:"rtcd_host"`
+	HostID                string                `json:"host_id"`
+	Recording             *recordingState       `json:"recording,omitempty"`
+	DismissedNotification []string              `json:"dismissed_notification,omitempty"`
 }
 
 type channelState struct {
@@ -57,16 +58,17 @@ type UserStateClient struct {
 }
 
 type CallStateClient struct {
-	ID              string                `json:"id"`
-	StartAt         int64                 `json:"start_at"`
-	Users           []string              `json:"users"`
-	States          []UserStateClient     `json:"states,omitempty"`
-	ThreadID        string                `json:"thread_id"`
-	PostID          string                `json:"post_id"`
-	ScreenSharingID string                `json:"screen_sharing_id"`
-	OwnerID         string                `json:"owner_id"`
-	HostID          string                `json:"host_id"`
-	Recording       *RecordingStateClient `json:"recording,omitempty"`
+	ID                    string                `json:"id"`
+	StartAt               int64                 `json:"start_at"`
+	Users                 []string              `json:"users"`
+	States                []UserStateClient     `json:"states,omitempty"`
+	ThreadID              string                `json:"thread_id"`
+	PostID                string                `json:"post_id"`
+	ScreenSharingID       string                `json:"screen_sharing_id"`
+	OwnerID               string                `json:"owner_id"`
+	HostID                string                `json:"host_id"`
+	Recording             *RecordingStateClient `json:"recording,omitempty"`
+	DismissedNotification []string              `json:"dismissed_notification,omitempty"`
 }
 
 type RecordingStateClient struct {
@@ -181,19 +183,29 @@ func (cs *callState) getHostID(botID string) string {
 	return hostID
 }
 
-func (cs *callState) getClientState(botID string) *CallStateClient {
+func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 	users, states := cs.getUsersAndStates(botID)
+
+	// For now, only send the user's own dismissed state.
+	var dismissed []string
+	for _, u := range cs.DismissedNotification {
+		if u == userID {
+			dismissed = []string{u}
+		}
+	}
+
 	return &CallStateClient{
-		ID:              cs.ID,
-		StartAt:         cs.StartAt,
-		Users:           users,
-		States:          states,
-		ThreadID:        cs.ThreadID,
-		PostID:          cs.PostID,
-		ScreenSharingID: cs.ScreenSharingID,
-		OwnerID:         cs.OwnerID,
-		HostID:          cs.HostID,
-		Recording:       cs.Recording.getClientState(),
+		ID:                    cs.ID,
+		StartAt:               cs.StartAt,
+		Users:                 users,
+		States:                states,
+		ThreadID:              cs.ThreadID,
+		PostID:                cs.PostID,
+		ScreenSharingID:       cs.ScreenSharingID,
+		OwnerID:               cs.OwnerID,
+		HostID:                cs.HostID,
+		Recording:             cs.Recording.getClientState(),
+		DismissedNotification: dismissed,
 	}
 }
 

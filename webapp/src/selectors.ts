@@ -30,7 +30,7 @@ import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
 
 import {getChannelURL} from 'src/utils';
 
-import {CallRecordingReduxState, CallsUserPreferences, ChannelState} from 'src/types/types';
+import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
 
 import {pluginId} from './manifest';
 
@@ -125,6 +125,15 @@ export const voiceChannelCallHostChangeAt = (state: GlobalState, channelID: stri
     return pluginState(state).voiceChannelCalls[channelID]?.hostChangeAt;
 };
 
+export const voiceChannelCallDismissedNotification = (state: GlobalState, channelID: string) => {
+    const dismissed = pluginState(state).voiceChannelCalls[channelID]?.dismissedNotification;
+    if (!dismissed) {
+        return false;
+    }
+    const currentUserID = getCurrentUserId(state);
+    return (dismissed.indexOf(currentUserID) !== -1);
+};
+
 export const voiceChannelScreenSharingID = (state: GlobalState, channelID: string): string | undefined => {
     return pluginState(state).voiceChannelScreenSharingID[channelID];
 };
@@ -152,6 +161,12 @@ export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
 export const recentlyJoinedUsers = (state: GlobalState, channelID: string): string[] => {
     return pluginState(state).recentlyJoinedUsers[channelID] || [];
 };
+
+export const incomingCalls = (state: GlobalState): IncomingCallNotification[] =>
+    pluginState(state).incomingCalls;
+
+export const haveRangForCall = (state: GlobalState, callUniqueID: string): boolean =>
+    pluginState(state).haveRangForCalls[callUniqueID] || false;
 
 //
 // Config logic
