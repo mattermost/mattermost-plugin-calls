@@ -2,9 +2,13 @@
 // See LICENSE.txt for license information.
 
 import React, {ChangeEvent} from 'react';
+
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
-import {getConfig} from 'mattermost-redux/selectors/entities/admin';
 import {useSelector} from 'react-redux';
+
+import {useHelptext} from 'src/components/admin_console_settings/hooks';
+
+import {rtcdEnabled} from 'src/selectors';
 
 import manifest from 'src/manifest';
 
@@ -13,12 +17,8 @@ import {
 } from 'src/components/admin_console_settings/common';
 
 const UDPServerPort = (props: CustomComponentProps) => {
-    const config = useSelector(getConfig);
-
-    // If RTCD is configured then this setting doesn't apply and should be hidden.
-    if (config.PluginSettings?.Plugins[manifest.id]?.rtcdserviceurl?.length > 0) {
-        return null;
-    }
+    const isRTCDEnabled = useSelector(rtcdEnabled);
+    const helpText = useHelptext(props.helpText);
 
     // Webapp doesn't pass the placeholder setting.
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'UDPServerPort')?.placeholder || '';
@@ -51,13 +51,13 @@ const UDPServerPort = (props: CustomComponentProps) => {
                     placeholder={placeholder}
                     value={props.value}
                     onChange={handleChange}
-                    disabled={props.disabled}
+                    disabled={props.disabled || isRTCDEnabled}
                 />
                 <div
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {helpText}
                 </div>
             </div>
         </div>

@@ -48,6 +48,7 @@ import {
     VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_USER_DISCONNECTED,
+    RTCD_ENABLED,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -108,6 +109,13 @@ export const getCallsConfig = (): ActionFunc => {
 export const setRecordingsEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
     dispatch({
         type: RECORDINGS_ENABLED,
+        data: enabled,
+    });
+};
+
+export const setRTCDEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: RTCD_ENABLED,
         data: enabled,
     });
 };

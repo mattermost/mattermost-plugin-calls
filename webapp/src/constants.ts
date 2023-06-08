@@ -13,6 +13,7 @@ export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
         bannerText: defineMessage({defaultMessage: 'Unable to find a valid audio input device. Try plugging in an audio input device.'}),
         tooltipText: defineMessage({defaultMessage: 'No audio input devices'}),
         tooltipSubtext: defineMessage({defaultMessage: 'Try plugging in an audio input device.'}),
+        dismissable: true,
     },
     missingAudioInputPermissions: {
         type: CallAlertType.Error,
@@ -20,6 +21,7 @@ export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
         bannerText: defineMessage({defaultMessage: 'Allow microphone access to Mattermost.'}),
         tooltipText: defineMessage({defaultMessage: 'No audio input permissions'}),
         tooltipSubtext: defineMessage({defaultMessage: 'Allow microphone access to Mattermost.'}),
+        dismissable: true,
     },
     missingScreenPermissions: {
         type: CallAlertType.Error,
@@ -27,6 +29,13 @@ export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
         bannerText: defineMessage({defaultMessage: 'Screen recording access is not currently allowed or was cancelled.'}),
         tooltipText: defineMessage({defaultMessage: 'No screen sharing permissions'}),
         tooltipSubtext: defineMessage({defaultMessage: 'Allow screen recording access to Mattermost.'}),
+        dismissable: true,
+    },
+    degradedCallQuality: {
+        type: CallAlertType.Warning,
+        icon: 'alert-outline',
+        bannerText: defineMessage({defaultMessage: 'Call quality may be degraded due to unstable network conditions.'}),
+        dismissable: false,
     },
 };
 

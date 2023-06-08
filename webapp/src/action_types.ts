@@ -44,6 +44,7 @@ export const CALL_HAS_ENDED = pluginId + '_call_has_ended';
 
 export const RECEIVED_CALLS_CONFIG = pluginId + '_received_calls_config';
 export const RECORDINGS_ENABLED = pluginId + '_recordings_enabled';
+export const RTCD_ENABLED = pluginId + '_rtcd_enabled';
 export const RECEIVED_CHANNEL_STATE = pluginId + 'received_channel_state';
 export const RECEIVED_CALLS_USER_PREFERENCES = pluginId + '_received_calls_user_preferences';
 

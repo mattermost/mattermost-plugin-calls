@@ -57,6 +57,7 @@ import {
     CALL_HAS_ENDED,
     REMOVE_INCOMING_CALL,
     HAVE_RANG_FOR_CALL,
+    RTCD_ENABLED,
 } from './action_types';
 
 interface channelStateAction {
@@ -730,6 +731,15 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
     }
 };
 
+const rtcdEnabled = (state = false, action: {type: string, data: boolean}) => {
+    switch (action.type) {
+    case RTCD_ENABLED:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { type: string, data: CallsUserPreferences }) => {
     switch (action.type) {
     case RECEIVED_CALLS_USER_PREFERENCES:
@@ -839,6 +849,7 @@ export default combineReducers({
     screenSourceModal,
     voiceChannelRootPost,
     callsConfig,
+    rtcdEnabled,
     callsUserPreferences,
     callsRecordings,
     recentlyJoinedUsers,

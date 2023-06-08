@@ -33,6 +33,7 @@ import {
     incomingCallOnChannel,
 } from 'src/actions';
 import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
+import {ServerSideTurn} from 'src/components/admin_console_settings/server_side_turn';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 
 import slashCommandsHandler from 'src/slash_commands';
@@ -372,15 +373,20 @@ export default class Plugin {
 
         registerChannelHeaderMenuButton();
 
-        registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
+        registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
+
+        // EnableRecording turns on/off the following:
         registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
         registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
         registry.registerAdminConsoleCustomSetting('RecordingQuality', RecordingQuality);
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
-        registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
+
+        // RTCD server turns on/off the following:
+        registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
         registry.registerAdminConsoleCustomSetting('UDPServerAddress', UDPServerAddress);
         registry.registerAdminConsoleCustomSetting('UDPServerPort', UDPServerPort);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
+        registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTurn);
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             if (shouldRenderDesktopWidget()) {
