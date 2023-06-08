@@ -17,8 +17,6 @@ import {Emoji} from 'src/components/emoji/emoji';
 import {getUserDisplayName, split} from 'src/utils';
 import HandEmoji from 'src/components/icons/hand';
 
-const MAX_NAMED_HANDS_UP = 3;
-
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = () => {
     const {formatMessage, formatList} = useIntl();
@@ -59,7 +57,7 @@ export const ReactionStream = () => {
         const getName = (userId: string) => {
             return userId === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[userId], true);
         };
-        const [displayed, overflowed] = split(userIdsHandsUp, MAX_NAMED_HANDS_UP, true);
+        const [displayed, overflowed] = split(userIdsHandsUp, 2, true);
         const userList = displayed.map(getName);
 
         if (overflowed) {
