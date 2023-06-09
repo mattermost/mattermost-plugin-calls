@@ -6,14 +6,13 @@ import {Theme} from 'mattermost-redux/types/themes';
 
 import {getUserDisplayName, split} from 'src/utils';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
+import {MAX_CHANNEL_LINK_TOOLTIP_NAMES} from 'src/constants';
 
 interface Props {
     theme: Theme,
     hasCall: boolean,
     profiles: UserProfile[],
 }
-
-const CHANNEL_TOOLTIP_LIMIT = 10;
 
 const ChannelLinkLabel = (props: Props) => {
     const {formatMessage, formatList} = useIntl();
@@ -22,7 +21,7 @@ const ChannelLinkLabel = (props: Props) => {
         return null;
     }
 
-    const [showedProfiles, overflowedProfiles] = split(props.profiles, CHANNEL_TOOLTIP_LIMIT);
+    const [showedProfiles, overflowedProfiles] = split(props.profiles, MAX_CHANNEL_LINK_TOOLTIP_NAMES);
     const userList = showedProfiles.map((user) => getUserDisplayName(user));
 
     if (overflowedProfiles) {
