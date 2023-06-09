@@ -79,7 +79,7 @@ export const ReactionStream = () => {
                 <span>
                     {formatMessage({defaultMessage: '{users} raised a hand'}, {
                         count: userIdsHandsUp.length,
-                        users: <Bold>{formatList(userList, {style: 'short'})}</Bold>,
+                        users: <Bold>{formatList(userList)}</Bold>,
                     })}
                 </span>
             </ReactionChip>
