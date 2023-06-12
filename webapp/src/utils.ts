@@ -304,19 +304,6 @@ export function split<T>(list: T[], i: number, pad = false): [list: T[], overflo
     return [list.slice(0, i), list.slice(i)];
 }
 
-export function getUsersList(profiles: UserProfile[]) {
-    if (profiles.length === 0) {
-        return '';
-    }
-    if (profiles.length === 1) {
-        return getUserDisplayName(profiles[0]);
-    }
-    const list = profiles.slice(0, -1).map((profile) => {
-        return getUserDisplayName(profile);
-    }).join(', ');
-    return list + ' and ' + getUserDisplayName(profiles[profiles.length - 1]);
-}
-
 export function playSound(name: string) {
     let src = '';
     switch (name) {
