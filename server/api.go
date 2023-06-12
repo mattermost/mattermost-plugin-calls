@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"golang.org/x/time/rate"
 
@@ -23,6 +22,7 @@ import (
 
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
 var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
+var callStartRE = regexp.MustCompile(`^\/calls\/start$`)
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
@@ -170,91 +170,41 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (p *Plugin) handleStartCall(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleStartCall", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	var data CallStartRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&data); err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	// TODO: consider forwarding proper error codes.
+	if err := p.startCall(userID, data); err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	res.Code = http.StatusOK
+	res.Msg = "success"
+}
+
 func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID string) {
 	var res httpResponse
 	defer p.httpAudit("handleEndCall", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 
-	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
-
-	state, err := p.kvGetChannelState(channelID)
-	if err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
-	if state == nil || state.Call == nil {
-		res.Err = "no call ongoing"
-		res.Code = http.StatusBadRequest
-		return
-	}
-
-	if !isAdmin && state.Call.OwnerID != userID {
-		res.Err = "no permissions to end the call"
+	if err := p.endCall(userID, channelID); err != nil {
 		res.Code = http.StatusForbidden
+		res.Msg = err.Error()
 		return
 	}
-
-	callID := state.Call.ID
-
-	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil || state.Call == nil {
-			return nil, nil
-		}
-
-		if state.Call.ID != callID {
-			return nil, fmt.Errorf("previous call has ended and new one has started")
-		}
-
-		if state.Call.EndAt == 0 {
-			state.Call.EndAt = time.Now().UnixMilli()
-		}
-
-		return state, nil
-	}); err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusForbidden
-		return
-	}
-
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-
-	go func() {
-		// We wait a few seconds for the call to end cleanly. If this doesn't
-		// happen we force end it.
-		time.Sleep(5 * time.Second)
-
-		state, err := p.kvGetChannelState(channelID)
-		if err != nil {
-			p.LogError(err.Error())
-			return
-		}
-		if state == nil || state.Call == nil || state.Call.ID != callID {
-			return
-		}
-
-		p.LogInfo("call state is still in store, force ending it", "channelID", channelID)
-
-		if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
-			p.LogInfo("recording is in progress, force ending it", "channelID", channelID, "jobID", state.Call.Recording.JobID)
-
-			if err := p.jobService.StopJob(state.Call.Recording.JobID); err != nil {
-				p.LogError("failed to stop recording job", "error", err.Error(), "channelID", channelID, "jobID", state.Call.Recording.JobID)
-			}
-		}
-
-		for connID := range state.Call.Sessions {
-			if err := p.closeRTCSession(userID, connID, channelID, state.NodeID); err != nil {
-				p.LogError(err.Error())
-			}
-		}
-
-		if err := p.cleanCallState(channelID); err != nil {
-			p.LogError(err.Error())
-		}
-	}()
 
 	res.Code = http.StatusOK
 	res.Msg = "success"
@@ -561,6 +511,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if matches := callEndRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handleEndCall(w, r, matches[1])
+			return
+		}
+
+		if callStartRE.MatchString(r.URL.Path) {
+			p.handleStartCall(w, r)
 			return
 		}
 

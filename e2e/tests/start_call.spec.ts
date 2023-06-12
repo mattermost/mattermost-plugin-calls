@@ -3,9 +3,9 @@ import {readFile} from 'fs/promises';
 import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {getChannelNamesForTest, getUsernamesForTest, getUserStoragesForTest} from '../utils';
+import {getChannelNamesForTest, getUsernamesForTest, getUserStoragesForTest, getChannelID} from '../utils';
 
-import {adminState} from '../constants';
+import {adminState, baseURL, defaultTeam, pluginID} from '../constants';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
@@ -53,6 +53,27 @@ test.describe('start/join call in channel with calls disabled', () => {
 
 test.describe('start new call', () => {
     test.use({storageState: userStorages[0]});
+
+    test('API endpoint', async ({page, request}) => {
+        const channelID = await getChannelID(request);
+
+        await request.post(`${baseURL}/plugins/${pluginID}/calls/start`, {
+            data: {
+                channel_id: channelID,
+            },
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+        });
+
+        // verify the call post is created.
+        await expect(page.getByTestId('call-thread').filter({has: page.getByText(`${usernames[0]} started a call`)})).toBeVisible();
+
+        await request.post(`${baseURL}/plugins/${pluginID}/calls/${channelID}/end`, {
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+        });
+
+        // verify the call has ended.
+        await expect(page.getByTestId('call-thread').filter({has: page.getByText(`${usernames[0]} started a call`)})).toBeHidden();
+    });
 
     test('channel header button', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);

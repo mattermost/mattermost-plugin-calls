@@ -11,4 +11,3 @@ export type UserState = {
     password: string;
     storageStatePath: string;
 };
-
