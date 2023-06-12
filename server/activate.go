@@ -173,12 +173,15 @@ func (p *Plugin) OnActivate() error {
 
 	rtcServerConfig := rtc.ServerConfig{
 		ICEAddressUDP:   cfg.UDPServerAddress,
+		ICEAddressTCP:   cfg.TCPServerAddress,
 		ICEPortUDP:      *cfg.UDPServerPort,
+		ICEPortTCP:      *cfg.TCPServerPort,
 		ICEHostOverride: cfg.ICEHostOverride,
 		ICEServers:      rtc.ICEServers(cfg.getICEServers(false)),
 		TURNConfig: rtc.TURNConfig{
 			CredentialsExpirationMinutes: *cfg.TURNCredentialsExpirationMinutes,
 		},
+		EnableIPv6: *cfg.EnableIPv6,
 	}
 	if *cfg.ServerSideTURN {
 		rtcServerConfig.TURNConfig.StaticAuthSecret = cfg.TURNStaticAuthSecret
