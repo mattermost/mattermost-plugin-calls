@@ -56,7 +56,7 @@ import {
     ADD_INCOMING_CALL,
     CALL_HAS_ENDED,
     REMOVE_INCOMING_CALL,
-    HAVE_RANG_FOR_CALL,
+    DID_RING_FOR_CALL,
     RTCD_ENABLED,
 } from './action_types';
 
@@ -586,7 +586,7 @@ interface callState {
     ownerID?: string,
     hostID: string,
     hostChangeAt?: number,
-    dismissedNotification: string[],
+    dismissedNotification: { [userID: string]: boolean },
 }
 
 interface callStateAction {
@@ -815,16 +815,16 @@ const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingC
     }
 };
 
-type HaveRangForCallsAction = {
+type DidRingForCallsAction = {
     type: string;
     data: {
         callUniqueID: string;
     }
 }
 
-const haveRangForCalls = (state: { [callUniqueID: string]: boolean } = {}, action: HaveRangForCallsAction) => {
+const didRingForCalls = (state: { [callUniqueID: string]: boolean } = {}, action: DidRingForCallsAction) => {
     switch (action.type) {
-    case HAVE_RANG_FOR_CALL:
+    case DID_RING_FOR_CALL:
         return {
             ...state,
             [action.data.callUniqueID]: true,
@@ -854,5 +854,5 @@ export default combineReducers({
     callsRecordings,
     recentlyJoinedUsers,
     incomingCalls,
-    haveRangForCalls,
+    didRingForCalls,
 });

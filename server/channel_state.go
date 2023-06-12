@@ -43,7 +43,7 @@ type callState struct {
 	RTCDHost              string                `json:"rtcd_host"`
 	HostID                string                `json:"host_id"`
 	Recording             *recordingState       `json:"recording,omitempty"`
-	DismissedNotification []string              `json:"dismissed_notification,omitempty"`
+	DismissedNotification map[string]bool       `json:"dismissed_notification,omitempty"`
 }
 
 type channelState struct {
@@ -68,7 +68,7 @@ type CallStateClient struct {
 	OwnerID               string                `json:"owner_id"`
 	HostID                string                `json:"host_id"`
 	Recording             *RecordingStateClient `json:"recording,omitempty"`
-	DismissedNotification []string              `json:"dismissed_notification,omitempty"`
+	DismissedNotification map[string]bool       `json:"dismissed_notification,omitempty"`
 }
 
 type RecordingStateClient struct {
@@ -187,10 +187,10 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 	users, states := cs.getUsersAndStates(botID)
 
 	// For now, only send the user's own dismissed state.
-	var dismissed []string
-	for _, u := range cs.DismissedNotification {
-		if u == userID {
-			dismissed = []string{u}
+	var dismissed map[string]bool
+	if cs.DismissedNotification[userID] {
+		dismissed = map[string]bool{
+			userID: true,
 		}
 	}
 

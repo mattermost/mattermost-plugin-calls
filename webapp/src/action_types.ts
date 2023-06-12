@@ -34,7 +34,7 @@ export const SHOW_END_CALL_MODAL = pluginId + '_show_end_call_modal';
 export const HIDE_END_CALL_MODAL = pluginId + '_hide_end_call_modal';
 export const ADD_INCOMING_CALL = pluginId + '_add_incoming_call';
 export const REMOVE_INCOMING_CALL = pluginId + '_remove_incoming_call';
-export const HAVE_RANG_FOR_CALL = pluginId + '_have_rang_for_call';
+export const DID_RING_FOR_CALL = pluginId + '_did_ring_for_call';
 
 // VOICE_CHANNEL_CALL_END is sent when the `/call end` command is used
 export const VOICE_CHANNEL_CALL_END = pluginId + '_voice_channel_call_end';

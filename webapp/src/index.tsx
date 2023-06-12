@@ -119,7 +119,6 @@ import {
     sendDesktopEvent,
     getChannelURL,
     getTranslations,
-    shouldRenderCallsIncoming,
 } from './utils';
 import {logErr, logDebug} from './log';
 import {
@@ -263,9 +262,7 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
         registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
         registry.registerGlobalComponent(injectIntl(EndCallModal));
-        if (shouldRenderCallsIncoming()) {
-            registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
-        }
+        registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
 
         registry.registerTranslations((locale: string) => {
             return getTranslations(locale);
@@ -598,10 +595,7 @@ export default class Plugin {
 
                         const callExists = incomingCalls(store.getState()).findIndex((ic) => ic.callID === data[i].channel_id) >= 0;
                         if (data[i].call && !callExists) {
-                            // This allows us time to load channels and call states
-                            setTimeout(() => {
-                                store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.host_id, data[i].call.start_at));
-                            }, 2000);
+                            store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.host_id, data[i].call.start_at));
                         }
                     }
                 }
@@ -663,6 +657,7 @@ export default class Plugin {
                         startAt: call.start_at,
                         ownerID: call.owner_id,
                         hostID: call.host_id,
+                        dismissedNotification: call.dismissed_notification,
                     },
                 });
 

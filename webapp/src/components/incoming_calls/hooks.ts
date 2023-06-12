@@ -3,13 +3,15 @@ import {NotificationLevel} from 'mattermost-redux/constants/channels';
 import {getCurrentUser} from 'mattermost-redux/selectors/entities/users';
 import {useEffect} from 'react';
 import {useDispatch, useSelector} from 'react-redux';
-import {compareSemVer} from 'semver-parser';
 
-import {HAVE_RANG_FOR_CALL, REMOVE_INCOMING_CALL} from 'src/action_types';
+import {DID_RING_FOR_CALL, REMOVE_INCOMING_CALL} from 'src/action_types';
 import {dismissIncomingCallNotification, showSwitchCallModal} from 'src/actions';
-import {connectedChannelID, haveRangForCall} from 'src/selectors';
+import {connectedChannelID, didRingForCall} from 'src/selectors';
 import {IncomingCallNotification} from 'src/types/types';
+import {shouldRenderDesktopWidget} from 'src/utils';
 import {notificationSounds} from 'src/webapp_globals';
+
+const RingLength = 10000;
 
 export const useDismissJoin = (callID: string, startAt: number) => {
     const dispatch = useDispatch();
@@ -39,45 +41,43 @@ export const useDismissJoin = (callID: string, startAt: number) => {
 
 export const useOnACallWithoutGlobalWidget = () => {
     const connectedChannel = useSelector(connectedChannelID);
-    const isDesktopWithGlobalWidget = window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0;
-    return Boolean(connectedChannel && !isDesktopWithGlobalWidget);
+    return Boolean(connectedChannel && !shouldRenderDesktopWidget());
 };
 
 export const useRinging = (call: IncomingCallNotification, onWidget: boolean) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(getCurrentUser);
     const callUniqueID = `${call.callID}${call.startAt}`;
-    const haveRung = useSelector((state: GlobalState) => haveRangForCall(state, callUniqueID));
+    const didRing = useSelector((state: GlobalState) => didRingForCall(state, callUniqueID));
 
     useEffect(() => {
         const stopRinging = () => {
             notificationSounds?.stopRing();
             dispatch({
-                type: HAVE_RANG_FOR_CALL,
+                type: DID_RING_FOR_CALL,
                 data: {
                     callUniqueID,
                 },
             });
         };
 
-        // If we're on the widget, that means we're on a call. If we're also on desktopWithGlobalWidget then
+        // If we're on the widget, that means we're on a call. If we're also on desktopWidget then
         // don't ring because the ringing will be handled by the main webapp.
-        const isDesktopWithGlobalWidget = window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0;
-        const ringHandledByWebapp = onWidget && isDesktopWithGlobalWidget;
+        const ringHandledByWebapp = onWidget && shouldRenderDesktopWidget();
 
         // @ts-ignore Our mattermost import is old and at the moment un-updatable.
-        if (!call.ring || ringHandledByWebapp || haveRung || currentUser.notify_props.desktop === NotificationLevel.NONE || currentUser.notify_props.calls_desktop_sound === 'false') {
+        if (!call.ring || ringHandledByWebapp || didRing || currentUser.notify_props.desktop === NotificationLevel.NONE || currentUser.notify_props.calls_desktop_sound === 'false') {
             return;
         }
 
         // @ts-ignore
         notificationSounds?.ring(currentUser.notify_props.calls_notification_sound || 'Dynamic');
-        const timer = setTimeout(() => stopRinging(), 10000);
+        const timer = setTimeout(() => stopRinging(), RingLength);
 
         // eslint-disable-next-line consistent-return
         return () => {
             clearTimeout(timer);
             stopRinging();
         };
-    }, [call, callUniqueID, haveRung, onWidget, currentUser.notify_props, dispatch]);
+    }, [call, callUniqueID, didRing, onWidget, currentUser.notify_props, dispatch]);
 };

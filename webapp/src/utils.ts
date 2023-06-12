@@ -79,7 +79,8 @@ export function getChannelURL(state: GlobalState, channel: Channel, teamId: stri
 
 export function shouldRenderCallsIncoming() {
     const win = window.opener ? window.opener : window;
-    if (win.desktop && window.location.pathname.indexOf('/messages/') === -1) {
+    const nonChannels = window.location.pathname.startsWith('/boards') || window.location.pathname.startsWith('/playbooks');
+    if (win.desktop && nonChannels) {
         // don't render when we're in desktop and in boards or playbooks. (can be simplified, but this is clearer)
         return false;
     }

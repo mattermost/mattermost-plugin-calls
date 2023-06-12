@@ -263,7 +263,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 
 func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Request, channelID string) {
 	var res httpResponse
-	defer p.httpAudit("handleEndCall", &res, w, r)
+	defer p.httpAudit("handleDismissNotification", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 
@@ -291,7 +291,10 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 			return nil, fmt.Errorf("previous call has ended and new one has started")
 		}
 
-		state.Call.DismissedNotification = append(state.Call.DismissedNotification, userID)
+		if state.Call.DismissedNotification == nil {
+			state.Call.DismissedNotification = make(map[string]bool)
+		}
+		state.Call.DismissedNotification[userID] = true
 
 		return state, nil
 	}); err != nil {

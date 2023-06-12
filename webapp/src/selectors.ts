@@ -126,12 +126,12 @@ export const voiceChannelCallHostChangeAt = (state: GlobalState, channelID: stri
 };
 
 export const voiceChannelCallDismissedNotification = (state: GlobalState, channelID: string) => {
-    const dismissed = pluginState(state).voiceChannelCalls[channelID]?.dismissedNotification;
+    const dismissed: {[userID: string]: boolean} | undefined = pluginState(state).voiceChannelCalls[channelID]?.dismissedNotification;
     if (!dismissed) {
         return false;
     }
     const currentUserID = getCurrentUserId(state);
-    return (dismissed.indexOf(currentUserID) !== -1);
+    return Object.hasOwn(dismissed, currentUserID) ? dismissed[currentUserID] : false;
 };
 
 export const voiceChannelScreenSharingID = (state: GlobalState, channelID: string): string | undefined => {
@@ -165,8 +165,8 @@ export const recentlyJoinedUsers = (state: GlobalState, channelID: string): stri
 export const incomingCalls = (state: GlobalState): IncomingCallNotification[] =>
     pluginState(state).incomingCalls;
 
-export const haveRangForCall = (state: GlobalState, callUniqueID: string): boolean =>
-    pluginState(state).haveRangForCalls[callUniqueID] || false;
+export const didRingForCall = (state: GlobalState, callUniqueID: string): boolean =>
+    pluginState(state).didRingForCalls[callUniqueID] || false;
 
 //
 // Config logic

@@ -34,7 +34,7 @@ import {modals, openPricingModal} from 'src/webapp_globals';
 import {
     ADD_INCOMING_CALL,
     CALL_HAS_ENDED,
-    HAVE_RANG_FOR_CALL,
+    DID_RING_FOR_CALL,
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
@@ -372,7 +372,7 @@ export const dismissIncomingCallNotification = (callID: string, startAt: number)
                 },
             },
             {
-                type: HAVE_RANG_FOR_CALL,
+                type: DID_RING_FOR_CALL,
                 data: {
                     callUniqueID: `${callID}${startAt}`,
                 },
