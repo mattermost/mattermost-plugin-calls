@@ -5,7 +5,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/pkg/errors"
 	"net/http"
 )
@@ -21,7 +21,7 @@ const (
 
 // handleCloudNotifyAdmins notifies the user's admin about upgrading for calls
 func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request) error {
-	license := p.pluginAPI.System.GetLicense()
+	license := p.API.GetLicense()
 	if !isCloud(license) {
 		p.handleErrorWithCode(w, http.StatusBadRequest, "not a cloud server",
 			errors.New("not a cloud server, will not notify admins"))
@@ -30,12 +30,12 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 
-	author, err := p.pluginAPI.User.Get(userID)
+	author, err := p.API.GetUser(userID)
 	if err != nil {
 		return errors.Wrap(err, "unable to find author user")
 	}
 
-	admins, err := p.pluginAPI.User.List(&model.UserGetOptions{
+	admins, err := p.API.GetUsers(&model.UserGetOptions{
 		Role:    model.SystemAdminRoleId,
 		Page:    0,
 		PerPage: maxAdminsToQueryForNotification,
@@ -69,15 +69,15 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 		},
 	}
 
-	systemBotID, err := p.getSystemBotID()
-	if err != nil {
-		return err
+	systemBotID, botErr := p.getSystemBotID()
+	if botErr != nil {
+		return botErr
 	}
 
 	for _, admin := range admins {
-		channel, err := p.pluginAPI.Channel.GetDirect(admin.Id, systemBotID)
+		channel, err := p.API.GetDirectChannel(admin.Id, systemBotID)
 		if err != nil {
-			p.pluginAPI.Log.Warn("failed to get Direct Message channel between user and bot", "user ID", admin.Id, "bot ID", systemBotID, "error", err)
+			p.LogWarn("failed to get Direct Message channel between user and bot", "user ID", admin.Id, "bot ID", systemBotID, "error", err)
 			continue
 		}
 
@@ -88,8 +88,8 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 			Type:      postType,
 		}
 		model.ParseSlackAttachment(post, attachments)
-		if err := p.pluginAPI.Post.CreatePost(post); err != nil {
-			p.pluginAPI.Log.Warn("failed to send a DM to user", "user ID", admin.Id, "error", err)
+		if _, err := p.API.CreatePost(post); err != nil {
+			p.LogWarn("failed to send a DM to user", "user ID", admin.Id, "error", err)
 		}
 	}
 
@@ -103,7 +103,7 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 }
 
 func (p *Plugin) getSystemBotID() (string, error) {
-	botID, err := p.pluginAPI.Bot.EnsureBot(&model.Bot{
+	botID, err := p.API.EnsureBotUser(&model.Bot{
 		Username:    model.BotSystemBotUsername,
 		DisplayName: "System",
 	})

@@ -17,8 +17,8 @@ import (
 
 	"github.com/mattermost/rtcd/service/rtc"
 
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin"
 )
 
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
@@ -434,7 +434,7 @@ func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request
 // that isn't exposed to clients yet on the webapp
 func (p *Plugin) handleConfig(w http.ResponseWriter) error {
 	skuShortName := "starter"
-	license := p.pluginAPI.System.GetLicense()
+	license := p.API.GetLicense()
 	if license != nil {
 		skuShortName = license.SkuShortName
 	}
