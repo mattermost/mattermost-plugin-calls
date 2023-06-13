@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/mattermost/rtcd/service/random"
 

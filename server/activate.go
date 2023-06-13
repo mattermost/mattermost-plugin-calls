@@ -13,7 +13,7 @@ import (
 
 	"github.com/mattermost/rtcd/service/rtc"
 
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 func (p *Plugin) createBotSession() (*model.Session, error) {
@@ -71,6 +71,11 @@ func (p *Plugin) OnActivate() error {
 	if appErr != nil {
 		p.LogError(appErr.Error())
 		return appErr
+	}
+
+	if err := p.loadConfig(); err != nil {
+		p.LogError(err.Error())
+		return err
 	}
 
 	cfg := p.getConfiguration()

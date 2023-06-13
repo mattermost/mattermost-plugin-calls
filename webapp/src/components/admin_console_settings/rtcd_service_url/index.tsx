@@ -42,7 +42,7 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
     const cloud = useSelector(isCloud);
     const stats = useSelector(adminStats);
 
-    const [enabled, setEnabled] = useState(() => !restricted && props.value.length > 0);
+    const [enabled, setEnabled] = useState(() => !restricted && props.value?.length > 0);
 
     // Update global state with a local state change, or props change (eg, remounting)
     useEffect(() => {

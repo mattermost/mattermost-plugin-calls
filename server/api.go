@@ -17,8 +17,8 @@ import (
 
 	"github.com/mattermost/rtcd/service/rtc"
 
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin"
 )
 
 var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)

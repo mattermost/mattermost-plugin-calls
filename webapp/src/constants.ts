@@ -5,6 +5,7 @@ import {CallAlertConfig, CallAlertType} from 'src/types/types';
 export const MAX_NUM_REACTIONS_IN_REACTION_STREAM = 50;
 export const REACTION_TIMEOUT_IN_REACTION_STREAM = 10000;
 export const JOINED_USER_NOTIFICATION_TIMEOUT = 5000;
+export const MAX_CHANNEL_LINK_TOOLTIP_NAMES = 8;
 
 export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
     missingAudioInput: {
