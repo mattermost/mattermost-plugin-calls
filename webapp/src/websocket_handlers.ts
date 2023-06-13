@@ -49,6 +49,7 @@ import {
     playSound,
     followThread,
     getUserDisplayName,
+    getCallsClient,
 } from './utils';
 import {
     connectedChannelID,
@@ -108,14 +109,18 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         },
     });
 
-    if (window.callsClient?.channelID === channelID) {
+    if (getCallsClient()?.channelID === channelID) {
         const channel = getChannel(store.getState(), channelID);
         if (channel) {
             followThread(store, channel.id, channel.team_id);
         }
     } else {
         // the call that started is not the call we're currently in.
-        store.dispatch(incomingCallOnChannel(channelID, ev.data.host_id, ev.data.start_at));
+        const currentUserID = getCurrentUserId(store.getState());
+        if (currentUserID !== ev.data.host_id) {
+            // the call was not started by us.
+            store.dispatch(incomingCallOnChannel(channelID, ev.data.host_id, ev.data.start_at));
+        }
     }
 }
 

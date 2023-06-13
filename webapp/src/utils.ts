@@ -77,6 +77,10 @@ export function getChannelURL(state: GlobalState, channel: Channel, teamId: stri
     return channelURL;
 }
 
+export function getCallsClient() {
+    return window.opener ? window.opener.callsClient : window.callsClient;
+}
+
 export function shouldRenderCallsIncoming() {
     const win = window.opener ? window.opener : window;
     const nonChannels = window.location.pathname.startsWith('/boards') || window.location.pathname.startsWith('/playbooks');
