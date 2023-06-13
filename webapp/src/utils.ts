@@ -287,17 +287,11 @@ export function hasExperimentalFlag() {
     return window.localStorage.getItem('calls_experimental_features') === 'on';
 }
 
-export function getUsersList(profiles: UserProfile[]) {
-    if (profiles.length === 0) {
-        return '';
+export function split<T>(list: T[], i: number, pad = false): [list: T[], overflowed?: T[]] {
+    if (list.length <= i + (pad ? 1 : 0)) {
+        return [list];
     }
-    if (profiles.length === 1) {
-        return getUserDisplayName(profiles[0]);
-    }
-    const list = profiles.slice(0, -1).map((profile) => {
-        return getUserDisplayName(profile);
-    }).join(', ');
-    return list + ' and ' + getUserDisplayName(profiles[profiles.length - 1]);
+    return [list.slice(0, i), list.slice(i)];
 }
 
 export function playSound(name: string) {

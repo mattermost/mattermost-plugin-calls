@@ -14,30 +14,26 @@ import {
     voiceUsersStatuses,
 } from 'src/selectors';
 import {Emoji} from 'src/components/emoji/emoji';
-import {getUserDisplayName, untranslatable} from 'src/utils';
+import {getUserDisplayName, split} from 'src/utils';
 import HandEmoji from 'src/components/icons/hand';
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = () => {
-    const {formatMessage} = useIntl();
-    const currentUserID = useSelector(getCurrentUserId);
+    const {formatMessage, formatList} = useIntl();
 
+    const currentUserID = useSelector(getCurrentUserId);
     const statuses = useSelector(voiceUsersStatuses);
     const profileMap = useSelector(idToProfileInConnectedChannel);
-
-    const handsup = Object.keys(statuses)
-        .flatMap((id) => (statuses[id]?.raised_hand ? [statuses[id]] : []))
-        .sort((a, b) => a.raised_hand - b.raised_hand)
-        .map((u) => u.id);
-
     const vReactions = useSelector(voiceReactions);
+
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
         const emoji = (
             <Emoji
                 emoji={reaction.emoji}
                 size={18}
-            />);
+            />
+        );
         const user = reaction.user_id === currentUserID ?
             formatMessage({defaultMessage: 'You'}) :
             getUserDisplayName(profileMap[reaction.user_id], true) || formatMessage({defaultMessage: 'Someone'});
@@ -52,29 +48,23 @@ export const ReactionStream = () => {
         );
     });
 
-    // add hands up
-    let elements = [];
-    const getName = (user_id: string) => {
-        return user_id === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[user_id], true);
-    };
-    let participants: string;
-    if (handsup?.length) {
-        switch (handsup?.length) {
-        case 1:
-            participants = `${getName(handsup[0])}`;
-            break;
-        case 2:
-            participants = `${getName(handsup[0])} & ${getName(handsup[1])}`;
-            break;
-        case 3:
-            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${getName(handsup[2])}`;
-            break;
-        default:
-            participants = `${getName(handsup[0])}, ${getName(handsup[1])} & ${handsup?.length - 2} ${formatMessage({defaultMessage: 'others'})}`;
-            break;
+    let handsUp;
+    const userIdsHandsUp = Object.keys(statuses)
+        .filter((id) => statuses[id]?.raised_hand)
+        .sort((a, b) => statuses[a].raised_hand - statuses[b].raised_hand);
+
+    if (userIdsHandsUp?.length) {
+        const getName = (userId: string) => {
+            return userId === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[userId], true);
+        };
+        const [displayed, overflowed] = split(userIdsHandsUp, 2, true);
+        const userList = displayed.map(getName);
+
+        if (overflowed) {
+            userList.push(formatMessage({defaultMessage: '{num, plural, one {# other} other {# others}}'}, {num: overflowed.length}));
         }
 
-        elements.push(
+        handsUp = (
             <ReactionChip
                 key={'hands'}
                 highlight={true}
@@ -87,17 +77,19 @@ export const ReactionStream = () => {
                     }}
                 />
                 <span>
-                    <Bold>{participants}</Bold>
-                    <span>{untranslatable(' ')}{formatMessage({defaultMessage: 'raised a hand'})}</span>
+                    {formatMessage({defaultMessage: '{users} raised a hand'}, {
+                        count: userIdsHandsUp.length,
+                        users: <Bold>{formatList(userList)}</Bold>,
+                    })}
                 </span>
-            </ReactionChip>);
+            </ReactionChip>
+        );
     }
-
-    elements = [...elements, ...reactions];
 
     return (
         <ReactionStreamList>
-            {elements}
+            {handsUp}
+            {reactions}
         </ReactionStreamList>
     );
 };
