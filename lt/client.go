@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"compress/zlib"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -20,7 +21,7 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/lt/ws"
 
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/pion/interceptor"
 	"github.com/pion/rtcp"
@@ -65,6 +66,7 @@ const (
 	simulcastLevelLow  = "l"
 	receiveMTU         = 1460
 	sendMTU            = 1200
+	httpRequestTimeout = 10 * time.Second
 )
 
 type config struct {
@@ -202,7 +204,9 @@ func (u *user) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 
 func (u *user) startRecording() error {
 	log.Printf("%s: starting recording", u.cfg.username)
-	res, err := u.client.DoAPIRequest(http.MethodPost,
+	ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
+	defer cancel()
+	res, err := u.client.DoAPIRequest(ctx, http.MethodPost,
 		fmt.Sprintf("%s/plugins/com.mattermost.calls/calls/%s/recording/start", u.client.URL, u.cfg.channelID), "", "")
 	defer res.Body.Close()
 
@@ -753,45 +757,59 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 	client := model.NewAPIv4Client(u.cfg.siteURL)
 	u.client = client
 	// login (or create) user
-	user, _, err := client.Login(u.cfg.username, u.cfg.password)
+	ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
+	defer cancel()
+	user, _, err := client.Login(ctx, u.cfg.username, u.cfg.password)
 	appErr, ok := err.(*model.AppError)
 	if err != nil && !ok {
 		return err
 	}
+	cancel()
 
 	if ok && appErr != nil && appErr.Id != "api.user.login.invalid_credentials_email_username" {
 		return err
 	} else if ok && appErr != nil && appErr.Id == "api.user.login.invalid_credentials_email_username" {
 		log.Printf("%s: registering user", u.cfg.username)
-		user, _, err = client.CreateUser(&model.User{
+		ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
+		user, _, err = client.CreateUser(ctx, &model.User{
 			Username: u.cfg.username,
 			Password: u.cfg.password,
 			Email:    u.cfg.username + "@example.com",
 		})
+		cancel()
 		if err != nil {
 			return err
 		}
-		user, _, err = client.Login(u.cfg.username, u.cfg.password)
+		ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+		defer cancel()
+		user, _, err = client.Login(ctx, u.cfg.username, u.cfg.password)
 		if err != nil {
 			return err
 		}
+		cancel()
 	}
 
 	log.Printf("%s: logged in", u.cfg.username)
 	u.userID = user.Id
 
 	// join team
-	_, _, err = client.AddTeamMember(u.cfg.teamID, user.Id)
+	ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+	defer cancel()
+	_, _, err = client.AddTeamMember(ctx, u.cfg.teamID, user.Id)
 	if err != nil {
 		return err
 	}
+	cancel()
 
 	if channelType == "O" || channelType == "P" {
 		// join channel
-		_, _, err = client.AddChannelMember(u.cfg.channelID, user.Id)
+		ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+		defer cancel()
+		_, _, err = client.AddChannelMember(ctx, u.cfg.channelID, user.Id)
 		if err != nil {
 			return err
 		}
+		cancel()
 	}
 
 	log.Printf("%s: connecting to websocket", u.cfg.username)
@@ -912,21 +930,26 @@ func main() {
 	}
 
 	adminClient := model.NewAPIv4Client(siteURL)
-	_, _, err = adminClient.Login(adminUsername, adminPassword)
+	ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
+	defer cancel()
+	_, _, err = adminClient.Login(ctx, adminUsername, adminPassword)
 	if err != nil {
 		log.Fatalf("failed to login as admin: %s", err.Error())
 	}
+	cancel()
 
 	var channels []*model.Channel
 	if channelID == "" {
 		page := 0
 		perPage := 100
 		for {
-			chs, _, err := adminClient.SearchChannels(teamID, &model.ChannelSearch{
+			ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+			chs, _, err := adminClient.SearchChannels(ctx, teamID, &model.ChannelSearch{
 				Public:  true,
 				PerPage: &perPage,
 				Page:    &page,
 			})
+			cancel()
 			if err != nil {
 				log.Fatalf("failed to search channels: %s", err.Error())
 			}
@@ -941,12 +964,14 @@ func main() {
 			channels = make([]*model.Channel, numCalls)
 			for i := 0; i < numCalls; i++ {
 				name := model.NewId()
-				channel, _, err := adminClient.CreateChannel(&model.Channel{
+				ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+				channel, _, err := adminClient.CreateChannel(ctx, &model.Channel{
 					TeamId:      teamID,
 					Name:        name,
 					DisplayName: "test-" + name,
 					Type:        model.ChannelTypeOpen,
 				})
+				cancel()
 				if err != nil {
 					log.Fatalf("failed to create channel: %s", err.Error())
 				}
@@ -954,7 +979,9 @@ func main() {
 			}
 		}
 	} else {
-		channel, _, err := adminClient.GetChannel(channelID, "")
+		ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+		channel, _, err := adminClient.GetChannel(ctx, channelID, "")
+		cancel()
 		if err != nil {
 			log.Fatalf("failed to search channels: %s", err.Error())
 		}
