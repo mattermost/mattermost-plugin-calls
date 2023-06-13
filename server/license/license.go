@@ -1,7 +1,7 @@
 package license
 
 import (
-	"github.com/mattermost/mattermost-server/server/public/model"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 const (

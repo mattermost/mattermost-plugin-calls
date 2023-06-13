@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/mattermost/mattermost-server/server/public/model"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 var botChRE = regexp.MustCompile(`^\/bot\/channels\/([a-z0-9]+)$`)

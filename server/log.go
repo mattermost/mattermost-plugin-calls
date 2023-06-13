@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/mattermost/logr/v2"
-	"github.com/mattermost/mattermost-server/server/public/shared/mlog"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
 )
 
 const pkgPath = "github.com/mattermost/mattermost-plugin-calls/server/"

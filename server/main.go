@@ -11,8 +11,8 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 
-	"github.com/mattermost/mattermost-server/server/public/model"
-	"github.com/mattermost/mattermost-server/server/public/plugin"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin"
 )
 
 var isDebug string

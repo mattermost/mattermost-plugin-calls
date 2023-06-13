@@ -13,7 +13,7 @@ import (
 
 	"github.com/mattermost/rtcd/service/rtc"
 
-	"github.com/mattermost/mattermost-server/server/public/model"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 func (p *Plugin) createBotSession() (*model.Session, error) {
