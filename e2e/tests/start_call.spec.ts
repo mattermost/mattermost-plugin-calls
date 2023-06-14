@@ -401,7 +401,7 @@ test.describe('setting audio output device', () => {
 test.describe('switching products', () => {
     test.use({storageState: userStorages[0]});
 
-    test('boards', async ({page}) => {
+    test('playbooks', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
         await devPage.wait(1000);
@@ -410,7 +410,7 @@ test.describe('switching products', () => {
         await expect(switchProductsButton).toBeVisible();
         await switchProductsButton.click();
 
-        const boardsButton = devPage.page.locator('#product-switcher-menu-dropdown div', {hasText: 'Boards'});
+        const boardsButton = devPage.page.locator('#product-switcher-menu-dropdown div', {hasText: 'Playbooks'});
         await expect(boardsButton).toBeVisible();
         await boardsButton.click();
 
@@ -419,7 +419,7 @@ test.describe('switching products', () => {
         await devPage.page.locator('#calls-widget-participants-button').click();
         const participantsList = devPage.page.locator('#calls-widget-participants-list');
         await expect(participantsList).toBeVisible();
-        expect(await participantsList.screenshot()).toMatchSnapshot('calls-widget-participants-list-boards.png');
+        expect(await participantsList.screenshot()).toMatchSnapshot('calls-widget-participants-list-playbooks.png');
 
         await devPage.leaveCall();
     });
