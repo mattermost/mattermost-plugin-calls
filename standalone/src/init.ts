@@ -52,6 +52,7 @@ import {
     handleCallHostChanged,
     handleUserReaction,
     handleCallRecordingState,
+    handleUserDismissedNotification,
 } from 'plugin/websocket_handlers';
 
 import {
@@ -62,6 +63,7 @@ import {
     HelloData,
     UserConnectedData,
     UserDisconnectedData,
+    UserDismissedNotification,
     UserMutedUnmutedData,
     UserRaiseUnraiseHandData,
     UserReactionData,
@@ -337,6 +339,9 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_call_recording_state`:
             handleCallRecordingState(store, ev as WebSocketMessage<CallRecordingStateData>);
+            break;
+        case `custom_${pluginId}_user_dismissed_notification`:
+            handleUserDismissedNotification(store, ev as WebSocketMessage<UserDismissedNotification>);
             break;
         default:
         }

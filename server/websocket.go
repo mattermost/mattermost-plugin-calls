@@ -17,25 +17,26 @@ import (
 )
 
 const (
-	wsEventSignal             = "signal"
-	wsEventUserConnected      = "user_connected"
-	wsEventUserDisconnected   = "user_disconnected"
-	wsEventUserMuted          = "user_muted"
-	wsEventUserUnmuted        = "user_unmuted"
-	wsEventUserVoiceOn        = "user_voice_on"
-	wsEventUserVoiceOff       = "user_voice_off"
-	wsEventUserScreenOn       = "user_screen_on"
-	wsEventUserScreenOff      = "user_screen_off"
-	wsEventCallStart          = "call_start"
-	wsEventCallEnd            = "call_end"
-	wsEventUserRaiseHand      = "user_raise_hand"
-	wsEventUserUnraiseHand    = "user_unraise_hand"
-	wsEventUserReacted        = "user_reacted"
-	wsEventJoin               = "join"
-	wsEventError              = "error"
-	wsEventCallHostChanged    = "call_host_changed"
-	wsEventCallRecordingState = "call_recording_state"
-	wsReconnectionTimeout     = 10 * time.Second
+	wsEventSignal                    = "signal"
+	wsEventUserConnected             = "user_connected"
+	wsEventUserDisconnected          = "user_disconnected"
+	wsEventUserMuted                 = "user_muted"
+	wsEventUserUnmuted               = "user_unmuted"
+	wsEventUserVoiceOn               = "user_voice_on"
+	wsEventUserVoiceOff              = "user_voice_off"
+	wsEventUserScreenOn              = "user_screen_on"
+	wsEventUserScreenOff             = "user_screen_off"
+	wsEventCallStart                 = "call_start"
+	wsEventCallEnd                   = "call_end"
+	wsEventUserRaiseHand             = "user_raise_hand"
+	wsEventUserUnraiseHand           = "user_unraise_hand"
+	wsEventUserReacted               = "user_reacted"
+	wsEventJoin                      = "join"
+	wsEventError                     = "error"
+	wsEventCallHostChanged           = "call_host_changed"
+	wsEventCallRecordingState        = "call_recording_state"
+	wsEventUserDismissedNotification = "user_dismissed_notification"
+	wsReconnectionTimeout            = 10 * time.Second
 )
 
 func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *model.WebsocketBroadcast) {

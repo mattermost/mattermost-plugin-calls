@@ -18,6 +18,8 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 
+import CallsClient from 'src/client';
+
 import {logDebug, logErr, logWarn} from './log';
 
 import {pluginId} from './manifest';
@@ -77,7 +79,7 @@ export function getChannelURL(state: GlobalState, channel: Channel, teamId: stri
     return channelURL;
 }
 
-export function getCallsClient() {
+export function getCallsClient(): CallsClient | undefined {
     return window.opener ? window.opener.callsClient : window.callsClient;
 }
 

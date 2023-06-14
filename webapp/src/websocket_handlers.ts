@@ -10,6 +10,7 @@ import {
     Reaction,
     UserConnectedData,
     UserDisconnectedData,
+    UserDismissedNotification,
     UserMutedUnmutedData,
     UserRaiseUnraiseHandData,
     UserReactionData,
@@ -43,6 +44,7 @@ import {
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
     CALL_HAS_ENDED,
+    REMOVE_INCOMING_CALL,
 } from './action_types';
 import {
     getProfilesByIds,
@@ -321,6 +323,20 @@ export function handleCallRecordingState(store: Store, ev: WebSocketMessage<Call
         data: {
             callID: ev.data.callID,
             recState: ev.data.recState,
+        },
+    });
+}
+
+export function handleUserDismissedNotification(store: Store, ev: WebSocketMessage<UserDismissedNotification>) {
+    // For now we are only handling our own dismissed (and that's all we should be receiving).
+    const userID = getCurrentUserId(store.getState());
+    if (ev.data.userID !== userID) {
+        return;
+    }
+    store.dispatch({
+        type: REMOVE_INCOMING_CALL,
+        data: {
+            callID: ev.data.callID,
         },
     });
 }

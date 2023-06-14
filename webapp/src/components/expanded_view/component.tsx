@@ -428,7 +428,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
         const callsClient = getCallsClient();
         if (this.isMuted()) {
-            callsClient.unmute();
+            callsClient?.unmute();
         } else {
             callsClient?.mute();
         }
