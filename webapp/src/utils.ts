@@ -351,6 +351,10 @@ export async function followThread(store: Store, channelID: string, teamID: stri
 }
 
 export function shouldRenderDesktopWidget() {
+    return desktopGTE(5, 3);
+}
+
+export function desktopGTE(major: number, minor: number) {
     const win = window.opener ? window.opener : window;
     if (!win.desktop) {
         return false;
@@ -358,11 +362,11 @@ export function shouldRenderDesktopWidget() {
 
     const version = parseSemVer(win.desktop.version);
 
-    if (version.major < 5) {
+    if (version.major < major) {
         return false;
     }
 
-    return version.major > 5 || version.minor >= 3;
+    return version.major > major || version.minor >= minor;
 }
 
 export function sendDesktopEvent(event: string, data?: Record<string, unknown>) {

@@ -1,19 +1,22 @@
 import {GlobalState} from '@mattermost/types/store';
 import {NotificationLevel} from 'mattermost-redux/constants/channels';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUser} from 'mattermost-redux/selectors/entities/users';
 import {useEffect} from 'react';
-import {useDispatch, useSelector} from 'react-redux';
+import {useDispatch, useSelector, useStore} from 'react-redux';
 
 import {DID_RING_FOR_CALL, REMOVE_INCOMING_CALL} from 'src/action_types';
 import {dismissIncomingCallNotification, showSwitchCallModal} from 'src/actions';
+import {logDebug} from 'src/log';
 import {connectedChannelID, didRingForCall} from 'src/selectors';
 import {IncomingCallNotification} from 'src/types/types';
-import {shouldRenderDesktopWidget} from 'src/utils';
+import {desktopGTE, getChannelURL, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
 import {notificationSounds} from 'src/webapp_globals';
 
 const RingLength = 10000;
 
-export const useDismissJoin = (callID: string, startAt: number) => {
+export const useDismissJoin = (callID: string, startAt: number, global = false) => {
+    const store = useStore();
     const dispatch = useDispatch();
     const connectedID = useSelector(connectedChannelID) || '';
 
@@ -30,6 +33,25 @@ export const useDismissJoin = (callID: string, startAt: number) => {
         });
 
         if (connectedID) {
+            if (global && desktopGTE(5, 5)) {
+                logDebug('sending calls-join-request message to desktop app');
+                sendDesktopEvent('calls-join-request', {
+                    targetID: callID,
+                });
+                return;
+            }
+            if (global) {
+                logDebug('sending calls-widget-channel-link-click and calls-joined-call message to desktop app');
+                const currentChannel = getChannel(store.getState(), connectedID);
+                const channelURL = getChannelURL(store.getState(), currentChannel, currentChannel.team_id);
+                sendDesktopEvent('calls-widget-channel-link-click', {pathName: channelURL});
+                sendDesktopEvent('calls-joined-call', {
+                    type: 'calls-join-request',
+                    targetID: callID,
+                });
+                return;
+            }
+
             dispatch(showSwitchCallModal(callID));
             return;
         }

@@ -21,14 +21,16 @@ import {IncomingCallNotification} from 'src/types/types';
 type Props = {
     call: IncomingCallNotification;
     onWidget?: boolean;
+    global?: boolean;
 };
 
-export const CallIncomingCondensed = ({call, onWidget = false}: Props) => {
+export const CallIncomingCondensed = ({call, onWidget = false, global = false}: Props) => {
     const {formatMessage} = useIntl();
-    const [onDismiss, onJoin] = useDismissJoin(call.callID, call.startAt);
-    useRinging(call, onWidget);
     const teammateNameDisplay = useSelector(getTeammateNameDisplaySetting);
     const host = useSelector((state: GlobalState) => getUser(state, call.hostID));
+
+    useRinging(call, onWidget);
+    const [onDismiss, onJoin] = useDismissJoin(call.callID, call.startAt, global);
 
     const hostName = displayUsername(host, teammateNameDisplay, false);
     const message = (

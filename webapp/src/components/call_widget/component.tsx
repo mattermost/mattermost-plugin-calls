@@ -1602,6 +1602,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         key={c.callID}
                         call={c}
                         onWidget={true}
+                        global={Boolean(this.props.global)}
                     />
                 ))}
             </div>
