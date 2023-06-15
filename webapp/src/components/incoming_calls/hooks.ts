@@ -28,7 +28,7 @@ export const useDismissJoin = (callID: string, startAt: number, global = false) 
             if (global && desktopGTE(5, 5)) {
                 logDebug('sending calls-join-request message to desktop app');
                 sendDesktopEvent('calls-join-request', {
-                    targetID: callID,
+                    callID,
                 });
                 return;
             }
@@ -39,7 +39,7 @@ export const useDismissJoin = (callID: string, startAt: number, global = false) 
                 sendDesktopEvent('calls-widget-channel-link-click', {pathName: channelURL});
                 sendDesktopEvent('calls-joined-call', {
                     type: 'calls-join-request',
-                    targetID: callID,
+                    callID,
                 });
                 return;
             }

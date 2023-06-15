@@ -541,7 +541,7 @@ export default class Plugin {
                 if (!desktopGTE(5, 5) && ev.data.message.type === 'calls-join-request') {
                     // This `calls-joined-call` message has been repurposed as a `calls-join-request` message
                     // because the current desktop version (< 5.5) does not have a dedicated `calls-join-request` message.
-                    store.dispatch(showSwitchCallModal(ev.data.message.targetID));
+                    store.dispatch(showSwitchCallModal(ev.data.message.callID));
                     return;
                 }
                 store.dispatch({
@@ -550,7 +550,7 @@ export default class Plugin {
                 });
             } else if (ev.data?.type === 'calls-join-request') {
                 // we can assume that we are already in a call, since the global widget sent this.
-                store.dispatch(showSwitchCallModal(ev.data.message.targetID));
+                store.dispatch(showSwitchCallModal(ev.data.message.callID));
             } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error') {
                 store.dispatch(displayCallErrorModal(ev.data.message.callID, new Error(ev.data.message.errMsg)));
             } else if (ev.data?.type === 'calls-run-slash-command') {
