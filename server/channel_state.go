@@ -227,6 +227,21 @@ func (p *Plugin) kvGetChannelState(channelID string) (*channelState, error) {
 	return state, nil
 }
 
+func (p *Plugin) kvSetChannelState(channelID string, state *channelState) error {
+	p.metrics.IncStoreOp("KVSet")
+
+	data, err := json.Marshal(state)
+	if err != nil {
+		return fmt.Errorf("failed to marshal channel state: %w", err)
+	}
+
+	appErr := p.API.KVSet(channelID, data)
+	if appErr != nil {
+		return fmt.Errorf("KVSet failed: %w", appErr)
+	}
+	return nil
+}
+
 func (p *Plugin) kvSetAtomicChannelState(channelID string, cb func(state *channelState) (*channelState, error)) error {
 	return p.kvSetAtomic(channelID, func(data []byte) ([]byte, error) {
 		var err error

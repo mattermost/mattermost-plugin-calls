@@ -4,7 +4,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -67,88 +66,89 @@ func newUserSession(userID, channelID, connID string, rtc bool) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (channelState, channelState, error) {
-	var currState channelState
-	var prevState channelState
+func (p *Plugin) addUserSession(userID, connID, channelID string) (*channelState, *channelState, error) {
+	state, err := p.kvGetChannelState(channelID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get channel state: %w", err)
+	}
 
 	botID := p.getBotID()
 
-	err := p.kvSetAtomicChannelState(channel.Id, func(state *channelState) (*channelState, error) {
-		if state == nil {
-			state = &channelState{}
+	if state == nil {
+		state = &channelState{}
+	}
+
+	if !p.userCanStartOrJoin(userID, state) {
+		return nil, nil, fmt.Errorf("calls are not enabled")
+	}
+
+	prevState := state.Clone()
+
+	if state.Call == nil {
+		state.Call = &callState{
+			ID:       model.NewId(),
+			StartAt:  time.Now().UnixMilli(),
+			Users:    make(map[string]*userState),
+			Sessions: make(map[string]struct{}),
+			OwnerID:  userID,
 		}
+		state.NodeID = p.nodeID
 
-		if !p.userCanStartOrJoin(userID, state) {
-			return nil, fmt.Errorf("calls are not enabled")
-		}
-
-		prevState = *state.Clone()
-
-		if state.Call == nil {
-			state.Call = &callState{
-				ID:       model.NewId(),
-				StartAt:  time.Now().UnixMilli(),
-				Users:    make(map[string]*userState),
-				Sessions: make(map[string]struct{}),
-				OwnerID:  userID,
-			}
-			state.NodeID = p.nodeID
-
-			if p.rtcdManager != nil {
-				host, err := p.rtcdManager.GetHostForNewCall()
-				if err != nil {
-					return nil, fmt.Errorf("failed to get rtcd host: %w", err)
-				}
-				p.LogDebug("rtcd host has been assigned to call", "host", host)
-				state.Call.RTCDHost = host
-			}
-		}
-
-		if state.Call.EndAt > 0 {
-			return nil, fmt.Errorf("call has ended")
-		}
-
-		if _, ok := state.Call.Users[userID]; ok {
-			return nil, fmt.Errorf("user is already connected")
-		}
-
-		// Check for cloud limits -- needs to be done here to prevent a race condition
-		if allowed, err := p.joinAllowed(state); !allowed {
+		if p.rtcdManager != nil {
+			host, err := p.rtcdManager.GetHostForNewCall()
 			if err != nil {
-				p.LogError("joinAllowed failed", "error", err.Error())
+				return nil, nil, fmt.Errorf("failed to get rtcd host: %w", err)
 			}
-			return nil, fmt.Errorf("user cannot join because of limits")
+			p.LogDebug("rtcd host has been assigned to call", "host", host)
+			state.Call.RTCDHost = host
 		}
+	}
 
-		// When the bot joins the call it means the recording has started.
-		if userID == botID {
-			if state.Call.Recording != nil && state.Call.Recording.StartAt == 0 {
-				state.Call.Recording.StartAt = time.Now().UnixMilli()
-				state.Call.Recording.BotConnID = connID
-			} else if state.Call.Recording == nil || state.Call.Recording.StartAt > 0 {
-				// In this case we should fail to prevent the bot from recording
-				// without consent.
-				return nil, fmt.Errorf("recording not in progress or already started")
-			}
+	if state.Call.EndAt > 0 {
+		return nil, nil, fmt.Errorf("call has ended")
+	}
+
+	if _, ok := state.Call.Users[userID]; ok {
+		return nil, nil, fmt.Errorf("user is already connected")
+	}
+
+	// Check for cloud limits -- needs to be done here to prevent a race condition
+	if allowed, err := p.joinAllowed(state); !allowed {
+		if err != nil {
+			p.LogError("joinAllowed failed", "error", err.Error())
 		}
+		return nil, nil, fmt.Errorf("user cannot join because of limits")
+	}
 
-		if state.Call.HostID == "" && userID != botID {
-			state.Call.HostID = userID
+	// When the bot joins the call it means the recording has started.
+	if userID == botID {
+		if state.Call.Recording != nil && state.Call.Recording.StartAt == 0 {
+			state.Call.Recording.StartAt = time.Now().UnixMilli()
+			state.Call.Recording.BotConnID = connID
+		} else if state.Call.Recording == nil || state.Call.Recording.StartAt > 0 {
+			// In this case we should fail to prevent the bot from recording
+			// without consent.
+			return nil, nil, fmt.Errorf("recording not in progress or already started")
 		}
+	}
 
-		state.Call.Users[userID] = &userState{
-			JoinAt: time.Now().UnixMilli(),
-		}
-		state.Call.Sessions[connID] = struct{}{}
-		if len(state.Call.Users) > state.Call.Stats.Participants {
-			state.Call.Stats.Participants = len(state.Call.Users)
-		}
+	if state.Call.HostID == "" && userID != botID {
+		state.Call.HostID = userID
+	}
 
-		currState = *state
-		return state, nil
-	})
+	state.Call.Users[userID] = &userState{
+		JoinAt: time.Now().UnixMilli(),
+	}
+	state.Call.Sessions[connID] = struct{}{}
+	if len(state.Call.Users) > state.Call.Stats.Participants {
+		state.Call.Stats.Participants = len(state.Call.Users)
+	}
 
-	return currState, prevState, err
+	if err := p.kvSetChannelState(channelID, state); err != nil {
+		return nil, nil, err
+	}
+
+	return state, prevState, err
 }
 
 func (p *Plugin) userCanStartOrJoin(userID string, state *channelState) bool {
@@ -181,75 +181,61 @@ func (p *Plugin) userCanStartOrJoin(userID string, state *channelState) bool {
 	return p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 }
 
-func (p *Plugin) removeUserSession(userID, connID, channelID string) (channelState, channelState, error) {
-	var currState channelState
-	var prevState channelState
-	errNotFound := errors.New("not found")
-
-	setChannelState := func(state *channelState) (*channelState, error) {
-		if state == nil {
-			return nil, fmt.Errorf("channel state is missing from store")
-		}
-
-		prevState = *state.Clone()
-
-		if state.Call == nil {
-			return nil, fmt.Errorf("call state is missing from channel state")
-		}
-
-		if _, ok := state.Call.Users[userID]; !ok {
-			p.LogDebug("user not found in state", "userID", userID)
-			return nil, errNotFound
-		}
-
-		if state.Call.ScreenSharingID == userID {
-			state.Call.ScreenSharingID = ""
-			state.Call.ScreenStreamID = ""
-			if state.Call.ScreenStartAt > 0 {
-				state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
-				state.Call.ScreenStartAt = 0
-			}
-		}
-
-		delete(state.Call.Users, userID)
-		delete(state.Call.Sessions, connID)
-
-		if state.Call.HostID == userID && len(state.Call.Users) > 0 {
-			state.Call.HostID = state.Call.getHostID(p.getBotID())
-		}
-
-		// If the bot leaves the call and recording has not been stopped it either means
-		// something has failed or the max duration timeout triggered.
-		if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 && connID == state.Call.Recording.BotConnID {
-			state.Call.Recording.EndAt = time.Now().UnixMilli()
-		}
-
-		if len(state.Call.Users) == 0 {
-			if state.Call.ScreenStartAt > 0 {
-				state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
-			}
-			state.Call = nil
-			state.NodeID = ""
-		}
-
-		currState = *state
-		return state, nil
+func (p *Plugin) removeUserSession(userID, connID, channelID string) (*channelState, *channelState, error) {
+	state, err := p.kvGetChannelState(channelID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get channel state: %w", err)
 	}
 
-	var err error
-	maxTries := 5
-	for i := 0; i < maxTries; i++ {
-		err = p.kvSetAtomicChannelState(channelID, setChannelState)
-		if errors.Is(err, errNotFound) {
-			// pausing in the edge case that the db state has not been fully
-			// replicated yet fixing possible read-after-write issues.
-			time.Sleep(10 * time.Millisecond)
-			continue
-		}
-		break
+	if state == nil {
+		return nil, nil, fmt.Errorf("channel state is missing from store")
 	}
 
-	return currState, prevState, err
+	if state.Call == nil {
+		return nil, nil, fmt.Errorf("call state is missing from channel state")
+	}
+
+	if _, ok := state.Call.Users[userID]; !ok {
+		return nil, nil, fmt.Errorf("user not found in call state")
+	}
+
+	prevState := state.Clone()
+
+	if state.Call.ScreenSharingID == userID {
+		state.Call.ScreenSharingID = ""
+		state.Call.ScreenStreamID = ""
+		if state.Call.ScreenStartAt > 0 {
+			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
+			state.Call.ScreenStartAt = 0
+		}
+	}
+
+	delete(state.Call.Users, userID)
+	delete(state.Call.Sessions, connID)
+
+	if state.Call.HostID == userID && len(state.Call.Users) > 0 {
+		state.Call.HostID = state.Call.getHostID(p.getBotID())
+	}
+
+	// If the bot leaves the call and recording has not been stopped it either means
+	// something has failed or the max duration timeout triggered.
+	if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 && connID == state.Call.Recording.BotConnID {
+		state.Call.Recording.EndAt = time.Now().UnixMilli()
+	}
+
+	if len(state.Call.Users) == 0 {
+		if state.Call.ScreenStartAt > 0 {
+			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
+		}
+		state.Call = nil
+		state.NodeID = ""
+	}
+
+	if err := p.kvSetChannelState(channelID, state); err != nil {
+		return nil, nil, err
+	}
+
+	return state, prevState, nil
 }
 
 // JoinAllowed returns true if the user is allowed to join the call, taking into
@@ -268,6 +254,15 @@ func (p *Plugin) joinAllowed(state *channelState) (bool, error) {
 }
 
 func (p *Plugin) removeSession(us *session) error {
+	if err := p.lockCall(us.channelID); err != nil {
+		return fmt.Errorf("failed to lock call: %w", err)
+	}
+	defer func() {
+		if err := p.unlockCall(us.channelID); err != nil {
+			p.LogError("failed to unlock call", "err", err.Error())
+		}
+	}()
+
 	p.LogDebug("removing session from state", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
 
 	p.mut.Lock()
@@ -276,7 +271,7 @@ func (p *Plugin) removeSession(us *session) error {
 
 	currState, prevState, err := p.removeUserSession(us.userID, us.originalConnID, us.channelID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to remove user session (sessionID=%s): %w", us.originalConnID, err)
 	}
 
 	// Checking if the user session was removed as this method can be called
@@ -341,5 +336,6 @@ func (p *Plugin) removeSession(us *session) error {
 			"ScreenDuration": prevState.Call.Stats.ScreenDuration,
 		})
 	}
+
 	return nil
 }

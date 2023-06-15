@@ -465,7 +465,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 	return nil
 }
 
-func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) error {
+func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (retErr error) {
 	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
 
 	// We should go through only if the user has permissions to the requested channel
@@ -500,7 +500,19 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 		}
 	}
 
-	state, prevState, err := p.addUserSession(userID, connID, channel)
+	if err := p.lockCall(channelID); err != nil {
+		return fmt.Errorf("failed to lock call: %w", err)
+	}
+	defer func() {
+		if retErr == nil {
+			return
+		}
+		if err := p.unlockCall(channelID); err != nil {
+			p.LogError("handleJoin: failed to unlock call on error", "err", err.Error())
+		}
+	}()
+
+	state, prevState, err := p.addUserSession(userID, connID, channel.Id)
 	if err != nil {
 		return fmt.Errorf("failed to add user session: %w", err)
 	} else if state.Call == nil {
@@ -631,6 +643,10 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 			"callID":   channelID,
 			"recState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}
+
+	if err := p.unlockCall(channelID); err != nil {
+		p.LogError("handleJoin: failed to unlock call", "err", err.Error())
 	}
 
 	p.wsReader(us, handlerID)
