@@ -7,13 +7,12 @@ import {useDispatch, useSelector, useStore} from 'react-redux';
 
 import {DID_RING_FOR_CALL, REMOVE_INCOMING_CALL} from 'src/action_types';
 import {dismissIncomingCallNotification, showSwitchCallModal} from 'src/actions';
+import {RING_LENGTH} from 'src/constants';
 import {logDebug} from 'src/log';
 import {connectedChannelID, didRingForCall} from 'src/selectors';
 import {IncomingCallNotification} from 'src/types/types';
 import {desktopGTE, getChannelURL, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
 import {notificationSounds} from 'src/webapp_globals';
-
-const RingLength = 10000;
 
 export const useDismissJoin = (callID: string, startAt: number, global = false) => {
     const store = useStore();
@@ -94,7 +93,7 @@ export const useRinging = (call: IncomingCallNotification, onWidget: boolean) =>
 
         // @ts-ignore
         notificationSounds?.ring(currentUser.notify_props.calls_notification_sound || 'Dynamic');
-        const timer = setTimeout(() => stopRinging(), RingLength);
+        const timer = setTimeout(() => stopRinging(), RING_LENGTH);
 
         // eslint-disable-next-line consistent-return
         return () => {
