@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -17,11 +18,15 @@ import (
 )
 
 func (p *Plugin) createBotSession() (*model.Session, error) {
-	m, err := cluster.NewMutex(p.API, "ensure_bot")
+	m, err := cluster.NewMutex(p.API, "ensure_bot", cluster.MutexConfig{})
 	if err != nil {
 		return nil, err
 	}
-	m.Lock()
+	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
+	defer cancelCtx()
+	if err := m.Lock(lockCtx); err != nil {
+		return nil, fmt.Errorf("failed to lock cluster mutex: %w", err)
+	}
 	defer m.Unlock()
 
 	botID, err := p.API.EnsureBotUser(&model.Bot{

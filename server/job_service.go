@@ -183,14 +183,14 @@ func (p *Plugin) newJobService(serviceURL string) (*jobService, error) {
 
 	// Here we need some coordination to avoid multiple plugin instances to
 	// register at the same time (at most one would succeed).
-	mutex, err := cluster.NewMutex(p.API, "job_service_registration")
+	mutex, err := cluster.NewMutex(p.API, "job_service_registration", cluster.MutexConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
 	}
 
 	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
 	defer cancelCtx()
-	if err := mutex.LockWithContext(lockCtx); err != nil {
+	if err := mutex.Lock(lockCtx); err != nil {
 		return nil, fmt.Errorf("failed to acquire cluster lock: %w", err)
 	}
 	defer mutex.Unlock()
@@ -251,14 +251,14 @@ func (s *jobService) GetJobLogs(jobID string) ([]byte, error) {
 func (s *jobService) UpdateJobRunner(runner string) error {
 	// Here we need some coordination to avoid multiple plugin instances to
 	// update the runner concurrently.
-	mutex, err := cluster.NewMutex(s.ctx.API, "job_service_runner_update")
+	mutex, err := cluster.NewMutex(s.ctx.API, "job_service_runner_update", cluster.MutexConfig{})
 	if err != nil {
 		return fmt.Errorf("failed to create cluster mutex: %w", err)
 	}
 
 	lockCtx, cancelCtx := context.WithTimeout(context.Background(), runnerUpdateLockTimeout)
 	defer cancelCtx()
-	if err := mutex.LockWithContext(lockCtx); err != nil {
+	if err := mutex.Lock(lockCtx); err != nil {
 		return fmt.Errorf("failed to acquire cluster lock: %w", err)
 	}
 	defer mutex.Unlock()

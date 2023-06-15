@@ -518,14 +518,14 @@ func (m *rtcdClientManager) storeConfig(cfg rtcd.ClientConfig) error {
 func (m *rtcdClientManager) registerRTCDClient(cfg rtcd.ClientConfig, reconnectCb rtcd.ClientReconnectCb, dialFn rtcd.DialContextFn) (rtcd.ClientConfig, *rtcd.Client, error) {
 	// Here we need some coordination to avoid multiple plugin instances to
 	// register at the same time (at most one would succeed).
-	mutex, err := cluster.NewMutex(m.ctx.API, "rtcd_registration")
+	mutex, err := cluster.NewMutex(m.ctx.API, "rtcd_registration", cluster.MutexConfig{})
 	if err != nil {
 		return cfg, nil, fmt.Errorf("failed to create cluster mutex: %w", err)
 	}
 
 	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
 	defer cancelCtx()
-	if err := mutex.LockWithContext(lockCtx); err != nil {
+	if err := mutex.Lock(lockCtx); err != nil {
 		return cfg, nil, fmt.Errorf("failed to acquire cluster lock: %w", err)
 	}
 	defer mutex.Unlock()
