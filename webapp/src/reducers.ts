@@ -580,7 +580,7 @@ const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, a
     }
 };
 
-interface callState {
+export interface callState {
     channelID: string,
     startAt?: number,
     ownerID?: string,

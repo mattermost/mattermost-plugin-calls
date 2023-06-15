@@ -5,7 +5,7 @@ import {getCurrentUser} from 'mattermost-redux/selectors/entities/users';
 import {useEffect} from 'react';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 
-import {DID_RING_FOR_CALL, REMOVE_INCOMING_CALL} from 'src/action_types';
+import {DID_RING_FOR_CALL} from 'src/action_types';
 import {dismissIncomingCallNotification, showSwitchCallModal} from 'src/actions';
 import {RING_LENGTH} from 'src/constants';
 import {logDebug} from 'src/log';
@@ -24,13 +24,6 @@ export const useDismissJoin = (callID: string, startAt: number, global = false) 
     };
 
     const onJoin = () => {
-        dispatch({
-            type: REMOVE_INCOMING_CALL,
-            data: {
-                callID,
-            },
-        });
-
         if (connectedID) {
             if (global && desktopGTE(5, 5)) {
                 logDebug('sending calls-join-request message to desktop app');

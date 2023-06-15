@@ -28,6 +28,8 @@ import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/commo
 
 import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
 
+import {callState} from 'src/reducers';
+
 import {getChannelURL} from 'src/utils';
 
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
@@ -39,6 +41,14 @@ const pluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
 
 export const voiceConnectedChannels = (state: GlobalState): { [channelId: string]: string[] } =>
     pluginState(state).voiceConnectedChannels;
+
+export const voiceConnectedCurrentChannel: (state: GlobalState) => string[] =
+    createSelector(
+        'voiceConnectedCurrentChannel',
+        voiceConnectedChannels,
+        getCurrentChannelId,
+        (channels, currChannelId) => channels[currChannelId],
+    );
 
 export const voiceConnectedUsers = (state: GlobalState): string[] => {
     const currentChannelID = getCurrentChannelId(state);
@@ -97,6 +107,17 @@ export const voiceConnectedProfilesInChannel: (state: GlobalState, channelId: st
         return pluginState(state).voiceConnectedProfiles[channelID] || [];
     };
 
+const voiceConnectedProfilesAllChannels: (state: GlobalState) => { [channelID: string] : UserProfile[] | undefined } =
+    (state) => pluginState(state).voiceConnectedProfiles;
+
+export const voiceProfilesInCurrentChannel: (state: GlobalState) => UserProfile[] =
+    createSelector(
+        'voiceProfilesInCurrentChannel',
+        voiceConnectedProfilesAllChannels,
+        getCurrentChannelId,
+        (channelToProfiles, currChannelId) => channelToProfiles[currChannelId] || [],
+    );
+
 export const voiceUsersStatuses = (state: GlobalState): { [id: string]: UserState } => {
     return pluginState(state).voiceUsersStatuses[connectedChannelID(state)] || {};
 };
@@ -112,6 +133,16 @@ export const voiceUsersStatusesInChannel = (state: GlobalState, channelID: strin
 export const voiceChannelCallStartAt = (state: GlobalState, channelID: string): number | undefined => {
     return pluginState(state).voiceChannelCalls[channelID]?.startAt;
 };
+
+export const voiceChannelCalls = (state: GlobalState) => pluginState(state).voiceChannelCalls;
+
+export const voiceChannelCallInCurrentChannel: (state: GlobalState) => callState =
+    createSelector(
+        'callStartAtInCurrentChannel',
+        voiceChannelCalls,
+        getCurrentChannelId,
+        (calls, currChannelId) => calls[currChannelId],
+    );
 
 export const voiceChannelCallOwnerID = (state: GlobalState, channelID: string): string | undefined => {
     return pluginState(state).voiceChannelCalls[channelID]?.ownerID;

@@ -44,7 +44,7 @@ const Container = styled.div<{ wider: boolean }>`
     display: flex;
     flex-direction: column;
     gap: 5px;
-    z-index: 18;
+    z-index: 102;
     width: ${(props) => (props.wider ? '280px' : '216px')};
     bottom: 10px;
     left: 12px;

@@ -87,7 +87,7 @@ export const CallIncoming = ({call}: Props) => {
                 <RowSpaced>
                     <WideButton
                         onClick={onDismiss}
-                        css={'margin-right: 12px'}
+                        css={'margin-right: 8px'}
                     >
                         <CompassIcon
                             icon={'close'}
@@ -135,16 +135,21 @@ const Message = styled.div`
 
 const RowSpaced = styled(Row)`
     justify-content: space-around;
-    margin-top: 16px;
+    margin-top: 12px;
 `;
 
 const WideButton = styled(Button)`
     flex: 1;
     max-width: 126px;
     justify-content: center;
+    padding: 0 16px;
 
     background-color: rgba(var(--button-color-rgb), 0.12);
     color: var(--button-color);
+
+    &:hover {
+        background-color: rgba(var(--button-color-rgb), 0.16);
+    }
 `;
 
 const JoinButton = styled(WideButton)`

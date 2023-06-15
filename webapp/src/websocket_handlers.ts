@@ -19,7 +19,7 @@ import {
 } from '@calls/common/lib/types';
 import {batchActions} from 'redux-batched-actions';
 
-import {incomingCallOnChannel, userDisconnected} from 'src/actions';
+import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected} from 'src/actions';
 
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 
@@ -44,7 +44,6 @@ import {
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
     CALL_HAS_ENDED,
-    REMOVE_INCOMING_CALL,
 } from './action_types';
 import {
     getProfilesByIds,
@@ -143,6 +142,10 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
         } else if (shouldPlayJoinUserSound(store.getState())) {
             playSound('join_user');
         }
+    }
+
+    if (userID === currentUserID) {
+        store.dispatch(removeIncomingCallNotification(channelID));
     }
 
     store.dispatch({
@@ -333,10 +336,5 @@ export function handleUserDismissedNotification(store: Store, ev: WebSocketMessa
     if (ev.data.userID !== userID) {
         return;
     }
-    store.dispatch({
-        type: REMOVE_INCOMING_CALL,
-        data: {
-            callID: ev.data.callID,
-        },
-    });
+    store.dispatch(removeIncomingCallNotification(ev.data.callID));
 }

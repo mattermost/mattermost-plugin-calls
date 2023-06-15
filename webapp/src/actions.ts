@@ -48,6 +48,7 @@ import {
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_USER_DISCONNECTED,
     RTCD_ENABLED,
+    REMOVE_INCOMING_CALL,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -371,5 +372,16 @@ export const dismissIncomingCallNotification = (callID: string, startAt: number)
                 },
             },
         ]));
+    };
+};
+
+export const removeIncomingCallNotification = (callID: string) => {
+    return async (dispatch: DispatchFunc) => {
+        await dispatch({
+            type: REMOVE_INCOMING_CALL,
+            data: {
+                callID,
+            },
+        });
     };
 };
