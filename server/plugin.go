@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -11,6 +12,7 @@ import (
 
 	"golang.org/x/time/rate"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
@@ -52,6 +54,10 @@ type Plugin struct {
 	apiLimitersMut sync.RWMutex
 
 	botSession *model.Session
+
+	// A map of callID -> *cluster.Mutex to guarantee atomicity of call state
+	// operations.
+	callsClusterLocks map[string]*cluster.Mutex
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
@@ -362,4 +368,39 @@ func (p *Plugin) updateCallPostEnded(postID string) (float64, error) {
 	}
 
 	return dur, nil
+}
+
+func (p *Plugin) lockCall(callID string) error {
+	p.mut.Lock()
+	mut := p.callsClusterLocks[callID]
+	if mut == nil {
+		p.LogDebug("creating cluster mutex for call", "callID", callID)
+		m, err := cluster.NewMutex(p.API, callID, cluster.MutexConfig{})
+		if err != nil {
+			p.mut.Unlock()
+			return fmt.Errorf("failed to create new call cluster mutex: %w", err)
+		}
+		p.callsClusterLocks[callID] = m
+		mut = m
+	}
+	p.mut.Unlock()
+
+	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
+	defer cancelCtx()
+
+	return mut.Lock(lockCtx)
+}
+
+func (p *Plugin) unlockCall(callID string) error {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+
+	mut := p.callsClusterLocks[callID]
+	if mut == nil {
+		return fmt.Errorf("call cluster mutex doesn't exist")
+	}
+
+	mut.Unlock()
+
+	return nil
 }
