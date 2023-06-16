@@ -271,7 +271,7 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title, threadID string) (string, string, error) {
+func (p *Plugin) startNewCallPost(state *channelState, userID, channelID, title, threadID string) (string, string, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return "", "", appErr
@@ -305,7 +305,7 @@ func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title
 		Type:      "custom_calls",
 		Props: map[string]interface{}{
 			"attachments": []*model.SlackAttachment{&slackAttachment},
-			"start_at":    startAt,
+			"start_at":    state.Call.StartAt,
 			"title":       title,
 		},
 	}
@@ -318,20 +318,10 @@ func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title
 		threadID = createdPost.Id
 	}
 
-	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil {
-			return nil, fmt.Errorf("channel state is missing from store")
-		}
-		if state.Call == nil {
-			return nil, fmt.Errorf("call is missing from channel state")
-		}
-
-		state.Call.PostID = createdPost.Id
-		state.Call.ThreadID = threadID
-		return state, nil
-	})
-	if err != nil {
-		return "", "", err
+	state.Call.PostID = createdPost.Id
+	state.Call.ThreadID = threadID
+	if err := p.kvSetChannelState(channelID, state); err != nil {
+		return "", "", fmt.Errorf("failed to set channel state: %w", err)
 	}
 
 	return createdPost.Id, threadID, nil

@@ -574,7 +574,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 			)
 		}
 
-		postID, threadID, err := p.startNewCallPost(userID, channelID, state.Call.StartAt, title, threadID)
+		postID, threadID, err := p.startNewCallPost(state, userID, channelID, title, threadID)
 		if err != nil {
 			p.LogError(err.Error())
 		}
