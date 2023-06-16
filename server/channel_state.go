@@ -242,26 +242,6 @@ func (p *Plugin) kvSetChannelState(channelID string, state *channelState) error 
 	return nil
 }
 
-func (p *Plugin) kvSetAtomicChannelState(channelID string, cb func(state *channelState) (*channelState, error)) error {
-	return p.kvSetAtomic(channelID, func(data []byte) ([]byte, error) {
-		var err error
-		var state *channelState
-		if data != nil {
-			if err := json.Unmarshal(data, &state); err != nil {
-				return nil, err
-			}
-		}
-		state, err = cb(state)
-		if err != nil {
-			return nil, err
-		}
-		if state == nil {
-			return nil, nil
-		}
-		return json.Marshal(state)
-	})
-}
-
 func (p *Plugin) cleanUpState() (retErr error) {
 	p.LogDebug("cleaning up calls state")
 	var page int
