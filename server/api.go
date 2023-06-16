@@ -178,6 +178,17 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 
 	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 
+	if err := p.lockCall(channelID); err != nil {
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer func() {
+		if err := p.unlockCall(channelID); err != nil {
+			p.LogError("failed to unlock call", "err", err.Error())
+		}
+	}()
+
 	state, err := p.kvGetChannelState(channelID)
 	if err != nil {
 		res.Err = err.Error()
@@ -197,34 +208,33 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 		return
 	}
 
-	callID := state.Call.ID
+	if state.Call.EndAt == 0 {
+		state.Call.EndAt = time.Now().UnixMilli()
+	}
 
-	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil || state.Call == nil {
-			return nil, nil
-		}
-
-		if state.Call.ID != callID {
-			return nil, fmt.Errorf("previous call has ended and new one has started")
-		}
-
-		if state.Call.EndAt == 0 {
-			state.Call.EndAt = time.Now().UnixMilli()
-		}
-
-		return state, nil
-	}); err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusForbidden
+	if err := p.kvSetChannelState(channelID, state); err != nil {
+		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
 	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
+	callID := state.Call.ID
+
 	go func() {
 		// We wait a few seconds for the call to end cleanly. If this doesn't
 		// happen we force end it.
 		time.Sleep(5 * time.Second)
+
+		if err := p.lockCall(channelID); err != nil {
+			p.LogError("failed to lock call", "err", err.Error())
+		}
+		defer func() {
+			if err := p.unlockCall(channelID); err != nil {
+				p.LogError("failed to unlock call", "err", err.Error())
+			}
+		}()
 
 		state, err := p.kvGetChannelState(channelID)
 		if err != nil {
@@ -251,7 +261,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 			}
 		}
 
-		if err := p.cleanCallState(channelID); err != nil {
+		if err := p.cleanCallState(state); err != nil {
 			p.LogError(err.Error())
 		}
 	}()

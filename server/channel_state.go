@@ -262,7 +262,7 @@ func (p *Plugin) kvSetAtomicChannelState(channelID string, cb func(state *channe
 	})
 }
 
-func (p *Plugin) cleanUpState() error {
+func (p *Plugin) cleanUpState() (retErr error) {
 	p.LogDebug("cleaning up calls state")
 	var page int
 	perPage := 100
@@ -296,8 +296,29 @@ func (p *Plugin) cleanUpState() error {
 				continue
 			}
 
-			if err := p.cleanCallState(k); err != nil {
+			if err := p.lockCall(k); err != nil {
+				p.LogError("failed to lock call", "err", err.Error())
+				continue
+			}
+			defer func(channelID string) {
+				if retErr == nil {
+					return
+				}
+				if err := p.unlockCall(channelID); err != nil {
+					p.LogError("failed to unlock call", "err", err.Error())
+				}
+			}(k)
+			state, err := p.kvGetChannelState(k)
+			if err != nil {
+				return fmt.Errorf("failed to get channel state: %w", err)
+			}
+
+			if err := p.cleanCallState(state); err != nil {
 				return fmt.Errorf("failed to clean up state: %w", err)
+			}
+			if err := p.unlockCall(k); err != nil {
+				p.LogError("failed to unlock call", "err", err.Error())
+				continue
 			}
 		}
 		page++
@@ -305,22 +326,18 @@ func (p *Plugin) cleanUpState() error {
 	return nil
 }
 
-func (p *Plugin) cleanCallState(channelID string) error {
-	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil {
-			return nil, nil
-		}
-		state.NodeID = ""
+func (p *Plugin) cleanCallState(state *channelState) error {
+	if state == nil {
+		return nil
+	}
 
-		if state.Call != nil {
-			if _, err := p.updateCallPostEnded(state.Call.PostID); err != nil {
-				p.LogError(err.Error())
-			}
+	state.NodeID = ""
+
+	if state.Call != nil {
+		if _, err := p.updateCallPostEnded(state.Call.PostID); err != nil {
+			return err
 		}
 		state.Call = nil
-		return state, nil
-	}); err != nil {
-		return fmt.Errorf("failed to cleanup state: %w", err)
 	}
 
 	return nil
