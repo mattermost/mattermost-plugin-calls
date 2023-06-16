@@ -351,15 +351,28 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		return
 	}
 
-	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil {
-			state = &channelState{}
+	if err := p.lockCall(channelID); err != nil {
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer func() {
+		if err := p.unlockCall(channelID); err != nil {
+			p.LogError("failed to unlock call", "err", err.Error())
 		}
-		state.Enabled = info.Enabled
-		return state, nil
-	}); err != nil {
-		// handle creation case
+	}()
+	state, err := p.kvGetChannelState(channelID)
+	if err != nil {
 		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	if state == nil {
+		state = &channelState{}
+	}
+	state.Enabled = info.Enabled
+	if err := p.kvSetChannelState(channelID, state); err != nil {
+		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
