@@ -81,36 +81,46 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 	}
 
-	if err := p.kvSetAtomicChannelState(us.channelID, func(state *channelState) (*channelState, error) {
-		if state == nil {
-			return nil, fmt.Errorf("channel state is missing from store")
+	if err := p.lockCall(us.channelID); err != nil {
+		return fmt.Errorf("failed to lock call: %w", err)
+	}
+	defer func() {
+		if err := p.unlockCall(us.channelID); err != nil {
+			p.LogError("failed to unlock call", "err", err.Error())
 		}
-		if state.Call == nil {
-			return nil, fmt.Errorf("call state is missing from channel state")
-		}
+	}()
+	state, err := p.kvGetChannelState(us.channelID)
+	if err != nil {
+		return fmt.Errorf("failed to get channel state: %w", err)
+	}
 
-		if msg.Type == clientMessageTypeScreenOn {
-			if state.Call.ScreenSharingID != "" {
-				return nil, fmt.Errorf("cannot start screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
-			}
-			state.Call.ScreenSharingID = us.userID
-			state.Call.ScreenStreamID = data["screenStreamID"]
-			state.Call.ScreenStartAt = time.Now().Unix()
-		} else {
-			if state.Call.ScreenSharingID != us.userID {
-				return nil, fmt.Errorf("cannot stop screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
-			}
-			state.Call.ScreenSharingID = ""
-			state.Call.ScreenStreamID = ""
-			if state.Call.ScreenStartAt > 0 {
-				state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
-				state.Call.ScreenStartAt = 0
-			}
-		}
+	if state == nil {
+		return fmt.Errorf("channel state is missing from store")
+	}
+	if state.Call == nil {
+		return fmt.Errorf("call state is missing from channel state")
+	}
 
-		return state, nil
-	}); err != nil {
-		return err
+	if msg.Type == clientMessageTypeScreenOn {
+		if state.Call.ScreenSharingID != "" {
+			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
+		}
+		state.Call.ScreenSharingID = us.userID
+		state.Call.ScreenStreamID = data["screenStreamID"]
+		state.Call.ScreenStartAt = time.Now().Unix()
+	} else {
+		if state.Call.ScreenSharingID != us.userID {
+			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
+		}
+		state.Call.ScreenSharingID = ""
+		state.Call.ScreenStreamID = ""
+		if state.Call.ScreenStartAt > 0 {
+			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
+			state.Call.ScreenStartAt = 0
+		}
+	}
+	if err := p.kvSetChannelState(us.channelID, state); err != nil {
+		return fmt.Errorf("failed to set channel state: %w", err)
 	}
 
 	msgType := rtc.ScreenOnMessage
@@ -165,7 +175,7 @@ func (ed EmojiData) toMap() map[string]interface{} {
 	}
 }
 
-func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID string) {
+func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID string) error {
 	p.metrics.IncWebSocketEvent("in", msg.Type)
 	switch msg.Type {
 	case clientMessageTypeSDP:
@@ -179,7 +189,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				SenderID:      p.nodeID,
 				ClientMessage: msg,
 			}, clusterMessageTypeSignaling, handlerID); err != nil {
-				p.LogError(err.Error())
+				return err
 			}
 		} else {
 			rtcMsg := rtc.Message{
@@ -189,7 +199,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 
 			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
-				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
+				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		}
 	case clientMessageTypeICE:
@@ -202,7 +212,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 
 			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
-				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
+				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		} else {
 			// need to relay signaling.
@@ -213,7 +223,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				SenderID:      p.nodeID,
 				ClientMessage: msg,
 			}, clusterMessageTypeSignaling, handlerID); err != nil {
-				p.LogError(err.Error())
+				return err
 			}
 		}
 	case clientMessageTypeMute, clientMessageTypeUnmute:
@@ -226,7 +236,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				SenderID:      p.nodeID,
 				ClientMessage: msg,
 			}, clusterMessageTypeUserState, handlerID); err != nil {
-				p.LogError(err.Error())
+				return err
 			}
 		} else {
 			msgType := rtc.UnmuteMessage
@@ -241,24 +251,35 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 
 			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
-				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
+				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		}
 
-		if err := p.kvSetAtomicChannelState(us.channelID, func(state *channelState) (*channelState, error) {
-			if state == nil {
-				return nil, fmt.Errorf("channel state is missing from store")
+		if err := p.lockCall(us.channelID); err != nil {
+			return fmt.Errorf("failed to lock call: %w", err)
+		}
+		defer func() {
+			if err := p.unlockCall(us.channelID); err != nil {
+				p.LogError("failed to unlock call", "err", err.Error())
 			}
-			if state.Call == nil {
-				return nil, fmt.Errorf("call state is missing from channel state")
-			}
-			if uState := state.Call.Users[us.userID]; uState != nil {
-				uState.Unmuted = msg.Type == clientMessageTypeUnmute
-			}
-
-			return state, nil
-		}); err != nil {
-			p.LogError(err.Error())
+		}()
+		state, err := p.kvGetChannelState(us.channelID)
+		if err != nil {
+			return fmt.Errorf("failed to get channel state: %w", err)
+		}
+		if state == nil {
+			return fmt.Errorf("channel state is missing from store")
+		}
+		if state.Call == nil {
+			return fmt.Errorf("call state is missing from channel state")
+		}
+		uState := state.Call.Users[us.userID]
+		if uState == nil {
+			return fmt.Errorf("user state is missing from call state")
+		}
+		uState.Unmuted = msg.Type == clientMessageTypeUnmute
+		if err := p.kvSetChannelState(us.channelID, state); err != nil {
+			return fmt.Errorf("failed to set channel state: %w", err)
 		}
 
 		evType := wsEventUserUnmuted
@@ -270,7 +291,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
 		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
-			p.LogError(err.Error())
+			return err
 		}
 	case clientMessageTypeRaiseHand, clientMessageTypeUnraiseHand:
 		evType := wsEventUserUnraiseHand
@@ -278,37 +299,47 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			evType = wsEventUserRaiseHand
 		}
 
-		var ts int64
-		if msg.Type == clientMessageTypeRaiseHand {
-			ts = time.Now().UnixMilli()
+		if err := p.lockCall(us.channelID); err != nil {
+			return fmt.Errorf("failed to lock call: %w", err)
 		}
-
-		if err := p.kvSetAtomicChannelState(us.channelID, func(state *channelState) (*channelState, error) {
-			if state == nil {
-				return nil, fmt.Errorf("channel state is missing from store")
+		defer func() {
+			if err := p.unlockCall(us.channelID); err != nil {
+				p.LogError("failed to unlock call", "err", err.Error())
 			}
-			if state.Call == nil {
-				return nil, fmt.Errorf("call state is missing from channel state")
-			}
-			if uState := state.Call.Users[us.userID]; uState != nil {
-				uState.RaisedHand = ts
-			}
-
-			return state, nil
-		}); err != nil {
-			p.LogError(err.Error())
+		}()
+		state, err := p.kvGetChannelState(us.channelID)
+		if err != nil {
+			return fmt.Errorf("failed to get channel state: %w", err)
+		}
+		if state == nil {
+			return fmt.Errorf("channel state is missing from store")
+		}
+		if state.Call == nil {
+			return fmt.Errorf("call state is missing from channel state")
+		}
+		uState := state.Call.Users[us.userID]
+		if uState == nil {
+			return fmt.Errorf("user state is missing from call state")
+		}
+		if msg.Type == clientMessageTypeRaiseHand {
+			uState.RaisedHand = time.Now().UnixMilli()
+		} else {
+			uState.RaisedHand = 0
+		}
+		if err := p.kvSetChannelState(us.channelID, state); err != nil {
+			return fmt.Errorf("failed to set channel state: %w", err)
 		}
 
 		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":      us.userID,
-			"raised_hand": ts,
+			"raised_hand": uState.RaisedHand,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeReact:
 		evType := wsEventUserReacted
 
 		var emoji EmojiData
 		if err := json.Unmarshal(msg.Data, &emoji); err != nil {
-			p.LogError(err.Error())
+			return fmt.Errorf("failed to unmarshal emoji data: %w", err)
 		}
 
 		p.publishWebSocketEvent(evType, map[string]interface{}{
@@ -317,9 +348,10 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"timestamp": time.Now().UnixMilli(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 	default:
-		p.LogError("invalid client message", "type", msg.Type)
-		return
+		return fmt.Errorf("invalid client message type %q", msg.Type)
 	}
+
+	return nil
 }
 
 func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
@@ -347,7 +379,9 @@ func (p *Plugin) wsReader(us *session, handlerID string) {
 			if !ok {
 				return
 			}
-			p.handleClientMsg(us, msg, handlerID)
+			if err := p.handleClientMsg(us, msg, handlerID); err != nil {
+				p.LogError("handleClientMsg failed", "err", err.Error(), "connID", us.connID)
+			}
 		case <-us.wsReconnectCh:
 			return
 		case <-us.leaveCh:

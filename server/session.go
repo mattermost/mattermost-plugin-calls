@@ -271,7 +271,7 @@ func (p *Plugin) removeSession(us *session) error {
 
 	currState, prevState, err := p.removeUserSession(us.userID, us.originalConnID, us.channelID)
 	if err != nil {
-		return fmt.Errorf("failed to remove user session (sessionID=%s): %w", us.originalConnID, err)
+		return fmt.Errorf("failed to remove user session (connID=%s): %w", us.originalConnID, err)
 	}
 
 	// Checking if the user session was removed as this method can be called
