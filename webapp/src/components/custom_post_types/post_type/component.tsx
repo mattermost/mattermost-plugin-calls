@@ -14,6 +14,8 @@ import {getUser} from 'mattermost-redux/selectors/entities/users';
 
 import {DateTime, Duration as LuxonDuration} from 'luxon';
 
+import {useDismissJoin} from 'src/components/incoming_calls/hooks';
+
 import Timestamp from 'src/components/timestamp';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
@@ -35,7 +37,6 @@ interface Props {
     connectedID: string,
     pictures: string[],
     profiles: UserProfile[],
-    showSwitchCallModal: (targetID: string) => void,
     isCloudPaid: boolean,
     maxParticipants: number,
     militaryTime: boolean,
@@ -46,7 +47,6 @@ const PostType = ({
     connectedID,
     pictures,
     profiles,
-    showSwitchCallModal,
     isCloudPaid,
     maxParticipants,
     militaryTime,
@@ -57,18 +57,11 @@ const PostType = ({
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
+    const [, onJoin] = useDismissJoin(post.channel_id, post.props.start_at);
 
     const timestampFn = useCallback(() => {
         return callStartedTimestampFn(intl, post.props.start_at);
     }, [intl, post.props.start_at]);
-
-    const onJoinCallClick = () => {
-        if (connectedID) {
-            showSwitchCallModal(post.channel_id);
-            return;
-        }
-        window.postMessage({type: 'connectCall', channelID: post.channel_id}, window.origin);
-    };
 
     const onLeaveButtonClick = () => {
         if (window.callsClient) {
@@ -118,7 +111,7 @@ const PostType = ({
     );
 
     let joinButton = (
-        <JoinButton onClick={onJoinCallClick}>
+        <JoinButton onClick={onJoin}>
             <CallIcon fill='var(--center-channel-bg)'/>
             <ButtonText>{formatMessage({defaultMessage: 'Join call'})}</ButtonText>
         </JoinButton>

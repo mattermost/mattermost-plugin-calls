@@ -85,9 +85,10 @@ export function getCallsClient(): CallsClient | undefined {
 
 export function shouldRenderCallsIncoming() {
     const win = window.opener ? window.opener : window;
-    const nonChannels = window.location.pathname.startsWith('/boards') || window.location.pathname.startsWith('/playbooks');
+    const nonChannels = window.location.pathname.startsWith('/boards') || window.location.pathname.startsWith('/playbooks') || window.location.pathname.includes(`${pluginId}/expanded/`);
     if (win.desktop && nonChannels) {
-        // don't render when we're in desktop and in boards or playbooks. (can be simplified, but this is clearer)
+        // don't render when we're in desktop, or in boards or playbooks, or in the expanded view.
+        // (can be simplified, but this is clearer)
         return false;
     }
     return true;

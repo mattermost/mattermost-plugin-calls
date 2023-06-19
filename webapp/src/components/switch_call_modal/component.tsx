@@ -138,7 +138,7 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
         if (isDMChannel(this.props.currentChannel)) {
             message2 = (<React.Fragment>
                 {formatMessage({defaultMessage: 'Do you want to leave and join a call with {user}?'}, {
-                    participant: (<span style={{fontWeight: 600}}>{getUserDisplayName(this.props.currentDMUser)}</span>)})}
+                    user: (<span style={{fontWeight: 600}}>{getUserDisplayName(this.props.currentDMUser)}</span>)})}
             </React.Fragment>);
         } else if (isGMChannel(this.props.currentChannel)) {
             message2 = (<React.Fragment>

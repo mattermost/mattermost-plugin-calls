@@ -24,6 +24,8 @@ export const useDismissJoin = (callID: string, startAt: number, global = false) 
     };
 
     const onJoin = () => {
+        dispatch(dismissIncomingCallNotification(callID, startAt));
+
         if (connectedID) {
             if (global && desktopGTE(5, 5)) {
                 logDebug('sending calls-join-request message to desktop app');

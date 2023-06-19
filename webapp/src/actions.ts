@@ -366,6 +366,12 @@ export const dismissIncomingCallNotification = (callID: string, startAt: number)
         );
         await dispatch(batchActions([
             {
+                type: REMOVE_INCOMING_CALL,
+                data: {
+                    callID,
+                },
+            },
+            {
                 type: DID_RING_FOR_CALL,
                 data: {
                     callUniqueID: `${callID}${startAt}`,
