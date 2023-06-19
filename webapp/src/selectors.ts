@@ -196,8 +196,9 @@ export const recentlyJoinedUsers = (state: GlobalState, channelID: string): stri
 export const incomingCalls = (state: GlobalState): IncomingCallNotification[] =>
     pluginState(state).incomingCalls;
 
-export const didRingForCall = (state: GlobalState, callUniqueID: string): boolean =>
-    pluginState(state).didRingForCalls[callUniqueID] || false;
+export const didRingForCall = (state: GlobalState, callUniqueID: string): boolean => {
+    return pluginState(state).didRingForCalls[callUniqueID] || false;
+};
 
 //
 // Config logic

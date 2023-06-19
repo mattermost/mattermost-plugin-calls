@@ -605,12 +605,20 @@ export default class Plugin {
                                 startAt: data[i].call?.start_at,
                                 ownerID: data[i].call?.owner_id,
                                 hostID: data[i].call?.host_id,
-                                dismissedNotification: data[i].call?.dismissed_notification || [],
+                                dismissedNotification: data[i].call?.dismissed_notification || {},
                             },
                         });
 
                         const callExists = incomingCalls(store.getState()).findIndex((ic) => ic.callID === data[i].channel_id) >= 0;
                         if (data[i].call && !callExists) {
+                            // dismissedNotification is populated after the actions array has been batched, so manually check:
+                            const dismissed = data[i].call?.dismissed_notification;
+                            if (dismissed) {
+                                const currentUserID = getCurrentUserId(store.getState());
+                                if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
+                                    continue;
+                                }
+                            }
                             store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.host_id, data[i].call.start_at));
                         }
                     }
