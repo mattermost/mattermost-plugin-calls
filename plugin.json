@@ -186,6 +186,13 @@
         "help_text": "When set to true the RTC service will work in dual-stack mode, listening for IPv6 connections and generating candidates in addition to IPv4 ones.",
         "default": false,
         "hosting": "on-prem"
+      },
+      {
+        "key": "EnableRinging",
+        "display_name": "Enable call ringing (Beta)",
+        "type": "bool",
+        "default": false,
+        "help_text": "When set to true it enables the call ringing functionality: calls started in DM or GM channels will ring for other members of the channel."
       }
     ]
   },
