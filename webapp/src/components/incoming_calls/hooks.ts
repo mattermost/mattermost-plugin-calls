@@ -20,11 +20,11 @@ export const useDismissJoin = (callID: string, startAt: number, global = false) 
     const connectedID = useSelector(connectedChannelID) || '';
 
     const onDismiss = () => {
-        dispatch(dismissIncomingCallNotification(callID, startAt));
+        dispatch(dismissIncomingCallNotification(callID));
     };
 
     const onJoin = () => {
-        dispatch(dismissIncomingCallNotification(callID, startAt));
+        dispatch(dismissIncomingCallNotification(callID));
 
         if (connectedID) {
             if (global && desktopGTE(5, 5)) {

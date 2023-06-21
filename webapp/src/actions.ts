@@ -17,7 +17,6 @@ import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-
 
 import {MessageDescriptor} from 'react-intl';
 import {Dispatch} from 'redux';
-import {batchActions} from 'redux-batched-actions';
 
 import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from 'src/cloud_pricing/modals';
 import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
@@ -34,7 +33,6 @@ import {modals, openPricingModal} from 'src/webapp_globals';
 import {
     ADD_INCOMING_CALL,
     CALL_HAS_ENDED,
-    DID_RING_FOR_CALL,
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
@@ -358,30 +356,17 @@ export const userDisconnected = (channelID: string, userID: string) => {
     };
 };
 
-export const dismissIncomingCallNotification = (callID: string, startAt: number) => {
+export const dismissIncomingCallNotification = (callID: string) => {
     return async (dispatch: DispatchFunc) => {
         Client4.doFetch(
             `${getPluginPath()}/calls/${callID}/dismiss-notification`,
             {method: 'post'},
         );
-        await dispatch(batchActions([
-            {
-                type: REMOVE_INCOMING_CALL,
-                data: {
-                    callID,
-                },
-            },
-            {
-                type: DID_RING_FOR_CALL,
-                data: {
-                    callUniqueID: `${callID}${startAt}`,
-                },
-            },
-        ]));
+        await dispatch(removeIncomingCallNotification(callID));
     };
 };
 
-export const removeIncomingCallNotification = (callID: string) => {
+export const removeIncomingCallNotification = (callID: string): ActionFunc => {
     return async (dispatch: DispatchFunc) => {
         await dispatch({
             type: REMOVE_INCOMING_CALL,
@@ -389,5 +374,6 @@ export const removeIncomingCallNotification = (callID: string) => {
                 callID,
             },
         });
+        return {};
     };
 };
