@@ -32,7 +32,7 @@ export const CallIncoming = ({call}: Props) => {
     const currentUser = useSelector(getCurrentUser);
 
     useRinging(call, false);
-    const [onDismiss, onJoin] = useDismissJoin(call.callID, call.startAt);
+    const [onDismiss, onJoin] = useDismissJoin(call.callID);
 
     const hostName = displayUsername(host, teammateNameDisplay, false);
 

@@ -57,7 +57,7 @@ const PostType = ({
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
-    const [, onJoin] = useDismissJoin(post.channel_id, post.props.start_at);
+    const [, onJoin] = useDismissJoin(post.channel_id);
 
     const timestampFn = useCallback(() => {
         return callStartedTimestampFn(intl, post.props.start_at);

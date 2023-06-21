@@ -14,7 +14,7 @@ import {IncomingCallNotification} from 'src/types/types';
 import {desktopGTE, getChannelURL, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
 import {notificationSounds} from 'src/webapp_globals';
 
-export const useDismissJoin = (callID: string, startAt: number, global = false) => {
+export const useDismissJoin = (callID: string, global = false) => {
     const store = useStore();
     const dispatch = useDispatch();
     const connectedID = useSelector(connectedChannelID) || '';

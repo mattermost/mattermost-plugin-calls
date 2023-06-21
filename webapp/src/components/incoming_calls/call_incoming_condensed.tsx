@@ -30,7 +30,7 @@ export const CallIncomingCondensed = ({call, onWidget = false, global = false}: 
     const host = useSelector((state: GlobalState) => getUser(state, call.hostID));
 
     useRinging(call, onWidget);
-    const [onDismiss, onJoin] = useDismissJoin(call.callID, call.startAt, global);
+    const [onDismiss, onJoin] = useDismissJoin(call.callID, global);
 
     const hostName = displayUsername(host, teammateNameDisplay, false);
     const message = (
