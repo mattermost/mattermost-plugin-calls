@@ -192,7 +192,7 @@
         "display_name": "Enable call ringing (Beta)",
         "type": "bool",
         "default": false,
-        "help_text": "When set to true it enables the call ringing functionality: calls started in DM or GM channels will ring for other members of the channel."
+        "help_text": "When set to true, ringing functionality is enabled: participants in DM and GM channels will receive a desktop alert and a ringing notification when a call is started."
       }
     ]
   },
