@@ -212,6 +212,9 @@ export const didRingForCall = (state: GlobalState, callID: string): boolean => {
     return pluginState(state).didRingForCalls[callID] || false;
 };
 
+export const didNotifyForCall = (state: GlobalState, callUniqueID: string): boolean =>
+    pluginState(state).didNotifyForCalls[callUniqueID] || false;
+
 //
 // Config logic
 //

@@ -1,8 +1,9 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
-import {Thunk} from 'mattermost-redux/types/actions';
+import {DispatchFunc, Thunk} from 'mattermost-redux/types/actions';
 
 export const {
     modals,
@@ -34,3 +35,6 @@ export const {
 
     // @ts-ignore
 } = global.ProductApi ?? {};
+
+// @ts-ignore
+export const sendDesktopNotificationToMe: (title: string, body: string, channel: Channel, teamId: string, silent: boolean, soundName: string, url: string) => (dispatch: DispatchFunc) => void = global.sendDesktopNotificationToMe;

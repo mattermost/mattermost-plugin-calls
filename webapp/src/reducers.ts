@@ -58,6 +58,7 @@ import {
     REMOVE_INCOMING_CALL,
     DID_RING_FOR_CALL,
     RTCD_ENABLED,
+    DID_NOTIFY_FOR_CALL,
 } from './action_types';
 
 interface channelStateAction {
@@ -814,19 +815,31 @@ const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingC
     }
 };
 
-type DidRingForCallsAction = {
+type DidRingNotifyForCallsAction = {
     type: string;
     data: {
         callID: string;
     }
 }
 
-const didRingForCalls = (state: { [callUniqueID: string]: boolean } = {}, action: DidRingForCallsAction) => {
+const didRingForCalls = (state: { [callUniqueID: string]: boolean } = {}, action: DidRingNotifyForCallsAction) => {
     switch (action.type) {
     case DID_RING_FOR_CALL:
         return {
             ...state,
             [action.data.callID]: true,
+        };
+    default:
+        return state;
+    }
+};
+
+const didNotifyForCalls = (state: { [callUniqueID: string]: boolean } = {}, action: DidRingNotifyForCallsAction) => {
+    switch (action.type) {
+    case DID_NOTIFY_FOR_CALL:
+        return {
+            ...state,
+            [action.data.callUniqueID]: true,
         };
     default:
         return state;
@@ -854,4 +867,5 @@ export default combineReducers({
     recentlyJoinedUsers,
     incomingCalls,
     didRingForCalls,
+    didNotifyForCalls,
 });
