@@ -27,6 +27,8 @@ import {
     showScreenSourceModal,
     displayCallsTestModeUser,
 } from 'src/actions';
+import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
+import {ServerSideTurn} from 'src/components/admin_console_settings/server_side_turn';
 
 import slashCommandsHandler from 'src/slash_commands';
 
@@ -76,6 +78,7 @@ import {
     callsExplicitlyEnabled,
     callsExplicitlyDisabled,
     hasPermissionsToEnableCalls,
+    callsConfig,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -130,6 +133,10 @@ import {
     DESKTOP_WIDGET_CONNECTED,
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
+    VOICE_CHANNEL_USER_MUTED,
+    VOICE_CHANNEL_USER_UNMUTED,
+    VOICE_CHANNEL_USER_RAISE_HAND,
+    VOICE_CHANNEL_USER_UNRAISE_HAND,
 } from './action_types';
 import {PluginRegistry, Store} from './types/mattermost-webapp';
 
@@ -355,14 +362,20 @@ export default class Plugin {
 
         registerChannelHeaderMenuButton();
 
-        registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
+        registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
+
+        // EnableRecording turns on/off the following:
         registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
         registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
+        registry.registerAdminConsoleCustomSetting('RecordingQuality', RecordingQuality);
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
-        registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
+
+        // RTCD server turns on/off the following:
+        registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
         registry.registerAdminConsoleCustomSetting('UDPServerAddress', UDPServerAddress);
         registry.registerAdminConsoleCustomSetting('UDPServerPort', UDPServerPort);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
+        registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTurn);
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             if (shouldRenderDesktopWidget()) {
@@ -382,8 +395,9 @@ export default class Plugin {
                     return;
                 }
 
-                const iceConfigs = [...iceServers(store.getState())];
-                if (needsTURNCredentials(store.getState())) {
+                const state = store.getState();
+                const iceConfigs = [...iceServers(state)];
+                if (needsTURNCredentials(state)) {
                     logDebug('turn credentials needed');
                     try {
                         iceConfigs.push(...await Client4.doFetch<RTCIceServer[]>(`${getPluginPath()}/turn-credentials`, {method: 'get'}));
@@ -393,12 +407,13 @@ export default class Plugin {
                 }
 
                 window.callsClient = new CallsClient({
-                    wsURL: getWSConnectionURL(getConfig(store.getState())),
+                    wsURL: getWSConnectionURL(getConfig(state)),
                     iceServers: iceConfigs,
+                    simulcast: callsConfig(state).EnableSimulcast,
                 });
                 window.currentCallData = CurrentCallDataDefault;
 
-                const locale = getCurrentUserLocale(store.getState()) || 'en';
+                const locale = getCurrentUserLocale(state) || 'en';
 
                 ReactDOM.render(
                     <Provider store={store}>
@@ -444,6 +459,47 @@ export default class Plugin {
                         delete window.currentCallData;
                         playSound('leave_self');
                     }
+                });
+
+                window.callsClient.on('mute', () => {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_USER_MUTED,
+                        data: {
+                            channelID: window.callsClient?.channelID,
+                            userID: getCurrentUserId(store.getState()),
+                        },
+                    });
+                });
+
+                window.callsClient.on('unmute', () => {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_USER_UNMUTED,
+                        data: {
+                            channelID: window.callsClient?.channelID,
+                            userID: getCurrentUserId(store.getState()),
+                        },
+                    });
+                });
+
+                window.callsClient.on('raise_hand', () => {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_USER_RAISE_HAND,
+                        data: {
+                            channelID: window.callsClient?.channelID,
+                            userID: getCurrentUserId(store.getState()),
+                            raised_hand: Date.now(),
+                        },
+                    });
+                });
+
+                window.callsClient.on('lower_hand', () => {
+                    store.dispatch({
+                        type: VOICE_CHANNEL_USER_UNRAISE_HAND,
+                        data: {
+                            channelID: window.callsClient?.channelID,
+                            userID: getCurrentUserId(store.getState()),
+                        },
+                    });
                 });
 
                 window.callsClient.init(channelID, title, rootId).catch((err: Error) => {

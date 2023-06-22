@@ -17,12 +17,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
+
 	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/random"
 	"github.com/mattermost/rtcd/service/rtc"
 
-	"github.com/mattermost/mattermost-plugin-api/cluster"
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 const (
@@ -439,7 +440,7 @@ func (m *rtcdClientManager) getRTCDClientConfig(rtcdURL string) (rtcd.ClientConf
 	// Give precedence to environment to override everything else.
 	cfg.ClientID = os.Getenv("MM_CLOUD_INSTALLATION_ID")
 	if cfg.ClientID == "" {
-		if isCloud(m.ctx.pluginAPI.System.GetLicense()) {
+		if isCloud(m.ctx.API.GetLicense()) {
 			m.ctx.LogError("installation id is missing")
 		}
 		cfg.ClientID = os.Getenv("MM_CALLS_RTCD_CLIENT_ID")

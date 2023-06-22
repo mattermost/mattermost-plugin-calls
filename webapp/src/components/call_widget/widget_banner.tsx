@@ -67,11 +67,11 @@ export default function WidgetBanner(props: Props) {
                 <Header>
                     <HeaderText>{props.header}</HeaderText>
                 </Header>
+                { props.body &&
                 <Body>
-                    { props.body &&
                     <BodyText>{props.body}</BodyText>
-                    }
                 </Body>
+                }
                 { ((props.confirmText && props.onClose) || (props.onDecline && props.declineText)) &&
                     <Footer>
                         { props.confirmText && props.onClose &&
@@ -217,6 +217,7 @@ const Icon = styled.div<{fill?: string, color?: string}>`
 const CloseButton = styled(Icon)`
   cursor: pointer;
   margin-top: 4px;
+  app-region: no-drag;
 
   :hover {
     background: rgba(var(--center-channel-color-rgb), 0.08);

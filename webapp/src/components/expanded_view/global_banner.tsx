@@ -5,7 +5,7 @@ import CompassIcon from 'src/components/icons/compassIcon';
 
 const colorMap = {
     error: 'var(--button-color)',
-    warning: 'var(--center-channel-color)',
+    warning: 'var(--center-channel-bg)',
 };
 
 const bgMap = {
@@ -37,6 +37,9 @@ export default function GlobalBanner(props: Props) {
             >
                 <CompassIcon icon='close'/>
             </CloseButton>
+            }
+            { !props.onClose &&
+            <RightFiller/>
             }
         </Banner>
     );
@@ -73,5 +76,9 @@ const CloseButton = styled.button`
 `;
 
 const Icon = styled.div`
+  margin-left: auto;
+`;
+
+const RightFiller = styled.div`
   margin-left: auto;
 `;

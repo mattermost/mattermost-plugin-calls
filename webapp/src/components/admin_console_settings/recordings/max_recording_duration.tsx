@@ -6,17 +6,19 @@ import {CustomComponentProps} from 'src/types/mattermost-webapp';
 import {useSelector} from 'react-redux';
 
 import manifest from 'src/manifest';
-import {isCloud, isOnPremNotEnterprise} from 'src/selectors';
+import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
 import {
-    LabelRow,
+    LabelRow, leftCol, rightCol,
 } from 'src/components/admin_console_settings/common';
 
 const MaxRecordingDuration = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
+    const recordingEnabled = useSelector(recordingsEnabled);
 
-    const leftCol = 'col-sm-4';
-    const rightCol = 'col-sm-8';
+    if (cloud || restricted || !recordingEnabled) {
+        return null;
+    }
 
     // Webapp doesn't pass the placeholder setting.
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'MaxRecordingDuration')?.placeholder || '';
@@ -24,10 +26,6 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, parseInt(e.target.value, 10));
     };
-
-    if (cloud || restricted) {
-        return null;
-    }
 
     return (
         <div

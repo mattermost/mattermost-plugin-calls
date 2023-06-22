@@ -5,6 +5,9 @@ import styled from 'styled-components';
 
 import GenericModal from 'src/components/generic_modal';
 
+export const leftCol = 'col-sm-4';
+export const rightCol = 'col-sm-8';
+
 export const LabelRow = styled.div`
     display: flex;
 `;
