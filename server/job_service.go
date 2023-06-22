@@ -16,8 +16,8 @@ import (
 
 	"github.com/mattermost/rtcd/service/random"
 
-	offloader "github.com/mattermost/calls-offloader/service"
-	"github.com/mattermost/calls-offloader/service/job"
+	offloader "github.com/mattermost/calls-offloader/public"
+	"github.com/mattermost/calls-offloader/public/job"
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 )
 
