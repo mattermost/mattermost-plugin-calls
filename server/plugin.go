@@ -365,7 +365,12 @@ func (p *Plugin) lockCall(callID string) error {
 	mut := p.callsClusterLocks[callID]
 	if mut == nil {
 		p.LogDebug("creating cluster mutex for call", "callID", callID)
-		m, err := cluster.NewMutex(p.API, callID, cluster.MutexConfig{})
+		m, err := cluster.NewMutex(p.API, p.metrics, "call_"+callID, cluster.MutexConfig{
+			TTL:             4 * time.Second,
+			RefreshInterval: 1 * time.Second,
+			PollInterval:    50 * time.Millisecond,
+			MetricsGroup:    "mutex_call",
+		})
 		if err != nil {
 			p.mut.Unlock()
 			return fmt.Errorf("failed to create new call cluster mutex: %w", err)

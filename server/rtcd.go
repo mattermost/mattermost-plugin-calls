@@ -518,7 +518,7 @@ func (m *rtcdClientManager) storeConfig(cfg rtcd.ClientConfig) error {
 func (m *rtcdClientManager) registerRTCDClient(cfg rtcd.ClientConfig, reconnectCb rtcd.ClientReconnectCb, dialFn rtcd.DialContextFn) (rtcd.ClientConfig, *rtcd.Client, error) {
 	// Here we need some coordination to avoid multiple plugin instances to
 	// register at the same time (at most one would succeed).
-	mutex, err := cluster.NewMutex(m.ctx.API, "rtcd_registration", cluster.MutexConfig{})
+	mutex, err := cluster.NewMutex(m.ctx.API, m.ctx.metrics, "rtcd_registration", cluster.MutexConfig{})
 	if err != nil {
 		return cfg, nil, fmt.Errorf("failed to create cluster mutex: %w", err)
 	}

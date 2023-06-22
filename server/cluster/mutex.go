@@ -27,6 +27,14 @@ type MutexPluginAPI interface {
 	KVSetWithOptions(key string, value []byte, options model.PluginKVSetOptions) (bool, *model.AppError)
 	KVDelete(key string) *model.AppError
 	LogError(msg string, keyValuePairs ...interface{})
+	LogDebug(msg string, keyValuePairs ...interface{})
+}
+
+// MutexMetricsAPI is an interface to manage cluster mutex metrics.
+type MutexMetricsAPI interface {
+	ObserveClusterMutexLockGrabTime(key string, elapsed float64)
+	ObserveClusterMutexLockTime(key string, elapsed float64)
+	IncClusterMutexLockRetries(group string)
 }
 
 // Mutex is similar to sync.Mutex, except usable by multiple plugin instances across a cluster.
@@ -39,13 +47,16 @@ type MutexPluginAPI interface {
 //
 // A Mutex must not be copied after first use.
 type Mutex struct {
-	pluginAPI MutexPluginAPI
-	key       string
-	config    MutexConfig
+	pluginAPI  MutexPluginAPI
+	metricsAPI MutexMetricsAPI
 
-	stopCh chan struct{}
-	doneCh chan struct{}
-	mut    sync.Mutex
+	key    string
+	config MutexConfig
+
+	stopCh       chan struct{}
+	doneCh       chan struct{}
+	lastLockedAt time.Time
+	mut          sync.Mutex
 }
 
 type MutexConfig struct {
@@ -57,6 +68,8 @@ type MutexConfig struct {
 	RefreshInterval time.Duration
 	// PollInterval is the interval to wait between locking attempts.
 	PollInterval time.Duration
+	// MetricsGroup is an optional group name to use for mutex related metrics.
+	MetricsGroup string
 }
 
 func (c *MutexConfig) SetDefaults() {
@@ -94,7 +107,7 @@ func (c *MutexConfig) IsValid() error {
 }
 
 // NewMutex creates a mutex with the given key name.
-func NewMutex(pluginAPI MutexPluginAPI, key string, cfg MutexConfig) (*Mutex, error) {
+func NewMutex(pluginAPI MutexPluginAPI, metricsAPI MutexMetricsAPI, key string, cfg MutexConfig) (*Mutex, error) {
 	if key == "" {
 		return nil, fmt.Errorf("key should not be empty")
 	}
@@ -105,9 +118,10 @@ func NewMutex(pluginAPI MutexPluginAPI, key string, cfg MutexConfig) (*Mutex, er
 	}
 
 	return &Mutex{
-		pluginAPI: pluginAPI,
-		key:       mutexPrefix + key,
-		config:    cfg,
+		pluginAPI:  pluginAPI,
+		metricsAPI: metricsAPI,
+		key:        mutexPrefix + key,
+		config:     cfg,
 	}, nil
 }
 
@@ -150,7 +164,10 @@ func (m *Mutex) Lock(ctx context.Context) error {
 	// We lock to synchronize access from a single process.
 	// This avoids having to hit the database in case of concurrent access to
 	// a shared mutex from the same plugin instance.
+	start := time.Now()
 	m.mut.Lock()
+
+	var nRetries int
 
 	for {
 		locked, err := m.tryLock()
@@ -159,6 +176,12 @@ func (m *Mutex) Lock(ctx context.Context) error {
 		}
 
 		if locked {
+			m.lastLockedAt = time.Now()
+
+			m.pluginAPI.LogDebug(fmt.Sprintf("grabbing lock took %v", time.Since(start)))
+
+			m.metricsAPI.ObserveClusterMutexLockGrabTime(m.getMetricsGroup(), time.Since(start).Seconds())
+
 			m.stopCh = make(chan struct{})
 			m.doneCh = make(chan struct{})
 
@@ -181,11 +204,15 @@ func (m *Mutex) Lock(ctx context.Context) error {
 			return nil
 		}
 
+		m.metricsAPI.IncClusterMutexLockRetries(m.getMetricsGroup())
+		nRetries++
+		pollTime := m.config.PollInterval*time.Duration(nRetries) + time.Duration(rand.Int63n(m.config.PollInterval.Nanoseconds()))
+
 		select {
 		case <-ctx.Done():
 			m.mut.Unlock()
 			return ctx.Err()
-		case <-time.After(m.config.PollInterval + time.Duration(rand.Int63n(m.config.PollInterval.Nanoseconds()/10))):
+		case <-time.After(pollTime):
 		}
 	}
 }
@@ -207,4 +234,14 @@ func (m *Mutex) Unlock() {
 	if err := m.pluginAPI.KVDelete(m.key); err != nil {
 		m.pluginAPI.LogError("failed to delete mutex key", "err", err.Error())
 	}
+
+	m.metricsAPI.ObserveClusterMutexLockTime(m.getMetricsGroup(), time.Since(m.lastLockedAt).Seconds())
+}
+
+func (m *Mutex) getMetricsGroup() string {
+	if m.config.MetricsGroup != "" {
+		return m.config.MetricsGroup
+	}
+
+	return m.key
 }

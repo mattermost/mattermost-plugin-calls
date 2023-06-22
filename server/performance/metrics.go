@@ -25,10 +25,13 @@ type Metrics struct {
 	registry   *prometheus.Registry
 	rtcMetrics *perf.Metrics
 
-	WebSocketConnections   *prometheus.GaugeVec
-	WebSocketEventCounters *prometheus.CounterVec
-	ClusterEventCounters   *prometheus.CounterVec
-	StoreOpCounters        *prometheus.CounterVec
+	WebSocketConnections            *prometheus.GaugeVec
+	WebSocketEventCounters          *prometheus.CounterVec
+	ClusterEventCounters            *prometheus.CounterVec
+	StoreOpCounters                 *prometheus.CounterVec
+	ClusterMutexGrabHistograms      *prometheus.HistogramVec
+	ClusterMutexHistograms          *prometheus.HistogramVec
+	ClusterMutexLockRetriesCounters *prometheus.CounterVec
 }
 
 func NewMetrics() *Metrics {
@@ -83,6 +86,39 @@ func NewMetrics() *Metrics {
 	)
 	m.registry.MustRegister(m.StoreOpCounters)
 
+	m.ClusterMutexGrabHistograms = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemCluster,
+			Name:      "mutex_lock_grab_time",
+			Help:      "Time to grab lock",
+		},
+		[]string{"group"},
+	)
+	m.registry.MustRegister(m.ClusterMutexGrabHistograms)
+
+	m.ClusterMutexHistograms = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemCluster,
+			Name:      "mutex_lock_time",
+			Help:      "Time locked",
+		},
+		[]string{"group"},
+	)
+	m.registry.MustRegister(m.ClusterMutexHistograms)
+
+	m.ClusterMutexLockRetriesCounters = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemCluster,
+			Name:      "mutex_lock_retries_total",
+			Help:      "Total number of cluster mutex lock retries",
+		},
+		[]string{"group"},
+	)
+	m.registry.MustRegister(m.ClusterMutexLockRetriesCounters)
+
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
@@ -114,4 +150,16 @@ func (m *Metrics) IncClusterEvent(evType string) {
 
 func (m *Metrics) IncStoreOp(op string) {
 	m.StoreOpCounters.With(prometheus.Labels{"type": op}).Inc()
+}
+
+func (m *Metrics) ObserveClusterMutexLockGrabTime(group string, elapsed float64) {
+	m.ClusterMutexGrabHistograms.With(prometheus.Labels{"group": group}).Observe(elapsed)
+}
+
+func (m *Metrics) ObserveClusterMutexLockTime(group string, elapsed float64) {
+	m.ClusterMutexHistograms.With(prometheus.Labels{"group": group}).Observe(elapsed)
+}
+
+func (m *Metrics) IncClusterMutexLockRetries(group string) {
+	m.ClusterMutexLockRetriesCounters.With(prometheus.Labels{"group": group}).Inc()
 }

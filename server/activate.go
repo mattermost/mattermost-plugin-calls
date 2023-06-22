@@ -18,7 +18,7 @@ import (
 )
 
 func (p *Plugin) createBotSession() (*model.Session, error) {
-	m, err := cluster.NewMutex(p.API, "ensure_bot", cluster.MutexConfig{})
+	m, err := cluster.NewMutex(p.API, p.metrics, "ensure_bot", cluster.MutexConfig{})
 	if err != nil {
 		return nil, err
 	}

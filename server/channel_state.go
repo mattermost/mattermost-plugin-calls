@@ -293,7 +293,7 @@ func (p *Plugin) cleanUpState() (retErr error) {
 				return fmt.Errorf("failed to get channel state: %w", err)
 			}
 
-			if err := p.cleanCallState(state); err != nil {
+			if err := p.cleanCallState(k, state); err != nil {
 				return fmt.Errorf("failed to clean up state: %w", err)
 			}
 			if err := p.unlockCall(k); err != nil {
@@ -306,7 +306,7 @@ func (p *Plugin) cleanUpState() (retErr error) {
 	return nil
 }
 
-func (p *Plugin) cleanCallState(state *channelState) error {
+func (p *Plugin) cleanCallState(channelID string, state *channelState) error {
 	if state == nil {
 		return nil
 	}
@@ -320,5 +320,5 @@ func (p *Plugin) cleanCallState(state *channelState) error {
 		state.Call = nil
 	}
 
-	return nil
+	return p.kvSetChannelState(channelID, state)
 }
