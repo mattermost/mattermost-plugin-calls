@@ -1,13 +1,13 @@
 import {test, expect} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {userState} from '../constants';
-import {getChannelNamesForTest, getUserIdxForTest} from '../utils';
+import {getChannelNamesForTest, getUserStoragesForTest, getUsernamesForTest} from '../utils';
 
-const userIdx = getUserIdxForTest();
+const userStorages = getUserStoragesForTest();
+const usernames = getUsernamesForTest();
 
 test.describe('popout window', () => {
-    test.use({storageState: userState.users[userIdx].storageStatePath});
+    test.use({storageState: userStorages[0]});
 
     test('popout opens muted', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -29,7 +29,7 @@ test.describe('popout window', () => {
 
     test('popout opens in a DM channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[userIdx + 1].username);
+        await devPage.gotoDM(usernames[1]);
         await devPage.startCall();
 
         const [popOut, _] = await Promise.all([
@@ -85,7 +85,7 @@ test.describe('popout window', () => {
 
     test('supports chat in a DM channel', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(userState.users[userIdx + 1].username);
+        await devPage.gotoDM(usernames[1]);
         await devPage.startCall();
 
         const [popOut, _] = await Promise.all([
@@ -238,5 +238,25 @@ test.describe('popout window', () => {
         // leave call
         await page.locator('#calls-widget-leave-button').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
+    });
+
+    test('raising hand', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.goto();
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-popout-emoji-picker-button')).toBeVisible();
+
+        await popOut.locator('#calls-popout-emoji-picker-button').click();
+
+        await expect(popOut.getByTestId('raise-hand-button')).toBeVisible();
+        await popOut.getByTestId('raise-hand-button').click();
+        await expect(popOut.getByTestId('lower-hand-button')).toBeVisible();
+        await popOut.getByTestId('lower-hand-button').click();
+        await expect(popOut.getByTestId('raise-hand-button')).toBeVisible();
     });
 });

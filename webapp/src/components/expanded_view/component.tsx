@@ -19,6 +19,7 @@ import {Theme} from 'mattermost-redux/types/themes';
 import {
     UserState,
 } from '@calls/common/lib/types';
+import {mosThreshold} from '@calls/common';
 
 import {Emoji} from 'src/components/emoji/emoji';
 
@@ -152,15 +153,15 @@ const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
 const MaxParticipantsPerRow = 4;
 
 export default class ExpandedView extends React.PureComponent<Props, State> {
-    private readonly screenPlayer = React.createRef<HTMLVideoElement>();
     private readonly emojiButtonRef: React.RefObject<ReactionButtonRef>;
     private expandedRootRef = React.createRef<HTMLDivElement>();
     private pushToTalk = false;
+    private screenPlayer : HTMLVideoElement | null = null;
 
     #unlockNavigation?: () => void;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
-        setCallsGlobalCSSVars(this.props.theme.sidebarTextHoverBg);
+        setCallsGlobalCSSVars(this.props.theme.sidebarBg);
 
         return {
             root: {
@@ -283,7 +284,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     constructor(props: Props) {
         super(props);
-        this.screenPlayer = React.createRef();
         this.emojiButtonRef = React.createRef();
         this.state = {
             screenStream: null,
@@ -320,6 +320,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         }
     }
+
+    setScreenPlayerRef = (node: HTMLVideoElement) => {
+        if (node && this.state.screenStream) {
+            node.srcObject = this.state.screenStream;
+        }
+        this.screenPlayer = node;
+    };
 
     getCallsClient = () => {
         return window.opener ? window.opener.callsClient : window.callsClient;
@@ -423,12 +430,22 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return;
         }
         const callsClient = this.getCallsClient();
-        if (callsClient?.isMuted()) {
+        if (this.isMuted()) {
             callsClient.unmute();
         } else {
             callsClient?.mute();
         }
     };
+
+    isMuted() {
+        const currUserState = this.props.statuses[this.props.currentUserID];
+        return currUserState ? !currUserState.unmuted : true;
+    }
+
+    isHandRaised() {
+        const currUserState = this.props.statuses[this.props.currentUserID];
+        return currUserState ? currUserState.raised_hand > 0 : false;
+    }
 
     onRecordToggle = async (fromShortcut?: boolean) => {
         if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at > 0) {
@@ -493,7 +510,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     onRaiseHandToggle = (fromShortcut?: boolean) => {
         const callsClient = this.getCallsClient();
-        if (callsClient?.isHandRaised) {
+        if (this.isHandRaised()) {
             this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
             callsClient?.unraiseHand();
         } else {
@@ -521,11 +538,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.props.hideExpandedView();
     };
 
-    public componentDidUpdate(prevProps: Props) {
-        if (prevProps.theme.type !== this.props.theme.type) {
-            this.style = this.genStyle();
-        }
-
+    public componentDidUpdate(prevProps: Props, prevState: State) {
         if (window.opener) {
             if (document.title.indexOf('Call') === -1 && this.props.channel) {
                 if (isDMChannel(this.props.channel) && this.props.connectedDMUser) {
@@ -545,14 +558,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer.current?.srcObject !== this.state.screenStream) {
-            this.screenPlayer.current.srcObject = this.state.screenStream;
-        }
-
-        const localScreenStream = this.getCallsClient()?.getLocalScreenStream();
-        if (localScreenStream && this.state.screenStream?.getVideoTracks()[0].id !== localScreenStream.getVideoTracks()[0].id) {
-            // eslint-disable-next-line react/no-did-update-set-state
-            this.setState({screenStream: localScreenStream});
+        if (this.screenPlayer && this.state.screenStream !== prevState.screenStream) {
+            this.screenPlayer.srcObject = this.state.screenStream;
         }
     }
 
@@ -568,6 +575,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.addEventListener('blur', this.handleBlur, true);
 
         callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+            this.setState({
+                screenStream: stream,
+            });
+        });
+        callsClient.on('localScreenStream', (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
@@ -615,6 +627,29 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 }
             }
         }
+
+        callsClient.on('mos', (mos: number) => {
+            if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: true,
+                            show: true,
+                        },
+                    }});
+            }
+            if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: false,
+                            show: false,
+                        },
+                    }});
+            }
+        });
     }
 
     toggleChat = async () => {
@@ -659,22 +694,27 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
             const alertConfig = CallAlertConfigs[alertID];
 
+            let onClose;
+            if (alertConfig.dismissable) {
+                onClose = () => {
+                    this.setState({
+                        alerts: {
+                            ...this.state.alerts,
+                            [alertID]: {
+                                ...alertState,
+                                show: false,
+                            },
+                        },
+                    });
+                };
+            }
+
             return (
                 <GlobalBanner
                     {...alertConfig}
                     icon={alertConfig.icon}
                     body={formatMessage(alertConfig.bannerText)}
-                    onClose={() => {
-                        this.setState({
-                            alerts: {
-                                ...this.state.alerts,
-                                [alertID]: {
-                                    ...alertState,
-                                    show: false,
-                                },
-                            },
-                        });
-                    }}
+                    onClose={onClose}
                 />
             );
         }
@@ -717,7 +757,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <video
                         id='screen-player'
                         slot='media'
-                        ref={this.screenPlayer}
+                        ref={this.setScreenPlayerRef}
                         muted={true}
                         autoPlay={true}
                         onClick={(ev) => ev.preventDefault()}
@@ -908,19 +948,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
-        const isMuted = callsClient.isMuted();
+        const isMuted = this.isMuted();
         const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
         let muteTooltipText = isMuted ? formatMessage({defaultMessage: 'Unmute'}) : formatMessage({defaultMessage: 'Mute'});
         let muteTooltipSubtext = '';
 
         if (noInputDevices) {
-            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText);
-            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext);
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext!);
         }
         if (noAudioPermissions) {
-            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText);
-            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext);
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext!);
         }
 
         const sharingID = this.props.screenSharingID;
@@ -929,9 +969,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         let shareScreenTooltipText = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'});
         if (noScreenPermissions) {
-            shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText);
+            shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText!);
         }
-        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext) : '';
+        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext!) : '';
 
         const participantsText = this.state.showParticipantsList ?
             formatMessage({defaultMessage: 'Hide participants list'}) :
@@ -1110,6 +1150,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <ReactionButton
                                 ref={this.emojiButtonRef}
                                 trackEvent={this.props.trackEvent}
+                                isHandRaised={this.isHandRaised()}
                             />
 
                             {globalRhsSupported && (

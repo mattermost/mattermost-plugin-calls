@@ -1,8 +1,10 @@
 import React from 'react';
 import {IntlShape} from 'react-intl';
-import moment from 'moment-timezone';
 
 import {UserProfile} from '@mattermost/types/users';
+
+import Timestamp from 'src/components/timestamp';
+import {callStartedTimestampFn} from 'src/utils';
 
 import ActiveCallIcon from '../../components/icons/active_call_icon';
 import ConnectedProfiles from '../../components/connected_profiles';
@@ -48,6 +50,8 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
         }
     }
 
+    timestampFn = () => callStartedTimestampFn(this.props.intl, this.props.startAt);
+
     onJoinCallClick = async () => {
         if (this.props.connectedID) {
             return;
@@ -83,7 +87,17 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
                         />
                         <span style={{margin: '0 4px'}}>{formatMessage({defaultMessage: 'Join call'})}</span>
                         <span style={{opacity: '0.80', margin: '0 4px'}}>
-                            {formatMessage({defaultMessage: 'Started {callStartedAt}'}, {callStartedAt: moment(this.props.startAt).fromNow()})}
+                            {formatMessage(
+                                {defaultMessage: 'Started {callStartedAt}'},
+                                {
+                                    callStartedAt: (
+                                        <Timestamp
+                                            timestampFn={this.timestampFn}
+                                            interval={5000}
+                                        />
+                                    ),
+                                },
+                            )}
                         </span>
                         <div/>
                     </div>
@@ -91,12 +105,13 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
 
                 <div
                     style={
-                        {position: 'absolute',
-
+                        {
+                            position: 'absolute',
                             display: 'flex',
                             alignItems: 'center',
                             height: '100%',
-                            right: '40px'}
+                            right: '40px',
+                        }
                     }
                 >
                     <ConnectedProfiles
@@ -132,4 +147,3 @@ export default class ChannelCallToast extends React.PureComponent<Props, State> 
         );
     }
 }
-

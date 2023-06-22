@@ -1,3 +1,5 @@
+import {Preferences} from 'mattermost-redux/constants';
+import {getBool} from 'mattermost-redux/selectors/entities/preferences';
 import {bindActionCreators, Dispatch} from 'redux';
 import {connect} from 'react-redux';
 
@@ -42,6 +44,7 @@ const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
         profiles,
         isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),
         maxParticipants: maxParticipants(state),
+        militaryTime: getBool(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.USE_MILITARY_TIME, false),
     };
 };
 

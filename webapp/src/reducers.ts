@@ -45,6 +45,8 @@ import {
     VOICE_CHANNEL_USERS_CONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
+    RECORDINGS_ENABLED,
+    RTCD_ENABLED,
 } from './action_types';
 
 interface channelStateAction {
@@ -709,6 +711,17 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
     switch (action.type) {
     case RECEIVED_CALLS_CONFIG:
         return action.data;
+    case RECORDINGS_ENABLED:
+        return {...state, EnableRecordings: action.data};
+    default:
+        return state;
+    }
+};
+
+const rtcdEnabled = (state = false, action: {type: string, data: boolean}) => {
+    switch (action.type) {
+    case RTCD_ENABLED:
+        return action.data;
     default:
         return state;
     }
@@ -780,6 +793,7 @@ export default combineReducers({
     screenSourceModal,
     voiceChannelRootPost,
     callsConfig,
+    rtcdEnabled,
     callsUserPreferences,
     callsRecordings,
     recentlyJoinedUsers,

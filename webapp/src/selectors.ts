@@ -156,7 +156,7 @@ export const recentlyJoinedUsers = (state: GlobalState, channelID: string): stri
 //
 // Config logic
 //
-const callsConfig = (state: GlobalState): CallsConfig =>
+export const callsConfig = (state: GlobalState): CallsConfig =>
     pluginState(state).callsConfig;
 
 export const iceServers = (state: GlobalState): RTCIceServer[] =>
@@ -185,6 +185,9 @@ export const recordingsEnabled = (state: GlobalState) =>
 
 export const recordingMaxDuration = (state: GlobalState) =>
     callsConfig(state).MaxRecordingDuration;
+
+export const rtcdEnabled = (state: GlobalState) =>
+    pluginState(state).rtcdEnabled;
 
 //
 // Calls enabled/disabled logic
