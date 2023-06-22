@@ -26,7 +26,7 @@ var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
-func (p *Plugin) handleGetVersion(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleGetVersion(w http.ResponseWriter) {
 	info := map[string]interface{}{
 		"version": manifest.Version,
 		"build":   buildHash,
@@ -497,9 +497,9 @@ func (p *Plugin) checkAPIRateLimits(userID string) error {
 	return nil
 }
 
-func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/version") {
-		p.handleGetVersion(w, r)
+		p.handleGetVersion(w)
 		return
 	}
 

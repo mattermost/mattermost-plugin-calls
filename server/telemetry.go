@@ -73,10 +73,7 @@ func (p *Plugin) uninitTelemetry() error {
 	if p.telemetry == nil {
 		return nil
 	}
-	if err := p.telemetry.Close(); err != nil {
-		return err
-	}
-	return nil
+	return p.telemetry.Close()
 }
 
 func (p *Plugin) initTelemetry(enableDiagnostics *bool) error {
