@@ -43,6 +43,8 @@ import {
     RECEIVED_CALLS_CONFIG,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
+    RECORDINGS_ENABLED,
+    RTCD_ENABLED,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -97,6 +99,20 @@ export const getCallsConfig = (): ActionFunc => {
             {method: 'get'},
         ),
         onSuccess: [RECEIVED_CALLS_CONFIG],
+    });
+};
+
+export const setRecordingsEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: RECORDINGS_ENABLED,
+        data: enabled,
+    });
+};
+
+export const setRTCDEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: RTCD_ENABLED,
+        data: enabled,
     });
 };
 

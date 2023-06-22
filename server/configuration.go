@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"reflect"
 	"strconv"
@@ -15,7 +16,7 @@ import (
 
 	"github.com/mattermost/rtcd/service/rtc"
 
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 // configuration captures the plugin's external configuration as exposed in the Mattermost server
@@ -80,6 +81,8 @@ type clientConfig struct {
 	EnableRecordings *bool
 	// The maximum duration (in minutes) for call recordings.
 	MaxRecordingDuration *int
+	// When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.
+	EnableSimulcast *bool
 }
 
 const (
@@ -139,6 +142,7 @@ func (c *configuration) getClientConfig() clientConfig {
 		AllowScreenSharing:   c.AllowScreenSharing,
 		EnableRecordings:     c.EnableRecordings,
 		MaxRecordingDuration: c.MaxRecordingDuration,
+		EnableSimulcast:      c.EnableSimulcast,
 	}
 }
 
@@ -173,6 +177,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.RecordingQuality == "" {
 		c.RecordingQuality = "medium"
+	}
+	if c.EnableSimulcast == nil {
+		c.EnableSimulcast = new(bool)
 	}
 }
 
@@ -265,6 +272,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.MaxRecordingDuration = model.NewInt(*c.MaxRecordingDuration)
 	}
 
+	if c.EnableSimulcast != nil {
+		cfg.EnableSimulcast = model.NewBool(*c.EnableSimulcast)
+	}
+
 	return &cfg
 }
 
@@ -343,8 +354,6 @@ func (p *Plugin) setConfiguration(configuration *configuration) error {
 
 // OnConfigurationChange is invoked when configuration changes may have been made.
 func (p *Plugin) OnConfigurationChange() error {
-	var cfg = new(configuration)
-
 	serverConfig := p.API.GetConfig()
 	if serverConfig != nil {
 		if err := p.initTelemetry(serverConfig.LogSettings.EnableDiagnostics); err != nil {
@@ -354,15 +363,57 @@ func (p *Plugin) OnConfigurationChange() error {
 		p.LogError("OnConfigurationChange: failed to get server config")
 	}
 
+	if err := p.loadConfig(); err != nil {
+		return fmt.Errorf("OnConfigurationChange: failed to load config: %w", err)
+	}
+
+	return nil
+}
+
+func (p *Plugin) loadConfig() error {
+	cfg := new(configuration)
+
 	// Load the public configuration fields from the Mattermost server configuration.
 	if err := p.API.LoadPluginConfiguration(cfg); err != nil {
-		return fmt.Errorf("OnConfigurationChange: failed to load plugin configuration: %w", err)
+		return fmt.Errorf("loadConfig: failed to load plugin configuration: %w", err)
 	}
 
 	// Permanently override with envVar and cloud overrides
 	p.setOverrides(cfg)
 
 	return p.setConfiguration(cfg)
+}
+
+func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, error) {
+	p.LogDebug("ConfigurationWillBeSaved")
+
+	if newCfg == nil {
+		p.LogWarn("newCfg should not be nil")
+		return nil, nil
+	}
+
+	configData := newCfg.PluginSettings.Plugins[manifest.Id]
+
+	js, err := json.Marshal(configData)
+	if err != nil {
+		p.LogError("failed to marshal config data", "error", err.Error())
+		return nil, nil
+	}
+
+	var cfg configuration
+	if err := json.Unmarshal(js, &cfg); err != nil {
+		p.LogError("failed to unmarshal config data", "error", err.Error())
+		return nil, nil
+	}
+
+	if err := cfg.IsValid(); err != nil {
+		appErr := model.NewAppError("saveConfig", "app.save_config.error", nil, "", http.StatusBadRequest)
+		appErr.Message = err.Error()
+		appErr.SkipTranslation = true
+		return nil, appErr
+	}
+
+	return nil, nil
 }
 
 func (p *Plugin) setOverrides(cfg *configuration) {

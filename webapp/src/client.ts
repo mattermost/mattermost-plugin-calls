@@ -5,12 +5,12 @@ import {EventEmitter} from 'events';
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate.js';
 
-import {parseRTCStats, RTCPeer} from '@calls/common';
+import {parseRTCStats, RTCPeer, RTCMonitor} from '@calls/common';
 import {EmojiData} from '@calls/common/lib/types';
 
 import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo} from 'src/types/types';
 
-import {getScreenStream, setSDPMaxVideoBW} from './utils';
+import {getScreenStream} from './utils';
 import {logErr, logDebug, logWarn, logInfo} from './log';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 
@@ -19,6 +19,8 @@ export const AudioInputMissingError = new Error('no audio input available');
 export const rtcPeerErr = new Error('rtc peer error');
 export const rtcPeerCloseErr = new Error('rtc peer close');
 export const insecureContextErr = new Error('insecure context');
+
+const rtcMonitorInterval = 4000;
 
 export default class CallsClient extends EventEmitter {
     public channelID: string;
@@ -35,12 +37,12 @@ export default class CallsClient extends EventEmitter {
     private stream: MediaStream | null;
     private audioDevices: AudioDevices;
     public audioTrack: MediaStreamTrack | null;
-    public isHandRaised: boolean;
     private readonly onDeviceChange: () => void;
     private readonly onBeforeUnload: () => void;
     private closed = false;
     private connected = false;
     public initTime = Date.now();
+    private rtcMonitor: RTCMonitor | null = null;
 
     constructor(config: CallsClientConfig) {
         super();
@@ -54,7 +56,6 @@ export default class CallsClient extends EventEmitter {
         this.remoteVoiceTracks = [];
         this.stream = null;
         this.audioDevices = {inputs: [], outputs: []};
-        this.isHandRaised = false;
         this.channelID = '';
         this.config = config;
         this.onDeviceChange = async () => {
@@ -225,9 +226,22 @@ export default class CallsClient extends EventEmitter {
                     logWarn,
                     logInfo,
                 },
+                simulcast: this.config.simulcast,
             });
 
             this.peer = peer;
+
+            this.rtcMonitor = new RTCMonitor({
+                peer,
+                logger: {
+                    logDebug,
+                    logErr,
+                    logWarn,
+                    logInfo,
+                },
+                monitorInterval: rtcMonitorInterval,
+            });
+            this.rtcMonitor.on('mos', (mos: number) => this.emit('mos', mos));
 
             peer.on('offer', (sdp) => {
                 logDebug(`local signal: ${JSON.stringify(sdp)}`);
@@ -238,13 +252,13 @@ export default class CallsClient extends EventEmitter {
 
             peer.on('answer', (sdp) => {
                 logDebug(`local signal: ${JSON.stringify(sdp)}`);
-
                 ws.send('sdp', {
                     data: deflate(JSON.stringify(sdp)),
                 }, true);
             });
 
             peer.on('candidate', (candidate) => {
+                logDebug(`local candidate: ${JSON.stringify(candidate)}`);
                 ws.send('ice', {
                     data: JSON.stringify(candidate),
                 });
@@ -277,6 +291,7 @@ export default class CallsClient extends EventEmitter {
             peer.on('connect', () => {
                 logDebug('rtc connected');
                 this.emit('connect');
+                this.rtcMonitor?.start();
                 this.connected = true;
             });
 
@@ -297,13 +312,6 @@ export default class CallsClient extends EventEmitter {
                 logDebug('remote signal', data);
             }
             if (msg.type === 'answer' || msg.type === 'offer' || msg.type === 'candidate') {
-                if (msg.type === 'answer' || msg.type === 'offer') {
-                    const sdp = setSDPMaxVideoBW(msg.sdp, 1000);
-                    if (sdp !== msg.sdp) {
-                        msg.sdp = sdp;
-                        data = JSON.stringify(msg);
-                    }
-                }
                 if (this.peer) {
                     await this.peer.signal(data);
                 }
@@ -316,9 +324,15 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('connect');
         this.removeAllListeners('remoteVoiceStream');
         this.removeAllListeners('remoteScreenStream');
+        this.removeAllListeners('localScreenStream');
         this.removeAllListeners('devicechange');
         this.removeAllListeners('error');
         this.removeAllListeners('initaudio');
+        this.removeAllListeners('mute');
+        this.removeAllListeners('unmute');
+        this.removeAllListeners('raise_hand');
+        this.removeAllListeners('lower_hand');
+        this.removeAllListeners('mos');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices?.removeEventListener('devicechange', this.onDeviceChange);
     }
@@ -387,6 +401,8 @@ export default class CallsClient extends EventEmitter {
             return;
         }
 
+        this.rtcMonitor?.stop();
+
         this.closed = true;
         if (this.peer) {
             this.getStats().then((stats) => {
@@ -418,13 +434,6 @@ export default class CallsClient extends EventEmitter {
         });
     }
 
-    public isMuted() {
-        if (!this.audioTrack) {
-            return true;
-        }
-        return !this.audioTrack.enabled;
-    }
-
     public mute() {
         if (!this.peer || !this.audioTrack || !this.stream) {
             return;
@@ -434,7 +443,10 @@ export default class CallsClient extends EventEmitter {
 
         // @ts-ignore: we actually mean (and need) to pass null here
         this.peer.replaceTrack(this.audioTrack.id, null);
+
         this.audioTrack.enabled = false;
+
+        this.emit('mute');
 
         if (this.ws) {
             this.ws.send('mute');
@@ -455,6 +467,14 @@ export default class CallsClient extends EventEmitter {
             }
         }
 
+        // NOTE: we purposely clear the monitor's stats cache upon unmuting
+        // in order to skip some calculations since upon muting we actually
+        // stop sending packets which would result in stats to be skewed as
+        // soon as we resume sending.
+        // This is not perfect but it avoids having to constantly send
+        // silence frames when muted.
+        this.rtcMonitor?.clearCache();
+
         if (this.audioTrack) {
             if (this.voiceTrackAdded) {
                 logDebug('replacing track to peer', this.audioTrack.id);
@@ -466,6 +486,9 @@ export default class CallsClient extends EventEmitter {
             }
             this.audioTrack.enabled = true;
         }
+
+        this.emit('unmute');
+
         if (this.ws) {
             this.ws.send('unmute');
         }
@@ -523,8 +546,7 @@ export default class CallsClient extends EventEmitter {
                 return;
             }
 
-            // @ts-ignore: we actually mean to pass null here
-            this.peer.replaceTrack(screenTrack.id, null);
+            this.peer.removeTrack(screenTrack.id);
             this.ws.send('screen_off');
         };
 
@@ -536,6 +558,8 @@ export default class CallsClient extends EventEmitter {
                 screenStreamID: screenStream.id,
             }),
         });
+
+        this.emit('localScreenStream', screenStream);
     }
 
     public async shareScreen(sourceID?: string, withAudio?: boolean) {
@@ -564,13 +588,13 @@ export default class CallsClient extends EventEmitter {
     }
 
     public raiseHand() {
+        this.emit('raise_hand');
         this.ws?.send('raise_hand');
-        this.isHandRaised = true;
     }
 
     public unraiseHand() {
+        this.emit('lower_hand');
         this.ws?.send('unraise_hand');
-        this.isHandRaised = false;
     }
 
     public sendUserReaction(data: EmojiData) {

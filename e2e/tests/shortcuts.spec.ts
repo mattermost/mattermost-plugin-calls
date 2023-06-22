@@ -3,10 +3,7 @@ import {readFile} from 'fs/promises';
 import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {userState} from '../constants';
-import {getUserIdxForTest} from '../utils';
-
-const userIdx = getUserIdxForTest();
+import {getUserStoragesForTest} from '../utils';
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -14,7 +11,7 @@ test.beforeEach(async ({page, context}) => {
 });
 
 test.describe('keyboard shortcuts', () => {
-    test.use({storageState: userState.users[userIdx].storageStatePath});
+    test.use({storageState: getUserStoragesForTest()[0]});
 
     test('join/leave call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -55,7 +52,7 @@ test.describe('keyboard shortcuts', () => {
         await toggleMute();
 
         let isMuted = await page.evaluate(() => {
-            return window.callsClient.isMuted();
+            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
         });
         if (isMuted) {
             test.fail();
@@ -65,7 +62,7 @@ test.describe('keyboard shortcuts', () => {
         await toggleMute();
 
         isMuted = await page.evaluate(() => {
-            return window.callsClient.isMuted();
+            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
         });
         if (!isMuted) {
             test.fail();
@@ -88,10 +85,20 @@ test.describe('keyboard shortcuts', () => {
             }
         };
 
+        await page.evaluate(() => {
+            window.callsClient.on('raise_hand', () => {
+                window.isHandRaised = true;
+            });
+
+            window.callsClient.on('lower_hand', () => {
+                window.isHandRaised = false;
+            });
+        });
+
         await toggleHand();
 
         let isHandRaised = await page.evaluate(() => {
-            return window.callsClient.isHandRaised;
+            return window.isHandRaised;
         });
         if (!isHandRaised) {
             test.fail();
@@ -101,7 +108,7 @@ test.describe('keyboard shortcuts', () => {
         await toggleHand();
 
         isHandRaised = await page.evaluate(() => {
-            return window.callsClient.isHandRaised;
+            return window.isHandRaised;
         });
         if (isHandRaised) {
             test.fail();
@@ -157,7 +164,7 @@ test.describe('keyboard shortcuts', () => {
         await page.keyboard.press('Space');
         await expect(participantsList).toBeVisible();
         let isMuted = await page.evaluate(() => {
-            return window.callsClient.isMuted();
+            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
         });
         if (isMuted) {
             test.fail();
@@ -172,7 +179,7 @@ test.describe('keyboard shortcuts', () => {
         }
 
         isMuted = await page.evaluate(() => {
-            return window.callsClient.isMuted();
+            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
         });
         if (!isMuted) {
             test.fail();

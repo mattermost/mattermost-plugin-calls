@@ -26,6 +26,7 @@ export type CallsClientConfig = {
     wsURL: string;
     authToken?: string;
     iceServers: RTCIceServer[];
+    simulcast?: boolean;
 }
 
 export type AudioDevices = {
@@ -66,8 +67,9 @@ export type CallAlertConfig = {
     type: CallAlertType;
     icon: string;
     bannerText: MessageDescriptor;
-    tooltipText: MessageDescriptor;
-    tooltipSubtext: MessageDescriptor;
+    tooltipText?: MessageDescriptor;
+    tooltipSubtext?: MessageDescriptor;
+    dismissable: boolean;
 }
 
 export type CallAlertState = {
@@ -89,6 +91,10 @@ export const CallAlertStatesDefault = {
         show: false,
     },
     missingScreenPermissions: {
+        active: false,
+        show: false,
+    },
+    degradedCallQuality: {
         active: false,
         show: false,
     },

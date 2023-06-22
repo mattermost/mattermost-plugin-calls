@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {ChangeEvent} from 'react';
+import React, {ChangeEvent, useEffect, useState} from 'react';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 import {useDispatch, useSelector} from 'react-redux';
 
@@ -19,7 +19,7 @@ import {
     OnPremTrialError,
     OnPremTrialSuccess,
 } from 'src/components/admin_console_settings/rtcd_service_url/modals';
-import {requestOnPremTrialLicense} from 'src/actions';
+import {requestOnPremTrialLicense, setRTCDEnabled} from 'src/actions';
 import {untranslatable} from 'src/utils';
 import manifest from 'src/manifest';
 
@@ -32,6 +32,8 @@ import {
     Text,
     Footer,
     FooterText,
+    leftCol,
+    rightCol,
 } from 'src/components/admin_console_settings/common';
 
 const RTCDServiceUrl = (props: CustomComponentProps) => {
@@ -40,14 +42,19 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
     const cloud = useSelector(isCloud);
     const stats = useSelector(adminStats);
 
-    const leftCol = 'col-sm-4';
-    const rightCol = 'col-sm-8';
+    const [enabled, setEnabled] = useState(() => !restricted && props.value?.length > 0);
+
+    // Update global state with a local state change, or props change (eg, remounting)
+    useEffect(() => {
+        dispatch(setRTCDEnabled(enabled));
+    }, [dispatch, enabled]);
 
     // Webapp doesn't pass the placeholder setting.
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'RTCDServiceURL')?.placeholder || '';
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
+        setEnabled(e.target.value.length > 0);
     };
 
     const requestLicense = async () => {

@@ -14,14 +14,13 @@ import {logErr} from 'plugin/log';
 import {alphaSortProfiles, getUserDisplayName, stateSortProfiles, untranslatable} from 'plugin/utils';
 import Avatar from 'plugin/components/avatar/avatar';
 import CallParticipant from 'plugin/components/expanded_view/call_participant';
+import Timestamp from 'src/components/timestamp';
 import {voiceChannelCallHostID, voiceChannelScreenSharingID, voiceConnectedProfiles, voiceUsersStatuses} from 'src/selectors';
 import ScreenIcon from 'src/components/icons/screen_icon';
 
 import {ReactionStream} from 'plugin/components/reaction_stream/reaction_stream';
 
 import {callProfileImages} from 'src/recording/selectors';
-
-import Timestamp from './timestamp';
 
 const MaxParticipantsPerRow = 10;
 
@@ -228,7 +227,7 @@ const RecordingView = () => {
             <div
                 style={style.footer}
             >
-                <Timestamp/>
+                <div><Timestamp/></div>
                 <span style={{marginLeft: '4px'}}>
                     {untranslatable('• ')}{formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: profiles.length})}
                 </span>

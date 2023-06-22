@@ -10,6 +10,7 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 
 import {UserState} from '@calls/common/lib/types';
+import {mosThreshold} from '@calls/common';
 
 import * as Telemetry from 'src/types/telemetry';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
@@ -112,7 +113,7 @@ interface State {
     showMenu: boolean,
     showParticipantsList: boolean,
     screenSharingID?: string,
-    screenStream?: MediaStream | null,
+    screenStream: MediaStream | null,
     currentAudioInputDevice?: MediaDeviceInfo | null,
     currentAudioOutputDevice?: MediaDeviceInfo | null,
     devices?: AudioDevices,
@@ -131,7 +132,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private audioMenu: HTMLUListElement | null = null;
     private menuResizeObserver: ResizeObserver | null = null;
     private audioMenuResizeObserver: ResizeObserver | null = null;
-    private readonly screenPlayer = React.createRef<HTMLVideoElement>();
+    private screenPlayer: HTMLVideoElement | null = null;
     private prevDevicePixelRatio = 0;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
@@ -219,6 +220,27 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
                 boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
             },
+            participantsList: {
+                width: '100%',
+                minWidth: 'revert',
+                maxWidth: 'revert',
+                maxHeight: '200px',
+                overflow: 'auto',
+                position: 'relative',
+                borderRadius: '8px',
+                border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
+                boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
+                appRegion: 'no-drag',
+            },
+            participantsListHeader: {
+                position: 'sticky',
+                top: '0',
+                transform: 'translateY(-8px)',
+                paddingTop: '16px',
+                color: 'var(--center-channel-color)',
+                background: 'var(--center-channel-bg)',
+                appRegion: 'drag',
+            },
         };
     };
 
@@ -242,11 +264,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEls: [],
             alerts: CallAlertStatesDefault,
             connecting: true,
+            screenStream: null,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
-        this.screenPlayer = React.createRef();
     }
+
+    setScreenPlayerRef = (node: HTMLVideoElement) => {
+        if (node && this.state.screenStream) {
+            node.srcObject = this.state.screenStream;
+        }
+        this.screenPlayer = node;
+    };
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
         if (!this.props.show) {
@@ -378,6 +407,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
+        window.callsClient.on('localScreenStream', (stream: MediaStream) => {
+            this.setState({
+                screenStream: stream,
+            });
+        });
+
         window.callsClient.on('devicechange', (devices: AudioDevices) => {
             this.setState({
                 devices,
@@ -434,6 +469,29 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 },
             });
         });
+
+        window.callsClient?.on('mos', (mos: number) => {
+            if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: true,
+                            show: true,
+                        },
+                    }});
+            }
+            if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: false,
+                            show: false,
+                        },
+                    }});
+            }
+        });
     }
 
     public componentWillUnmount() {
@@ -453,20 +511,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         document.removeEventListener('keydown', this.handleKBShortcuts, true);
     }
 
-    public componentDidUpdate() {
-        let screenStream = this.state.screenStream;
-        if (this.props.screenSharingID === this.props.currentUserID) {
-            screenStream = window.callsClient?.getLocalScreenStream();
-        }
-
-        const hasScreenTrackChanged = screenStream && this.state.screenStream?.getVideoTracks()[0]?.id !== screenStream.getVideoTracks()[0]?.id;
-        if ((screenStream && !this.state.screenStream) || hasScreenTrackChanged) {
-            // eslint-disable-next-line react/no-did-update-set-state
-            this.setState({screenStream});
-        }
-
-        if (this.state.screenStream && this.screenPlayer.current && this.screenPlayer.current?.srcObject !== this.state.screenStream) {
-            this.screenPlayer.current.srcObject = this.state.screenStream;
+    public componentDidUpdate(prevProps: Props, prevState: State) {
+        if (this.screenPlayer && this.state.screenStream !== prevState.screenStream) {
+            this.screenPlayer.srcObject = this.state.screenStream;
         }
     }
 
@@ -484,15 +531,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             // No strict need to be pixel perfect here since the window will be transparent
             // and better to overestimate slightly to avoid the widget possibly being cut.
-            const hMargin = 4;
-            const vMargin = 2;
+            const hMargin = 6;
+            const vMargin = 6;
 
             // Margin on base width is needed to account for the widget being
-            // positioned 2px from the left: 2px + 280px (base width) + 2px
+            // positioned 2px from the left.
             bounds.width = baseWidget.getBoundingClientRect().width + hMargin;
 
             // Margin on base height is needed to account for the widget being
-            // positioned 2px from the bottom: 2px + 94px (base height) + 2px
+            // positioned 4px from the bottom.
             bounds.height = baseWidget.getBoundingClientRect().height + widgetMenu.getBoundingClientRect().height + vMargin;
 
             if (widgetMenu.getBoundingClientRect().height > 0) {
@@ -605,13 +652,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             document.activeElement.blur();
         }
 
-        const isMuted = window.callsClient.isMuted();
-        if (isMuted) {
+        if (this.isMuted()) {
             window.callsClient.unmute();
         } else {
             window.callsClient.mute();
         }
     };
+
+    isMuted() {
+        const currUserState = this.props.statuses[this.props.currentUserID];
+        return currUserState ? !currUserState.unmuted : true;
+    }
+
+    isHandRaised() {
+        const currUserState = this.props.statuses[this.props.currentUserID];
+        return currUserState ? currUserState.raised_hand > 0 : false;
+    }
 
     onDisconnectClick = () => {
         if (this.state.expandedViewWindow) {
@@ -751,7 +807,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         <video
                             id='screen-player'
-                            ref={this.screenPlayer}
+                            ref={this.setScreenPlayerRef}
                             width='100%'
                             height='100%'
                             autoPlay={true}
@@ -817,9 +873,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
         let shareScreenTooltipText = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'});
         if (noScreenPermissions) {
-            shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText);
+            shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText!);
         }
-        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext) : '';
+        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext!) : '';
 
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
 
@@ -959,28 +1015,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <ul
                     id='calls-widget-participants-list'
                     className='Menu__content dropdown-menu'
-                    style={{
-                        width: '100%',
-                        minWidth: 'revert',
-                        maxWidth: 'revert',
-                        maxHeight: '200px',
-                        overflow: 'auto',
-                        position: 'relative',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
-                        boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
-                    }}
+                    style={this.style.participantsList}
                 >
                     <li
                         className='MenuHeader'
-                        style={{
-                            position: 'sticky',
-                            top: '0',
-                            transform: 'translateY(-8px)',
-                            paddingTop: '16px',
-                            color: 'var(--center-channel-color)',
-                            background: 'var(--center-channel-bg)',
-                        }}
+                        style={this.style.participantsListHeader}
                     >
                         {formatMessage({defaultMessage: 'Participants'})}
                     </li>
@@ -1103,9 +1142,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         let label = currentDevice?.label || formatMessage({defaultMessage: 'Default'});
         if (noAudioPermissions) {
-            label = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText);
+            label = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!);
         } else if (noInputDevices) {
-            label = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText);
+            label = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
         }
 
         const onClickHandler = () => {
@@ -1273,7 +1312,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                     whiteSpace: 'initial',
                                 }}
                             >
-                                {formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText)}
+                                {formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText!)}
                             </span>
                         }
 
@@ -1472,23 +1511,28 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             const alertConfig = CallAlertConfigs[alertID];
 
+            let onClose;
+            if (alertConfig.dismissable) {
+                onClose = () => {
+                    this.setState({
+                        alerts: {
+                            ...this.state.alerts,
+                            [alertID]: {
+                                ...alertState,
+                                show: false,
+                            },
+                        },
+                    });
+                };
+            }
+
             return (
                 <WidgetBanner
                     id={'calls-widget-banner-alert'}
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
                     header={formatMessage(alertConfig.bannerText)}
-                    onClose={() => {
-                        this.setState({
-                            alerts: {
-                                ...this.state.alerts,
-                                [alertID]: {
-                                    ...alertState,
-                                    show: false,
-                                },
-                            },
-                        });
-                    }}
+                    onClose={onClose}
                 />
             );
         });
@@ -1534,7 +1578,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         return (
             <div style={{display: 'flex', flexDirection: 'column-reverse', gap: '4px'}}>
-                <JoinNotification visible={!this.state.connecting}/>
+                <JoinNotification
+                    visible={!this.state.connecting}
+                    isMuted={this.isMuted()}
+                />
                 {joinedUsers}
             </div>
         );
@@ -1655,7 +1702,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             document.activeElement.blur();
         }
 
-        if (window.callsClient.isHandRaised) {
+        if (this.isHandRaised()) {
             window.callsClient.unraiseHand();
             this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
@@ -1715,20 +1762,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
-        const MuteIcon = window.callsClient.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
-        let muteTooltipText = window.callsClient.isMuted() ?
+        const MuteIcon = this.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
+
+        let muteTooltipText = this.isMuted() ?
             formatMessage({defaultMessage: 'Unmute'}) :
             formatMessage({defaultMessage: 'Mute'});
         let muteTooltipSubtext = '';
 
         if (noInputDevices) {
-            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText);
-            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext);
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext!);
         }
         if (noAudioPermissions) {
-            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText);
-            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext);
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext!);
         }
 
         const mainStyle = {
@@ -1739,11 +1787,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const ShowIcon = window.desktop && !this.props.global ? ExpandIcon : PopOutIcon;
 
-        const HandIcon = window.callsClient.isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
+        const HandIcon = this.isHandRaised() ? UnraisedHandIcon : RaisedHandIcon;
 
         const MenuIcon = this.props.wider ? SettingsWheelIcon : HorizontalDotsIcon;
 
-        const handTooltipText = window.callsClient.isHandRaised ?
+        const handTooltipText = this.isHandRaised() ?
             formatMessage({defaultMessage: 'Lower hand'}) :
             formatMessage({defaultMessage: 'Raise hand'});
 
@@ -1838,11 +1886,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
                             tooltipText={muteTooltipText}
                             tooltipSubtext={muteTooltipSubtext}
-                            bgColor={window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
+                            bgColor={this.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
                             icon={
                                 <MuteIcon
                                     style={{
-                                        fill: window.callsClient.isMuted() ? '' : 'rgba(61, 184, 135, 1)',
+                                        fill: this.isMuted() ? '' : 'rgba(61, 184, 135, 1)',
                                     }}
                                 />
                             }
@@ -1855,11 +1903,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 onToggle={() => this.onRaiseHandToggle()}
                                 shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
                                 tooltipText={handTooltipText}
-                                bgColor={window.callsClient.isHandRaised ? 'rgba(var(--away-indicator-rgb), 0.16)' : ''}
+                                bgColor={this.isHandRaised() ? 'rgba(var(--away-indicator-rgb), 0.16)' : ''}
                                 icon={
                                     <HandIcon
                                         style={{
-                                            fill: window.callsClient.isHandRaised ? 'var(--away-indicator)' : '',
+                                            fill: this.isHandRaised() ? 'var(--away-indicator)' : '',
                                         }}
                                     />
                                 }

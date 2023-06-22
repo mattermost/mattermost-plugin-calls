@@ -31,7 +31,7 @@ import {
     getPluginPath,
     getProfilesByIds,
 } from 'plugin/utils';
-import {iceServers, needsTURNCredentials} from 'plugin/selectors';
+import {iceServers, needsTURNCredentials, callsConfig} from 'plugin/selectors';
 import {
     logDebug,
     logErr,
@@ -70,7 +70,7 @@ import {
     UserVoiceOnOffData,
     WebsocketEventData,
 } from '@calls/common/lib/types';
-import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
+import {CallActions, CurrentCallData, CurrentCallDataDefault, CallsClientConfig} from 'src/types/types';
 
 import {
     getCallID,
@@ -101,8 +101,7 @@ function connectCall(
     channelID: string,
     callTitle: string,
     rootID: string,
-    wsURL: string,
-    iceConfigs: RTCIceServer[],
+    clientConfig: CallsClientConfig,
     wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void,
     closeCb?: (err?: Error) => void,
 ) {
@@ -112,11 +111,7 @@ function connectCall(
             return;
         }
 
-        window.callsClient = new CallsClient({
-            wsURL,
-            iceServers: iceConfigs,
-            authToken: getToken(),
-        });
+        window.callsClient = new CallsClient(clientConfig);
         window.currentCallData = CurrentCallDataDefault;
 
         window.callsClient.on('close', (err?: Error) => {
@@ -286,7 +281,14 @@ export default async function init(cfg: InitConfig) {
         iceConfigs.push(...configs);
     }
 
-    connectCall(channelID, callTitle, rootID, getWSConnectionURL(getConfig(store.getState())), iceConfigs, (ev) => {
+    const clientConfig = {
+        wsURL: getWSConnectionURL(getConfig(store.getState())),
+        iceServers: iceConfigs,
+        authToken: getToken(),
+        simulcast: callsConfig(store.getState()).EnableSimulcast,
+    };
+
+    connectCall(channelID, callTitle, rootID, clientConfig, (ev) => {
         switch (ev.event) {
         case 'hello':
             store.dispatch(setServerVersion((ev.data as HelloData).server_version));

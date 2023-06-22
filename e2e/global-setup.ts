@@ -4,9 +4,12 @@ import {request, FullConfig} from '@playwright/test';
 
 import plugin from '../plugin.json';
 
-import {userState, baseURL, defaultTeam} from './constants';
+import {adminState, baseURL, defaultTeam, userPassword, userPrefix, channelPrefix} from './constants';
 
 async function globalSetup(config: FullConfig) {
+    const numUsers = config.workers * 2;
+    const numChannels = config.workers * 2;
+
     const headers = {'X-Requested-With': 'XMLHttpRequest'};
 
     const adminContext = await request.newContext({
@@ -36,20 +39,21 @@ async function globalSetup(config: FullConfig) {
 
     await adminContext.post('/api/v4/users/login', {
         data: {
-            login_id: userState.admin.username,
-            password: userState.admin.password,
+            login_id: adminState.username,
+            password: adminState.password,
         },
         headers,
     });
-    await adminContext.storageState({path: userState.admin.storageStatePath});
+    await adminContext.storageState({path: adminState.storageStatePath});
 
     // create and log users in.
-    for (const user of userState.users) {
+    for (let i = 0; i < numUsers; i++) {
+        const username = `${userPrefix}${i}`;
         await adminContext.post('api/v4/users', {
             data: {
-                email: `${user.username}@example.com`,
-                username: user.username,
-                password: user.password,
+                email: `${username}@example.com`,
+                username,
+                password: userPassword,
             },
             headers,
         });
@@ -80,12 +84,12 @@ async function globalSetup(config: FullConfig) {
         });
         await requestContext.post('/api/v4/users/login', {
             data: {
-                login_id: user.username,
-                password: user.password,
+                login_id: username,
+                password: userPassword,
             },
             headers,
         });
-        await requestContext.storageState({path: user.storageStatePath});
+        await requestContext.storageState({path: `${userPrefix}${i}StorageState.json`});
         await requestContext.dispose();
     }
 
@@ -120,8 +124,9 @@ async function globalSetup(config: FullConfig) {
     });
 
     // add users to team.
-    for (const userInfo of userState.users) {
-        resp = await adminContext.get(`/api/v4/users/username/${userInfo.username}`);
+    for (let i = 0; i < numUsers; i++) {
+        const username = `${userPrefix}${i}`;
+        resp = await adminContext.get(`/api/v4/users/username/${username}`);
         const user = await resp.json();
         await adminContext.post(`/api/v4/teams/${team.id}/members`, {
             data: {
@@ -152,8 +157,8 @@ async function globalSetup(config: FullConfig) {
     const channels = [];
 
     // create some channels.
-    for (let i = 0; i < config.workers * 2; i++) {
-        const name = `calls${i}`;
+    for (let i = 0; i < numChannels; i++) {
+        const name = `${channelPrefix}${i}`;
         channels.push(name);
         await adminContext.post('/api/v4/channels', {
             data: {
@@ -170,8 +175,9 @@ async function globalSetup(config: FullConfig) {
     for (const channelName of channels) {
         resp = await adminContext.get(`/api/v4/teams/${team.id}/channels/name/${channelName}`);
         const channel = await resp.json();
-        for (const userInfo of userState.users) {
-            resp = await adminContext.post('/api/v4/users/usernames', {data: [userInfo.username], headers});
+        for (let i = 0; i < numUsers; i++) {
+            const username = `${userPrefix}${i}`;
+            resp = await adminContext.post('/api/v4/users/usernames', {data: [username], headers});
             const users = await resp.json();
             await adminContext.post(`/api/v4/channels/${channel.id}/members`, {
                 data: {
