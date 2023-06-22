@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -237,8 +238,10 @@ func (p *Plugin) newJobService(serviceURL string) (*jobService, error) {
 	}, nil
 }
 
-func (s *jobService) RunJob(cfg job.Config) (job.Job, error) {
-	return s.client.CreateJob(cfg)
+func (p *Plugin) getJobService() *jobService {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	return p.jobService
 }
 
 func (s *jobService) StopJob(channelID string) error {
@@ -251,11 +254,36 @@ func (s *jobService) StopJob(channelID string) error {
 }
 
 func (s *jobService) GetJob(jobID string) (job.Job, error) {
-	return s.client.GetJob(jobID)
+	jb, err := s.client.GetJob(jobID)
+
+	// Adding a check in case the service restarted and lost credentials. This is
+	// a common case when the offloader is running in kubernetes deployment. The
+	// solution is to re-initialize the service which will cause a new registration
+	// attempt.
+	if errors.Is(err, offloader.ErrUnauthorized) {
+		if err := s.reinitializeOnAuthError(); err != nil {
+			return job.Job{}, err
+		}
+		return s.client.GetJob(jobID)
+	}
+	return jb, err
 }
 
 func (s *jobService) GetJobLogs(jobID string) ([]byte, error) {
-	return s.client.GetJobLogs(jobID)
+	data, err := s.client.GetJobLogs(jobID)
+
+	// Adding a check in case the service restarted and lost credentials. This is
+	// a common case when the offloader is running in kubernetes deployment. The
+	// solution is to re-initialize the service which will cause a new registration
+	// attempt.
+	if errors.Is(err, offloader.ErrUnauthorized) {
+		if err := s.reinitializeOnAuthError(); err != nil {
+			return nil, err
+		}
+		return s.client.GetJobLogs(jobID)
+	}
+
+	return data, err
 }
 
 func (s *jobService) UpdateJobRunner(runner string) error {
@@ -305,17 +333,60 @@ func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, 
 	baseRecorderCfg.ThreadID = postID
 	baseRecorderCfg.AuthToken = authToken
 
-	job, err := s.RunJob(job.Config{
+	jobCfg := job.Config{
 		Type:           job.TypeRecording,
 		MaxDurationSec: maxDuration,
 		Runner:         recordingJobRunner,
 		InputData:      baseRecorderCfg.ToMap(),
-	})
-	if err != nil {
+	}
+
+	job, err := s.client.CreateJob(jobCfg)
+
+	// Adding a check in case the service restarted and lost credentials. This is
+	// a common case when the offloader is running in kubernetes deployment. The
+	// solution is to re-initialize the service which will cause a new registration
+	// attempt.
+	if errors.Is(err, offloader.ErrUnauthorized) {
+		if err := s.reinitializeOnAuthError(); err != nil {
+			return "", err
+		}
+
+		job, err := s.client.CreateJob(jobCfg)
+		if err != nil {
+			return "", err
+		}
+
+		return job.ID, nil
+	} else if err != nil {
 		return "", err
 	}
 
 	return job.ID, nil
+}
+
+func (s *jobService) Close() error {
+	return s.client.Close()
+}
+
+func (s *jobService) reinitializeOnAuthError() error {
+	s.ctx.LogWarn("received unauthorized error from job service, attempting re-initialization")
+
+	if err := s.Close(); err != nil {
+		s.ctx.LogError("failed to close job service client", "err", err.Error())
+	}
+
+	jobService, err := s.ctx.newJobService(s.ctx.getConfiguration().getJobServiceURL())
+	if err != nil {
+		return fmt.Errorf("failed to re-initialize service: %w", err)
+	}
+
+	s.ctx.LogInfo("job service re-initialized successfully")
+
+	s.ctx.mut.Lock()
+	s.ctx.jobService = jobService
+	s.ctx.mut.Unlock()
+
+	return nil
 }
 
 func (p *Plugin) jobServiceVersionCheck(client *offloader.Client) error {

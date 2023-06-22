@@ -23,12 +23,12 @@ func (p *Plugin) handleGetJob(w http.ResponseWriter, r *http.Request, jobID stri
 		return
 	}
 
-	if p.jobService == nil {
+	if p.getJobService() == nil {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	job, err := p.jobService.GetJob(jobID)
+	job, err := p.getJobService().GetJob(jobID)
 	if err != nil {
 		p.LogError("failed to get job", "err", err.Error(), "jobID", jobID)
 		http.NotFound(w, r)
@@ -50,12 +50,12 @@ func (p *Plugin) handleGetJobLogs(w http.ResponseWriter, r *http.Request, jobID 
 		return
 	}
 
-	if p.jobService == nil {
+	if p.getJobService() == nil {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	data, err := p.jobService.GetJobLogs(jobID)
+	data, err := p.getJobService().GetJobLogs(jobID)
 	if err != nil {
 		p.LogError("failed to get job logs", "err", err.Error(), "jobID", jobID)
 		http.NotFound(w, r)
