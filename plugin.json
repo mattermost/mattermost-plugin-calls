@@ -31,18 +31,36 @@
       },
       {
         "key": "UDPServerAddress",
-        "display_name": "RTC Server Address",
+        "display_name": "RTC Server Address (UDP)",
         "type": "text",
-        "help_text": "The IP address used by the RTC server to listen on.",
+        "help_text": "The local IP address used by the RTC server to listen on for UDP connections.",
+        "default": "",
+        "placeholder": "127.0.0.1",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "TCPServerAddress",
+        "display_name": "RTC Server Address (TCP)",
+        "type": "text",
+        "help_text": "The local IP address used by the RTC server to listen on for TCP connections.",
         "default": "",
         "placeholder": "127.0.0.1",
         "hosting": "on-prem"
       },
       {
         "key": "UDPServerPort",
-        "display_name": "RTC Server Port",
+        "display_name": "RTC Server Port (UDP)",
         "type": "number",
         "help_text": "The UDP port the RTC server will listen on.",
+        "default": 8443,
+        "placeholder": "8443",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "TCPServerPort",
+        "display_name": "RTC Server Port (TCP)",
+        "type": "number",
+        "help_text": "The TCP port the RTC server will listen on.",
         "default": 8443,
         "placeholder": "8443",
         "hosting": "on-prem"
@@ -160,11 +178,26 @@
           }
         ],
         "hosting": "on-prem"
+      },
+      {
+        "key": "EnableIPv6",
+        "display_name": "(Experimental) Enable IPv6 support",
+        "type": "bool",
+        "help_text": "When set to true the RTC service will work in dual-stack mode, listening for IPv6 connections and generating candidates in addition to IPv4 ones.",
+        "default": false,
+        "hosting": "on-prem"
+      },
+      {
+        "key": "EnableRinging",
+        "display_name": "Enable call ringing (Beta)",
+        "type": "bool",
+        "default": false,
+        "help_text": "When set to true, ringing functionality is enabled: participants in DM and GM channels will receive a desktop alert and a ringing notification when a call is started."
       }
     ]
   },
   "props": {
     "min_rtcd_version": "v0.10.1",
-    "calls_recorder_version": "v0.3.2"
+    "calls_recorder_version": "v0.3.3"
   }
 }

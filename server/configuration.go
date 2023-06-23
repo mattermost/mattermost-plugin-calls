@@ -33,10 +33,16 @@ import (
 type configuration struct {
 	// The IP (or hostname) to be used as the host ICE candidate.
 	ICEHostOverride string
-	// The IP address used by the RTC server to listen on.
+	// The local IP address used by the RTC server to listen on for UDP
+	// connections.
 	UDPServerAddress string
+	// The local IP address used by the RTC server to listen on for TCP
+	// connections.
+	TCPServerAddress string
 	// UDP port used by the RTC server to listen to.
 	UDPServerPort *int
+	// TCP port used by the RTC server to listen to.
+	TCPServerPort *int
 	// The URL to a running RTCD service instance that should host the calls.
 	// When set (non empty) all calls will be handled by the external service.
 	RTCDServiceURL string
@@ -51,6 +57,12 @@ type configuration struct {
 	JobServiceURL string
 	// The audio and video quality of call recordings.
 	RecordingQuality string
+	// When set to true the RTC service will work in dual-stack mode, listening for IPv6
+	// connections and generating candidates in addition to IPv4 ones.
+	EnableIPv6 *bool
+	// Ringing is default off (for now -- 8.0), allow sysadmins to turn it on.
+	// When set to true it enables ringing for DM/GM channels.
+	EnableRinging *bool
 
 	clientConfig
 }
@@ -83,14 +95,16 @@ type clientConfig struct {
 	MaxRecordingDuration *int
 	// When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.
 	EnableSimulcast *bool
+	// When set to true it enables ringing for DM/GM channels.
+	EnableRinging *bool
 }
 
 const (
 	defaultRecDurationMinutes = 60
 	minRecDurationMinutes     = 15
 	maxRecDurationMinutes     = 180
-	minAllowedUDPPort         = 80
-	maxAllowedUDPPort         = 49151
+	minAllowedPort            = 80
+	maxAllowedPort            = 49151
 )
 
 type ICEServers []string
@@ -143,12 +157,16 @@ func (c *configuration) getClientConfig() clientConfig {
 		EnableRecordings:     c.EnableRecordings,
 		MaxRecordingDuration: c.MaxRecordingDuration,
 		EnableSimulcast:      c.EnableSimulcast,
+		EnableRinging:        c.EnableRinging,
 	}
 }
 
 func (c *configuration) SetDefaults() {
 	if c.UDPServerPort == nil {
 		c.UDPServerPort = model.NewInt(8443)
+	}
+	if c.TCPServerPort == nil {
+		c.TCPServerPort = model.NewInt(8443)
 	}
 
 	c.AllowEnableCalls = model.NewBool(true)
@@ -181,6 +199,12 @@ func (c *configuration) SetDefaults() {
 	if c.EnableSimulcast == nil {
 		c.EnableSimulcast = new(bool)
 	}
+	if c.EnableIPv6 == nil {
+		c.EnableIPv6 = new(bool)
+	}
+	if c.EnableRinging == nil {
+		c.EnableRinging = model.NewBool(false)
+	}
 }
 
 func (c *configuration) IsValid() error {
@@ -188,12 +212,24 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("UDPServerAddress parsing failed")
 	}
 
+	if c.TCPServerAddress != "" && net.ParseIP(c.TCPServerAddress) == nil {
+		return fmt.Errorf("TCPServerAddress parsing failed")
+	}
+
 	if c.UDPServerPort == nil {
 		return fmt.Errorf("UDPServerPort should not be nil")
 	}
 
-	if *c.UDPServerPort < minAllowedUDPPort || *c.UDPServerPort > maxAllowedUDPPort {
-		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [%d, %d]", *c.UDPServerPort, minAllowedUDPPort, maxAllowedUDPPort)
+	if c.TCPServerPort == nil {
+		return fmt.Errorf("TCPServerPort should not be nil")
+	}
+
+	if *c.UDPServerPort < minAllowedPort || *c.UDPServerPort > maxAllowedPort {
+		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [%d, %d]", *c.UDPServerPort, minAllowedPort, maxAllowedPort)
+	}
+
+	if *c.TCPServerPort < minAllowedPort || *c.TCPServerPort > maxAllowedPort {
+		return fmt.Errorf("TCPServerPort is not valid: %d is not in allowed range [%d, %d]", *c.TCPServerPort, minAllowedPort, maxAllowedPort)
 	}
 
 	if c.MaxCallParticipants == nil || *c.MaxCallParticipants < 0 {
@@ -220,6 +256,7 @@ func (c *configuration) Clone() *configuration {
 	var cfg configuration
 
 	cfg.UDPServerAddress = c.UDPServerAddress
+	cfg.TCPServerAddress = c.TCPServerAddress
 	cfg.ICEHostOverride = c.ICEHostOverride
 	cfg.RTCDServiceURL = c.RTCDServiceURL
 	cfg.JobServiceURL = c.JobServiceURL
@@ -229,6 +266,11 @@ func (c *configuration) Clone() *configuration {
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = new(int)
 		*cfg.UDPServerPort = *c.UDPServerPort
+	}
+
+	if c.TCPServerPort != nil {
+		cfg.TCPServerPort = new(int)
+		*cfg.TCPServerPort = *c.TCPServerPort
 	}
 
 	// AllowEnableCalls is always true
@@ -274,6 +316,14 @@ func (c *configuration) Clone() *configuration {
 
 	if c.EnableSimulcast != nil {
 		cfg.EnableSimulcast = model.NewBool(*c.EnableSimulcast)
+	}
+
+	if c.EnableIPv6 != nil {
+		cfg.EnableIPv6 = model.NewBool(*c.EnableIPv6)
+	}
+
+	if c.EnableRinging != nil {
+		cfg.EnableRinging = model.NewBool(*c.EnableRinging)
 	}
 
 	return &cfg
@@ -423,6 +473,10 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 		cfg.DefaultEnabled = model.NewBool(false)
 	}
 
+	if cfg.EnableIPv6 == nil {
+		cfg.EnableIPv6 = model.NewBool(false)
+	}
+
 	if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// On Cloud installations we want calls enabled in all channels so we
 		// override it since the plugin's default is now false.
@@ -451,6 +505,7 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 
 	cfg.ICEHostOverride = strings.TrimSpace(cfg.ICEHostOverride)
 	cfg.UDPServerAddress = strings.TrimSpace(cfg.UDPServerAddress)
+	cfg.TCPServerAddress = strings.TrimSpace(cfg.TCPServerAddress)
 	cfg.RTCDServiceURL = strings.TrimSpace(cfg.RTCDServiceURL)
 	cfg.JobServiceURL = strings.TrimSpace(cfg.JobServiceURL)
 }

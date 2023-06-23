@@ -13,20 +13,18 @@ import {rtcdEnabled} from 'src/selectors';
 
 import {leftCol, rightCol} from 'src/components/admin_console_settings/common';
 
-export const ServerSideTURN = (props: CustomComponentProps) => {
+export const EnableIPv6 = (props: CustomComponentProps) => {
     const {formatMessage} = useIntl();
     const isRTCDEnabled = useSelector(rtcdEnabled);
     const helpText = useHelptext(props.helpText);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const newVal = e.target.value === 'on';
-
         // @ts-ignore -- newVal needs to be a boolean, but the signature says 'string'
-        props.onChange(props.id, newVal);
+        props.onChange(props.id, e.target.value === 'true');
     };
 
     // @ts-ignore val is a boolean, but the signature says 'string'. (being defensive here, just in case)
-    const checked = props.value === 'on' || props.value === true;
+    const checked = props.value === 'true' || props.value === true;
 
     return (
         <div
@@ -39,29 +37,29 @@ export const ServerSideTURN = (props: CustomComponentProps) => {
             <div className={rightCol}>
                 <label className='radio-inline'>
                     <input
-                        data-testid={props.id + '_on'}
+                        data-testid={props.id + 'true'}
                         type='radio'
-                        value='on'
-                        id={props.id + '_on'}
-                        name={props.id + '_on'}
+                        value='true'
+                        id={props.id + 'true'}
+                        name={props.id + 'true'}
                         checked={checked}
                         onChange={handleChange}
                         disabled={isRTCDEnabled}
                     />
-                    {formatMessage({defaultMessage: 'On'})}
+                    {formatMessage({defaultMessage: 'true'})}
                 </label>
                 <label className='radio-inline'>
                     <input
-                        data-testid={props.id + '_off'}
+                        data-testid={props.id + 'false'}
                         type='radio'
-                        value='off'
-                        id={props.id + '_off'}
-                        name={props.id + '_off'}
+                        value='false'
+                        id={props.id + 'false'}
+                        name={props.id + 'false'}
                         checked={!checked}
                         onChange={handleChange}
                         disabled={isRTCDEnabled}
                     />
-                    {formatMessage({defaultMessage: 'Off'})}
+                    {formatMessage({defaultMessage: 'false'})}
                 </label>
                 <div
                     data-testid={props.id + 'help-text'}
@@ -73,4 +71,4 @@ export const ServerSideTURN = (props: CustomComponentProps) => {
         </div>);
 };
 
-export default ServerSideTURN;
+export default EnableIPv6;
