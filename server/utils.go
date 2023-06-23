@@ -24,8 +24,7 @@ const (
 )
 
 func (p *Plugin) getHandlerID() (string, error) {
-	p.metrics.IncStoreOp("KVGet")
-	data, appErr := p.API.KVGet(handlerKey)
+	data, appErr := p.KVGet(handlerKey, false)
 	if appErr != nil {
 		return "", fmt.Errorf("failed to get handler id: %w", appErr)
 	}

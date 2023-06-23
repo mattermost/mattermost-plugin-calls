@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -58,6 +59,10 @@ type Plugin struct {
 	// A map of callID -> *cluster.Mutex to guarantee atomicity of call state
 	// operations.
 	callsClusterLocks map[string]*cluster.Mutex
+
+	// Database handle to the writer DB node
+	wDB        *sql.DB
+	driverName string
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {

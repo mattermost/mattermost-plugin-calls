@@ -212,8 +212,7 @@ func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClien
 }
 
 func (p *Plugin) kvGetChannelState(channelID string) (*channelState, error) {
-	p.metrics.IncStoreOp("KVGet")
-	data, appErr := p.API.KVGet(channelID)
+	data, appErr := p.KVGet(channelID, true)
 	if appErr != nil {
 		return nil, fmt.Errorf("KVGet failed: %w", appErr)
 	}

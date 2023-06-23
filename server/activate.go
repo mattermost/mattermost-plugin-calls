@@ -58,6 +58,11 @@ func (p *Plugin) OnActivate() error {
 		return fmt.Errorf("disabled by environment flag")
 	}
 
+	if err := p.initDB(); err != nil {
+		p.LogError(err.Error())
+		return err
+	}
+
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
 
 	if p.isSingleHandler() {
@@ -226,6 +231,12 @@ func (p *Plugin) OnActivate() error {
 func (p *Plugin) OnDeactivate() error {
 	p.LogDebug("deactivate")
 	close(p.stopCh)
+
+	if p.wDB != nil {
+		if err := p.wDB.Close(); err != nil {
+			p.LogError(err.Error())
+		}
+	}
 
 	if p.rtcdManager != nil {
 		if err := p.rtcdManager.Close(); err != nil {

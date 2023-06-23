@@ -32,8 +32,8 @@ type MutexPluginAPI interface {
 
 // MutexMetricsAPI is an interface to manage cluster mutex metrics.
 type MutexMetricsAPI interface {
-	ObserveClusterMutexLockGrabTime(key string, elapsed float64)
-	ObserveClusterMutexLockTime(key string, elapsed float64)
+	ObserveClusterMutexGrabTime(key string, elapsed float64)
+	ObserveClusterMutexLockedTime(key string, elapsed float64)
 	IncClusterMutexLockRetries(group string)
 }
 
@@ -178,9 +178,7 @@ func (m *Mutex) Lock(ctx context.Context) error {
 		if locked {
 			m.lastLockedAt = time.Now()
 
-			m.pluginAPI.LogDebug(fmt.Sprintf("grabbing lock took %v", time.Since(start)))
-
-			m.metricsAPI.ObserveClusterMutexLockGrabTime(m.getMetricsGroup(), time.Since(start).Seconds())
+			m.metricsAPI.ObserveClusterMutexGrabTime(m.getMetricsGroup(), time.Since(start).Seconds())
 
 			m.stopCh = make(chan struct{})
 			m.doneCh = make(chan struct{})
@@ -235,7 +233,7 @@ func (m *Mutex) Unlock() {
 		m.pluginAPI.LogError("failed to delete mutex key", "err", err.Error())
 	}
 
-	m.metricsAPI.ObserveClusterMutexLockTime(m.getMetricsGroup(), time.Since(m.lastLockedAt).Seconds())
+	m.metricsAPI.ObserveClusterMutexLockedTime(m.getMetricsGroup(), time.Since(m.lastLockedAt).Seconds())
 }
 
 func (m *Mutex) getMetricsGroup() string {

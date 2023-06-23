@@ -63,8 +63,7 @@ type jobService struct {
 
 func (p *Plugin) getStoredJobServiceClientConfig() (offloader.ClientConfig, error) {
 	var cfg offloader.ClientConfig
-	p.metrics.IncStoreOp("KVGet")
-	data, appErr := p.API.KVGet(jobServiceConfigKey)
+	data, appErr := p.KVGet(jobServiceConfigKey, false)
 	if appErr != nil {
 		return cfg, fmt.Errorf("failed to get job service client config: %w", appErr)
 	}

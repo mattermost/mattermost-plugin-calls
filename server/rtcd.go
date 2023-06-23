@@ -416,8 +416,7 @@ func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.Dial
 
 func (m *rtcdClientManager) getStoredRTCDConfig() (rtcd.ClientConfig, error) {
 	var cfg rtcd.ClientConfig
-	m.ctx.metrics.IncStoreOp("KVGet")
-	data, appErr := m.ctx.API.KVGet(rtcdConfigKey)
+	data, appErr := m.ctx.KVGet(rtcdConfigKey, false)
 	if appErr != nil {
 		return cfg, fmt.Errorf("failed to get rtcd config: %w", appErr)
 	}
