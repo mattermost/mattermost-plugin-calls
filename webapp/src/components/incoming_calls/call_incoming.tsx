@@ -126,11 +126,12 @@ const Inner = styled.div`
 const Row = styled.div`
     display: flex;
     flex-direction: row;
+    align-items: center;
 `;
 
 const Message = styled.div`
     color: var(--button-color);
-    margin-left: 10px;
+    margin: -3px 4px 0 10px;
 `;
 
 const RowSpaced = styled(Row)`
