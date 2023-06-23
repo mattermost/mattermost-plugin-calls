@@ -15,6 +15,7 @@ export const CallsConfigDefault: CallsConfig = {
     MaxRecordingDuration: 60,
     sku_short_name: '',
     EnableSimulcast: false,
+    EnableRinging: true,
 };
 
 export type ChannelState = {

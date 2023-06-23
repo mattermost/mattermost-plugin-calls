@@ -27,6 +27,7 @@ import {RING_LENGTH} from 'src/constants';
 
 import {
     channelHasCall,
+    ringingEnabled,
     ringingForCall,
     voiceChannelCallDismissedNotification,
     voiceChannelCalls,
@@ -351,7 +352,7 @@ export const userDisconnected = (channelID: string, userID: string) => {
             },
         });
 
-        if (!channelHasCall(getState(), channelID)) {
+        if (ringingEnabled(getState()) && !channelHasCall(getState(), channelID)) {
             const callID = voiceChannelCalls(getState())[channelID].ID || '';
             await dispatch(removeIncomingCallNotification(callID));
         }

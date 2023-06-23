@@ -8,15 +8,16 @@ import {shouldRenderCallsIncoming} from 'src/utils';
 
 import {useOnACallWithoutGlobalWidget} from 'src/components/incoming_calls/hooks';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
-import {sortedIncomingCalls} from 'src/selectors';
+import {ringingEnabled, sortedIncomingCalls} from 'src/selectors';
 import {CallIncoming} from 'src/components/incoming_calls/call_incoming';
 
 export const IncomingCallContainer = () => {
+    const enabled = useSelector(ringingEnabled);
     const calls = [...useSelector(sortedIncomingCalls)];
     const myTeams = useSelector(getMyTeams);
     const onACallWithoutGlobalWidget = useOnACallWithoutGlobalWidget();
 
-    if (!shouldRenderCallsIncoming() || calls.length === 0 || onACallWithoutGlobalWidget) {
+    if (!enabled || !shouldRenderCallsIncoming() || calls.length === 0 || onACallWithoutGlobalWidget) {
         // don't show incoming calls if we're on a call without the global widget because
         // we'll see the notification above the widget
         return null;

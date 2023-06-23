@@ -54,6 +54,7 @@ import {
 import {
     connectedChannelID,
     idToProfileInConnectedChannel,
+    ringingEnabled,
     shouldPlayJoinUserSound,
     voiceChannelCalls,
 } from './selectors';
@@ -72,8 +73,11 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
             channelID,
         },
     });
-    const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
-    store.dispatch(removeIncomingCallNotification(callID));
+
+    if (ringingEnabled(store.getState())) {
+        const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
+        store.dispatch(removeIncomingCallNotification(callID));
+    }
 }
 
 export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData>) {
@@ -110,7 +114,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         if (channel) {
             followThread(store, channel.id, channel.team_id);
         }
-    } else {
+    } else if (ringingEnabled(store.getState())) {
         // the call that started is not the call we're currently in.
         const currentUserID = getCurrentUserId(store.getState());
         if (currentUserID !== ev.data.host_id) {
@@ -139,7 +143,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
         }
     }
 
-    if (userID === currentUserID) {
+    if (ringingEnabled(store.getState()) && userID === currentUserID) {
         const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
         store.dispatch(removeIncomingCallNotification(callID));
         notificationSounds?.stopRing(); // And stop ringing for _any_ incoming call.
