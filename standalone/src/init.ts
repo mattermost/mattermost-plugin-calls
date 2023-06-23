@@ -56,6 +56,7 @@ import {
 } from 'plugin/websocket_handlers';
 
 import {
+    CallChannelState,
     CallHostChangedData,
     CallRecordingStateData,
     CallStartData,
@@ -81,7 +82,6 @@ import {
     getRootID,
 } from './common';
 import {applyTheme} from './theme_utils';
-import {ChannelState} from './types/calls';
 
 // CSS
 import 'mattermost-webapp/sass/styles.scss';
@@ -140,7 +140,7 @@ function connectCall(
 
 async function fetchChannelData(store: Store, channelID: string) {
     try {
-        const resp = await Client4.doFetch<ChannelState>(
+        const resp = await Client4.doFetch<CallChannelState>(
             `${getPluginPath()}/${channelID}`,
             {method: 'get'},
         );
@@ -180,6 +180,7 @@ async function fetchChannelData(store: Store, channelID: string) {
                 startAt: resp.call.start_at,
                 ownerID: resp.call.owner_id,
                 hostID: resp.call.host_id,
+                dismissedNotification: resp.call.dismissed_notification || {},
             },
         });
 
