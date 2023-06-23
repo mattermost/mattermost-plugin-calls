@@ -617,7 +617,7 @@ export default class Plugin {
                         });
 
                         if (ringingEnabled(store.getState())) {
-                            const callExists = incomingCalls(store.getState()).findIndex((ic) => ic.callID === data[i].channel_id) >= 0;
+                            const callExists = incomingCalls(store.getState()).findIndex((ic) => ic.callID === data[i].call.id) >= 0;
                             if (data[i].call && !callExists) {
                                 // dismissedNotification is populated after the actions array has been batched, so manually check:
                                 const dismissed = data[i].call?.dismissed_notification;
