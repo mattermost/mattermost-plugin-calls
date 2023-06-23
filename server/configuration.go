@@ -60,6 +60,9 @@ type configuration struct {
 	// When set to true the RTC service will work in dual-stack mode, listening for IPv6
 	// connections and generating candidates in addition to IPv4 ones.
 	EnableIPv6 *bool
+	// Ringing is default off (for now -- 8.0), allow sysadmins to turn it on.
+	// When set to true it enables ringing for DM/GM channels.
+	EnableRinging *bool
 
 	clientConfig
 }
@@ -92,6 +95,8 @@ type clientConfig struct {
 	MaxRecordingDuration *int
 	// When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.
 	EnableSimulcast *bool
+	// When set to true it enables ringing for DM/GM channels.
+	EnableRinging *bool
 }
 
 const (
@@ -152,6 +157,7 @@ func (c *configuration) getClientConfig() clientConfig {
 		EnableRecordings:     c.EnableRecordings,
 		MaxRecordingDuration: c.MaxRecordingDuration,
 		EnableSimulcast:      c.EnableSimulcast,
+		EnableRinging:        c.EnableRinging,
 	}
 }
 
@@ -195,6 +201,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.EnableIPv6 == nil {
 		c.EnableIPv6 = new(bool)
+	}
+	if c.EnableRinging == nil {
+		c.EnableRinging = model.NewBool(false)
 	}
 }
 
@@ -311,6 +320,10 @@ func (c *configuration) Clone() *configuration {
 
 	if c.EnableIPv6 != nil {
 		cfg.EnableIPv6 = model.NewBool(*c.EnableIPv6)
+	}
+
+	if c.EnableRinging != nil {
+		cfg.EnableRinging = model.NewBool(*c.EnableRinging)
 	}
 
 	return &cfg
