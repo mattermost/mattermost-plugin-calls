@@ -307,32 +307,34 @@ export function incomingCallOnChannel(channelID: string, callID: string, hostID:
             channel = res.data;
         }
 
-        if (channel && (isDMChannel(channel) || isGMChannel(channel))) {
-            if (voiceChannelCallDismissedNotification(getState(), channelID)) {
-                return;
-            }
-
-            const otherUser = getUser(getState(), hostID);
-            if (!otherUser) {
-                await dispatch(getProfilesByIdsAction([hostID]));
-            }
-
-            // if this is the first call in the list, it should ring.
-            const calls = incomingCalls(getState());
-            const ring = calls.length === 0;
-
-            await dispatch({
-                type: ADD_INCOMING_CALL,
-                data: {
-                    callID,
-                    channelID,
-                    hostID,
-                    startAt,
-                    type: isDMChannel(channel) ? ChannelType.DM : ChannelType.GM,
-                    ring,
-                },
-            });
+        if (!channel || !(isDMChannel(channel) || isGMChannel(channel))) {
+            return;
         }
+
+        if (voiceChannelCallDismissedNotification(getState(), channelID)) {
+            return;
+        }
+
+        const otherUser = getUser(getState(), hostID);
+        if (!otherUser) {
+            await dispatch(getProfilesByIdsAction([hostID]));
+        }
+
+        // if this is the first call in the list, it should ring.
+        const calls = incomingCalls(getState());
+        const ring = calls.length === 0;
+
+        await dispatch({
+            type: ADD_INCOMING_CALL,
+            data: {
+                callID,
+                channelID,
+                hostID,
+                startAt,
+                type: isDMChannel(channel) ? ChannelType.DM : ChannelType.GM,
+                ring,
+            },
+        });
     };
 }
 
