@@ -12,7 +12,7 @@ import {useDispatch, useSelector, useStore} from 'react-redux';
 
 import {DID_NOTIFY_FOR_CALL, DID_RING_FOR_CALL} from 'src/action_types';
 import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal} from 'src/actions';
-import {DEFAULT_RING_SOUND, RING_LENGTH} from 'src/constants';
+import {DEFAULT_RING_SOUND} from 'src/constants';
 import {logDebug} from 'src/log';
 import {
     connectedChannelID,
@@ -88,14 +88,13 @@ export const useRingingAndNotification = (call: IncomingCallNotification, onWidg
     const currentUser = useSelector(getCurrentUser);
     const didRing = useSelector((state: GlobalState) => didRingForCall(state, call.callID));
     const currRinging = useSelector(currentlyRinging);
-    // TODO: fix
-    const currRingingForMe = useSelector((state: GlobalState) => ringingForCall(state, callUniqueID));
+    const currRingingForThisCall = useSelector((state: GlobalState) => ringingForCall(state, call.callID));
     const connected = Boolean(useSelector(connectedChannelID));
     useNotification(call);
 
     useEffect(() => {
         // If we're on a call, or currently ringing for a different call, then never ring for this call in the future.
-        if (connected || (currRinging && !currRingingForMe)) {
+        if (connected || (currRinging && !currRingingForThisCall)) {
             dispatch({
                 type: DID_RING_FOR_CALL,
                 data: {
@@ -121,12 +120,11 @@ export const useRingingAndNotification = (call: IncomingCallNotification, onWidg
 export const useNotification = (call: IncomingCallNotification) => {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
-    const channel = useSelector((state: GlobalState) => getChannel(state, call.callID));
+    const channel = useSelector((state: GlobalState) => getChannel(state, call.channelID));
     const currentUser = useSelector(getCurrentUser);
-    const myChannelMember = useSelector((state: GlobalState) => getMyChannelMember(state, call.callID));
+    const myChannelMember = useSelector((state: GlobalState) => getMyChannelMember(state, call.channelID));
     const url = useSelector((state: GlobalState) => getChannelURL(state, channel, channel.team_id));
-    const callUniqueID = `${call.callID}${call.startAt}`;
-    const didNotify = useSelector((state: GlobalState) => didNotifyForCall(state, callUniqueID));
+    const didNotify = useSelector((state: GlobalState) => didNotifyForCall(state, call.callID));
     const [hostName, others] = useGetHostNameAndOthers(call, 2);
 
     const title = others.length === 0 ? hostName : others;
@@ -144,7 +142,7 @@ export const useNotification = (call: IncomingCallNotification) => {
         dispatch({
             type: DID_NOTIFY_FOR_CALL,
             data: {
-                callUniqueID,
+                callID: call.callID,
             },
         });
     }, []);
@@ -156,7 +154,7 @@ export const useGetHostNameAndOthers = (call: IncomingCallNotification, splitAt:
     const host = useSelector((state: GlobalState) => getUser(state, call.hostID));
     const currentUser = useSelector(getCurrentUser);
     const doGetProfilesInChannel = makeGetProfilesInChannel();
-    const gmMembers = useSelector((state: GlobalState) => doGetProfilesInChannel(state, call.callID));
+    const gmMembers = useSelector((state: GlobalState) => doGetProfilesInChannel(state, call.channelID));
     const hostName = displayUsername(host, teammateNameDisplay, false);
 
     let others = '';

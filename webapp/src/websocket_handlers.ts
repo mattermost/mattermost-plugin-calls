@@ -72,8 +72,7 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
             channelID,
         },
     });
-    const callID = voiceChannelCalls(store.getState())[channelID].ID;
-    // TODO: fix?
+    const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
     store.dispatch(removeIncomingCallNotification(callID));
 }
 

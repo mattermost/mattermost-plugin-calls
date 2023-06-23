@@ -819,16 +819,16 @@ type RingNotifyForCallsAction = {
     }
 }
 
-const ringingForCalls = (state: { [callUniqueID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
+const ringingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
     switch (action.type) {
     case RINGING_FOR_CALL:
         return {
             ...state,
-            [action.data.callUniqueID]: true,
+            [action.data.callID]: true,
         };
     case DID_RING_FOR_CALL: {
         const nextState = {...state};
-        delete nextState[action.data.callUniqueID];
+        delete nextState[action.data.callID];
         return nextState;
     }
     default:
@@ -836,7 +836,7 @@ const ringingForCalls = (state: { [callUniqueID: string]: boolean } = {}, action
     }
 };
 
-const didRingForCalls = (state: { [callUniqueID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
+const didRingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
     switch (action.type) {
     case DID_RING_FOR_CALL:
         return {
@@ -848,12 +848,12 @@ const didRingForCalls = (state: { [callUniqueID: string]: boolean } = {}, action
     }
 };
 
-const didNotifyForCalls = (state: { [callUniqueID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
+const didNotifyForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
     switch (action.type) {
     case DID_NOTIFY_FOR_CALL:
         return {
             ...state,
-            [action.data.callUniqueID]: true,
+            [action.data.callID]: true,
         };
     default:
         return state;

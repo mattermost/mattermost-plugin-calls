@@ -28,9 +28,7 @@ import {RING_LENGTH} from 'src/constants';
 import {
     channelHasCall,
     ringingForCall,
-    incomingCalls,
     voiceChannelCallDismissedNotification,
-    voiceChannelCallStartAt,
     voiceChannelCalls,
 } from 'src/selectors';
 
@@ -337,7 +335,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, hostID:
                 hostID,
                 startAt,
                 type: isDMChannel(channel) ? ChannelType.DM : ChannelType.GM,
-        },
+            },
         });
     };
 }
@@ -354,8 +352,8 @@ export const userDisconnected = (channelID: string, userID: string) => {
         });
 
         if (!channelHasCall(getState(), channelID)) {
-            // TODO: fix?
-            await dispatch(removeIncomingCallNotification(channelID));
+            const callID = voiceChannelCalls(getState())[channelID].ID || '';
+            await dispatch(removeIncomingCallNotification(callID));
         }
     };
 };
@@ -384,14 +382,12 @@ export const removeIncomingCallNotification = (callID: string): ActionFunc => {
 };
 
 export const ringForCall = (callID: string, sound: string) => {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
-        const startAt = voiceChannelCallStartAt(getState(), callID) || 0;
-        const callUniqueID = `${callID}${startAt}`;
+    return async (dispatch: DispatchFunc) => {
         notificationSounds?.ring(sound);
         await dispatch({
             type: RINGING_FOR_CALL,
             data: {
-                callUniqueID,
+                callID,
             },
         });
         setTimeout(() => dispatch(stopRingingForCall(callID)), RING_LENGTH);
@@ -400,15 +396,13 @@ export const ringForCall = (callID: string, sound: string) => {
 
 export const stopRingingForCall = (callID: string): ActionFunc => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
-        const startAt = voiceChannelCallStartAt(getState(), callID) || 0;
-        const callUniqueID = `${callID}${startAt}`;
-        if (ringingForCall(getState(), callUniqueID)) {
+        if (ringingForCall(getState(), callID)) {
             notificationSounds?.stopRing();
         }
         dispatch({
             type: DID_RING_FOR_CALL,
             data: {
-                callUniqueID,
+                callID,
             },
         });
         return {};

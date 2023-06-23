@@ -12,7 +12,7 @@ import SwitchCallModal from './component';
 
 const mapStateToProps = (state: GlobalState) => {
     const switchCallState = switchCallModal(state);
-    const connectedChannel = getChannel(state, connectedChannelID(state));
+    const connectedChannel = getChannel(state, connectedChannelID(state) || '');
     const currentChannel = switchCallState.targetID ? getChannel(state, switchCallState.targetID) : getChannel(state, getCurrentChannelId(state));
 
     let connectedDMUser;

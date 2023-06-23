@@ -8,11 +8,13 @@ import {DispatchFunc, Thunk} from 'mattermost-redux/types/actions';
 export const {
     modals,
     notificationSounds,
+    sendDesktopNotificationToMe,
 }: {
 
     // @ts-ignore
     modals: { openModal, ModalIdentifiers },
     notificationSounds: { ring: (sound: string) => void, stopRing: () => void },
+    sendDesktopNotificationToMe: (title: string, body: string, channel: Channel, teamId: string, silent: boolean, soundName: string, url: string) => (dispatch: DispatchFunc) => void,
 } =
 
 // @ts-ignore
@@ -35,6 +37,3 @@ export const {
 
     // @ts-ignore
 } = global.ProductApi ?? {};
-
-// @ts-ignore
-export const sendDesktopNotificationToMe: (title: string, body: string, channel: Channel, teamId: string, silent: boolean, soundName: string, url: string) => (dispatch: DispatchFunc) => void = global.sendDesktopNotificationToMe;

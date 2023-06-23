@@ -220,11 +220,11 @@ export const currentlyRinging = (state: GlobalState): boolean => {
     return false;
 };
 
-export const didRingForCall = (state: GlobalState, callUniqueID: string): boolean =>
-    pluginState(state).didRingForCalls[callUniqueID] || false;
+export const didRingForCall = (state: GlobalState, callID: string): boolean =>
+    pluginState(state).didRingForCalls[callID] || false;
 
-export const didNotifyForCall = (state: GlobalState, callUniqueID: string): boolean =>
-    pluginState(state).didNotifyForCalls[callUniqueID] || false;
+export const didNotifyForCall = (state: GlobalState, callID: string): boolean =>
+    pluginState(state).didNotifyForCalls[callID] || false;
 
 //
 // Config logic
