@@ -22,6 +22,7 @@ import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from
 import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
+import {logErr} from 'src/log';
 
 import {channelHasCall, incomingCalls, voiceChannelCallDismissedNotification, voiceChannelCalls} from 'src/selectors';
 
@@ -363,7 +364,7 @@ export const dismissIncomingCallNotification = (channelID: string, callID: strin
         Client4.doFetch(
             `${getPluginPath()}/calls/${channelID}/dismiss-notification`,
             {method: 'post'},
-        );
+        ).catch((e) => logErr(e));
         await dispatch(removeIncomingCallNotification(callID));
     };
 };

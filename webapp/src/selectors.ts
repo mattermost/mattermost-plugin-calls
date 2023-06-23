@@ -107,7 +107,7 @@ export const voiceConnectedProfilesInChannel: (state: GlobalState, channelId: st
         return pluginState(state).voiceConnectedProfiles[channelID] || [];
     };
 
-const voiceConnectedProfilesAllChannels: (state: GlobalState) => { [channelID: string] : UserProfile[] | undefined } =
+const voiceConnectedProfilesAllChannels: (state: GlobalState) => { [channelID: string]: UserProfile[] | undefined } =
     (state) => pluginState(state).voiceConnectedProfiles;
 
 export const voiceProfilesInCurrentChannel: (state: GlobalState) => UserProfile[] =
@@ -134,7 +134,8 @@ export const voiceChannelCallStartAt = (state: GlobalState, channelID: string): 
     return pluginState(state).voiceChannelCalls[channelID]?.startAt;
 };
 
-export const voiceChannelCalls = (state: GlobalState) => pluginState(state).voiceChannelCalls;
+export const voiceChannelCalls = (state: GlobalState): { [channelID: string]: callState} =>
+    pluginState(state).voiceChannelCalls;
 
 export const voiceChannelCallInCurrentChannel: (state: GlobalState) => callState =
     createSelector(
@@ -161,7 +162,7 @@ export const voiceChannelCallHostChangeAt = (state: GlobalState, channelID: stri
 };
 
 export const voiceChannelCallDismissedNotification = (state: GlobalState, channelID: string) => {
-    const dismissed: {[userID: string]: boolean} | undefined = pluginState(state).voiceChannelCalls[channelID]?.dismissedNotification;
+    const dismissed: { [userID: string]: boolean } | undefined = pluginState(state).voiceChannelCalls[channelID]?.dismissedNotification;
     if (!dismissed) {
         return false;
     }
@@ -199,6 +200,13 @@ export const recentlyJoinedUsers = (state: GlobalState, channelID: string): stri
 
 export const incomingCalls = (state: GlobalState): IncomingCallNotification[] =>
     pluginState(state).incomingCalls;
+
+export const sortedIncomingCalls: (state: GlobalState) => IncomingCallNotification[] =
+    createSelector(
+        'sortedIncomingCalls',
+        incomingCalls,
+        (calls) => [...calls].sort((a, b) => b.startAt - a.startAt),
+    );
 
 export const didRingForCall = (state: GlobalState, callID: string): boolean => {
     return pluginState(state).didRingForCalls[callID] || false;

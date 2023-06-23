@@ -7,7 +7,7 @@ import {useDispatch, useSelector, useStore} from 'react-redux';
 
 import {DID_RING_FOR_CALL} from 'src/action_types';
 import {dismissIncomingCallNotification, showSwitchCallModal} from 'src/actions';
-import {RING_LENGTH} from 'src/constants';
+import {DEFAULT_RING_SOUND, RING_LENGTH} from 'src/constants';
 import {logDebug} from 'src/log';
 import {connectedChannelID, didRingForCall} from 'src/selectors';
 import {IncomingCallNotification} from 'src/types/types';
@@ -86,7 +86,7 @@ export const useRinging = (call: IncomingCallNotification, onWidget: boolean) =>
         }
 
         // @ts-ignore
-        notificationSounds?.ring(currentUser.notify_props.calls_notification_sound || 'Dynamic');
+        notificationSounds?.ring(currentUser.notify_props.calls_notification_sound || DEFAULT_RING_SOUND);
         const timer = setTimeout(() => stopRinging(), RING_LENGTH);
 
         // eslint-disable-next-line consistent-return
