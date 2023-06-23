@@ -536,6 +536,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 
 		// TODO: send all the info attached to a call.
 		p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
+			"id":        state.Call.ID,
 			"channelID": channelID,
 			"start_at":  state.Call.StartAt,
 			"thread_id": threadID,

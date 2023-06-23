@@ -14,23 +14,23 @@ import {IncomingCallNotification} from 'src/types/types';
 import {desktopGTE, getChannelURL, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
 import {notificationSounds} from 'src/webapp_globals';
 
-export const useDismissJoin = (callID: string, global = false) => {
+export const useDismissJoin = (channelID: string, callID: string, global = false) => {
     const store = useStore();
     const dispatch = useDispatch();
     const connectedID = useSelector(connectedChannelID) || '';
 
     const onDismiss = () => {
-        dispatch(dismissIncomingCallNotification(callID));
+        dispatch(dismissIncomingCallNotification(channelID, callID));
     };
 
     const onJoin = () => {
-        dispatch(dismissIncomingCallNotification(callID));
+        dispatch(dismissIncomingCallNotification(channelID, callID));
 
         if (connectedID) {
             if (global && desktopGTE(5, 5)) {
                 logDebug('sending calls-join-request message to desktop app');
                 sendDesktopEvent('calls-join-request', {
-                    callID,
+                    callID: channelID,
                 });
                 return;
             }
@@ -41,15 +41,15 @@ export const useDismissJoin = (callID: string, global = false) => {
                 sendDesktopEvent('calls-widget-channel-link-click', {pathName: channelURL});
                 sendDesktopEvent('calls-joined-call', {
                     type: 'calls-join-request',
-                    callID,
+                    callID: channelID,
                 });
                 return;
             }
 
-            dispatch(showSwitchCallModal(callID));
+            dispatch(showSwitchCallModal(channelID));
             return;
         }
-        window.postMessage({type: 'connectCall', channelID: callID}, window.origin);
+        window.postMessage({type: 'connectCall', channelID}, window.origin);
     };
 
     return [onDismiss, onJoin];
@@ -63,8 +63,7 @@ export const useOnACallWithoutGlobalWidget = () => {
 export const useRinging = (call: IncomingCallNotification, onWidget: boolean) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(getCurrentUser);
-    const callUniqueID = `${call.callID}${call.startAt}`;
-    const didRing = useSelector((state: GlobalState) => didRingForCall(state, callUniqueID));
+    const didRing = useSelector((state: GlobalState) => didRingForCall(state, call.callID));
 
     useEffect(() => {
         const stopRinging = () => {
@@ -72,7 +71,7 @@ export const useRinging = (call: IncomingCallNotification, onWidget: boolean) =>
             dispatch({
                 type: DID_RING_FOR_CALL,
                 data: {
-                    callUniqueID,
+                    callID: call.callID,
                 },
             });
         };
@@ -95,5 +94,5 @@ export const useRinging = (call: IncomingCallNotification, onWidget: boolean) =>
             clearTimeout(timer);
             stopRinging();
         };
-    }, [call, callUniqueID, didRing, onWidget, currentUser.notify_props, dispatch]);
+    }, [call, didRing, onWidget, currentUser.notify_props, dispatch]);
 };

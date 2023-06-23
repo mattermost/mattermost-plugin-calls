@@ -23,7 +23,7 @@ import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal'
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 
-import {channelHasCall, incomingCalls, voiceChannelCallDismissedNotification} from 'src/selectors';
+import {channelHasCall, incomingCalls, voiceChannelCallDismissedNotification, voiceChannelCalls} from 'src/selectors';
 
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
@@ -298,7 +298,7 @@ export const displayGenericErrorModal = (title: MessageDescriptor, message: Mess
     };
 };
 
-export function incomingCallOnChannel(channelID: string, hostID: string, startAt: number) {
+export function incomingCallOnChannel(channelID: string, callID: string, hostID: string, startAt: number) {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         let channel = getChannel(getState(), channelID);
         if (!channel) {
@@ -323,7 +323,8 @@ export function incomingCallOnChannel(channelID: string, hostID: string, startAt
             await dispatch({
                 type: ADD_INCOMING_CALL,
                 data: {
-                    callID: channelID,
+                    callID,
+                    channelID,
                     hostID,
                     startAt,
                     type: isDMChannel(channel) ? ChannelType.DM : ChannelType.GM,
@@ -346,20 +347,21 @@ export const userDisconnected = (channelID: string, userID: string) => {
         });
 
         if (!channelHasCall(getState(), channelID)) {
+            const callID = voiceChannelCalls(getState())[channelID].ID;
             await dispatch({
                 type: CALL_HAS_ENDED,
                 data: {
-                    callID: channelID,
+                    callID,
                 },
             });
         }
     };
 };
 
-export const dismissIncomingCallNotification = (callID: string) => {
+export const dismissIncomingCallNotification = (channelID: string, callID: string) => {
     return async (dispatch: DispatchFunc) => {
         Client4.doFetch(
-            `${getPluginPath()}/calls/${callID}/dismiss-notification`,
+            `${getPluginPath()}/calls/${channelID}/dismiss-notification`,
             {method: 'post'},
         );
         await dispatch(removeIncomingCallNotification(callID));

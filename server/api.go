@@ -306,7 +306,7 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 	// For now, only send to the user that dismissed the notification. May change in the future.
 	p.publishWebSocketEvent(wsEventUserDismissedNotification, map[string]interface{}{
 		"userID": userID,
-		"callID": channelID,
+		"callID": callID,
 	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 
 	res.Code = http.StatusOK

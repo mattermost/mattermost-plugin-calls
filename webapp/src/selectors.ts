@@ -144,6 +144,10 @@ export const voiceChannelCallInCurrentChannel: (state: GlobalState) => callState
         (calls, currChannelId) => calls[currChannelId],
     );
 
+export const voiceChannelCallID = (state: GlobalState, channelID: string): string | undefined => {
+    return pluginState(state).voiceChannelCalls[channelID]?.ID;
+};
+
 export const voiceChannelCallOwnerID = (state: GlobalState, channelID: string): string | undefined => {
     return pluginState(state).voiceChannelCalls[channelID]?.ownerID;
 };
@@ -196,8 +200,8 @@ export const recentlyJoinedUsers = (state: GlobalState, channelID: string): stri
 export const incomingCalls = (state: GlobalState): IncomingCallNotification[] =>
     pluginState(state).incomingCalls;
 
-export const didRingForCall = (state: GlobalState, callUniqueID: string): boolean => {
-    return pluginState(state).didRingForCalls[callUniqueID] || false;
+export const didRingForCall = (state: GlobalState, callID: string): boolean => {
+    return pluginState(state).didRingForCalls[callID] || false;
 };
 
 //

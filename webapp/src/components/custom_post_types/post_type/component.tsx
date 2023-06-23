@@ -14,6 +14,8 @@ import {getUser} from 'mattermost-redux/selectors/entities/users';
 
 import {DateTime, Duration as LuxonDuration} from 'luxon';
 
+import {voiceChannelCallID} from 'src/selectors';
+
 import {useDismissJoin} from 'src/components/incoming_calls/hooks';
 
 import Timestamp from 'src/components/timestamp';
@@ -57,7 +59,8 @@ const PostType = ({
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
-    const [, onJoin] = useDismissJoin(post.channel_id);
+    const callID = useSelector((state: GlobalState) => voiceChannelCallID(state, post.channel_id)) || '';
+    const [, onJoin] = useDismissJoin(post.channel_id, callID);
 
     const timestampFn = useCallback(() => {
         return callStartedTimestampFn(intl, post.props.start_at);

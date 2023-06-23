@@ -27,7 +27,8 @@ const ChannelCallToast = () => {
     const [hidden, setHidden] = useState(false);
     const [pictures, setPictures] = useState<string[]>([]);
 
-    const [, onJoin] = useDismissJoin(currChannelID);
+    const callID = useSelector(voiceChannelCallInCurrentChannel)?.ID || '';
+    const [, onJoin] = useDismissJoin(currChannelID, callID);
 
     useMemo(() => {
         const thePictures = [];

@@ -56,6 +56,7 @@ import {
     connectedChannelID,
     idToProfileInConnectedChannel,
     shouldPlayJoinUserSound,
+    voiceChannelCalls,
 } from './selectors';
 
 import {logErr} from './log';
@@ -66,6 +67,7 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
         window.callsClient?.disconnect();
     }
 
+    const callID = voiceChannelCalls(store.getState())[channelID].ID;
     store.dispatch(batchActions([
         {
             type: VOICE_CHANNEL_CALL_END,
@@ -76,7 +78,7 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
         {
             type: CALL_HAS_ENDED,
             data: {
-                callID: channelID,
+                callID,
             },
         },
     ]));
@@ -96,6 +98,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
     store.dispatch({
         type: VOICE_CHANNEL_CALL_START,
         data: {
+            ID: ev.data.id,
             channelID,
             startAt: ev.data.start_at,
             ownerID: ev.data.owner_id,
@@ -120,7 +123,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         const currentUserID = getCurrentUserId(store.getState());
         if (currentUserID !== ev.data.host_id) {
             // the call was not started by us.
-            store.dispatch(incomingCallOnChannel(channelID, ev.data.host_id, ev.data.start_at));
+            store.dispatch(incomingCallOnChannel(channelID, ev.data.id, ev.data.host_id, ev.data.start_at));
         }
     }
 }
@@ -145,7 +148,8 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
     }
 
     if (userID === currentUserID) {
-        store.dispatch(removeIncomingCallNotification(channelID));
+        const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
+        store.dispatch(removeIncomingCallNotification(callID));
     }
 
     store.dispatch({

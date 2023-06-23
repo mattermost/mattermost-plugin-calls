@@ -142,6 +142,7 @@ export enum ChannelType {
 
 export type IncomingCallNotification = {
     callID: string;
+    channelID: string;
     hostID: string;
     startAt: number;
     type: ChannelType;

@@ -176,6 +176,7 @@ async function fetchChannelData(store: Store, channelID: string) {
         store.dispatch({
             type: VOICE_CHANNEL_CALL_START,
             data: {
+                ID: resp.call.id,
                 channelID: resp.channel_id,
                 startAt: resp.call.start_at,
                 ownerID: resp.call.owner_id,

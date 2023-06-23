@@ -105,7 +105,6 @@ import ExpandedView from './components/expanded_view';
 import SwitchCallModal from './components/switch_call_modal';
 import ScreenSourceModal from './components/screen_source_modal';
 import EndCallModal from './components/end_call_modal';
-
 import reducer from './reducers';
 
 import {
@@ -601,6 +600,7 @@ export default class Plugin {
                         actions.push({
                             type: VOICE_CHANNEL_CALL_START,
                             data: {
+                                ID: data[i].call?.id,
                                 channelID: data[i].channel_id,
                                 startAt: data[i].call?.start_at,
                                 ownerID: data[i].call?.owner_id,
@@ -619,7 +619,7 @@ export default class Plugin {
                                     continue;
                                 }
                             }
-                            store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.host_id, data[i].call.start_at));
+                            store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.id, data[i].call.host_id, data[i].call.start_at));
                         }
                     }
                 }
@@ -677,6 +677,7 @@ export default class Plugin {
                 actions.push({
                     type: VOICE_CHANNEL_CALL_START,
                     data: {
+                        ID: call.id,
                         channelID,
                         startAt: call.start_at,
                         ownerID: call.owner_id,

@@ -581,6 +581,7 @@ const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, a
 };
 
 export interface callState {
+    ID?: string,
     channelID: string,
     startAt?: number,
     ownerID?: string,
@@ -589,7 +590,7 @@ export interface callState {
     dismissedNotification: { [userID: string]: boolean },
 }
 
-interface callStateAction {
+export interface callStateAction {
     type: string,
     data: callState,
 }
@@ -611,10 +612,7 @@ const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, actio
         return {
             ...state,
             [action.data.channelID]: {
-                channelID: action.data.channelID,
-                startAt: action.data.startAt,
-                ownerID: action.data.ownerID,
-                hostID: action.data.hostID,
+                ...action.data,
                 hostChangeAt: action.data.startAt,
                 dismissedNotification: action.data.dismissedNotification,
             },
@@ -795,6 +793,7 @@ type IncomingCallAction = {
     type: string;
     data: {
         callID: string;
+        channelID: string;
         hostID: string;
         startAt: number;
         ring: boolean;
@@ -818,7 +817,7 @@ const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingC
 type DidRingForCallsAction = {
     type: string;
     data: {
-        callUniqueID: string;
+        callID: string;
     }
 }
 
@@ -827,7 +826,7 @@ const didRingForCalls = (state: { [callUniqueID: string]: boolean } = {}, action
     case DID_RING_FOR_CALL:
         return {
             ...state,
-            [action.data.callUniqueID]: true,
+            [action.data.callID]: true,
         };
     default:
         return state;
