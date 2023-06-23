@@ -81,19 +81,11 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 	}
 
-	if err := p.lockCall(us.channelID); err != nil {
+	state, err := p.lockCall(us.channelID)
+	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
-	defer func() {
-		if err := p.unlockCall(us.channelID); err != nil {
-			p.LogError("failed to unlock call", "err", err.Error())
-		}
-	}()
-	state, err := p.kvGetChannelState(us.channelID)
-	if err != nil {
-		return fmt.Errorf("failed to get channel state: %w", err)
-	}
-
+	defer p.unlockCall(us.channelID)
 	if state == nil {
 		return fmt.Errorf("channel state is missing from store")
 	}
@@ -255,18 +247,11 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 		}
 
-		if err := p.lockCall(us.channelID); err != nil {
+		state, err := p.lockCall(us.channelID)
+		if err != nil {
 			return fmt.Errorf("failed to lock call: %w", err)
 		}
-		defer func() {
-			if err := p.unlockCall(us.channelID); err != nil {
-				p.LogError("failed to unlock call", "err", err.Error())
-			}
-		}()
-		state, err := p.kvGetChannelState(us.channelID)
-		if err != nil {
-			return fmt.Errorf("failed to get channel state: %w", err)
-		}
+		defer p.unlockCall(us.channelID)
 		if state == nil {
 			return fmt.Errorf("channel state is missing from store")
 		}
@@ -299,18 +284,11 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			evType = wsEventUserRaiseHand
 		}
 
-		if err := p.lockCall(us.channelID); err != nil {
+		state, err := p.lockCall(us.channelID)
+		if err != nil {
 			return fmt.Errorf("failed to lock call: %w", err)
 		}
-		defer func() {
-			if err := p.unlockCall(us.channelID); err != nil {
-				p.LogError("failed to unlock call", "err", err.Error())
-			}
-		}()
-		state, err := p.kvGetChannelState(us.channelID)
-		if err != nil {
-			return fmt.Errorf("failed to get channel state: %w", err)
-		}
+		defer p.unlockCall(us.channelID)
 		if state == nil {
 			return fmt.Errorf("channel state is missing from store")
 		}
@@ -467,7 +445,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 		p.LogDebug("timeout waiting for reconnection", "userID", userID, "connID", connID, "channelID", channelID)
 	}
 
-	state, err := p.kvGetChannelState(channelID)
+	state, err := p.kvGetChannelState(channelID, false)
 	if err != nil {
 		return err
 	}
@@ -534,22 +512,17 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 		}
 	}
 
-	if err := p.lockCall(channelID); err != nil {
+	prevState, err := p.lockCall(channelID)
+	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
-	defer func() {
-		if retErr == nil {
-			return
-		}
-		if err := p.unlockCall(channelID); err != nil {
-			p.LogError("handleJoin: failed to unlock call on error", "err", err.Error())
-		}
-	}()
 
-	state, prevState, err := p.addUserSession(userID, connID, channel.Id)
+	state, err := p.addUserSession(prevState, userID, connID, channel.Id)
 	if err != nil {
+		p.unlockCall(channelID)
 		return fmt.Errorf("failed to add user session: %w", err)
 	} else if state.Call == nil {
+		p.unlockCall(channelID)
 		return fmt.Errorf("state.Call should not be nil")
 	} else if len(state.Call.Users) == 1 {
 		p.track(evCallStarted, map[string]interface{}{
@@ -604,6 +577,9 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 	p.sessions[connID] = us
 	p.mut.Unlock()
 	defer func() {
+		if retErr != nil {
+			p.unlockCall(channelID)
+		}
 		if err := p.handleLeave(us, userID, connID, channelID); err != nil {
 			p.LogError(err.Error())
 		}
@@ -679,9 +655,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
-	if err := p.unlockCall(channelID); err != nil {
-		p.LogError("handleJoin: failed to unlock call", "err", err.Error())
-	}
+	p.unlockCall(channelID)
 
 	p.wsReader(us, handlerID)
 
@@ -696,7 +670,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		return fmt.Errorf("forbidden")
 	}
 
-	state, err := p.kvGetChannelState(channelID)
+	state, err := p.kvGetChannelState(channelID, false)
 	if err != nil {
 		return err
 	} else if state == nil || state.Call == nil {

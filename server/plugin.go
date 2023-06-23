@@ -365,7 +365,9 @@ func (p *Plugin) updateCallPostEnded(postID string) (float64, error) {
 	return dur, nil
 }
 
-func (p *Plugin) lockCall(callID string) error {
+// lockCall locks the global (cluster) mutex for the given callID and
+// returns the current state.
+func (p *Plugin) lockCall(callID string) (*channelState, error) {
 	p.mut.Lock()
 	mut := p.callsClusterLocks[callID]
 	if mut == nil {
@@ -378,7 +380,7 @@ func (p *Plugin) lockCall(callID string) error {
 		})
 		if err != nil {
 			p.mut.Unlock()
-			return fmt.Errorf("failed to create new call cluster mutex: %w", err)
+			return nil, fmt.Errorf("failed to create new call cluster mutex: %w", err)
 		}
 		p.callsClusterLocks[callID] = m
 		mut = m
@@ -388,19 +390,28 @@ func (p *Plugin) lockCall(callID string) error {
 	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
 	defer cancelCtx()
 
-	return mut.Lock(lockCtx)
+	if err := mut.Lock(lockCtx); err != nil {
+		return nil, fmt.Errorf("failed to lock: %w", err)
+	}
+
+	state, err := p.kvGetChannelState(callID, true)
+	if err != nil {
+		mut.Unlock()
+		return nil, fmt.Errorf("failed to get channel state: %w", err)
+	}
+
+	return state, nil
 }
 
-func (p *Plugin) unlockCall(callID string) error {
+func (p *Plugin) unlockCall(callID string) {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 
 	mut := p.callsClusterLocks[callID]
 	if mut == nil {
-		return fmt.Errorf("call cluster mutex doesn't exist")
+		p.LogError("call cluster mutex doesn't exist", "callID", callID)
+		return
 	}
 
 	mut.Unlock()
-
-	return nil
 }

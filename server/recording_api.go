@@ -20,20 +20,12 @@ const recordingJobStartTimeout = 15 * time.Second
 func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	time.Sleep(recordingJobStartTimeout)
 
-	if err := p.lockCall(callID); err != nil {
+	state, err := p.lockCall(callID)
+	if err != nil {
 		p.LogError("failed to lock call", "err", err.Error())
 		return
 	}
-	defer func() {
-		if err := p.unlockCall(callID); err != nil {
-			p.LogError("failed to unlock call", "err", err.Error())
-		}
-	}()
-	state, err := p.kvGetChannelState(callID)
-	if err != nil {
-		p.LogError("failed to get channel state", "error", err.Error())
-		return
-	}
+	defer p.unlockCall(callID)
 
 	recState, err := state.getRecording()
 	if err != nil {
@@ -66,31 +58,13 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 func (p *Plugin) handleRecordingStartAction(callID, userID string) (*RecordingStateClient, httpResponse) {
 	var res httpResponse
 
-	if err := p.lockCall(callID); err != nil {
+	state, err := p.lockCall(callID)
+	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return nil, res
 	}
-
-	unlockCall := func() {
-		if err := p.unlockCall(callID); err != nil {
-			p.LogError("failed to unlock call", "err", err.Error())
-		}
-	}
-
-	locked := true
-	defer func() {
-		if locked {
-			unlockCall()
-		}
-	}()
-
-	state, err := p.kvGetChannelState(callID)
-	if err != nil {
-		res.Err = fmt.Errorf("failed to get channel state: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
-	}
+	defer p.unlockCall(callID)
 
 	if state == nil {
 		res.Err = "channel state is missing from store"
@@ -147,21 +121,15 @@ func (p *Plugin) handleRecordingStartAction(callID, userID string) (*RecordingSt
 
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return. We lock again as soon as this returns.
-	unlockCall()
+	p.unlockCall(callID)
 	recJobID, jobErr := p.jobService.RunRecordingJob(callID, state.Call.PostID, p.botSession.Token)
-	if err := p.lockCall(callID); err != nil {
-		locked = false
+	state, err = p.lockCall(callID)
+	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return nil, res
 	}
 
-	state, err = p.kvGetChannelState(callID)
-	if err != nil {
-		res.Err = fmt.Errorf("failed to get channel state: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
-	}
 	recState, err = state.getRecording()
 	if err != nil {
 		res.Err = fmt.Errorf("failed to get recording state: %w", err).Error()
@@ -207,31 +175,14 @@ func (p *Plugin) handleRecordingStartAction(callID, userID string) (*RecordingSt
 func (p *Plugin) handleRecordingStopAction(callID, userID string) (*RecordingStateClient, httpResponse) {
 	var res httpResponse
 
-	if err := p.lockCall(callID); err != nil {
+	state, err := p.lockCall(callID)
+	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return nil, res
 	}
+	defer p.unlockCall(callID)
 
-	locked := true
-	unlockCall := func() {
-		if err := p.unlockCall(callID); err != nil {
-			p.LogError("failed to unlock call", "err", err.Error())
-		}
-		locked = false
-	}
-	defer func() {
-		if locked {
-			unlockCall()
-		}
-	}()
-
-	state, err := p.kvGetChannelState(callID)
-	if err != nil {
-		res.Err = fmt.Errorf("failed to get channel state: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
-	}
 	if state == nil {
 		res.Err = "channel state is missing from store"
 		res.Code = http.StatusForbidden
@@ -290,7 +241,7 @@ func (p *Plugin) handleRecordingStopAction(callID, userID string) (*RecordingSta
 
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return.
-	unlockCall()
+	p.unlockCall(callID)
 	if err := p.jobService.StopJob(recState.JobID); err != nil {
 		res.Err = "failed to stop recording job: " + err.Error()
 		res.Code = http.StatusInternalServerError

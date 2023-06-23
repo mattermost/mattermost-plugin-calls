@@ -66,23 +66,16 @@ func newUserSession(userID, channelID, connID string, rtc bool) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(userID, connID, channelID string) (*channelState, *channelState, error) {
-	state, err := p.kvGetChannelState(channelID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get channel state: %w", err)
-	}
-
-	botID := p.getBotID()
+func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID string) (*channelState, error) {
+	state = state.Clone()
 
 	if state == nil {
 		state = &channelState{}
 	}
 
 	if !p.userCanStartOrJoin(userID, state) {
-		return nil, nil, fmt.Errorf("calls are not enabled")
+		return nil, fmt.Errorf("calls are not enabled")
 	}
-
-	prevState := state.Clone()
 
 	if state.Call == nil {
 		state.Call = &callState{
@@ -97,7 +90,7 @@ func (p *Plugin) addUserSession(userID, connID, channelID string) (*channelState
 		if p.rtcdManager != nil {
 			host, err := p.rtcdManager.GetHostForNewCall()
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to get rtcd host: %w", err)
+				return nil, fmt.Errorf("failed to get rtcd host: %w", err)
 			}
 			p.LogDebug("rtcd host has been assigned to call", "host", host)
 			state.Call.RTCDHost = host
@@ -105,11 +98,11 @@ func (p *Plugin) addUserSession(userID, connID, channelID string) (*channelState
 	}
 
 	if state.Call.EndAt > 0 {
-		return nil, nil, fmt.Errorf("call has ended")
+		return nil, fmt.Errorf("call has ended")
 	}
 
 	if _, ok := state.Call.Users[userID]; ok {
-		return nil, nil, fmt.Errorf("user is already connected")
+		return nil, fmt.Errorf("user is already connected")
 	}
 
 	// Check for cloud limits -- needs to be done here to prevent a race condition
@@ -117,22 +110,22 @@ func (p *Plugin) addUserSession(userID, connID, channelID string) (*channelState
 		if err != nil {
 			p.LogError("joinAllowed failed", "error", err.Error())
 		}
-		return nil, nil, fmt.Errorf("user cannot join because of limits")
+		return nil, fmt.Errorf("user cannot join because of limits")
 	}
 
 	// When the bot joins the call it means the recording has started.
-	if userID == botID {
+	if userID == p.getBotID() {
 		if state.Call.Recording != nil && state.Call.Recording.StartAt == 0 {
 			state.Call.Recording.StartAt = time.Now().UnixMilli()
 			state.Call.Recording.BotConnID = connID
 		} else if state.Call.Recording == nil || state.Call.Recording.StartAt > 0 {
 			// In this case we should fail to prevent the bot from recording
 			// without consent.
-			return nil, nil, fmt.Errorf("recording not in progress or already started")
+			return nil, fmt.Errorf("recording not in progress or already started")
 		}
 	}
 
-	if state.Call.HostID == "" && userID != botID {
+	if state.Call.HostID == "" && userID != p.getBotID() {
 		state.Call.HostID = userID
 	}
 
@@ -145,10 +138,10 @@ func (p *Plugin) addUserSession(userID, connID, channelID string) (*channelState
 	}
 
 	if err := p.kvSetChannelState(channelID, state); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return state, prevState, err
+	return state, nil
 }
 
 func (p *Plugin) userCanStartOrJoin(userID string, state *channelState) bool {
@@ -181,25 +174,20 @@ func (p *Plugin) userCanStartOrJoin(userID string, state *channelState) bool {
 	return p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 }
 
-func (p *Plugin) removeUserSession(userID, connID, channelID string) (*channelState, *channelState, error) {
-	state, err := p.kvGetChannelState(channelID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get channel state: %w", err)
-	}
-
+func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelID string) (*channelState, error) {
 	if state == nil {
-		return nil, nil, fmt.Errorf("channel state is missing from store")
+		return nil, fmt.Errorf("channel state is missing from store")
 	}
 
 	if state.Call == nil {
-		return nil, nil, fmt.Errorf("call state is missing from channel state")
+		return nil, fmt.Errorf("call state is missing from channel state")
 	}
 
 	if _, ok := state.Call.Users[userID]; !ok {
-		return nil, nil, fmt.Errorf("user not found in call state")
+		return nil, fmt.Errorf("user not found in call state")
 	}
 
-	prevState := state.Clone()
+	state = state.Clone()
 
 	if state.Call.ScreenSharingID == userID {
 		state.Call.ScreenSharingID = ""
@@ -232,10 +220,10 @@ func (p *Plugin) removeUserSession(userID, connID, channelID string) (*channelSt
 	}
 
 	if err := p.kvSetChannelState(channelID, state); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return state, prevState, nil
+	return state, nil
 }
 
 // JoinAllowed returns true if the user is allowed to join the call, taking into
@@ -254,14 +242,11 @@ func (p *Plugin) joinAllowed(state *channelState) (bool, error) {
 }
 
 func (p *Plugin) removeSession(us *session) error {
-	if err := p.lockCall(us.channelID); err != nil {
+	prevState, err := p.lockCall(us.channelID)
+	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
-	defer func() {
-		if err := p.unlockCall(us.channelID); err != nil {
-			p.LogError("failed to unlock call", "err", err.Error())
-		}
-	}()
+	defer p.unlockCall(us.channelID)
 
 	p.LogDebug("removing session from state", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
 
@@ -269,7 +254,7 @@ func (p *Plugin) removeSession(us *session) error {
 	delete(p.sessions, us.connID)
 	p.mut.Unlock()
 
-	currState, prevState, err := p.removeUserSession(us.userID, us.originalConnID, us.channelID)
+	currState, err := p.removeUserSession(prevState, us.userID, us.originalConnID, us.channelID)
 	if err != nil {
 		return fmt.Errorf("failed to remove user session (connID=%s): %w", us.originalConnID, err)
 	}

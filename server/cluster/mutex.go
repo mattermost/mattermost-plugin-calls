@@ -27,6 +27,7 @@ type MutexPluginAPI interface {
 	KVSetWithOptions(key string, value []byte, options model.PluginKVSetOptions) (bool, *model.AppError)
 	KVDelete(key string) *model.AppError
 	LogError(msg string, keyValuePairs ...interface{})
+	LogWarn(msg string, keyValuePairs ...interface{})
 	LogDebug(msg string, keyValuePairs ...interface{})
 }
 
@@ -215,12 +216,16 @@ func (m *Mutex) Lock(ctx context.Context) error {
 	}
 }
 
-// Unlock unlocks m. It's a run-time error if m is not locked on entry to Unlock.
+// Unlock unlocks m.
 func (m *Mutex) Unlock() {
 	defer m.mut.Unlock()
 
 	if m.stopCh == nil {
-		panic("unlock of unlocked mutex")
+		// We allow unlocking a mutex multiple times and log a simple warning
+		// since it's safe and it simplifies a lot of complex flows that would
+		// require extra checks otherwise.
+		m.pluginAPI.LogWarn("unlock of unlocked mutex", "key", m.key)
+		return
 	}
 
 	close(m.stopCh)

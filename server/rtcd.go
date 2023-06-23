@@ -250,7 +250,7 @@ func (m *rtcdClientManager) GetHostForNewCall() (string, error) {
 // Send routes the message to the appropriate host that's handling the given
 // call. If this is missing a new client is created and added to the mapping.
 func (m *rtcdClientManager) Send(msg rtcd.ClientMessage, callID string) error {
-	state, err := m.ctx.kvGetChannelState(callID)
+	state, err := m.ctx.kvGetChannelState(callID, false)
 	if err != nil {
 		return fmt.Errorf("failed to get channel state: %w", err)
 	}

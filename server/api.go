@@ -48,7 +48,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 
 	mobile, postGA := isMobilePostGA(r)
 
-	state, err := p.kvGetChannelState(channelID)
+	state, err := p.kvGetChannelState(channelID, false)
 	if err != nil {
 		p.LogError(err.Error())
 	}
@@ -135,7 +135,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			state, err := p.kvGetChannelState(channelID)
+			state, err := p.kvGetChannelState(channelID, false)
 			if err != nil {
 				p.LogError(err.Error())
 				http.Error(w, appErr.Error(), http.StatusInternalServerError)
@@ -178,23 +178,13 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 
 	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 
-	if err := p.lockCall(channelID); err != nil {
+	state, err := p.lockCall(channelID)
+	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
-	defer func() {
-		if err := p.unlockCall(channelID); err != nil {
-			p.LogError("failed to unlock call", "err", err.Error())
-		}
-	}()
-
-	state, err := p.kvGetChannelState(channelID)
-	if err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
+	defer p.unlockCall(channelID)
 
 	if state == nil || state.Call == nil {
 		res.Err = "no call ongoing"
@@ -227,20 +217,13 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 		// happen we force end it.
 		time.Sleep(5 * time.Second)
 
-		if err := p.lockCall(channelID); err != nil {
-			p.LogError("failed to lock call", "err", err.Error())
-		}
-		defer func() {
-			if err := p.unlockCall(channelID); err != nil {
-				p.LogError("failed to unlock call", "err", err.Error())
-			}
-		}()
-
-		state, err := p.kvGetChannelState(channelID)
+		state, err := p.lockCall(channelID)
 		if err != nil {
-			p.LogError(err.Error())
+			p.LogError("failed to lock call", "err", err.Error())
 			return
 		}
+		defer p.unlockCall(channelID)
+
 		if state == nil || state.Call == nil || state.Call.ID != callID {
 			return
 		}
@@ -351,22 +334,13 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		return
 	}
 
-	if err := p.lockCall(channelID); err != nil {
+	state, err := p.lockCall(channelID)
+	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
-	defer func() {
-		if err := p.unlockCall(channelID); err != nil {
-			p.LogError("failed to unlock call", "err", err.Error())
-		}
-	}()
-	state, err := p.kvGetChannelState(channelID)
-	if err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
+	defer p.unlockCall(channelID)
 	if state == nil {
 		state = &channelState{}
 	}

@@ -211,8 +211,8 @@ func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClien
 	return users, states
 }
 
-func (p *Plugin) kvGetChannelState(channelID string) (*channelState, error) {
-	data, appErr := p.KVGet(channelID, true)
+func (p *Plugin) kvGetChannelState(channelID string, fromMaster bool) (*channelState, error) {
+	data, appErr := p.KVGet(channelID, fromMaster)
 	if appErr != nil {
 		return nil, fmt.Errorf("KVGet failed: %w", appErr)
 	}
@@ -275,30 +275,16 @@ func (p *Plugin) cleanUpState() (retErr error) {
 				continue
 			}
 
-			if err := p.lockCall(k); err != nil {
+			state, err := p.lockCall(k)
+			if err != nil {
 				p.LogError("failed to lock call", "err", err.Error())
 				continue
 			}
-			defer func(channelID string) {
-				if retErr == nil {
-					return
-				}
-				if err := p.unlockCall(channelID); err != nil {
-					p.LogError("failed to unlock call", "err", err.Error())
-				}
-			}(k)
-			state, err := p.kvGetChannelState(k)
-			if err != nil {
-				return fmt.Errorf("failed to get channel state: %w", err)
-			}
-
 			if err := p.cleanCallState(k, state); err != nil {
+				p.unlockCall(k)
 				return fmt.Errorf("failed to clean up state: %w", err)
 			}
-			if err := p.unlockCall(k); err != nil {
-				p.LogError("failed to unlock call", "err", err.Error())
-				continue
-			}
+			p.unlockCall(k)
 		}
 		page++
 	}
