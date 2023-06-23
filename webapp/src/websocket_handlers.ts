@@ -17,11 +17,11 @@ import {
     UserScreenOnOffData,
     UserVoiceOnOffData,
 } from '@calls/common/lib/types';
-import {batchActions} from 'redux-batched-actions';
 
 import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected} from 'src/actions';
 
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
+import {notificationSounds} from 'src/webapp_globals';
 
 import {Store} from './types/mattermost-webapp';
 import {
@@ -43,7 +43,6 @@ import {
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
-    CALL_HAS_ENDED,
 } from './action_types';
 import {
     getProfilesByIds,
@@ -67,21 +66,15 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
         window.callsClient?.disconnect();
     }
 
+    store.dispatch({
+        type: VOICE_CHANNEL_CALL_END,
+        data: {
+            channelID,
+        },
+    });
     const callID = voiceChannelCalls(store.getState())[channelID].ID;
-    store.dispatch(batchActions([
-        {
-            type: VOICE_CHANNEL_CALL_END,
-            data: {
-                channelID,
-            },
-        },
-        {
-            type: CALL_HAS_ENDED,
-            data: {
-                callID,
-            },
-        },
-    ]));
+    // TODO: fix?
+    store.dispatch(removeIncomingCallNotification(callID));
 }
 
 export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData>) {
@@ -150,6 +143,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
     if (userID === currentUserID) {
         const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
         store.dispatch(removeIncomingCallNotification(callID));
+        notificationSounds?.stopRing(); // And stop ringing for _any_ incoming call.
     }
 
     store.dispatch({

@@ -23,17 +23,24 @@ import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal'
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {logErr} from 'src/log';
+import {RING_LENGTH} from 'src/constants';
 
-import {channelHasCall, incomingCalls, voiceChannelCallDismissedNotification, voiceChannelCalls} from 'src/selectors';
+import {
+    channelHasCall,
+    ringingForCall,
+    incomingCalls,
+    voiceChannelCallDismissedNotification,
+    voiceChannelCallStartAt,
+    voiceChannelCalls,
+} from 'src/selectors';
 
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
 import {getPluginPath, isDMChannel, isGMChannel} from 'src/utils';
-import {modals, openPricingModal} from 'src/webapp_globals';
+import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
     ADD_INCOMING_CALL,
-    CALL_HAS_ENDED,
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
@@ -48,6 +55,8 @@ import {
     VOICE_CHANNEL_USER_DISCONNECTED,
     RTCD_ENABLED,
     REMOVE_INCOMING_CALL,
+    DID_RING_FOR_CALL,
+    RINGING_FOR_CALL,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -320,10 +329,6 @@ export function incomingCallOnChannel(channelID: string, callID: string, hostID:
             await dispatch(getProfilesByIdsAction([hostID]));
         }
 
-        // if this is the first call in the list, it should ring.
-        const calls = incomingCalls(getState());
-        const ring = calls.length === 0;
-
         await dispatch({
             type: ADD_INCOMING_CALL,
             data: {
@@ -332,8 +337,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, hostID:
                 hostID,
                 startAt,
                 type: isDMChannel(channel) ? ChannelType.DM : ChannelType.GM,
-                ring,
-            },
+        },
         });
     };
 }
@@ -350,13 +354,8 @@ export const userDisconnected = (channelID: string, userID: string) => {
         });
 
         if (!channelHasCall(getState(), channelID)) {
-            const callID = voiceChannelCalls(getState())[channelID].ID;
-            await dispatch({
-                type: CALL_HAS_ENDED,
-                data: {
-                    callID,
-                },
-            });
+            // TODO: fix?
+            await dispatch(removeIncomingCallNotification(channelID));
         }
     };
 };
@@ -373,10 +372,43 @@ export const dismissIncomingCallNotification = (channelID: string, callID: strin
 
 export const removeIncomingCallNotification = (callID: string): ActionFunc => {
     return async (dispatch: DispatchFunc) => {
+        await dispatch(stopRingingForCall(callID));
         await dispatch({
             type: REMOVE_INCOMING_CALL,
             data: {
                 callID,
+            },
+        });
+        return {};
+    };
+};
+
+export const ringForCall = (callID: string, sound: string) => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const startAt = voiceChannelCallStartAt(getState(), callID) || 0;
+        const callUniqueID = `${callID}${startAt}`;
+        notificationSounds?.ring(sound);
+        await dispatch({
+            type: RINGING_FOR_CALL,
+            data: {
+                callUniqueID,
+            },
+        });
+        setTimeout(() => dispatch(stopRingingForCall(callID)), RING_LENGTH);
+    };
+};
+
+export const stopRingingForCall = (callID: string): ActionFunc => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const startAt = voiceChannelCallStartAt(getState(), callID) || 0;
+        const callUniqueID = `${callID}${startAt}`;
+        if (ringingForCall(getState(), callUniqueID)) {
+            notificationSounds?.stopRing();
+        }
+        dispatch({
+            type: DID_RING_FOR_CALL,
+            data: {
+                callUniqueID,
             },
         });
         return {};

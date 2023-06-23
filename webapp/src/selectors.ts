@@ -75,11 +75,11 @@ export const channelHasCall = (state: GlobalState, channelId: string): boolean =
     return users && users.length > 0;
 };
 
-export const connectedChannelID = (state: GlobalState): string =>
+export const connectedChannelID = (state: GlobalState): string | null =>
     pluginState(state).connectedChannelID;
 
 const numUsersInConnectedChannel = (state: GlobalState) => {
-    const connectedChannelId = connectedChannelID(state);
+    const connectedChannelId = connectedChannelID(state) || '';
     const connectedChannels = voiceConnectedChannels(state);
     return connectedChannels[connectedChannelId]?.length || 0;
 };
@@ -88,7 +88,7 @@ export const voiceConnectedProfiles = (state: GlobalState): UserProfile[] => {
     if (!pluginState(state).voiceConnectedProfiles) {
         return [];
     }
-    return pluginState(state).voiceConnectedProfiles[connectedChannelID(state)] || [];
+    return pluginState(state).voiceConnectedProfiles[connectedChannelID(state) || ''] || [];
 };
 
 // idToProfileInCurrentChannel creates an id->UserProfile object for the currently connected channel.
@@ -119,11 +119,11 @@ export const voiceProfilesInCurrentChannel: (state: GlobalState) => UserProfile[
     );
 
 export const voiceUsersStatuses = (state: GlobalState): { [id: string]: UserState } => {
-    return pluginState(state).voiceUsersStatuses[connectedChannelID(state)] || {};
+    return pluginState(state).voiceUsersStatuses[connectedChannelID(state) || ''] || {};
 };
 
 export const voiceReactions = (state: GlobalState): Reaction[] => {
-    return pluginState(state).reactionStatus[connectedChannelID(state)]?.reactions || [];
+    return pluginState(state).reactionStatus[connectedChannelID(state) || '']?.reactions || [];
 };
 
 export const voiceUsersStatusesInChannel = (state: GlobalState, channelID: string) => {
@@ -208,9 +208,20 @@ export const sortedIncomingCalls: (state: GlobalState) => IncomingCallNotificati
         (calls) => [...calls].sort((a, b) => b.startAt - a.startAt),
     );
 
-export const didRingForCall = (state: GlobalState, callID: string): boolean => {
-    return pluginState(state).didRingForCalls[callID] || false;
+export const ringingForCall = (state: GlobalState, callID: string): boolean =>
+    pluginState(state).ringingForCalls[callID] || false;
+
+export const currentlyRinging = (state: GlobalState): boolean => {
+    for (const val of Object.values(pluginState(state).ringingForCalls)) {
+        if (val) {
+            return true;
+        }
+    }
+    return false;
 };
+
+export const didRingForCall = (state: GlobalState, callUniqueID: string): boolean =>
+    pluginState(state).didRingForCalls[callUniqueID] || false;
 
 export const didNotifyForCall = (state: GlobalState, callUniqueID: string): boolean =>
     pluginState(state).didNotifyForCalls[callUniqueID] || false;

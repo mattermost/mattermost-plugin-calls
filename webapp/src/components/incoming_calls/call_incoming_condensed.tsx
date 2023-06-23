@@ -9,7 +9,7 @@ import {useSelector} from 'react-redux';
 
 import styled from 'styled-components';
 
-import {useDismissJoin, useRinging} from 'src/components/incoming_calls/hooks';
+import {useDismissJoin, useRingingAndNotification} from 'src/components/incoming_calls/hooks';
 
 import Avatar from 'src/components/avatar/avatar';
 
@@ -29,7 +29,7 @@ export const CallIncomingCondensed = ({call, onWidget = false, global = false}: 
     const teammateNameDisplay = useSelector(getTeammateNameDisplaySetting);
     const host = useSelector((state: GlobalState) => getUser(state, call.hostID));
 
-    useRinging(call, onWidget);
+    useRingingAndNotification(call, onWidget);
     const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID, global);
 
     const hostName = displayUsername(host, teammateNameDisplay, false);

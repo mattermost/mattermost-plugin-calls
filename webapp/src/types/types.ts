@@ -146,5 +146,4 @@ export type IncomingCallNotification = {
     hostID: string;
     startAt: number;
     type: ChannelType;
-    ring: true;
 }

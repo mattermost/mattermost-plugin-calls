@@ -9,7 +9,7 @@ import {useSelector} from 'react-redux';
 
 import styled from 'styled-components';
 
-import {useDismissJoin, useGetHostNameAndOthers, useRinging} from 'src/components/incoming_calls/hooks';
+import {useDismissJoin, useGetHostNameAndOthers, useRingingAndNotification} from 'src/components/incoming_calls/hooks';
 import Avatar from 'src/components/avatar/avatar';
 import {Button} from 'src/components/buttons';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -21,11 +21,10 @@ type Props = {
 
 export const CallIncoming = ({call}: Props) => {
     const {formatMessage} = useIntl();
+    const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
+    useRingingAndNotification(call, false);
     const host = useSelector((state: GlobalState) => getUser(state, call.hostID));
     const [hostName, others] = useGetHostNameAndOthers(call, 2);
-
-    useRinging(call, false);
-    const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
 
     let message;
     if (call.type === ChannelType.DM) {

@@ -11,10 +11,16 @@ import {useIntl} from 'react-intl';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 
 import {DID_NOTIFY_FOR_CALL, DID_RING_FOR_CALL} from 'src/action_types';
-import {dismissIncomingCallNotification, showSwitchCallModal} from 'src/actions';
+import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal} from 'src/actions';
 import {DEFAULT_RING_SOUND, RING_LENGTH} from 'src/constants';
 import {logDebug} from 'src/log';
-import {connectedChannelID, didNotifyForCall, didRingForCall} from 'src/selectors';
+import {
+    connectedChannelID,
+    currentlyRinging,
+    didNotifyForCall,
+    didRingForCall,
+    ringingForCall,
+} from 'src/selectors';
 import {ChannelType, IncomingCallNotification} from 'src/types/types';
 import {desktopGTE, getChannelURL, sendDesktopEvent, shouldRenderDesktopWidget, split} from 'src/utils';
 import {notificationSounds, sendDesktopNotificationToMe} from 'src/webapp_globals';
@@ -30,6 +36,7 @@ export const useDismissJoin = (channelID: string, callID: string, global = false
 
     const onJoin = () => {
         dispatch(dismissIncomingCallNotification(channelID, callID));
+        notificationSounds?.stopRing(); // And stop ringing for _any_ incoming call.
 
         if (connectedID) {
             if (global && desktopGTE(5, 5)) {
@@ -76,42 +83,39 @@ const getNotificationSoundFromChannelMemberAndUser = (member: ChannelMembership 
     return user.notify_props?.desktop_notification_sound ? user.notify_props.desktop_notification_sound : 'Bing';
 };
 
-export const useRinging = (call: IncomingCallNotification, onWidget: boolean) => {
+export const useRingingAndNotification = (call: IncomingCallNotification, onWidget: boolean) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(getCurrentUser);
     const didRing = useSelector((state: GlobalState) => didRingForCall(state, call.callID));
+    const currRinging = useSelector(currentlyRinging);
+    // TODO: fix
+    const currRingingForMe = useSelector((state: GlobalState) => ringingForCall(state, callUniqueID));
+    const connected = Boolean(useSelector(connectedChannelID));
     useNotification(call);
 
     useEffect(() => {
-        const stopRinging = () => {
-            notificationSounds?.stopRing();
+        // If we're on a call, or currently ringing for a different call, then never ring for this call in the future.
+        if (connected || (currRinging && !currRingingForMe)) {
             dispatch({
                 type: DID_RING_FOR_CALL,
                 data: {
                     callID: call.callID,
                 },
             });
-        };
-
-        // If we're on the widget, that means we're on a call. If we're also on desktopWidget then
-        // don't ring because the ringing will be handled by the main webapp.
-        const ringHandledByWebapp = onWidget && shouldRenderDesktopWidget();
-
-        // @ts-ignore Our mattermost import is old and at the moment un-updatable.
-        if (!call.ring || ringHandledByWebapp || didRing || currentUser.notify_props.desktop === NotificationLevel.NONE || currentUser.notify_props.calls_desktop_sound === 'false') {
             return;
         }
 
-        // @ts-ignore
-        notificationSounds?.ring(currentUser.notify_props.calls_notification_sound || DEFAULT_RING_SOUND);
-        const timer = setTimeout(() => stopRinging(), RING_LENGTH);
+        // If we're on the desktopWidget then don't ring because the ringing will be handled by the main webapp.
+        const ringHandledByWebapp = onWidget && shouldRenderDesktopWidget();
 
-        // eslint-disable-next-line consistent-return
-        return () => {
-            clearTimeout(timer);
-            stopRinging();
-        };
-    }, [call, didRing, onWidget, currentUser.notify_props, dispatch]);
+        // @ts-ignore Our mattermost import is old and at the moment un-updatable.
+        if (ringHandledByWebapp || didRing || currentUser.notify_props.desktop === NotificationLevel.NONE || currentUser.notify_props.calls_desktop_sound === 'false') {
+            return;
+        }
+
+        // @ts-ignore same
+        dispatch(ringForCall(call.callID, currentUser.notify_props.calls_notification_sound || DEFAULT_RING_SOUND));
+    }, []);
 };
 
 export const useNotification = (call: IncomingCallNotification) => {
