@@ -343,6 +343,9 @@ export function incomingCallOnChannel(channelID: string, callID: string, hostID:
 
 export const userDisconnected = (channelID: string, userID: string) => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        // save for later
+        const callID = voiceChannelCalls(getState())[channelID].ID || '';
+
         await dispatch({
             type: VOICE_CHANNEL_USER_DISCONNECTED,
             data: {
@@ -353,7 +356,6 @@ export const userDisconnected = (channelID: string, userID: string) => {
         });
 
         if (ringingEnabled(getState()) && !channelHasCall(getState(), channelID)) {
-            const callID = voiceChannelCalls(getState())[channelID].ID || '';
             await dispatch(removeIncomingCallNotification(callID));
         }
     };
