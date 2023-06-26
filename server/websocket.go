@@ -140,7 +140,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 
 		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
-			return fmt.Errorf("failed to send RTC message: %w", err)
+			p.LogError("failed to send RTC message", "error", err)
 		}
 	}
 

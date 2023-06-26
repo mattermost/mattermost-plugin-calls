@@ -340,7 +340,15 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		res.Code = http.StatusInternalServerError
 		return
 	}
-	defer p.unlockCall(channelID)
+	defer func() {
+		p.unlockCall(channelID)
+		if res.Err != "" {
+			return
+		}
+		if err := json.NewEncoder(w).Encode(info); err != nil {
+			p.LogError(err.Error())
+		}
+	}()
 	if state == nil {
 		state = &channelState{}
 	}
@@ -359,10 +367,6 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 	}
 
 	p.publishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-
-	if err := json.NewEncoder(w).Encode(info); err != nil {
-		p.LogError(err.Error())
-	}
 }
 
 func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
