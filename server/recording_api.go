@@ -55,32 +55,9 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	}
 }
 
-func (p *Plugin) handleRecordingStartAction(callID, userID string) (*RecordingStateClient, httpResponse) {
+func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID string) (*RecordingStateClient, httpResponse) {
 	var res httpResponse
 
-	state, err := p.lockCall(callID)
-	if err != nil {
-		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
-	}
-	defer p.unlockCall(callID)
-
-	if state == nil {
-		res.Err = "channel state is missing from store"
-		res.Code = http.StatusForbidden
-		return nil, res
-	}
-	if state.Call == nil {
-		res.Err = "no call ongoing"
-		res.Code = http.StatusForbidden
-		return nil, res
-	}
-	if state.Call.HostID != userID {
-		res.Err = "no permissions to record"
-		res.Code = http.StatusForbidden
-		return nil, res
-	}
 	if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
 		res.Err = "recording already in progress"
 		res.Code = http.StatusForbidden
@@ -123,7 +100,7 @@ func (p *Plugin) handleRecordingStartAction(callID, userID string) (*RecordingSt
 	// could take a while to return. We lock again as soon as this returns.
 	p.unlockCall(callID)
 	recJobID, jobErr := p.jobService.RunRecordingJob(callID, state.Call.PostID, p.botSession.Token)
-	state, err = p.lockCall(callID)
+	state, err := p.lockCall(callID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
@@ -172,32 +149,9 @@ func (p *Plugin) handleRecordingStartAction(callID, userID string) (*RecordingSt
 	return recState.getClientState(), res
 }
 
-func (p *Plugin) handleRecordingStopAction(callID, userID string) (*RecordingStateClient, httpResponse) {
+func (p *Plugin) handleRecordingStopAction(state *channelState, callID string) (*RecordingStateClient, httpResponse) {
 	var res httpResponse
 
-	state, err := p.lockCall(callID)
-	if err != nil {
-		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
-	}
-	defer p.unlockCall(callID)
-
-	if state == nil {
-		res.Err = "channel state is missing from store"
-		res.Code = http.StatusForbidden
-		return nil, res
-	}
-	if state.Call == nil {
-		res.Err = "no call ongoing"
-		res.Code = http.StatusForbidden
-		return nil, res
-	}
-	if state.Call.HostID != userID {
-		res.Err = "no permissions to record"
-		res.Code = http.StatusForbidden
-		return nil, res
-	}
 	if state.Call.Recording == nil || state.Call.Recording.EndAt != 0 {
 		res.Err = "no recording in progress"
 		res.Code = http.StatusForbidden
@@ -281,12 +235,36 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 		return
 	}
 
+	state, err := p.lockCall(callID)
+	if err != nil {
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer p.unlockCall(callID)
+
+	if state == nil {
+		res.Err = "channel state is missing from store"
+		res.Code = http.StatusForbidden
+		return
+	}
+	if state.Call == nil {
+		res.Err = "no call ongoing"
+		res.Code = http.StatusForbidden
+		return
+	}
+	if state.Call.HostID != userID {
+		res.Err = "no permissions to record"
+		res.Code = http.StatusForbidden
+		return
+	}
+
 	var recState *RecordingStateClient
 	switch action {
 	case "start":
-		recState, res = p.handleRecordingStartAction(callID, userID)
+		recState, res = p.handleRecordingStartAction(state, callID, userID)
 	case "stop":
-		recState, res = p.handleRecordingStopAction(callID, userID)
+		recState, res = p.handleRecordingStopAction(state, callID)
 	default:
 		res.Err = "unsupported recording action"
 		res.Code = http.StatusBadRequest
