@@ -276,7 +276,7 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) startNewCallPost(state *channelState, userID, channelID, title, threadID string) (string, string, error) {
+func (p *Plugin) createCallStartedPost(state *channelState, userID, channelID, title, threadID string) (string, string, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return "", "", appErr
@@ -321,12 +321,6 @@ func (p *Plugin) startNewCallPost(state *channelState, userID, channelID, title,
 	}
 	if threadID == "" {
 		threadID = createdPost.Id
-	}
-
-	state.Call.PostID = createdPost.Id
-	state.Call.ThreadID = threadID
-	if err := p.kvSetChannelState(channelID, state); err != nil {
-		return "", "", fmt.Errorf("failed to set channel state: %w", err)
 	}
 
 	return createdPost.Id, threadID, nil

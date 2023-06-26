@@ -525,17 +525,9 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 		p.unlockCall(channelID)
 		return fmt.Errorf("state.Call should not be nil")
 	} else if len(state.Call.Users) == 1 {
-		p.track(evCallStarted, map[string]interface{}{
-			"ParticipantID": userID,
-			"CallID":        state.Call.ID,
-			"ChannelID":     channelID,
-			"ChannelType":   channel.Type,
-		})
-
 		// new call has started
 		// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
-		cfg := p.getConfiguration()
-		if cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
+		if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
 			p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
 			p.API.SendEphemeralPost(
 				userID,
@@ -547,8 +539,14 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 			)
 		}
 
-		postID, threadID, err := p.startNewCallPost(state, userID, channelID, title, threadID)
+		postID, threadID, err := p.createCallStartedPost(state, userID, channelID, title, threadID)
 		if err != nil {
+			p.LogError(err.Error())
+		}
+
+		state.Call.PostID = postID
+		state.Call.ThreadID = threadID
+		if err := p.kvSetChannelState(channelID, state); err != nil {
 			p.LogError(err.Error())
 		}
 
@@ -561,6 +559,13 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 			"owner_id":  state.Call.OwnerID,
 			"host_id":   state.Call.HostID,
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+		p.track(evCallStarted, map[string]interface{}{
+			"ParticipantID": userID,
+			"CallID":        state.Call.ID,
+			"ChannelID":     channelID,
+			"ChannelType":   channel.Type,
+		})
 	}
 
 	handlerID, err := p.getHandlerID()
@@ -634,19 +639,6 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 	p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-	p.metrics.IncWebSocketConn(channelID)
-	defer p.metrics.DecWebSocketConn(channelID)
-	p.track(evCallUserJoined, map[string]interface{}{
-		"ParticipantID": userID,
-		"ChannelID":     channelID,
-		"CallID":        state.Call.ID,
-	})
-
-	if prevState.Call != nil && state.Call.HostID != prevState.Call.HostID {
-		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
-			"hostID": state.Call.HostID,
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-	}
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
@@ -656,6 +648,14 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 	}
 
 	p.unlockCall(channelID)
+
+	p.metrics.IncWebSocketConn(channelID)
+	defer p.metrics.DecWebSocketConn(channelID)
+	p.track(evCallUserJoined, map[string]interface{}{
+		"ParticipantID": userID,
+		"ChannelID":     channelID,
+		"CallID":        state.Call.ID,
+	})
 
 	p.wsReader(us, handlerID)
 
