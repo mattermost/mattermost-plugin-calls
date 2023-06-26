@@ -27,8 +27,6 @@ import {
     showScreenSourceModal,
     displayCallsTestModeUser,
 } from 'src/actions';
-import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
-import {ServerSideTurn} from 'src/components/admin_console_settings/server_side_turn';
 
 import slashCommandsHandler from 'src/slash_commands';
 
@@ -41,7 +39,12 @@ import JobServiceURL from 'src/components/admin_console_settings/recordings/job_
 import TestMode from 'src/components/admin_console_settings/test_mode';
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
+import TCPServerPort from 'src/components/admin_console_settings/tcp_server_port';
+import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
+import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
+import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
+import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
 
 import {DisabledCallsErr} from 'src/constants';
 import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
@@ -374,8 +377,11 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
         registry.registerAdminConsoleCustomSetting('UDPServerAddress', UDPServerAddress);
         registry.registerAdminConsoleCustomSetting('UDPServerPort', UDPServerPort);
+        registry.registerAdminConsoleCustomSetting('TCPServerAddress', TCPServerAddress);
+        registry.registerAdminConsoleCustomSetting('TCPServerPort', TCPServerPort);
+        registry.registerAdminConsoleCustomSetting('EnableIPv6', EnableIPv6);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
-        registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTurn);
+        registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             if (shouldRenderDesktopWidget()) {
