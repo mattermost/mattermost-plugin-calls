@@ -70,7 +70,9 @@ func (p *Plugin) KVGet(key string, fromWriter bool) ([]byte, error) {
 
 	var data []byte
 	row := p.wDB.QueryRow(q, args...)
-	if err := row.Scan(&data); err != nil {
+	if err := row.Scan(&data); err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
 		return nil, fmt.Errorf("failed to scan row: %w", err)
 	}
 
