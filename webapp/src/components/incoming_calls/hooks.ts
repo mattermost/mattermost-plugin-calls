@@ -3,8 +3,11 @@ import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {NotificationLevel} from 'mattermost-redux/constants/channels';
 import {getChannel, getMyChannelMember} from 'mattermost-redux/selectors/entities/channels';
+import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentUser, getUser, makeGetProfilesInChannel} from 'mattermost-redux/selectors/entities/users';
+import {isChannelMuted} from 'mattermost-redux/utils/channel_utils';
+import {isMinimumServerVersion} from 'mattermost-redux/utils/helpers';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {useEffect} from 'react';
 import {useIntl} from 'react-intl';
@@ -19,9 +22,10 @@ import {
     currentlyRinging,
     didNotifyForCall,
     didRingForCall,
+    getStatusForCurrentUser,
     ringingForCall,
 } from 'src/selectors';
-import {ChannelType, IncomingCallNotification} from 'src/types/types';
+import {ChannelType, IncomingCallNotification, UserStatuses} from 'src/types/types';
 import {desktopGTE, getChannelURL, sendDesktopEvent, shouldRenderDesktopWidget, split} from 'src/utils';
 import {notificationSounds, sendDesktopNotificationToMe} from 'src/webapp_globals';
 
@@ -83,10 +87,18 @@ const getNotificationSoundFromChannelMemberAndUser = (member: ChannelMembership 
     return user.notify_props?.desktop_notification_sound ? user.notify_props.desktop_notification_sound : 'Bing';
 };
 
+const useShouldRingAndNotify = (channelID: string) => {
+    const status = useSelector(getStatusForCurrentUser);
+    const member = useSelector((state: GlobalState) => getMyChannelMember(state, channelID));
+    const muted = !member || isChannelMuted(member) || status === UserStatuses.DND || status === UserStatuses.OUT_OF_OFFICE;
+    return !muted;
+};
+
 export const useRingingAndNotification = (call: IncomingCallNotification, onWidget: boolean) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(getCurrentUser);
     const didRing = useSelector((state: GlobalState) => didRingForCall(state, call.callID));
+    const shouldRing = useShouldRingAndNotify(call.channelID);
     const currRinging = useSelector(currentlyRinging);
     const currRingingForThisCall = useSelector((state: GlobalState) => ringingForCall(state, call.callID));
     const connected = Boolean(useSelector(connectedChannelID));
@@ -108,7 +120,7 @@ export const useRingingAndNotification = (call: IncomingCallNotification, onWidg
         const ringHandledByWebapp = onWidget && shouldRenderDesktopWidget();
 
         // @ts-ignore Our mattermost import is old and at the moment un-updatable.
-        if (ringHandledByWebapp || didRing || currentUser.notify_props.desktop === NotificationLevel.NONE || currentUser.notify_props.calls_desktop_sound === 'false') {
+        if (!shouldRing || didRing || ringHandledByWebapp || currentUser.notify_props.desktop === NotificationLevel.NONE || currentUser.notify_props.calls_desktop_sound === 'false') {
             return;
         }
 
@@ -125,14 +137,20 @@ export const useNotification = (call: IncomingCallNotification) => {
     const myChannelMember = useSelector((state: GlobalState) => getMyChannelMember(state, call.channelID));
     const url = useSelector((state: GlobalState) => getChannelURL(state, channel, channel.team_id));
     const didNotify = useSelector((state: GlobalState) => didNotifyForCall(state, call.callID));
+    const shouldNotify = useShouldRingAndNotify(call.channelID);
+    const serverVersion = useSelector(getServerVersion);
     const [hostName, others] = useGetHostNameAndOthers(call, 2);
 
     const title = others.length === 0 ? hostName : others;
     const body = formatMessage({defaultMessage: '{hostName} is inviting you to a call'}, {hostName});
 
     useEffect(() => {
-        if (document.visibilityState === 'hidden' && !didNotify) {
+        if (shouldNotify && !didNotify && document.visibilityState === 'hidden') {
             if (sendDesktopNotificationToMe) {
+                if (call.type === ChannelType.DM && !isMinimumServerVersion(serverVersion, 8, 1)) {
+                    // MM <8.1 will send its own generic channel notification for DMs
+                    return;
+                }
                 const soundName = getNotificationSoundFromChannelMemberAndUser(myChannelMember, currentUser);
                 dispatch(sendDesktopNotificationToMe(title, body, channel, channel.team_id, false, soundName, url));
             }

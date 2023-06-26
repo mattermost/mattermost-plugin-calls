@@ -4,6 +4,7 @@ import {
     getUsers,
     getUserIdsInChannels,
     isCurrentUserSystemAdmin,
+    getUserStatuses,
 } from 'mattermost-redux/selectors/entities/users';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
@@ -384,6 +385,14 @@ export const getChannelUrlAndDisplayName = (state: GlobalState, channel: Channel
     }
     return {channelURL, channelDisplayName};
 };
+
+export const getStatusForCurrentUser: (state: GlobalState) => string =
+    createSelector(
+        'getStatusForCurrentUser',
+        getCurrentUserId,
+        getUserStatuses,
+        (id, statuses) => statuses[id],
+    );
 
 export function makeIdToObject<HasId extends { id: string }>(arr: HasId[]) {
     return arr.reduce((acc: { [id: string]: HasId }, e) => {
