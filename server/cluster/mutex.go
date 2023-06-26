@@ -220,10 +220,10 @@ func (m *Mutex) Lock(ctx context.Context) error {
 func (m *Mutex) Unlock() {
 	defer m.mut.Unlock()
 
-	if m.stopCh == nil {
+	if m.mut.TryLock() {
 		// We allow unlocking a mutex multiple times and log a simple warning
-		// since it's safe and it simplifies a lot of complex flows that would
-		// require extra checks otherwise.
+		// since it's generally safe and can simplify some complex flows that
+		// would require extra checks otherwise.
 		m.pluginAPI.LogWarn("unlock of unlocked mutex", "key", m.key)
 		return
 	}
