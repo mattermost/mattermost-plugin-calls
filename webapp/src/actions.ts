@@ -56,6 +56,7 @@ import {
     REMOVE_INCOMING_CALL,
     DID_RING_FOR_CALL,
     RINGING_FOR_CALL,
+    DISMISS_CALL,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -379,6 +380,12 @@ export const dismissIncomingCallNotification = (channelID: string, callID: strin
             {method: 'post'},
         ).catch((e) => logErr(e));
         await dispatch(removeIncomingCallNotification(callID));
+        dispatch({
+            type: DISMISS_CALL,
+            data: {
+                callID,
+            },
+        });
     };
 };
 

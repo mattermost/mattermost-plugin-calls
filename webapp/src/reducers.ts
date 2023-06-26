@@ -59,6 +59,7 @@ import {
     RTCD_ENABLED,
     DID_NOTIFY_FOR_CALL,
     RINGING_FOR_CALL,
+    DISMISS_CALL,
 } from './action_types';
 
 interface channelStateAction {
@@ -860,6 +861,18 @@ const didNotifyForCalls = (state: { [callID: string]: boolean } = {}, action: Ri
     }
 };
 
+const dismissedCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
+    switch (action.type) {
+    case DISMISS_CALL:
+        return {
+            ...state,
+            [action.data.callID]: true,
+        };
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     channelState,
     voiceConnectedChannels,
@@ -883,4 +896,5 @@ export default combineReducers({
     ringingForCalls,
     didRingForCalls,
     didNotifyForCalls,
+    dismissedCalls,
 });

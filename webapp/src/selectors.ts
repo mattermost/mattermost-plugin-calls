@@ -212,6 +212,17 @@ export const sortedIncomingCalls: (state: GlobalState) => IncomingCallNotificati
         (calls) => [...calls].sort((a, b) => b.startAt - a.startAt),
     );
 
+export const dismissedCalls = (state: GlobalState): { [callID: string]: boolean } =>
+    pluginState(state).dismissedCalls;
+
+export const dismissedCallForCurrentChannel: (state: GlobalState) => boolean =
+    createSelector(
+        'dismissedCallForCurrentChannel',
+        dismissedCalls,
+        voiceChannelCallInCurrentChannel,
+        (dismissed, call) => Boolean(dismissed[call?.ID || '']),
+    );
+
 export const ringingForCall = (state: GlobalState, callID: string): boolean =>
     pluginState(state).ringingForCalls[callID] || false;
 
