@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -45,6 +46,9 @@ type session struct {
 	// to notify of session leaving a call.
 	leaveCh chan struct{}
 	left    int32
+
+	// remove tracks whether the session was removed from state.
+	removed int32
 
 	limiter *rate.Limiter
 }
@@ -242,6 +246,18 @@ func (p *Plugin) joinAllowed(state *channelState) (bool, error) {
 }
 
 func (p *Plugin) removeSession(us *session) error {
+	// The flow to remove a session is a bit complex as it can trigger from many
+	// (concurrent) places:
+	// - Client leaving the call (proper WS disconnect).
+	// - Client disconnecting (RTC connection closed).
+	// - RTC side detecting a disconnection (network failure).
+	// - Any of the above events coming from a different app node in a HA cluster.
+	// Using an atomic helps to avoid logging errors for benign cases.
+	if !atomic.CompareAndSwapInt32(&us.removed, 0, 1) {
+		p.LogDebug("session was already removed", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
+		return nil
+	}
+
 	prevState, err := p.lockCall(us.channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
