@@ -175,20 +175,19 @@ func (c *configuration) SetDefaults() {
 		c.DefaultEnabled = model.NewBool(false)
 	}
 	if c.MaxCallParticipants == nil {
-		c.MaxCallParticipants = new(int)
+		c.MaxCallParticipants = model.NewInt(0) // unlimited
 	}
 	if c.TURNCredentialsExpirationMinutes == nil {
 		c.TURNCredentialsExpirationMinutes = model.NewInt(1440)
 	}
 	if c.ServerSideTURN == nil {
-		c.ServerSideTURN = new(bool)
+		c.ServerSideTURN = model.NewBool(false)
 	}
 	if c.AllowScreenSharing == nil {
-		c.AllowScreenSharing = new(bool)
-		*c.AllowScreenSharing = true
+		c.AllowScreenSharing = model.NewBool(true)
 	}
 	if c.EnableRecordings == nil {
-		c.EnableRecordings = new(bool)
+		c.EnableRecordings = model.NewBool(false)
 	}
 	if c.MaxRecordingDuration == nil {
 		c.MaxRecordingDuration = model.NewInt(defaultRecDurationMinutes)
@@ -197,10 +196,10 @@ func (c *configuration) SetDefaults() {
 		c.RecordingQuality = "medium"
 	}
 	if c.EnableSimulcast == nil {
-		c.EnableSimulcast = new(bool)
+		c.EnableSimulcast = model.NewBool(false)
 	}
 	if c.EnableIPv6 == nil {
-		c.EnableIPv6 = new(bool)
+		c.EnableIPv6 = model.NewBool(false)
 	}
 	if c.EnableRinging == nil {
 		c.EnableRinging = model.NewBool(false)
@@ -264,13 +263,11 @@ func (c *configuration) Clone() *configuration {
 	cfg.RecordingQuality = c.RecordingQuality
 
 	if c.UDPServerPort != nil {
-		cfg.UDPServerPort = new(int)
-		*cfg.UDPServerPort = *c.UDPServerPort
+		cfg.UDPServerPort = model.NewInt(*c.UDPServerPort)
 	}
 
 	if c.TCPServerPort != nil {
-		cfg.TCPServerPort = new(int)
-		*cfg.TCPServerPort = *c.TCPServerPort
+		cfg.TCPServerPort = model.NewInt(*c.TCPServerPort)
 	}
 
 	// AllowEnableCalls is always true
@@ -428,7 +425,10 @@ func (p *Plugin) loadConfig() error {
 		return fmt.Errorf("loadConfig: failed to load plugin configuration: %w", err)
 	}
 
-	// Permanently override with envVar and cloud overrides
+	// Set defaults in case anything is missing.
+	cfg.SetDefaults()
+
+	// Permanently override with envVar and cloud overrides.
 	p.setOverrides(cfg)
 
 	return p.setConfiguration(cfg)
@@ -456,6 +456,10 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 		return nil, nil
 	}
 
+	// Setting defaults prevents errors in case the plugin is updated after a new
+	// setting has been added. In this case the default value will be used.
+	cfg.SetDefaults()
+
 	if err := cfg.IsValid(); err != nil {
 		appErr := model.NewAppError("saveConfig", "app.save_config.error", nil, "", http.StatusBadRequest)
 		appErr.Message = err.Error()
@@ -469,22 +473,10 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.AllowEnableCalls = model.NewBool(true)
 
-	if cfg.DefaultEnabled == nil {
-		cfg.DefaultEnabled = model.NewBool(false)
-	}
-
-	if cfg.EnableIPv6 == nil {
-		cfg.EnableIPv6 = model.NewBool(false)
-	}
-
 	if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// On Cloud installations we want calls enabled in all channels so we
 		// override it since the plugin's default is now false.
 		*cfg.DefaultEnabled = true
-	}
-
-	if cfg.MaxCallParticipants == nil {
-		cfg.MaxCallParticipants = model.NewInt(0)
 	}
 
 	// Allow env var to permanently override system console settings
