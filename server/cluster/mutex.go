@@ -20,6 +20,7 @@ const (
 	defaultTTL             = 10 * time.Second
 	defaultRefreshInterval = defaultTTL / 2
 	defaultPollInterval    = 500 * time.Millisecond
+	maxPollInterval        = 1 * time.Second
 )
 
 // MutexPluginAPI is the plugin API interface required to manage mutexes.
@@ -98,6 +99,8 @@ func (c *MutexConfig) IsValid() error {
 
 	if c.PollInterval <= 0 {
 		return fmt.Errorf("PollInterval should be positive")
+	} else if c.PollInterval > maxPollInterval {
+		return fmt.Errorf("PollInterval should not be higher than %s", maxPollInterval)
 	}
 
 	if c.RefreshInterval > (c.TTL / 2) {
@@ -205,13 +208,18 @@ func (m *Mutex) Lock(ctx context.Context) error {
 
 		m.metricsAPI.IncClusterMutexLockRetries(m.getMetricsGroup())
 		nRetries++
-		pollTime := m.config.PollInterval*time.Duration(nRetries) + time.Duration(rand.Int63n(m.config.PollInterval.Nanoseconds()))
+
+		pollTime := m.config.PollInterval * time.Duration(nRetries)
+		if pollTime > maxPollInterval {
+			pollTime = maxPollInterval
+		}
+		jitter := time.Duration(rand.Int63n(pollTime.Nanoseconds()))
 
 		select {
 		case <-ctx.Done():
 			m.mut.Unlock()
 			return ctx.Err()
-		case <-time.After(pollTime):
+		case <-time.After(pollTime + jitter):
 		}
 	}
 }
