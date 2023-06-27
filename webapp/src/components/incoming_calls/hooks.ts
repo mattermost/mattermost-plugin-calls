@@ -101,7 +101,8 @@ const getDesktopSoundFromChannelMemberAndUser = (member: ChannelMembership | nul
 
 const getRingingFromUser = (user: UserProfile) => {
     // @ts-ignore We're using an outdated webapp
-    return !user.notify_props || (user.notify_props.calls_desktop_sound === 'true' && user.notify_props.desktop !== NotificationLevel.NONE);
+    const callsRing = !user.notify_props || (user.notify_props.calls_desktop_sound || 'true') === 'true'; // default true if not set
+    return !user.notify_props || (callsRing && user.notify_props.desktop !== NotificationLevel.NONE);
 };
 
 const getDesktopNotification = (member: ChannelMembership | null | undefined, user: UserProfile) => {
