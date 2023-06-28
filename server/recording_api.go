@@ -160,7 +160,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 			"callID":   callID,
 			"recState": recState.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
-		recJobID, err := p.jobService.RunRecordingJob(callID, postID, p.botSession.Token)
+		recJobID, err := p.jobService.RunRecordingJob(callID, postID, recState.ID, p.botSession.Token)
 		if err != nil {
 			// resetting state in case the job failed to run
 			if err := p.kvSetAtomicChannelState(callID, func(state *channelState) (*channelState, error) {

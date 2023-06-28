@@ -22,6 +22,17 @@ export type ChannelState = {
     enabled?: boolean;
 }
 
+export type CallsClientJoinData = {
+    channelID: string;
+    title?: string;
+    threadID?: string;
+
+    // Calls bot only
+    // contextID is the id used to track the context of the bot connection to
+    // a call (e.g. recording, transcription).
+    contextID?: string;
+}
+
 export type CallsClientConfig = {
     wsURL: string;
     authToken?: string;

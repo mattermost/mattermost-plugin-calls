@@ -508,7 +508,11 @@ export default class Plugin {
                     });
                 });
 
-                window.callsClient.init(channelID, title, rootId).catch((err: Error) => {
+                window.callsClient.init({
+                    channelID,
+                    title,
+                    threadID: rootId,
+                }).catch((err: Error) => {
                     logErr(err);
                     unmountCallWidget();
                     store.dispatch(displayCallErrorModal(channelID, err));

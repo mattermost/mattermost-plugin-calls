@@ -67,13 +67,13 @@ func newUserSession(userID, channelID, connID string, rtc bool) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (channelState, channelState, error) {
+func (p *Plugin) addUserSession(userID, connID, channelID, contextID string) (channelState, channelState, error) {
 	var currState channelState
 	var prevState channelState
 
 	botID := p.getBotID()
 
-	err := p.kvSetAtomicChannelState(channel.Id, func(state *channelState) (*channelState, error) {
+	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
 		if state == nil {
 			state = &channelState{}
 		}
@@ -123,6 +123,9 @@ func (p *Plugin) addUserSession(userID, connID string, channel *model.Channel) (
 		// When the bot joins the call it means the recording has started.
 		if userID == botID {
 			if state.Call.Recording != nil && state.Call.Recording.StartAt == 0 {
+				if state.Call.Recording.ID != contextID {
+					return nil, fmt.Errorf("invalid context ID for recording")
+				}
 				state.Call.Recording.StartAt = time.Now().UnixMilli()
 				state.Call.Recording.BotConnID = connID
 			} else if state.Call.Recording == nil || state.Call.Recording.StartAt > 0 {
