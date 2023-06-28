@@ -26,7 +26,7 @@ import {logErr} from 'src/log';
 import {RING_LENGTH} from 'src/constants';
 
 import {
-    channelHasCall,
+    channelHasCall, connectedCallID, incomingCalls,
     ringingEnabled,
     ringingForCall,
     voiceChannelCallDismissedNotification,
@@ -307,7 +307,7 @@ export const displayGenericErrorModal = (title: MessageDescriptor, message: Mess
     };
 };
 
-export function incomingCallOnChannel(channelID: string, callID: string, hostID: string, startAt: number) {
+export function incomingCallOnChannel(channelID: string, callID: string, callerID: string, startAt: number) {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         let channel = getChannel(getState(), channelID);
         if (!channel) {
@@ -323,9 +323,20 @@ export function incomingCallOnChannel(channelID: string, callID: string, hostID:
             return;
         }
 
-        const otherUser = getUser(getState(), hostID);
-        if (!otherUser) {
-            await dispatch(getProfilesByIdsAction([hostID]));
+        if (incomingCalls(getState()).findIndex((ic) => ic.callID === callID) >= 0) {
+            return;
+        }
+
+        // Never send a notification for a call you started yourself, or a call you are currently in.
+        const currentUserID = getCurrentUserId(getState());
+        const connectedID = connectedCallID(getState());
+        if (currentUserID === callerID || connectedID === callID) {
+            return;
+        }
+
+        const caller = getUser(getState(), callerID);
+        if (!caller) {
+            await dispatch(getProfilesByIdsAction([callerID]));
         }
 
         await dispatch({
@@ -333,7 +344,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, hostID:
             data: {
                 callID,
                 channelID,
-                hostID,
+                callerID,
                 startAt,
                 type: isDMChannel(channel) ? ChannelType.DM : ChannelType.GM,
             },

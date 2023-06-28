@@ -173,10 +173,10 @@ export const useNotification = (call: IncomingCallNotification) => {
     const didNotify = useSelector((state: GlobalState) => didNotifyForCall(state, call.callID));
     const [_, shouldDesktopNotificationSound, shouldDesktopNotification] = useNotificationSettings(call.channelID, currentUser);
     const serverVersion = useSelector(getServerVersion);
-    const [hostName, others] = useGetHostNameAndOthers(call, 2);
+    const [callerName, others] = useGetCallerNameAndOthers(call, 2);
 
-    const title = others.length === 0 ? hostName : others;
-    const body = formatMessage({defaultMessage: '{hostName} is inviting you to a call'}, {hostName});
+    const title = others.length === 0 ? callerName : others;
+    const body = formatMessage({defaultMessage: '{callerName} is inviting you to a call'}, {callerName});
 
     useEffect(() => {
         if (shouldDesktopNotification && !didNotify && document.visibilityState === 'hidden') {
@@ -200,18 +200,18 @@ export const useNotification = (call: IncomingCallNotification) => {
     }, []);
 };
 
-export const useGetHostNameAndOthers = (call: IncomingCallNotification, splitAt: number) => {
+export const useGetCallerNameAndOthers = (call: IncomingCallNotification, splitAt: number) => {
     const {formatMessage, formatList} = useIntl();
     const teammateNameDisplay = useSelector(getTeammateNameDisplaySetting);
-    const host = useSelector((state: GlobalState) => getUser(state, call.hostID));
+    const caller = useSelector((state: GlobalState) => getUser(state, call.callerID));
     const currentUser = useSelector(getCurrentUser);
     const doGetProfilesInChannel = makeGetProfilesInChannel();
     const gmMembers = useSelector((state: GlobalState) => doGetProfilesInChannel(state, call.channelID));
-    const hostName = displayUsername(host, teammateNameDisplay, false);
+    const callerName = displayUsername(caller, teammateNameDisplay, false);
 
     let others = '';
     if (call.type === ChannelType.GM) {
-        const otherMembers = gmMembers.filter((u) => u.id !== host.id && u.id !== currentUser.id);
+        const otherMembers = gmMembers.filter((u) => u.id !== caller.id && u.id !== currentUser.id);
         const [displayed, overflowed] = split(otherMembers, splitAt);
         const users = displayed.map((u) => displayUsername(u, teammateNameDisplay));
         if (overflowed) {
@@ -221,5 +221,5 @@ export const useGetHostNameAndOthers = (call: IncomingCallNotification, splitAt:
         others = formatList(users);
     }
 
-    return [hostName, others];
+    return [callerName, others];
 };

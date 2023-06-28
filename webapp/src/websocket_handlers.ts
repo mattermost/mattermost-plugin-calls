@@ -116,11 +116,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         }
     } else if (ringingEnabled(store.getState())) {
         // the call that started is not the call we're currently in.
-        const currentUserID = getCurrentUserId(store.getState());
-        if (currentUserID !== ev.data.host_id) {
-            // the call was not started by us.
-            store.dispatch(incomingCallOnChannel(channelID, ev.data.id, ev.data.host_id, ev.data.start_at));
-        }
+        store.dispatch(incomingCallOnChannel(channelID, ev.data.id, ev.data.owner_id, ev.data.start_at));
     }
 }
 

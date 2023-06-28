@@ -9,7 +9,7 @@ import {useSelector} from 'react-redux';
 
 import styled from 'styled-components';
 
-import {useDismissJoin, useGetHostNameAndOthers, useRingingAndNotification} from 'src/components/incoming_calls/hooks';
+import {useDismissJoin, useGetCallerNameAndOthers, useRingingAndNotification} from 'src/components/incoming_calls/hooks';
 import Avatar from 'src/components/avatar/avatar';
 import {Button} from 'src/components/buttons';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -23,27 +23,27 @@ export const CallIncoming = ({call}: Props) => {
     const {formatMessage} = useIntl();
     const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
     useRingingAndNotification(call, false);
-    const host = useSelector((state: GlobalState) => getUser(state, call.hostID));
-    const [hostName, others] = useGetHostNameAndOthers(call, 2);
+    const caller = useSelector((state: GlobalState) => getUser(state, call.callerID));
+    const [callerName, others] = useGetCallerNameAndOthers(call, 2);
 
     let message;
     if (call.type === ChannelType.DM) {
         message = (
             <FormattedMessage
-                defaultMessage={'<b>{hostName}</b> is inviting you to a call'}
+                defaultMessage={'<b>{callerName}</b> is inviting you to a call'}
                 values={{
                     b: (text: string) => <b>{text}</b>,
-                    hostName,
+                    callerName,
                 }}
             />
         );
     } else if (call.type === ChannelType.GM) {
         message = (
             <FormattedMessage
-                defaultMessage={'<b>{hostName}</b> is inviting you to a call with <b>{others}</b>'}
+                defaultMessage={'<b>{callerName}</b> is inviting you to a call with <b>{others}</b>'}
                 values={{
                     b: (text: string) => <b>{text}</b>,
-                    hostName,
+                    callerName,
                     others,
                 }}
             />
@@ -55,7 +55,7 @@ export const CallIncoming = ({call}: Props) => {
             <Inner>
                 <Row>
                     <Avatar
-                        url={Client4.getProfilePictureUrl(host.id, host.last_picture_update)}
+                        url={Client4.getProfilePictureUrl(caller.id, caller.last_picture_update)}
                         border={false}
                     />
                     <Message>

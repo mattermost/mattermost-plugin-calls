@@ -79,6 +79,9 @@ export const channelHasCall = (state: GlobalState, channelId: string): boolean =
 export const connectedChannelID = (state: GlobalState): string | null =>
     pluginState(state).connectedChannelID;
 
+export const connectedCallID = (state: GlobalState): string | undefined =>
+    pluginState(state).voiceChannelCalls[pluginState(state).connectedChannelID]?.ID;
+
 const numUsersInConnectedChannel = (state: GlobalState) => {
     const connectedChannelId = connectedChannelID(state) || '';
     const connectedChannels = voiceConnectedChannels(state);

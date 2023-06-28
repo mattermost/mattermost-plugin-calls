@@ -90,7 +90,6 @@ import {
     callsExplicitlyDisabled,
     hasPermissionsToEnableCalls,
     callsConfig,
-    incomingCalls,
     ringingEnabled,
 } from './selectors';
 
@@ -617,18 +616,15 @@ export default class Plugin {
                         });
 
                         if (ringingEnabled(store.getState()) && data[i].call) {
-                            const incomingCall = incomingCalls(store.getState()).findIndex((ic) => ic.callID === data[i].call.id) >= 0;
-                            if (!incomingCall) {
-                                // dismissedNotification is populated after the actions array has been batched, so manually check:
-                                const dismissed = data[i].call?.dismissed_notification;
-                                if (dismissed) {
-                                    const currentUserID = getCurrentUserId(store.getState());
-                                    if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
-                                        continue;
-                                    }
+                            // dismissedNotification is populated after the actions array has been batched, so manually check:
+                            const dismissed = data[i].call?.dismissed_notification;
+                            if (dismissed) {
+                                const currentUserID = getCurrentUserId(store.getState());
+                                if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
+                                    continue;
                                 }
-                                store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.id, data[i].call.host_id, data[i].call.start_at));
                             }
+                            store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.id, data[i].call.owner_id, data[i].call.start_at));
                         }
                     }
                 }

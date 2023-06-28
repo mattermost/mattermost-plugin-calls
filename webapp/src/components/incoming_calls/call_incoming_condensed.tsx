@@ -27,18 +27,18 @@ type Props = {
 export const CallIncomingCondensed = ({call, onWidget = false, global = false}: Props) => {
     const {formatMessage} = useIntl();
     const teammateNameDisplay = useSelector(getTeammateNameDisplaySetting);
-    const host = useSelector((state: GlobalState) => getUser(state, call.hostID));
+    const caller = useSelector((state: GlobalState) => getUser(state, call.callerID));
 
     useRingingAndNotification(call, onWidget);
     const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID, global);
 
-    const hostName = displayUsername(host, teammateNameDisplay, false);
+    const callerName = displayUsername(caller, teammateNameDisplay, false);
     const message = (
         <FormattedMessage
-            defaultMessage={'Call from <b>{hostName}</b>'}
+            defaultMessage={'Call from <b>{callertName}</b>'}
             values={{
                 b: (text: string) => <b>{text}</b>,
-                hostName,
+                callerName,
             }}
         />
     );
@@ -48,7 +48,7 @@ export const CallIncomingCondensed = ({call, onWidget = false, global = false}: 
             <Inner>
                 <Row>
                     <Avatar
-                        url={Client4.getProfilePictureUrl(host.id, host.last_picture_update)}
+                        url={Client4.getProfilePictureUrl(caller.id, caller.last_picture_update)}
                         size={20}
                         border={false}
                     />
