@@ -35,7 +35,7 @@ export const CallIncomingCondensed = ({call, onWidget = false, global = false}: 
     const callerName = displayUsername(caller, teammateNameDisplay, false);
     const message = (
         <FormattedMessage
-            defaultMessage={'Call from <b>{callertName}</b>'}
+            defaultMessage={'Call from <b>{callerName}</b>'}
             values={{
                 b: (text: string) => <b>{text}</b>,
                 callerName,
