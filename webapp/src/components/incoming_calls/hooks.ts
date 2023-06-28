@@ -26,13 +26,14 @@ import {
     ringingForCall,
 } from 'src/selectors';
 import {ChannelType, IncomingCallNotification, UserStatuses} from 'src/types/types';
-import {desktopGTE, getChannelURL, sendDesktopEvent, shouldRenderDesktopWidget, split} from 'src/utils';
+import {desktopGTE, getChannelURL, isDesktopApp, sendDesktopEvent, shouldRenderDesktopWidget, split} from 'src/utils';
 import {notificationSounds, sendDesktopNotificationToMe} from 'src/webapp_globals';
 
-export const useDismissJoin = (channelID: string, callID: string, global = false) => {
+export const useDismissJoin = (channelID: string, callID: string) => {
     const store = useStore();
     const dispatch = useDispatch();
     const connectedID = useSelector(connectedChannelID) || '';
+    const global = isDesktopApp();
 
     const onDismiss = () => {
         dispatch(dismissIncomingCallNotification(channelID, callID));
