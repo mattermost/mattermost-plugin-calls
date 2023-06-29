@@ -53,15 +53,23 @@ type channelState struct {
 }
 
 type UserStateClient struct {
-	Unmuted    bool  `json:"unmuted"`
-	RaisedHand int64 `json:"raised_hand"`
+	SessionID  string `json:"session_id"`
+	UserID     string `json:"user_id"`
+	Unmuted    bool   `json:"unmuted"`
+	RaisedHand int64  `json:"raised_hand"`
 }
 
 type CallStateClient struct {
-	ID                    string                `json:"id"`
-	StartAt               int64                 `json:"start_at"`
-	Users                 []string              `json:"users"`
-	States                []UserStateClient     `json:"states,omitempty"`
+	ID      string `json:"id"`
+	StartAt int64  `json:"start_at"`
+
+	// DEPRECATED in favour of Sessions (since MM 8.1)
+	Users []string `json:"users"`
+	// DEPRECATED in favour of Sessions (since MM 8.1)
+	States []UserStateClient `json:"states,omitempty"`
+
+	Sessions []UserStateClient `json:"sessions"`
+
 	ThreadID              string                `json:"thread_id"`
 	PostID                string                `json:"post_id"`
 	ScreenSharingID       string                `json:"screen_sharing_id"`
@@ -150,8 +158,10 @@ func (cs *channelState) Clone() *channelState {
 	return &newState
 }
 
-func (us *userState) getClientState() UserStateClient {
+func (us *userState) getClientState(sessionID string) UserStateClient {
 	return UserStateClient{
+		SessionID:  sessionID,
+		UserID:     us.UserID,
 		Unmuted:    us.Unmuted,
 		RaisedHand: us.RaisedHand,
 	}
@@ -188,10 +198,15 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 	}
 
 	return &CallStateClient{
-		ID:                    cs.ID,
-		StartAt:               cs.StartAt,
-		Users:                 users,
-		States:                states,
+		ID:      cs.ID,
+		StartAt: cs.StartAt,
+
+		// DEPRECATED since 8.1
+		Users: users,
+		// DEPRECATED since 8.1
+		States: states,
+
+		Sessions:              states,
 		ThreadID:              cs.ThreadID,
 		PostID:                cs.PostID,
 		ScreenSharingID:       cs.ScreenSharingID,
@@ -205,13 +220,13 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClient) {
 	users := make([]string, 0, len(cs.Sessions))
 	states := make([]UserStateClient, 0, len(cs.Sessions))
-	for _, state := range cs.Sessions {
+	for sessionID, state := range cs.Sessions {
 		// We don't want to expose to the client that the bot is in a call.
 		if state.UserID == botID {
 			continue
 		}
 		users = append(users, state.UserID)
-		states = append(states, state.getClientState())
+		states = append(states, state.getClientState(sessionID))
 	}
 	return users, states
 }

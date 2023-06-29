@@ -287,7 +287,8 @@ func (p *Plugin) removeSession(us *session) error {
 	if prevState.Call != nil && prevState.Call.Sessions[us.originalConnID] != nil && (currState.Call == nil || currState.Call.Sessions[us.originalConnID] == nil) {
 		p.LogDebug("session was removed from state", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
 		p.publishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
-			"userID": us.userID,
+			"userID":     us.userID,
+			"session_id": us.originalConnID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 
 		// If the removed user was sharing we should send out a screen off event.

@@ -158,7 +158,8 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 	}
 
 	p.publishWebSocketEvent(wsMsgType, map[string]interface{}{
-		"userID": us.userID,
+		"userID":     us.userID,
+		"session_id": us.originalConnID,
 	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 
 	return nil
@@ -286,7 +287,8 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			evType = wsEventUserMuted
 		}
 		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID": us.userID,
+			"userID":     us.userID,
+			"session_id": us.originalConnID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
 		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
@@ -324,6 +326,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 
 		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":      us.userID,
+			"session_id":  us.originalConnID,
 			"raised_hand": uState.RaisedHand,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeReact:
@@ -335,9 +338,10 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		}
 
 		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"user_id":   us.userID,
-			"emoji":     emoji.toMap(),
-			"timestamp": time.Now().UnixMilli(),
+			"user_id":    us.userID,
+			"session_id": us.originalConnID,
+			"emoji":      emoji.toMap(),
+			"timestamp":  time.Now().UnixMilli(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 	default:
 		return fmt.Errorf("invalid client message type %q", msg.Type)
@@ -419,7 +423,8 @@ func (p *Plugin) wsWriter() {
 					evType = wsEventUserVoiceOn
 				}
 				p.publishWebSocketEvent(evType, map[string]interface{}{
-					"userID": us.userID,
+					"userID":     us.userID,
+					"session_id": us.originalConnID,
 				}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 				continue
 			}
@@ -658,7 +663,8 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 		"connID": connID,
 	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 	p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
-		"userID": userID,
+		"userID":     userID,
+		"session_id": connID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
