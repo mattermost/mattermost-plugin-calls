@@ -86,8 +86,7 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		state.Call = &callState{
 			ID:       model.NewId(),
 			StartAt:  time.Now().UnixMilli(),
-			Users:    make(map[string]*userState),
-			Sessions: make(map[string]struct{}),
+			Sessions: make(map[string]*userState),
 			OwnerID:  userID,
 		}
 		state.NodeID = p.nodeID
@@ -106,9 +105,9 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		return nil, fmt.Errorf("call has ended")
 	}
 
-	if _, ok := state.Call.Users[userID]; ok {
-		return nil, fmt.Errorf("user is already connected")
-	}
+	// if _, ok := state.Call.Users[userID]; ok {
+	// 	return nil, fmt.Errorf("user is already connected")
+	// }
 
 	// Check for cloud limits -- needs to be done here to prevent a race condition
 	if allowed, err := p.joinAllowed(state); !allowed {
@@ -137,10 +136,10 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		state.Call.HostID = userID
 	}
 
-	state.Call.Users[userID] = &userState{
+	state.Call.Sessions[connID] = &userState{
+		UserID: userID,
 		JoinAt: time.Now().UnixMilli(),
 	}
-	state.Call.Sessions[connID] = struct{}{}
 
 	if state.Call.Stats.Participants == nil {
 		state.Call.Stats.Participants = map[string]struct{}{}
@@ -196,8 +195,8 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 		return nil, fmt.Errorf("call state is missing from channel state")
 	}
 
-	if _, ok := state.Call.Users[userID]; !ok {
-		return nil, fmt.Errorf("user not found in call state")
+	if _, ok := state.Call.Sessions[connID]; !ok {
+		return nil, fmt.Errorf("session not found in call state")
 	}
 
 	state = state.Clone()
@@ -211,10 +210,9 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 		}
 	}
 
-	delete(state.Call.Users, userID)
 	delete(state.Call.Sessions, connID)
 
-	if state.Call.HostID == userID && len(state.Call.Users) > 0 {
+	if state.Call.HostID == userID && len(state.Call.Sessions) > 0 {
 		state.Call.HostID = state.Call.getHostID(p.getBotID())
 	}
 
@@ -224,7 +222,7 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 		state.Call.Recording.EndAt = time.Now().UnixMilli()
 	}
 
-	if len(state.Call.Users) == 0 {
+	if len(state.Call.Sessions) == 0 {
 		if state.Call.ScreenStartAt > 0 {
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
 		}
@@ -248,7 +246,7 @@ func (p *Plugin) joinAllowed(state *channelState) (bool, error) {
 	// limited to cfg.cloudPaidMaxParticipantsDefault people.
 	// This is set in the override defaults, so MaxCallParticipants will be accurate for the current license.
 	if cfg := p.getConfiguration(); cfg != nil && cfg.MaxCallParticipants != nil &&
-		*cfg.MaxCallParticipants != 0 && len(state.Call.Users) >= *cfg.MaxCallParticipants {
+		*cfg.MaxCallParticipants != 0 && len(state.Call.Sessions) >= *cfg.MaxCallParticipants {
 		return false, nil
 	}
 	return true, nil
@@ -286,7 +284,7 @@ func (p *Plugin) removeSession(us *session) error {
 
 	// Checking if the user session was removed as this method can be called
 	// multiple times but we should send out the ws event only once.
-	if prevState.Call != nil && prevState.Call.Users[us.userID] != nil && (currState.Call == nil || currState.Call.Users[us.userID] == nil) {
+	if prevState.Call != nil && prevState.Call.Sessions[us.originalConnID] != nil && (currState.Call == nil || currState.Call.Sessions[us.originalConnID] == nil) {
 		p.LogDebug("session was removed from state", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
 		p.publishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
 			"userID": us.userID,
@@ -322,7 +320,7 @@ func (p *Plugin) removeSession(us *session) error {
 	}
 
 	// If the bot is the only user left in the call we automatically stop the recording.
-	if currState.Call != nil && currState.Call.Recording != nil && len(currState.Call.Users) == 1 && currState.Call.Users[p.getBotID()] != nil {
+	if currState.Call != nil && currState.Call.Recording != nil && currState.Call.onlyUserLeft(p.getBotID()) {
 		p.LogDebug("all users left call with recording in progress, stopping", "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
 		if err := p.getJobService().StopJob(us.channelID); err != nil {
 			p.LogError("failed to stop recording job", "error", err.Error(), "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)

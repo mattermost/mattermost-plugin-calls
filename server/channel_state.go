@@ -17,9 +17,10 @@ type recordingState struct {
 }
 
 type userState struct {
-	Unmuted    bool  `json:"unmuted"`
-	RaisedHand int64 `json:"raised_hand"`
-	JoinAt     int64 `json:"join_at"`
+	UserID     string `json:"user_id"`
+	Unmuted    bool   `json:"unmuted"`
+	RaisedHand int64  `json:"raised_hand"`
+	JoinAt     int64  `json:"join_at"`
 }
 
 type callStats struct {
@@ -31,8 +32,7 @@ type callState struct {
 	ID                    string                `json:"id"`
 	StartAt               int64                 `json:"create_at"`
 	EndAt                 int64                 `json:"end_at"`
-	Users                 map[string]*userState `json:"users,omitempty"`
-	Sessions              map[string]struct{}   `json:"sessions,omitempty"`
+	Sessions              map[string]*userState `json:"sessions,omitempty"`
 	OwnerID               string                `json:"owner_id"`
 	ThreadID              string                `json:"thread_id"`
 	PostID                string                `json:"post_id"`
@@ -110,18 +110,11 @@ func (cs *callState) Clone() *callState {
 
 	newState := *cs
 
-	if cs.Users != nil {
-		newState.Users = make(map[string]*userState, len(cs.Users))
-		for id, state := range cs.Users {
-			newState.Users[id] = &userState{}
-			*newState.Users[id] = *state
-		}
-	}
-
 	if cs.Sessions != nil {
-		newState.Sessions = make(map[string]struct{}, len(cs.Sessions))
-		for id := range cs.Sessions {
-			newState.Sessions[id] = struct{}{}
+		newState.Sessions = make(map[string]*userState, len(cs.Sessions))
+		for id, state := range cs.Sessions {
+			newState.Sessions[id] = &userState{}
+			*newState.Sessions[id] = *state
 		}
 	}
 
@@ -165,22 +158,22 @@ func (us *userState) getClientState() UserStateClient {
 }
 
 func (cs *callState) getHostID(botID string) string {
-	var hostID string
+	var host userState
 
-	for id, state := range cs.Users {
-		if id == botID {
+	for _, state := range cs.Sessions {
+		if state.UserID == botID {
 			continue
 		}
-		if hostID == "" {
-			hostID = id
+		if host.UserID == "" {
+			host = *state
 			continue
 		}
-		if state.JoinAt < cs.Users[hostID].JoinAt {
-			hostID = id
+		if state.JoinAt < host.JoinAt {
+			host = *state
 		}
 	}
 
-	return hostID
+	return host.UserID
 }
 
 func (cs *callState) getClientState(botID, userID string) *CallStateClient {
@@ -210,17 +203,26 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 }
 
 func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClient) {
-	users := make([]string, 0, len(cs.Users))
-	states := make([]UserStateClient, 0, len(cs.Users))
-	for id, state := range cs.Users {
+	users := make([]string, 0, len(cs.Sessions))
+	states := make([]UserStateClient, 0, len(cs.Sessions))
+	for _, state := range cs.Sessions {
 		// We don't want to expose to the client that the bot is in a call.
-		if id == botID {
+		if state.UserID == botID {
 			continue
 		}
-		users = append(users, id)
+		users = append(users, state.UserID)
 		states = append(states, state.getClientState())
 	}
 	return users, states
+}
+
+func (cs *callState) onlyUserLeft(userID string) bool {
+	for _, state := range cs.Sessions {
+		if state.UserID != userID {
+			return false
+		}
+	}
+	return true
 }
 
 func (p *Plugin) kvGetChannelState(channelID string, fromMaster bool) (*channelState, error) {

@@ -272,7 +272,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if state.Call == nil {
 			return fmt.Errorf("call state is missing from channel state")
 		}
-		uState := state.Call.Users[us.userID]
+		uState := state.Call.Sessions[us.originalConnID]
 		if uState == nil {
 			return fmt.Errorf("user state is missing from call state")
 		}
@@ -309,7 +309,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if state.Call == nil {
 			return fmt.Errorf("call state is missing from channel state")
 		}
-		uState := state.Call.Users[us.userID]
+		uState := state.Call.Sessions[us.originalConnID]
 		if uState == nil {
 			return fmt.Errorf("user state is missing from call state")
 		}
@@ -544,7 +544,7 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 	} else if state.Call == nil {
 		p.unlockCall(channelID)
 		return fmt.Errorf("state.Call should not be nil")
-	} else if len(state.Call.Users) == 1 {
+	} else if len(state.Call.Sessions) == 1 {
 		// new call has started
 		// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
 		if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
@@ -706,7 +706,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		return err
 	} else if state == nil || state.Call == nil {
 		return fmt.Errorf("call state not found")
-	} else if _, ok := state.Call.Sessions[originalConnID]; !ok {
+	} else if state, ok := state.Call.Sessions[originalConnID]; !ok || state.UserID != userID {
 		return fmt.Errorf("session not found in call state")
 	}
 
