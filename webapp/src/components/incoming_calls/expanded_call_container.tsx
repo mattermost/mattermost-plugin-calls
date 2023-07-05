@@ -16,31 +16,26 @@ export const ExpandedCallContainer = () => {
     }
 
     return (
-        <OuterContainer>
-            <Container>
-                {calls.map((c) => (
-                    <StyledCallIncoming
-                        key={c.callID}
-                        call={c}
-                        joinButtonBorder={true}
-                    />
-                ))}
-            </Container>
-        </OuterContainer>
+        <Container>
+            {calls.map((c) => (
+                <StyledCallIncoming
+                    key={c.callID}
+                    call={c}
+                    joinButtonBorder={true}
+                />
+            ))}
+        </Container>
     );
 };
 
-const OuterContainer = styled.div`
-    text-align: right;
-    overflow: hidden;
-    white-space: nowrap;
-`;
-
 const Container = styled.div`
-    float: right;
     display: flex;
+    flex-direction: column;
+    align-self: flex-start;
+    margin-top: 8px;
     gap: 5px;
     margin-right: 7px;
+    z-index: 1;
 `;
 
 const StyledCallIncoming = styled(CallIncomingCondensed)`
