@@ -11,14 +11,14 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 )
 
-// lockCall locks the global (cluster) mutex for the given callID and
+// lockCall locks the global (cluster) mutex for the given channelID and
 // returns the current state.
-func (p *Plugin) lockCall(callID string) (*channelState, error) {
+func (p *Plugin) lockCall(channelID string) (*channelState, error) {
 	p.mut.Lock()
-	mut := p.callsClusterLocks[callID]
+	mut := p.callsClusterLocks[channelID]
 	if mut == nil {
-		p.LogDebug("creating cluster mutex for call", "callID", callID)
-		m, err := cluster.NewMutex(p.API, p.metrics, "call_"+callID, cluster.MutexConfig{
+		p.LogDebug("creating cluster mutex for call", "channelID", channelID)
+		m, err := cluster.NewMutex(p.API, p.metrics, "call_"+channelID, cluster.MutexConfig{
 			TTL:             4 * time.Second,
 			RefreshInterval: 1 * time.Second,
 			PollInterval:    50 * time.Millisecond,
@@ -28,7 +28,7 @@ func (p *Plugin) lockCall(callID string) (*channelState, error) {
 			p.mut.Unlock()
 			return nil, fmt.Errorf("failed to create new call cluster mutex: %w", err)
 		}
-		p.callsClusterLocks[callID] = m
+		p.callsClusterLocks[channelID] = m
 		mut = m
 	}
 	p.mut.Unlock()
@@ -40,7 +40,7 @@ func (p *Plugin) lockCall(callID string) (*channelState, error) {
 		return nil, fmt.Errorf("failed to lock: %w", err)
 	}
 
-	state, err := p.kvGetChannelState(callID, true)
+	state, err := p.kvGetChannelState(channelID, true)
 	if err != nil {
 		mut.Unlock()
 		return nil, fmt.Errorf("failed to get channel state: %w", err)
@@ -49,14 +49,14 @@ func (p *Plugin) lockCall(callID string) (*channelState, error) {
 	return state, nil
 }
 
-// unlockCall unlocks the global (cluster) mutex for the given callID.
-func (p *Plugin) unlockCall(callID string) {
+// unlockCall unlocks the global (cluster) mutex for the given channelID.
+func (p *Plugin) unlockCall(channelID string) {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 
-	mut := p.callsClusterLocks[callID]
+	mut := p.callsClusterLocks[channelID]
 	if mut == nil {
-		p.LogError("call cluster mutex doesn't exist", "callID", callID)
+		p.LogError("call cluster mutex doesn't exist", "channelID", channelID)
 		return
 	}
 
