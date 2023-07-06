@@ -40,10 +40,10 @@ export const useDismissJoin = (channelID: string, callID: string) => {
     };
 
     const onJoin = () => {
-        dispatch(dismissIncomingCallNotification(channelID, callID));
-        notificationSounds?.stopRing(); // And stop ringing for _any_ incoming call.
+        notificationSounds?.stopRing(); // Stop ringing for _any_ incoming call.
 
         if (connectedID) {
+            // Note: notification will be dismissed from the SwitchCallModal
             if (global && desktopGTE(5, 5)) {
                 logDebug('sending calls-join-request message to desktop app');
                 sendDesktopEvent('calls-join-request', {
@@ -66,6 +66,9 @@ export const useDismissJoin = (channelID: string, callID: string) => {
             dispatch(showSwitchCallModal(channelID));
             return;
         }
+
+        // We weren't connected, so dismiss the notification here.
+        dispatch(dismissIncomingCallNotification(channelID, callID));
         window.postMessage({type: 'connectCall', channelID}, window.origin);
     };
 
