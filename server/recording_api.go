@@ -15,7 +15,7 @@ import (
 
 var callRecordingActionRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)/recording/(start|stop|publish)$`)
 
-const recordingJobStartTimeout = 15 * time.Second
+const recordingJobStartTimeout = 2 * time.Minute
 
 func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	time.Sleep(recordingJobStartTimeout)
