@@ -291,6 +291,8 @@ func (p *Plugin) cleanUpState() (retErr error) {
 	return nil
 }
 
+// NOTE: cleanCallState is meant to be called under lock (on channelID) so that
+// the operation can be performed atomically.
 func (p *Plugin) cleanCallState(channelID string, state *channelState) error {
 	if state == nil {
 		return nil
