@@ -26,23 +26,24 @@ import {
     ringingForCall,
 } from 'src/selectors';
 import {ChannelType, IncomingCallNotification, UserStatuses} from 'src/types/types';
-import {desktopGTE, getChannelURL, sendDesktopEvent, shouldRenderDesktopWidget, split} from 'src/utils';
+import {desktopGTE, getChannelURL, isDesktopApp, sendDesktopEvent, shouldRenderDesktopWidget, split} from 'src/utils';
 import {notificationSounds, sendDesktopNotificationToMe} from 'src/webapp_globals';
 
-export const useDismissJoin = (channelID: string, callID: string, global = false) => {
+export const useDismissJoin = (channelID: string, callID: string) => {
     const store = useStore();
     const dispatch = useDispatch();
     const connectedID = useSelector(connectedChannelID) || '';
+    const global = isDesktopApp();
 
     const onDismiss = () => {
         dispatch(dismissIncomingCallNotification(channelID, callID));
     };
 
     const onJoin = () => {
-        dispatch(dismissIncomingCallNotification(channelID, callID));
-        notificationSounds?.stopRing(); // And stop ringing for _any_ incoming call.
+        notificationSounds?.stopRing(); // Stop ringing for _any_ incoming call.
 
         if (connectedID) {
+            // Note: notification will be dismissed from the SwitchCallModal
             if (global && desktopGTE(5, 5)) {
                 logDebug('sending calls-join-request message to desktop app');
                 sendDesktopEvent('calls-join-request', {
@@ -65,6 +66,9 @@ export const useDismissJoin = (channelID: string, callID: string, global = false
             dispatch(showSwitchCallModal(channelID));
             return;
         }
+
+        // We weren't connected, so dismiss the notification here.
+        dispatch(dismissIncomingCallNotification(channelID, callID));
         window.postMessage({type: 'connectCall', channelID}, window.origin);
     };
 
