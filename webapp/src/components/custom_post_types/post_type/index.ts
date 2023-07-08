@@ -1,13 +1,12 @@
+import {connect} from 'react-redux';
+
 import {Preferences} from 'mattermost-redux/constants';
 import {getBool} from 'mattermost-redux/selectors/entities/preferences';
-import {bindActionCreators, Dispatch} from 'redux';
-import {connect} from 'react-redux';
+import {Client4} from 'mattermost-redux/client';
 
 import {GlobalState} from '@mattermost/types/store';
 import {Post} from '@mattermost/types/posts';
 import {UserProfile} from '@mattermost/types/users';
-
-import {Client4} from 'mattermost-redux/client';
 
 import {
     voiceConnectedChannels,
@@ -16,7 +15,6 @@ import {
     isCloudProfessionalOrEnterpriseOrTrial,
     maxParticipants,
 } from 'src/selectors';
-import {showSwitchCallModal} from 'src/actions';
 import PostType from 'src/components/custom_post_types/post_type/component';
 
 interface OwnProps {
@@ -48,8 +46,4 @@ const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
     };
 };
 
-const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
-    showSwitchCallModal,
-}, dispatch);
-
-export default connect(mapStateToProps, mapDispatchToProps)(PostType);
+export default connect(mapStateToProps)(PostType);

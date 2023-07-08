@@ -47,7 +47,7 @@ import ExpandedView from './component';
 const mapStateToProps = (state: GlobalState) => {
     const currentUserID = getCurrentUserId(state);
     const currentTeamID = getCurrentTeamId(state);
-    const channel = getChannel(state, connectedChannelID(state));
+    const channel = getChannel(state, connectedChannelID(state) || '');
     const channelTeam = getTeam(state, channel?.team_id);
     const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
     const threadID = voiceChannelRootPost(state, channel?.id);

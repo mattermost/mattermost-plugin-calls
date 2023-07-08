@@ -4,6 +4,7 @@ import {
     getUsers,
     getUserIdsInChannels,
     isCurrentUserSystemAdmin,
+    getUserStatuses,
 } from 'mattermost-redux/selectors/entities/users';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
@@ -28,9 +29,11 @@ import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/commo
 
 import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
 
+import {callState} from 'src/reducers';
+
 import {getChannelURL} from 'src/utils';
 
-import {CallRecordingReduxState, CallsUserPreferences, ChannelState} from 'src/types/types';
+import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
 
 import {pluginId} from './manifest';
 
@@ -39,6 +42,14 @@ const pluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
 
 export const voiceConnectedChannels = (state: GlobalState): { [channelId: string]: string[] } =>
     pluginState(state).voiceConnectedChannels;
+
+export const voiceConnectedCurrentChannel: (state: GlobalState) => string[] =
+    createSelector(
+        'voiceConnectedCurrentChannel',
+        voiceConnectedChannels,
+        getCurrentChannelId,
+        (channels, currChannelId) => channels[currChannelId],
+    );
 
 export const voiceConnectedUsers = (state: GlobalState): string[] => {
     const currentChannelID = getCurrentChannelId(state);
@@ -65,11 +76,14 @@ export const channelHasCall = (state: GlobalState, channelId: string): boolean =
     return users && users.length > 0;
 };
 
-export const connectedChannelID = (state: GlobalState): string =>
+export const connectedChannelID = (state: GlobalState): string | null =>
     pluginState(state).connectedChannelID;
 
+export const connectedCallID = (state: GlobalState): string | undefined =>
+    pluginState(state).voiceChannelCalls[pluginState(state).connectedChannelID]?.ID;
+
 const numUsersInConnectedChannel = (state: GlobalState) => {
-    const connectedChannelId = connectedChannelID(state);
+    const connectedChannelId = connectedChannelID(state) || '';
     const connectedChannels = voiceConnectedChannels(state);
     return connectedChannels[connectedChannelId]?.length || 0;
 };
@@ -78,7 +92,7 @@ export const voiceConnectedProfiles = (state: GlobalState): UserProfile[] => {
     if (!pluginState(state).voiceConnectedProfiles) {
         return [];
     }
-    return pluginState(state).voiceConnectedProfiles[connectedChannelID(state)] || [];
+    return pluginState(state).voiceConnectedProfiles[connectedChannelID(state) || ''] || [];
 };
 
 // idToProfileInCurrentChannel creates an id->UserProfile object for the currently connected channel.
@@ -97,12 +111,23 @@ export const voiceConnectedProfilesInChannel: (state: GlobalState, channelId: st
         return pluginState(state).voiceConnectedProfiles[channelID] || [];
     };
 
+const voiceConnectedProfilesAllChannels: (state: GlobalState) => { [channelID: string]: UserProfile[] | undefined } =
+    (state) => pluginState(state).voiceConnectedProfiles;
+
+export const voiceProfilesInCurrentChannel: (state: GlobalState) => UserProfile[] =
+    createSelector(
+        'voiceProfilesInCurrentChannel',
+        voiceConnectedProfilesAllChannels,
+        getCurrentChannelId,
+        (channelToProfiles, currChannelId) => channelToProfiles[currChannelId] || [],
+    );
+
 export const voiceUsersStatuses = (state: GlobalState): { [id: string]: UserState } => {
-    return pluginState(state).voiceUsersStatuses[connectedChannelID(state)] || {};
+    return pluginState(state).voiceUsersStatuses[connectedChannelID(state) || ''] || {};
 };
 
 export const voiceReactions = (state: GlobalState): Reaction[] => {
-    return pluginState(state).reactionStatus[connectedChannelID(state)]?.reactions || [];
+    return pluginState(state).reactionStatus[connectedChannelID(state) || '']?.reactions || [];
 };
 
 export const voiceUsersStatusesInChannel = (state: GlobalState, channelID: string) => {
@@ -111,6 +136,21 @@ export const voiceUsersStatusesInChannel = (state: GlobalState, channelID: strin
 
 export const voiceChannelCallStartAt = (state: GlobalState, channelID: string): number | undefined => {
     return pluginState(state).voiceChannelCalls[channelID]?.startAt;
+};
+
+export const voiceChannelCalls = (state: GlobalState): { [channelID: string]: callState} =>
+    pluginState(state).voiceChannelCalls;
+
+export const voiceChannelCallInCurrentChannel: (state: GlobalState) => callState =
+    createSelector(
+        'callStartAtInCurrentChannel',
+        voiceChannelCalls,
+        getCurrentChannelId,
+        (calls, currChannelId) => calls[currChannelId],
+    );
+
+export const voiceChannelCallID = (state: GlobalState, channelID: string): string | undefined => {
+    return pluginState(state).voiceChannelCalls[channelID]?.ID;
 };
 
 export const voiceChannelCallOwnerID = (state: GlobalState, channelID: string): string | undefined => {
@@ -123,6 +163,15 @@ export const voiceChannelCallHostID = (state: GlobalState, channelID: string) =>
 
 export const voiceChannelCallHostChangeAt = (state: GlobalState, channelID: string) => {
     return pluginState(state).voiceChannelCalls[channelID]?.hostChangeAt;
+};
+
+export const voiceChannelCallDismissedNotification = (state: GlobalState, channelID: string) => {
+    const dismissed: { [userID: string]: boolean } | undefined = pluginState(state).voiceChannelCalls[channelID]?.dismissedNotification;
+    if (!dismissed) {
+        return false;
+    }
+    const currentUserID = getCurrentUserId(state);
+    return Object.hasOwn(dismissed, currentUserID) ? dismissed[currentUserID] : false;
 };
 
 export const voiceChannelScreenSharingID = (state: GlobalState, channelID: string): string | undefined => {
@@ -152,6 +201,45 @@ export const voiceChannelRootPost = (state: GlobalState, channelID: string) => {
 export const recentlyJoinedUsers = (state: GlobalState, channelID: string): string[] => {
     return pluginState(state).recentlyJoinedUsers[channelID] || [];
 };
+
+export const incomingCalls = (state: GlobalState): IncomingCallNotification[] =>
+    pluginState(state).incomingCalls;
+
+export const sortedIncomingCalls: (state: GlobalState) => IncomingCallNotification[] =
+    createSelector(
+        'sortedIncomingCalls',
+        incomingCalls,
+        (calls) => [...calls].sort((a, b) => b.startAt - a.startAt),
+    );
+
+export const dismissedCalls = (state: GlobalState): { [callID: string]: boolean } =>
+    pluginState(state).dismissedCalls;
+
+export const dismissedCallForCurrentChannel: (state: GlobalState) => boolean =
+    createSelector(
+        'dismissedCallForCurrentChannel',
+        dismissedCalls,
+        voiceChannelCallInCurrentChannel,
+        (dismissed, call) => Boolean(dismissed[call?.ID || '']),
+    );
+
+export const ringingForCall = (state: GlobalState, callID: string): boolean =>
+    pluginState(state).ringingForCalls[callID] || false;
+
+export const currentlyRinging = (state: GlobalState): boolean => {
+    for (const val of Object.values(pluginState(state).ringingForCalls)) {
+        if (val) {
+            return true;
+        }
+    }
+    return false;
+};
+
+export const didRingForCall = (state: GlobalState, callID: string): boolean =>
+    pluginState(state).didRingForCalls[callID] || false;
+
+export const didNotifyForCall = (state: GlobalState, callID: string): boolean =>
+    pluginState(state).didNotifyForCalls[callID] || false;
 
 //
 // Config logic
@@ -188,6 +276,9 @@ export const recordingMaxDuration = (state: GlobalState) =>
 
 export const rtcdEnabled = (state: GlobalState) =>
     pluginState(state).rtcdEnabled;
+
+export const ringingEnabled = (state: GlobalState) =>
+    callsConfig(state).EnableRinging;
 
 //
 // Calls enabled/disabled logic
@@ -308,6 +399,14 @@ export const getChannelUrlAndDisplayName = (state: GlobalState, channel: Channel
     }
     return {channelURL, channelDisplayName};
 };
+
+export const getStatusForCurrentUser: (state: GlobalState) => string =
+    createSelector(
+        'getStatusForCurrentUser',
+        getCurrentUserId,
+        getUserStatuses,
+        (id, statuses) => statuses[id],
+    );
 
 export function makeIdToObject<HasId extends { id: string }>(arr: HasId[]) {
     return arr.reduce((acc: { [id: string]: HasId }, e) => {

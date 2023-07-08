@@ -52,9 +52,11 @@ import {
     handleCallHostChanged,
     handleUserReaction,
     handleCallRecordingState,
+    handleUserDismissedNotification,
 } from 'plugin/websocket_handlers';
 
 import {
+    CallChannelState,
     CallHostChangedData,
     CallRecordingStateData,
     CallStartData,
@@ -62,6 +64,7 @@ import {
     HelloData,
     UserConnectedData,
     UserDisconnectedData,
+    UserDismissedNotification,
     UserMutedUnmutedData,
     UserRaiseUnraiseHandData,
     UserReactionData,
@@ -79,7 +82,6 @@ import {
     getRootID,
 } from './common';
 import {applyTheme} from './theme_utils';
-import {ChannelState} from './types/calls';
 
 // CSS
 import 'mattermost-webapp/sass/styles.scss';
@@ -138,7 +140,7 @@ function connectCall(
 
 async function fetchChannelData(store: Store, channelID: string) {
     try {
-        const resp = await Client4.doFetch<ChannelState>(
+        const resp = await Client4.doFetch<CallChannelState>(
             `${getPluginPath()}/${channelID}`,
             {method: 'get'},
         );
@@ -174,10 +176,12 @@ async function fetchChannelData(store: Store, channelID: string) {
         store.dispatch({
             type: VOICE_CHANNEL_CALL_START,
             data: {
+                ID: resp.call.id,
                 channelID: resp.channel_id,
                 startAt: resp.call.start_at,
                 ownerID: resp.call.owner_id,
                 hostID: resp.call.host_id,
+                dismissedNotification: resp.call.dismissed_notification || {},
             },
         });
 
@@ -337,6 +341,9 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_call_recording_state`:
             handleCallRecordingState(store, ev as WebSocketMessage<CallRecordingStateData>);
+            break;
+        case `custom_${pluginId}_user_dismissed_notification`:
+            handleUserDismissedNotification(store, ev as WebSocketMessage<UserDismissedNotification>);
             break;
         default:
         }
