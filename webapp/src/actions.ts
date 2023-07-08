@@ -9,8 +9,9 @@ import {ClientError} from 'mattermost-redux/client/client4';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
@@ -234,7 +235,7 @@ export function prefetchThread(postId: string) {
         const teamId = getCurrentTeamId(state);
         const currentUserId = getCurrentUserId(state);
 
-        const thread = getThread(state, postId) ?? (await dispatch(fetchThread(currentUserId, teamId, postId, isCollapsedThreadsEnabled(state)))).data;
+        const thread = getThread(state, postId) ?? (await dispatch(fetchThread(currentUserId, teamId, postId, true))).data;
 
         return {data: thread};
     };

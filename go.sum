@@ -534,8 +534,8 @@ github.com/mailru/easyjson v0.7.0/go.mod h1:KAzv3t3aY1NaHWoQz1+4F1ccyAH66Jk7yos7
 github.com/marstr/guid v1.1.0/go.mod h1:74gB1z2wpxxInTG6yaqA7KrtM0NZ+RbrcqDvYHefzho=
 github.com/mattermost/calls-offloader v0.2.4 h1:oqm4abmci38RJ73xb/XPU5WosmkPYgg8iMgx+gXNOy4=
 github.com/mattermost/calls-offloader v0.2.4/go.mod h1:RZi7g/Yi+zdrYtr2dw/xcoQmbqPe8OBGeMhHkASHh0o=
-github.com/mattermost/calls-recorder v0.3.3 h1:sEyrUcXwd9RQHOovOiJFcWTEsFSqiylWAssBaYY5gxQ=
-github.com/mattermost/calls-recorder v0.3.3/go.mod h1:NvaEbw9B8oV2znZESocJfJ01LSKR88Ta/XCqx+U4UWI=
+github.com/mattermost/calls-recorder v0.3.4 h1:a2o0C3ZKAtzeSFqXFP0ad1VeKfitI7xmmlr+aPxJ8ps=
+github.com/mattermost/calls-recorder v0.3.4/go.mod h1:NvaEbw9B8oV2znZESocJfJ01LSKR88Ta/XCqx+U4UWI=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 h1:Khvh6waxG1cHc4Cz5ef9n3XVCxRWpAKUtqg9PJl5+y8=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404/go.mod h1:RyS7FDNQlzF1PsjbJWHRI35exqaKGSO9qD4iv8QjE34=
 github.com/mattermost/ldap v3.0.4+incompatible h1:SOeNnz+JNR+foQ3yHkYqijb9MLPhXN2BZP/PdX23VDU=
@@ -544,8 +544,8 @@ github.com/mattermost/logr/v2 v2.0.16 h1:jnePX4cPskC3WDFvUardh/xZfxNdsFXbEERJQ1k
 github.com/mattermost/logr/v2 v2.0.16/go.mod h1:1dm/YhTpozsqANXxo5Pi5zYLBsal2xY0pX+JZNbzYJY=
 github.com/mattermost/mattermost/server/public v0.0.0-20230613002302-62a3ee8adcb5 h1:X8ue+QQn0VJe6qR0q2kHGFhQCn5T4rqb7XS0t6R1r3A=
 github.com/mattermost/mattermost/server/public v0.0.0-20230613002302-62a3ee8adcb5/go.mod h1:TtECPYX/ftU43bCGqN5W3Ic2gPDN2+zeKhXfE2YPRvw=
-github.com/mattermost/rtcd v0.11.0 h1:Z+2yPL7PkAg8PsfZM4rcvGgqxvJl0STKTdYNn1Mkrfs=
-github.com/mattermost/rtcd v0.11.0/go.mod h1:ketmoC7+9IOjynE5YJgR6GrFTG1b78byVlkVsLcCDa0=
+github.com/mattermost/rtcd v0.11.1 h1:xaP/s0/WX8rDqHq05l8b4QLLJuRZXucr9Qh6cHTQSHk=
+github.com/mattermost/rtcd v0.11.1/go.mod h1:ketmoC7+9IOjynE5YJgR6GrFTG1b78byVlkVsLcCDa0=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-colorable v0.1.9/go.mod h1:u6P/XSegPjTcexA+o6vUJrdnUu04hMope9wVRipJSqc=
 github.com/mattn/go-colorable v0.1.12/go.mod h1:u5H1YNBxpqRaxsYJYSkiCWKzEfiAb1Gb520KVy5xxl4=
