@@ -1,14 +1,11 @@
 import {CallsConfig} from '@calls/common/lib/types';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
-import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
-
 import {ClientError} from 'mattermost-redux/client/client4';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
-import {isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
