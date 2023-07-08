@@ -34,6 +34,7 @@ export const SHOW_END_CALL_MODAL = pluginId + '_show_end_call_modal';
 export const HIDE_END_CALL_MODAL = pluginId + '_hide_end_call_modal';
 export const ADD_INCOMING_CALL = pluginId + '_add_incoming_call';
 export const REMOVE_INCOMING_CALL = pluginId + '_remove_incoming_call';
+export const DISMISS_CALL = pluginId + '_dismiss_call';
 export const RINGING_FOR_CALL = pluginId + '_ringing_for_call';
 export const DID_RING_FOR_CALL = pluginId + '_did_ring_for_call';
 export const DID_NOTIFY_FOR_CALL = pluginId + '_did_notify_for_call';

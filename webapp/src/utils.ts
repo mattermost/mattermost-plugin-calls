@@ -469,3 +469,11 @@ export function callStartedTimestampFn(intl: IntlShape, startAt?: number) {
 
     return DateTime.fromMillis(startAtMillis).toRelative() || '';
 }
+
+export function userAgent(): string {
+    return window.navigator.userAgent;
+}
+
+export function isDesktopApp(): boolean {
+    return userAgent().indexOf('Mattermost') !== -1 && userAgent().indexOf('Electron') !== -1;
+}

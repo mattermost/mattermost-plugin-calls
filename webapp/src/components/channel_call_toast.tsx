@@ -10,8 +10,12 @@ import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import {useDismissJoin} from 'src/components/incoming_calls/hooks';
 import Timestamp from 'src/components/timestamp';
 import {
-    connectedChannelID, isLimitRestricted,
-    voiceChannelCallInCurrentChannel, voiceConnectedCurrentChannel, voiceProfilesInCurrentChannel,
+    connectedChannelID,
+    dismissedCallForCurrentChannel,
+    isLimitRestricted,
+    voiceChannelCallInCurrentChannel,
+    voiceConnectedCurrentChannel,
+    voiceProfilesInCurrentChannel,
 } from 'src/selectors';
 import {callStartedTimestampFn} from 'src/utils';
 
@@ -23,8 +27,7 @@ const ChannelCallToast = () => {
     const call = useSelector(voiceChannelCallInCurrentChannel);
     const profiles = useSelector(voiceProfilesInCurrentChannel);
     const limitRestricted = useSelector(isLimitRestricted);
-
-    const [hidden, setHidden] = useState(false);
+    const dismissed = useSelector(dismissedCallForCurrentChannel);
     const [pictures, setPictures] = useState<string[]>([]);
 
     const callID = useSelector(voiceChannelCallInCurrentChannel)?.ID || '';
@@ -44,13 +47,12 @@ const ChannelCallToast = () => {
 
     const hasCall = (currChannelID !== connectedID && connectedUsers && connectedUsers.length > 0);
 
-    if (!hasCall || hidden || limitRestricted) {
+    if (!hasCall || dismissed || limitRestricted) {
         return null;
     }
 
     const timestampFn = () => callStartedTimestampFn(intl, call?.startAt);
     const onDismissClick = () => {
-        setHidden(true);
         onDismiss();
     };
 

@@ -43,6 +43,7 @@ import {
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
+    DISMISS_CALL,
 } from './action_types';
 import {
     getProfilesByIds,
@@ -334,4 +335,10 @@ export function handleUserDismissedNotification(store: Store, ev: WebSocketMessa
         return;
     }
     store.dispatch(removeIncomingCallNotification(ev.data.callID));
+    store.dispatch({
+        type: DISMISS_CALL,
+        data: {
+            callID: ev.data.callID,
+        },
+    });
 }

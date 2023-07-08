@@ -7,6 +7,7 @@ import React from 'react';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
+
 import styled, {createGlobalStyle, css} from 'styled-components';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 
@@ -20,6 +21,8 @@ import {
     UserState,
 } from '@calls/common/lib/types';
 import {mosThreshold} from '@calls/common';
+
+import {ExpandedCallContainer} from 'src/components/incoming_calls/expanded_call_container';
 
 import {Emoji} from 'src/components/emoji/emoji';
 
@@ -180,6 +183,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 flexDirection: 'column',
                 flex: '1',
             },
+            headerSpreader: {
+                marginRight: 'auto',
+            },
             closeViewButton: {
                 display: 'flex',
                 alignItems: 'center',
@@ -187,7 +193,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 width: '40px',
                 height: '40px',
                 borderRadius: '4px',
-                marginLeft: 'auto',
             },
             participants: {
                 display: 'grid',
@@ -1016,10 +1021,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             startAt={this.props.callStartAt}
                         />
                         <span style={{margin: '4px'}}>{untranslatable('•')}</span>
-                        <span style={{margin: '4px'}}>
+                        <span style={{margin: '4px', whiteSpace: 'nowrap'}}>
                             {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.profiles.length})}
                         </span>
 
+                        <div style={this.style.headerSpreader}/>
+                        <ExpandedCallContainer/>
                         <button
                             className='button-close'
                             style={this.style.closeViewButton}
