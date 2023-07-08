@@ -17,11 +17,11 @@ import {
     UserScreenOnOffData,
     UserVoiceOnOffData,
 } from '@calls/common/lib/types';
-import {batchActions} from 'redux-batched-actions';
 
 import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected} from 'src/actions';
 
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
+import {notificationSounds} from 'src/webapp_globals';
 
 import {Store} from './types/mattermost-webapp';
 import {
@@ -43,7 +43,7 @@ import {
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
-    CALL_HAS_ENDED,
+    DISMISS_CALL,
 } from './action_types';
 import {
     getProfilesByIds,
@@ -55,6 +55,7 @@ import {
 import {
     connectedChannelID,
     idToProfileInConnectedChannel,
+    ringingEnabled,
     shouldPlayJoinUserSound,
     voiceChannelCalls,
 } from './selectors';
@@ -67,21 +68,17 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
         window.callsClient?.disconnect();
     }
 
-    const callID = voiceChannelCalls(store.getState())[channelID].ID;
-    store.dispatch(batchActions([
-        {
-            type: VOICE_CHANNEL_CALL_END,
-            data: {
-                channelID,
-            },
+    store.dispatch({
+        type: VOICE_CHANNEL_CALL_END,
+        data: {
+            channelID,
         },
-        {
-            type: CALL_HAS_ENDED,
-            data: {
-                callID,
-            },
-        },
-    ]));
+    });
+
+    if (ringingEnabled(store.getState())) {
+        const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
+        store.dispatch(removeIncomingCallNotification(callID));
+    }
 }
 
 export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData>) {
@@ -118,13 +115,9 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         if (channel) {
             followThread(store, channel.id, channel.team_id);
         }
-    } else {
+    } else if (ringingEnabled(store.getState())) {
         // the call that started is not the call we're currently in.
-        const currentUserID = getCurrentUserId(store.getState());
-        if (currentUserID !== ev.data.host_id) {
-            // the call was not started by us.
-            store.dispatch(incomingCallOnChannel(channelID, ev.data.id, ev.data.host_id, ev.data.start_at));
-        }
+        store.dispatch(incomingCallOnChannel(channelID, ev.data.id, ev.data.owner_id, ev.data.start_at));
     }
 }
 
@@ -147,9 +140,10 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
         }
     }
 
-    if (userID === currentUserID) {
+    if (ringingEnabled(store.getState()) && userID === currentUserID) {
         const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
         store.dispatch(removeIncomingCallNotification(callID));
+        notificationSounds?.stopRing(); // And stop ringing for _any_ incoming call.
     }
 
     store.dispatch({
@@ -341,4 +335,10 @@ export function handleUserDismissedNotification(store: Store, ev: WebSocketMessa
         return;
     }
     store.dispatch(removeIncomingCallNotification(ev.data.callID));
+    store.dispatch({
+        type: DISMISS_CALL,
+        data: {
+            callID: ev.data.callID,
+        },
+    });
 }

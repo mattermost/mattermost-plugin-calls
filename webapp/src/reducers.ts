@@ -54,10 +54,12 @@ import {
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
     RECORDINGS_ENABLED,
     ADD_INCOMING_CALL,
-    CALL_HAS_ENDED,
     REMOVE_INCOMING_CALL,
     DID_RING_FOR_CALL,
     RTCD_ENABLED,
+    DID_NOTIFY_FOR_CALL,
+    RINGING_FOR_CALL,
+    DISMISS_CALL,
 } from './action_types';
 
 interface channelStateAction {
@@ -794,9 +796,8 @@ type IncomingCallAction = {
     data: {
         callID: string;
         channelID: string;
-        hostID: string;
+        callerID: string;
         startAt: number;
-        ring: boolean;
         type: ChannelType;
     },
 };
@@ -807,23 +808,62 @@ const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingC
         return [...state, {...action.data}];
     case REMOVE_INCOMING_CALL:
         return state.filter((ic) => ic.callID !== action.data.callID);
-    case CALL_HAS_ENDED:
-        return state.filter((ic) => ic.callID !== action.data.callID);
     default:
         return state;
     }
 };
 
-type DidRingForCallsAction = {
+type RingNotifyForCallsAction = {
     type: string;
     data: {
         callID: string;
     }
 }
 
-const didRingForCalls = (state: { [callUniqueID: string]: boolean } = {}, action: DidRingForCallsAction) => {
+const ringingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
+    switch (action.type) {
+    case RINGING_FOR_CALL:
+        return {
+            ...state,
+            [action.data.callID]: true,
+        };
+    case DID_RING_FOR_CALL: {
+        const nextState = {...state};
+        delete nextState[action.data.callID];
+        return nextState;
+    }
+    default:
+        return state;
+    }
+};
+
+const didRingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
     switch (action.type) {
     case DID_RING_FOR_CALL:
+        return {
+            ...state,
+            [action.data.callID]: true,
+        };
+    default:
+        return state;
+    }
+};
+
+const didNotifyForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
+    switch (action.type) {
+    case DID_NOTIFY_FOR_CALL:
+        return {
+            ...state,
+            [action.data.callID]: true,
+        };
+    default:
+        return state;
+    }
+};
+
+const dismissedCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
+    switch (action.type) {
+    case DISMISS_CALL:
         return {
             ...state,
             [action.data.callID]: true,
@@ -853,5 +893,8 @@ export default combineReducers({
     callsRecordings,
     recentlyJoinedUsers,
     incomingCalls,
+    ringingForCalls,
     didRingForCalls,
+    didNotifyForCalls,
+    dismissedCalls,
 });

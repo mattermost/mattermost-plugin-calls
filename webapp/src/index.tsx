@@ -90,7 +90,7 @@ import {
     callsExplicitlyDisabled,
     hasPermissionsToEnableCalls,
     callsConfig,
-    incomingCalls,
+    ringingEnabled,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -573,7 +573,7 @@ export default class Plugin {
                 ChannelHeaderMenuButton,
                 async () => {
                     try {
-                        const data = await Client4.doFetch<{enabled: boolean}>(`${getPluginPath()}/${currChannelId}`, {
+                        const data = await Client4.doFetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
                             method: 'post',
                             body: JSON.stringify({enabled: callsExplicitlyDisabled(store.getState(), currChannelId)}),
                         });
@@ -615,8 +615,7 @@ export default class Plugin {
                             },
                         });
 
-                        const callExists = incomingCalls(store.getState()).findIndex((ic) => ic.callID === data[i].channel_id) >= 0;
-                        if (data[i].call && !callExists) {
+                        if (ringingEnabled(store.getState()) && data[i].call) {
                             // dismissedNotification is populated after the actions array has been batched, so manually check:
                             const dismissed = data[i].call?.dismissed_notification;
                             if (dismissed) {
@@ -625,7 +624,7 @@ export default class Plugin {
                                     continue;
                                 }
                             }
-                            store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.id, data[i].call.host_id, data[i].call.start_at));
+                            store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.id, data[i].call.owner_id, data[i].call.start_at));
                         }
                     }
                 }

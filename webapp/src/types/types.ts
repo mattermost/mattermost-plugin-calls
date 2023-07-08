@@ -15,6 +15,7 @@ export const CallsConfigDefault: CallsConfig = {
     MaxRecordingDuration: 60,
     sku_short_name: '',
     EnableSimulcast: false,
+    EnableRinging: true,
 };
 
 export type ChannelState = {
@@ -143,8 +144,16 @@ export enum ChannelType {
 export type IncomingCallNotification = {
     callID: string;
     channelID: string;
-    hostID: string;
+    callerID: string;
     startAt: number;
     type: ChannelType;
-    ring: true;
 }
+
+// From webapp because the constants file is not import friendly.
+export const UserStatuses = {
+    OUT_OF_OFFICE: 'ooo',
+    OFFLINE: 'offline',
+    AWAY: 'away',
+    ONLINE: 'online',
+    DND: 'dnd',
+};

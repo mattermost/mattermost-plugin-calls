@@ -23,17 +23,23 @@ import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal'
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {logErr} from 'src/log';
+import {RING_LENGTH} from 'src/constants';
 
-import {channelHasCall, incomingCalls, voiceChannelCallDismissedNotification, voiceChannelCalls} from 'src/selectors';
+import {
+    channelHasCall, connectedCallID, incomingCalls,
+    ringingEnabled,
+    ringingForCall,
+    voiceChannelCallDismissedNotification,
+    voiceChannelCalls,
+} from 'src/selectors';
 
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
 import {getPluginPath, isDMChannel, isGMChannel} from 'src/utils';
-import {modals, openPricingModal} from 'src/webapp_globals';
+import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
     ADD_INCOMING_CALL,
-    CALL_HAS_ENDED,
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
@@ -48,6 +54,9 @@ import {
     VOICE_CHANNEL_USER_DISCONNECTED,
     RTCD_ENABLED,
     REMOVE_INCOMING_CALL,
+    DID_RING_FOR_CALL,
+    RINGING_FOR_CALL,
+    DISMISS_CALL,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -299,7 +308,7 @@ export const displayGenericErrorModal = (title: MessageDescriptor, message: Mess
     };
 };
 
-export function incomingCallOnChannel(channelID: string, callID: string, hostID: string, startAt: number) {
+export function incomingCallOnChannel(channelID: string, callID: string, callerID: string, startAt: number) {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         let channel = getChannel(getState(), channelID);
         if (!channel) {
@@ -315,24 +324,30 @@ export function incomingCallOnChannel(channelID: string, callID: string, hostID:
             return;
         }
 
-        const otherUser = getUser(getState(), hostID);
-        if (!otherUser) {
-            await dispatch(getProfilesByIdsAction([hostID]));
+        if (incomingCalls(getState()).findIndex((ic) => ic.callID === callID) >= 0) {
+            return;
         }
 
-        // if this is the first call in the list, it should ring.
-        const calls = incomingCalls(getState());
-        const ring = calls.length === 0;
+        // Never send a notification for a call you started yourself, or a call you are currently in.
+        const currentUserID = getCurrentUserId(getState());
+        const connectedID = connectedCallID(getState());
+        if (currentUserID === callerID || connectedID === callID) {
+            return;
+        }
+
+        const caller = getUser(getState(), callerID);
+        if (!caller) {
+            await dispatch(getProfilesByIdsAction([callerID]));
+        }
 
         await dispatch({
             type: ADD_INCOMING_CALL,
             data: {
                 callID,
                 channelID,
-                hostID,
+                callerID,
                 startAt,
                 type: isDMChannel(channel) ? ChannelType.DM : ChannelType.GM,
-                ring,
             },
         });
     };
@@ -340,6 +355,9 @@ export function incomingCallOnChannel(channelID: string, callID: string, hostID:
 
 export const userDisconnected = (channelID: string, userID: string) => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        // save for later
+        const callID = voiceChannelCalls(getState())[channelID].ID || '';
+
         await dispatch({
             type: VOICE_CHANNEL_USER_DISCONNECTED,
             data: {
@@ -349,14 +367,8 @@ export const userDisconnected = (channelID: string, userID: string) => {
             },
         });
 
-        if (!channelHasCall(getState(), channelID)) {
-            const callID = voiceChannelCalls(getState())[channelID].ID;
-            await dispatch({
-                type: CALL_HAS_ENDED,
-                data: {
-                    callID,
-                },
-            });
+        if (ringingEnabled(getState()) && !channelHasCall(getState(), channelID)) {
+            await dispatch(removeIncomingCallNotification(callID));
         }
     };
 };
@@ -368,13 +380,48 @@ export const dismissIncomingCallNotification = (channelID: string, callID: strin
             {method: 'post'},
         ).catch((e) => logErr(e));
         await dispatch(removeIncomingCallNotification(callID));
+        dispatch({
+            type: DISMISS_CALL,
+            data: {
+                callID,
+            },
+        });
     };
 };
 
 export const removeIncomingCallNotification = (callID: string): ActionFunc => {
     return async (dispatch: DispatchFunc) => {
+        await dispatch(stopRingingForCall(callID));
         await dispatch({
             type: REMOVE_INCOMING_CALL,
+            data: {
+                callID,
+            },
+        });
+        return {};
+    };
+};
+
+export const ringForCall = (callID: string, sound: string) => {
+    return async (dispatch: DispatchFunc) => {
+        notificationSounds?.ring(sound);
+        await dispatch({
+            type: RINGING_FOR_CALL,
+            data: {
+                callID,
+            },
+        });
+        setTimeout(() => dispatch(stopRingingForCall(callID)), RING_LENGTH);
+    };
+};
+
+export const stopRingingForCall = (callID: string): ActionFunc => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        if (ringingForCall(getState(), callID)) {
+            notificationSounds?.stopRing();
+        }
+        dispatch({
+            type: DID_RING_FOR_CALL,
             data: {
                 callID,
             },
