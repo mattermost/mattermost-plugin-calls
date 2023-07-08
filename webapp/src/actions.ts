@@ -1,49 +1,60 @@
-import {Dispatch} from 'redux';
-
-import {MessageDescriptor} from 'react-intl';
-
-import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
+import {CallsConfig} from '@calls/common/lib/types';
+import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
+import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
-import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {ClientError} from 'mattermost-redux/client/client4';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 
-import {ClientError} from 'mattermost-redux/client/client4';
+import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
 
-import {CallsConfig} from '@calls/common/lib/types';
+import {MessageDescriptor} from 'react-intl';
+import {Dispatch} from 'redux';
+
+import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from 'src/cloud_pricing/modals';
+import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
+import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
+import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
+import {logErr} from 'src/log';
+import {RING_LENGTH} from 'src/constants';
+
+import {
+    channelHasCall, connectedCallID, incomingCalls,
+    ringingEnabled,
+    ringingForCall,
+    voiceChannelCallDismissedNotification,
+    voiceChannelCalls,
+} from 'src/selectors';
 
 import * as Telemetry from 'src/types/telemetry';
-import {getPluginPath} from 'src/utils';
-import {modals, openPricingModal} from 'src/webapp_globals';
-import {
-    CloudFreeTrialModalAdmin,
-    CloudFreeTrialModalUser,
-    IDAdmin,
-    IDUser,
-} from 'src/cloud_pricing/modals';
-import {
-    CallErrorModalID,
-    CallErrorModal,
-} from 'src/components/call_error_modal';
-import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
-import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
+import {ChannelType} from 'src/types/types';
+import {getPluginPath, isDMChannel, isGMChannel} from 'src/utils';
+import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
-    SHOW_EXPANDED_VIEW,
-    HIDE_EXPANDED_VIEW,
-    SHOW_SWITCH_CALL_MODAL,
-    HIDE_SWITCH_CALL_MODAL,
-    SHOW_SCREEN_SOURCE_MODAL,
-    HIDE_SCREEN_SOURCE_MODAL,
+    ADD_INCOMING_CALL,
     HIDE_END_CALL_MODAL,
+    HIDE_EXPANDED_VIEW,
+    HIDE_SCREEN_SOURCE_MODAL,
+    HIDE_SWITCH_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
-    VOICE_CHANNEL_CALL_RECORDING_STATE,
-    VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
     RECORDINGS_ENABLED,
+    SHOW_EXPANDED_VIEW,
+    SHOW_SCREEN_SOURCE_MODAL,
+    SHOW_SWITCH_CALL_MODAL,
+    VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
+    VOICE_CHANNEL_CALL_RECORDING_STATE,
+    VOICE_CHANNEL_USER_DISCONNECTED,
     RTCD_ENABLED,
+    REMOVE_INCOMING_CALL,
+    DID_RING_FOR_CALL,
+    RINGING_FOR_CALL,
+    DISMISS_CALL,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -291,6 +302,128 @@ export const displayGenericErrorModal = (title: MessageDescriptor, message: Mess
             },
         }));
 
+        return {};
+    };
+};
+
+export function incomingCallOnChannel(channelID: string, callID: string, callerID: string, startAt: number) {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        let channel = getChannel(getState(), channelID);
+        if (!channel) {
+            const res = await dispatch(loadChannel(channelID));
+            channel = res.data;
+        }
+
+        if (!channel || !(isDMChannel(channel) || isGMChannel(channel))) {
+            return;
+        }
+
+        if (voiceChannelCallDismissedNotification(getState(), channelID)) {
+            return;
+        }
+
+        if (incomingCalls(getState()).findIndex((ic) => ic.callID === callID) >= 0) {
+            return;
+        }
+
+        // Never send a notification for a call you started yourself, or a call you are currently in.
+        const currentUserID = getCurrentUserId(getState());
+        const connectedID = connectedCallID(getState());
+        if (currentUserID === callerID || connectedID === callID) {
+            return;
+        }
+
+        const caller = getUser(getState(), callerID);
+        if (!caller) {
+            await dispatch(getProfilesByIdsAction([callerID]));
+        }
+
+        await dispatch({
+            type: ADD_INCOMING_CALL,
+            data: {
+                callID,
+                channelID,
+                callerID,
+                startAt,
+                type: isDMChannel(channel) ? ChannelType.DM : ChannelType.GM,
+            },
+        });
+    };
+}
+
+export const userDisconnected = (channelID: string, userID: string) => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        // save for later
+        const callID = voiceChannelCalls(getState())[channelID].ID || '';
+
+        await dispatch({
+            type: VOICE_CHANNEL_USER_DISCONNECTED,
+            data: {
+                channelID,
+                userID,
+                currentUserID: getCurrentUserId(getState()),
+            },
+        });
+
+        if (ringingEnabled(getState()) && !channelHasCall(getState(), channelID)) {
+            await dispatch(removeIncomingCallNotification(callID));
+        }
+    };
+};
+
+export const dismissIncomingCallNotification = (channelID: string, callID: string) => {
+    return async (dispatch: DispatchFunc) => {
+        Client4.doFetch(
+            `${getPluginPath()}/calls/${channelID}/dismiss-notification`,
+            {method: 'post'},
+        ).catch((e) => logErr(e));
+        await dispatch(removeIncomingCallNotification(callID));
+        dispatch({
+            type: DISMISS_CALL,
+            data: {
+                callID,
+            },
+        });
+    };
+};
+
+export const removeIncomingCallNotification = (callID: string): ActionFunc => {
+    return async (dispatch: DispatchFunc) => {
+        await dispatch(stopRingingForCall(callID));
+        await dispatch({
+            type: REMOVE_INCOMING_CALL,
+            data: {
+                callID,
+            },
+        });
+        return {};
+    };
+};
+
+export const ringForCall = (callID: string, sound: string) => {
+    return async (dispatch: DispatchFunc) => {
+        notificationSounds?.ring(sound);
+        await dispatch({
+            type: RINGING_FOR_CALL,
+            data: {
+                callID,
+            },
+        });
+        setTimeout(() => dispatch(stopRingingForCall(callID)), RING_LENGTH);
+    };
+};
+
+export const stopRingingForCall = (callID: string): ActionFunc => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        if (ringingForCall(getState(), callID)) {
+            notificationSounds?.stopRing();
+        }
+        dispatch({
+            type: DID_RING_FOR_CALL,
+            data: {
+                callID,
+            },
+        });
         return {};
     };
 };

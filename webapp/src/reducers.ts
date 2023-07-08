@@ -6,7 +6,14 @@ import {combineReducers} from 'redux';
 
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 
-import {CallsConfigDefault, CallsUserPreferences, CallsUserPreferencesDefault, ChannelState} from 'src/types/types';
+import {
+    CallsConfigDefault,
+    CallsUserPreferences,
+    CallsUserPreferencesDefault,
+    ChannelState,
+    ChannelType,
+    IncomingCallNotification,
+} from 'src/types/types';
 
 import {
     DESKTOP_WIDGET_CONNECTED,
@@ -46,7 +53,13 @@ import {
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
     RECORDINGS_ENABLED,
+    ADD_INCOMING_CALL,
+    REMOVE_INCOMING_CALL,
+    DID_RING_FOR_CALL,
     RTCD_ENABLED,
+    DID_NOTIFY_FOR_CALL,
+    RINGING_FOR_CALL,
+    DISMISS_CALL,
 } from './action_types';
 
 interface channelStateAction {
@@ -569,15 +582,17 @@ const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, a
     }
 };
 
-interface callState {
+export interface callState {
+    ID?: string,
     channelID: string,
     startAt?: number,
     ownerID?: string,
     hostID: string,
     hostChangeAt?: number,
+    dismissedNotification: { [userID: string]: boolean },
 }
 
-interface callStateAction {
+export interface callStateAction {
     type: string,
     data: callState,
 }
@@ -599,11 +614,9 @@ const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, actio
         return {
             ...state,
             [action.data.channelID]: {
-                channelID: action.data.channelID,
-                startAt: action.data.startAt,
-                ownerID: action.data.ownerID,
-                hostID: action.data.hostID,
+                ...action.data,
                 hostChangeAt: action.data.startAt,
+                dismissedNotification: action.data.dismissedNotification,
             },
         };
     default:
@@ -778,6 +791,88 @@ const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: conne
     }
 };
 
+type IncomingCallAction = {
+    type: string;
+    data: {
+        callID: string;
+        channelID: string;
+        callerID: string;
+        startAt: number;
+        type: ChannelType;
+    },
+};
+
+const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingCallAction) => {
+    switch (action.type) {
+    case ADD_INCOMING_CALL:
+        return [...state, {...action.data}];
+    case REMOVE_INCOMING_CALL:
+        return state.filter((ic) => ic.callID !== action.data.callID);
+    default:
+        return state;
+    }
+};
+
+type RingNotifyForCallsAction = {
+    type: string;
+    data: {
+        callID: string;
+    }
+}
+
+const ringingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
+    switch (action.type) {
+    case RINGING_FOR_CALL:
+        return {
+            ...state,
+            [action.data.callID]: true,
+        };
+    case DID_RING_FOR_CALL: {
+        const nextState = {...state};
+        delete nextState[action.data.callID];
+        return nextState;
+    }
+    default:
+        return state;
+    }
+};
+
+const didRingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
+    switch (action.type) {
+    case DID_RING_FOR_CALL:
+        return {
+            ...state,
+            [action.data.callID]: true,
+        };
+    default:
+        return state;
+    }
+};
+
+const didNotifyForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
+    switch (action.type) {
+    case DID_NOTIFY_FOR_CALL:
+        return {
+            ...state,
+            [action.data.callID]: true,
+        };
+    default:
+        return state;
+    }
+};
+
+const dismissedCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
+    switch (action.type) {
+    case DISMISS_CALL:
+        return {
+            ...state,
+            [action.data.callID]: true,
+        };
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     channelState,
     voiceConnectedChannels,
@@ -797,4 +892,9 @@ export default combineReducers({
     callsUserPreferences,
     callsRecordings,
     recentlyJoinedUsers,
+    incomingCalls,
+    ringingForCalls,
+    didRingForCalls,
+    didNotifyForCalls,
+    dismissedCalls,
 });

@@ -10,7 +10,11 @@ import {AnyAction} from 'redux';
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {
+    getCurrentUserId,
+    getUser,
+    isCurrentUserSystemAdmin,
+} from 'mattermost-redux/selectors/entities/users';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
@@ -26,7 +30,10 @@ import {
     displayCallErrorModal,
     showScreenSourceModal,
     displayCallsTestModeUser,
+    incomingCallOnChannel,
+    showSwitchCallModal,
 } from 'src/actions';
+import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 
 import slashCommandsHandler from 'src/slash_commands';
 
@@ -65,6 +72,7 @@ import {
     handleUserReaction,
     handleCallHostChanged,
     handleCallRecordingState,
+    handleUserDismissedNotification,
 } from './websocket_handlers';
 
 import {
@@ -82,6 +90,7 @@ import {
     callsExplicitlyDisabled,
     hasPermissionsToEnableCalls,
     callsConfig,
+    ringingEnabled,
 } from './selectors';
 
 import {pluginId} from './manifest';
@@ -99,7 +108,6 @@ import ExpandedView from './components/expanded_view';
 import SwitchCallModal from './components/switch_call_modal';
 import ScreenSourceModal from './components/screen_source_modal';
 import EndCallModal from './components/end_call_modal';
-
 import reducer from './reducers';
 
 import {
@@ -115,6 +123,7 @@ import {
     sendDesktopEvent,
     getChannelURL,
     getTranslations,
+    desktopGTE,
 } from './utils';
 import {logErr, logDebug} from './log';
 import {
@@ -229,6 +238,10 @@ export default class Plugin {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_state`, (ev) => {
             handleCallRecordingState(store, ev);
         });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_dismissed_notification`, (ev) => {
+            handleUserDismissedNotification(store, ev);
+        });
     }
 
     private initialize(registry: PluginRegistry, store: Store) {
@@ -258,6 +271,7 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
         registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
         registry.registerGlobalComponent(injectIntl(EndCallModal));
+        registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
 
         registry.registerTranslations((locale: string) => {
             return getTranslations(locale);
@@ -529,10 +543,19 @@ export default class Plugin {
             } else if (ev.data?.type === 'desktop-sources-modal-request') {
                 store.dispatch(showScreenSourceModal());
             } else if (ev.data?.type === 'calls-joined-call') {
+                if (!desktopGTE(5, 5) && ev.data.message.type === 'calls-join-request') {
+                    // This `calls-joined-call` message has been repurposed as a `calls-join-request` message
+                    // because the current desktop version (< 5.5) does not have a dedicated `calls-join-request` message.
+                    store.dispatch(showSwitchCallModal(ev.data.message.callID));
+                    return;
+                }
                 store.dispatch({
                     type: DESKTOP_WIDGET_CONNECTED,
                     data: {channelID: ev.data.message.callID},
                 });
+            } else if (ev.data?.type === 'calls-join-request') {
+                // we can assume that we are already in a call, since the global widget sent this.
+                store.dispatch(showSwitchCallModal(ev.data.message.callID));
             } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error') {
                 store.dispatch(displayCallErrorModal(ev.data.message.callID, new Error(ev.data.message.errMsg)));
             } else if (ev.data?.type === 'calls-run-slash-command') {
@@ -550,7 +573,7 @@ export default class Plugin {
                 ChannelHeaderMenuButton,
                 async () => {
                     try {
-                        const data = await Client4.doFetch<{enabled: boolean}>(`${getPluginPath()}/${currChannelId}`, {
+                        const data = await Client4.doFetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
                             method: 'post',
                             body: JSON.stringify({enabled: callsExplicitlyDisabled(store.getState(), currChannelId)}),
                         });
@@ -583,12 +606,26 @@ export default class Plugin {
                         actions.push({
                             type: VOICE_CHANNEL_CALL_START,
                             data: {
+                                ID: data[i].call?.id,
                                 channelID: data[i].channel_id,
                                 startAt: data[i].call?.start_at,
                                 ownerID: data[i].call?.owner_id,
                                 hostID: data[i].call?.host_id,
+                                dismissedNotification: data[i].call?.dismissed_notification || {},
                             },
                         });
+
+                        if (ringingEnabled(store.getState()) && data[i].call) {
+                            // dismissedNotification is populated after the actions array has been batched, so manually check:
+                            const dismissed = data[i].call?.dismissed_notification;
+                            if (dismissed) {
+                                const currentUserID = getCurrentUserId(store.getState());
+                                if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
+                                    continue;
+                                }
+                            }
+                            store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.id, data[i].call.owner_id, data[i].call.start_at));
+                        }
                     }
                 }
             } catch (err) {
@@ -645,10 +682,12 @@ export default class Plugin {
                 actions.push({
                     type: VOICE_CHANNEL_CALL_START,
                     data: {
+                        ID: call.id,
                         channelID,
                         startAt: call.start_at,
                         ownerID: call.owner_id,
                         hostID: call.host_id,
+                        dismissedNotification: call.dismissed_notification,
                     },
                 });
 

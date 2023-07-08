@@ -27,6 +27,7 @@ import {
     callRecording,
     voiceChannelCallHostChangeAt,
     recentlyJoinedUsers,
+    sortedIncomingCalls,
 } from 'src/selectors';
 
 import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
@@ -81,6 +82,7 @@ const mapStateToProps = (state: GlobalState) => {
         show: !expandedView(state),
         recentlyJoinedUsers: recentlyJoinedUsers(state, channel?.id),
         wider: getMyTeams(state)?.length > 1,
+        callsIncoming: sortedIncomingCalls(state),
     };
 };
 

@@ -10,7 +10,7 @@ import ScreenSourceModal from './component';
 
 const mapStateToProps = (state: GlobalState) => {
     return {
-        connectedChannel: getChannel(state, connectedChannelID(state)),
+        connectedChannel: getChannel(state, connectedChannelID(state) || ''),
         show: screenSourceModal(state),
     };
 };
