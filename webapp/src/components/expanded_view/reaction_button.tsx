@@ -14,6 +14,7 @@ import EmojiPicker, {
 
 import {EmojiData} from '@calls/common/lib/types';
 
+import {getCallsClient} from 'src/utils';
 import ControlsButton from 'src/components/expanded_view/controls_button';
 import {MAKE_REACTION, RAISE_LOWER_HAND, reverseKeyMappings} from 'src/shortcuts';
 import SmileyIcon from 'src/components/icons/smiley_icon';
@@ -27,10 +28,6 @@ import {Emoji} from 'src/components/emoji/emoji';
 import {EmojiIndicesByAlias} from 'src/emojis/emoji';
 
 const EMOJI_VERSION = '13';
-
-const getCallsClient = () => {
-    return window.opener ? window.opener.callsClient : window.callsClient;
-};
 
 export type ReactionButtonRef = {
     toggle: () => void,

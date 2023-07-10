@@ -13,11 +13,11 @@ require (
 
 require (
 	github.com/Masterminds/semver v1.5.0
-	github.com/mattermost/calls-offloader v0.2.5-0.20230626163749-5bad3cbecdc3
-	github.com/mattermost/calls-recorder v0.3.4-0.20230626163552-cfc1edd174b5
+	github.com/mattermost/calls-offloader v0.2.5-0.20230706030214-526c668a23bf
+	github.com/mattermost/calls-recorder v0.3.5-0.20230710142107-f68f30b2d1ef
 	github.com/mattermost/logr/v2 v2.0.16
 	github.com/mattermost/mattermost/server/public v0.0.0-20230613002302-62a3ee8adcb5
-	github.com/mattermost/rtcd v0.11.0
+	github.com/mattermost/rtcd v0.11.1
 	github.com/pion/interceptor v0.1.12
 	github.com/pion/rtp v1.7.13
 	github.com/pkg/errors v0.9.1
@@ -47,7 +47,6 @@ require (
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
 	github.com/hashicorp/go-plugin v1.4.9 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 // indirect
 	github.com/mattermost/ldap v3.0.4+incompatible // indirect

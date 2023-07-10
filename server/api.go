@@ -21,8 +21,9 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 )
 
-var chRE = regexp.MustCompile(`^\/([a-z0-9]+)$`)
-var callEndRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)\/end$`)
+var chRE = regexp.MustCompile(`^/([a-z0-9]+)$`)
+var callEndRE = regexp.MustCompile(`^/calls/([a-z0-9]+)/end$`)
+var callDismissNotificationRE = regexp.MustCompile(`^/calls/([a-z0-9]+)/dismiss-notification$`)
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
@@ -66,7 +67,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 		}
 
 		if state.Call != nil {
-			info.Call = state.Call.getClientState(p.getBotID())
+			info.Call = state.Call.getClientState(p.getBotID(), userID)
 		}
 	}
 
@@ -152,7 +153,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 				Enabled:   enabled,
 			}
 			if state.Call != nil {
-				info.Call = state.Call.getClientState(p.getBotID())
+				info.Call = state.Call.getClientState(p.getBotID(), userID)
 			}
 			channels = append(channels, info)
 		}
@@ -247,6 +248,58 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 			p.LogError(err.Error())
 		}
 	}()
+
+	res.Code = http.StatusOK
+	res.Msg = "success"
+}
+
+func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Request, channelID string) {
+	var res httpResponse
+	defer p.httpAudit("handleDismissNotification", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	state, err := p.kvGetChannelState(channelID)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	if state == nil || state.Call == nil {
+		res.Err = "no call ongoing"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	callID := state.Call.ID
+
+	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
+		if state == nil || state.Call == nil {
+			return nil, nil
+		}
+
+		if state.Call.ID != callID {
+			return nil, fmt.Errorf("previous call has ended and new one has started")
+		}
+
+		if state.Call.DismissedNotification == nil {
+			state.Call.DismissedNotification = make(map[string]bool)
+		}
+		state.Call.DismissedNotification[userID] = true
+
+		return state, nil
+	}); err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	// For now, only send to the user that dismissed the notification. May change in the future.
+	p.publishWebSocketEvent(wsEventUserDismissedNotification, map[string]interface{}{
+		"userID": userID,
+		"callID": callID,
+	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 
 	res.Code = http.StatusOK
 	res.Msg = "success"
@@ -553,6 +606,11 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if matches := callEndRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handleEndCall(w, r, matches[1])
+			return
+		}
+
+		if matches := callDismissNotificationRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleDismissNotification(w, r, matches[1])
 			return
 		}
 

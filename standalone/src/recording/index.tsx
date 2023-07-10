@@ -118,11 +118,12 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
 async function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventData>) {
     switch (ev.event) {
     case `custom_${pluginId}_user_connected`: {
-        const profiles = await getProfilesByIds(store.getState(), [(ev.data as UserConnectedData).userID]);
+        const data = ev.data as UserConnectedData;
+        const profiles = await getProfilesByIds(store.getState(), [data.userID]);
         store.dispatch({
             type: RECEIVED_CALL_PROFILE_IMAGES,
             data: {
-                channelID: ev.data.channelID,
+                channelID: data.channelID,
                 profileImages: await fetchProfileImages(profiles),
             },
         });
