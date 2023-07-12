@@ -34,6 +34,7 @@ import {
     showSwitchCallModal,
 } from 'src/actions';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
+import {desktopNotificationHandler} from 'src/desktop_notifications';
 
 import slashCommandsHandler from 'src/slash_commands';
 
@@ -124,7 +125,6 @@ import {
     getChannelURL,
     getTranslations,
     desktopGTE,
-    desktopNotificationHandler,
 } from './utils';
 import {logErr, logDebug} from './log';
 import {
