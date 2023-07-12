@@ -2,6 +2,7 @@ import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@calls/common';
 import {UserState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
+import {Post} from '@mattermost/types/posts';
 
 import {GlobalState} from '@mattermost/types/store';
 
@@ -10,6 +11,7 @@ import {UserProfile} from '@mattermost/types/users';
 import {DateTime, Duration, DurationLikeObject} from 'luxon';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {Client4} from 'mattermost-redux/client';
+import {General} from 'mattermost-redux/constants';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 
 import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
@@ -24,13 +26,13 @@ import {logDebug, logErr, logWarn} from './log';
 
 import {pluginId} from './manifest';
 
-import {voiceChannelRootPost} from './selectors';
+import {ringingEnabled, voiceChannelRootPost} from './selectors';
 import JoinSelfSound from './sounds/join_self.mp3';
 import JoinUserSound from './sounds/join_user.mp3';
 
 import LeaveSelfSound from './sounds/leave_self.mp3';
 
-import {Store} from './types/mattermost-webapp';
+import {DesktopNotificationArgs, Store} from './types/mattermost-webapp';
 
 export function getPluginStaticPath() {
     return `${window.basename || ''}/static/plugins/${pluginId}`;
@@ -243,11 +245,15 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
 }
 
 export function isDMChannel(channel: Channel) {
-    return channel.type === 'D';
+    return channel.type === General.DM_CHANNEL;
 }
 
 export function isGMChannel(channel: Channel) {
-    return channel.type === 'G';
+    return channel.type === General.GM_CHANNEL;
+}
+
+export function isDmGmChannel(channel: Channel) {
+    return isDMChannel(channel) || isGMChannel(channel);
 }
 
 export function isPublicChannel(channel: Channel) {
@@ -476,4 +482,23 @@ export function userAgent(): string {
 
 export function isDesktopApp(): boolean {
     return userAgent().indexOf('Mattermost') !== -1 && userAgent().indexOf('Electron') !== -1;
+}
+
+export function desktopNotificationHandler(store: Store, post: Post, channel: Channel, args: DesktopNotificationArgs): {error?: string, args?: DesktopNotificationArgs} {
+    if (args.notify) {
+        // Calls will notify if:
+        //  1. it's a custom_calls post (call has started)
+        //  2. in a DM or GM channel
+        //  3. calls is enabled and is v0.17.0+ (it is if this is running)
+        //  4. calls ringing is enabled on the server
+
+        // @ts-ignore our imported webapp types are old
+        if (post.type === 'custom_calls' &&
+            isDmGmChannel(channel) &&
+            ringingEnabled(store.getState())) {
+            return {args: {...args, notify: false}};
+        }
+    }
+
+    return {args};
 }

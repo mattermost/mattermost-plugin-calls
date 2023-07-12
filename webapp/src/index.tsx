@@ -124,6 +124,7 @@ import {
     getChannelURL,
     getTranslations,
     desktopGTE,
+    desktopNotificationHandler,
 } from './utils';
 import {logErr, logDebug} from './log';
 import {
@@ -279,6 +280,10 @@ export default class Plugin {
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             return slashCommandsHandler(store, joinCall, message, args);
+        });
+
+        registry.registerDesktopNotificationHook?.(async (post, msgProps, channel, teamId, args) => {
+            return desktopNotificationHandler(store, post, channel, args);
         });
 
         const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {

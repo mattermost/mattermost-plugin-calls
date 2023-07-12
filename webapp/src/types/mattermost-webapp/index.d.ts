@@ -1,3 +1,5 @@
+import {Channel} from '@mattermost/types/channels';
+import {Post} from '@mattermost/types/posts';
 import {Store as BaseStore} from 'redux';
 import {ThunkDispatch} from 'redux-thunk';
 import {GlobalState} from '@mattermost/types/store';
@@ -5,6 +7,20 @@ import {CommandArgs} from '@mattermost/types/integrations';
 
 export type Translations = {
     [key: string]: string;
+};
+
+export type NewPostMessageProps = {
+    mentions: string[];
+    team_id: string;
+}
+
+export type DesktopNotificationArgs = {
+    title: string;
+    body: string;
+    silent: boolean;
+    soundName: string;
+    url: string;
+    notify: boolean;
 };
 
 export interface PluginRegistry {
@@ -31,6 +47,12 @@ export interface PluginRegistry {
     registerNeedsTeamRoute(route: string, component: React.ElementType);
 
     registerSlashCommandWillBePostedHook(hook: (message: string, args: CommandArgs) => SlashCommandWillBePostedReturn);
+
+    // registerDesktopNotificationHook requires MM v8.1
+    registerDesktopNotificationHook(hook: (post: Post, msgProps: NewPostMessageProps, channel: Channel, teamId: string, args: DesktopNotificationArgs) => Promise<{
+        error?: string;
+        args?: DesktopNotificationArgs;
+    }>)
 
     registerCallButtonAction(button: React.ElementType, dropdownButton: React.ElementType, fn: (channel: Channel) => void);
 
