@@ -19,6 +19,7 @@ import {DEFAULT_RING_SOUND} from 'src/constants';
 import {logDebug} from 'src/log';
 import {
     connectedChannelID,
+    connectedTeam,
     currentlyRinging,
     didNotifyForCall,
     didRingForCall,
@@ -240,19 +241,24 @@ export const useGetCallerNameAndOthers = (call: IncomingCallNotification, splitA
 
 export const useOnChannelLinkClick = (call: IncomingCallNotification) => {
     const global = Boolean(isDesktopApp() && getCallsClient());
+    const defaultTeam = useSelector(connectedTeam);
     const channel = useSelector((state: GlobalState) => getChannel(state, call.channelID));
-    const channelURL = useSelector((state: GlobalState) => getChannelURL(state, channel, channel.team_id));
-    const message = {pathName: channelURL};
+    let channelURL = useSelector((state: GlobalState) => getChannelURL(state, channel, channel.team_id));
+
+    if (global && channelURL.startsWith('/channels')) {
+        // The global widget isn't resolving the currentTeam if we're on a regular channel, so we need to add it manually.
+        channelURL = `/${defaultTeam?.name || ''}${channelURL}`;
+    }
 
     if (global) {
         return () => {
             notificationSounds?.stopRing(); // User interacted with notifications, so stop ringing for _any_ incoming call.
-            sendDesktopEvent('calls-widget-channel-link-click', message);
+            sendDesktopEvent('calls-link-click', {link: channelURL});
         };
     }
 
     return () => {
         notificationSounds?.stopRing();
-        window.postMessage({type: 'browser-history-push-return', message}, window.origin);
+        window.postMessage({type: 'browser-history-push-return', message: {pathName: channelURL}}, window.origin);
     };
 };
