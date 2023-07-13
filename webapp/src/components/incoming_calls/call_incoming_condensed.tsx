@@ -1,7 +1,7 @@
 import {GlobalState} from '@mattermost/types/store';
 import {Client4} from 'mattermost-redux/client';
 import {getUser} from 'mattermost-redux/selectors/entities/users';
-import React, {useLayoutEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
@@ -29,16 +29,15 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     const {formatMessage} = useIntl();
     const messageRef = useRef<HTMLDivElement>(null);
     const caller = useSelector((state: GlobalState) => getUser(state, call.callerID));
-    const [callerName, others] = useGetCallerNameAndOthers(call, 2);
+    const [callerName, others] = useGetCallerNameAndOthers(call, 10);
     const [showTooltip, setShowTooltip] = useState(false);
 
     useRingingAndNotification(call, onWidget);
     const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
 
-    useLayoutEffect(() => {
-        if (messageRef?.current && messageRef.current.clientWidth < messageRef.current.scrollWidth) {
-            setShowTooltip(true);
-        }
+    useEffect(() => {
+        const show = Boolean(messageRef?.current && messageRef.current.clientWidth < messageRef.current.scrollWidth);
+        setShowTooltip(show);
     }, [messageRef]);
 
     const message = (
