@@ -9,7 +9,7 @@ import {useSelector} from 'react-redux';
 
 import styled, {css} from 'styled-components';
 
-import {useDismissJoin, useRingingAndNotification} from 'src/components/incoming_calls/hooks';
+import {useDismissJoin, useOnChannelLinkClick, useRingingAndNotification} from 'src/components/incoming_calls/hooks';
 
 import Avatar from 'src/components/avatar/avatar';
 
@@ -30,8 +30,9 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     const teammateNameDisplay = useSelector(getTeammateNameDisplaySetting);
     const caller = useSelector((state: GlobalState) => getUser(state, call.callerID));
 
-    useRingingAndNotification(call, onWidget);
     const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
+    const onContainerClick = useOnChannelLinkClick(call);
+    useRingingAndNotification(call, onWidget);
 
     const callerName = displayUsername(caller, teammateNameDisplay, false);
     const message = (
@@ -45,7 +46,10 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     );
 
     return (
-        <Container className={className}>
+        <Container
+            className={className}
+            onClick={onContainerClick}
+        >
             <Inner>
                 <Avatar
                     url={Client4.getProfilePictureUrl(caller.id, caller.last_picture_update)}
@@ -70,9 +74,11 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     );
 };
 
-const Container = styled.div`
+const Container = styled.button`
     border-radius: 8px;
     background-color: var(--online-indicator);
+    padding: 0;
+    border: 0;
 `;
 
 const Inner = styled.div`
@@ -96,7 +102,7 @@ const Message = styled.div`
     margin-right: auto;
 `;
 
-const SmallJoinButton = styled(Button)<{border: boolean}>`
+const SmallJoinButton = styled(Button)<{ border: boolean }>`
     justify-content: center;
     height: 24px;
     padding: 4px 10px 4px 0;
@@ -115,7 +121,6 @@ const SmallJoinButton = styled(Button)<{border: boolean}>`
             background-color: rgba(var(--button-color-rgb), 0.12);
         }
     `}
-
     i {
         font-size: 15px;
         margin: 0 2px 0 5px;
