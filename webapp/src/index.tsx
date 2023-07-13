@@ -765,12 +765,23 @@ export default class Plugin {
             return actions;
         };
 
+        // Run onActivate once we're logged in. Only run it once.
+        let activated = false;
+        const unsubscribeActivateListener = store.subscribe(() => {
+            if (getCurrentUserId(store.getState()) && !activated) {
+                activated = true;
+                onActivate();
+            }
+        });
+
         let configRetrieved = false;
         const onActivate = async () => {
             if (!getCurrentUserId(store.getState())) {
-                // not logged in, returning.
+                // not logged in, returning. Shouldn't happen, but being defensive.
                 return;
             }
+
+            unsubscribeActivateListener();
 
             const res = await store.dispatch(getCallsConfig());
 
@@ -822,8 +833,6 @@ export default class Plugin {
             }
             onActivate();
         });
-
-        onActivate();
 
         let currChannelId = getCurrentChannelId(store.getState());
         let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
