@@ -259,6 +259,7 @@ export const useOnChannelLinkClick = (call: IncomingCallNotification) => {
 
     return () => {
         notificationSounds?.stopRing();
-        window.postMessage({type: 'browser-history-push-return', message: {pathName: channelURL}}, window.origin);
+        const win = window.opener ? window.opener : window;
+        win.postMessage({type: 'browser-history-push-return', message: {pathName: channelURL}}, window.origin);
     };
 };
