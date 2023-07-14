@@ -33,7 +33,7 @@ import {
 
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
-import {getPluginPath, isDMChannel, isGMChannel} from 'src/utils';
+import {getPluginPath, isDesktopApp, isDMChannel, isGMChannel} from 'src/utils';
 import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
@@ -215,7 +215,7 @@ export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, pro
         }
         const eventData = {
             event,
-            clientType: window.desktop ? 'desktop' : 'web',
+            clientType: isDesktopApp() ? 'desktop' : 'web',
             source,
             props,
         };
