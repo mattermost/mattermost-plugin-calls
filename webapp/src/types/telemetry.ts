@@ -10,11 +10,14 @@ export enum Event {
     OpenChannelLink = 'user_open_channel_link',
     StartRecording = 'user_start_recording',
     StopRecording = 'user_stop_recording',
+    NotificationJoin = 'notification_join',
+    NotificationDismiss = 'notification_dismiss',
+    NotificationClickGotoChannel = 'notification_click_goto_channel',
 }
 
 export enum Source {
     Widget = 'widget',
     ExpandedView = 'expanded_view',
     SlashCommand = 'slash_command',
+    Channels = 'channels',
 }
-
