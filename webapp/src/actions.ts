@@ -222,7 +222,9 @@ export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, pro
         Client4.doFetch(
             `${getPluginPath()}/telemetry/track`,
             {method: 'post', body: JSON.stringify(eventData)},
-        );
+        ).catch((e) => {
+            logErr(e);
+        });
     };
 };
 
