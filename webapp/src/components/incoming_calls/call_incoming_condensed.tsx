@@ -6,13 +6,12 @@ import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import React from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-
 import styled, {css} from 'styled-components';
 
+import {isDesktopApp} from 'src/utils';
+import {pluginId} from 'src/manifest';
 import {useDismissJoin, useOnChannelLinkClick, useRingingAndNotification} from 'src/components/incoming_calls/hooks';
-
 import Avatar from 'src/components/avatar/avatar';
-
 import {Button} from 'src/components/buttons';
 import CompassIcon from 'src/components/icons/compassIcon';
 
@@ -34,6 +33,9 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     const onContainerClick = useOnChannelLinkClick(call);
     useRingingAndNotification(call, onWidget);
 
+    // Do not allow clicks in the webapp expanded view because Safari does not let us switch and focus parent.
+    const onWebappExpanded = !isDesktopApp() && window.location.pathname.includes(`${pluginId}/expanded/`);
+
     const callerName = displayUsername(caller, teammateNameDisplay, false);
     const message = (
         <FormattedMessage
@@ -49,6 +51,7 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
         <Container
             className={className}
             onClick={onContainerClick}
+            disabled={onWebappExpanded}
         >
             <Inner>
                 <Avatar
