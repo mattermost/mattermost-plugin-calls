@@ -276,7 +276,7 @@ export const useOnChannelLinkClick = (call: IncomingCallNotification, onWidget =
 export const telemetrySource = (onWidget: boolean) => {
     if (onWidget) {
         return Telemetry.Source.Widget;
-    } else if (window.location.pathname.includes(`${pluginId}/expanded/`)) {
+    } else if (window.opener) {
         return Telemetry.Source.ExpandedView;
     }
 
