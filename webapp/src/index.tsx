@@ -772,7 +772,6 @@ export default class Plugin {
             }
         });
 
-        let configRetrieved = false;
         const onActivate = async () => {
             if (!getCurrentUserId(store.getState())) {
                 // not logged in, returning. Shouldn't happen, but being defensive.
@@ -781,12 +780,7 @@ export default class Plugin {
 
             unsubscribeActivateListener();
 
-            const res = await store.dispatch(getCallsConfig());
-
-            // @ts-ignore
-            if (!res.error) {
-                configRetrieved = true;
-            }
+            await store.dispatch(getCallsConfig());
 
             const actions = await fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
@@ -838,12 +832,6 @@ export default class Plugin {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
-
-                // If we haven't retrieved config, user must not have been logged in during onActivate
-                if (!configRetrieved) {
-                    store.dispatch(getCallsConfig());
-                    configRetrieved = true;
-                }
 
                 fetchChannelData(currChannelId).then((actions) =>
                     store.dispatch(batchActions(actions)),
