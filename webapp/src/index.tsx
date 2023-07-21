@@ -765,11 +765,9 @@ export default class Plugin {
             return actions;
         };
 
-        // Run onActivate once we're logged in. Only run it once.
-        let activated = false;
+        // Run onActivate once we're logged in.
         const unsubscribeActivateListener = store.subscribe(() => {
-            if (getCurrentUserId(store.getState()) && !activated) {
-                activated = true;
+            if (getCurrentUserId(store.getState())) {
                 onActivate();
             }
         });
