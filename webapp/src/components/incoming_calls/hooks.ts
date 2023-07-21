@@ -17,7 +17,6 @@ import {DID_NOTIFY_FOR_CALL, DID_RING_FOR_CALL} from 'src/action_types';
 import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal, trackEvent} from 'src/actions';
 import {DEFAULT_RING_SOUND} from 'src/constants';
 import {logDebug} from 'src/log';
-import {pluginId} from 'src/manifest';
 import {
     connectedChannelID,
     connectedTeam,
