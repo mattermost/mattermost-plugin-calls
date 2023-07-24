@@ -3,64 +3,47 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {mosThreshold} from '@calls/common';
+import {
+    UserState,
+} from '@calls/common/lib/types';
+import {Channel} from '@mattermost/types/channels';
+import {Post} from '@mattermost/types/posts';
+import {Team} from '@mattermost/types/teams';
+import {UserProfile} from '@mattermost/types/users';
+import {Theme} from 'mattermost-redux/types/themes';
+import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 import React from 'react';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
-
 import styled, {createGlobalStyle, css} from 'styled-components';
-import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 
-import {UserProfile} from '@mattermost/types/users';
-import {Team} from '@mattermost/types/teams';
-import {Channel} from '@mattermost/types/channels';
-import {Post} from '@mattermost/types/posts';
-import {Theme} from 'mattermost-redux/types/themes';
-
-import {
-    UserState,
-} from '@calls/common/lib/types';
-import {mosThreshold} from '@calls/common';
-
-import {ExpandedCallContainer} from 'src/components/incoming_calls/expanded_call_container';
-
-import {Emoji} from 'src/components/emoji/emoji';
-
-import {
-    getUserDisplayName,
-    getScreenStream,
-    isDMChannel,
-    hasExperimentalFlag,
-    sendDesktopEvent,
-    shouldRenderDesktopWidget,
-    untranslatable,
-    setCallsGlobalCSSVars,
-    getCallsClient,
-} from 'src/utils';
-import {
-    CallAlertConfigs,
-} from 'src/constants';
 import {
     stopCallRecording,
 } from 'src/actions';
-import * as Telemetry from 'src/types/telemetry';
 import Avatar from 'src/components/avatar/avatar';
-import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
+import Badge from 'src/components/badge';
+import CallDuration from 'src/components/call_widget/call_duration';
+import {Emoji} from 'src/components/emoji/emoji';
+import ChatThreadIcon from 'src/components/icons/chat_thread';
+import CollapseIcon from 'src/components/icons/collapse';
 import CompassIcon from 'src/components/icons/compassIcon';
+import HandEmoji from 'src/components/icons/hand';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
-import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import ParticipantsIcon from 'src/components/icons/participants';
+import RecordCircleIcon from 'src/components/icons/record_circle';
+import RecordSquareIcon from 'src/components/icons/record_square';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import ShareScreenIcon from 'src/components/icons/share_screen';
+import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
-import ParticipantsIcon from 'src/components/icons/participants';
-import CallDuration from 'src/components/call_widget/call_duration';
-import HandEmoji from 'src/components/icons/hand';
-import CollapseIcon from 'src/components/icons/collapse';
-import ChatThreadIcon from 'src/components/icons/chat_thread';
-import RecordSquareIcon from 'src/components/icons/record_square';
-import RecordCircleIcon from 'src/components/icons/record_circle';
-import Badge from 'src/components/badge';
+import {ExpandedCallContainer} from 'src/components/incoming_calls/expanded_call_container';
+import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
+import {
+    CallAlertConfigs,
+} from 'src/constants';
 import {
     MUTE_UNMUTE,
     RAISE_LOWER_HAND,
@@ -73,21 +56,31 @@ import {
     reverseKeyMappings,
     MAKE_REACTION,
 } from 'src/shortcuts';
+import * as Telemetry from 'src/types/telemetry';
 import {
     AudioDevices,
     CallAlertStates,
     CallAlertStatesDefault,
     CallRecordingReduxState,
 } from 'src/types/types';
+import {
+    getUserDisplayName,
+    getScreenStream,
+    isDMChannel,
+    hasExperimentalFlag,
+    sendDesktopEvent,
+    shouldRenderDesktopWidget,
+    untranslatable,
+    setCallsGlobalCSSVars,
+    getCallsClient,
+} from 'src/utils';
 
-import RecordingInfoPrompt from './recording_info_prompt';
-
-import GlobalBanner from './global_banner';
-import ControlsButton from './controls_button';
 import CallParticipant from './call_participant';
-
-import './component.scss';
+import ControlsButton from './controls_button';
+import GlobalBanner from './global_banner';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
+import RecordingInfoPrompt from './recording_info_prompt';
+import './component.scss';
 
 interface Props extends RouteComponentProps {
     intl: IntlShape,

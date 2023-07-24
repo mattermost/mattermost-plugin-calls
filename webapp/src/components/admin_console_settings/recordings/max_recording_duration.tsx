@@ -2,14 +2,14 @@
 // See LICENSE.txt for license information.
 
 import React, {ChangeEvent} from 'react';
-import {CustomComponentProps} from 'src/types/mattermost-webapp';
 import {useSelector} from 'react-redux';
+import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-import manifest from 'src/manifest';
-import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
 import {
     LabelRow, leftCol, rightCol,
 } from 'src/components/admin_console_settings/common';
+import manifest from 'src/manifest';
+import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
 
 const MaxRecordingDuration = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);

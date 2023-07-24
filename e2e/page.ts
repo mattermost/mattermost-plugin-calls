@@ -1,7 +1,6 @@
 import {expect, Page} from '@playwright/test';
 
 import {baseURL, defaultTeam} from './constants';
-
 import {getChannelNamesForTest} from './utils';
 
 export default class PlaywrightDevPage {

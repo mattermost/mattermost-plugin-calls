@@ -1,20 +1,16 @@
-import {injectIntl} from 'react-intl';
-import {bindActionCreators, Dispatch} from 'redux';
-import {connect} from 'react-redux';
-
+import {UserState} from '@calls/common/lib/types';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-
-import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {getTeam, getCurrentTeamId, getMyTeams} from 'mattermost-redux/selectors/entities/teams';
 import {Client4} from 'mattermost-redux/client';
-
-import {UserState} from '@calls/common/lib/types';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getTeam, getCurrentTeamId, getMyTeams} from 'mattermost-redux/selectors/entities/teams';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {injectIntl} from 'react-intl';
+import {connect} from 'react-redux';
+import {bindActionCreators, Dispatch} from 'redux';
 
 import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
-
 import {
     voiceUsersStatuses,
     voiceChannelCallStartAt,
@@ -29,7 +25,6 @@ import {
     recentlyJoinedUsers,
     sortedIncomingCalls,
 } from 'src/selectors';
-
 import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
 
 import CallWidget from './component';

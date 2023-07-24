@@ -1,36 +1,30 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import {IntlProvider} from 'react-intl';
-import {Provider} from 'react-redux';
 
-import {Store} from 'plugin/types/mattermost-webapp';
-import {Theme} from 'mattermost-redux/types/themes';
-
-import {getTeam as getTeamAction, selectTeam} from 'mattermost-redux/actions/teams';
 import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redux/actions/channels';
+import {getTeam as getTeamAction, selectTeam} from 'mattermost-redux/actions/teams';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
-
 import {getTeams} from 'mattermost-redux/selectors/entities/teams';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {Theme} from 'mattermost-redux/types/themes';
 import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
-
+import {
+    VOICE_CHANNEL_USER_CONNECTED,
+} from 'plugin/action_types';
+import CallWidget from 'plugin/components/call_widget';
+import {
+    logDebug,
+    logErr,
+} from 'plugin/log';
+import {Store} from 'plugin/types/mattermost-webapp';
 import {
     sendDesktopEvent,
     playSound,
     fetchTranslationsFile,
 } from 'plugin/utils';
-
-import {
-    logDebug,
-    logErr,
-} from 'plugin/log';
-
-import {
-    VOICE_CHANNEL_USER_CONNECTED,
-} from 'plugin/action_types';
-
-import CallWidget from 'plugin/components/call_widget';
+import React from 'react';
+import ReactDOM from 'react-dom';
+import {IntlProvider} from 'react-intl';
+import {Provider} from 'react-redux';
 
 import init from '../init';
 

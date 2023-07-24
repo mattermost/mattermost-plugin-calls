@@ -1,18 +1,16 @@
 import {CallsConfig} from '@calls/common/lib/types';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
+import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
 import {ClientError} from 'mattermost-redux/client/client4';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
-import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
-import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
-
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
-
 import {MessageDescriptor} from 'react-intl';
 import {Dispatch} from 'redux';
 
@@ -20,9 +18,8 @@ import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from
 import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
-import {logErr} from 'src/log';
 import {RING_LENGTH} from 'src/constants';
-
+import {logErr} from 'src/log';
 import {
     channelHasCall, connectedCallID, incomingCalls,
     ringingEnabled,
@@ -30,7 +27,6 @@ import {
     voiceChannelCallDismissedNotification,
     voiceChannelCalls,
 } from 'src/selectors';
-
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
 import {getPluginPath, isDMChannel, isGMChannel} from 'src/utils';
