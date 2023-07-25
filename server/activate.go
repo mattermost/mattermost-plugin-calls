@@ -104,14 +104,6 @@ func (p *Plugin) OnActivate() error {
 	p.botSession = session
 
 	if p.licenseChecker.RecordingsAllowed() && cfg.recordingsEnabled() {
-		p.LogDebug("initializing job service")
-		jobService, err := p.newJobService(cfg.getJobServiceURL())
-		if err != nil {
-			err = fmt.Errorf("failed to create job service: %w", err)
-			p.LogError(err.Error())
-			return err
-		}
-
 		recorderVersion, ok := manifest.Props["calls_recorder_version"].(string)
 		if !ok {
 			err = fmt.Errorf("failed to get recorder version from manifest")
@@ -120,20 +112,23 @@ func (p *Plugin) OnActivate() error {
 		}
 		recordingJobRunner = "mattermost/calls-recorder:" + recorderVersion
 
+		if err := p.initJobService(); err != nil {
+			err = fmt.Errorf("failed to initialize job service: %w", err)
+			p.LogError(err.Error())
+			return err
+		}
+
+		p.LogDebug("job service initialized successfully")
+
 		go func() {
 			p.LogDebug("updating job runner")
-
+			jobService := p.getJobService()
 			if err := jobService.UpdateJobRunner(recordingJobRunner); err != nil {
 				err = fmt.Errorf("failed to update job runner: %w", err)
 				p.LogError(err.Error())
 				return
 			}
-
-			p.mut.Lock()
-			p.jobService = jobService
-			p.mut.Unlock()
-
-			p.LogDebug("job service initialized successfully")
+			p.LogDebug("job runner updated successfully")
 		}()
 	}
 
