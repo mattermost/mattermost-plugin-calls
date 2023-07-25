@@ -1,9 +1,8 @@
 import {GlobalState} from '@mattermost/types/store';
 import {Client4} from 'mattermost-redux/client';
-import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {getUser} from 'mattermost-redux/selectors/entities/users';
-import {displayUsername} from 'mattermost-redux/utils/user_utils';
-import React from 'react';
+import React, {useEffect, useRef, useState} from 'react';
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import styled, {css} from 'styled-components';
@@ -14,8 +13,12 @@ import {useDismissJoin, useOnChannelLinkClick, useRingingAndNotification} from '
 import Avatar from 'src/components/avatar/avatar';
 import {Button} from 'src/components/buttons';
 import CompassIcon from 'src/components/icons/compassIcon';
-
-import {IncomingCallNotification} from 'src/types/types';
+import {
+    useDismissJoin,
+    useGetCallerNameAndOthers,
+    useRingingAndNotification,
+} from 'src/components/incoming_calls/hooks';
+import {ChannelType, IncomingCallNotification} from 'src/types/types';
 
 type Props = {
     call: IncomingCallNotification;
@@ -26,8 +29,10 @@ type Props = {
 
 export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder = false, className}: Props) => {
     const {formatMessage} = useIntl();
-    const teammateNameDisplay = useSelector(getTeammateNameDisplaySetting);
+    const messageRef = useRef<HTMLDivElement>(null);
     const caller = useSelector((state: GlobalState) => getUser(state, call.callerID));
+    const [callerName, others] = useGetCallerNameAndOthers(call, 10);
+    const [showTooltip, setShowTooltip] = useState(false);
 
     const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
     const onContainerClick = useOnChannelLinkClick(call);
@@ -36,16 +41,26 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     // Do not allow clicks in the webapp expanded view because Safari does not let us switch and focus parent.
     const onWebappExpanded = !isDesktopApp() && window.location.pathname.includes(`${pluginId}/expanded/`);
 
-    const callerName = displayUsername(caller, teammateNameDisplay, false);
+    useEffect(() => {
+        const show = Boolean(messageRef?.current && messageRef.current.clientWidth < messageRef.current.scrollWidth);
+        setShowTooltip(show);
+    }, [messageRef]);
+
     const message = (
         <FormattedMessage
-            defaultMessage={'Call from <b>{callerName}</b>'}
+            defaultMessage={'Call from <b>{callerName}</b> with <b>{others}</b>'}
             values={{
                 b: (text: string) => <b>{text}</b>,
                 callerName,
+                others,
             }}
         />
     );
+
+    let tooltip = formatMessage({defaultMessage: 'Call from {callerName}'}, {callerName});
+    if (call.type === ChannelType.GM) {
+        tooltip = formatMessage({defaultMessage: 'Call from {callerName} with {others}'}, {callerName, others});
+    }
 
     return (
         <Container
@@ -59,9 +74,19 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
                     size={20}
                     border={false}
                 />
-                <Message>
-                    {message}
-                </Message>
+                <OverlayTrigger
+                    placement='top'
+                    overlay={
+                        <Tooltip id='tooltip-invite-message'>
+                            {tooltip}
+                        </Tooltip>
+                    }
+                    trigger={showTooltip ? ['hover', 'focus'] : []}
+                >
+                    <Message ref={messageRef}>
+                        {message}
+                    </Message>
+                </OverlayTrigger>
                 <SmallJoinButton
                     border={joinButtonBorder}
                     onClick={onJoin}
