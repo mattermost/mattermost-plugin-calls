@@ -9,13 +9,13 @@ import styled, {css} from 'styled-components';
 
 import {isDesktopApp} from 'src/utils';
 import {pluginId} from 'src/manifest';
-import {useDismissJoin, useOnChannelLinkClick, useRingingAndNotification} from 'src/components/incoming_calls/hooks';
 import Avatar from 'src/components/avatar/avatar';
 import {Button} from 'src/components/buttons';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {
     useDismissJoin,
     useGetCallerNameAndOthers,
+    useOnChannelLinkClick,
     useRingingAndNotification,
 } from 'src/components/incoming_calls/hooks';
 import {ChannelType, IncomingCallNotification} from 'src/types/types';
