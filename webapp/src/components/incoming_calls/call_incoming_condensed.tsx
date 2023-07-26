@@ -34,8 +34,8 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     const [callerName, others] = useGetCallerNameAndOthers(call, 10);
     const [showTooltip, setShowTooltip] = useState(false);
 
-    const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
-    const onContainerClick = useOnChannelLinkClick(call);
+    const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID, onWidget);
+    const onContainerClick = useOnChannelLinkClick(call, onWidget);
     useRingingAndNotification(call, onWidget);
 
     // Do not allow clicks in the webapp expanded view because Safari does not let us switch and focus parent.
