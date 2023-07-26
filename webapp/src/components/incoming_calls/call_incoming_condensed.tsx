@@ -5,15 +5,17 @@ import React, {useEffect, useRef, useState} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-
 import styled, {css} from 'styled-components';
 
+import {isDesktopApp} from 'src/utils';
+import {pluginId} from 'src/manifest';
 import Avatar from 'src/components/avatar/avatar';
 import {Button} from 'src/components/buttons';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {
     useDismissJoin,
     useGetCallerNameAndOthers,
+    useOnChannelLinkClick,
     useRingingAndNotification,
 } from 'src/components/incoming_calls/hooks';
 import {ChannelType, IncomingCallNotification} from 'src/types/types';
@@ -32,8 +34,12 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     const [callerName, others] = useGetCallerNameAndOthers(call, 10);
     const [showTooltip, setShowTooltip] = useState(false);
 
-    useRingingAndNotification(call, onWidget);
     const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
+    const onContainerClick = useOnChannelLinkClick(call);
+    useRingingAndNotification(call, onWidget);
+
+    // Do not allow clicks in the webapp expanded view because Safari does not let us switch and focus parent.
+    const onWebappExpanded = !isDesktopApp() && window.location.pathname.includes(`${pluginId}/expanded/`);
 
     useEffect(() => {
         const show = Boolean(messageRef?.current && messageRef.current.clientWidth < messageRef.current.scrollWidth);
@@ -57,7 +63,11 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     }
 
     return (
-        <Container className={className}>
+        <Container
+            className={className}
+            onClick={onContainerClick}
+            disabled={onWebappExpanded}
+        >
             <Inner>
                 <Avatar
                     url={Client4.getProfilePictureUrl(caller.id, caller.last_picture_update)}
@@ -92,9 +102,11 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     );
 };
 
-const Container = styled.div`
+const Container = styled.button`
     border-radius: 8px;
     background-color: var(--online-indicator);
+    padding: 0;
+    border: 0;
 `;
 
 const Inner = styled.div`
