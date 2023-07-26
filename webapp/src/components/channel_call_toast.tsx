@@ -52,9 +52,6 @@ const ChannelCallToast = () => {
     }
 
     const timestampFn = () => callStartedTimestampFn(intl, call?.startAt);
-    const onDismissClick = () => {
-        onDismiss();
-    };
 
     return (
         <div
@@ -112,7 +109,7 @@ const ChannelCallToast = () => {
 
             <div
                 className='toast__dismiss'
-                onClick={onDismissClick}
+                onClick={onDismiss}
             >
                 <span className='close-btn'>
                     <svg

@@ -70,7 +70,7 @@ const mapStateToProps = (state: GlobalState) => {
         connectedDMUser = getUser(state, otherID);
     }
 
-    const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
+    const {channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
 
     const thread = getThread(state, threadID);
 
@@ -88,7 +88,6 @@ const mapStateToProps = (state: GlobalState) => {
         screenSharingID,
         channel,
         channelTeam,
-        channelURL,
         channelDisplayName,
         connectedDMUser,
         threadID,
