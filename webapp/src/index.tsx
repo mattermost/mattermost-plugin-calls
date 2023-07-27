@@ -765,19 +765,22 @@ export default class Plugin {
             return actions;
         };
 
-        let configRetrieved = false;
+        // Run onActivate once we're logged in.
+        const unsubscribeActivateListener = store.subscribe(() => {
+            if (getCurrentUserId(store.getState())) {
+                onActivate();
+            }
+        });
+
         const onActivate = async () => {
             if (!getCurrentUserId(store.getState())) {
-                // not logged in, returning.
+                // not logged in, returning. Shouldn't happen, but being defensive.
                 return;
             }
 
-            const res = await store.dispatch(getCallsConfig());
+            unsubscribeActivateListener();
 
-            // @ts-ignore
-            if (!res.error) {
-                configRetrieved = true;
-            }
+            await store.dispatch(getCallsConfig());
 
             const actions = await fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
@@ -823,20 +826,12 @@ export default class Plugin {
             onActivate();
         });
 
-        onActivate();
-
         let currChannelId = getCurrentChannelId(store.getState());
         let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
-
-                // If we haven't retrieved config, user must not have been logged in during onActivate
-                if (!configRetrieved) {
-                    store.dispatch(getCallsConfig());
-                    configRetrieved = true;
-                }
 
                 fetchChannelData(currChannelId).then((actions) =>
                     store.dispatch(batchActions(actions)),

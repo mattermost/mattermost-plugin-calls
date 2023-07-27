@@ -115,7 +115,6 @@ interface Props extends RouteComponentProps {
     screenSharingID: string,
     channel: Channel,
     channelTeam: Team,
-    channelURL: string;
     channelDisplayName: string;
     connectedDMUser: UserProfile | undefined,
     threadID: Post['id'],
