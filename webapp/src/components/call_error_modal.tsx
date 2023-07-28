@@ -1,15 +1,15 @@
 import React, {ComponentProps} from 'react';
-import {useIntl} from 'react-intl';
 import {ModalHeader} from 'react-bootstrap';
+import {useIntl} from 'react-intl';
 import styled from 'styled-components';
 
-import GenericModal from 'src/components/generic_modal';
-import LaptopAlertSVG from 'src/components/icons/laptop_alert_svg';
 import {
     rtcPeerErr,
     rtcPeerCloseErr,
     insecureContextErr,
 } from 'src/client';
+import GenericModal from 'src/components/generic_modal';
+import LaptopAlertSVG from 'src/components/icons/laptop_alert_svg';
 import {untranslatable} from 'src/utils';
 
 type CustomProps = {

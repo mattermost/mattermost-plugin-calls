@@ -1,15 +1,13 @@
 import {getMyTeams} from 'mattermost-redux/selectors/entities/teams';
 import React from 'react';
 import {useSelector} from 'react-redux';
-
 import styled from 'styled-components';
 
-import {shouldRenderCallsIncoming} from 'src/utils';
-
-import {useOnACallWithoutGlobalWidget} from 'src/components/incoming_calls/hooks';
-import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
-import {ringingEnabled, sortedIncomingCalls} from 'src/selectors';
 import {CallIncoming} from 'src/components/incoming_calls/call_incoming';
+import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
+import {useOnACallWithoutGlobalWidget} from 'src/components/incoming_calls/hooks';
+import {ringingEnabled, sortedIncomingCalls} from 'src/selectors';
+import {shouldRenderCallsIncoming} from 'src/utils';
 
 export const IncomingCallContainer = () => {
     const enabled = useSelector(ringingEnabled);

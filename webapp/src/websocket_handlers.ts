@@ -1,7 +1,3 @@
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {WebSocketMessage} from '@mattermost/types/websocket';
-
 import {
     CallHostChangedData,
     CallRecordingStateData,
@@ -17,13 +13,14 @@ import {
     UserScreenOnOffData,
     UserVoiceOnOffData,
 } from '@calls/common/lib/types';
+import {WebSocketMessage} from '@mattermost/types/websocket';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected} from 'src/actions';
-
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 import {notificationSounds} from 'src/webapp_globals';
 
-import {Store} from './types/mattermost-webapp';
 import {
     VOICE_CHANNEL_USER_MUTED,
     VOICE_CHANNEL_USER_UNMUTED,
@@ -45,13 +42,7 @@ import {
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
     DISMISS_CALL,
 } from './action_types';
-import {
-    getProfilesByIds,
-    playSound,
-    followThread,
-    getUserDisplayName,
-    getCallsClient,
-} from './utils';
+import {logErr} from './log';
 import {
     connectedChannelID,
     idToProfileInConnectedChannel,
@@ -59,8 +50,14 @@ import {
     shouldPlayJoinUserSound,
     voiceChannelCalls,
 } from './selectors';
-
-import {logErr} from './log';
+import {Store} from './types/mattermost-webapp';
+import {
+    getProfilesByIds,
+    playSound,
+    followThread,
+    getUserDisplayName,
+    getCallsClient,
+} from './utils';
 
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;

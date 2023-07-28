@@ -7,8 +7,6 @@ import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import styled, {css} from 'styled-components';
 
-import {isDesktopApp} from 'src/utils';
-import {pluginId} from 'src/manifest';
 import Avatar from 'src/components/avatar/avatar';
 import {Button} from 'src/components/buttons';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -18,7 +16,9 @@ import {
     useOnChannelLinkClick,
     useRingingAndNotification,
 } from 'src/components/incoming_calls/hooks';
+import {pluginId} from 'src/manifest';
 import {ChannelType, IncomingCallNotification} from 'src/types/types';
+import {isDesktopApp} from 'src/utils';
 
 type Props = {
     call: IncomingCallNotification;

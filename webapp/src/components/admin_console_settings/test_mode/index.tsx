@@ -3,7 +3,6 @@
 
 import React, {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
-
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 import {leftCol, rightCol} from 'src/components/admin_console_settings/common';

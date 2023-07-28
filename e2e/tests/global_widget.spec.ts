@@ -1,7 +1,6 @@
 import {test, expect} from '@playwright/test';
 
 import {baseURL, defaultTeam, pluginID} from '../constants';
-
 import {getChannelNamesForTest, getUserStoragesForTest} from '../utils';
 
 test.describe('global widget', () => {

@@ -1,9 +1,8 @@
+import {encode} from '@msgpack/msgpack/dist';
 import {EventEmitter} from 'events';
 
-import {encode} from '@msgpack/msgpack/dist';
-
-import {pluginId} from './manifest';
 import {logDebug, logInfo, logWarn, logErr} from './log';
+import {pluginId} from './manifest';
 
 const wsMinReconnectRetryTimeMs = 1000; // 1 second
 const wsReconnectionTimeout = 30000; // 30 seconds

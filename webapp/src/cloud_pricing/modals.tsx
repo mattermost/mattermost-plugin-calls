@@ -1,19 +1,16 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {useIntl} from 'react-intl';
+import {Thunk} from 'mattermost-redux/types/actions';
 import React, {ComponentProps} from 'react';
-
+import {useIntl} from 'react-intl';
+import {useDispatch, useSelector} from 'react-redux';
 import styled from 'styled-components';
 
-import {useDispatch, useSelector} from 'react-redux';
-
-import {Thunk} from 'mattermost-redux/types/actions';
-
-import GenericModal from 'src/components/generic_modal';
 import {displayCloudPricing, notifyAdminCloudFreeTrial} from 'src/actions';
-import {isCloudTrialCompleted} from 'src/selectors';
+import GenericModal from 'src/components/generic_modal';
 import {VerticalSpacer} from 'src/components/shared';
+import {isCloudTrialCompleted} from 'src/selectors';
 
 export const IDUser = 'cloud_free_trial_user';
 export const IDAdmin = 'cloud_free_trial_admin';

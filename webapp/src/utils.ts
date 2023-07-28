@@ -2,18 +2,14 @@ import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@calls/common';
 import {UserState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
-
 import {GlobalState} from '@mattermost/types/store';
-
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {DateTime, Duration, DurationLikeObject} from 'luxon';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {Client4} from 'mattermost-redux/client';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
-
 import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
-
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
@@ -21,15 +17,11 @@ import {parseSemVer} from 'semver-parser';
 import CallsClient from 'src/client';
 
 import {logDebug, logErr, logWarn} from './log';
-
 import {pluginId} from './manifest';
-
 import {voiceChannelRootPost} from './selectors';
 import JoinSelfSound from './sounds/join_self.mp3';
 import JoinUserSound from './sounds/join_user.mp3';
-
 import LeaveSelfSound from './sounds/leave_self.mp3';
-
 import {Store} from './types/mattermost-webapp';
 
 export function getPluginStaticPath() {

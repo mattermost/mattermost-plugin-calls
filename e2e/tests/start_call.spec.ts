@@ -2,10 +2,9 @@ import {readFile} from 'fs/promises';
 
 import {test, expect, chromium} from '@playwright/test';
 
+import {adminState} from '../constants';
 import PlaywrightDevPage from '../page';
 import {getChannelNamesForTest, getUsernamesForTest, getUserStoragesForTest} from '../utils';
-
-import {adminState} from '../constants';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
