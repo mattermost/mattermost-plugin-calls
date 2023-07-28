@@ -2,9 +2,9 @@
 // See LICENSE.txt for license information.
 
 import React, {ComponentProps} from 'react';
+import {ModalHeader} from 'react-bootstrap';
 import {useIntl, MessageDescriptor} from 'react-intl';
 import styled from 'styled-components';
-import {ModalHeader} from 'react-bootstrap';
 
 import GenericModal from 'src/components/generic_modal';
 

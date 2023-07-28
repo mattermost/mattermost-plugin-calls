@@ -1,27 +1,13 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {ChangeEvent, useEffect, useState} from 'react';
-import {CustomComponentProps} from 'src/types/mattermost-webapp';
-import {useDispatch, useSelector} from 'react-redux';
-
 import {getLicenseConfig} from 'mattermost-redux/actions/general';
-
+import React, {ChangeEvent, useEffect, useState} from 'react';
 import {FormattedMessage} from 'react-intl';
+import {useDispatch, useSelector} from 'react-redux';
+import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-import {adminStats, isCloud, isOnPremNotEnterprise} from 'src/selectors';
-import {PrimaryButton} from 'src/components/buttons';
-import {HorizontalSpacer, VerticalSpacer} from 'src/components/shared';
-import {modals} from 'src/webapp_globals';
-import {
-    IDOnPremTrialError,
-    IDOnPremTrialSuccess,
-    OnPremTrialError,
-    OnPremTrialSuccess,
-} from 'src/components/admin_console_settings/recordings/modals';
 import {requestOnPremTrialLicense, setRecordingsEnabled} from 'src/actions';
-import {untranslatable} from 'src/utils';
-
 import {
     LabelRow,
     UpgradePill,
@@ -32,6 +18,17 @@ import {
     Footer,
     FooterText, leftCol, rightCol,
 } from 'src/components/admin_console_settings/common';
+import {
+    IDOnPremTrialError,
+    IDOnPremTrialSuccess,
+    OnPremTrialError,
+    OnPremTrialSuccess,
+} from 'src/components/admin_console_settings/recordings/modals';
+import {PrimaryButton} from 'src/components/buttons';
+import {HorizontalSpacer, VerticalSpacer} from 'src/components/shared';
+import {adminStats, isCloud, isOnPremNotEnterprise} from 'src/selectors';
+import {untranslatable} from 'src/utils';
+import {modals} from 'src/webapp_globals';
 
 const EnableRecordings = (props: CustomComponentProps) => {
     const dispatch = useDispatch();

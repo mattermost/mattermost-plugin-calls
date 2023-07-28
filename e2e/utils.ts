@@ -1,8 +1,7 @@
 import {chromium} from '@playwright/test';
 
-import PlaywrightDevPage from './page';
-
 import {userPrefix, channelPrefix} from './constants';
+import PlaywrightDevPage from './page';
 
 export function getChannelNamesForTest() {
     let idx = 0;

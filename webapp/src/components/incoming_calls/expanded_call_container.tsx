@@ -1,10 +1,8 @@
 import React from 'react';
 import {useSelector} from 'react-redux';
-
 import styled from 'styled-components';
 
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
-
 import {ringingEnabled, sortedIncomingCalls} from 'src/selectors';
 
 export const ExpandedCallContainer = () => {

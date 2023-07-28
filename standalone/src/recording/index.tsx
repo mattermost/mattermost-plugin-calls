@@ -1,35 +1,29 @@
+import {UserConnectedData, WebsocketEventData} from '@calls/common/lib/types';
+import {UserProfile} from '@mattermost/types/users';
+import {WebSocketMessage} from '@mattermost/types/websocket';
+import {ChannelTypes} from 'mattermost-redux/action_types';
+import {Client4} from 'mattermost-redux/client';
+import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
+import {Theme} from 'mattermost-redux/types/themes';
+import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/users';
+import {logErr} from 'plugin/log';
+import {pluginId} from 'plugin/manifest';
+import {voiceConnectedProfilesInChannel} from 'plugin/selectors';
+import {Store} from 'plugin/types/mattermost-webapp';
+import {getProfilesByIds, getPluginPath, fetchTranslationsFile, setCallsGlobalCSSVars} from 'plugin/utils';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
-
-import {Store} from 'plugin/types/mattermost-webapp';
-import {Theme} from 'mattermost-redux/types/themes';
-import {UserProfile} from '@mattermost/types/users';
-import {Client4} from 'mattermost-redux/client';
-import {ChannelTypes} from 'mattermost-redux/action_types';
-import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/users';
-import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
-
-import {WebSocketMessage} from '@mattermost/types/websocket';
-
-import {UserConnectedData, WebsocketEventData} from '@calls/common/lib/types';
-
-import {getProfilesByIds, getPluginPath, fetchTranslationsFile, setCallsGlobalCSSVars} from 'plugin/utils';
-import {logErr} from 'plugin/log';
-import {pluginId} from 'plugin/manifest';
-import {voiceConnectedProfilesInChannel} from 'plugin/selectors';
 import {VOICE_CHANNEL_USER_CONNECTED} from 'src/action_types';
 
-import recordingReducer from 'src/recording/reducers';
-
 import init from '../init';
-
-import RecordingView from './components/recording_view';
+import recordingReducer from 'src/recording/reducers';
 
 import {
     RECEIVED_CALL_PROFILE_IMAGES,
 } from './action_types';
+import RecordingView from './components/recording_view';
 
 async function fetchProfileImages(profiles: UserProfile[]) {
     const profileImages: {[userID: string]: string} = {};

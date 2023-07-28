@@ -1,11 +1,11 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import styled from 'styled-components';
 import classNames from 'classnames';
 import React from 'react';
 import {Modal, ModalHeader} from 'react-bootstrap';
 import {FormattedMessage} from 'react-intl';
+import styled from 'styled-components';
 
 import {DestructiveButton, PrimaryButton, TertiaryButton} from 'src/components/buttons';
 

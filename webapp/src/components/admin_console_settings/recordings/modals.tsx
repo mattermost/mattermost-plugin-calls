@@ -1,29 +1,26 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {DateTime} from 'luxon';
+import HandsSvg from 'mattermost-webapp/components/common/svg_images_components/hands_svg';
 import React, {ComponentProps} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {NavLink} from 'react-router-dom';
 
-import HandsSvg from 'mattermost-webapp/components/common/svg_images_components/hands_svg';
-
-import {DateTime} from 'luxon';
-
-import GenericModal from 'src/components/generic_modal';
-import {VerticalSpacer} from 'src/components/shared';
 import {navigateToURL} from 'src/browser_routing';
-
-export const IDOnPremTrialSuccess = 'onprem_trial_success';
-export const IDOnPremTrialError = 'onprem_trial_error';
-
-type Props = Partial<ComponentProps<typeof GenericModal>>;
-
 import {
     ModalTitle,
     StyledModal,
     ModalFooterContainer,
     ModalBody,
 } from 'src/components/admin_console_settings/common';
+import GenericModal from 'src/components/generic_modal';
+import {VerticalSpacer} from 'src/components/shared';
+
+export const IDOnPremTrialSuccess = 'onprem_trial_success';
+export const IDOnPremTrialError = 'onprem_trial_error';
+
+type Props = Partial<ComponentProps<typeof GenericModal>>;
 
 export const OnPremTrialSuccess = (modalProps: Props) => {
     const {formatMessage} = useIntl();

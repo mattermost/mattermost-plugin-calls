@@ -3,8 +3,8 @@ import {OverlayTrigger} from 'react-bootstrap';
 import styled, {css} from 'styled-components';
 
 import CompassIcon from 'src/components/icons/compassIcon';
-import Shortcut from 'src/components/shortcut';
 import {StyledTooltip} from 'src/components/shared';
+import Shortcut from 'src/components/shortcut';
 
 export type Props = {
     id: string,
