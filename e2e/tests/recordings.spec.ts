@@ -1,10 +1,8 @@
 import {test, expect, chromium} from '@playwright/test';
 
 import {baseURL, defaultTeam, pluginID} from '../constants';
-
-import {getUserStoragesForTest} from '../utils';
-
 import PlaywrightDevPage from '../page';
+import {getUserStoragesForTest} from '../utils';
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);

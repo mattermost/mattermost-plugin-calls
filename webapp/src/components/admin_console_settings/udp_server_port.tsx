@@ -2,19 +2,15 @@
 // See LICENSE.txt for license information.
 
 import React, {ChangeEvent} from 'react';
-
-import {CustomComponentProps} from 'src/types/mattermost-webapp';
 import {useSelector} from 'react-redux';
-
-import {useHelptext} from 'src/components/admin_console_settings/hooks';
-
-import {rtcdEnabled} from 'src/selectors';
-
-import manifest from 'src/manifest';
+import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 import {
     LabelRow, leftCol, rightCol,
 } from 'src/components/admin_console_settings/common';
+import {useHelptext} from 'src/components/admin_console_settings/hooks';
+import manifest from 'src/manifest';
+import {rtcdEnabled} from 'src/selectors';
 
 const UDPServerPort = (props: CustomComponentProps) => {
     const isRTCDEnabled = useSelector(rtcdEnabled);

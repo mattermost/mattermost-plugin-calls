@@ -3,12 +3,10 @@ import {useIntl} from 'react-intl';
 
 import CompassIcon from 'src/components/icons/compassIcon';
 import RecordCircleIcon from 'src/components/icons/record_circle';
-
 import {
     CallRecordingDisclaimerStrings,
 } from 'src/constants';
 import {CallRecordingReduxState} from 'src/types/types';
-
 import {
     capitalize,
 } from 'src/utils';

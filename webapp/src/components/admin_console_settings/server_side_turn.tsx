@@ -4,14 +4,11 @@
 import React, {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-import {useHelptext} from 'src/components/admin_console_settings/hooks';
-
-import {rtcdEnabled} from 'src/selectors';
-
 import {leftCol, rightCol} from 'src/components/admin_console_settings/common';
+import {useHelptext} from 'src/components/admin_console_settings/hooks';
+import {rtcdEnabled} from 'src/selectors';
 
 export const ServerSideTURN = (props: CustomComponentProps) => {
     const {formatMessage} = useIntl();

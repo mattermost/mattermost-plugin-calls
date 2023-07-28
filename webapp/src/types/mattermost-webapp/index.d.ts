@@ -1,7 +1,7 @@
+import {CommandArgs} from '@mattermost/types/integrations';
+import {GlobalState} from '@mattermost/types/store';
 import {Store as BaseStore} from 'redux';
 import {ThunkDispatch} from 'redux-thunk';
-import {GlobalState} from '@mattermost/types/store';
-import {CommandArgs} from '@mattermost/types/integrations';
 
 export type Translations = {
     [key: string]: string;

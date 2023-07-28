@@ -1,31 +1,23 @@
-import React, {useCallback} from 'react';
-import {useSelector} from 'react-redux';
-import {useIntl} from 'react-intl';
-
-import styled from 'styled-components';
-
+import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
-import {Post} from '@mattermost/types/posts';
-
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-
-import {getUser} from 'mattermost-redux/selectors/entities/users';
-
 import {DateTime, Duration as LuxonDuration} from 'luxon';
+import {getUser} from 'mattermost-redux/selectors/entities/users';
+import React, {useCallback} from 'react';
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+import {useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
+import styled from 'styled-components';
 
-import {voiceChannelCallID} from 'src/selectors';
-
-import {useDismissJoin} from 'src/components/incoming_calls/hooks';
-
-import Timestamp from 'src/components/timestamp';
-import CompassIcon from 'src/components/icons/compassIcon';
+import ConnectedProfiles from 'src/components/connected_profiles';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
+import CompassIcon from 'src/components/icons/compassIcon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
-import ConnectedProfiles from 'src/components/connected_profiles';
+import {useDismissJoin} from 'src/components/incoming_calls/hooks';
 import {Header, SubHeader} from 'src/components/shared';
-
+import Timestamp from 'src/components/timestamp';
+import {voiceChannelCallID} from 'src/selectors';
 import {
     shouldRenderDesktopWidget,
     sendDesktopEvent,
