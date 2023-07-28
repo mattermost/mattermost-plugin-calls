@@ -8,6 +8,12 @@ import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import styled from 'styled-components';
 
+import {
+    useDismissJoin,
+    useGetCallerNameAndOthers,
+    useOnChannelLinkClick,
+    useRingingAndNotification,
+} from 'src/components/incoming_calls/hooks';
 import Avatar from 'src/components/avatar/avatar';
 import {Button} from 'src/components/buttons';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -20,10 +26,13 @@ type Props = {
 
 export const CallIncoming = ({call}: Props) => {
     const {formatMessage} = useIntl();
-    const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
-    useRingingAndNotification(call, false);
+
     const caller = useSelector((state: GlobalState) => getUser(state, call.callerID));
+
+    const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
     const [callerName, others] = useGetCallerNameAndOthers(call, 2);
+    const onContainerClick = useOnChannelLinkClick(call);
+    useRingingAndNotification(call, false);
 
     let message;
     if (call.type === ChannelType.DM) {
@@ -50,7 +59,7 @@ export const CallIncoming = ({call}: Props) => {
     }
 
     return (
-        <Container>
+        <Container onClick={onContainerClick}>
             <Inner>
                 <Row>
                     <Avatar
@@ -88,6 +97,7 @@ export const CallIncoming = ({call}: Props) => {
 const Container = styled.div`
     border-radius: 8px;
     background-color: var(--online-indicator);
+    cursor: pointer;
 `;
 
 const Inner = styled.div`

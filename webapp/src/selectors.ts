@@ -8,6 +8,9 @@ import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/commo
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/entities/roles';
+import {Team} from '@mattermost/types/teams';
+import {getAllChannels, getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentTeamId, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {
     getCurrentUserId,
     getUsers,
@@ -72,8 +75,28 @@ export const channelHasCall = (state: GlobalState, channelId: string): boolean =
 export const connectedChannelID = (state: GlobalState): string | null =>
     pluginState(state).connectedChannelID;
 
+export const connectedChannel: (state: GlobalState) => Channel | null =
+    createSelector(
+        'connectedChannel',
+        getAllChannels,
+        connectedChannelID,
+        (channels, id) => channels[id || ''],
+    );
+
 export const connectedCallID = (state: GlobalState): string | undefined =>
     pluginState(state).voiceChannelCalls[pluginState(state).connectedChannelID]?.ID;
+
+export const connectedTeam: (state: GlobalState) => Team | null =
+    createSelector(
+        'connectedTeam',
+        getTeams,
+        connectedChannel,
+        getCurrentTeamId,
+        (teams, channel, currentTeamID) => {
+            const teamID = channel?.team_id || currentTeamID;
+            return teams[teamID];
+        },
+    );
 
 const numUsersInConnectedChannel = (state: GlobalState) => {
     const connectedChannelId = connectedChannelID(state) || '';

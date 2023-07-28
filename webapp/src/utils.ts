@@ -68,6 +68,9 @@ export function getChannelURL(state: GlobalState, channel: Channel, teamId: stri
         const redirectChannel = getRedirectChannelNameForTeam(state, currentTeamId);
         channelURL = getCurrentRelativeTeamUrl(state) + `/channels/${redirectChannel}`;
     }
+    if (channelURL.startsWith('//')) {
+        channelURL = channelURL.slice(1);
+    }
     return channelURL;
 }
 
