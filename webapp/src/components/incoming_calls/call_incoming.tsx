@@ -8,16 +8,15 @@ import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import styled from 'styled-components';
 
+import Avatar from 'src/components/avatar/avatar';
+import {Button} from 'src/components/buttons';
+import CompassIcon from 'src/components/icons/compassIcon';
 import {
     useDismissJoin,
     useGetCallerNameAndOthers,
     useOnChannelLinkClick,
     useRingingAndNotification,
 } from 'src/components/incoming_calls/hooks';
-import Avatar from 'src/components/avatar/avatar';
-import {Button} from 'src/components/buttons';
-import CompassIcon from 'src/components/icons/compassIcon';
-import {useDismissJoin, useGetCallerNameAndOthers, useRingingAndNotification} from 'src/components/incoming_calls/hooks';
 import {ChannelType, IncomingCallNotification} from 'src/types/types';
 
 type Props = {

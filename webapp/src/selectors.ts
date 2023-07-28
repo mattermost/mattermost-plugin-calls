@@ -2,14 +2,13 @@ import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {LicenseSkus} from '@mattermost/types/general';
 import {GlobalState} from '@mattermost/types/store';
+import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
-import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getAllChannels, getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/entities/roles';
-import {Team} from '@mattermost/types/teams';
-import {getAllChannels, getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {
     getCurrentUserId,
