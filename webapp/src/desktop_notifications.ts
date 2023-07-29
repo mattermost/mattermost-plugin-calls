@@ -1,6 +1,5 @@
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
-
 import {DesktopNotificationArgs, Store} from 'src/types/mattermost-webapp';
 
 import {ringingEnabled} from 'src/selectors';
