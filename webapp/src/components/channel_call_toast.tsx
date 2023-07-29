@@ -1,9 +1,8 @@
+import {Client4} from 'mattermost-redux/client';
+import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import React, {useMemo, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-
-import {Client4} from 'mattermost-redux/client';
-import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 
 import ConnectedProfiles from 'src/components/connected_profiles';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
@@ -52,9 +51,6 @@ const ChannelCallToast = () => {
     }
 
     const timestampFn = () => callStartedTimestampFn(intl, call?.startAt);
-    const onDismissClick = () => {
-        onDismiss();
-    };
 
     return (
         <div
@@ -112,7 +108,7 @@ const ChannelCallToast = () => {
 
             <div
                 className='toast__dismiss'
-                onClick={onDismissClick}
+                onClick={onDismiss}
             >
                 <span className='close-btn'>
                     <svg

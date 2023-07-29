@@ -1,16 +1,12 @@
 import {UserState} from '@calls/common/lib/types';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
-
 import {Client4} from 'mattermost-redux/client';
-
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
-
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {connect} from 'react-redux';
-
 import {withRouter} from 'react-router-dom';
 
 import {
@@ -37,9 +33,7 @@ import {
     voiceConnectedProfiles,
     voiceUsersStatuses,
 } from 'src/selectors';
-
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
-
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
 
 import ExpandedView from './component';
@@ -70,7 +64,7 @@ const mapStateToProps = (state: GlobalState) => {
         connectedDMUser = getUser(state, otherID);
     }
 
-    const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
+    const {channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
 
     const thread = getThread(state, threadID);
 
@@ -88,7 +82,6 @@ const mapStateToProps = (state: GlobalState) => {
         screenSharingID,
         channel,
         channelTeam,
-        channelURL,
         channelDisplayName,
         connectedDMUser,
         threadID,

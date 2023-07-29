@@ -1,26 +1,22 @@
-import {defineMessage} from 'react-intl';
 
 import {CommandArgs} from '@mattermost/types/integrations';
-
-import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {ActionResult} from 'mattermost-redux/types/actions';
-import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {ActionResult} from 'mattermost-redux/types/actions';
+import {defineMessage} from 'react-intl';
 
-import * as Telemetry from 'src/types/telemetry';
-
+import {SHOW_END_CALL_MODAL} from 'src/action_types';
 import {
     startCallRecording,
     stopCallRecording,
     displayGenericErrorModal,
     trackEvent,
 } from 'src/actions';
-import {SHOW_END_CALL_MODAL} from 'src/action_types';
 import {DisabledCallsErr} from 'src/constants';
+import * as Telemetry from 'src/types/telemetry';
 
-import {Store} from './types/mattermost-webapp';
 import {logDebug} from './log';
-import {sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 import {
     connectedChannelID,
     voiceConnectedUsersInChannel,
@@ -28,6 +24,8 @@ import {
     voiceChannelCallHostID,
     callRecording,
 } from './selectors';
+import {Store} from './types/mattermost-webapp';
+import {sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
 type joinCallFn = (channelId: string, teamId: string, title?: string, rootId?: string) => void;
 

@@ -1,4 +1,15 @@
-import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
+import {Channel} from '@mattermost/types/channels';
+import {LicenseSkus} from '@mattermost/types/general';
+import {GlobalState} from '@mattermost/types/store';
+import {Team} from '@mattermost/types/teams';
+import {UserProfile} from '@mattermost/types/users';
+import {getAllChannels, getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
+import {getLicense} from 'mattermost-redux/selectors/entities/general';
+import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
+import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/entities/roles';
+import {getCurrentTeamId, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {
     getCurrentUserId,
     getUsers,
@@ -6,15 +17,6 @@ import {
     isCurrentUserSystemAdmin,
     getUserStatuses,
 } from 'mattermost-redux/selectors/entities/users';
-import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
-import {getLicense} from 'mattermost-redux/selectors/entities/general';
-import {createSelector} from 'reselect';
-
-import {GlobalState} from '@mattermost/types/store';
-import {LicenseSkus} from '@mattermost/types/general';
-import {Channel} from '@mattermost/types/channels';
-import {UserProfile} from '@mattermost/types/users';
-
 import {
     getGroupDisplayNameFromUserIds,
     getUserIdFromChannelName,
@@ -22,18 +24,11 @@ import {
     isGroupChannel,
 } from 'mattermost-redux/utils/channel_utils';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
-
-import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/entities/roles';
-
-import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
-
-import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
+import {createSelector} from 'reselect';
 
 import {callState} from 'src/reducers';
-
-import {getChannelURL} from 'src/utils';
-
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
+import {getChannelURL} from 'src/utils';
 
 import {pluginId} from './manifest';
 
@@ -79,8 +74,28 @@ export const channelHasCall = (state: GlobalState, channelId: string): boolean =
 export const connectedChannelID = (state: GlobalState): string | null =>
     pluginState(state).connectedChannelID;
 
+export const connectedChannel: (state: GlobalState) => Channel | null =
+    createSelector(
+        'connectedChannel',
+        getAllChannels,
+        connectedChannelID,
+        (channels, id) => channels[id || ''],
+    );
+
 export const connectedCallID = (state: GlobalState): string | undefined =>
     pluginState(state).voiceChannelCalls[pluginState(state).connectedChannelID]?.ID;
+
+export const connectedTeam: (state: GlobalState) => Team | null =
+    createSelector(
+        'connectedTeam',
+        getTeams,
+        connectedChannel,
+        getCurrentTeamId,
+        (teams, channel, currentTeamID) => {
+            const teamID = channel?.team_id || currentTeamID;
+            return teams[teamID];
+        },
+    );
 
 const numUsersInConnectedChannel = (state: GlobalState) => {
     const connectedChannelId = connectedChannelID(state) || '';

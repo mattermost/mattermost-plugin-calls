@@ -1,21 +1,41 @@
 /* eslint-disable max-lines */
+import {mosThreshold} from '@calls/common';
+import {UserState} from '@calls/common/lib/types';
+import {Channel} from '@mattermost/types/channels';
+import {Team} from '@mattermost/types/teams';
+import {UserProfile} from '@mattermost/types/users';
+import {IDMappedObjects} from '@mattermost/types/utilities';
+import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 
-import {UserProfile} from '@mattermost/types/users';
-import {Channel} from '@mattermost/types/channels';
-import {Team} from '@mattermost/types/teams';
-import {IDMappedObjects} from '@mattermost/types/utilities';
-import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
-
-import {UserState} from '@calls/common/lib/types';
-import {mosThreshold} from '@calls/common';
-
+import {AudioInputPermissionsError} from 'src/client';
+import Avatar from 'src/components/avatar/avatar';
+import Badge from 'src/components/badge';
+import {Emoji} from 'src/components/emoji/emoji';
+import CompassIcon from 'src/components/icons/compassIcon';
+import ExpandIcon from 'src/components/icons/expand';
+import HandEmoji from 'src/components/icons/hand';
+import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
+import LeaveCallIcon from 'src/components/icons/leave_call_icon';
+import MutedIcon from 'src/components/icons/muted_icon';
+import ParticipantsIcon from 'src/components/icons/participants';
+import PopOutIcon from 'src/components/icons/popout';
+import RaisedHandIcon from 'src/components/icons/raised_hand';
+import RecordCircleIcon from 'src/components/icons/record_circle';
+import ScreenIcon from 'src/components/icons/screen_icon';
+import SettingsWheelIcon from 'src/components/icons/settings_wheel';
+import ShareScreenIcon from 'src/components/icons/share_screen';
+import ShowMoreIcon from 'src/components/icons/show_more';
+import SpeakerIcon from 'src/components/icons/speaker_icon';
+import TickIcon from 'src/components/icons/tick';
+import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import UnraisedHandIcon from 'src/components/icons/unraised_hand';
+import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
-
-import * as Telemetry from 'src/types/telemetry';
-import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
+import {CallAlertConfigs, CallRecordingDisclaimerStrings} from 'src/constants';
+import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
     LEAVE_CALL,
@@ -25,31 +45,7 @@ import {
     reverseKeyMappings,
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
-import {CallAlertConfigs, CallRecordingDisclaimerStrings} from 'src/constants';
-import {logDebug, logErr} from 'src/log';
-import Avatar from 'src/components/avatar/avatar';
-import MutedIcon from 'src/components/icons/muted_icon';
-import UnmutedIcon from 'src/components/icons/unmuted_icon';
-import LeaveCallIcon from 'src/components/icons/leave_call_icon';
-import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
-import SettingsWheelIcon from 'src/components/icons/settings_wheel';
-import ParticipantsIcon from 'src/components/icons/participants';
-import ShowMoreIcon from 'src/components/icons/show_more';
-import CompassIcon from 'src/components/icons/compassIcon';
-import ScreenIcon from 'src/components/icons/screen_icon';
-import ShareScreenIcon from 'src/components/icons/share_screen';
-import UnshareScreenIcon from 'src/components/icons/unshare_screen';
-import PopOutIcon from 'src/components/icons/popout';
-import ExpandIcon from 'src/components/icons/expand';
-import RaisedHandIcon from 'src/components/icons/raised_hand';
-import UnraisedHandIcon from 'src/components/icons/unraised_hand';
-import HandEmoji from 'src/components/icons/hand';
-import SpeakerIcon from 'src/components/icons/speaker_icon';
-import TickIcon from 'src/components/icons/tick';
-import RecordCircleIcon from 'src/components/icons/record_circle';
-import Badge from 'src/components/badge';
-import {AudioInputPermissionsError} from 'src/client';
-import {Emoji} from 'src/components/emoji/emoji';
+import * as Telemetry from 'src/types/telemetry';
 import {
     AudioDevices,
     CallAlertStates,
@@ -57,13 +53,14 @@ import {
     CallRecordingReduxState,
     IncomingCallNotification,
 } from 'src/types/types';
+import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
 
 import CallDuration from './call_duration';
+import JoinNotification from './join_notification';
+import LoadingOverlay from './loading_overlay';
+import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
-import UnavailableIconWrapper from './unavailable_icon_wrapper';
-import LoadingOverlay from './loading_overlay';
-import JoinNotification from './join_notification';
 
 import './component.scss';
 

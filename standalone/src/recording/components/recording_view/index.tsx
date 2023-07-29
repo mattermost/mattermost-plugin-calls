@@ -1,24 +1,20 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {UserState} from '@calls/common/lib/types';
+import {GlobalState} from '@mattermost/types/store';
+import {UserProfile} from '@mattermost/types/users';
+import Avatar from 'plugin/components/avatar/avatar';
+import CallParticipant from 'plugin/components/expanded_view/call_participant';
+import {ReactionStream} from 'plugin/components/reaction_stream/reaction_stream';
+import {logErr} from 'plugin/log';
+import {alphaSortProfiles, getUserDisplayName, stateSortProfiles, untranslatable} from 'plugin/utils';
 import React, {useEffect, useState, useCallback} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-
-import {GlobalState} from '@mattermost/types/store';
-import {UserProfile} from '@mattermost/types/users';
-
-import {UserState} from '@calls/common/lib/types';
-
-import {logErr} from 'plugin/log';
-import {alphaSortProfiles, getUserDisplayName, stateSortProfiles, untranslatable} from 'plugin/utils';
-import Avatar from 'plugin/components/avatar/avatar';
-import CallParticipant from 'plugin/components/expanded_view/call_participant';
+import ScreenIcon from 'src/components/icons/screen_icon';
 import Timestamp from 'src/components/timestamp';
 import {voiceChannelCallHostID, voiceChannelScreenSharingID, voiceConnectedProfiles, voiceUsersStatuses} from 'src/selectors';
-import ScreenIcon from 'src/components/icons/screen_icon';
-
-import {ReactionStream} from 'plugin/components/reaction_stream/reaction_stream';
 
 import {callProfileImages} from 'src/recording/selectors';
 

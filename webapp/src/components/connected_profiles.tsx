@@ -1,8 +1,7 @@
+import {UserProfile} from '@mattermost/types/users';
 import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
-
-import {UserProfile} from '@mattermost/types/users';
 
 import {getUserDisplayName, split} from '../utils';
 

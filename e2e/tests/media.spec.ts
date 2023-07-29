@@ -1,10 +1,8 @@
 import {test, expect, chromium} from '@playwright/test';
 
 import {baseURL, defaultTeam, pluginID} from '../constants';
-
-import {getUserStoragesForTest, startCall} from '../utils';
-
 import PlaywrightDevPage from '../page';
+import {getUserStoragesForTest, startCall} from '../utils';
 
 const userStorages = getUserStoragesForTest();
 
