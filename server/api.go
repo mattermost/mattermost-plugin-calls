@@ -260,12 +260,13 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 
 	userID := r.Header.Get("Mattermost-User-Id")
 
-	state, err := p.kvGetChannelState(channelID)
+	state, err := p.lockCall(channelID)
 	if err != nil {
-		res.Err = err.Error()
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
+	defer p.unlockCall(channelID)
 
 	if state == nil || state.Call == nil {
 		res.Err = "no call ongoing"
@@ -273,33 +274,21 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	callID := state.Call.ID
+	if state.Call.DismissedNotification == nil {
+		state.Call.DismissedNotification = make(map[string]bool)
+	}
+	state.Call.DismissedNotification[userID] = true
 
-	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil || state.Call == nil {
-			return nil, nil
-		}
-
-		if state.Call.ID != callID {
-			return nil, fmt.Errorf("previous call has ended and new one has started")
-		}
-
-		if state.Call.DismissedNotification == nil {
-			state.Call.DismissedNotification = make(map[string]bool)
-		}
-		state.Call.DismissedNotification[userID] = true
-
-		return state, nil
-	}); err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusForbidden
+	if err := p.kvSetChannelState(channelID, state); err != nil {
+		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
 	// For now, only send to the user that dismissed the notification. May change in the future.
 	p.publishWebSocketEvent(wsEventUserDismissedNotification, map[string]interface{}{
 		"userID": userID,
-		"callID": callID,
+		"callID": state.Call.ID,
 	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 
 	res.Code = http.StatusOK
