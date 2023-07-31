@@ -1,24 +1,24 @@
 /* eslint-disable max-lines */
 
+import {UserState, CallChannelState} from '@calls/common/lib/types';
+import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
+import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
+import {Client4} from 'mattermost-redux/client';
+import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
+import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {
+    getCurrentUserId,
+    getUser,
+    isCurrentUserSystemAdmin,
+} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
-
 import {AnyAction} from 'redux';
-
-import {Client4} from 'mattermost-redux/client';
-import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
-import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
-import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
-import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
-
 import {batchActions} from 'redux-batched-actions';
-
-import {UserState, CallChannelState} from '@calls/common/lib/types';
 
 import {
     displayFreeTrial,
@@ -26,101 +26,28 @@ import {
     displayCallErrorModal,
     showScreenSourceModal,
     displayCallsTestModeUser,
+    incomingCallOnChannel,
+    showSwitchCallModal,
 } from 'src/actions';
-
-import slashCommandsHandler from 'src/slash_commands';
-
+import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
+import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
+import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
+import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
+import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
+import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
+import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
+import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
+import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
+import TCPServerPort from 'src/components/admin_console_settings/tcp_server_port';
+import TestMode from 'src/components/admin_console_settings/test_mode';
+import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
+import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
-import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
-import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
-import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
-import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
-import TestMode from 'src/components/admin_console_settings/test_mode';
-import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
-import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
-import TCPServerPort from 'src/components/admin_console_settings/tcp_server_port';
-import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
-import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
-import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
-import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
-import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
-
+import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import {DisabledCallsErr} from 'src/constants';
+import slashCommandsHandler from 'src/slash_commands';
 import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
-
-import {
-    handleUserConnected,
-    handleUserDisconnected,
-    handleCallStart,
-    handleCallEnd,
-    handleUserMuted,
-    handleUserUnmuted,
-    handleUserScreenOn,
-    handleUserScreenOff,
-    handleUserVoiceOn,
-    handleUserVoiceOff,
-    handleUserRaisedHand,
-    handleUserUnraisedHand,
-    handleUserReaction,
-    handleCallHostChanged,
-    handleCallRecordingState,
-} from './websocket_handlers';
-
-import {
-    connectedChannelID,
-    voiceConnectedUsers,
-    voiceConnectedUsersInChannel,
-    voiceChannelCallStartAt,
-    isLimitRestricted,
-    iceServers,
-    needsTURNCredentials,
-    defaultEnabled,
-    isCloudStarter,
-    channelHasCall,
-    callsExplicitlyEnabled,
-    callsExplicitlyDisabled,
-    hasPermissionsToEnableCalls,
-    callsConfig,
-} from './selectors';
-
-import {pluginId} from './manifest';
-
-import CallsClient from './client';
-
-import ChannelHeaderButton from './components/channel_header_button';
-import ChannelHeaderDropdownButton from './components/channel_header_dropdown_button';
-import ChannelHeaderMenuButton from './components/channel_header_menu_button';
-import CallWidget from './components/call_widget';
-import ChannelLinkLabel from './components/channel_link_label';
-import ChannelCallToast from './components/channel_call_toast';
-import PostType from './components/custom_post_types/post_type';
-import ExpandedView from './components/expanded_view';
-import SwitchCallModal from './components/switch_call_modal';
-import ScreenSourceModal from './components/screen_source_modal';
-import EndCallModal from './components/end_call_modal';
-
-import reducer from './reducers';
-
-import {
-    getPluginPath,
-    getExpandedChannelID,
-    getProfilesByIds,
-    isDMChannel,
-    getUserIdFromDM,
-    getWSConnectionURL,
-    playSound,
-    followThread,
-    shouldRenderDesktopWidget,
-    sendDesktopEvent,
-    getChannelURL,
-    getTranslations,
-} from './utils';
-import {logErr, logDebug} from './log';
-import {
-    JOIN_CALL,
-    keyToAction,
-} from './shortcuts';
 
 import {
     RECEIVED_CHANNEL_STATE,
@@ -141,7 +68,76 @@ import {
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
 } from './action_types';
+import CallsClient from './client';
+import CallWidget from './components/call_widget';
+import ChannelCallToast from './components/channel_call_toast';
+import ChannelHeaderButton from './components/channel_header_button';
+import ChannelHeaderDropdownButton from './components/channel_header_dropdown_button';
+import ChannelHeaderMenuButton from './components/channel_header_menu_button';
+import ChannelLinkLabel from './components/channel_link_label';
+import PostType from './components/custom_post_types/post_type';
+import EndCallModal from './components/end_call_modal';
+import ExpandedView from './components/expanded_view';
+import ScreenSourceModal from './components/screen_source_modal';
+import SwitchCallModal from './components/switch_call_modal';
+import {logErr, logDebug} from './log';
+import {pluginId} from './manifest';
+import reducer from './reducers';
+import {
+    connectedChannelID,
+    voiceConnectedUsers,
+    voiceConnectedUsersInChannel,
+    voiceChannelCallStartAt,
+    isLimitRestricted,
+    iceServers,
+    needsTURNCredentials,
+    defaultEnabled,
+    isCloudStarter,
+    channelHasCall,
+    callsExplicitlyEnabled,
+    callsExplicitlyDisabled,
+    hasPermissionsToEnableCalls,
+    callsConfig,
+    ringingEnabled,
+} from './selectors';
+import {
+    JOIN_CALL,
+    keyToAction,
+} from './shortcuts';
 import {PluginRegistry, Store} from './types/mattermost-webapp';
+import {
+    getPluginPath,
+    getExpandedChannelID,
+    getProfilesByIds,
+    isDMChannel,
+    getUserIdFromDM,
+    getWSConnectionURL,
+    playSound,
+    followThread,
+    shouldRenderDesktopWidget,
+    sendDesktopEvent,
+    getChannelURL,
+    getTranslations,
+    desktopGTE,
+} from './utils';
+import {
+    handleUserConnected,
+    handleUserDisconnected,
+    handleCallStart,
+    handleCallEnd,
+    handleUserMuted,
+    handleUserUnmuted,
+    handleUserScreenOn,
+    handleUserScreenOff,
+    handleUserVoiceOn,
+    handleUserVoiceOff,
+    handleUserRaisedHand,
+    handleUserUnraisedHand,
+    handleUserReaction,
+    handleCallHostChanged,
+    handleCallRecordingState,
+    handleUserDismissedNotification,
+} from './websocket_handlers';
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
@@ -229,6 +225,10 @@ export default class Plugin {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_state`, (ev) => {
             handleCallRecordingState(store, ev);
         });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_dismissed_notification`, (ev) => {
+            handleUserDismissedNotification(store, ev);
+        });
     }
 
     private initialize(registry: PluginRegistry, store: Store) {
@@ -258,6 +258,7 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
         registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
         registry.registerGlobalComponent(injectIntl(EndCallModal));
+        registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
 
         registry.registerTranslations((locale: string) => {
             return getTranslations(locale);
@@ -529,10 +530,19 @@ export default class Plugin {
             } else if (ev.data?.type === 'desktop-sources-modal-request') {
                 store.dispatch(showScreenSourceModal());
             } else if (ev.data?.type === 'calls-joined-call') {
+                if (!desktopGTE(5, 5) && ev.data.message.type === 'calls-join-request') {
+                    // This `calls-joined-call` message has been repurposed as a `calls-join-request` message
+                    // because the current desktop version (< 5.5) does not have a dedicated `calls-join-request` message.
+                    store.dispatch(showSwitchCallModal(ev.data.message.callID));
+                    return;
+                }
                 store.dispatch({
                     type: DESKTOP_WIDGET_CONNECTED,
                     data: {channelID: ev.data.message.callID},
                 });
+            } else if (ev.data?.type === 'calls-join-request') {
+                // we can assume that we are already in a call, since the global widget sent this.
+                store.dispatch(showSwitchCallModal(ev.data.message.callID));
             } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error') {
                 store.dispatch(displayCallErrorModal(ev.data.message.callID, new Error(ev.data.message.errMsg)));
             } else if (ev.data?.type === 'calls-run-slash-command') {
@@ -550,7 +560,7 @@ export default class Plugin {
                 ChannelHeaderMenuButton,
                 async () => {
                     try {
-                        const data = await Client4.doFetch<{enabled: boolean}>(`${getPluginPath()}/${currChannelId}`, {
+                        const data = await Client4.doFetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
                             method: 'post',
                             body: JSON.stringify({enabled: callsExplicitlyDisabled(store.getState(), currChannelId)}),
                         });
@@ -583,12 +593,26 @@ export default class Plugin {
                         actions.push({
                             type: VOICE_CHANNEL_CALL_START,
                             data: {
+                                ID: data[i].call?.id,
                                 channelID: data[i].channel_id,
                                 startAt: data[i].call?.start_at,
                                 ownerID: data[i].call?.owner_id,
                                 hostID: data[i].call?.host_id,
+                                dismissedNotification: data[i].call?.dismissed_notification || {},
                             },
                         });
+
+                        if (ringingEnabled(store.getState()) && data[i].call) {
+                            // dismissedNotification is populated after the actions array has been batched, so manually check:
+                            const dismissed = data[i].call?.dismissed_notification;
+                            if (dismissed) {
+                                const currentUserID = getCurrentUserId(store.getState());
+                                if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
+                                    continue;
+                                }
+                            }
+                            store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.id, data[i].call.owner_id, data[i].call.start_at));
+                        }
                     }
                 }
             } catch (err) {
@@ -645,10 +669,12 @@ export default class Plugin {
                 actions.push({
                     type: VOICE_CHANNEL_CALL_START,
                     data: {
+                        ID: call.id,
                         channelID,
                         startAt: call.start_at,
                         ownerID: call.owner_id,
                         hostID: call.host_id,
+                        dismissedNotification: call.dismissed_notification,
                     },
                 });
 
@@ -726,19 +752,22 @@ export default class Plugin {
             return actions;
         };
 
-        let configRetrieved = false;
+        // Run onActivate once we're logged in.
+        const unsubscribeActivateListener = store.subscribe(() => {
+            if (getCurrentUserId(store.getState())) {
+                onActivate();
+            }
+        });
+
         const onActivate = async () => {
             if (!getCurrentUserId(store.getState())) {
-                // not logged in, returning.
+                // not logged in, returning. Shouldn't happen, but being defensive.
                 return;
             }
 
-            const res = await store.dispatch(getCallsConfig());
+            unsubscribeActivateListener();
 
-            // @ts-ignore
-            if (!res.error) {
-                configRetrieved = true;
-            }
+            await store.dispatch(getCallsConfig());
 
             const actions = await fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
@@ -784,20 +813,12 @@ export default class Plugin {
             onActivate();
         });
 
-        onActivate();
-
         let currChannelId = getCurrentChannelId(store.getState());
         let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
-
-                // If we haven't retrieved config, user must not have been logged in during onActivate
-                if (!configRetrieved) {
-                    store.dispatch(getCallsConfig());
-                    configRetrieved = true;
-                }
 
                 fetchChannelData(currChannelId).then((actions) =>
                     store.dispatch(batchActions(actions)),

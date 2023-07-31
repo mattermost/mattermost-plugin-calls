@@ -192,12 +192,12 @@
         "display_name": "Enable call ringing (Beta)",
         "type": "bool",
         "default": false,
-        "help_text": "When set to true, ringing functionality is enabled: participants in DM and GM channels will receive a desktop alert and a ringing notification when a call is started."
+        "help_text": "When set to true, ringing functionality is enabled: participants in DM and GM channels will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart."
       }
     ]
   },
   "props": {
     "min_rtcd_version": "v0.10.1",
-    "calls_recorder_version": "v0.3.3"
+    "calls_recorder_version": "v0.3.4"
   }
 }

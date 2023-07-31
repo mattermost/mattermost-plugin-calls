@@ -1,18 +1,19 @@
-import {bindActionCreators, Dispatch} from 'redux';
-import {connect} from 'react-redux';
 import {GlobalState} from '@mattermost/types/store';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
+import {connect} from 'react-redux';
+import {bindActionCreators, Dispatch} from 'redux';
 
-import {hideSwitchCallModal} from '../../actions';
-import {connectedChannelID, switchCallModal} from '../../selectors';
-import {isDMChannel, getUserIdFromDM} from '../../utils';
+import {dismissIncomingCallNotification, hideSwitchCallModal} from 'src/actions';
+import {connectedChannelID, switchCallModal, voiceChannelCallID} from 'src/selectors';
+import {isDMChannel, getUserIdFromDM} from 'src/utils';
 
 import SwitchCallModal from './component';
 
 const mapStateToProps = (state: GlobalState) => {
     const switchCallState = switchCallModal(state);
-    const connectedChannel = getChannel(state, connectedChannelID(state));
+    const connectedChannel = getChannel(state, connectedChannelID(state) || '');
+    const targetCallID = voiceChannelCallID(state, switchCallState.targetID || '') || '';
     const currentChannel = switchCallState.targetID ? getChannel(state, switchCallState.targetID) : getChannel(state, getCurrentChannelId(state));
 
     let connectedDMUser;
@@ -33,11 +34,14 @@ const mapStateToProps = (state: GlobalState) => {
         currentChannel,
         connectedDMUser,
         currentDMUser,
+        targetChannelID: switchCallState.targetID,
+        targetCallID,
     };
 };
 
 const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     hideSwitchCallModal,
+    dismissIncomingCallNotification,
 }, dispatch);
 
 export default connect(mapStateToProps, mapDispatchToProps)(SwitchCallModal);

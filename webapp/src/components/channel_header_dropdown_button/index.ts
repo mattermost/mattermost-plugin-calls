@@ -1,9 +1,7 @@
-import {connect} from 'react-redux';
 import {GlobalState} from '@mattermost/types/store';
-
 import {getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
-
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {connect} from 'react-redux';
 
 import {
     voiceConnectedUsers,

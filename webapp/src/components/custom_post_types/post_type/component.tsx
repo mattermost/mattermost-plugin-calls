@@ -1,27 +1,23 @@
-import React, {useCallback} from 'react';
-import {useSelector} from 'react-redux';
-import {useIntl} from 'react-intl';
-
-import styled from 'styled-components';
-
+import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
-import {Post} from '@mattermost/types/posts';
-
-import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-
-import {getUser} from 'mattermost-redux/selectors/entities/users';
-
 import {DateTime, Duration as LuxonDuration} from 'luxon';
+import {getUser} from 'mattermost-redux/selectors/entities/users';
+import React, {useCallback} from 'react';
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+import {useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
+import styled from 'styled-components';
 
-import Timestamp from 'src/components/timestamp';
-import CompassIcon from 'src/components/icons/compassIcon';
+import ConnectedProfiles from 'src/components/connected_profiles';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
+import CompassIcon from 'src/components/icons/compassIcon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
-import ConnectedProfiles from 'src/components/connected_profiles';
+import {useDismissJoin} from 'src/components/incoming_calls/hooks';
 import {Header, SubHeader} from 'src/components/shared';
-
+import Timestamp from 'src/components/timestamp';
+import {voiceChannelCallID} from 'src/selectors';
 import {
     shouldRenderDesktopWidget,
     sendDesktopEvent,
@@ -35,7 +31,6 @@ interface Props {
     connectedID: string,
     pictures: string[],
     profiles: UserProfile[],
-    showSwitchCallModal: (targetID: string) => void,
     isCloudPaid: boolean,
     maxParticipants: number,
     militaryTime: boolean,
@@ -46,7 +41,6 @@ const PostType = ({
     connectedID,
     pictures,
     profiles,
-    showSwitchCallModal,
     isCloudPaid,
     maxParticipants,
     militaryTime,
@@ -57,18 +51,12 @@ const PostType = ({
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
+    const callID = useSelector((state: GlobalState) => voiceChannelCallID(state, post.channel_id)) || '';
+    const [, onJoin] = useDismissJoin(post.channel_id, callID);
 
     const timestampFn = useCallback(() => {
         return callStartedTimestampFn(intl, post.props.start_at);
     }, [intl, post.props.start_at]);
-
-    const onJoinCallClick = () => {
-        if (connectedID) {
-            showSwitchCallModal(post.channel_id);
-            return;
-        }
-        window.postMessage({type: 'connectCall', channelID: post.channel_id}, window.origin);
-    };
 
     const onLeaveButtonClick = () => {
         if (window.callsClient) {
@@ -118,7 +106,7 @@ const PostType = ({
     );
 
     let joinButton = (
-        <JoinButton onClick={onJoinCallClick}>
+        <JoinButton onClick={onJoin}>
             <CallIcon fill='var(--center-channel-bg)'/>
             <ButtonText>{formatMessage({defaultMessage: 'Join call'})}</ButtonText>
         </JoinButton>

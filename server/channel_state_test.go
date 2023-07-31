@@ -45,7 +45,7 @@ func TestCallStateGetClientState(t *testing.T) {
 		var css CallStateClient
 		css.Users = []string{}
 		css.States = []UserStateClient{}
-		require.Equal(t, &css, cs.getClientState("botID"))
+		require.Equal(t, &css, cs.getClientState("botID", "userID"))
 	})
 
 	t.Run("non-nil", func(t *testing.T) {
@@ -77,7 +77,7 @@ func TestCallStateGetClientState(t *testing.T) {
 			HostID:          cs.HostID,
 		}
 
-		require.Equal(t, &ccs, cs.getClientState("botID"))
+		require.Equal(t, &ccs, cs.getClientState("botID", "userID"))
 	})
 
 	t.Run("ignore botID", func(t *testing.T) {
@@ -104,7 +104,7 @@ func TestCallStateGetClientState(t *testing.T) {
 			},
 		}
 
-		require.Equal(t, &ccs, cs.getClientState("botID"))
+		require.Equal(t, &ccs, cs.getClientState("botID", "userID"))
 	})
 }
 

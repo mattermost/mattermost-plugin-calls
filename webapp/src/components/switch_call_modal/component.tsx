@@ -1,11 +1,10 @@
+import {Channel} from '@mattermost/types/channels';
+import {UserProfile} from '@mattermost/types/users';
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 
-import {Channel} from '@mattermost/types/channels';
-import {UserProfile} from '@mattermost/types/users';
-
-import {isDMChannel, isGMChannel, getUserDisplayName, untranslatable} from 'src/utils';
 import CompassIcon from 'src/components/icons/compassIcon';
+import {isDMChannel, isGMChannel, getUserDisplayName, untranslatable} from 'src/utils';
 
 import './component.scss';
 
@@ -16,7 +15,10 @@ interface Props {
     currentDMUser: UserProfile | undefined,
     connectedDMUser: UserProfile | undefined,
     show: boolean,
+    targetChannelID: string,
+    targetCallID: string,
     hideSwitchCallModal: () => void,
+    dismissIncomingCallNotification: (channelID: string, callID: string) => void,
 }
 
 export default class SwitchCallModal extends React.PureComponent<Props> {
@@ -93,10 +95,14 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
         this.props.hideSwitchCallModal();
     };
 
-    private joinCall = () => {
+    private joinCall = async () => {
+        // If there is an incoming call notification, dismiss that (and for any other clients).
+        this.props.dismissIncomingCallNotification(this.props.targetChannelID, this.props.targetCallID);
+
         this.props.hideSwitchCallModal();
-        window.callsClient?.disconnect();
-        window.postMessage({type: 'connectCall', channelID: this.props.currentChannel.id}, window.origin);
+        const win = window.opener ? window.opener : window;
+        win.callsClient?.disconnect();
+        win.postMessage({type: 'connectCall', channelID: this.props.currentChannel.id}, win.origin);
     };
 
     componentDidMount() {
@@ -120,17 +126,21 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
         if (isDMChannel(this.props.connectedChannel)) {
             message1 = (<React.Fragment>
                 {formatMessage({defaultMessage: 'You\'re already in a call with {participant}.'}, {
-                    participant: (<span style={{fontWeight: 600}}>{getUserDisplayName(this.props.connectedDMUser)}</span>)})}
+                    participant: (
+                        <span style={{fontWeight: 600}}>{getUserDisplayName(this.props.connectedDMUser)}</span>),
+                })}
             </React.Fragment>);
         } else if (isGMChannel(this.props.connectedChannel)) {
             message1 = (<React.Fragment>
                 {formatMessage({defaultMessage: 'You\'re already in a call with {participants}.'}, {
-                    participants: (<span style={{fontWeight: 600}}>{this.props.connectedChannel.display_name}</span>)})}
+                    participants: (<span style={{fontWeight: 600}}>{this.props.connectedChannel.display_name}</span>),
+                })}
             </React.Fragment>);
         } else {
             message1 = (<React.Fragment>
                 {formatMessage({defaultMessage: 'You\'re already in a call in {channel}.'}, {
-                    channel: (<span style={{fontWeight: 600}}>{this.props.connectedChannel.display_name}</span>)})}
+                    channel: (<span style={{fontWeight: 600}}>{this.props.connectedChannel.display_name}</span>),
+                })}
             </React.Fragment>);
         }
 
@@ -138,17 +148,20 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
         if (isDMChannel(this.props.currentChannel)) {
             message2 = (<React.Fragment>
                 {formatMessage({defaultMessage: 'Do you want to leave and join a call with {user}?'}, {
-                    participant: (<span style={{fontWeight: 600}}>{getUserDisplayName(this.props.currentDMUser)}</span>)})}
+                    user: (<span style={{fontWeight: 600}}>{getUserDisplayName(this.props.currentDMUser)}</span>),
+                })}
             </React.Fragment>);
         } else if (isGMChannel(this.props.currentChannel)) {
             message2 = (<React.Fragment>
                 {formatMessage({defaultMessage: 'Do you want to leave and join a call with {users}?'}, {
-                    users: (<span style={{fontWeight: 600}}>{this.props.currentChannel.display_name}</span>)})}
+                    users: (<span style={{fontWeight: 600}}>{this.props.currentChannel.display_name}</span>),
+                })}
             </React.Fragment>);
         } else {
             message2 = (<React.Fragment>
                 {formatMessage({defaultMessage: 'Do you want to leave and join a call in {channel}?'}, {
-                    channel: (<span style={{fontWeight: 600}}>{this.props.currentChannel.display_name}</span>)})}
+                    channel: (<span style={{fontWeight: 600}}>{this.props.currentChannel.display_name}</span>),
+                })}
             </React.Fragment>);
         }
 
@@ -171,9 +184,9 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
                         </span>
                     </div>
                     <div style={this.style.body as CSSProperties}>
-                        { message1 }
+                        {message1}
                         {untranslatable(' ')}
-                        { message2 }
+                        {message2}
                     </div>
                     <div style={this.style.footer}>
                         <button

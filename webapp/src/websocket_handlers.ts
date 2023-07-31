@@ -1,7 +1,3 @@
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {WebSocketMessage} from '@mattermost/types/websocket';
-
 import {
     CallHostChangedData,
     CallRecordingStateData,
@@ -10,21 +6,25 @@ import {
     Reaction,
     UserConnectedData,
     UserDisconnectedData,
+    UserDismissedNotification,
     UserMutedUnmutedData,
     UserRaiseUnraiseHandData,
     UserReactionData,
     UserScreenOnOffData,
     UserVoiceOnOffData,
 } from '@calls/common/lib/types';
+import {WebSocketMessage} from '@mattermost/types/websocket';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
+import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected} from 'src/actions';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
+import {notificationSounds} from 'src/webapp_globals';
 
-import {Store} from './types/mattermost-webapp';
 import {
     VOICE_CHANNEL_USER_MUTED,
     VOICE_CHANNEL_USER_UNMUTED,
     VOICE_CHANNEL_USER_CONNECTED,
-    VOICE_CHANNEL_USER_DISCONNECTED,
     VOICE_CHANNEL_PROFILE_CONNECTED,
     VOICE_CHANNEL_CALL_START,
     VOICE_CHANNEL_CALL_END,
@@ -40,31 +40,42 @@ import {
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
+    DISMISS_CALL,
 } from './action_types';
-import {
-    getProfilesByIds,
-    playSound,
-    followThread, getUserDisplayName,
-} from './utils';
+import {logErr} from './log';
 import {
     connectedChannelID,
     idToProfileInConnectedChannel,
+    ringingEnabled,
     shouldPlayJoinUserSound,
+    voiceChannelCalls,
 } from './selectors';
-
-import {logErr} from './log';
+import {Store} from './types/mattermost-webapp';
+import {
+    getProfilesByIds,
+    playSound,
+    followThread,
+    getUserDisplayName,
+    getCallsClient,
+} from './utils';
 
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     if (connectedChannelID(store.getState()) === channelID) {
         window.callsClient?.disconnect();
     }
+
     store.dispatch({
         type: VOICE_CHANNEL_CALL_END,
         data: {
             channelID,
         },
     });
+
+    if (ringingEnabled(store.getState())) {
+        const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
+        store.dispatch(removeIncomingCallNotification(callID));
+    }
 }
 
 export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData>) {
@@ -81,6 +92,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
     store.dispatch({
         type: VOICE_CHANNEL_CALL_START,
         data: {
+            ID: ev.data.id,
             channelID,
             startAt: ev.data.start_at,
             ownerID: ev.data.owner_id,
@@ -95,25 +107,21 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         },
     });
 
-    if (window.callsClient?.channelID === channelID) {
+    if (getCallsClient()?.channelID === channelID) {
         const channel = getChannel(store.getState(), channelID);
         if (channel) {
             followThread(store, channel.id, channel.team_id);
         }
+    } else if (ringingEnabled(store.getState())) {
+        // the call that started is not the call we're currently in.
+        store.dispatch(incomingCallOnChannel(channelID, ev.data.id, ev.data.owner_id, ev.data.start_at));
     }
 }
 
 export function handleUserDisconnected(store: Store, ev: WebSocketMessage<UserDisconnectedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
-    store.dispatch({
-        type: VOICE_CHANNEL_USER_DISCONNECTED,
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            currentUserID: getCurrentUserId(store.getState()),
-        },
-    });
+    store.dispatch(userDisconnected(channelID, ev.data.userID));
 }
 
 export async function handleUserConnected(store: Store, ev: WebSocketMessage<UserConnectedData>) {
@@ -127,6 +135,12 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
         } else if (shouldPlayJoinUserSound(store.getState())) {
             playSound('join_user');
         }
+    }
+
+    if (ringingEnabled(store.getState()) && userID === currentUserID) {
+        const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
+        store.dispatch(removeIncomingCallNotification(callID));
+        notificationSounds?.stopRing(); // And stop ringing for _any_ incoming call.
     }
 
     store.dispatch({
@@ -307,6 +321,21 @@ export function handleCallRecordingState(store: Store, ev: WebSocketMessage<Call
         data: {
             callID: ev.data.callID,
             recState: ev.data.recState,
+        },
+    });
+}
+
+export function handleUserDismissedNotification(store: Store, ev: WebSocketMessage<UserDismissedNotification>) {
+    // For now we are only handling our own dismissed (and that's all we should be receiving).
+    const userID = getCurrentUserId(store.getState());
+    if (ev.data.userID !== userID) {
+        return;
+    }
+    store.dispatch(removeIncomingCallNotification(ev.data.callID));
+    store.dispatch({
+        type: DISMISS_CALL,
+        data: {
+            callID: ev.data.callID,
         },
     });
 }
