@@ -284,6 +284,19 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
                     }),
             },
         };
+    case VOICE_CHANNEL_USER_DISCONNECTED:
+        if (!state[action.data.channelID] || !state[action.data.channelID].reactions) {
+            return state;
+        }
+
+        return {
+            ...state,
+            [action.data.channelID]: {
+                reactions: state[action.data.channelID].reactions.filter((r) => {
+                    return r.user_id !== action.data.userID;
+                }),
+            },
+        };
     default:
         return state;
     }
