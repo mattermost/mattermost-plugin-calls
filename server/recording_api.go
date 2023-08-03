@@ -15,7 +15,7 @@ import (
 
 var callRecordingActionRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)/recording/(start|stop|publish)$`)
 
-const recordingJobStartTimeout = 15 * time.Second
+const recordingJobStartTimeout = 2 * time.Minute
 
 func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	time.Sleep(recordingJobStartTimeout)
@@ -90,7 +90,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 		return
 	}
 
-	if p.jobService == nil {
+	if p.getJobService() == nil {
 		res.Err = "Job service is not initialized"
 		res.Code = http.StatusForbidden
 		return
@@ -160,7 +160,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 			"callID":   callID,
 			"recState": recState.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
-		recJobID, err := p.jobService.RunRecordingJob(callID, postID, p.botSession.Token)
+		recJobID, err := p.getJobService().RunRecordingJob(callID, postID, p.botSession.Token)
 		if err != nil {
 			// resetting state in case the job failed to run
 			if err := p.kvSetAtomicChannelState(callID, func(state *channelState) (*channelState, error) {
@@ -211,7 +211,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 			"recState": recState.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
-		if err := p.jobService.StopJob(recState.JobID); err != nil {
+		if err := p.getJobService().StopJob(callID); err != nil {
 			res.Err = "failed to stop recording job: " + err.Error()
 			res.Code = http.StatusInternalServerError
 			return
