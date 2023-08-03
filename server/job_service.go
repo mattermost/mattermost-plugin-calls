@@ -258,14 +258,6 @@ func (s *jobService) StopJob(channelID string) error {
 	return nil
 }
 
-func (s *jobService) GetJob(jobID string) (job.Job, error) {
-	return s.client.GetJob(jobID)
-}
-
-func (s *jobService) GetJobLogs(jobID string) ([]byte, error) {
-	return s.client.GetJobLogs(jobID)
-}
-
 func (s *jobService) UpdateJobRunner(runner string) error {
 	// Here we need some coordination to avoid multiple plugin instances to
 	// update the runner concurrently.

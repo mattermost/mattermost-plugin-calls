@@ -578,16 +578,6 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 			p.handleGetChannel(w, r, matches[1])
 			return
 		}
-
-		if matches := jobsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleGetJob(w, r, matches[1])
-			return
-		}
-
-		if matches := jobsLogsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleGetJobLogs(w, r, matches[1])
-			return
-		}
 	}
 
 	if r.Method == http.MethodPost {
