@@ -137,9 +137,11 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID s
 		JoinAt: time.Now().UnixMilli(),
 	}
 	state.Call.Sessions[connID] = struct{}{}
-	if len(state.Call.Users) > state.Call.Stats.Participants {
-		state.Call.Stats.Participants = len(state.Call.Users)
+
+	if state.Call.Stats.Participants == nil {
+		state.Call.Stats.Participants = map[string]struct{}{}
 	}
+	state.Call.Stats.Participants[userID] = struct{}{}
 
 	if err := p.kvSetChannelState(channelID, state); err != nil {
 		return nil, err
@@ -322,7 +324,7 @@ func (p *Plugin) removeSession(us *session) error {
 
 	// Check if call has ended.
 	if prevState.Call != nil && currState.Call == nil {
-		dur, err := p.updateCallPostEnded(prevState.Call.PostID)
+		dur, err := p.updateCallPostEnded(prevState.Call.PostID, mapKeys(prevState.Call.Stats.Participants))
 		if err != nil {
 			return err
 		}
@@ -330,7 +332,7 @@ func (p *Plugin) removeSession(us *session) error {
 			"ChannelID":      us.channelID,
 			"CallID":         prevState.Call.ID,
 			"Duration":       dur,
-			"Participants":   prevState.Call.Stats.Participants,
+			"Participants":   len(prevState.Call.Stats.Participants),
 			"ScreenDuration": prevState.Call.Stats.ScreenDuration,
 		})
 	}
