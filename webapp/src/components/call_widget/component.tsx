@@ -391,6 +391,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // set cross-window actions
         window.callActions = {
             setRecordingPromptDismissedAt: this.props.recordingPromptDismissedAt,
+            isRHSChatThreadOpenToThreadId: () => false, // for now; this will get overridden in expanded_view/component when it's opened.
         };
 
         // eslint-disable-next-line react/no-did-mount-set-state

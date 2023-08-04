@@ -145,6 +145,7 @@ export const CurrentCallDataDefault: CurrentCallData = {
 // owning window. recordingPromptDismissedAt should be set by that window's init function or constructor.
 export type CallActions = {
     setRecordingPromptDismissedAt: (callId: string, dismissedAt: number) => void;
+    isRHSChatThreadOpenToThreadId: (threadId: string) => boolean;
 }
 
 export enum ChannelType {

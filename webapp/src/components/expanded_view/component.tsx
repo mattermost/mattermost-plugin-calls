@@ -154,7 +154,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private readonly emojiButtonRef: React.RefObject<ReactionButtonRef>;
     private expandedRootRef = React.createRef<HTMLDivElement>();
     private pushToTalk = false;
-    private screenPlayer : HTMLVideoElement | null = null;
+    private screenPlayer: HTMLVideoElement | null = null;
 
     #unlockNavigation?: () => void;
 
@@ -304,7 +304,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             // Set the inter-window actions
             window.callActions = {
                 setRecordingPromptDismissedAt: this.props.recordingPromptDismissedAt,
+                isRHSChatThreadOpenToThreadId: () => false, // this won't be called from another window. Instead, the below will be called.
             };
+            window.opener.callActions.isRHSChatThreadOpenToThreadId = this.isRHSOpenToThreadId; // The window opener can use this to ask if my rhs is open.
 
             // Set the current state
         } else if (window.desktop) {
@@ -320,6 +322,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         }
     }
+
+    isRHSOpenToThreadId = (threadId: string) =>
+        Boolean(this.props.isRhsOpen) && this.props.threadID === threadId;
 
     setScreenPlayerRef = (node: HTMLVideoElement) => {
         if (node && this.state.screenStream) {
@@ -638,7 +643,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             active: true,
                             show: true,
                         },
-                    }});
+                    },
+                });
             }
             if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
                 this.setState({
@@ -648,7 +654,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             active: false,
                             show: false,
                         },
-                    }});
+                    },
+                });
             }
         });
     }
