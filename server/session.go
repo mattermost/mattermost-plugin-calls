@@ -303,11 +303,8 @@ func (p *Plugin) removeSession(us *session) error {
 
 		p.LogDebug("recording bot left the call, attempting to stop job", "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
 
-		// We still want to try to stop the recording in case the bot session disconnected without
-		// actually exiting the job.
-		if err := p.jobService.StopJob(currState.Call.Recording.JobID); err != nil {
-			p.LogError("failed to stop recording job", "error", err.Error(), "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
-		}
+		// Since MM-52346 we don't need to explicitly stop the recording here as
+		// the bot leaving the call will implicitly terminate the recording process.
 
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   us.channelID,
@@ -318,7 +315,7 @@ func (p *Plugin) removeSession(us *session) error {
 	// If the bot is the only user left in the call we automatically stop the recording.
 	if currState.Call != nil && currState.Call.Recording != nil && len(currState.Call.Users) == 1 && currState.Call.Users[p.getBotID()] != nil {
 		p.LogDebug("all users left call with recording in progress, stopping", "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
-		if err := p.jobService.StopJob(currState.Call.Recording.JobID); err != nil {
+		if err := p.getJobService().StopJob(us.channelID); err != nil {
 			p.LogError("failed to stop recording job", "error", err.Error(), "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
 		}
 	}

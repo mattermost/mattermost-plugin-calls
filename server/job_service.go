@@ -6,7 +6,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -16,12 +18,17 @@ import (
 
 	"github.com/mattermost/rtcd/service/random"
 
-	offloader "github.com/mattermost/calls-offloader/service"
+	offloader "github.com/mattermost/calls-offloader/public"
+	"github.com/mattermost/calls-offloader/public/job"
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 )
 
-const jobServiceConfigKey = "jobservice_config"
-const runnerUpdateLockTimeout = 2 * time.Minute
+const (
+	jobServiceConfigKey             = "jobservice_config"
+	runnerUpdateLockTimeout         = 2 * time.Minute
+	maxReinitializationAttempts     = 10
+	reinitializationAttemptInterval = time.Second
+)
 
 var (
 	recordingJobRunner  = ""
@@ -204,6 +211,10 @@ func (p *Plugin) newJobService(serviceURL string) (*jobService, error) {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
+	if err := p.jobServiceVersionCheck(client); err != nil {
+		return nil, err
+	}
+
 	err = client.Login(cfg.ClientID, cfg.AuthKey)
 	if err == nil {
 		return &jobService{
@@ -231,20 +242,19 @@ func (p *Plugin) newJobService(serviceURL string) (*jobService, error) {
 	}, nil
 }
 
-func (s *jobService) RunJob(cfg offloader.JobConfig) (offloader.Job, error) {
-	return s.client.CreateJob(cfg)
+func (p *Plugin) getJobService() *jobService {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	return p.jobService
 }
 
-func (s *jobService) StopJob(jobID string) error {
-	return s.client.StopJob(jobID)
-}
-
-func (s *jobService) GetJob(jobID string) (offloader.Job, error) {
-	return s.client.GetJob(jobID)
-}
-
-func (s *jobService) GetJobLogs(jobID string) ([]byte, error) {
-	return s.client.GetJobLogs(jobID)
+func (s *jobService) StopJob(channelID string) error {
+	// Since MM-52346, stopping a job really means signaling the bot it's time to leave
+	// the call. We do this implicitly by sending a fake call end event.
+	s.ctx.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{
+		"channelID": channelID,
+	}, &model.WebsocketBroadcast{UserId: s.ctx.getBotID(), ReliableClusterSend: true})
+	return nil
 }
 
 func (s *jobService) UpdateJobRunner(runner string) error {
@@ -262,7 +272,9 @@ func (s *jobService) UpdateJobRunner(runner string) error {
 	}
 	defer mutex.Unlock()
 
-	return s.client.UpdateJobRunner(runner)
+	return s.client.Init(job.ServiceConfig{
+		Runner: runner,
+	})
 }
 
 func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, error) {
@@ -292,15 +304,124 @@ func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, 
 	baseRecorderCfg.ThreadID = postID
 	baseRecorderCfg.AuthToken = authToken
 
-	job, err := s.RunJob(offloader.JobConfig{
-		Type:           offloader.JobTypeRecording,
+	jobCfg := job.Config{
+		Type:           job.TypeRecording,
 		MaxDurationSec: maxDuration,
 		Runner:         recordingJobRunner,
 		InputData:      baseRecorderCfg.ToMap(),
-	})
-	if err != nil {
+	}
+
+	jb, err := s.client.CreateJob(jobCfg)
+
+	// Adding a check in case the service restarted and lost credentials. This is
+	// a common case when the offloader is running in kubernetes deployment. The
+	// solution is to re-initialize the service which will cause a new registration
+	// attempt.
+	// On top of that we need to implemente a re-try mechanism since each
+	// subsequent HTTP request could be hitting a different pod.
+	if errors.Is(err, offloader.ErrUnauthorized) {
+		data, err := s.ctx.retryJobService(func(c *offloader.Client) (any, error) {
+			return c.CreateJob(jobCfg)
+		})
+		if err != nil {
+			return "", err
+		}
+		jb, ok := data.(job.Job)
+		if !ok {
+			return "", fmt.Errorf("unexpected data found in place of job")
+		}
+		return jb.ID, nil
+	} else if err != nil {
 		return "", err
 	}
 
-	return job.ID, nil
+	return jb.ID, nil
+}
+
+func (s *jobService) Close() error {
+	return s.client.Close()
+}
+
+func (p *Plugin) jobServiceVersionCheck(client *offloader.Client) error {
+	// Version compatibility check.
+	info, err := client.GetVersionInfo()
+	if err != nil {
+		return fmt.Errorf("failed to get job service version info: %w", err)
+	}
+
+	minServiceVersion, ok := manifest.Props["min_offloader_version"].(string)
+	if !ok {
+		return fmt.Errorf("failed to get min_offloader_version from manifest")
+	}
+
+	// Always support dev builds.
+	if info.BuildVersion == "" || info.BuildVersion == "master" || strings.HasPrefix(info.BuildVersion, "dev") {
+		p.LogInfo("skipping version compatibility check", "buildVersion", info.BuildVersion)
+		return nil
+	}
+
+	if err := checkMinVersion(minServiceVersion, info.BuildVersion); err != nil {
+		return fmt.Errorf("minimum version check failed: %w", err)
+	}
+
+	p.LogDebug("job service version compatibility check succeeded",
+		"min_offloader_version", minServiceVersion,
+		"curr_offloader_version", info.BuildVersion)
+
+	return nil
+}
+
+func (p *Plugin) initJobService() error {
+	p.LogDebug("initializing job service")
+	_, err := p.retryJobService(nil)
+	return err
+}
+
+// retryJobService couples the Register -> Login -> Action sequence in a loop
+// to make sure it succeeds up to maxReinitializationAttempts.
+// This is needed in Kubernetes deployments where requests are potentially load
+// balanced to different pods and could fail due to the client not being
+// authenticated.
+// The passed callback function is used to perform arbitrary API actions that
+// require the client to be successfully logged in and re-attempted upon
+// failure.
+func (p *Plugin) retryJobService(cb func(client *offloader.Client) (any, error)) (any, error) {
+	waitBeforeRetry := func(err error, attempt int) {
+		p.LogError(err.Error())
+		time.Sleep(reinitializationAttemptInterval + time.Duration(rand.Intn(1000))*time.Millisecond)
+		p.LogWarn("attempting job service re-initialization", "attempt", fmt.Sprintf("%d", attempt))
+	}
+
+	for i := 0; i < maxReinitializationAttempts; i++ {
+		if jobService := p.getJobService(); jobService != nil {
+			if err := jobService.Close(); err != nil {
+				p.LogError("failed to close job service client", "err", err.Error())
+			}
+		}
+
+		jobService, err := p.newJobService(p.getConfiguration().getJobServiceURL())
+		if err != nil {
+			waitBeforeRetry(fmt.Errorf("failed to create job service: %w", err), i)
+			continue
+		}
+
+		p.mut.Lock()
+		p.jobService = jobService
+		p.mut.Unlock()
+
+		p.LogInfo("job service re-initialized successfully")
+
+		var data any
+		if cb != nil {
+			data, err = cb(jobService.client)
+			if err != nil {
+				waitBeforeRetry(fmt.Errorf("retry callback failed: %w", err), i)
+				continue
+			}
+		}
+
+		return data, nil
+	}
+
+	return nil, fmt.Errorf("max re-initialization attempts reached")
 }

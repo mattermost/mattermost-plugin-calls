@@ -231,14 +231,6 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 
 		p.LogInfo("call state is still in store, force ending it", "channelID", channelID)
 
-		if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
-			p.LogInfo("recording is in progress, force ending it", "channelID", channelID, "jobID", state.Call.Recording.JobID)
-
-			if err := p.jobService.StopJob(state.Call.Recording.JobID); err != nil {
-				p.LogError("failed to stop recording job", "error", err.Error(), "channelID", channelID, "jobID", state.Call.Recording.JobID)
-			}
-		}
-
 		for connID := range state.Call.Sessions {
 			if err := p.closeRTCSession(userID, connID, channelID, state.NodeID); err != nil {
 				p.LogError(err.Error())
@@ -574,16 +566,6 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 
 		if matches := chRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handleGetChannel(w, r, matches[1])
-			return
-		}
-
-		if matches := jobsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleGetJob(w, r, matches[1])
-			return
-		}
-
-		if matches := jobsLogsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleGetJobLogs(w, r, matches[1])
 			return
 		}
 	}

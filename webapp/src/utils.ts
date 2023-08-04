@@ -8,6 +8,7 @@ import {UserProfile} from '@mattermost/types/users';
 import {DateTime, Duration, DurationLikeObject} from 'luxon';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {Client4} from 'mattermost-redux/client';
+import {General} from 'mattermost-redux/constants';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
@@ -238,11 +239,15 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
 }
 
 export function isDMChannel(channel: Channel) {
-    return channel.type === 'D';
+    return channel.type === General.DM_CHANNEL;
 }
 
 export function isGMChannel(channel: Channel) {
-    return channel.type === 'G';
+    return channel.type === General.GM_CHANNEL;
+}
+
+export function isDmGmChannel(channel: Channel) {
+    return isDMChannel(channel) || isGMChannel(channel);
 }
 
 export function isPublicChannel(channel: Channel) {

@@ -116,6 +116,12 @@ export default function RecordingInfoPrompt(props: Props) {
         return null;
     }
 
+    // If the host has changed for the current recording after the banner was dismissed, we should show
+    // again only if the user is the new host.
+    if (disclaimerDismissedAt > props.recording?.start_at && props.hostChangeAt > disclaimerDismissedAt && !props.isHost) {
+        return null;
+    }
+
     let testId = 'banner-recording';
     let header = formatMessage(CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].header);
     let body = formatMessage(CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].body);

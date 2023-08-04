@@ -15,7 +15,7 @@ import (
 
 var callRecordingActionRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)/recording/(start|stop|publish)$`)
 
-const recordingJobStartTimeout = 15 * time.Second
+const recordingJobStartTimeout = 2 * time.Minute
 
 func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	time.Sleep(recordingJobStartTimeout)
@@ -99,7 +99,7 @@ func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID 
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return. We lock again as soon as this returns.
 	p.unlockCall(callID)
-	recJobID, jobErr := p.jobService.RunRecordingJob(callID, state.Call.PostID, p.botSession.Token)
+	recJobID, jobErr := p.getJobService().RunRecordingJob(callID, state.Call.PostID, p.botSession.Token)
 	state, err := p.lockCall(callID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
@@ -196,7 +196,7 @@ func (p *Plugin) handleRecordingStopAction(state *channelState, callID string) (
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return.
 	p.unlockCall(callID)
-	if err := p.jobService.StopJob(recState.JobID); err != nil {
+	if err := p.getJobService().StopJob(callID); err != nil {
 		res.Err = "failed to stop recording job: " + err.Error()
 		res.Code = http.StatusInternalServerError
 		return nil, res
@@ -229,7 +229,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 		return
 	}
 
-	if p.jobService == nil {
+	if p.getJobService() == nil {
 		res.Err = "Job service is not initialized"
 		res.Code = http.StatusForbidden
 		return
