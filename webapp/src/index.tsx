@@ -46,6 +46,7 @@ import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_t
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import {DisabledCallsErr} from 'src/constants';
+import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
 import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
@@ -266,6 +267,10 @@ export default class Plugin {
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
             return slashCommandsHandler(store, joinCall, message, args);
+        });
+
+        registry.registerDesktopNotificationHook?.(async (post, msgProps, channel, teamId, args) => {
+            return desktopNotificationHandler(store, post, channel, args);
         });
 
         const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
