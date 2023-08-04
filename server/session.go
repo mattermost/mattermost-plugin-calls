@@ -141,7 +141,10 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID s
 	if state.Call.Stats.Participants == nil {
 		state.Call.Stats.Participants = map[string]struct{}{}
 	}
-	state.Call.Stats.Participants[userID] = struct{}{}
+
+	if userID != p.getBotID() {
+		state.Call.Stats.Participants[userID] = struct{}{}
+	}
 
 	if err := p.kvSetChannelState(channelID, state); err != nil {
 		return nil, err
