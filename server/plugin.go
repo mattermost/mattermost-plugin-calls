@@ -325,7 +325,7 @@ func (p *Plugin) createCallStartedPost(state *channelState, userID, channelID, t
 	return createdPost.Id, threadID, nil
 }
 
-func (p *Plugin) updateCallPostEnded(postID string) (float64, error) {
+func (p *Plugin) updateCallPostEnded(postID string, participants []string) (float64, error) {
 	post, appErr := p.API.GetPost(postID)
 	if appErr != nil {
 		return 0, appErr
@@ -342,6 +342,7 @@ func (p *Plugin) updateCallPostEnded(postID string) (float64, error) {
 	post.DelProp("attachments")
 	post.AddProp("attachments", []*model.SlackAttachment{&slackAttachment})
 	post.AddProp("end_at", time.Now().UnixMilli())
+	post.AddProp("participants", participants)
 
 	_, appErr = p.API.UpdatePost(post)
 	if appErr != nil {

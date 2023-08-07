@@ -23,8 +23,8 @@ type userState struct {
 }
 
 type callStats struct {
-	Participants   int   `json:"participants"`
-	ScreenDuration int64 `json:"screen_duration"`
+	Participants   map[string]struct{} `json:"participants"`
+	ScreenDuration int64               `json:"screen_duration"`
 }
 
 type callState struct {
@@ -313,7 +313,7 @@ func (p *Plugin) cleanCallState(channelID string, state *channelState) error {
 	state.NodeID = ""
 
 	if state.Call != nil {
-		if _, err := p.updateCallPostEnded(state.Call.PostID); err != nil {
+		if _, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Stats.Participants)); err != nil {
 			return err
 		}
 		state.Call = nil
