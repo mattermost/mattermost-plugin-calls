@@ -42,22 +42,32 @@ async function fetchProfileImages(profiles: UserProfile[]) {
                 logErr(err);
             }));
     }
-    await Promise.all(promises);
+
+    try {
+        await Promise.all(promises);
+    } catch (err) {
+        logErr('failed to load profile images', err);
+    }
+
     return profileImages;
 }
 
 async function initRecordingStore(store: Store, channelID: string) {
-    const channel = await Client4.doFetch(
-        `${getPluginPath()}/bot/channels/${channelID}`,
-        {method: 'get'},
-    );
+    try {
+        const channel = await Client4.doFetch(
+            `${getPluginPath()}/bot/channels/${channelID}`,
+            {method: 'get'},
+        );
 
-    store.dispatch(
-        {
-            type: ChannelTypes.RECEIVED_CHANNEL,
-            data: channel,
-        },
-    );
+        store.dispatch(
+            {
+                type: ChannelTypes.RECEIVED_CHANNEL,
+                data: channel,
+            },
+        );
+    } catch (err) {
+        logErr('failed to fetch channel', err);
+    }
 }
 
 async function initRecording(store: Store, theme: Theme, channelID: string) {
