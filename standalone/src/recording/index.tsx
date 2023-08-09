@@ -123,14 +123,20 @@ async function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEv
     switch (ev.event) {
     case `custom_${pluginId}_user_connected`: {
         const data = ev.data as UserConnectedData;
-        const profiles = await getProfilesByIds(store.getState(), [data.userID]);
-        store.dispatch({
-            type: RECEIVED_CALL_PROFILE_IMAGES,
-            data: {
-                channelID: data.channelID,
-                profileImages: await fetchProfileImages(profiles),
-            },
-        });
+
+        try {
+            const profiles = await getProfilesByIds(store.getState(), [data.userID]);
+            store.dispatch({
+                type: RECEIVED_CALL_PROFILE_IMAGES,
+                data: {
+                    channelID: data.channelID,
+                    profileImages: await fetchProfileImages(profiles),
+                },
+            });
+        } catch (err) {
+            logErr('failed to fetch user profiles', err);
+        }
+
         break;
     }
     default:
