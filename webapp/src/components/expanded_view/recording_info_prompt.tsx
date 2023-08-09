@@ -5,6 +5,7 @@ import CompassIcon from 'src/components/icons/compassIcon';
 import RecordCircleIcon from 'src/components/icons/record_circle';
 import {
     CallRecordingDisclaimerStrings,
+    CALL_HOST_CHANGE_THRESHOLD,
 } from 'src/constants';
 import {CallRecordingReduxState} from 'src/types/types';
 import {
@@ -53,7 +54,7 @@ export default function RecordingInfoPrompt(props: Props) {
         }
     }, [props.isHost, props.recording, recordingWillEndSoon, getMinutesLeftBeforeEnd]);
 
-    const hasRecEnded = props.recording?.end_at;
+    const hasRecEnded = (props.recording?.end_at ?? 0) > (props.recording?.start_at ?? 0);
 
     // Unfortunately we cannot update the local redux state immediately because the props.channel is not available,
     // so we have to check which is more up to date and use that.
@@ -102,10 +103,12 @@ export default function RecordingInfoPrompt(props: Props) {
         return null;
     }
 
+    const shouldShowError = props.recording?.error_at && disclaimerDismissedAt > props.recording.error_at;
+
     // If the prompt was dismissed after the recording has started and after the last host change
     // we don't show this again, unless there was a more recent error.
     if (!hasRecEnded && disclaimerDismissedAt > props.recording?.start_at && disclaimerDismissedAt > props.hostChangeAt) {
-        if (!props.recording?.error_at || disclaimerDismissedAt > props.recording.error_at) {
+        if (!shouldShowError) {
             return null;
         }
     }
@@ -113,13 +116,26 @@ export default function RecordingInfoPrompt(props: Props) {
     // If the prompt was dismissed after the recording has ended then we
     // don't show this again.
     if (hasRecEnded && disclaimerDismissedAt > props.recording?.end_at) {
-        return null;
+        if (!shouldShowError) {
+            return null;
+        }
     }
 
     // If the host has changed for the current recording after the banner was dismissed, we should show
     // again only if the user is the new host.
     if (disclaimerDismissedAt > props.recording?.start_at && props.hostChangeAt > disclaimerDismissedAt && !props.isHost) {
-        return null;
+        if (!shouldShowError) {
+            return null;
+        }
+    }
+
+    // If the user became host after the recording has ended we only show
+    // the "Recording has stopped" message if the change happened very
+    // recently (i.e. in the last minute).
+    if (props.isHost && hasRecEnded && (props.hostChangeAt - props.recording.end_at) > CALL_HOST_CHANGE_THRESHOLD) {
+        if (!shouldShowError) {
+            return null;
+        }
     }
 
     let testId = 'banner-recording';

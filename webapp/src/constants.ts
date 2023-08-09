@@ -8,6 +8,7 @@ export const JOINED_USER_NOTIFICATION_TIMEOUT = 5000;
 export const MAX_CHANNEL_LINK_TOOLTIP_NAMES = 8;
 export const RING_LENGTH = 30000;
 export const DEFAULT_RING_SOUND = 'Calm';
+export const CALL_HOST_CHANGE_THRESHOLD = 60000; // 1 minute
 
 export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
     missingAudioInput: {
