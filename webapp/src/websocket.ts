@@ -76,9 +76,9 @@ export class WebSocketClient extends EventEmitter {
         };
 
         this.ws.onclose = ({code}) => {
-            this.ws = null;
+            this.emit('close', code);
             if (!this.closed) {
-                this.close(code);
+                this.reconnect();
             }
         };
 
@@ -156,48 +156,46 @@ export class WebSocketClient extends EventEmitter {
                 this.ws.send(JSON.stringify(msg));
             }
         } else {
-            logWarn('failed to send message, connection is not open');
+            logWarn('failed to send message, connection is not open', msg);
         }
     }
 
-    close(code?: number) {
-        if (this.ws) {
-            this.closed = true;
-            this.ws.close();
-            this.ws = null;
-            this.seqNo = 1;
-            this.serverSeqNo = 0;
-            this.connID = '';
-            this.originalConnID = '';
+    close() {
+        this.closed = true;
+        this.ws?.close();
+        this.ws = null;
+        this.seqNo = 1;
+        this.serverSeqNo = 0;
+        this.connID = '';
+        this.originalConnID = '';
 
-            this.removeAllListeners('open');
-            this.removeAllListeners('event');
-            this.removeAllListeners('join');
-            this.removeAllListeners('close');
-            this.removeAllListeners('error');
-            this.removeAllListeners('message');
-        } else {
-            this.emit('close', code);
+        this.removeAllListeners('open');
+        this.removeAllListeners('event');
+        this.removeAllListeners('join');
+        this.removeAllListeners('close');
+        this.removeAllListeners('error');
+        this.removeAllListeners('message');
+    }
 
-            const now = Date.now();
-            if (this.lastDisconnect === 0) {
-                this.lastDisconnect = now;
-            }
-
-            if ((now - this.lastDisconnect) >= wsReconnectionTimeout) {
-                this.closed = true;
-                this.emit('error', new WebSocketError(WebSocketErrorType.ReconnectTimeout, 'max disconnected time reached'));
-                return;
-            }
-
-            setTimeout(() => {
-                if (!this.ws && !this.closed) {
-                    logInfo('ws: reconnecting');
-                    this.init(true);
-                }
-            }, this.reconnectRetryTime);
-
-            this.reconnectRetryTime += wsReconnectTimeIncrement;
+    reconnect() {
+        const now = Date.now();
+        if (this.lastDisconnect === 0) {
+            this.lastDisconnect = now;
         }
+
+        if ((now - this.lastDisconnect) >= wsReconnectionTimeout) {
+            this.closed = true;
+            this.emit('error', new WebSocketError(WebSocketErrorType.ReconnectTimeout, 'max disconnected time reached'));
+            return;
+        }
+
+        setTimeout(() => {
+            if (!this.closed) {
+                logInfo('ws: reconnecting');
+                this.init(true);
+            }
+        }, this.reconnectRetryTime);
+
+        this.reconnectRetryTime += wsReconnectTimeIncrement;
     }
 }
