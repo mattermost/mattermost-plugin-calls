@@ -99,6 +99,7 @@ interface Props extends RouteComponentProps {
     callHostID: string,
     callHostChangeAt: number,
     callRecording?: CallRecordingReduxState,
+    isRecording: boolean,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
     selectRhsPost?: (postID: string) => void,
@@ -442,12 +443,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onRecordToggle = async (fromShortcut?: boolean) => {
-        if (!this.props.callRecording?.start_at || this.props.callRecording?.end_at > 0) {
-            await this.props.startCallRecording(this.props.channel.id);
-            this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
-        } else {
+        if (this.props.isRecording) {
             await stopCallRecording(this.props.channel.id);
             this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
+        } else {
+            await this.props.startCallRecording(this.props.channel.id);
+            this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
     };
 
@@ -987,7 +988,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
 
         const isHost = this.props.callHostID === this.props.currentUserID;
-        const isRecording = isHost && this.props.callRecording && this.props.callRecording.init_at > 0 && !this.props.callRecording.end_at && !this.props.callRecording.err;
+
+        const isRecording = isHost && this.props.isRecording;
+
         const recordTooltipText = isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
         const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
