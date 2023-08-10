@@ -34,7 +34,7 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
-import {CallAlertConfigs, CallRecordingDisclaimerStrings, CALL_HOST_CHANGE_THRESHOLD} from 'src/constants';
+import {CallAlertConfigs, CallRecordingDisclaimerStrings} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -1432,9 +1432,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         // If the user became host after the recording has ended we don't want to
-        // show the "Recording has stopped" banner, unless the change happened very
-        // recently (i.e. in the last minute).
-        if (isHost && hasRecEnded && (this.props.callHostChangeAt - recording.end_at) > CALL_HOST_CHANGE_THRESHOLD) {
+        // show the "Recording has stopped" banner.
+        if (isHost && hasRecEnded && this.props.callHostChangeAt > recording.end_at) {
             if (!shouldShowError) {
                 return null;
             }

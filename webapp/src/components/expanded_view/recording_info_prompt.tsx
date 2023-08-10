@@ -5,7 +5,6 @@ import CompassIcon from 'src/components/icons/compassIcon';
 import RecordCircleIcon from 'src/components/icons/record_circle';
 import {
     CallRecordingDisclaimerStrings,
-    CALL_HOST_CHANGE_THRESHOLD,
 } from 'src/constants';
 import {CallRecordingReduxState} from 'src/types/types';
 import {
@@ -132,7 +131,7 @@ export default function RecordingInfoPrompt(props: Props) {
     // If the user became host after the recording has ended we only show
     // the "Recording has stopped" message if the change happened very
     // recently (i.e. in the last minute).
-    if (props.isHost && hasRecEnded && (props.hostChangeAt - props.recording.end_at) > CALL_HOST_CHANGE_THRESHOLD) {
+    if (props.isHost && hasRecEnded && props.hostChangeAt > props.recording.end_at) {
         if (!shouldShowError) {
             return null;
         }
