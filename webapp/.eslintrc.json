@@ -148,7 +148,7 @@
     "import/order": [
       "error",
       {
-        "newlines-between": "always-and-inside-groups",
+        "newlines-between": "always",
         "groups": [
           "builtin",
           "external",
@@ -158,7 +158,18 @@
           ],
           "sibling",
           "index"
-        ]
+        ],
+        "pathGroups": [
+          {
+            "pattern": "(@mattermost|mattermost-redux)/**",
+            "group": "external",
+            "position": "after"
+          }
+        ],
+        "alphabetize": {
+          "order": "asc",
+          "caseInsensitive": true
+        }
       }
     ],
     "indent": [

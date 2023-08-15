@@ -1,8 +1,6 @@
 import React from 'react';
-import {useIntl} from 'react-intl';
-
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-
+import {useIntl} from 'react-intl';
 import styled, {css} from 'styled-components';
 
 import CompassIcon from 'src/components/icons/compassIcon';

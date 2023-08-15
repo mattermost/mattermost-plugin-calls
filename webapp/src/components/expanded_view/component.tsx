@@ -3,60 +3,47 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {mosThreshold} from '@calls/common';
+import {
+    UserState,
+} from '@calls/common/lib/types';
+import {Channel} from '@mattermost/types/channels';
+import {Post} from '@mattermost/types/posts';
+import {Team} from '@mattermost/types/teams';
+import {UserProfile} from '@mattermost/types/users';
+import {Theme} from 'mattermost-redux/types/themes';
+import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 import React from 'react';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
 import styled, {createGlobalStyle, css} from 'styled-components';
-import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 
-import {UserProfile} from '@mattermost/types/users';
-import {Team} from '@mattermost/types/teams';
-import {Channel} from '@mattermost/types/channels';
-import {Post} from '@mattermost/types/posts';
-import {Theme} from 'mattermost-redux/types/themes';
-
-import {
-    UserState,
-} from '@calls/common/lib/types';
-import {mosThreshold} from '@calls/common';
-
-import {Emoji} from 'src/components/emoji/emoji';
-
-import {
-    getUserDisplayName,
-    getScreenStream,
-    isDMChannel,
-    hasExperimentalFlag,
-    sendDesktopEvent,
-    shouldRenderDesktopWidget,
-    untranslatable,
-    setCallsGlobalCSSVars,
-} from 'src/utils';
-import {
-    CallAlertConfigs,
-} from 'src/constants';
 import {
     stopCallRecording,
 } from 'src/actions';
-import * as Telemetry from 'src/types/telemetry';
 import Avatar from 'src/components/avatar/avatar';
-import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
+import Badge from 'src/components/badge';
+import CallDuration from 'src/components/call_widget/call_duration';
+import {Emoji} from 'src/components/emoji/emoji';
+import ChatThreadIcon from 'src/components/icons/chat_thread';
+import CollapseIcon from 'src/components/icons/collapse';
 import CompassIcon from 'src/components/icons/compassIcon';
+import HandEmoji from 'src/components/icons/hand';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
-import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import ParticipantsIcon from 'src/components/icons/participants';
+import RecordCircleIcon from 'src/components/icons/record_circle';
+import RecordSquareIcon from 'src/components/icons/record_square';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import ShareScreenIcon from 'src/components/icons/share_screen';
+import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
-import ParticipantsIcon from 'src/components/icons/participants';
-import CallDuration from 'src/components/call_widget/call_duration';
-import HandEmoji from 'src/components/icons/hand';
-import CollapseIcon from 'src/components/icons/collapse';
-import ChatThreadIcon from 'src/components/icons/chat_thread';
-import RecordSquareIcon from 'src/components/icons/record_square';
-import RecordCircleIcon from 'src/components/icons/record_circle';
-import Badge from 'src/components/badge';
+import {ExpandedCallContainer} from 'src/components/incoming_calls/expanded_call_container';
+import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
+import {
+    CallAlertConfigs,
+} from 'src/constants';
 import {
     MUTE_UNMUTE,
     RAISE_LOWER_HAND,
@@ -69,21 +56,31 @@ import {
     reverseKeyMappings,
     MAKE_REACTION,
 } from 'src/shortcuts';
+import * as Telemetry from 'src/types/telemetry';
 import {
     AudioDevices,
     CallAlertStates,
     CallAlertStatesDefault,
     CallRecordingReduxState,
 } from 'src/types/types';
+import {
+    getUserDisplayName,
+    getScreenStream,
+    isDMChannel,
+    hasExperimentalFlag,
+    sendDesktopEvent,
+    shouldRenderDesktopWidget,
+    untranslatable,
+    setCallsGlobalCSSVars,
+    getCallsClient,
+} from 'src/utils';
 
-import RecordingInfoPrompt from './recording_info_prompt';
-
-import GlobalBanner from './global_banner';
-import ControlsButton from './controls_button';
 import CallParticipant from './call_participant';
-
-import './component.scss';
+import ControlsButton from './controls_button';
+import GlobalBanner from './global_banner';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
+import RecordingInfoPrompt from './recording_info_prompt';
+import './component.scss';
 
 interface Props extends RouteComponentProps {
     intl: IntlShape,
@@ -111,7 +108,6 @@ interface Props extends RouteComponentProps {
     screenSharingID: string,
     channel: Channel,
     channelTeam: Team,
-    channelURL: string;
     channelDisplayName: string;
     connectedDMUser: UserProfile | undefined,
     threadID: Post['id'],
@@ -179,6 +175,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 flexDirection: 'column',
                 flex: '1',
             },
+            headerSpreader: {
+                marginRight: 'auto',
+            },
             closeViewButton: {
                 display: 'flex',
                 alignItems: 'center',
@@ -186,7 +185,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 width: '40px',
                 height: '40px',
                 borderRadius: '4px',
-                marginLeft: 'auto',
             },
             participants: {
                 display: 'grid',
@@ -328,13 +326,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.screenPlayer = node;
     };
 
-    getCallsClient = () => {
-        return window.opener ? window.opener.callsClient : window.callsClient;
-    };
-
     handleBlur = () => {
         if (this.pushToTalk) {
-            this.getCallsClient()?.mute();
+            getCallsClient()?.mute();
             this.pushToTalk = false;
             this.forceUpdate();
         }
@@ -346,7 +340,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         if (keyToAction('popout', ev) === PUSH_TO_TALK && this.pushToTalk) {
-            this.getCallsClient()?.mute();
+            getCallsClient()?.mute();
             this.pushToTalk = false;
             this.forceUpdate();
             return;
@@ -373,7 +367,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             if (this.pushToTalk) {
                 return;
             }
-            this.getCallsClient()?.unmute();
+            getCallsClient()?.unmute();
             this.pushToTalk = true;
             this.forceUpdate();
             break;
@@ -416,7 +410,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     onDisconnectClick = () => {
         this.props.hideExpandedView();
-        const callsClient = this.getCallsClient();
+        const callsClient = getCallsClient();
         if (callsClient) {
             callsClient.disconnect();
             if (window.opener) {
@@ -429,9 +423,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (this.pushToTalk) {
             return;
         }
-        const callsClient = this.getCallsClient();
+        const callsClient = getCallsClient();
         if (this.isMuted()) {
-            callsClient.unmute();
+            callsClient?.unmute();
         } else {
             callsClient?.mute();
         }
@@ -461,7 +455,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (!this.props.allowScreenSharing) {
             return;
         }
-        const callsClient = this.getCallsClient();
+        const callsClient = getCallsClient();
         if (this.props.screenSharingID === this.props.currentUserID) {
             callsClient?.unshareScreen();
             this.setState({
@@ -509,7 +503,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     onRaiseHandToggle = (fromShortcut?: boolean) => {
-        const callsClient = this.getCallsClient();
+        const callsClient = getCallsClient();
         if (this.isHandRaised()) {
             this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
             callsClient?.unraiseHand();
@@ -564,7 +558,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     public componentDidMount() {
-        const callsClient = this.getCallsClient();
+        const callsClient = getCallsClient();
         if (!callsClient) {
             return;
         }
@@ -739,8 +733,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        const msg = isSharing ? formatMessage({defaultMessage: 'You\'re sharing your screen'}) :
-            formatMessage({defaultMessage: 'You\'re viewing {presenterName}\'s screen'}, {presenterName: getUserDisplayName(profile)});
+        const msg = isSharing ? formatMessage({defaultMessage: 'You\'re sharing your screen'}) : formatMessage({defaultMessage: 'You\'re viewing {presenterName}\'s screen'}, {presenterName: getUserDisplayName(profile)});
 
         return (
             <div
@@ -938,7 +931,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const callsClient = this.getCallsClient();
+        const callsClient = getCallsClient();
         if (!callsClient) {
             return null;
         }
@@ -973,14 +966,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
         const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext!) : '';
 
-        const participantsText = this.state.showParticipantsList ?
-            formatMessage({defaultMessage: 'Hide participants list'}) :
-            formatMessage({defaultMessage: 'Show participants list'});
+        const participantsText = this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants list'}) : formatMessage({defaultMessage: 'Show participants list'});
 
         const showChatThread = this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID;
-        let chatToolTipText = showChatThread ?
-            formatMessage({defaultMessage: 'Hide chat'}) :
-            formatMessage({defaultMessage: 'Show chat'});
+        let chatToolTipText = showChatThread ? formatMessage({defaultMessage: 'Hide chat'}) : formatMessage({defaultMessage: 'Show chat'});
 
         const chatToolTipSubtext = '';
         const chatDisabled = Boolean(this.props.channel?.team_id) && this.props.channel.team_id !== this.props.currentTeamID;
@@ -1024,10 +1013,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             startAt={this.props.callStartAt}
                         />
                         <span style={{margin: '4px'}}>{untranslatable('•')}</span>
-                        <span style={{margin: '4px'}}>
+                        <span style={{margin: '4px', whiteSpace: 'nowrap'}}>
                             {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.profiles.length})}
                         </span>
 
+                        <div style={this.style.headerSpreader}/>
+                        <ExpandedCallContainer/>
                         <button
                             className='button-close'
                             style={this.style.closeViewButton}

@@ -67,7 +67,7 @@
     "webpack-cli": "4.10.0"
   },
   "dependencies": {
-    "@calls/common": "github:mattermost/calls-common#a2ed4534dda9b40f6efa42a1a42ad53c502da1b6",
+    "@calls/common": "github:mattermost/calls-common#43011d8e9c7985b0542628329be098715a43dc03",
     "@mattermost/types": "6.7.0-0",
     "@msgpack/msgpack": "2.7.1",
     "@redux-devtools/extension": "3.2.3",
@@ -118,7 +118,7 @@
       "jest-junit"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!react-native|react-router|mattermost-webapp|semver-parser)"
+      "node_modules/(?!react-native|react-router|mattermost-webapp|semver-parser|@calls)"
     ],
     "setupFiles": [
       "jest-canvas-mock"

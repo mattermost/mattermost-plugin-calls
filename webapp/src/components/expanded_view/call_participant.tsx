@@ -1,15 +1,13 @@
+import {Reaction} from '@calls/common/lib/types';
 import React from 'react';
 import {useIntl} from 'react-intl';
-
 import {CSSObject} from 'styled-components';
 
-import {Reaction} from '@calls/common/lib/types';
-
-import MutedIcon from 'src/components/icons/muted_icon';
-import UnmutedIcon from 'src/components/icons/unmuted_icon';
-import HandEmoji from 'src/components/icons/hand';
 import Avatar from 'src/components/avatar/avatar';
 import {Emoji} from 'src/components/emoji/emoji';
+import HandEmoji from 'src/components/icons/hand';
+import MutedIcon from 'src/components/icons/muted_icon';
+import UnmutedIcon from 'src/components/icons/unmuted_icon';
 
 export type Props = {
     name: string,

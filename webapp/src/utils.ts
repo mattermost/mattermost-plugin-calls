@@ -2,32 +2,27 @@ import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@calls/common';
 import {UserState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
-
 import {GlobalState} from '@mattermost/types/store';
-
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {DateTime, Duration, DurationLikeObject} from 'luxon';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {Client4} from 'mattermost-redux/client';
+import {General} from 'mattermost-redux/constants';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
-
 import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
-
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 
+import CallsClient from 'src/client';
+
 import {logDebug, logErr, logWarn} from './log';
-
 import {pluginId} from './manifest';
-
 import {voiceChannelRootPost} from './selectors';
 import JoinSelfSound from './sounds/join_self.mp3';
 import JoinUserSound from './sounds/join_user.mp3';
-
 import LeaveSelfSound from './sounds/leave_self.mp3';
-
 import {Store} from './types/mattermost-webapp';
 
 export function getPluginStaticPath() {
@@ -74,7 +69,25 @@ export function getChannelURL(state: GlobalState, channel: Channel, teamId: stri
         const redirectChannel = getRedirectChannelNameForTeam(state, currentTeamId);
         channelURL = getCurrentRelativeTeamUrl(state) + `/channels/${redirectChannel}`;
     }
+    if (channelURL.startsWith('//')) {
+        channelURL = channelURL.slice(1);
+    }
     return channelURL;
+}
+
+export function getCallsClient(): CallsClient | undefined {
+    return window.opener ? window.opener.callsClient : window.callsClient;
+}
+
+export function shouldRenderCallsIncoming() {
+    const win = window.opener ? window.opener : window;
+    const nonChannels = window.location.pathname.startsWith('/boards') || window.location.pathname.startsWith('/playbooks') || window.location.pathname.includes(`${pluginId}/expanded/`);
+    if (win.desktop && nonChannels) {
+        // don't render when we're in desktop, or in boards or playbooks, or in the expanded view.
+        // (can be simplified, but this is clearer)
+        return false;
+    }
+    return true;
 }
 
 export function getUserDisplayName(user: UserProfile | undefined, shortForm?: boolean) {
@@ -226,11 +239,15 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
 }
 
 export function isDMChannel(channel: Channel) {
-    return channel.type === 'D';
+    return channel.type === General.DM_CHANNEL;
 }
 
 export function isGMChannel(channel: Channel) {
-    return channel.type === 'G';
+    return channel.type === General.GM_CHANNEL;
+}
+
+export function isDmGmChannel(channel: Channel) {
+    return isDMChannel(channel) || isGMChannel(channel);
 }
 
 export function isPublicChannel(channel: Channel) {
@@ -337,6 +354,10 @@ export async function followThread(store: Store, channelID: string, teamID: stri
 }
 
 export function shouldRenderDesktopWidget() {
+    return desktopGTE(5, 3);
+}
+
+export function desktopGTE(major: number, minor: number) {
     const win = window.opener ? window.opener : window;
     if (!win.desktop) {
         return false;
@@ -344,11 +365,11 @@ export function shouldRenderDesktopWidget() {
 
     const version = parseSemVer(win.desktop.version);
 
-    if (version.major < 5) {
+    if (version.major < major) {
         return false;
     }
 
-    return version.major > 5 || version.minor >= 3;
+    return version.major > major || version.minor >= minor;
 }
 
 export function sendDesktopEvent(event: string, data?: Record<string, unknown>) {
@@ -447,4 +468,12 @@ export function callStartedTimestampFn(intl: IntlShape, startAt?: number) {
     }
 
     return DateTime.fromMillis(startAtMillis).toRelative() || '';
+}
+
+export function userAgent(): string {
+    return window.navigator.userAgent;
+}
+
+export function isDesktopApp(): boolean {
+    return userAgent().indexOf('Mattermost') !== -1 && userAgent().indexOf('Electron') !== -1;
 }

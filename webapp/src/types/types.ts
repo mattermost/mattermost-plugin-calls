@@ -15,6 +15,7 @@ export const CallsConfigDefault: CallsConfig = {
     MaxRecordingDuration: 60,
     sku_short_name: '',
     EnableSimulcast: false,
+    EnableRinging: true,
 };
 
 export type ChannelState = {
@@ -146,14 +147,24 @@ export type CallActions = {
     setRecordingPromptDismissedAt: (callId: string, dismissedAt: number) => void;
 }
 
-export type ColorRGB = {
-    r: number,
-    g: number,
-    b: number,
-};
+export enum ChannelType {
+    DM,
+    GM
+}
 
-export type ColorHSL = {
-    h: number,
-    s: number,
-    l: number,
+export type IncomingCallNotification = {
+    callID: string;
+    channelID: string;
+    callerID: string;
+    startAt: number;
+    type: ChannelType;
+}
+
+// From webapp because the constants file is not import friendly.
+export const UserStatuses = {
+    OUT_OF_OFFICE: 'ooo',
+    OFFLINE: 'offline',
+    AWAY: 'away',
+    ONLINE: 'online',
+    DND: 'dnd',
 };

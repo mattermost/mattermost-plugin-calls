@@ -4,7 +4,6 @@ const exec = require('child_process').exec;
 const path = require('path');
 
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-
 const webpack = require('webpack');
 
 const PLUGIN_ID = require('../plugin.json').id;

@@ -10,7 +10,7 @@ export const Button = styled.button`
     background: rgba(var(--center-channel-color-rgb), 0.08);
     color: rgba(var(--center-channel-color-rgb), 0.72);
     border-radius: 4px;
-    border: 0px;
+    border: 0;
     font-weight: 600;
     font-size: 14px;
     padding: 0 20px;

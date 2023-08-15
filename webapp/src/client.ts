@@ -1,17 +1,17 @@
 /* eslint-disable max-lines */
 
+import {parseRTCStats, RTCPeer, RTCMonitor} from '@calls/common';
+import {EmojiData} from '@calls/common/lib/types';
+// eslint-disable-next-line import/order
 import {EventEmitter} from 'events';
 
 // @ts-ignore
-import {deflate} from 'pako/lib/deflate.js';
-
-import {parseRTCStats, RTCPeer, RTCMonitor} from '@calls/common';
-import {EmojiData} from '@calls/common/lib/types';
+import {deflate} from 'pako/lib/deflate';
 
 import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo, CallsClientJoinData} from 'src/types/types';
 
-import {getScreenStream} from './utils';
 import {logErr, logDebug, logWarn, logInfo} from './log';
+import {getScreenStream} from './utils';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 
 export const AudioInputPermissionsError = new Error('missing audio input permissions');

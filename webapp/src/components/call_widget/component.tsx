@@ -1,19 +1,41 @@
 /* eslint-disable max-lines */
+import {mosThreshold} from '@calls/common';
+import {UserState} from '@calls/common/lib/types';
+import {Channel} from '@mattermost/types/channels';
+import {Team} from '@mattermost/types/teams';
+import {UserProfile} from '@mattermost/types/users';
+import {IDMappedObjects} from '@mattermost/types/utilities';
+import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 
-import {UserProfile} from '@mattermost/types/users';
-import {Channel} from '@mattermost/types/channels';
-import {Team} from '@mattermost/types/teams';
-import {IDMappedObjects} from '@mattermost/types/utilities';
-import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
-
-import {UserState} from '@calls/common/lib/types';
-import {mosThreshold} from '@calls/common';
-
-import * as Telemetry from 'src/types/telemetry';
-import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
+import {AudioInputPermissionsError} from 'src/client';
+import Avatar from 'src/components/avatar/avatar';
+import Badge from 'src/components/badge';
+import {Emoji} from 'src/components/emoji/emoji';
+import CompassIcon from 'src/components/icons/compassIcon';
+import ExpandIcon from 'src/components/icons/expand';
+import HandEmoji from 'src/components/icons/hand';
+import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
+import LeaveCallIcon from 'src/components/icons/leave_call_icon';
+import MutedIcon from 'src/components/icons/muted_icon';
+import ParticipantsIcon from 'src/components/icons/participants';
+import PopOutIcon from 'src/components/icons/popout';
+import RaisedHandIcon from 'src/components/icons/raised_hand';
+import RecordCircleIcon from 'src/components/icons/record_circle';
+import ScreenIcon from 'src/components/icons/screen_icon';
+import SettingsWheelIcon from 'src/components/icons/settings_wheel';
+import ShareScreenIcon from 'src/components/icons/share_screen';
+import ShowMoreIcon from 'src/components/icons/show_more';
+import SpeakerIcon from 'src/components/icons/speaker_icon';
+import TickIcon from 'src/components/icons/tick';
+import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import UnraisedHandIcon from 'src/components/icons/unraised_hand';
+import UnshareScreenIcon from 'src/components/icons/unshare_screen';
+import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
+import {CallAlertConfigs, CallRecordingDisclaimerStrings} from 'src/constants';
+import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
     LEAVE_CALL,
@@ -23,44 +45,22 @@ import {
     reverseKeyMappings,
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
-import {CallAlertConfigs, CallRecordingDisclaimerStrings} from 'src/constants';
-import {logDebug, logErr} from 'src/log';
-import Avatar from 'src/components/avatar/avatar';
-import MutedIcon from 'src/components/icons/muted_icon';
-import UnmutedIcon from 'src/components/icons/unmuted_icon';
-import LeaveCallIcon from 'src/components/icons/leave_call_icon';
-import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
-import SettingsWheelIcon from 'src/components/icons/settings_wheel';
-import ParticipantsIcon from 'src/components/icons/participants';
-import ShowMoreIcon from 'src/components/icons/show_more';
-import CompassIcon from 'src/components/icons/compassIcon';
-import ScreenIcon from 'src/components/icons/screen_icon';
-import ShareScreenIcon from 'src/components/icons/share_screen';
-import UnshareScreenIcon from 'src/components/icons/unshare_screen';
-import PopOutIcon from 'src/components/icons/popout';
-import ExpandIcon from 'src/components/icons/expand';
-import RaisedHandIcon from 'src/components/icons/raised_hand';
-import UnraisedHandIcon from 'src/components/icons/unraised_hand';
-import HandEmoji from 'src/components/icons/hand';
-import SpeakerIcon from 'src/components/icons/speaker_icon';
-import TickIcon from 'src/components/icons/tick';
-import RecordCircleIcon from 'src/components/icons/record_circle';
-import Badge from 'src/components/badge';
-import {AudioInputPermissionsError} from 'src/client';
-import {Emoji} from 'src/components/emoji/emoji';
+import * as Telemetry from 'src/types/telemetry';
 import {
     AudioDevices,
     CallAlertStates,
     CallAlertStatesDefault,
     CallRecordingReduxState,
+    IncomingCallNotification,
 } from 'src/types/types';
+import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
 
 import CallDuration from './call_duration';
+import JoinNotification from './join_notification';
+import LoadingOverlay from './loading_overlay';
+import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
-import UnavailableIconWrapper from './unavailable_icon_wrapper';
-import LoadingOverlay from './loading_overlay';
-import JoinNotification from './join_notification';
 
 import './component.scss';
 
@@ -97,6 +97,7 @@ interface Props {
     },
     recentlyJoinedUsers: string[],
     wider: boolean,
+    callsIncoming: IncomingCallNotification[],
 }
 
 interface DraggingState {
@@ -240,6 +241,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 color: 'var(--center-channel-color)',
                 background: 'var(--center-channel-bg)',
                 appRegion: 'drag',
+            },
+            callsIncoming: {
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '5px',
             },
         };
     };
@@ -1193,9 +1199,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             style={{
                                 width: '16px',
                                 height: '16px',
-                                fill: isDisabled ?
-                                    'rgba(var(--center-channel-color-rgb), 0.32)' :
-                                    'rgba(var(--center-channel-color-rgb), 0.56)',
+                                fill: isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)',
                                 flexShrink: 0,
                             }}
                         />
@@ -1220,9 +1224,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                             <span
                                 style={{
-                                    color: isDisabled ?
-                                        'rgba(var(--center-channel-color-rgb), 0.32)' :
-                                        'rgba(var(--center-channel-color-rgb), 0.56)',
+                                    color: isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)',
                                     fontSize: '12px',
                                     width: '100%',
                                     lineHeight: '18px',
@@ -1240,9 +1242,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             style={{
                                 width: '18px',
                                 height: '18px',
-                                fill: isDisabled ?
-                                    'rgba(var(--center-channel-color-rgb), 0.32)' :
-                                    'rgba(var(--center-channel-color-rgb), 0.56)',
+                                fill: isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)',
                             }}
                         />
                         }
@@ -1419,6 +1419,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        // If the host has changed for the current recording after the banner was dismissed, we should show
+        // again only if the user is the new host.
+        if (dismissedAt > recording?.start_at && this.props.callHostChangeAt > dismissedAt && !isHost) {
+            return null;
+        }
+
         let header = formatMessage(CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header);
         let body = formatMessage(CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body);
         let confirmText = isHost ? formatMessage({defaultMessage: 'Dismiss'}) : formatMessage({defaultMessage: 'Understood'});
@@ -1587,6 +1593,24 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
+    renderIncomingCalls = () => {
+        if (this.props.callsIncoming.length === 0) {
+            return null;
+        }
+
+        return (
+            <div style={this.style.callsIncoming}>
+                {this.props.callsIncoming.map((c) => (
+                    <CallIncomingCondensed
+                        key={c.callID}
+                        call={c}
+                        onWidget={true}
+                    />
+                ))}
+            </div>
+        );
+    };
+
     onMouseDown = (ev: React.MouseEvent<HTMLDivElement>) => {
         document.addEventListener('mousemove', this.onMouseMove, false);
         this.setState({
@@ -1664,7 +1688,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.props.trackEvent(Telemetry.Event.OpenExpandedView, Telemetry.Source.Widget, {initiator: 'button'});
 
         // TODO: remove this as soon as we support opening a window from desktop app.
-        // Reminder: the first condition is for the old desktop app, pre-global widget. The else path is the webapp.
+        // Reminder: the first condition is for the old desktop app, pre-global widget. The else path is the webapp & global widget.
         if (window.desktop && !this.props.global) {
             this.props.showExpandedView();
         } else {
@@ -1765,9 +1789,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const MuteIcon = this.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
-        let muteTooltipText = this.isMuted() ?
-            formatMessage({defaultMessage: 'Unmute'}) :
-            formatMessage({defaultMessage: 'Mute'});
+        let muteTooltipText = this.isMuted() ? formatMessage({defaultMessage: 'Unmute'}) : formatMessage({defaultMessage: 'Mute'});
         let muteTooltipSubtext = '';
 
         if (noInputDevices) {
@@ -1791,9 +1813,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const MenuIcon = this.props.wider ? SettingsWheelIcon : HorizontalDotsIcon;
 
-        const handTooltipText = this.isHandRaised() ?
-            formatMessage({defaultMessage: 'Lower hand'}) :
-            formatMessage({defaultMessage: 'Raise hand'});
+        const handTooltipText = this.isHandRaised() ? formatMessage({defaultMessage: 'Lower hand'}) : formatMessage({defaultMessage: 'Raise hand'});
 
         return (
             <div
@@ -1807,6 +1827,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     ref={this.menuNode}
                     style={this.style.menu}
                 >
+                    {this.renderIncomingCalls()}
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
                     {this.renderRecordingDisclaimer()}
@@ -1856,9 +1877,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             id='calls-widget-participants-button'
                             onToggle={this.onParticipantsButtonClick}
                             bgColor={this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
-                            tooltipText={this.state.showParticipantsList ?
-                                formatMessage({defaultMessage: 'Hide participants'}) :
-                                formatMessage({defaultMessage: 'Show participants'})}
+                            tooltipText={this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'})}
                             shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
                             icon={
                                 <ParticipantsIcon

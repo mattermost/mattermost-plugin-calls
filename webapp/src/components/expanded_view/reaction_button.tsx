@@ -1,36 +1,32 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {forwardRef, useImperativeHandle, useState} from 'react';
-import {useIntl} from 'react-intl';
-import styled, {css} from 'styled-components';
-import {OverlayTrigger} from 'react-bootstrap';
+import {EmojiData} from '@calls/common/lib/types';
 import EmojiPicker, {
     EmojiClickData,
     EmojiStyle,
     SkinTonePickerLocation,
     SuggestionMode,
 } from 'emoji-picker-react';
+import React, {forwardRef, useImperativeHandle, useState} from 'react';
+import {OverlayTrigger} from 'react-bootstrap';
+import {useIntl} from 'react-intl';
+import styled, {css} from 'styled-components';
 
-import {EmojiData} from '@calls/common/lib/types';
-
+import {Emoji} from 'src/components/emoji/emoji';
 import ControlsButton from 'src/components/expanded_view/controls_button';
-import {MAKE_REACTION, RAISE_LOWER_HAND, reverseKeyMappings} from 'src/shortcuts';
-import SmileyIcon from 'src/components/icons/smiley_icon';
-import * as Telemetry from 'src/types/telemetry';
-import {StyledTooltip} from 'src/components/shared';
-import Shortcut from 'src/components/shortcut';
 import CompassIcon from 'src/components/icons/compassIcon';
 import HandEmoji from 'src/components/icons/hand';
+import SmileyIcon from 'src/components/icons/smiley_icon';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
-import {Emoji} from 'src/components/emoji/emoji';
+import {StyledTooltip} from 'src/components/shared';
+import Shortcut from 'src/components/shortcut';
 import {EmojiIndicesByAlias} from 'src/emojis/emoji';
+import {MAKE_REACTION, RAISE_LOWER_HAND, reverseKeyMappings} from 'src/shortcuts';
+import * as Telemetry from 'src/types/telemetry';
+import {getCallsClient} from 'src/utils';
 
 const EMOJI_VERSION = '13';
-
-const getCallsClient = () => {
-    return window.opener ? window.opener.callsClient : window.callsClient;
-};
 
 export type ReactionButtonRef = {
     toggle: () => void,

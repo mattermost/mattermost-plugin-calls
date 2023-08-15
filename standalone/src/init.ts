@@ -1,22 +1,32 @@
-import {Reducer} from 'redux';
-
-import {Client4} from 'mattermost-redux/client';
-import configureStore from 'mattermost-redux/store';
-import {getMe} from 'mattermost-redux/actions/users';
+import {
+    CallChannelState,
+    CallHostChangedData,
+    CallRecordingStateData,
+    CallStartData,
+    EmptyData,
+    HelloData,
+    UserConnectedData,
+    UserDisconnectedData,
+    UserDismissedNotification,
+    UserMutedUnmutedData,
+    UserRaiseUnraiseHandData,
+    UserReactionData,
+    UserScreenOnOffData,
+    UserState,
+    UserVoiceOnOffData,
+    WebsocketEventData,
+} from '@calls/common/lib/types';
+import {WebSocketMessage} from '@mattermost/types/websocket';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
 import {getMyTeams, getMyTeamMembers} from 'mattermost-redux/actions/teams';
+import {getMe} from 'mattermost-redux/actions/users';
+import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
+import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
+import configureStore from 'mattermost-redux/store';
 import {Theme} from 'mattermost-redux/types/themes';
-
-import {WebSocketMessage} from '@mattermost/types/websocket';
-
-import {Store} from 'plugin/types/mattermost-webapp';
-import {pluginId} from 'plugin/manifest';
-import CallsClient from 'plugin/client';
-import reducer from 'plugin/reducers';
 import {
     VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_ROOT_POST,
@@ -26,16 +36,20 @@ import {
     VOICE_CHANNEL_CALL_START,
 } from 'plugin/action_types';
 import {getCallsConfig} from 'plugin/actions';
+import CallsClient from 'plugin/client';
+import {
+    logDebug,
+    logErr,
+} from 'plugin/log';
+import {pluginId} from 'plugin/manifest';
+import reducer from 'plugin/reducers';
+import {iceServers, needsTURNCredentials, callsConfig} from 'plugin/selectors';
+import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getWSConnectionURL,
     getPluginPath,
     getProfilesByIds,
 } from 'plugin/utils';
-import {iceServers, needsTURNCredentials, callsConfig} from 'plugin/selectors';
-import {
-    logDebug,
-    logErr,
-} from 'plugin/log';
 import {
     handleUserConnected,
     handleUserDisconnected,
@@ -52,24 +66,9 @@ import {
     handleCallHostChanged,
     handleUserReaction,
     handleCallRecordingState,
+    handleUserDismissedNotification,
 } from 'plugin/websocket_handlers';
-
-import {
-    CallHostChangedData,
-    CallRecordingStateData,
-    CallStartData,
-    EmptyData,
-    HelloData,
-    UserConnectedData,
-    UserDisconnectedData,
-    UserMutedUnmutedData,
-    UserRaiseUnraiseHandData,
-    UserReactionData,
-    UserScreenOnOffData,
-    UserState,
-    UserVoiceOnOffData,
-    WebsocketEventData,
-} from '@calls/common/lib/types';
+import {Reducer} from 'redux';
 import {CallActions, CurrentCallData, CurrentCallDataDefault, CallsClientConfig, CallsClientJoinData} from 'src/types/types';
 
 import {
@@ -80,7 +79,6 @@ import {
     getContextID,
 } from './common';
 import {applyTheme} from './theme_utils';
-import {ChannelState} from './types/calls';
 
 // CSS
 import 'mattermost-webapp/sass/styles.scss';
@@ -137,7 +135,7 @@ function connectCall(
 
 async function fetchChannelData(store: Store, channelID: string) {
     try {
-        const resp = await Client4.doFetch<ChannelState>(
+        const resp = await Client4.doFetch<CallChannelState>(
             `${getPluginPath()}/${channelID}`,
             {method: 'get'},
         );
@@ -173,10 +171,12 @@ async function fetchChannelData(store: Store, channelID: string) {
         store.dispatch({
             type: VOICE_CHANNEL_CALL_START,
             data: {
+                ID: resp.call.id,
                 channelID: resp.channel_id,
                 startAt: resp.call.start_at,
                 ownerID: resp.call.owner_id,
                 hostID: resp.call.host_id,
+                dismissedNotification: resp.call.dismissed_notification || {},
             },
         });
 
@@ -340,6 +340,9 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_call_recording_state`:
             handleCallRecordingState(store, ev as WebSocketMessage<CallRecordingStateData>);
+            break;
+        case `custom_${pluginId}_user_dismissed_notification`:
+            handleUserDismissedNotification(store, ev as WebSocketMessage<UserDismissedNotification>);
             break;
         default:
         }
