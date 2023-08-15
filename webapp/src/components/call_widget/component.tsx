@@ -814,6 +814,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <video
                             id='screen-player'
                             ref={this.setScreenPlayerRef}
+                            style={{maxHeight: '188px'}}
                             width='100%'
                             height='100%'
                             autoPlay={true}
