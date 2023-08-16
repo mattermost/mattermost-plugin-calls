@@ -36,6 +36,11 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	// If the recording hasn't started (bot hasn't joined yet) we notify the
 	// client.
 	if recState.StartAt == 0 {
+		if recState.JobID != jobID {
+			p.LogInfo("a new job has started in between, exiting", "callID", callID, "jobID", jobID)
+			return
+		}
+
 		p.LogError("timed out waiting for recorder bot to join", "callID", callID, "jobID", jobID)
 
 		state.Call.Recording = nil
@@ -78,7 +83,7 @@ func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID 
 
 	defer func() {
 		// In case of any error we relay it to the client.
-		if res.Err != "" {
+		if res.Err != "" && recState != nil {
 			recState.EndAt = time.Now().UnixMilli()
 			recState.Err = res.Err
 			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
@@ -113,6 +118,7 @@ func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID 
 		res.Code = http.StatusInternalServerError
 		return nil, res
 	}
+
 	if jobErr != nil {
 		state.Call.Recording = nil
 		if err := p.kvSetChannelState(callID, state); err != nil {
@@ -185,29 +191,23 @@ func (p *Plugin) handleRecordingStopAction(state *channelState, callID string) (
 		}
 	}()
 
-	// Sending the event prior to making the API call to the job service
-	// since it could take a few seconds to complete but we want clients
-	// to get their local state updated as soon as it changes on the server.
-	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-		"callID":   callID,
-		"recState": recState.getClientState().toMap(),
-	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
-
-	// We don't want to keep the lock while making the API call to the service since it
-	// could take a while to return.
-	p.unlockCall(callID)
 	if err := p.getJobService().StopJob(callID); err != nil {
 		res.Err = "failed to stop recording job: " + err.Error()
 		res.Code = http.StatusInternalServerError
 		return nil, res
 	}
 
+	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+		"callID":   callID,
+		"recState": recState.getClientState().toMap(),
+	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
 	return recState.getClientState(), res
 }
 
 func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, callID, action string) {
 	var res httpResponse
-	defer p.httpAudit("handlePostRecording", &res, w, r)
+	defer p.httpAudit("handleRecordingAction", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 
