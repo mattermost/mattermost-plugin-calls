@@ -128,9 +128,8 @@ export default function RecordingInfoPrompt(props: Props) {
         }
     }
 
-    // If the user became host after the recording has ended we only show
-    // the "Recording has stopped" message if the change happened very
-    // recently (i.e. in the last minute).
+    // If the user became host after the recording has ended we don't want to
+    // show the "Recording has stopped" banner.
     if (props.isHost && hasRecEnded && props.hostChangeAt > props.recording.end_at) {
         if (!shouldShowError) {
             return null;
