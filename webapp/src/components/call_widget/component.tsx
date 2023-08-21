@@ -1392,7 +1392,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const isHost = this.props.callHostID === this.props.currentUserID;
         const recording = this.props.callRecording;
         const dismissedAt = recording?.prompt_dismissed_at || 0;
-        const hasRecEnded = recording?.end_at;
+        const hasRecEnded = (recording?.end_at ?? 0) > (recording?.start_at ?? 0);
 
         // Nothing to show if the recording hasn't started yet, unless there
         // was an error.
@@ -1406,10 +1406,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const shouldShowError = recording?.error_at && dismissedAt > recording.error_at;
+
         // If the prompt was dismissed after the recording has started and after the last host change
         // we don't show this again, unless there was a more recent error.
         if (!hasRecEnded && dismissedAt > recording?.start_at && dismissedAt > this.props.callHostChangeAt) {
-            if (!recording?.error_at || dismissedAt > recording.error_at) {
+            if (!shouldShowError) {
                 return null;
             }
         }
@@ -1417,13 +1419,25 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // If the prompt was dismissed after the recording has ended then we
         // don't show this again.
         if (hasRecEnded && dismissedAt > recording?.end_at) {
-            return null;
+            if (!shouldShowError) {
+                return null;
+            }
         }
 
         // If the host has changed for the current recording after the banner was dismissed, we should show
         // again only if the user is the new host.
         if (dismissedAt > recording?.start_at && this.props.callHostChangeAt > dismissedAt && !isHost) {
-            return null;
+            if (!shouldShowError) {
+                return null;
+            }
+        }
+
+        // If the user became host after the recording has ended we don't want to
+        // show the "Recording has stopped" banner.
+        if (isHost && hasRecEnded && this.props.callHostChangeAt > recording.end_at) {
+            if (!shouldShowError) {
+                return null;
+            }
         }
 
         let header = formatMessage(CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header);
