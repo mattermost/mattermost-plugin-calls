@@ -141,7 +141,8 @@ async function fetchChannelData(store: Store, channelID: string) {
     );
 
     if (!resp.call) {
-        throw new Error('call missing from response');
+        // This is expected if the client is starting the call.
+        return;
     }
 
     store.dispatch({
@@ -353,7 +354,13 @@ export default async function init(cfg: InitConfig) {
     const theme = getTheme(store.getState());
     applyTheme(theme);
 
-    await cfg.initCb(store, theme, channelID);
+    try {
+        await cfg.initCb(store, theme, channelID);
+    } catch (err) {
+        logErr('initCb failed', err);
+        window.callsClient?.destroy();
+        return;
+    }
 
     logDebug(`${cfg.name} init completed in ${Math.round(performance.now() - initStartTime)}ms`);
 }

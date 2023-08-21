@@ -81,6 +81,7 @@ type config struct {
 	screenSharing bool
 	recording     bool
 	simulcast     bool
+	setup         bool
 }
 
 type user struct {
@@ -769,6 +770,10 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 	if ok && appErr != nil && appErr.Id != "api.user.login.invalid_credentials_email_username" {
 		return err
 	} else if ok && appErr != nil && appErr.Id == "api.user.login.invalid_credentials_email_username" {
+		if !u.cfg.setup {
+			return fmt.Errorf("cannot register user with setup disabled")
+		}
+
 		log.Printf("%s: registering user", u.cfg.username)
 		ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
 		user, _, err = client.CreateUser(ctx, &model.User{
@@ -793,23 +798,25 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 	u.userID = user.Id
 
 	// join team
-	ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
-	defer cancel()
-	_, _, err = client.AddTeamMember(ctx, u.cfg.teamID, user.Id)
-	if err != nil {
-		return err
-	}
-	cancel()
-
-	if channelType == "O" || channelType == "P" {
-		// join channel
+	if u.cfg.setup {
 		ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
 		defer cancel()
-		_, _, err = client.AddChannelMember(ctx, u.cfg.channelID, user.Id)
+		_, _, err = client.AddTeamMember(ctx, u.cfg.teamID, user.Id)
 		if err != nil {
 			return err
 		}
 		cancel()
+
+		if channelType == "O" || channelType == "P" {
+			// join channel
+			ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+			defer cancel()
+			_, _, err = client.AddChannelMember(ctx, u.cfg.channelID, user.Id)
+			if err != nil {
+				return err
+			}
+			cancel()
+		}
 	}
 
 	log.Printf("%s: connecting to websocket", u.cfg.username)
@@ -856,6 +863,7 @@ func main() {
 	var numUsersPerCall int
 	var numRecordings int
 	var simulcast bool
+	var setup bool
 
 	flag.StringVar(&teamID, "team", "", "The team ID to start calls in")
 	flag.StringVar(&channelID, "channel", "", "The channel ID to start the call in")
@@ -873,6 +881,7 @@ func main() {
 	flag.StringVar(&adminUsername, "admin-username", "sysadmin", "The username of a system admin account")
 	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "The password of a system admin account")
 	flag.BoolVar(&simulcast, "simulcast", false, "Whether or not to enable simulcast for screen")
+	flag.BoolVar(&setup, "setup", true, "Whether or not setup actions like creating users, channels, teams and/or members should be executed.")
 
 	flag.Parse()
 
@@ -886,6 +895,10 @@ func main() {
 
 	if channelID == "" && teamID == "" {
 		log.Fatalf("team must be set")
+	}
+
+	if !setup && (channelID == "" || teamID == "") {
+		log.Fatalf("team and channel are required when running with setup disabled")
 	}
 
 	if numUsersPerCall == 0 {
@@ -929,63 +942,72 @@ func main() {
 		log.Fatalf("recordings cannot be greater than the number of calls")
 	}
 
-	adminClient := model.NewAPIv4Client(siteURL)
-	ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
-	defer cancel()
-	_, _, err = adminClient.Login(ctx, adminUsername, adminPassword)
-	if err != nil {
-		log.Fatalf("failed to login as admin: %s", err.Error())
-	}
-	cancel()
-
 	var channels []*model.Channel
-	if channelID == "" {
-		page := 0
-		perPage := 100
-		for {
+	if setup {
+		adminClient := model.NewAPIv4Client(siteURL)
+		ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
+		defer cancel()
+		_, _, err = adminClient.Login(ctx, adminUsername, adminPassword)
+		if err != nil {
+			log.Fatalf("failed to login as admin: %s", err.Error())
+		}
+		cancel()
+
+		if channelID == "" {
+			page := 0
+			perPage := 100
+			for {
+				ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+				chs, _, err := adminClient.SearchChannels(ctx, teamID, &model.ChannelSearch{
+					Public:  true,
+					PerPage: &perPage,
+					Page:    &page,
+				})
+				cancel()
+				if err != nil {
+					log.Fatalf("failed to search channels: %s", err.Error())
+				}
+				channels = append(channels, chs...)
+				if len(channels) >= numCalls || len(chs) < perPage {
+					break
+				}
+				page++
+			}
+
+			if len(channels) < numCalls {
+				channels = make([]*model.Channel, numCalls)
+				for i := 0; i < numCalls; i++ {
+					name := model.NewId()
+					ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+					channel, _, err := adminClient.CreateChannel(ctx, &model.Channel{
+						TeamId:      teamID,
+						Name:        name,
+						DisplayName: "test-" + name,
+						Type:        model.ChannelTypeOpen,
+					})
+					cancel()
+					if err != nil {
+						log.Fatalf("failed to create channel: %s", err.Error())
+					}
+					channels[i] = channel
+				}
+			}
+		} else {
 			ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
-			chs, _, err := adminClient.SearchChannels(ctx, teamID, &model.ChannelSearch{
-				Public:  true,
-				PerPage: &perPage,
-				Page:    &page,
-			})
+			channel, _, err := adminClient.GetChannel(ctx, channelID, "")
 			cancel()
 			if err != nil {
 				log.Fatalf("failed to search channels: %s", err.Error())
 			}
-			channels = append(channels, chs...)
-			if len(channels) >= numCalls || len(chs) < perPage {
-				break
-			}
-			page++
-		}
-
-		if len(channels) < numCalls {
-			channels = make([]*model.Channel, numCalls)
-			for i := 0; i < numCalls; i++ {
-				name := model.NewId()
-				ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
-				channel, _, err := adminClient.CreateChannel(ctx, &model.Channel{
-					TeamId:      teamID,
-					Name:        name,
-					DisplayName: "test-" + name,
-					Type:        model.ChannelTypeOpen,
-				})
-				cancel()
-				if err != nil {
-					log.Fatalf("failed to create channel: %s", err.Error())
-				}
-				channels[i] = channel
-			}
+			channels = append(channels, channel)
 		}
 	} else {
-		ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
-		channel, _, err := adminClient.GetChannel(ctx, channelID, "")
-		cancel()
-		if err != nil {
-			log.Fatalf("failed to search channels: %s", err.Error())
+		channels = []*model.Channel{
+			{
+				Id:     channelID,
+				TeamId: teamID,
+			},
 		}
-		channels = append(channels, channel)
 	}
 
 	stopCh := make(chan struct{})
@@ -1024,6 +1046,7 @@ func main() {
 					screenSharing: screenSharing,
 					recording:     recording,
 					simulcast:     simulcast,
+					setup:         setup,
 				}
 
 				user := newUser(cfg)
