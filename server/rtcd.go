@@ -582,14 +582,15 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 			return fmt.Errorf("missing sessionID")
 		}
 		m.ctx.LogDebug("received close message from rtcd", "sessionID", sessionID)
-		m.ctx.mut.RLock()
-		us := m.ctx.sessions[sessionID]
-		m.ctx.mut.RUnlock()
+		us := m.ctx.getSessionByOriginalID(sessionID)
 		if us != nil && atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
 			m.ctx.LogDebug("closing rtc close channel", "sessionID", sessionID)
 			close(us.rtcCloseCh)
 			return m.ctx.removeSession(us)
 		}
+
+		m.ctx.LogDebug("session not found or rtc conn already closed", "sessionID", sessionID)
+
 		return nil
 	}
 

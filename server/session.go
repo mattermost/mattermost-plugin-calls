@@ -342,3 +342,28 @@ func (p *Plugin) removeSession(us *session) error {
 
 	return nil
 }
+
+// getSessionByOriginalID retrieves a session by its original connection ID
+// which is also the session ID matching the RTC connection.
+func (p *Plugin) getSessionByOriginalID(sessionID string) *session {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+
+	// We first try to see if the session is mapped by its original ID since
+	// it's more efficient and the most probable case.
+	us := p.sessions[sessionID]
+	if us != nil {
+		return us
+	}
+
+	// If we can't find one, we resort to looping through all the sessions to
+	// check against the originalConnID field. This would be necessary only if
+	// the session reconnected throughout the call with a new ws connection ID.
+	for _, s := range p.sessions {
+		if s.originalConnID == sessionID {
+			return s
+		}
+	}
+
+	return nil
+}
