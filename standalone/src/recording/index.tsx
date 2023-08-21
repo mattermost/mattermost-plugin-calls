@@ -8,7 +8,7 @@ import {Theme} from 'mattermost-redux/types/themes';
 import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/users';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
-import {voiceConnectedProfilesInChannel} from 'plugin/selectors';
+import {voiceConnectedProfilesInChannel, voiceChannelCallStartAt} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {getProfilesByIds, getPluginPath, fetchTranslationsFile, setCallsGlobalCSSVars} from 'plugin/utils';
 import React from 'react';
@@ -71,6 +71,10 @@ async function initRecordingStore(store: Store, channelID: string) {
 }
 
 async function initRecording(store: Store, theme: Theme, channelID: string) {
+    if (!voiceChannelCallStartAt(store.getState(), channelID)) {
+        throw new Error('call is missing from store');
+    }
+
     await store.dispatch({
         type: VOICE_CHANNEL_USER_CONNECTED,
         data: {
