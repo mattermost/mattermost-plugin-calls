@@ -42,22 +42,32 @@ async function fetchProfileImages(profiles: UserProfile[]) {
                 logErr(err);
             }));
     }
-    await Promise.all(promises);
+
+    try {
+        await Promise.all(promises);
+    } catch (err) {
+        logErr('failed to load profile images', err);
+    }
+
     return profileImages;
 }
 
 async function initRecordingStore(store: Store, channelID: string) {
-    const channel = await Client4.doFetch(
-        `${getPluginPath()}/bot/channels/${channelID}`,
-        {method: 'get'},
-    );
+    try {
+        const channel = await Client4.doFetch(
+            `${getPluginPath()}/bot/channels/${channelID}`,
+            {method: 'get'},
+        );
 
-    store.dispatch(
-        {
-            type: ChannelTypes.RECEIVED_CHANNEL,
-            data: channel,
-        },
-    );
+        store.dispatch(
+            {
+                type: ChannelTypes.RECEIVED_CHANNEL,
+                data: channel,
+            },
+        );
+    } catch (err) {
+        logErr('failed to fetch channel', err);
+    }
 }
 
 async function initRecording(store: Store, theme: Theme, channelID: string) {
@@ -113,14 +123,20 @@ async function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEv
     switch (ev.event) {
     case `custom_${pluginId}_user_connected`: {
         const data = ev.data as UserConnectedData;
-        const profiles = await getProfilesByIds(store.getState(), [data.userID]);
-        store.dispatch({
-            type: RECEIVED_CALL_PROFILE_IMAGES,
-            data: {
-                channelID: data.channelID,
-                profileImages: await fetchProfileImages(profiles),
-            },
-        });
+
+        try {
+            const profiles = await getProfilesByIds(store.getState(), [data.userID]);
+            store.dispatch({
+                type: RECEIVED_CALL_PROFILE_IMAGES,
+                data: {
+                    channelID: data.channelID,
+                    profileImages: await fetchProfileImages(profiles),
+                },
+            });
+        } catch (err) {
+            logErr('failed to fetch user profiles', err);
+        }
+
         break;
     }
     default:
