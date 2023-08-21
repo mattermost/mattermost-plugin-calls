@@ -22,7 +22,7 @@ import {
     voiceConnectedUsersInChannel,
     voiceChannelCallOwnerID,
     voiceChannelCallHostID,
-    callRecording,
+    isRecording,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
 import {sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
@@ -178,23 +178,22 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
 
         const state = store.getState();
         const isHost = voiceChannelCallHostID(state, connectedID) === getCurrentUserId(state);
-        const recording = callRecording(state, connectedID);
 
         if (fields[2] === 'start') {
             trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.SlashCommand)(store.dispatch, store.getState);
-
-            if (recording?.start_at > recording?.end_at) {
-                store.dispatch(displayGenericErrorModal(
-                    startErrorTitle,
-                    defineMessage({defaultMessage: 'A recording is already in progress.'}),
-                ));
-                return {};
-            }
 
             if (!isHost) {
                 store.dispatch(displayGenericErrorModal(
                     startErrorTitle,
                     defineMessage({defaultMessage: 'You don\'t have permission to start a recording. Please ask the call host to start a recording.'}),
+                ));
+                return {};
+            }
+
+            if (isRecording(state, connectedID)) {
+                store.dispatch(displayGenericErrorModal(
+                    startErrorTitle,
+                    defineMessage({defaultMessage: 'A recording is already in progress.'}),
                 ));
                 return {};
             }
@@ -205,18 +204,18 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         if (fields[2] === 'stop') {
             trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.SlashCommand)(store.dispatch, store.getState);
 
-            if (!recording || recording?.end_at > recording?.start_at) {
-                store.dispatch(displayGenericErrorModal(
-                    stopErrorTitle,
-                    defineMessage({defaultMessage: 'No recording is in progress.'}),
-                ));
-                return {};
-            }
-
             if (!isHost) {
                 store.dispatch(displayGenericErrorModal(
                     stopErrorTitle,
                     defineMessage({defaultMessage: 'You don\'t have permission to stop the recording. Please ask the call host to stop the recording.'}),
+                ));
+                return {};
+            }
+
+            if (!isRecording(state, connectedID)) {
+                store.dispatch(displayGenericErrorModal(
+                    stopErrorTitle,
+                    defineMessage({defaultMessage: 'No recording is in progress.'}),
                 ));
                 return {};
             }
