@@ -81,7 +81,7 @@ type config struct {
 	screenSharing bool
 	recording     bool
 	simulcast     bool
-	noSetup       bool
+	setup         bool
 }
 
 type user struct {
@@ -770,8 +770,8 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 	if ok && appErr != nil && appErr.Id != "api.user.login.invalid_credentials_email_username" {
 		return err
 	} else if ok && appErr != nil && appErr.Id == "api.user.login.invalid_credentials_email_username" {
-		if u.cfg.noSetup {
-			return fmt.Errorf("cannot register user in no-setup mode")
+		if !u.cfg.setup {
+			return fmt.Errorf("cannot register user with setup disabled")
 		}
 
 		log.Printf("%s: registering user", u.cfg.username)
@@ -798,7 +798,7 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 	u.userID = user.Id
 
 	// join team
-	if !u.cfg.noSetup {
+	if u.cfg.setup {
 		ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
 		defer cancel()
 		_, _, err = client.AddTeamMember(ctx, u.cfg.teamID, user.Id)
@@ -863,7 +863,7 @@ func main() {
 	var numUsersPerCall int
 	var numRecordings int
 	var simulcast bool
-	var noSetup bool
+	var setup bool
 
 	flag.StringVar(&teamID, "team", "", "The team ID to start calls in")
 	flag.StringVar(&channelID, "channel", "", "The channel ID to start the call in")
@@ -881,7 +881,7 @@ func main() {
 	flag.StringVar(&adminUsername, "admin-username", "sysadmin", "The username of a system admin account")
 	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "The password of a system admin account")
 	flag.BoolVar(&simulcast, "simulcast", false, "Whether or not to enable simulcast for screen")
-	flag.BoolVar(&noSetup, "no-setup", false, "Whether or not users, channels, teams and/or members should be created.")
+	flag.BoolVar(&setup, "setup", true, "Whether or not setup actions like creating users, channels, teams and/or members should be executed.")
 
 	flag.Parse()
 
@@ -897,8 +897,8 @@ func main() {
 		log.Fatalf("team must be set")
 	}
 
-	if noSetup && (channelID == "" || teamID == "") {
-		log.Fatalf("team and channel are required when running with no setup")
+	if !setup && (channelID == "" || teamID == "") {
+		log.Fatalf("team and channel are required when running with setup disabled")
 	}
 
 	if numUsersPerCall == 0 {
@@ -943,7 +943,7 @@ func main() {
 	}
 
 	var channels []*model.Channel
-	if !noSetup {
+	if setup {
 		adminClient := model.NewAPIv4Client(siteURL)
 		ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
 		defer cancel()
@@ -1046,7 +1046,7 @@ func main() {
 					screenSharing: screenSharing,
 					recording:     recording,
 					simulcast:     simulcast,
-					noSetup:       noSetup,
+					setup:         setup,
 				}
 
 				user := newUser(cfg)
