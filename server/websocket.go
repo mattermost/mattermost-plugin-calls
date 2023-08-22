@@ -170,6 +170,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 	p.metrics.IncWebSocketEvent("in", msg.Type)
 	switch msg.Type {
 	case clientMessageTypeSDP:
+		p.LogDebug("received sdp", "connID", us.connID, "originalConnID", us.originalConnID, "userID", us.userID)
 		// if I am not the handler for this we relay the signaling message.
 		if handlerID != p.nodeID {
 			// need to relay signaling.
@@ -194,7 +195,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 		}
 	case clientMessageTypeICE:
-		p.LogDebug("candidate!")
+		p.LogDebug("received ice candidate", "connID", us.connID, "originalConnID", us.originalConnID, "userID", us.userID)
 		if handlerID == p.nodeID {
 			rtcMsg := rtc.Message{
 				SessionID: us.originalConnID,
@@ -748,7 +749,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		return
 	}
 
-	if us != nil && !us.limiter.Allow() {
+	if us != nil && !us.wsMsgLimiter.Allow() {
 		p.LogError("message was dropped by rate limiter", "msgType", msg.Type, "userID", us.userID, "connID", us.connID)
 		return
 	}
