@@ -47,7 +47,8 @@ type session struct {
 	leaveCh chan struct{}
 	left    int32
 
-	limiter *rate.Limiter
+	// rate limiter for incoming WebSocket messages.
+	wsMsgLimiter *rate.Limiter
 }
 
 func newUserSession(userID, channelID, connID string, rtc bool) *session {
@@ -62,7 +63,7 @@ func newUserSession(userID, channelID, connID string, rtc bool) *session {
 		wsReconnectCh:  make(chan struct{}),
 		leaveCh:        make(chan struct{}),
 		rtcCloseCh:     make(chan struct{}),
-		limiter:        rate.NewLimiter(2, 50),
+		wsMsgLimiter:   rate.NewLimiter(10, 100),
 		rtc:            rtc,
 	}
 }
