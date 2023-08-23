@@ -269,8 +269,7 @@ export default async function init(cfg: InitConfig) {
             store.dispatch(getCallsConfig()),
         ]);
     } catch (err) {
-        logErr('failed to fetch channel data', err);
-        return;
+        throw new Error(`failed to fetch channel data: ${err}`);
     }
 
     const iceConfigs = [...iceServers(store.getState())];
@@ -357,9 +356,8 @@ export default async function init(cfg: InitConfig) {
     try {
         await cfg.initCb(store, theme, channelID);
     } catch (err) {
-        logErr('initCb failed', err);
         window.callsClient?.destroy();
-        return;
+        throw new Error(`initCb failed: ${err}`);
     }
 
     logDebug(`${cfg.name} init completed in ${Math.round(performance.now() - initStartTime)}ms`);
