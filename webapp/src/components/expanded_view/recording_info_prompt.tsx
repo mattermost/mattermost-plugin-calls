@@ -102,7 +102,7 @@ export default function RecordingInfoPrompt(props: Props) {
         return null;
     }
 
-    const shouldShowError = props.recording?.error_at && disclaimerDismissedAt > props.recording.error_at;
+    const shouldShowError = props.recording?.error_at && props.recording.error_at > disclaimerDismissedAt;
 
     // If the prompt was dismissed after the recording has started and after the last host change
     // we don't show this again, unless there was a more recent error.

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	msgChSize = 20
+	msgChSize = 50
 )
 
 type session struct {
@@ -47,10 +47,11 @@ type session struct {
 	leaveCh chan struct{}
 	left    int32
 
-	// remove tracks whether the session was removed from state.
+	// removed tracks whether the session was removed from state.
 	removed int32
 
-	limiter *rate.Limiter
+	// rate limiter for incoming WebSocket messages.
+	wsMsgLimiter *rate.Limiter
 }
 
 func newUserSession(userID, channelID, connID string, rtc bool) *session {
@@ -65,7 +66,7 @@ func newUserSession(userID, channelID, connID string, rtc bool) *session {
 		wsReconnectCh:  make(chan struct{}),
 		leaveCh:        make(chan struct{}),
 		rtcCloseCh:     make(chan struct{}),
-		limiter:        rate.NewLimiter(2, 50),
+		wsMsgLimiter:   rate.NewLimiter(10, 100),
 		rtc:            rtc,
 	}
 }
