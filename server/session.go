@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	msgChSize = 20
+	msgChSize = 50
 )
 
 type session struct {
