@@ -22,24 +22,24 @@ import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} f
 import {notificationSounds} from 'src/webapp_globals';
 
 import {
-    VOICE_CHANNEL_USER_MUTED,
-    VOICE_CHANNEL_USER_UNMUTED,
-    VOICE_CHANNEL_USER_CONNECTED,
-    VOICE_CHANNEL_PROFILE_CONNECTED,
-    VOICE_CHANNEL_CALL_START,
-    VOICE_CHANNEL_CALL_END,
-    VOICE_CHANNEL_ROOT_POST,
-    VOICE_CHANNEL_USER_VOICE_ON,
-    VOICE_CHANNEL_USER_VOICE_OFF,
-    VOICE_CHANNEL_USER_SCREEN_ON,
-    VOICE_CHANNEL_USER_SCREEN_OFF,
-    VOICE_CHANNEL_USER_RAISE_HAND,
-    VOICE_CHANNEL_USER_UNRAISE_HAND,
-    VOICE_CHANNEL_USER_REACTED,
-    VOICE_CHANNEL_USER_REACTED_TIMEOUT,
-    VOICE_CHANNEL_CALL_HOST,
-    VOICE_CHANNEL_CALL_RECORDING_STATE,
-    VOICE_CHANNEL_USER_JOINED_TIMEOUT,
+    CALLS_USER_MUTED,
+    CALLS_USER_UNMUTED,
+    CALLS_USER_CONNECTED,
+    CALLS_PROFILE_CONNECTED,
+    CALLS_CALL_START,
+    CALLS_CALL_END,
+    CALLS_ROOT_POST,
+    CALLS_USER_VOICE_ON,
+    CALLS_USER_VOICE_OFF,
+    CALLS_USER_SCREEN_ON,
+    CALLS_USER_SCREEN_OFF,
+    CALLS_USER_RAISE_HAND,
+    CALLS_USER_UNRAISE_HAND,
+    CALLS_USER_REACTED,
+    CALLS_USER_REACTED_TIMEOUT,
+    CALLS_CALL_HOST,
+    CALLS_CALL_RECORDING_STATE,
+    CALLS_USER_JOINED_TIMEOUT,
     DISMISS_CALL,
 } from './action_types';
 import {logErr} from './log';
@@ -66,7 +66,7 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     }
 
     store.dispatch({
-        type: VOICE_CHANNEL_CALL_END,
+        type: CALLS_CALL_END,
         data: {
             channelID,
         },
@@ -83,14 +83,14 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
 
     // Clear the old recording state (if any).
     store.dispatch({
-        type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+        type: CALLS_CALL_RECORDING_STATE,
         data: {
             callID: channelID,
             recState: null,
         },
     });
     store.dispatch({
-        type: VOICE_CHANNEL_CALL_START,
+        type: CALLS_CALL_START,
         data: {
             ID: ev.data.id,
             channelID,
@@ -100,7 +100,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         },
     });
     store.dispatch({
-        type: VOICE_CHANNEL_ROOT_POST,
+        type: CALLS_ROOT_POST,
         data: {
             channelID,
             rootPost: ev.data.thread_id,
@@ -144,7 +144,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
     }
 
     store.dispatch({
-        type: VOICE_CHANNEL_USER_CONNECTED,
+        type: CALLS_USER_CONNECTED,
         data: {
             channelID,
             userID,
@@ -154,7 +154,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
 
     setTimeout(() => {
         store.dispatch({
-            type: VOICE_CHANNEL_USER_JOINED_TIMEOUT,
+            type: CALLS_USER_JOINED_TIMEOUT,
             data: {
                 channelID,
                 userID,
@@ -164,7 +164,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
 
     try {
         store.dispatch({
-            type: VOICE_CHANNEL_PROFILE_CONNECTED,
+            type: CALLS_PROFILE_CONNECTED,
             data: {
                 profile: (await getProfilesByIds(store.getState(), [ev.data.userID]))[0],
                 channelID,
@@ -178,7 +178,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
 export function handleUserMuted(store: Store, ev: WebSocketMessage<UserMutedUnmutedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: VOICE_CHANNEL_USER_MUTED,
+        type: CALLS_USER_MUTED,
         data: {
             channelID,
             userID: ev.data.userID,
@@ -189,7 +189,7 @@ export function handleUserMuted(store: Store, ev: WebSocketMessage<UserMutedUnmu
 export function handleUserUnmuted(store: Store, ev: WebSocketMessage<UserMutedUnmutedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: VOICE_CHANNEL_USER_UNMUTED,
+        type: CALLS_USER_UNMUTED,
         data: {
             channelID,
             userID: ev.data.userID,
@@ -200,7 +200,7 @@ export function handleUserUnmuted(store: Store, ev: WebSocketMessage<UserMutedUn
 export function handleUserVoiceOn(store: Store, ev: WebSocketMessage<UserVoiceOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: VOICE_CHANNEL_USER_VOICE_ON,
+        type: CALLS_USER_VOICE_ON,
         data: {
             channelID,
             userID: ev.data.userID,
@@ -211,7 +211,7 @@ export function handleUserVoiceOn(store: Store, ev: WebSocketMessage<UserVoiceOn
 export function handleUserVoiceOff(store: Store, ev: WebSocketMessage<UserVoiceOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: VOICE_CHANNEL_USER_VOICE_OFF,
+        type: CALLS_USER_VOICE_OFF,
         data: {
             channelID,
             userID: ev.data.userID,
@@ -222,7 +222,7 @@ export function handleUserVoiceOff(store: Store, ev: WebSocketMessage<UserVoiceO
 export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreenOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: VOICE_CHANNEL_USER_SCREEN_ON,
+        type: CALLS_USER_SCREEN_ON,
         data: {
             channelID,
             userID: ev.data.userID,
@@ -233,7 +233,7 @@ export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreen
 export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScreenOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: VOICE_CHANNEL_USER_SCREEN_OFF,
+        type: CALLS_USER_SCREEN_OFF,
         data: {
             channelID,
             userID: ev.data.userID,
@@ -244,7 +244,7 @@ export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScree
 export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: VOICE_CHANNEL_USER_RAISE_HAND,
+        type: CALLS_USER_RAISE_HAND,
         data: {
             channelID,
             userID: ev.data.userID,
@@ -256,7 +256,7 @@ export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRais
 export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: VOICE_CHANNEL_USER_UNRAISE_HAND,
+        type: CALLS_USER_UNRAISE_HAND,
         data: {
             channelID,
             userID: ev.data.userID,
@@ -279,7 +279,7 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
         displayName,
     };
     store.dispatch({
-        type: VOICE_CHANNEL_USER_REACTED,
+        type: CALLS_USER_REACTED,
         data: {
             channelID,
             userID: ev.data.user_id,
@@ -288,7 +288,7 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
     });
     setTimeout(() => {
         store.dispatch({
-            type: VOICE_CHANNEL_USER_REACTED_TIMEOUT,
+            type: CALLS_USER_REACTED_TIMEOUT,
             data: {
                 channelID,
                 userID: ev.data.user_id,
@@ -302,7 +302,7 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
     store.dispatch({
-        type: VOICE_CHANNEL_CALL_HOST,
+        type: CALLS_CALL_HOST,
         data: {
             channelID,
             hostID: ev.data.hostID,
@@ -317,7 +317,7 @@ export function handleCallRecordingState(store: Store, ev: WebSocketMessage<Call
     }
 
     store.dispatch({
-        type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+        type: CALLS_CALL_RECORDING_STATE,
         data: {
             callID: ev.data.callID,
             recState: ev.data.recState,

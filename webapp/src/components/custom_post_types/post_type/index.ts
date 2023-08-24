@@ -9,8 +9,8 @@ import {connect} from 'react-redux';
 
 import PostType from 'src/components/custom_post_types/post_type/component';
 import {
-    voiceConnectedChannels,
-    voiceConnectedProfilesInChannel,
+    connectedChannels,
+    connectedProfilesInChannel,
     connectedChannelID,
     isCloudProfessionalOrEnterpriseOrTrial,
     maxParticipants,
@@ -21,13 +21,13 @@ interface OwnProps {
 }
 
 const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
-    const channels = voiceConnectedChannels(state);
+    const channels = connectedChannels(state);
     let profiles: UserProfile[] = [];
     const pictures = [];
     if (channels) {
         const users = channels[ownProps.post.channel_id];
         if (users && users.length > 0) {
-            profiles = voiceConnectedProfilesInChannel(state, ownProps.post.channel_id);
+            profiles = connectedProfilesInChannel(state, ownProps.post.channel_id);
             for (let i = 0; i < profiles.length; i++) {
                 pictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
             }

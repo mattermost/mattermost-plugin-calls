@@ -35,20 +35,20 @@ import {pluginId} from './manifest';
 //@ts-ignore GlobalState is not complete
 const pluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
 
-export const voiceConnectedChannels = (state: GlobalState): { [channelId: string]: string[] } =>
-    pluginState(state).voiceConnectedChannels;
+export const connectedChannels = (state: GlobalState): { [channelId: string]: string[] } =>
+    pluginState(state).connectedChannels;
 
-export const voiceConnectedCurrentChannel: (state: GlobalState) => string[] =
+export const connectedCurrentChannel: (state: GlobalState) => string[] =
     createSelector(
-        'voiceConnectedCurrentChannel',
-        voiceConnectedChannels,
+        'connectedCurrentChannel',
+        connectedChannels,
         getCurrentChannelId,
         (channels, currChannelId) => channels[currChannelId],
     );
 
-export const voiceConnectedUsers = (state: GlobalState): string[] => {
+export const connectedUsers = (state: GlobalState): string[] => {
     const currentChannelID = getCurrentChannelId(state);
-    const channels = voiceConnectedChannels(state);
+    const channels = connectedChannels(state);
     if (channels && channels[currentChannelID]) {
         return channels[currentChannelID];
     }
@@ -56,10 +56,10 @@ export const voiceConnectedUsers = (state: GlobalState): string[] => {
 };
 
 const numCurrentVoiceConnectedUsers = (state: GlobalState) =>
-    voiceConnectedUsers(state).length;
+    connectedUsers(state).length;
 
-export const voiceConnectedUsersInChannel = (state: GlobalState, channelId: string): string[] => {
-    const channels = voiceConnectedChannels(state);
+export const connectedUsersInChannel = (state: GlobalState, channelId: string): string[] => {
+    const channels = connectedChannels(state);
     if (channels && channels[channelId]) {
         return channels[channelId];
     }
@@ -67,7 +67,7 @@ export const voiceConnectedUsersInChannel = (state: GlobalState, channelId: stri
 };
 
 export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
-    const users = voiceConnectedUsersInChannel(state, channelId);
+    const users = connectedUsersInChannel(state, channelId);
     return users && users.length > 0;
 };
 
@@ -99,40 +99,39 @@ export const connectedTeam: (state: GlobalState) => Team | null =
 
 const numUsersInConnectedChannel = (state: GlobalState) => {
     const connectedChannelId = connectedChannelID(state) || '';
-    const connectedChannels = voiceConnectedChannels(state);
-    return connectedChannels[connectedChannelId]?.length || 0;
+    return connectedChannels(state)[connectedChannelId]?.length || 0;
 };
 
-export const voiceConnectedProfiles = (state: GlobalState): UserProfile[] => {
-    if (!pluginState(state).voiceConnectedProfiles) {
+export const connectedProfiles = (state: GlobalState): UserProfile[] => {
+    if (!pluginState(state).connectedProfiles) {
         return [];
     }
-    return pluginState(state).voiceConnectedProfiles[connectedChannelID(state) || ''] || [];
+    return pluginState(state).connectedProfiles[connectedChannelID(state) || ''] || [];
 };
 
 // idToProfileInCurrentChannel creates an id->UserProfile object for the currently connected channel.
 export const idToProfileInConnectedChannel: (state: GlobalState) => { [id: string]: UserProfile } =
     createSelector(
         'idToProfileInCurrentChannel',
-        voiceConnectedProfiles,
+        connectedProfiles,
         (profiles) => makeIdToObject(profiles),
     );
 
-export const voiceConnectedProfilesInChannel: (state: GlobalState, channelId: string) => UserProfile[] =
+export const connectedProfilesInChannel: (state: GlobalState, channelId: string) => UserProfile[] =
     (state, channelID) => {
-        if (!pluginState(state).voiceConnectedProfiles) {
+        if (!pluginState(state).connectedProfiles) {
             return [];
         }
-        return pluginState(state).voiceConnectedProfiles[channelID] || [];
+        return pluginState(state).connectedProfiles[channelID] || [];
     };
 
-const voiceConnectedProfilesAllChannels: (state: GlobalState) => { [channelID: string]: UserProfile[] | undefined } =
-    (state) => pluginState(state).voiceConnectedProfiles;
+const connectedProfilesAllChannels: (state: GlobalState) => { [channelID: string]: UserProfile[] | undefined } =
+    (state) => pluginState(state).connectedProfiles;
 
 export const voiceProfilesInCurrentChannel: (state: GlobalState) => UserProfile[] =
     createSelector(
         'voiceProfilesInCurrentChannel',
-        voiceConnectedProfilesAllChannels,
+        connectedProfilesAllChannels,
         getCurrentChannelId,
         (channelToProfiles, currChannelId) => channelToProfiles[currChannelId] || [],
     );

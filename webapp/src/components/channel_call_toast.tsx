@@ -13,7 +13,7 @@ import {
     dismissedCallForCurrentChannel,
     isLimitRestricted,
     voiceChannelCallInCurrentChannel,
-    voiceConnectedCurrentChannel,
+    connectedCurrentChannel,
     voiceProfilesInCurrentChannel,
 } from 'src/selectors';
 import {callStartedTimestampFn} from 'src/utils';
@@ -22,7 +22,7 @@ const ChannelCallToast = () => {
     const intl = useIntl();
     const currChannelID = useSelector(getCurrentChannelId);
     const connectedID = useSelector(connectedChannelID);
-    const connectedUsers = useSelector(voiceConnectedCurrentChannel);
+    const connectedUsers = useSelector(connectedCurrentChannel);
     const call = useSelector(voiceChannelCallInCurrentChannel);
     const profiles = useSelector(voiceProfilesInCurrentChannel);
     const limitRestricted = useSelector(isLimitRestricted);

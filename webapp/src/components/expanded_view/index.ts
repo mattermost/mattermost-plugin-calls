@@ -31,7 +31,7 @@ import {
     voiceChannelCallStartAt,
     voiceChannelRootPost,
     voiceChannelScreenSharingID,
-    voiceConnectedProfiles,
+    connectedProfiles,
     voiceUsersStatuses,
 } from 'src/selectors';
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
@@ -52,7 +52,7 @@ const mapStateToProps = (state: GlobalState) => {
     };
 
     const statuses = voiceUsersStatuses(state);
-    const profiles = sortedProfiles(voiceConnectedProfiles(state), statuses);
+    const profiles = sortedProfiles(connectedProfiles(state), statuses);
 
     const pictures: { [key: string]: string } = {};
     for (let i = 0; i < profiles.length; i++) {

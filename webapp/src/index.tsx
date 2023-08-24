@@ -52,22 +52,22 @@ import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/ty
 
 import {
     RECEIVED_CHANNEL_STATE,
-    VOICE_CHANNEL_USER_CONNECTED,
-    VOICE_CHANNEL_USERS_CONNECTED,
-    VOICE_CHANNEL_USERS_CONNECTED_STATES,
-    VOICE_CHANNEL_PROFILES_CONNECTED,
-    VOICE_CHANNEL_CALL_START,
-    VOICE_CHANNEL_USER_SCREEN_ON,
-    VOICE_CHANNEL_UNINIT,
-    VOICE_CHANNEL_ROOT_POST,
+    CALLS_USER_CONNECTED,
+    CALLS_USERS_CONNECTED,
+    CALLS_USERS_CONNECTED_STATES,
+    CALLS_PROFILES_CONNECTED,
+    CALLS_CALL_START,
+    CALLS_USER_SCREEN_ON,
+    CALLS_UNINIT,
+    CALLS_ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
-    VOICE_CHANNEL_CALL_HOST,
-    VOICE_CHANNEL_CALL_RECORDING_STATE,
-    VOICE_CHANNEL_USER_MUTED,
-    VOICE_CHANNEL_USER_UNMUTED,
-    VOICE_CHANNEL_USER_RAISE_HAND,
-    VOICE_CHANNEL_USER_UNRAISE_HAND,
+    CALLS_CALL_HOST,
+    CALLS_CALL_RECORDING_STATE,
+    CALLS_USER_MUTED,
+    CALLS_USER_UNMUTED,
+    CALLS_USER_RAISE_HAND,
+    CALLS_USER_UNRAISE_HAND,
 } from './action_types';
 import CallsClient from './client';
 import CallWidget from './components/call_widget';
@@ -86,8 +86,8 @@ import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
     connectedChannelID,
-    voiceConnectedUsers,
-    voiceConnectedUsersInChannel,
+    connectedUsers,
+    connectedUsersInChannel,
     voiceChannelCallStartAt,
     isLimitRestricted,
     iceServers,
@@ -275,10 +275,10 @@ export default class Plugin {
 
         const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
             try {
-                const users = voiceConnectedUsers(store.getState());
+                const users = connectedUsers(store.getState());
                 if (users && users.length > 0) {
                     store.dispatch({
-                        type: VOICE_CHANNEL_PROFILES_CONNECTED,
+                        type: CALLS_PROFILES_CONNECTED,
                         data: {
                             profiles: await getProfilesByIds(store.getState(), users),
                             channelId,
@@ -294,7 +294,7 @@ export default class Plugin {
 
                 // following the thread only on join. On call start
                 // this is done in the call_start ws event handler.
-                if (voiceConnectedUsersInChannel(store.getState(), channelId).length > 0) {
+                if (connectedUsersInChannel(store.getState(), channelId).length > 0) {
                     followThread(store, channelId, teamId);
                 }
             } else if (connectedChannelID(store.getState()) !== channelId) {
@@ -475,7 +475,7 @@ export default class Plugin {
 
                 window.callsClient.on('mute', () => {
                     store.dispatch({
-                        type: VOICE_CHANNEL_USER_MUTED,
+                        type: CALLS_USER_MUTED,
                         data: {
                             channelID: window.callsClient?.channelID,
                             userID: getCurrentUserId(store.getState()),
@@ -485,7 +485,7 @@ export default class Plugin {
 
                 window.callsClient.on('unmute', () => {
                     store.dispatch({
-                        type: VOICE_CHANNEL_USER_UNMUTED,
+                        type: CALLS_USER_UNMUTED,
                         data: {
                             channelID: window.callsClient?.channelID,
                             userID: getCurrentUserId(store.getState()),
@@ -495,7 +495,7 @@ export default class Plugin {
 
                 window.callsClient.on('raise_hand', () => {
                     store.dispatch({
-                        type: VOICE_CHANNEL_USER_RAISE_HAND,
+                        type: CALLS_USER_RAISE_HAND,
                         data: {
                             channelID: window.callsClient?.channelID,
                             userID: getCurrentUserId(store.getState()),
@@ -506,7 +506,7 @@ export default class Plugin {
 
                 window.callsClient.on('lower_hand', () => {
                     store.dispatch({
-                        type: VOICE_CHANNEL_USER_UNRAISE_HAND,
+                        type: CALLS_USER_UNRAISE_HAND,
                         data: {
                             channelID: window.callsClient?.channelID,
                             userID: getCurrentUserId(store.getState()),
@@ -588,7 +588,7 @@ export default class Plugin {
 
                 for (let i = 0; i < data.length; i++) {
                     actions.push({
-                        type: VOICE_CHANNEL_USERS_CONNECTED,
+                        type: CALLS_USERS_CONNECTED,
                         data: {
                             users: data[i].call?.users,
                             channelID: data[i].channel_id,
@@ -596,7 +596,7 @@ export default class Plugin {
                     });
                     if (!voiceChannelCallStartAt(store.getState(), data[i].channel_id)) {
                         actions.push({
-                            type: VOICE_CHANNEL_CALL_START,
+                            type: CALLS_CALL_START,
                             data: {
                                 ID: data[i].call?.id,
                                 channelID: data[i].channel_id,
@@ -672,7 +672,7 @@ export default class Plugin {
                 }
 
                 actions.push({
-                    type: VOICE_CHANNEL_CALL_START,
+                    type: CALLS_CALL_START,
                     data: {
                         ID: call.id,
                         channelID,
@@ -684,7 +684,7 @@ export default class Plugin {
                 });
 
                 actions.push({
-                    type: VOICE_CHANNEL_USERS_CONNECTED,
+                    type: CALLS_USERS_CONNECTED,
                     data: {
                         users: call.users || [],
                         channelID,
@@ -692,7 +692,7 @@ export default class Plugin {
                 });
 
                 actions.push({
-                    type: VOICE_CHANNEL_ROOT_POST,
+                    type: CALLS_ROOT_POST,
                     data: {
                         channelID,
                         rootPost: call.thread_id,
@@ -700,7 +700,7 @@ export default class Plugin {
                 });
 
                 actions.push({
-                    type: VOICE_CHANNEL_CALL_HOST,
+                    type: CALLS_CALL_HOST,
                     data: {
                         channelID,
                         hostID: call.host_id,
@@ -709,7 +709,7 @@ export default class Plugin {
 
                 if (call.users && call.users.length > 0) {
                     actions.push({
-                        type: VOICE_CHANNEL_PROFILES_CONNECTED,
+                        type: CALLS_PROFILES_CONNECTED,
                         data: {
                             profiles: await getProfilesByIds(store.getState(), call.users),
                             channelID,
@@ -718,7 +718,7 @@ export default class Plugin {
                 }
 
                 actions.push({
-                    type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+                    type: CALLS_CALL_RECORDING_STATE,
                     data: {
                         callID: channelID,
                         recState: call.recording,
@@ -726,7 +726,7 @@ export default class Plugin {
                 });
 
                 actions.push({
-                    type: VOICE_CHANNEL_USER_SCREEN_ON,
+                    type: CALLS_USER_SCREEN_ON,
                     data: {
                         channelID,
                         userID: call.screen_sharing_id,
@@ -740,7 +740,7 @@ export default class Plugin {
                     userStates[users[i]] = {...states[i], id: users[i]};
                 }
                 actions.push({
-                    type: VOICE_CHANNEL_USERS_CONNECTED_STATES,
+                    type: CALLS_USERS_CONNECTED_STATES,
                     data: {
                         states: userStates,
                         channelID,
@@ -782,7 +782,7 @@ export default class Plugin {
                 const expandedID = getExpandedChannelID();
                 if (expandedID.length > 0) {
                     actions.push({
-                        type: VOICE_CHANNEL_USER_CONNECTED,
+                        type: CALLS_USER_CONNECTED,
                         data: {
                             channelID: expandedID,
                             userID: getCurrentUserId(store.getState()),
@@ -802,7 +802,7 @@ export default class Plugin {
             }
             logDebug('resetting state');
             store.dispatch({
-                type: VOICE_CHANNEL_UNINIT,
+                type: CALLS_UNINIT,
             });
         });
 
@@ -812,7 +812,7 @@ export default class Plugin {
             if (!window.callsClient) {
                 logDebug('resetting state');
                 store.dispatch({
-                    type: VOICE_CHANNEL_UNINIT,
+                    type: CALLS_UNINIT,
                 });
             }
             onActivate();
