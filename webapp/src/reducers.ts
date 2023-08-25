@@ -60,12 +60,16 @@ import {
     DISMISS_CALL,
 } from './action_types';
 
-interface channelStateAction {
-    type: string,
-    data: ChannelState,
+type channelsState = {
+    [channelID: string]: ChannelState;
 }
 
-const channelState = (state: { [channelID: string]: ChannelState } = {}, action: channelStateAction) => {
+type channelsStateAction = {
+    type: string;
+    data: ChannelState;
+}
+
+const channels = (state: channelsState = {}, action: channelsStateAction) => {
     switch (action.type) {
     case RECEIVED_CHANNEL_STATE:
         return {
@@ -77,18 +81,18 @@ const channelState = (state: { [channelID: string]: ChannelState } = {}, action:
     }
 };
 
-interface connectedProfilesState {
+type connectedProfilesState = {
     [channelID: string]: UserProfile[],
 }
 
-interface connectedProfilesAction {
-    type: string,
+type connectedProfilesAction = {
+    type: string;
     data: {
-        channelID: string,
-        userID?: string,
-        profile?: UserProfile,
-        profiles?: UserProfile[]
-    },
+        channelID: string;
+        userID?: string;
+        profile?: UserProfile;
+        profiles?: UserProfile[];
+    };
 }
 
 // Profiles (as in whole User objects) connected to calls.
@@ -137,17 +141,17 @@ const connectedProfiles = (state: connectedProfilesState = {}, action: connected
     }
 };
 
-interface connectedChannelsState {
-    [channelID: string]: string[],
+type connectedChannelsState = {
+    [channelID: string]: string[];
 }
 
-interface connectedChannelsAction {
-    type: string,
+type connectedChannelsAction = {
+    type: string;
     data: {
-        channelID: string,
-        userID?: string,
-        users?: string[],
-    },
+        channelID: string;
+        userID?: string;
+        users?: string[];
+    };
 }
 
 const connectedChannels = (state: connectedChannelsState = {}, action: connectedChannelsAction) => {
@@ -188,7 +192,18 @@ const connectedChannels = (state: connectedChannelsState = {}, action: connected
     }
 };
 
-const connectedChannelID = (state: string | null = null, action: { type: string, data: { channelID: string, currentUserID: string, userID: string } }) => {
+type connectedChannelIDState = string | null;
+
+type connectedChannelIDAction = {
+    type: string;
+    data: {
+        channelID: string;
+        currentUserID: string;
+        userID: string;
+    };
+}
+
+const connectedChannelID = (state: connectedChannelIDState, action: connectedChannelIDAction) => {
     switch (action.type) {
     case UNINIT:
         return null;
@@ -216,94 +231,24 @@ const connectedChannelID = (state: string | null = null, action: { type: string,
     }
 };
 
-export interface UsersStatusesState {
+type usersStatusesState = {
     [channelID: string]: {
-        [userID: string]: UserState,
-    },
-}
-
-interface usersStatusesAction {
-    type: string,
-    data: {
-        channelID: string,
-        userID: string,
-        raised_hand?: number,
-        reaction?: Reaction,
-        states: { [userID: string]: UserState },
-    },
-}
-
-interface userReactionsState {
-    [channelID: string]: {
-        reactions: Reaction[],
+        [userID: string]: UserState;
     };
 }
 
-const queueReactions = (state: Reaction[], reaction: Reaction) => {
-    const result = state?.length ? [...state] : [];
-    result.push(reaction);
-    if (result.length > MAX_NUM_REACTIONS_IN_REACTION_STREAM) {
-        result.shift();
-    }
-    return result;
-};
+type usersStatusesAction = {
+    type: string;
+    data: {
+        channelID: string;
+        userID: string;
+        raised_hand?: number;
+        reaction?: Reaction;
+        states: { [userID: string]: UserState };
+    };
+}
 
-const removeReaction = (reactions: Reaction[], reaction: Reaction) => {
-    return reactions.filter((r) => r.user_id !== reaction.user_id || r.timestamp > reaction.timestamp);
-};
-
-const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAction) => {
-    switch (action.type) {
-    case USER_REACTED:
-        if (action.data.reaction) {
-            if (!state[action.data.channelID]) {
-                return {
-                    ...state,
-                    [action.data.channelID]: {reactions: [action.data.reaction]},
-                };
-            }
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    reactions: queueReactions(state[action.data.channelID].reactions, action.data.reaction),
-                },
-            };
-        }
-        return state;
-    case USER_REACTED_TIMEOUT:
-        if (!state[action.data.channelID]?.reactions || !action.data.reaction) {
-            return state;
-        }
-        return {
-            ...state,
-            [action.data.channelID]: {
-                reactions: removeReaction(
-                    state[action.data.channelID].reactions,
-                    {
-                        ...action.data.reaction,
-                        user_id: action.data.userID,
-                    }),
-            },
-        };
-    case USER_DISCONNECTED:
-        if (!state[action.data.channelID] || !state[action.data.channelID].reactions) {
-            return state;
-        }
-
-        return {
-            ...state,
-            [action.data.channelID]: {
-                reactions: state[action.data.channelID].reactions.filter((r) => {
-                    return r.user_id !== action.data.userID;
-                }),
-            },
-        };
-    default:
-        return state;
-    }
-};
-
-const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatusesAction) => {
+const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
@@ -531,32 +476,106 @@ const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
     }
 };
 
-type callRecordingStateAction = {
-    type: string,
-    data: {
-        callID: string,
-        recState: CallRecordingState | null,
-    },
+type usersReactionsState = {
+    [channelID: string]: {
+        reactions: Reaction[];
+    };
+}
+
+const queueReactions = (state: Reaction[], reaction: Reaction) => {
+    const result = state?.length ? [...state] : [];
+    result.push(reaction);
+    if (result.length > MAX_NUM_REACTIONS_IN_REACTION_STREAM) {
+        result.shift();
+    }
+    return result;
+};
+
+const removeReaction = (reactions: Reaction[], reaction: Reaction) => {
+    return reactions.filter((r) => r.user_id !== reaction.user_id || r.timestamp > reaction.timestamp);
+};
+
+const reactions = (state: usersReactionsState = {}, action: usersStatusesAction) => {
+    switch (action.type) {
+    case USER_REACTED:
+        if (action.data.reaction) {
+            if (!state[action.data.channelID]) {
+                return {
+                    ...state,
+                    [action.data.channelID]: {reactions: [action.data.reaction]},
+                };
+            }
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    reactions: queueReactions(state[action.data.channelID].reactions, action.data.reaction),
+                },
+            };
+        }
+        return state;
+    case USER_REACTED_TIMEOUT:
+        if (!state[action.data.channelID]?.reactions || !action.data.reaction) {
+            return state;
+        }
+        return {
+            ...state,
+            [action.data.channelID]: {
+                reactions: removeReaction(
+                    state[action.data.channelID].reactions,
+                    {
+                        ...action.data.reaction,
+                        user_id: action.data.userID,
+                    }),
+            },
+        };
+    case USER_DISCONNECTED:
+        if (!state[action.data.channelID] || !state[action.data.channelID].reactions) {
+            return state;
+        }
+
+        return {
+            ...state,
+            [action.data.channelID]: {
+                reactions: state[action.data.channelID].reactions.filter((r) => {
+                    return r.user_id !== action.data.userID;
+                }),
+            },
+        };
+    default:
+        return state;
+    }
+};
+
+type callsRecordingsState = {
+    [callID: string]: CallRecordingState;
 }
 
 type userDisconnectedAction = {
-    type: string,
+    type: string;
     data: {
-        channelID: string,
-        userID: string,
-        currentUserID: string,
-    },
+        channelID: string;
+        userID: string;
+        currentUserID: string;
+    };
+}
+
+type recordingStateAction = {
+    type: string;
+    data: {
+        callID: string;
+        recState: CallRecordingState | null;
+    };
 }
 
 type disclaimerDismissedAction = {
-    type: string,
+    type: string;
     data: {
-        callID: string,
-        dismissedAt: number,
-    }
+        callID: string;
+        dismissedAt: number;
+    };
 }
 
-const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, action: callRecordingStateAction | userDisconnectedAction | disclaimerDismissedAction) => {
+const recordings = (state: callsRecordingsState = {}, action: recordingStateAction | userDisconnectedAction | disclaimerDismissedAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
@@ -570,7 +589,7 @@ const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, a
         return state;
     }
     case CALL_RECORDING_STATE: {
-        const theAction = action as callRecordingStateAction;
+        const theAction = action as recordingStateAction;
         return {
             ...state,
             [theAction.data.callID]: {
@@ -594,22 +613,26 @@ const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, a
     }
 };
 
-export interface callState {
-    ID?: string,
-    channelID: string,
-    startAt?: number,
-    ownerID?: string,
-    hostID: string,
-    hostChangeAt?: number,
-    dismissedNotification: { [userID: string]: boolean },
+export type callState = {
+    ID?: string;
+    channelID: string;
+    startAt?: number;
+    ownerID?: string;
+    hostID: string;
+    hostChangeAt?: number;
+    dismissedNotification: { [userID: string]: boolean };
 }
 
-export interface callStateAction {
-    type: string,
-    data: callState,
+export type callStateAction = {
+    type: string;
+    data: callState;
 }
 
-const calls = (state: { [channelID: string]: callState } = {}, action: callStateAction) => {
+type callsState = {
+    [channelID: string]: callState;
+}
+
+const calls = (state: callsState = {}, action: callStateAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
@@ -636,7 +659,19 @@ const calls = (state: { [channelID: string]: callState } = {}, action: callState
     }
 };
 
-const callsRootPost = (state: { [channelID: string]: string } = {}, action: { type: string, data: { channelID: string, rootPost: string } }) => {
+type rootPostsState = {
+    [channelID: string]: string;
+}
+
+type rootPostAction = {
+    type: string;
+    data: {
+        channelID: string;
+        rootPost: string;
+    }
+}
+
+const rootPosts = (state: rootPostsState = {}, action: rootPostAction) => {
     switch (action.type) {
     case ROOT_POST:
         return {
@@ -648,7 +683,19 @@ const callsRootPost = (state: { [channelID: string]: string } = {}, action: { ty
     }
 };
 
-const callsScreenSharingID = (state: { [channelID: string]: string } = {}, action: { type: string, data: { channelID: string, userID?: string } }) => {
+type screenSharingIDsState = {
+    [channelID: string]: string;
+}
+
+type screenSharingIDAction = {
+    type: string;
+    data: {
+        channelID: string;
+        userID?: string;
+    }
+}
+
+const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenSharingIDAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
@@ -761,8 +808,8 @@ const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { typ
     }
 };
 
-interface recentlyJoinedUsersState {
-    [channelID: string]: string[],
+type recentlyJoinedUsersState = {
+    [channelID: string]: string[];
 }
 
 const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: connectedChannelsAction) => {
@@ -811,7 +858,7 @@ type IncomingCallAction = {
         callerID: string;
         startAt: number;
         type: ChannelType;
-    },
+    };
 };
 
 const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingCallAction) => {
@@ -829,7 +876,7 @@ type RingNotifyForCallsAction = {
     type: string;
     data: {
         callID: string;
-    }
+    };
 }
 
 const ringingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
@@ -886,23 +933,23 @@ const dismissedCalls = (state: { [callID: string]: boolean } = {}, action: RingN
 };
 
 export default combineReducers({
-    channelState,
+    channels,
     connectedChannels,
     connectedChannelID,
     connectedProfiles,
-    reactionStatus,
-    callsUsersStatuses,
+    reactions,
+    usersStatuses,
     calls,
-    callsScreenSharingID,
+    screenSharingIDs,
     expandedView,
     switchCallModal,
     endCallModal,
     screenSourceModal,
-    callsRootPost,
+    rootPosts,
     callsConfig,
     rtcdEnabled,
     callsUserPreferences,
-    callsRecordings,
+    recordings,
     recentlyJoinedUsers,
     incomingCalls,
     ringingForCalls,

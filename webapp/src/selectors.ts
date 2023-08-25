@@ -136,16 +136,16 @@ export const connectedProfilesInCurrentChannel: (state: GlobalState) => UserProf
         (channelToProfiles, currChannelId) => channelToProfiles[currChannelId] || [],
     );
 
-export const callsUsersStatuses = (state: GlobalState): { [id: string]: UserState } => {
-    return pluginState(state).callsUsersStatuses[connectedChannelID(state) || ''] || {};
+export const usersStatuses = (state: GlobalState): { [id: string]: UserState } => {
+    return pluginState(state).usersStatuses[connectedChannelID(state) || ''] || {};
 };
 
 export const callsReactions = (state: GlobalState): Reaction[] => {
-    return pluginState(state).reactionStatus[connectedChannelID(state) || '']?.reactions || [];
+    return pluginState(state).reactions[connectedChannelID(state) || '']?.reactions || [];
 };
 
-export const callsUsersStatusesInChannel = (state: GlobalState, channelID: string) => {
-    return pluginState(state).callsUsersStatuses[channelID] || {};
+export const usersStatusesInChannel = (state: GlobalState, channelID: string) => {
+    return pluginState(state).usersStatuses[channelID] || {};
 };
 
 export const callsStartAt = (state: GlobalState, channelID: string): number | undefined => {
@@ -189,11 +189,11 @@ export const callsDismissedNotification = (state: GlobalState, channelID: string
 };
 
 export const callsScreenSharingID = (state: GlobalState, channelID: string): string | undefined => {
-    return pluginState(state).callsScreenSharingID[channelID];
+    return pluginState(state).screenSharingIDs[channelID];
 };
 
 export const callRecording = (state: GlobalState, callID: string): CallRecordingReduxState => {
-    return pluginState(state).callsRecordings[callID];
+    return pluginState(state).recordings[callID];
 };
 
 export const isRecording = (state: GlobalState, callID: string): boolean => {
@@ -221,7 +221,7 @@ export const screenSourceModal = (state: GlobalState) => {
 };
 
 export const callsRootPost = (state: GlobalState, channelID: string) => {
-    return pluginState(state).callsRootPost[channelID];
+    return pluginState(state).rootPosts[channelID];
 };
 
 export const recentlyJoinedUsers = (state: GlobalState, channelID: string): string[] => {
@@ -310,7 +310,7 @@ export const ringingEnabled = (state: GlobalState) =>
 // Calls enabled/disabled logic
 //
 export const channelState = (state: GlobalState, channelId: string): ChannelState =>
-    pluginState(state).channelState[channelId];
+    pluginState(state).channels[channelId];
 
 export const callsExplicitlyEnabled = (state: GlobalState, channelId: string): boolean =>
     Boolean(channelState(state, channelId)?.enabled);

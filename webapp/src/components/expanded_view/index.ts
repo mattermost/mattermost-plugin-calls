@@ -32,7 +32,7 @@ import {
     callsRootPost,
     callsScreenSharingID,
     connectedProfiles,
-    callsUsersStatuses,
+    usersStatuses,
 } from 'src/selectors';
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
@@ -51,7 +51,7 @@ const mapStateToProps = (state: GlobalState) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
     };
 
-    const statuses = callsUsersStatuses(state);
+    const statuses = usersStatuses(state);
     const profiles = sortedProfiles(connectedProfiles(state), statuses);
 
     const pictures: { [key: string]: string } = {};
