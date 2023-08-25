@@ -30,6 +30,7 @@ import {
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
     CALL_STATE,
+    CALL_HOST,
     PROFILE_CONNECTED,
     PROFILES_CONNECTED,
     UNINIT,
@@ -139,7 +140,7 @@ const connectedProfiles = (state: connectedProfilesState = {}, action: connected
     }
 };
 
-type connectedChannelsState = {
+export type connectedChannelsState = {
     [channelID: string]: string[];
 }
 
@@ -646,6 +647,39 @@ const calls = (state: callsState = {}, action: callStateAction) => {
     }
 };
 
+type hostState = {
+    [channelID: string]: {
+        hostID: string;
+        hostChangeAt?: number;
+    };
+}
+
+type hostStateAction = {
+    type: string;
+    data: {
+        channelID: string;
+        hostID: string;
+        hostChangeAt: number;
+    };
+}
+
+const hosts = (state: hostState = {}, action: hostStateAction) => {
+    switch (action.type) {
+    case UNINIT:
+        return {};
+    case CALL_HOST:
+        return {
+            ...state,
+            [action.data.channelID]: {
+                hostID: action.data.hostID,
+                hostChangeAt: action.data.hostChangeAt,
+            },
+        };
+    default:
+        return state;
+    }
+};
+
 type screenSharingIDsState = {
     [channelID: string]: string;
 }
@@ -903,6 +937,7 @@ export default combineReducers({
     reactions,
     usersStatuses,
     calls,
+    hosts,
     screenSharingIDs,
     expandedView,
     switchCallModal,

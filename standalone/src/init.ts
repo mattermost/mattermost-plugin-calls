@@ -33,6 +33,7 @@ import {
     USERS_CONNECTED,
     USERS_CONNECTED_STATES,
     CALL_STATE,
+    CALL_HOST,
 } from 'plugin/action_types';
 import {getCallsConfig} from 'plugin/actions';
 import CallsClient from 'plugin/client';
@@ -168,8 +169,15 @@ async function fetchChannelData(store: Store, channelID: string) {
             startAt: resp.call.start_at,
             ownerID: resp.call.owner_id,
             threadID: resp.call.thread_id,
+        },
+    });
+
+    store.dispatch({
+        type: CALL_HOST,
+        data: {
+            channelID,
             hostID: resp.call.host_id,
-            dismissedNotification: resp.call.dismissed_notification || {},
+            hostChangeAt: resp.call.start_at,
         },
     });
 

@@ -86,7 +86,7 @@ import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
     connectedChannelID,
-    connectedUsers,
+    connectedUsersInCurrentChannel,
     connectedUsersInChannel,
     callStartAt,
     isLimitRestricted,
@@ -100,6 +100,7 @@ import {
     hasPermissionsToEnableCalls,
     callsConfig,
     ringingEnabled,
+    callHostChangeAt,
 } from './selectors';
 import {
     JOIN_CALL,
@@ -275,7 +276,7 @@ export default class Plugin {
 
         const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
             try {
-                const users = connectedUsers(store.getState());
+                const users = connectedUsersInCurrentChannel(store.getState());
                 if (users && users.length > 0) {
                     store.dispatch({
                         type: PROFILES_CONNECTED,
@@ -602,7 +603,6 @@ export default class Plugin {
                                 channelID: data[i].channel_id,
                                 startAt: data[i].call?.start_at,
                                 ownerID: data[i].call?.owner_id,
-                                hostID: data[i].call?.host_id,
                             },
                         });
 
@@ -684,7 +684,6 @@ export default class Plugin {
                         startAt: call.start_at,
                         ownerID: call.owner_id,
                         threadID: call.thread_id,
-                        hostID: call.host_id,
                     },
                 });
 
@@ -714,6 +713,7 @@ export default class Plugin {
                     data: {
                         channelID,
                         hostID: call.host_id,
+                        hostChangeAt: callHostChangeAt(store.getState(), channelID) || call.start_at,
                     },
                 });
 

@@ -31,8 +31,8 @@ import {
     callStartAt,
     callThreadID,
     callScreenSharingID,
-    connectedProfiles,
     usersStatuses,
+    connectedProfilesInCurrentCall,
 } from 'src/selectors';
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
@@ -52,7 +52,7 @@ const mapStateToProps = (state: GlobalState) => {
     };
 
     const statuses = usersStatuses(state);
-    const profiles = sortedProfiles(connectedProfiles(state), statuses);
+    const profiles = sortedProfiles(connectedProfilesInCurrentCall(state), statuses);
 
     const pictures: { [key: string]: string } = {};
     for (let i = 0; i < profiles.length; i++) {

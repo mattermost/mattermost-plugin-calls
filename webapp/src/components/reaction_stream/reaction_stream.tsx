@@ -10,7 +10,7 @@ import styled, {css} from 'styled-components';
 import {Emoji} from 'src/components/emoji/emoji';
 import HandEmoji from 'src/components/icons/hand';
 import {
-    idToProfileInConnectedChannel,
+    idToProfileInCurrentCall,
     usersStatuses,
     callsReactions,
 } from 'src/selectors';
@@ -22,7 +22,7 @@ export const ReactionStream = () => {
 
     const currentUserID = useSelector(getCurrentUserId);
     const statuses = useSelector(usersStatuses);
-    const profileMap = useSelector(idToProfileInConnectedChannel);
+    const profileMap = useSelector(idToProfileInCurrentCall);
     const vReactions = useSelector(callsReactions);
 
     const reversed = [...vReactions].reverse();

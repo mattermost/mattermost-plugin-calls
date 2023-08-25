@@ -18,7 +18,7 @@ import {
     expandedView,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
-    connectedProfiles,
+    connectedProfilesInCurrentCall,
     callHostID,
     callRecording,
     callHostChangeAt,
@@ -44,7 +44,7 @@ const mapStateToProps = (state: GlobalState) => {
     };
 
     const statuses = usersStatuses(state);
-    const profiles = sortedProfiles(connectedProfiles(state), statuses);
+    const profiles = sortedProfiles(connectedProfilesInCurrentCall(state), statuses);
 
     const profilesMap: IDMappedObjects<UserProfile> = {};
     const picturesMap: {

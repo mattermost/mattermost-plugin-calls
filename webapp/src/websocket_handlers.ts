@@ -44,7 +44,7 @@ import {
 import {logErr} from './log';
 import {
     connectedChannelID,
-    idToProfileInConnectedChannel,
+    idToProfileInCurrentCall,
     ringingEnabled,
     shouldPlayJoinUserSound,
     calls,
@@ -265,7 +265,7 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
         return;
     }
 
-    const profiles = idToProfileInConnectedChannel(store.getState());
+    const profiles = idToProfileInCurrentCall(store.getState());
     const displayName = getUserDisplayName(profiles[ev.data.user_id]);
     const reaction: Reaction = {
         ...ev.data,
