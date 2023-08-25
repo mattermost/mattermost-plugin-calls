@@ -99,6 +99,14 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
             threadID: ev.data.thread_id,
         },
     });
+    store.dispatch({
+        type: CALL_HOST,
+        data: {
+            channelID,
+            hostID: ev.data.host_id,
+            hostChangeAt: ev.data.start_at,
+        },
+    });
 
     if (getCallsClient()?.channelID === channelID) {
         const channel = getChannel(store.getState(), channelID);
