@@ -303,7 +303,7 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
     }
 };
 
-const voiceUsersStatuses = (state: UsersStatusesState = {}, action: usersStatusesAction) => {
+const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatusesAction) => {
     switch (action.type) {
     case CALLS_UNINIT:
         return {};
@@ -609,7 +609,7 @@ export interface callStateAction {
     data: callState,
 }
 
-const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, action: callStateAction) => {
+const calls = (state: { [channelID: string]: callState } = {}, action: callStateAction) => {
     switch (action.type) {
     case CALLS_UNINIT:
         return {};
@@ -636,7 +636,7 @@ const voiceChannelCalls = (state: { [channelID: string]: callState } = {}, actio
     }
 };
 
-const voiceChannelRootPost = (state: { [channelID: string]: string } = {}, action: { type: string, data: { channelID: string, rootPost: string } }) => {
+const callsRootPost = (state: { [channelID: string]: string } = {}, action: { type: string, data: { channelID: string, rootPost: string } }) => {
     switch (action.type) {
     case CALLS_ROOT_POST:
         return {
@@ -648,7 +648,7 @@ const voiceChannelRootPost = (state: { [channelID: string]: string } = {}, actio
     }
 };
 
-const voiceChannelScreenSharingID = (state: { [channelID: string]: string } = {}, action: { type: string, data: { channelID: string, userID?: string } }) => {
+const callsScreenSharingID = (state: { [channelID: string]: string } = {}, action: { type: string, data: { channelID: string, userID?: string } }) => {
     switch (action.type) {
     case CALLS_UNINIT:
         return {};
@@ -891,14 +891,14 @@ export default combineReducers({
     connectedChannelID,
     connectedProfiles,
     reactionStatus,
-    voiceUsersStatuses,
-    voiceChannelCalls,
-    voiceChannelScreenSharingID,
+    callsUsersStatuses,
+    calls,
+    callsScreenSharingID,
     expandedView,
     switchCallModal,
     endCallModal,
     screenSourceModal,
-    voiceChannelRootPost,
+    callsRootPost,
     callsConfig,
     rtcdEnabled,
     callsUserPreferences,

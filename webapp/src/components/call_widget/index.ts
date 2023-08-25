@@ -12,16 +12,16 @@ import {bindActionCreators, Dispatch} from 'redux';
 
 import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 import {
-    voiceUsersStatuses,
-    voiceChannelCallStartAt,
-    voiceChannelScreenSharingID,
+    callsUsersStatuses,
+    callsStartAt,
+    callsScreenSharingID,
     expandedView,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
     connectedProfiles,
-    voiceChannelCallHostID,
+    callsHostID,
     callRecording,
-    voiceChannelCallHostChangeAt,
+    callsHostChangeAt,
     recentlyJoinedUsers,
     sortedIncomingCalls,
 } from 'src/selectors';
@@ -37,13 +37,13 @@ const mapStateToProps = (state: GlobalState) => {
     const channel = getChannel(state, String(window.callsClient?.channelID));
     const currentUserID = getCurrentUserId(state);
 
-    const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
+    const screenSharingID = callsScreenSharingID(state, channel?.id) || '';
 
     const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
     };
 
-    const statuses = voiceUsersStatuses(state);
+    const statuses = callsUsersStatuses(state);
     const profiles = sortedProfiles(connectedProfiles(state), statuses);
 
     const profilesMap: IDMappedObjects<UserProfile> = {};
@@ -67,10 +67,10 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         profilesMap,
         picturesMap,
-        statuses: voiceUsersStatuses(state) || {},
-        callStartAt: voiceChannelCallStartAt(state, channel?.id) || Number(window.callsClient?.initTime),
-        callHostID: voiceChannelCallHostID(state, channel?.id) || '',
-        callHostChangeAt: voiceChannelCallHostChangeAt(state, channel?.id) || 0,
+        statuses: callsUsersStatuses(state) || {},
+        callStartAt: callsStartAt(state, channel?.id) || Number(window.callsClient?.initTime),
+        callHostID: callsHostID(state, channel?.id) || '',
+        callHostChangeAt: callsHostChangeAt(state, channel?.id) || 0,
         callRecording: callRecording(state, channel?.id),
         screenSharingID,
         allowScreenSharing: allowScreenSharing(state),

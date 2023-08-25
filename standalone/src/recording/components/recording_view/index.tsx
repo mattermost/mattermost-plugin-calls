@@ -14,7 +14,7 @@ import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import Timestamp from 'src/components/timestamp';
-import {voiceChannelCallHostID, voiceChannelScreenSharingID, connectedProfiles, voiceUsersStatuses} from 'src/selectors';
+import {callsScreenSharingID, connectedProfiles, callsUsersStatuses, callsHostID} from 'src/selectors';
 
 import {callProfileImages} from 'src/recording/selectors';
 
@@ -26,8 +26,8 @@ const RecordingView = () => {
     const [screenStream, setScreenStream] = useState<MediaStream|null>(null);
     const callsClient = window.callsClient;
     const channelID = callsClient?.channelID || '';
-    const screenSharingID = useSelector((state: GlobalState) => voiceChannelScreenSharingID(state, channelID)) || '';
-    const statuses = useSelector(voiceUsersStatuses);
+    const screenSharingID = useSelector((state: GlobalState) => callsScreenSharingID(state, channelID)) || '';
+    const statuses = useSelector(callsUsersStatuses);
     const profiles = sortedProfiles(useSelector(connectedProfiles), statuses, screenSharingID);
     const profileImages = useSelector((state: GlobalState) => callProfileImages(state, channelID));
     const pictures: {[key: string]: string} = {};
@@ -36,7 +36,7 @@ const RecordingView = () => {
             pictures[String(profiles[i].id)] = profileImages[profiles[i].id];
         }
     }
-    const callHostID = useSelector((state: GlobalState) => voiceChannelCallHostID(state, channelID)) || '';
+    const callHostID = useSelector((state: GlobalState) => callsHostID(state, channelID)) || '';
 
     const attachVoiceTracks = (tracks: MediaStreamTrack[]) => {
         for (const track of tracks) {

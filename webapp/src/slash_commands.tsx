@@ -20,8 +20,8 @@ import {logDebug} from './log';
 import {
     connectedChannelID,
     connectedUsersInChannel,
-    voiceChannelCallOwnerID,
-    voiceChannelCallHostID,
+    callsOwnerID,
+    callsHostID,
     isRecording,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
@@ -119,7 +119,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         if (!isCurrentUserSystemAdmin(store.getState()) &&
-                    getCurrentUserId(store.getState()) !== voiceChannelCallOwnerID(store.getState(), args.channel_id)) {
+                    getCurrentUserId(store.getState()) !== callsOwnerID(store.getState(), args.channel_id)) {
             store.dispatch(displayGenericErrorModal(
                 defineMessage({defaultMessage: 'Unable to end the call'}),
                 defineMessage({defaultMessage: 'You don\'t have permission to end the call. Please ask the call owner to end call.'}),
@@ -177,7 +177,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         const state = store.getState();
-        const isHost = voiceChannelCallHostID(state, connectedID) === getCurrentUserId(state);
+        const isHost = callsHostID(state, connectedID) === getCurrentUserId(state);
 
         if (fields[2] === 'start') {
             trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.SlashCommand)(store.dispatch, store.getState);

@@ -12,9 +12,9 @@ import {
     connectedChannelID,
     dismissedCallForCurrentChannel,
     isLimitRestricted,
-    voiceChannelCallInCurrentChannel,
+    callInCurrentChannel,
     connectedCurrentChannel,
-    voiceProfilesInCurrentChannel,
+    connectedProfilesInCurrentChannel,
 } from 'src/selectors';
 import {callStartedTimestampFn} from 'src/utils';
 
@@ -23,13 +23,13 @@ const ChannelCallToast = () => {
     const currChannelID = useSelector(getCurrentChannelId);
     const connectedID = useSelector(connectedChannelID);
     const connectedUsers = useSelector(connectedCurrentChannel);
-    const call = useSelector(voiceChannelCallInCurrentChannel);
-    const profiles = useSelector(voiceProfilesInCurrentChannel);
+    const call = useSelector(callInCurrentChannel);
+    const profiles = useSelector(connectedProfilesInCurrentChannel);
     const limitRestricted = useSelector(isLimitRestricted);
     const dismissed = useSelector(dismissedCallForCurrentChannel);
     const [pictures, setPictures] = useState<string[]>([]);
 
-    const callID = useSelector(voiceChannelCallInCurrentChannel)?.ID || '';
+    const callID = useSelector(callInCurrentChannel)?.ID || '';
     const [onDismiss, onJoin] = useDismissJoin(currChannelID, callID);
 
     useMemo(() => {

@@ -24,8 +24,8 @@ import {
     channelHasCall, connectedCallID, incomingCalls,
     ringingEnabled,
     ringingForCall,
-    voiceChannelCallDismissedNotification,
-    voiceChannelCalls,
+    callsDismissedNotification,
+    calls,
 } from 'src/selectors';
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
@@ -316,7 +316,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
             return;
         }
 
-        if (voiceChannelCallDismissedNotification(getState(), channelID)) {
+        if (callsDismissedNotification(getState(), channelID)) {
             return;
         }
 
@@ -352,7 +352,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
 export const userDisconnected = (channelID: string, userID: string) => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         // save for later
-        const callID = voiceChannelCalls(getState())[channelID].ID || '';
+        const callID = calls(getState())[channelID].ID || '';
 
         await dispatch({
             type: CALLS_USER_DISCONNECTED,

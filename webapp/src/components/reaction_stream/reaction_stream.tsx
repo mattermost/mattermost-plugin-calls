@@ -11,8 +11,8 @@ import {Emoji} from 'src/components/emoji/emoji';
 import HandEmoji from 'src/components/icons/hand';
 import {
     idToProfileInConnectedChannel,
-    voiceReactions,
-    voiceUsersStatuses,
+    callsReactions,
+    callsUsersStatuses,
 } from 'src/selectors';
 import {getUserDisplayName, split} from 'src/utils';
 
@@ -21,9 +21,9 @@ export const ReactionStream = () => {
     const {formatMessage, formatList} = useIntl();
 
     const currentUserID = useSelector(getCurrentUserId);
-    const statuses = useSelector(voiceUsersStatuses);
+    const statuses = useSelector(callsUsersStatuses);
     const profileMap = useSelector(idToProfileInConnectedChannel);
-    const vReactions = useSelector(voiceReactions);
+    const vReactions = useSelector(callsReactions);
 
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {

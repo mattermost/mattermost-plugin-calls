@@ -26,13 +26,13 @@ import {
     getChannelUrlAndDisplayName,
     recordingMaxDuration,
     recordingsEnabled,
-    voiceChannelCallHostChangeAt,
-    voiceChannelCallHostID,
-    voiceChannelCallStartAt,
-    voiceChannelRootPost,
-    voiceChannelScreenSharingID,
+    callsHostChangeAt,
+    callsHostID,
+    callsStartAt,
+    callsRootPost,
+    callsScreenSharingID,
     connectedProfiles,
-    voiceUsersStatuses,
+    callsUsersStatuses,
 } from 'src/selectors';
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
@@ -44,14 +44,14 @@ const mapStateToProps = (state: GlobalState) => {
     const currentTeamID = getCurrentTeamId(state);
     const channel = getChannel(state, connectedChannelID(state) || '');
     const channelTeam = getTeam(state, channel?.team_id);
-    const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
-    const threadID = voiceChannelRootPost(state, channel?.id);
+    const screenSharingID = callsScreenSharingID(state, channel?.id) || '';
+    const threadID = callsRootPost(state, channel?.id);
 
     const sortedProfiles = (profiles: UserProfile[], statuses: { [key: string]: UserState }) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
     };
 
-    const statuses = voiceUsersStatuses(state);
+    const statuses = callsUsersStatuses(state);
     const profiles = sortedProfiles(connectedProfiles(state), statuses);
 
     const pictures: { [key: string]: string } = {};
@@ -76,9 +76,9 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         pictures,
         statuses,
-        callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
-        callHostID: voiceChannelCallHostID(state, channel?.id) || '',
-        callHostChangeAt: voiceChannelCallHostChangeAt(state, channel?.id) || 0,
+        callStartAt: callsStartAt(state, channel?.id) || 0,
+        callHostID: callsHostID(state, channel?.id) || '',
+        callHostChangeAt: callsHostChangeAt(state, channel?.id) || 0,
         callRecording: callRecording(state, channel?.id),
         isRecording: isRecording(state, channel?.id),
         screenSharingID,

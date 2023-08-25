@@ -48,7 +48,7 @@ import {
     idToProfileInConnectedChannel,
     ringingEnabled,
     shouldPlayJoinUserSound,
-    voiceChannelCalls,
+    calls,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
 import {
@@ -73,7 +73,7 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     });
 
     if (ringingEnabled(store.getState())) {
-        const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
+        const callID = calls(store.getState())[channelID].ID || '';
         store.dispatch(removeIncomingCallNotification(callID));
     }
 }
@@ -138,7 +138,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
     }
 
     if (ringingEnabled(store.getState()) && userID === currentUserID) {
-        const callID = voiceChannelCalls(store.getState())[channelID].ID || '';
+        const callID = calls(store.getState())[channelID].ID || '';
         store.dispatch(removeIncomingCallNotification(callID));
         notificationSounds?.stopRing(); // And stop ringing for _any_ incoming call.
     }

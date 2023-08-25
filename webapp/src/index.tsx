@@ -88,7 +88,7 @@ import {
     connectedChannelID,
     connectedUsers,
     connectedUsersInChannel,
-    voiceChannelCallStartAt,
+    callsStartAt,
     isLimitRestricted,
     iceServers,
     needsTURNCredentials,
@@ -594,7 +594,7 @@ export default class Plugin {
                             channelID: data[i].channel_id,
                         },
                     });
-                    if (!voiceChannelCallStartAt(store.getState(), data[i].channel_id)) {
+                    if (!callsStartAt(store.getState(), data[i].channel_id)) {
                         actions.push({
                             type: CALLS_CALL_START,
                             data: {
