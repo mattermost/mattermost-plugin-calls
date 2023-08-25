@@ -27,13 +27,11 @@ import {
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
     CALL_END,
-    CALL_HOST,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
-    CALL_START,
+    CALL_STATE,
     PROFILE_CONNECTED,
     PROFILES_CONNECTED,
-    ROOT_POST,
     UNINIT,
     USER_CONNECTED,
     USER_DISCONNECTED,
@@ -203,7 +201,7 @@ type connectedChannelIDAction = {
     };
 }
 
-const connectedChannelID = (state: connectedChannelIDState, action: connectedChannelIDAction) => {
+const connectedChannelID = (state: connectedChannelIDState = null, action: connectedChannelIDAction) => {
     switch (action.type) {
     case UNINIT:
         return null;
@@ -613,17 +611,17 @@ const recordings = (state: callsRecordingsState = {}, action: recordingStateActi
     }
 };
 
+// callState should only hold immutable data, meaning those
+// fields that don't change for the whole duration of a call.
 export type callState = {
-    ID?: string;
+    ID: string;
+    startAt: number;
     channelID: string;
-    startAt?: number;
-    ownerID?: string;
-    hostID: string;
-    hostChangeAt?: number;
-    dismissedNotification: { [userID: string]: boolean };
+    threadID: string;
+    ownerID: string;
 }
 
-export type callStateAction = {
+type callStateAction = {
     type: string;
     data: callState;
 }
@@ -636,47 +634,12 @@ const calls = (state: callsState = {}, action: callStateAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
-    case CALL_HOST:
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                hostID: action.data.hostID,
-                hostChangeAt: action.data.hostChangeAt || state[action.data.channelID].hostChangeAt,
-            },
-        };
-    case CALL_START:
+    case CALL_STATE:
         return {
             ...state,
             [action.data.channelID]: {
                 ...action.data,
-                hostChangeAt: action.data.startAt,
-                dismissedNotification: action.data.dismissedNotification,
             },
-        };
-    default:
-        return state;
-    }
-};
-
-type rootPostsState = {
-    [channelID: string]: string;
-}
-
-type rootPostAction = {
-    type: string;
-    data: {
-        channelID: string;
-        rootPost: string;
-    }
-}
-
-const rootPosts = (state: rootPostsState = {}, action: rootPostAction) => {
-    switch (action.type) {
-    case ROOT_POST:
-        return {
-            ...state,
-            [action.data.channelID]: action.data.rootPost,
         };
     default:
         return state;
@@ -945,7 +908,6 @@ export default combineReducers({
     switchCallModal,
     endCallModal,
     screenSourceModal,
-    rootPosts,
     callsConfig,
     rtcdEnabled,
     callsUserPreferences,

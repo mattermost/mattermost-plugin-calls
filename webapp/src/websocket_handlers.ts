@@ -26,9 +26,8 @@ import {
     USER_UNMUTED,
     USER_CONNECTED,
     PROFILE_CONNECTED,
-    CALL_START,
+    CALL_STATE,
     CALL_END,
-    ROOT_POST,
     USER_VOICE_ON,
     USER_VOICE_OFF,
     USER_SCREEN_ON,
@@ -90,20 +89,14 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         },
     });
     store.dispatch({
-        type: CALL_START,
+        type: CALL_STATE,
         data: {
             ID: ev.data.id,
             channelID,
             startAt: ev.data.start_at,
             ownerID: ev.data.owner_id,
             hostID: ev.data.host_id,
-        },
-    });
-    store.dispatch({
-        type: ROOT_POST,
-        data: {
-            channelID,
-            rootPost: ev.data.thread_id,
+            threadID: ev.data.thread_id,
         },
     });
 

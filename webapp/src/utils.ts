@@ -19,7 +19,7 @@ import CallsClient from 'src/client';
 
 import {logDebug, logErr, logWarn} from './log';
 import {pluginId} from './manifest';
-import {callsRootPost} from './selectors';
+import {callThreadID} from './selectors';
 import JoinSelfSound from './sounds/join_self.mp3';
 import JoinUserSound from './sounds/join_user.mp3';
 import LeaveSelfSound from './sounds/leave_self.mp3';
@@ -345,7 +345,7 @@ export async function followThread(store: Store, channelID: string, teamID: stri
         logDebug('followThread: no team for channel');
         return;
     }
-    const threadID = callsRootPost(store.getState(), channelID);
+    const threadID = callThreadID(store.getState(), channelID);
     if (threadID) {
         store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
     } else {

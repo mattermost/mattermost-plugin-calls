@@ -148,7 +148,7 @@ export const usersStatusesInChannel = (state: GlobalState, channelID: string) =>
     return pluginState(state).usersStatuses[channelID] || {};
 };
 
-export const callsStartAt = (state: GlobalState, channelID: string): number | undefined => {
+export const callStartAt = (state: GlobalState, channelID: string): number | undefined => {
     return pluginState(state).calls[channelID]?.startAt;
 };
 
@@ -167,28 +167,23 @@ export const callsID = (state: GlobalState, channelID: string): string | undefin
     return pluginState(state).calls[channelID]?.ID;
 };
 
-export const callsOwnerID = (state: GlobalState, channelID: string): string | undefined => {
+export const callOwnerID = (state: GlobalState, channelID: string): string | undefined => {
     return pluginState(state).calls[channelID]?.ownerID;
 };
 
-export const callsHostID = (state: GlobalState, channelID: string) => {
+export const callHostID = (state: GlobalState, channelID: string) => {
     return pluginState(state).calls[channelID]?.hostID;
 };
 
-export const callsHostChangeAt = (state: GlobalState, channelID: string) => {
+export const callHostChangeAt = (state: GlobalState, channelID: string) => {
     return pluginState(state).calls[channelID]?.hostChangeAt;
 };
 
-export const callsDismissedNotification = (state: GlobalState, channelID: string) => {
-    const dismissed: { [userID: string]: boolean } | undefined = pluginState(state).calls[channelID]?.dismissedNotification;
-    if (!dismissed) {
-        return false;
-    }
-    const currentUserID = getCurrentUserId(state);
-    return Object.hasOwn(dismissed, currentUserID) ? dismissed[currentUserID] : false;
+export const callDismissedNotification = (state: GlobalState, channelID: string) => {
+    return Boolean(pluginState(state).dismissedCalls[channelID]);
 };
 
-export const callsScreenSharingID = (state: GlobalState, channelID: string): string | undefined => {
+export const callScreenSharingID = (state: GlobalState, channelID: string): string | undefined => {
     return pluginState(state).screenSharingIDs[channelID];
 };
 
@@ -220,8 +215,8 @@ export const screenSourceModal = (state: GlobalState) => {
     return pluginState(state).screenSourceModal;
 };
 
-export const callsRootPost = (state: GlobalState, channelID: string) => {
-    return pluginState(state).rootPosts[channelID];
+export const callThreadID = (state: GlobalState, channelID: string) => {
+    return pluginState(state).calls[channelID].threadID;
 };
 
 export const recentlyJoinedUsers = (state: GlobalState, channelID: string): string[] => {

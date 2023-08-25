@@ -56,10 +56,9 @@ import {
     USERS_CONNECTED,
     USERS_CONNECTED_STATES,
     PROFILES_CONNECTED,
-    CALL_START,
+    CALL_STATE,
     USER_SCREEN_ON,
     UNINIT,
-    ROOT_POST,
     SHOW_SWITCH_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
     CALL_HOST,
@@ -68,6 +67,7 @@ import {
     USER_UNMUTED,
     USER_RAISE_HAND,
     USER_UNRAISE_HAND,
+    DISMISS_CALL,
 } from './action_types';
 import CallsClient from './client';
 import CallWidget from './components/call_widget';
@@ -88,7 +88,7 @@ import {
     connectedChannelID,
     connectedUsers,
     connectedUsersInChannel,
-    callsStartAt,
+    callStartAt,
     isLimitRestricted,
     iceServers,
     needsTURNCredentials,
@@ -594,16 +594,15 @@ export default class Plugin {
                             channelID: data[i].channel_id,
                         },
                     });
-                    if (!callsStartAt(store.getState(), data[i].channel_id)) {
+                    if (!callStartAt(store.getState(), data[i].channel_id)) {
                         actions.push({
-                            type: CALL_START,
+                            type: CALL_STATE,
                             data: {
                                 ID: data[i].call?.id,
                                 channelID: data[i].channel_id,
                                 startAt: data[i].call?.start_at,
                                 ownerID: data[i].call?.owner_id,
                                 hostID: data[i].call?.host_id,
-                                dismissedNotification: data[i].call?.dismissed_notification || {},
                             },
                         });
 
@@ -613,6 +612,12 @@ export default class Plugin {
                             if (dismissed) {
                                 const currentUserID = getCurrentUserId(store.getState());
                                 if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
+                                    actions.push({
+                                        type: DISMISS_CALL,
+                                        data: {
+                                            callID: data[i].call.id,
+                                        },
+                                    });
                                     continue;
                                 }
                             }
@@ -672,30 +677,35 @@ export default class Plugin {
                 }
 
                 actions.push({
-                    type: CALL_START,
+                    type: CALL_STATE,
                     data: {
                         ID: call.id,
                         channelID,
                         startAt: call.start_at,
                         ownerID: call.owner_id,
+                        threadID: call.thread_id,
                         hostID: call.host_id,
-                        dismissedNotification: call.dismissed_notification,
                     },
                 });
+
+                const dismissed = call.dismissed_notification;
+                if (dismissed) {
+                    const currentUserID = getCurrentUserId(store.getState());
+                    if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
+                        actions.push({
+                            type: DISMISS_CALL,
+                            data: {
+                                callID: call.id,
+                            },
+                        });
+                    }
+                }
 
                 actions.push({
                     type: USERS_CONNECTED,
                     data: {
                         users: call.users || [],
                         channelID,
-                    },
-                });
-
-                actions.push({
-                    type: ROOT_POST,
-                    data: {
-                        channelID,
-                        rootPost: call.thread_id,
                     },
                 });
 

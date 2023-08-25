@@ -13,15 +13,15 @@ import {bindActionCreators, Dispatch} from 'redux';
 import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 import {
     usersStatuses,
-    callsStartAt,
-    callsScreenSharingID,
+    callStartAt,
+    callScreenSharingID,
     expandedView,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
     connectedProfiles,
-    callsHostID,
+    callHostID,
     callRecording,
-    callsHostChangeAt,
+    callHostChangeAt,
     recentlyJoinedUsers,
     sortedIncomingCalls,
 } from 'src/selectors';
@@ -37,7 +37,7 @@ const mapStateToProps = (state: GlobalState) => {
     const channel = getChannel(state, String(window.callsClient?.channelID));
     const currentUserID = getCurrentUserId(state);
 
-    const screenSharingID = callsScreenSharingID(state, channel?.id) || '';
+    const screenSharingID = callScreenSharingID(state, channel?.id) || '';
 
     const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
@@ -68,9 +68,9 @@ const mapStateToProps = (state: GlobalState) => {
         profilesMap,
         picturesMap,
         statuses: usersStatuses(state) || {},
-        callStartAt: callsStartAt(state, channel?.id) || Number(window.callsClient?.initTime),
-        callHostID: callsHostID(state, channel?.id) || '',
-        callHostChangeAt: callsHostChangeAt(state, channel?.id) || 0,
+        callStartAt: callStartAt(state, channel?.id) || Number(window.callsClient?.initTime),
+        callHostID: callHostID(state, channel?.id) || '',
+        callHostChangeAt: callHostChangeAt(state, channel?.id) || 0,
         callRecording: callRecording(state, channel?.id),
         screenSharingID,
         allowScreenSharing: allowScreenSharing(state),

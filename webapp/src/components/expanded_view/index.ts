@@ -26,11 +26,11 @@ import {
     getChannelUrlAndDisplayName,
     recordingMaxDuration,
     recordingsEnabled,
-    callsHostChangeAt,
-    callsHostID,
-    callsStartAt,
-    callsRootPost,
-    callsScreenSharingID,
+    callHostChangeAt,
+    callHostID,
+    callStartAt,
+    callThreadID,
+    callScreenSharingID,
     connectedProfiles,
     usersStatuses,
 } from 'src/selectors';
@@ -44,8 +44,8 @@ const mapStateToProps = (state: GlobalState) => {
     const currentTeamID = getCurrentTeamId(state);
     const channel = getChannel(state, connectedChannelID(state) || '');
     const channelTeam = getTeam(state, channel?.team_id);
-    const screenSharingID = callsScreenSharingID(state, channel?.id) || '';
-    const threadID = callsRootPost(state, channel?.id);
+    const screenSharingID = callScreenSharingID(state, channel?.id) || '';
+    const threadID = callThreadID(state, channel?.id);
 
     const sortedProfiles = (profiles: UserProfile[], statuses: { [key: string]: UserState }) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
@@ -76,9 +76,9 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         pictures,
         statuses,
-        callStartAt: callsStartAt(state, channel?.id) || 0,
-        callHostID: callsHostID(state, channel?.id) || '',
-        callHostChangeAt: callsHostChangeAt(state, channel?.id) || 0,
+        callStartAt: callStartAt(state, channel?.id) || 0,
+        callHostID: callHostID(state, channel?.id) || '',
+        callHostChangeAt: callHostChangeAt(state, channel?.id) || 0,
         callRecording: callRecording(state, channel?.id),
         isRecording: isRecording(state, channel?.id),
         screenSharingID,

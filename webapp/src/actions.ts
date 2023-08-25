@@ -24,7 +24,7 @@ import {
     channelHasCall, connectedCallID, incomingCalls,
     ringingEnabled,
     ringingForCall,
-    callsDismissedNotification,
+    callDismissedNotification,
     calls,
 } from 'src/selectors';
 import * as Telemetry from 'src/types/telemetry';
@@ -316,7 +316,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
             return;
         }
 
-        if (callsDismissedNotification(getState(), channelID)) {
+        if (callDismissedNotification(getState(), channelID)) {
             return;
         }
 

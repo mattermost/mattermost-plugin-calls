@@ -29,11 +29,10 @@ import configureStore from 'mattermost-redux/store';
 import {Theme} from 'mattermost-redux/types/themes';
 import {
     USER_SCREEN_ON,
-    ROOT_POST,
     PROFILES_CONNECTED,
     USERS_CONNECTED,
     USERS_CONNECTED_STATES,
-    CALL_START,
+    CALL_STATE,
 } from 'plugin/action_types';
 import {getCallsConfig} from 'plugin/actions';
 import CallsClient from 'plugin/client';
@@ -154,14 +153,6 @@ async function fetchChannelData(store: Store, channelID: string) {
     });
 
     store.dispatch({
-        type: ROOT_POST,
-        data: {
-            channelID,
-            rootPost: resp.call.thread_id,
-        },
-    });
-
-    store.dispatch({
         type: USER_SCREEN_ON,
         data: {
             channelID,
@@ -170,12 +161,13 @@ async function fetchChannelData(store: Store, channelID: string) {
     });
 
     store.dispatch({
-        type: CALL_START,
+        type: CALL_STATE,
         data: {
             ID: resp.call.id,
             channelID: resp.channel_id,
             startAt: resp.call.start_at,
             ownerID: resp.call.owner_id,
+            threadID: resp.call.thread_id,
             hostID: resp.call.host_id,
             dismissedNotification: resp.call.dismissed_notification || {},
         },
