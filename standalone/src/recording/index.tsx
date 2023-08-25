@@ -15,7 +15,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
-import {CALLS_USER_CONNECTED} from 'src/action_types';
+import {USER_CONNECTED} from 'src/action_types';
 
 import init from '../init';
 import recordingReducer from 'src/recording/reducers';
@@ -75,7 +75,7 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
     }
 
     await store.dispatch({
-        type: CALLS_USER_CONNECTED,
+        type: USER_CONNECTED,
         data: {
             channelID,
             userID: getCurrentUserId(store.getState()),

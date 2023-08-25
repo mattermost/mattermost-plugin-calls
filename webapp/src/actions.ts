@@ -43,9 +43,9 @@ import {
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
-    CALLS_CALL_REC_PROMPT_DISMISSED,
-    CALLS_CALL_RECORDING_STATE,
-    CALLS_USER_DISCONNECTED,
+    CALL_REC_PROMPT_DISMISSED,
+    CALL_RECORDING_STATE,
+    USER_DISCONNECTED,
     RTCD_ENABLED,
     REMOVE_INCOMING_CALL,
     DID_RING_FOR_CALL,
@@ -242,7 +242,7 @@ export const startCallRecording = (callID: string) => (dispatch: Dispatch<Generi
         {method: 'post'},
     ).catch((err) => {
         dispatch({
-            type: CALLS_CALL_RECORDING_STATE,
+            type: CALL_RECORDING_STATE,
             data: {
                 callID,
                 recState: {
@@ -266,7 +266,7 @@ export const stopCallRecording = async (callID: string) => {
 
 export const recordingPromptDismissedAt = (callID: string, dismissedAt: number) => (dispatch: Dispatch<GenericAction>) => {
     dispatch({
-        type: CALLS_CALL_REC_PROMPT_DISMISSED,
+        type: CALL_REC_PROMPT_DISMISSED,
         data: {
             callID,
             dismissedAt,
@@ -355,7 +355,7 @@ export const userDisconnected = (channelID: string, userID: string) => {
         const callID = calls(getState())[channelID].ID || '';
 
         await dispatch({
-            type: CALLS_USER_DISCONNECTED,
+            type: USER_DISCONNECTED,
             data: {
                 channelID,
                 userID,

@@ -26,30 +26,30 @@ import {
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
-    CALLS_CALL_END,
-    CALLS_CALL_HOST,
-    CALLS_CALL_REC_PROMPT_DISMISSED,
-    CALLS_CALL_RECORDING_STATE,
-    CALLS_CALL_START,
-    CALLS_PROFILE_CONNECTED,
-    CALLS_PROFILES_CONNECTED,
-    CALLS_ROOT_POST,
-    CALLS_UNINIT,
-    CALLS_USER_CONNECTED,
-    CALLS_USER_DISCONNECTED,
-    CALLS_USER_MUTED,
-    CALLS_USER_RAISE_HAND,
-    CALLS_USER_REACTED,
-    CALLS_USER_REACTED_TIMEOUT,
-    CALLS_USER_SCREEN_OFF,
-    CALLS_USER_SCREEN_ON,
-    CALLS_USER_UNMUTED,
-    CALLS_USER_UNRAISE_HAND,
-    CALLS_USER_VOICE_OFF,
-    CALLS_USER_VOICE_ON,
-    CALLS_USERS_CONNECTED,
-    CALLS_USERS_CONNECTED_STATES,
-    CALLS_USER_JOINED_TIMEOUT,
+    CALL_END,
+    CALL_HOST,
+    CALL_REC_PROMPT_DISMISSED,
+    CALL_RECORDING_STATE,
+    CALL_START,
+    PROFILE_CONNECTED,
+    PROFILES_CONNECTED,
+    ROOT_POST,
+    UNINIT,
+    USER_CONNECTED,
+    USER_DISCONNECTED,
+    USER_MUTED,
+    USER_RAISE_HAND,
+    USER_REACTED,
+    USER_REACTED_TIMEOUT,
+    USER_SCREEN_OFF,
+    USER_SCREEN_ON,
+    USER_UNMUTED,
+    USER_UNRAISE_HAND,
+    USER_VOICE_OFF,
+    USER_VOICE_ON,
+    USERS_CONNECTED,
+    USERS_CONNECTED_STATES,
+    USER_JOINED_TIMEOUT,
     RECORDINGS_ENABLED,
     ADD_INCOMING_CALL,
     REMOVE_INCOMING_CALL,
@@ -94,14 +94,14 @@ interface connectedProfilesAction {
 // Profiles (as in whole User objects) connected to calls.
 const connectedProfiles = (state: connectedProfilesState = {}, action: connectedProfilesAction) => {
     switch (action.type) {
-    case CALLS_UNINIT:
+    case UNINIT:
         return {};
-    case CALLS_PROFILES_CONNECTED:
+    case PROFILES_CONNECTED:
         return {
             ...state,
             [action.data.channelID]: action.data.profiles,
         };
-    case CALLS_PROFILE_CONNECTED:
+    case PROFILE_CONNECTED:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -122,12 +122,12 @@ const connectedProfiles = (state: connectedProfilesState = {}, action: connected
                 action.data.profile,
             ],
         };
-    case CALLS_USER_DISCONNECTED:
+    case USER_DISCONNECTED:
         return {
             ...state,
             [action.data.channelID]: state[action.data.channelID]?.filter((val) => val.id !== action.data.userID),
         };
-    case CALLS_CALL_END:
+    case CALL_END:
         return {
             ...state,
             [action.data.channelID]: [],
@@ -152,9 +152,9 @@ interface connectedChannelsAction {
 
 const connectedChannels = (state: connectedChannelsState = {}, action: connectedChannelsAction) => {
     switch (action.type) {
-    case CALLS_UNINIT:
+    case UNINIT:
         return {};
-    case CALLS_USER_CONNECTED:
+    case USER_CONNECTED:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -168,17 +168,17 @@ const connectedChannels = (state: connectedChannelsState = {}, action: connected
                 action.data.userID,
             ],
         };
-    case CALLS_USER_DISCONNECTED:
+    case USER_DISCONNECTED:
         return {
             ...state,
             [action.data.channelID]: state[action.data.channelID]?.filter((val) => val !== action.data.userID),
         };
-    case CALLS_USERS_CONNECTED:
+    case USERS_CONNECTED:
         return {
             ...state,
             [action.data.channelID]: action.data.users,
         };
-    case CALLS_CALL_END:
+    case CALL_END:
         return {
             ...state,
             [action.data.channelID]: [],
@@ -190,23 +190,23 @@ const connectedChannels = (state: connectedChannelsState = {}, action: connected
 
 const connectedChannelID = (state: string | null = null, action: { type: string, data: { channelID: string, currentUserID: string, userID: string } }) => {
     switch (action.type) {
-    case CALLS_UNINIT:
+    case UNINIT:
         return null;
     case DESKTOP_WIDGET_CONNECTED:
         return action.data.channelID;
-    case CALLS_USER_CONNECTED: {
+    case USER_CONNECTED: {
         const callsClient = window.callsClient || window.opener?.callsClient;
         if (action.data.currentUserID === action.data.userID && callsClient?.channelID === action.data.channelID) {
             return action.data.channelID;
         }
         return state;
     }
-    case CALLS_USER_DISCONNECTED:
+    case USER_DISCONNECTED:
         if (action.data.currentUserID === action.data.userID && state === action.data.channelID) {
             return null;
         }
         return state;
-    case CALLS_CALL_END:
+    case CALL_END:
         if (state === action.data.channelID) {
             return null;
         }
@@ -254,7 +254,7 @@ const removeReaction = (reactions: Reaction[], reaction: Reaction) => {
 
 const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAction) => {
     switch (action.type) {
-    case CALLS_USER_REACTED:
+    case USER_REACTED:
         if (action.data.reaction) {
             if (!state[action.data.channelID]) {
                 return {
@@ -270,7 +270,7 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
             };
         }
         return state;
-    case CALLS_USER_REACTED_TIMEOUT:
+    case USER_REACTED_TIMEOUT:
         if (!state[action.data.channelID]?.reactions || !action.data.reaction) {
             return state;
         }
@@ -285,7 +285,7 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
                     }),
             },
         };
-    case CALLS_USER_DISCONNECTED:
+    case USER_DISCONNECTED:
         if (!state[action.data.channelID] || !state[action.data.channelID].reactions) {
             return state;
         }
@@ -305,9 +305,9 @@ const reactionStatus = (state: userReactionsState = {}, action: usersStatusesAct
 
 const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatusesAction) => {
     switch (action.type) {
-    case CALLS_UNINIT:
+    case UNINIT:
         return {};
-    case CALLS_USER_CONNECTED:
+    case USER_CONNECTED:
         if (state[action.data.channelID]) {
             return {
                 ...state,
@@ -323,7 +323,7 @@ const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
             };
         }
         return state;
-    case CALLS_USER_DISCONNECTED:
+    case USER_DISCONNECTED:
         if (state[action.data.channelID]) {
             // eslint-disable-next-line
             const {[action.data.userID]: omit, ...res} = state[action.data.channelID];
@@ -333,12 +333,12 @@ const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
             };
         }
         return state;
-    case CALLS_USERS_CONNECTED_STATES:
+    case USERS_CONNECTED_STATES:
         return {
             ...state,
             [action.data.channelID]: action.data.states,
         };
-    case CALLS_USER_MUTED:
+    case USER_MUTED:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -362,7 +362,7 @@ const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 },
             },
         };
-    case CALLS_USER_UNMUTED:
+    case USER_UNMUTED:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -386,7 +386,7 @@ const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 },
             },
         };
-    case CALLS_USER_VOICE_ON:
+    case USER_VOICE_ON:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -410,7 +410,7 @@ const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 },
             },
         };
-    case CALLS_USER_VOICE_OFF:
+    case USER_VOICE_OFF:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -434,7 +434,7 @@ const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 },
             },
         };
-    case CALLS_USER_RAISE_HAND:
+    case USER_RAISE_HAND:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -458,7 +458,7 @@ const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 },
             },
         };
-    case CALLS_USER_UNRAISE_HAND:
+    case USER_UNRAISE_HAND:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -482,7 +482,7 @@ const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 },
             },
         };
-    case CALLS_USER_REACTED:
+    case USER_REACTED:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -507,7 +507,7 @@ const callsUsersStatuses = (state: UsersStatusesState = {}, action: usersStatuse
                 },
             },
         };
-    case CALLS_USER_REACTED_TIMEOUT: {
+    case USER_REACTED_TIMEOUT: {
         const storedReaction = state[action.data.channelID]?.[action.data.userID]?.reaction;
         if (!storedReaction || !action.data.reaction) {
             return state;
@@ -558,9 +558,9 @@ type disclaimerDismissedAction = {
 
 const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, action: callRecordingStateAction | userDisconnectedAction | disclaimerDismissedAction) => {
     switch (action.type) {
-    case CALLS_UNINIT:
+    case UNINIT:
         return {};
-    case CALLS_USER_DISCONNECTED: {
+    case USER_DISCONNECTED: {
         const theAction = action as userDisconnectedAction;
         if (theAction.data.currentUserID === theAction.data.userID) {
             const nextState = {...state};
@@ -569,7 +569,7 @@ const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, a
         }
         return state;
     }
-    case CALLS_CALL_RECORDING_STATE: {
+    case CALL_RECORDING_STATE: {
         const theAction = action as callRecordingStateAction;
         return {
             ...state,
@@ -579,7 +579,7 @@ const callsRecordings = (state: { [callID: string]: CallRecordingState } = {}, a
             },
         };
     }
-    case CALLS_CALL_REC_PROMPT_DISMISSED: {
+    case CALL_REC_PROMPT_DISMISSED: {
         const theAction = action as disclaimerDismissedAction;
         return {
             ...state,
@@ -611,9 +611,9 @@ export interface callStateAction {
 
 const calls = (state: { [channelID: string]: callState } = {}, action: callStateAction) => {
     switch (action.type) {
-    case CALLS_UNINIT:
+    case UNINIT:
         return {};
-    case CALLS_CALL_HOST:
+    case CALL_HOST:
         return {
             ...state,
             [action.data.channelID]: {
@@ -622,7 +622,7 @@ const calls = (state: { [channelID: string]: callState } = {}, action: callState
                 hostChangeAt: action.data.hostChangeAt || state[action.data.channelID].hostChangeAt,
             },
         };
-    case CALLS_CALL_START:
+    case CALL_START:
         return {
             ...state,
             [action.data.channelID]: {
@@ -638,7 +638,7 @@ const calls = (state: { [channelID: string]: callState } = {}, action: callState
 
 const callsRootPost = (state: { [channelID: string]: string } = {}, action: { type: string, data: { channelID: string, rootPost: string } }) => {
     switch (action.type) {
-    case CALLS_ROOT_POST:
+    case ROOT_POST:
         return {
             ...state,
             [action.data.channelID]: action.data.rootPost,
@@ -650,14 +650,14 @@ const callsRootPost = (state: { [channelID: string]: string } = {}, action: { ty
 
 const callsScreenSharingID = (state: { [channelID: string]: string } = {}, action: { type: string, data: { channelID: string, userID?: string } }) => {
     switch (action.type) {
-    case CALLS_UNINIT:
+    case UNINIT:
         return {};
-    case CALLS_USER_SCREEN_ON:
+    case USER_SCREEN_ON:
         return {
             ...state,
             [action.data.channelID]: action.data.userID,
         };
-    case CALLS_USER_DISCONNECTED: {
+    case USER_DISCONNECTED: {
         // If the user who disconnected matches the one sharing we
         // want to fallthrough and clear the state.
         if (action.data.userID !== state[action.data.channelID]) {
@@ -665,8 +665,8 @@ const callsScreenSharingID = (state: { [channelID: string]: string } = {}, actio
         }
     }
     // eslint-disable-next-line no-fallthrough
-    case CALLS_CALL_END:
-    case CALLS_USER_SCREEN_OFF:
+    case CALL_END:
+    case USER_SCREEN_OFF:
         return {
             ...state,
             [action.data.channelID]: '',
@@ -678,7 +678,7 @@ const callsScreenSharingID = (state: { [channelID: string]: string } = {}, actio
 
 const expandedView = (state = false, action: { type: string }) => {
     switch (action.type) {
-    case CALLS_UNINIT:
+    case UNINIT:
         return false;
     case SHOW_EXPANDED_VIEW:
         return true;
@@ -694,7 +694,7 @@ const switchCallModal = (state = {
     targetID: '',
 }, action: { type: string, data?: { targetID: string } }) => {
     switch (action.type) {
-    case CALLS_UNINIT:
+    case UNINIT:
         return {show: false, targetID: ''};
     case SHOW_SWITCH_CALL_MODAL:
         return {show: true, targetID: action.data?.targetID};
@@ -721,7 +721,7 @@ const endCallModal = (state = {
 
 const screenSourceModal = (state = false, action: { type: string }) => {
     switch (action.type) {
-    case CALLS_UNINIT:
+    case UNINIT:
         return false;
     case SHOW_SCREEN_SOURCE_MODAL:
         return true;
@@ -767,9 +767,9 @@ interface recentlyJoinedUsersState {
 
 const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: connectedChannelsAction) => {
     switch (action.type) {
-    case CALLS_UNINIT:
+    case UNINIT:
         return {};
-    case CALLS_USER_CONNECTED:
+    case USER_CONNECTED:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -783,17 +783,17 @@ const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: conne
                 action.data.userID,
             ],
         };
-    case CALLS_USER_DISCONNECTED:
+    case USER_DISCONNECTED:
         return {
             ...state,
             [action.data.channelID]: state[action.data.channelID]?.filter((val) => val !== action.data.userID),
         };
-    case CALLS_CALL_END:
+    case CALL_END:
         return {
             ...state,
             [action.data.channelID]: [],
         };
-    case CALLS_USER_JOINED_TIMEOUT:
+    case USER_JOINED_TIMEOUT:
         return {
             ...state,
             [action.data.channelID]: state[action.data.channelID]?.filter((val) => val !== action.data.userID),
