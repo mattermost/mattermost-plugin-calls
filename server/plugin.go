@@ -328,6 +328,45 @@ func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title
 		return "", "", err
 	}
 
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.LogError("failed to get channel", "error", appErr.Error())
+		return createdPost.Id, threadID, nil
+	}
+
+	if channel.Type == model.ChannelTypeDirect || channel.Type == model.ChannelTypeGroup {
+		members, appErr := p.API.GetUsersInChannel(channelID, model.ChannelSortByUsername, 0, 10)
+		if appErr != nil {
+			p.LogError("failed to get channel users", "error", appErr.Error())
+			return createdPost.Id, threadID, nil
+		}
+
+		for _, member := range members {
+			if member.Id == user.Id {
+				continue
+			}
+
+			nameFormat := p.getNotificationNameFormat(member.Id)
+			channelName := p.getChannelName(channel, user, members, nameFormat, member.Id)
+			senderName := user.GetDisplayName(nameFormat)
+
+			if err := p.API.SendPushNotification(&model.PushNotification{
+				PostId:      createdPost.Id,
+				Message:     buildPushNotificationMessage(senderName),
+				TeamId:      channel.TeamId,
+				ChannelId:   channelID,
+				RootId:      threadID,
+				ChannelName: channelName,
+				Type:        model.PushTypeMessage,
+				SenderId:    userID,
+				SenderName:  senderName,
+				ChannelType: channel.Type,
+			}, member.Id); err != nil {
+				p.LogError(fmt.Sprintf("failed to send push notification for userID: %s", member.Id), "error", err.Error())
+			}
+		}
+	}
+
 	return createdPost.Id, threadID, nil
 }
 
