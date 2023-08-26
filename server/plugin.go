@@ -346,22 +346,40 @@ func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title
 				continue
 			}
 
-			nameFormat := p.getNotificationNameFormat(member.Id)
-			channelName := p.getChannelName(channel, user, members, nameFormat, member.Id)
-			senderName := user.GetDisplayName(nameFormat)
-
-			if err := p.API.SendPushNotification(&model.PushNotification{
-				PostId:      createdPost.Id,
-				Message:     buildPushNotificationMessage(senderName),
+			msg := &model.PushNotification{
+				Category:    model.CategoryCanReply,
+				Version:     model.PushMessageV2,
+				Type:        model.PushTypeMessage,
 				TeamId:      channel.TeamId,
 				ChannelId:   channelID,
+				PostId:      createdPost.Id,
 				RootId:      threadID,
-				ChannelName: channelName,
-				Type:        model.PushTypeMessage,
 				SenderId:    userID,
-				SenderName:  senderName,
 				ChannelType: channel.Type,
-			}, member.Id); err != nil {
+				Message:     buildGenericPushNotificationMessage(),
+			}
+
+			config := p.API.GetConfig()
+
+			// This is ugly.
+			if *config.EmailSettings.PushNotificationContents == model.IdLoadedNotification {
+				msg.IsIdLoaded = p.checkLicenseForIdLoaded()
+			} else {
+				nameFormat := p.getNotificationNameFormat(member.Id)
+				channelName := p.getChannelName(channel, user, members, nameFormat, member.Id)
+				senderName := user.GetDisplayName(nameFormat)
+				msg.SenderName = senderName
+				msg.ChannelName = channelName
+
+				if *config.EmailSettings.PushNotificationContents == model.GenericNoChannelNotification && channel.Type != model.ChannelTypeDirect {
+					msg.ChannelName = ""
+				}
+				if *config.EmailSettings.PushNotificationContents == model.FullNotification {
+					msg.Message = buildPushNotificationMessage(senderName)
+				}
+			}
+
+			if err := p.API.SendPushNotification(msg, member.Id); err != nil {
 				p.LogError(fmt.Sprintf("failed to send push notification for userID: %s", member.Id), "error", err.Error())
 			}
 		}

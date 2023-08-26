@@ -20,6 +20,11 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 
 	// If it's a regular channel, then the user must have notifications set to all.
 	// In that case, make the notification nicer.
+	if notification.IsIdLoaded {
+		notification.Message = buildGenericPushNotificationMessage()
+		return notification, ""
+	}
+
 	nameFormat := p.getNotificationNameFormat(userID)
 	sender, appErr := p.API.GetUser(notification.SenderId)
 	if appErr != nil {
@@ -34,4 +39,17 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 func buildPushNotificationMessage(senderName string) string {
 	// TODO: translations https://mattermost.atlassian.net/browse/MM-54256
 	return fmt.Sprintf("\u200b%s is inviting you to a call", senderName)
+}
+
+func buildGenericPushNotificationMessage() string {
+	// TODO: translations https://mattermost.atlassian.net/browse/MM-54256
+	return "You've been invited to a call"
+}
+
+func (p *Plugin) checkLicenseForIdLoaded() bool {
+	licence := p.API.GetLicense()
+	if licence == nil {
+		return false
+	}
+	return *licence.Features.IDLoadedPushNotifications
 }
