@@ -14,12 +14,7 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 		return nil, ""
 	}
 
-	channel, appErr := p.API.GetChannel(notification.ChannelId)
-	if appErr != nil {
-		return nil, ""
-	}
-
-	if channel.Type == model.ChannelTypeDirect || channel.Type == model.ChannelTypeGroup {
+	if notification.ChannelType == model.ChannelTypeDirect || notification.ChannelType == model.ChannelTypeGroup {
 		return nil, "calls plugin will handle this notification"
 	}
 
