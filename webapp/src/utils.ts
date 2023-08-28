@@ -477,3 +477,26 @@ export function userAgent(): string {
 export function isDesktopApp(): boolean {
     return userAgent().indexOf('Mattermost') !== -1 && userAgent().indexOf('Electron') !== -1;
 }
+
+export function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export const maxAttemptsReachedErr = new Error('maximum retry attempts reached');
+
+export async function runWithRetry(fn: () => any, retryIntervalMs = 100, maxAttempts = 10) {
+    for (let i = 1; i < maxAttempts + 1; i++) {
+        try {
+            // eslint-disable-next-line no-await-in-loop
+            return await fn();
+        } catch (err) {
+            const waitMs = Math.floor((retryIntervalMs * i) + (Math.random() * retryIntervalMs));
+            logErr(err);
+            logDebug(`run failed (${i}), retrying in ${waitMs}ms`);
+            // eslint-disable-next-line no-await-in-loop
+            await sleep(waitMs);
+        }
+    }
+
+    throw maxAttemptsReachedErr;
+}
