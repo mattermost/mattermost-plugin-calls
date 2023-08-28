@@ -47,6 +47,8 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 		return
 	}
 
+	mobile, postGA := isMobilePostGA(r)
+
 	state, err := p.kvGetChannelState(channelID)
 	if err != nil {
 		p.LogError(err.Error())
@@ -58,6 +60,12 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 
 	if state != nil {
 		info.Enabled = state.Enabled
+		// This is for backwards compatibility for mobile pre-v2
+		if info.Enabled == nil && mobile && !postGA {
+			cfg := p.getConfiguration()
+			info.Enabled = model.NewBool(cfg.DefaultEnabled != nil && *cfg.DefaultEnabled)
+		}
+
 		if state.Call != nil {
 			info.Call = state.Call.getClientState(p.getBotID(), userID)
 		}
@@ -88,6 +96,7 @@ func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Per
 
 func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
+	mobile, postGA := isMobilePostGA(r)
 
 	var page int
 	channels := []ChannelStateClient{}
@@ -133,15 +142,18 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, appErr.Error(), http.StatusInternalServerError)
 			}
 
+			enabled := state.Enabled
+			// This is for backwards compatibility for mobile pre-v2
+			if enabled == nil && mobile && !postGA {
+				cfg := p.getConfiguration()
+				enabled = model.NewBool(cfg.DefaultEnabled != nil && *cfg.DefaultEnabled)
+			}
 			info := ChannelStateClient{
 				ChannelID: channelID,
+				Enabled:   enabled,
 			}
-
-			if state != nil {
-				info.Enabled = state.Enabled
-				if state.Call != nil {
-					info.Call = state.Call.getClientState(p.getBotID(), userID)
-				}
+			if state.Call != nil {
+				info.Call = state.Call.getClientState(p.getBotID(), userID)
 			}
 			channels = append(channels, info)
 		}
