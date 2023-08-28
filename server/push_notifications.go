@@ -46,7 +46,7 @@ func buildGenericPushNotificationMessage() string {
 	return "You've been invited to a call"
 }
 
-func (p *Plugin) checkLicenseForIdLoaded() bool {
+func (p *Plugin) checkLicenseForIDLoaded() bool {
 	licence := p.API.GetLicense()
 	if licence == nil {
 		return false
