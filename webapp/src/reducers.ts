@@ -545,7 +545,7 @@ const reactions = (state: usersReactionsState = {}, action: usersStatusesAction)
     }
 };
 
-type callsRecordingsState = {
+export type callsRecordingsState = {
     [callID: string]: CallRecordingState;
 }
 

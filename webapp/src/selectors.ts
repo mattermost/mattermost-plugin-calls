@@ -33,6 +33,7 @@ import {
     usersReactionsState,
     hostsState,
     screenSharingIDsState,
+    callsRecordingsState,
 } from 'src/reducers';
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
 import {getChannelURL} from 'src/utils';
@@ -228,25 +229,39 @@ export const callThreadID = (state: GlobalState, channelID: string) => {
     return pluginState(state).calls[channelID]?.threadID || '';
 };
 
-export const callRecording = (state: GlobalState, callID: string): CallRecordingReduxState => {
-    return pluginState(state).recordings[callID];
+const callsRecordings = (state: GlobalState): callsRecordingsState => {
+    return pluginState(state).recordings;
 };
+
+export const recordingInCurrentCall: (state: GlobalState) => CallRecordingReduxState =
+    createSelector(
+        'recordingInCurrentCall',
+        callsRecordings,
+        connectedChannelID,
+        (recordings, channelID) => recordings[channelID] || {},
+    );
 
 export const recentlyJoinedUsers = (state: GlobalState, channelID: string): string[] => {
     return pluginState(state).recentlyJoinedUsers[channelID] || [];
 };
 
-export const isRecording = (state: GlobalState, callID: string): boolean => {
-    const recording = callRecording(state, callID);
-    if (!recording) {
-        return false;
-    }
+export const isRecordingInCurrentCall: (state: GlobalState) => boolean =
+    createSelector(
+        'recordingInCurrentCall',
+        callsRecordings,
+        connectedChannelID,
+        (recordings, channelID) => {
+            const recording = recordings[channelID];
+            if (!recording) {
+                return false;
+            }
 
-    // Toggle wise (start/stop) we don't care whether the recording job is actually running.
-    // We should be able to stop a recording even during the initialization phase.
+            // Toggle wise (start/stop) we don't care whether the recording job is actually running.
+            // We should be able to stop a recording even during the initialization phase.
 
-    return recording.init_at > recording.end_at;
-};
+            return recording.init_at > recording.end_at;
+        },
+    );
 
 export const incomingCalls = (state: GlobalState): IncomingCallNotification[] =>
     pluginState(state).incomingCalls;

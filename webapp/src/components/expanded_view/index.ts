@@ -19,8 +19,8 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
-    callRecording,
-    isRecording,
+    recordingInCurrentCall,
+    isRecordingInCurrentCall,
     connectedChannelID,
     expandedView,
     getChannelUrlAndDisplayName,
@@ -79,8 +79,8 @@ const mapStateToProps = (state: GlobalState) => {
         callStartAt: callStartAt(state, channel?.id) || 0,
         callHostID: hostIDInCurrentCall(state),
         callHostChangeAt: hostChangeAtInCurrentCall(state),
-        callRecording: callRecording(state, channel?.id),
-        isRecording: isRecording(state, channel?.id),
+        callRecording: recordingInCurrentCall(state),
+        isRecording: isRecordingInCurrentCall(state),
         screenSharingID,
         channel,
         channelTeam,

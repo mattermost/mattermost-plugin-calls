@@ -21,7 +21,7 @@ import {
     connectedProfilesInCurrentCall,
     hostIDInCurrentCall,
     hostChangeAtInCurrentCall,
-    callRecording,
+    recordingInCurrentCall,
     recentlyJoinedUsers,
     sortedIncomingCalls,
 } from 'src/selectors';
@@ -71,7 +71,7 @@ const mapStateToProps = (state: GlobalState) => {
         callStartAt: callStartAt(state, channel?.id) || Number(window.callsClient?.initTime),
         callHostID: hostIDInCurrentCall(state),
         callHostChangeAt: hostChangeAtInCurrentCall(state),
-        callRecording: callRecording(state, channel?.id),
+        callRecording: recordingInCurrentCall(state),
         screenSharingID,
         allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),

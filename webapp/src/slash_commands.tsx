@@ -22,7 +22,7 @@ import {
     connectedUsersInChannel,
     callOwnerID,
     hostIDInCurrentCall,
-    isRecording,
+    isRecordingInCurrentCall,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
 import {sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
@@ -190,7 +190,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
                 return {};
             }
 
-            if (isRecording(state, connectedID)) {
+            if (isRecordingInCurrentCall(state)) {
                 store.dispatch(displayGenericErrorModal(
                     startErrorTitle,
                     defineMessage({defaultMessage: 'A recording is already in progress.'}),
@@ -212,7 +212,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
                 return {};
             }
 
-            if (!isRecording(state, connectedID)) {
+            if (!isRecordingInCurrentCall(state)) {
                 store.dispatch(displayGenericErrorModal(
                     stopErrorTitle,
                     defineMessage({defaultMessage: 'No recording is in progress.'}),
