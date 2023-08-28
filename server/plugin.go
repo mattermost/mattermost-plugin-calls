@@ -104,7 +104,7 @@ func (p *Plugin) startSession(us *session, senderID string) {
 	}
 }
 
-func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterEvent) {
+func (p *Plugin) OnPluginClusterEvent(_ *plugin.Context, ev model.PluginClusterEvent) {
 	select {
 	case p.clusterEvCh <- ev:
 	default:

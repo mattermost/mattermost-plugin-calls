@@ -149,11 +149,11 @@ func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 	}, nil
 }
 
-func (p *Plugin) handleEndCallCommand(userID, channelID string) (*model.CommandResponse, error) {
+func (p *Plugin) handleEndCallCommand(_, _ string) (*model.CommandResponse, error) {
 	return &model.CommandResponse{}, nil
 }
 
-func (p *Plugin) handleRecordingCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
+func (p *Plugin) handleRecordingCommand(_ *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
 	if len(fields) != 3 {
 		return nil, fmt.Errorf("Invalid number of arguments provided")
 	}
@@ -165,7 +165,7 @@ func (p *Plugin) handleRecordingCommand(args *model.CommandArgs, fields []string
 	return &model.CommandResponse{}, nil
 }
 
-func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
+func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
 	rootCmd := strings.TrimPrefix(fields[0], "/")
