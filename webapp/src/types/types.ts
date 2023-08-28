@@ -29,9 +29,9 @@ export type CallsClientJoinData = {
     threadID?: string;
 
     // Calls bot only
-    // contextID is the id used to track the context of the bot connection to
+    // jobID is the id of the job tight to the bot connection to
     // a call (e.g. recording, transcription).
-    contextID?: string;
+    jobID?: string;
 }
 
 export type CallsClientConfig = {

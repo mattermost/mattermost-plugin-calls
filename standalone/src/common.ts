@@ -13,9 +13,9 @@ export function getRootID() {
     return params.get('root_id') || '';
 }
 
-export function getContextID() {
+export function getJobID() {
     const params = new URLSearchParams(window.location.search);
-    return params.get('context_id') || '';
+    return params.get('job_id') || '';
 }
 
 export function getToken() {

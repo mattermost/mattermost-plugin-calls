@@ -44,10 +44,10 @@ type CallsClientJoinData struct {
 	Title     string
 	ThreadID  string
 
-	// ContextID is the id used to track the context of the bot connection to
+	// JobID is the id of the job tight to the bot connection to
 	// a call (e.g. recording, transcription). It's a parameter reserved to the
 	// Calls bot only.
-	ContextID string
+	JobID string
 }
 
 func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *model.WebsocketBroadcast) {
@@ -487,8 +487,8 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 		return fmt.Errorf("forbidden")
 	}
 
-	if userID == p.getBotID() && joinData.ContextID == "" {
-		return fmt.Errorf("ContextID should not be empty")
+	if userID == p.getBotID() && joinData.JobID == "" {
+		return fmt.Errorf("JobID should not be empty for bot connection")
 	}
 
 	channel, appErr := p.API.GetChannel(channelID)
@@ -518,7 +518,7 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 		}
 	}
 
-	state, prevState, err := p.addUserSession(userID, connID, channelID, joinData.ContextID)
+	state, prevState, err := p.addUserSession(userID, connID, channelID, joinData.JobID)
 	if err != nil {
 		return fmt.Errorf("failed to add user session: %w", err)
 	} else if state.Call == nil {
@@ -786,15 +786,15 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		// it will be an empty string.
 		threadID, _ := req.Data["threadID"].(string)
 
-		// ContextID is optional, so if it's not present,
+		// JobID is optional, so if it's not present,
 		// it will be an empty string.
-		contextID, _ := req.Data["contextID"].(string)
+		jobID, _ := req.Data["jobID"].(string)
 
 		joinData := CallsClientJoinData{
 			channelID,
 			title,
 			threadID,
-			contextID,
+			jobID,
 		}
 
 		go func() {

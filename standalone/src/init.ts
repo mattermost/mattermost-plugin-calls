@@ -76,7 +76,7 @@ import {
     getCallTitle,
     getToken,
     getRootID,
-    getContextID,
+    getJobID,
 } from './common';
 import {applyTheme} from './theme_utils';
 
@@ -242,7 +242,7 @@ export default async function init(cfg: InitConfig) {
         channelID,
         title: getCallTitle(),
         threadID: getRootID(),
-        contextID: getContextID(),
+        jobID: getJobID(),
     };
 
     // Setting the base URL if present, in case MM is running under a subpath.

@@ -67,7 +67,7 @@ func newUserSession(userID, channelID, connID string, rtc bool) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(userID, connID, channelID, contextID string) (channelState, channelState, error) {
+func (p *Plugin) addUserSession(userID, connID, channelID, jobID string) (channelState, channelState, error) {
 	var currState channelState
 	var prevState channelState
 
@@ -123,8 +123,8 @@ func (p *Plugin) addUserSession(userID, connID, channelID, contextID string) (ch
 		// When the bot joins the call it means the recording has started.
 		if userID == botID {
 			if state.Call.Recording != nil && state.Call.Recording.StartAt == 0 {
-				if state.Call.Recording.ID != contextID {
-					return nil, fmt.Errorf("invalid context ID for recording")
+				if state.Call.Recording.ID != jobID {
+					return nil, fmt.Errorf("invalid job ID for recording")
 				}
 				state.Call.Recording.StartAt = time.Now().UnixMilli()
 				state.Call.Recording.BotConnID = connID
