@@ -475,7 +475,7 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
     }
 };
 
-type usersReactionsState = {
+export type usersReactionsState = {
     [channelID: string]: {
         reactions: Reaction[];
     };

@@ -26,7 +26,7 @@ import {
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
 
-import {callState, connectedChannelsState, usersStatusesState} from 'src/reducers';
+import {callState, connectedChannelsState, usersStatusesState, usersReactionsState} from 'src/reducers';
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
 import {getChannelURL} from 'src/utils';
 
@@ -149,9 +149,17 @@ export const usersStatusesInCurrentCall: (state: GlobalState) => { [id: string]:
         (statuses, channelID) => statuses[channelID] || {},
     );
 
-export const callsReactions = (state: GlobalState): Reaction[] => {
-    return pluginState(state).reactions[connectedChannelID(state) || '']?.reactions || [];
+const callsReactions = (state: GlobalState): usersReactionsState => {
+    return pluginState(state).reactions;
 };
+
+export const reactionsInCurrentCall: (state: GlobalState) => Reaction[] =
+    createSelector(
+        'reactionsInCurrentCall',
+        callsReactions,
+        connectedChannelID,
+        (reactions, channelID) => reactions[channelID]?.reactions || [],
+    );
 
 export const usersStatusesInChannel = (state: GlobalState, channelID: string) => {
     return pluginState(state).usersStatuses[channelID] || {};

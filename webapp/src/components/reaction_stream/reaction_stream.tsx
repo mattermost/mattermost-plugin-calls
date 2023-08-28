@@ -12,7 +12,7 @@ import HandEmoji from 'src/components/icons/hand';
 import {
     idToProfileInCurrentCall,
     usersStatusesInCurrentCall,
-    callsReactions,
+    reactionsInCurrentCall,
 } from 'src/selectors';
 import {getUserDisplayName, split} from 'src/utils';
 
@@ -23,7 +23,7 @@ export const ReactionStream = () => {
     const currentUserID = useSelector(getCurrentUserId);
     const statuses = useSelector(usersStatusesInCurrentCall);
     const profileMap = useSelector(idToProfileInCurrentCall);
-    const vReactions = useSelector(callsReactions);
+    const vReactions = useSelector(reactionsInCurrentCall);
 
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
