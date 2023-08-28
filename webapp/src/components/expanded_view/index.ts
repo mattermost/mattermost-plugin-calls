@@ -75,7 +75,7 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         pictures,
         statuses,
-        callStartAt: callStartAt(state, channel?.id) || 0,
+        callStartAt: callStartAt(state),
         callHostID: hostIDInCurrentCall(state),
         callHostChangeAt: hostChangeAtInCurrentCall(state),
         callRecording: recordingInCurrentCall(state),

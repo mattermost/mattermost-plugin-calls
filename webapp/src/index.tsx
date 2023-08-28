@@ -88,7 +88,6 @@ import {
     connectedChannelID,
     connectedUsersInCurrentChannel,
     connectedUsersInChannel,
-    callStartAt,
     isLimitRestricted,
     iceServers,
     needsTURNCredentials,
@@ -101,6 +100,7 @@ import {
     callsConfig,
     ringingEnabled,
     hostChangeAtInCurrentCall,
+    callStartAtInChannel,
 } from './selectors';
 import {
     JOIN_CALL,
@@ -595,7 +595,7 @@ export default class Plugin {
                             channelID: data[i].channel_id,
                         },
                     });
-                    if (!callStartAt(store.getState(), data[i].channel_id)) {
+                    if (!callStartAtInChannel(store.getState(), data[i].channel_id)) {
                         actions.push({
                             type: CALL_STATE,
                             data: {

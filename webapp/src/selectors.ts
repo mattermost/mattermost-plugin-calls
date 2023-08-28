@@ -170,9 +170,19 @@ export const reactionsInCurrentCall: (state: GlobalState) => Reaction[] =
         (reactions, channelID) => reactions[channelID]?.reactions || [],
     );
 
-export const callStartAt = (state: GlobalState, channelID: string): number | undefined => {
-    return pluginState(state).calls[channelID]?.startAt;
+export const callStartAtInChannel = (state: GlobalState, channelID: string): number => {
+    return pluginState(state).calls[channelID]?.startAt || 0;
 };
+
+export const callStartAt: (state: GlobalState) => number =
+    createSelector(
+        'callStartAt',
+        calls,
+        connectedChannelID,
+        (callsStates, channelID) => callsStates[channelID]?.startAt ||
+          window.callsClient?.initTime ||
+          window.opener.callsClient?.initTime || 0,
+    );
 
 export const callInCurrentChannel: (state: GlobalState) => callState =
     createSelector(
