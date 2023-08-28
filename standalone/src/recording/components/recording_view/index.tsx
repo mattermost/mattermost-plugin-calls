@@ -14,7 +14,7 @@ import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import Timestamp from 'src/components/timestamp';
-import {callScreenSharingID, connectedProfilesInCurrentCall, usersStatusesInCurrentCall, callHostID} from 'src/selectors';
+import {callScreenSharingID, connectedProfilesInCurrentCall, usersStatusesInCurrentCall, hostIDInCurrentCall} from 'src/selectors';
 
 import {callProfileImages} from 'src/recording/selectors';
 
@@ -36,7 +36,7 @@ const RecordingView = () => {
             pictures[String(profiles[i].id)] = profileImages[profiles[i].id];
         }
     }
-    const hostID = useSelector((state: GlobalState) => callHostID(state, channelID)) || '';
+    const hostID = useSelector((state: GlobalState) => hostIDInCurrentCall(state));
 
     const attachVoiceTracks = (tracks: MediaStreamTrack[]) => {
         for (const track of tracks) {

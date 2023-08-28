@@ -26,7 +26,7 @@ import {
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
 
-import {callState, connectedChannelsState, usersStatusesState, usersReactionsState} from 'src/reducers';
+import {callState, connectedChannelsState, usersStatusesState, usersReactionsState, hostsState} from 'src/reducers';
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
 import {getChannelURL} from 'src/utils';
 
@@ -181,13 +181,25 @@ export const callOwnerID = (state: GlobalState, channelID: string): string | und
     return pluginState(state).calls[channelID]?.ownerID;
 };
 
-export const callHostID = (state: GlobalState, channelID: string) => {
-    return pluginState(state).hosts[channelID]?.hostID;
+const callsHosts = (state: GlobalState): hostsState => {
+    return pluginState(state).hosts;
 };
 
-export const callHostChangeAt = (state: GlobalState, channelID: string) => {
-    return pluginState(state).hosts[channelID]?.hostChangeAt;
-};
+export const hostIDInCurrentCall: (state: GlobalState) => string =
+    createSelector(
+        'hostIDInCurrentCall',
+        callsHosts,
+        connectedChannelID,
+        (hosts, channelID) => hosts[channelID]?.hostID || '',
+    );
+
+export const hostChangeAtInCurrentCall: (state: GlobalState) => number =
+    createSelector(
+        'hostChangeAtInCurrentCall',
+        callsHosts,
+        connectedChannelID,
+        (hosts, channelID) => hosts[channelID]?.hostChangeAt || 0,
+    );
 
 export const callDismissedNotification = (state: GlobalState, channelID: string) => {
     return Boolean(pluginState(state).dismissedCalls[channelID]);

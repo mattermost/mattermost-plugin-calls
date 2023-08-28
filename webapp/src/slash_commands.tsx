@@ -21,7 +21,7 @@ import {
     connectedChannelID,
     connectedUsersInChannel,
     callOwnerID,
-    callHostID,
+    hostIDInCurrentCall,
     isRecording,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
@@ -177,7 +177,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         const state = store.getState();
-        const isHost = callHostID(state, connectedID) === getCurrentUserId(state);
+        const isHost = hostIDInCurrentCall(state) === getCurrentUserId(state);
 
         if (fields[2] === 'start') {
             trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.SlashCommand)(store.dispatch, store.getState);

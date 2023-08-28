@@ -647,14 +647,14 @@ const calls = (state: callsState = {}, action: callStateAction) => {
     }
 };
 
-type hostState = {
+export type hostsState = {
     [channelID: string]: {
         hostID: string;
         hostChangeAt?: number;
     };
 }
 
-type hostStateAction = {
+type hostsStateAction = {
     type: string;
     data: {
         channelID: string;
@@ -663,7 +663,7 @@ type hostStateAction = {
     };
 }
 
-const hosts = (state: hostState = {}, action: hostStateAction) => {
+const hosts = (state: hostsState = {}, action: hostsStateAction) => {
     switch (action.type) {
     case UNINIT:
         return {};

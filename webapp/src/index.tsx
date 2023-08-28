@@ -100,7 +100,7 @@ import {
     hasPermissionsToEnableCalls,
     callsConfig,
     ringingEnabled,
-    callHostChangeAt,
+    hostChangeAtInCurrentCall,
 } from './selectors';
 import {
     JOIN_CALL,
@@ -713,7 +713,7 @@ export default class Plugin {
                     data: {
                         channelID,
                         hostID: call.host_id,
-                        hostChangeAt: callHostChangeAt(store.getState(), channelID) || call.start_at,
+                        hostChangeAt: hostChangeAtInCurrentCall(store.getState()) || call.start_at,
                     },
                 });
 
