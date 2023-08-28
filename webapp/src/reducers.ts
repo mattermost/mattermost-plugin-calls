@@ -805,7 +805,7 @@ const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { typ
     }
 };
 
-type recentlyJoinedUsersState = {
+export type recentlyJoinedUsersState = {
     [channelID: string]: string[];
 }
 

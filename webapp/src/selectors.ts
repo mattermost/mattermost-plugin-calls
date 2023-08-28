@@ -34,6 +34,7 @@ import {
     hostsState,
     screenSharingIDsState,
     callsRecordingsState,
+    recentlyJoinedUsersState,
 } from 'src/reducers';
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
 import {getChannelURL} from 'src/utils';
@@ -241,13 +242,21 @@ export const recordingInCurrentCall: (state: GlobalState) => CallRecordingReduxS
         (recordings, channelID) => recordings[channelID] || {},
     );
 
-export const recentlyJoinedUsers = (state: GlobalState, channelID: string): string[] => {
-    return pluginState(state).recentlyJoinedUsers[channelID] || [];
+const recentlyJoinedUsers = (state: GlobalState): recentlyJoinedUsersState => {
+    return pluginState(state).recentlyJoinedUsers;
 };
+
+export const recentlyJoinedUsersInCurrentCall: (state: GlobalState) => string[] =
+    createSelector(
+        'recentlyJoinedUsersInCurrentCall',
+        recentlyJoinedUsers,
+        connectedChannelID,
+        (users, channelID) => users[channelID] || [],
+    );
 
 export const isRecordingInCurrentCall: (state: GlobalState) => boolean =
     createSelector(
-        'recordingInCurrentCall',
+        'isRecordingInCurrentCall',
         callsRecordings,
         connectedChannelID,
         (recordings, channelID) => {

@@ -22,8 +22,8 @@ import {
     hostIDInCurrentCall,
     hostChangeAtInCurrentCall,
     recordingInCurrentCall,
-    recentlyJoinedUsers,
     sortedIncomingCalls,
+    recentlyJoinedUsersInCurrentCall,
 } from 'src/selectors';
 import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
 
@@ -75,7 +75,7 @@ const mapStateToProps = (state: GlobalState) => {
         screenSharingID,
         allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),
-        recentlyJoinedUsers: recentlyJoinedUsers(state, channel?.id),
+        recentlyJoinedUsers: recentlyJoinedUsersInCurrentCall(state),
         wider: getMyTeams(state)?.length > 1,
         callsIncoming: sortedIncomingCalls(state),
     };
