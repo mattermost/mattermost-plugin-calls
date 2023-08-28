@@ -2,7 +2,6 @@ import {UserState} from '@calls/common/lib/types';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {Client4} from 'mattermost-redux/client';
-import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
@@ -21,7 +20,6 @@ import {
     allowScreenSharing,
     recordingInCurrentCall,
     isRecordingInCurrentCall,
-    connectedChannelID,
     expandedView,
     getChannelUrlAndDisplayName,
     recordingMaxDuration,
@@ -33,6 +31,7 @@ import {
     screenSharingIDInCurrentCall,
     usersStatusesInCurrentCall,
     connectedProfilesInCurrentCall,
+    connectedChannel,
 } from 'src/selectors';
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
@@ -42,7 +41,7 @@ import ExpandedView from './component';
 const mapStateToProps = (state: GlobalState) => {
     const currentUserID = getCurrentUserId(state);
     const currentTeamID = getCurrentTeamId(state);
-    const channel = getChannel(state, connectedChannelID(state) || '');
+    const channel = connectedChannel(state);
     const channelTeam = getTeam(state, channel?.team_id);
     const screenSharingID = screenSharingIDInCurrentCall(state);
     const threadID = callThreadID(state, channel?.id);

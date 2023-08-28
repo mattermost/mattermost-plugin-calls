@@ -74,7 +74,7 @@ export const channelHasCall = (state: GlobalState, channelId: string): boolean =
 export const connectedChannelID = (state: GlobalState): string =>
     pluginState(state).connectedChannelID || '';
 
-export const connectedChannel: (state: GlobalState) => Channel | null =
+export const connectedChannel: (state: GlobalState) => Channel =
     createSelector(
         'connectedChannel',
         getAllChannels,

@@ -5,20 +5,20 @@ import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
 
 import {dismissIncomingCallNotification, hideSwitchCallModal} from 'src/actions';
-import {connectedChannelID, switchCallModal, getCallID} from 'src/selectors';
+import {connectedChannel, switchCallModal, getCallID} from 'src/selectors';
 import {isDMChannel, getUserIdFromDM} from 'src/utils';
 
 import SwitchCallModal from './component';
 
 const mapStateToProps = (state: GlobalState) => {
     const switchCallState = switchCallModal(state);
-    const connectedChannel = getChannel(state, connectedChannelID(state) || '');
+    const connectedChan = connectedChannel(state);
     const targetCallID = getCallID(state, switchCallState.targetID || '') || '';
     const currentChannel = switchCallState.targetID ? getChannel(state, switchCallState.targetID) : getChannel(state, getCurrentChannelId(state));
 
     let connectedDMUser;
-    if (connectedChannel && isDMChannel(connectedChannel)) {
-        const otherID = getUserIdFromDM(connectedChannel.name, getCurrentUserId(state));
+    if (connectedChan && isDMChannel(connectedChan)) {
+        const otherID = getUserIdFromDM(connectedChan.name, getCurrentUserId(state));
         connectedDMUser = getUser(state, otherID);
     }
 
@@ -30,7 +30,7 @@ const mapStateToProps = (state: GlobalState) => {
 
     return {
         show: switchCallModal(state).show,
-        connectedChannel,
+        connectedChannel: connectedChan,
         currentChannel,
         connectedDMUser,
         currentDMUser,
