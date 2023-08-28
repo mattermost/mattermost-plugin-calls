@@ -113,7 +113,11 @@ func isMobilePostGA(r *http.Request) (mobile, postGA bool) {
 	//   https://mattermost.atlassian.net/browse/MM-48929
 	userAgent := r.Header.Get("User-Agent")
 	fields := strings.Fields(userAgent)
-	clientAgent := fields[0] // safe to assume there's at least one
+	if len(fields) == 0 {
+		return false, false
+	}
+
+	clientAgent := fields[0]
 	isMobile := strings.HasPrefix(clientAgent, "rnbeta") || strings.HasPrefix(clientAgent, "Mattermost")
 	if !isMobile {
 		return false, false
