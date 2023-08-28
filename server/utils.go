@@ -24,8 +24,7 @@ const (
 )
 
 func (p *Plugin) getHandlerID() (string, error) {
-	p.metrics.IncStoreOp("KVGet")
-	data, appErr := p.API.KVGet(handlerKey)
+	data, appErr := p.KVGet(handlerKey, false)
 	if appErr != nil {
 		return "", fmt.Errorf("failed to get handler id: %w", appErr)
 	}
@@ -38,37 +37,6 @@ func (p *Plugin) setHandlerID(nodeID string) error {
 		return fmt.Errorf("failed to set handler id: %w", appErr)
 	}
 	return nil
-}
-
-func (p *Plugin) kvSetAtomic(key string, cb func(data []byte) ([]byte, error)) error {
-	for {
-		p.metrics.IncStoreOp("KVGet")
-		storedData, appErr := p.API.KVGet(key)
-		if appErr != nil {
-			return fmt.Errorf("KVGet failed: %w", appErr)
-		}
-
-		toStoreData, err := cb(storedData)
-		if err != nil {
-			return fmt.Errorf("callback failed: %w", err)
-		} else if toStoreData == nil {
-			return nil
-		}
-
-		p.metrics.IncStoreOp("KVCompareAndSet")
-		ok, appErr := p.API.KVCompareAndSet(key, storedData, toStoreData)
-		if appErr != nil {
-			return fmt.Errorf("KVCompareAndSet failed: %w", appErr)
-		}
-
-		if !ok {
-			// pausing a little to avoid excessive lock contention
-			time.Sleep(5 * time.Millisecond)
-			continue
-		}
-
-		return nil
-	}
 }
 
 func unpackSDPData(data []byte) ([]byte, error) {
@@ -155,4 +123,12 @@ func checkMinVersion(minVersion, currVersion string) error {
 	}
 
 	return nil
+}
+
+func mapKeys[K comparable, V any](m map[K]V) []K {
+	keys := make([]K, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }

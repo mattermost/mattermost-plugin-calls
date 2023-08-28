@@ -115,7 +115,7 @@ func (l *logger) Flush() error {
 	return nil
 }
 
-func (l *logger) StdLogger(level logr.Level) *log.Logger {
+func (l *logger) StdLogger(_ logr.Level) *log.Logger {
 	return nil
 }
 
@@ -131,6 +131,6 @@ func (l *logger) IsLevelEnabled(_ logr.Level) bool {
 	return false
 }
 
-func (l *logger) With(fields ...logr.Field) *mlog.Logger {
+func (l *logger) With(_ ...logr.Field) *mlog.Logger {
 	return nil
 }

@@ -149,11 +149,11 @@ func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 	}, nil
 }
 
-func (p *Plugin) handleEndCallCommand(userID, channelID string) (*model.CommandResponse, error) {
+func (p *Plugin) handleEndCallCommand() (*model.CommandResponse, error) {
 	return &model.CommandResponse{}, nil
 }
 
-func (p *Plugin) handleRecordingCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
+func (p *Plugin) handleRecordingCommand(fields []string) (*model.CommandResponse, error) {
 	if len(fields) != 3 {
 		return nil, fmt.Errorf("Invalid number of arguments provided")
 	}
@@ -165,7 +165,7 @@ func (p *Plugin) handleRecordingCommand(args *model.CommandArgs, fields []string
 	return &model.CommandResponse{}, nil
 }
 
-func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
+func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
 	rootCmd := strings.TrimPrefix(fields[0], "/")
@@ -219,7 +219,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if subCmd == endCommandTrigger {
-		resp, err := p.handleEndCallCommand(args.UserId, args.ChannelId)
+		resp, err := p.handleEndCallCommand()
 		if err != nil {
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,
@@ -230,7 +230,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if subCmd == recordingCommandTrigger {
-		resp, err := p.handleRecordingCommand(args, fields)
+		resp, err := p.handleRecordingCommand(fields)
 		if err != nil {
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,
