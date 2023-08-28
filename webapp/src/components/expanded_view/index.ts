@@ -31,7 +31,7 @@ import {
     callStartAt,
     callThreadID,
     callScreenSharingID,
-    usersStatuses,
+    usersStatusesInCurrentCall,
     connectedProfilesInCurrentCall,
 } from 'src/selectors';
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
@@ -51,7 +51,7 @@ const mapStateToProps = (state: GlobalState) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
     };
 
-    const statuses = usersStatuses(state);
+    const statuses = usersStatusesInCurrentCall(state);
     const profiles = sortedProfiles(connectedProfilesInCurrentCall(state), statuses);
 
     const pictures: { [key: string]: string } = {};

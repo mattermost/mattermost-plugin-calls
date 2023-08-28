@@ -12,7 +12,7 @@ import {bindActionCreators, Dispatch} from 'redux';
 
 import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 import {
-    usersStatuses,
+    usersStatusesInCurrentCall,
     callStartAt,
     callScreenSharingID,
     expandedView,
@@ -43,7 +43,7 @@ const mapStateToProps = (state: GlobalState) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
     };
 
-    const statuses = usersStatuses(state);
+    const statuses = usersStatusesInCurrentCall(state);
     const profiles = sortedProfiles(connectedProfilesInCurrentCall(state), statuses);
 
     const profilesMap: IDMappedObjects<UserProfile> = {};
@@ -67,7 +67,7 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         profilesMap,
         picturesMap,
-        statuses: usersStatuses(state) || {},
+        statuses,
         callStartAt: callStartAt(state, channel?.id) || Number(window.callsClient?.initTime),
         callHostID: callHostID(state, channel?.id) || '',
         callHostChangeAt: callHostChangeAt(state, channel?.id) || 0,

@@ -11,7 +11,7 @@ import {Emoji} from 'src/components/emoji/emoji';
 import HandEmoji from 'src/components/icons/hand';
 import {
     idToProfileInCurrentCall,
-    usersStatuses,
+    usersStatusesInCurrentCall,
     callsReactions,
 } from 'src/selectors';
 import {getUserDisplayName, split} from 'src/utils';
@@ -21,7 +21,7 @@ export const ReactionStream = () => {
     const {formatMessage, formatList} = useIntl();
 
     const currentUserID = useSelector(getCurrentUserId);
-    const statuses = useSelector(usersStatuses);
+    const statuses = useSelector(usersStatusesInCurrentCall);
     const profileMap = useSelector(idToProfileInCurrentCall);
     const vReactions = useSelector(callsReactions);
 

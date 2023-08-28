@@ -230,7 +230,7 @@ const connectedChannelID = (state: connectedChannelIDState = null, action: conne
     }
 };
 
-type usersStatusesState = {
+export type usersStatusesState = {
     [channelID: string]: {
         [userID: string]: UserState;
     };
