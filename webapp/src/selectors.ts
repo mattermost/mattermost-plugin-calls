@@ -161,10 +161,6 @@ export const reactionsInCurrentCall: (state: GlobalState) => Reaction[] =
         (reactions, channelID) => reactions[channelID]?.reactions || [],
     );
 
-export const usersStatusesInChannel = (state: GlobalState, channelID: string) => {
-    return pluginState(state).usersStatuses[channelID] || {};
-};
-
 export const callStartAt = (state: GlobalState, channelID: string): number | undefined => {
     return pluginState(state).calls[channelID]?.startAt;
 };
@@ -201,8 +197,16 @@ export const callScreenSharingID = (state: GlobalState, channelID: string): stri
     return pluginState(state).screenSharingIDs[channelID];
 };
 
+export const callThreadID = (state: GlobalState, channelID: string) => {
+    return pluginState(state).calls[channelID]?.threadID || '';
+};
+
 export const callRecording = (state: GlobalState, callID: string): CallRecordingReduxState => {
     return pluginState(state).recordings[callID];
+};
+
+export const recentlyJoinedUsers = (state: GlobalState, channelID: string): string[] => {
+    return pluginState(state).recentlyJoinedUsers[channelID] || [];
 };
 
 export const isRecording = (state: GlobalState, callID: string): boolean => {
@@ -215,26 +219,6 @@ export const isRecording = (state: GlobalState, callID: string): boolean => {
     // We should be able to stop a recording even during the initialization phase.
 
     return recording.init_at > recording.end_at;
-};
-
-export const expandedView = (state: GlobalState) => {
-    return pluginState(state).expandedView;
-};
-
-export const switchCallModal = (state: GlobalState) => {
-    return pluginState(state).switchCallModal;
-};
-
-export const screenSourceModal = (state: GlobalState) => {
-    return pluginState(state).screenSourceModal;
-};
-
-export const callThreadID = (state: GlobalState, channelID: string) => {
-    return pluginState(state).calls[channelID]?.threadID || '';
-};
-
-export const recentlyJoinedUsers = (state: GlobalState, channelID: string): string[] => {
-    return pluginState(state).recentlyJoinedUsers[channelID] || [];
 };
 
 export const incomingCalls = (state: GlobalState): IncomingCallNotification[] =>
@@ -449,3 +433,17 @@ export function makeIdToObject<HasId extends { id: string }>(arr: HasId[]) {
         return acc;
     }, {});
 }
+
+// modals
+
+export const expandedView = (state: GlobalState) => {
+    return pluginState(state).expandedView;
+};
+
+export const switchCallModal = (state: GlobalState) => {
+    return pluginState(state).switchCallModal;
+};
+
+export const screenSourceModal = (state: GlobalState) => {
+    return pluginState(state).screenSourceModal;
+};
