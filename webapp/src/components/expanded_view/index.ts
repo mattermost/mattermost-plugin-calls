@@ -30,7 +30,7 @@ import {
     hostChangeAtInCurrentCall,
     callStartAt,
     callThreadID,
-    callScreenSharingID,
+    screenSharingIDInCurrentCall,
     usersStatusesInCurrentCall,
     connectedProfilesInCurrentCall,
 } from 'src/selectors';
@@ -44,7 +44,7 @@ const mapStateToProps = (state: GlobalState) => {
     const currentTeamID = getCurrentTeamId(state);
     const channel = getChannel(state, connectedChannelID(state) || '');
     const channelTeam = getTeam(state, channel?.team_id);
-    const screenSharingID = callScreenSharingID(state, channel?.id) || '';
+    const screenSharingID = screenSharingIDInCurrentCall(state);
     const threadID = callThreadID(state, channel?.id);
 
     const sortedProfiles = (profiles: UserProfile[], statuses: { [key: string]: UserState }) => {

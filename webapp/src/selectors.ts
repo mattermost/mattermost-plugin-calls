@@ -26,7 +26,14 @@ import {
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
 
-import {callState, connectedChannelsState, usersStatusesState, usersReactionsState, hostsState} from 'src/reducers';
+import {
+    callState,
+    connectedChannelsState,
+    usersStatusesState,
+    usersReactionsState,
+    hostsState,
+    screenSharingIDsState,
+} from 'src/reducers';
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
 import {getChannelURL} from 'src/utils';
 
@@ -205,9 +212,17 @@ export const callDismissedNotification = (state: GlobalState, channelID: string)
     return Boolean(pluginState(state).dismissedCalls[channelID]);
 };
 
-export const callScreenSharingID = (state: GlobalState, channelID: string): string | undefined => {
-    return pluginState(state).screenSharingIDs[channelID];
+const callsScreenSharingIDs = (state: GlobalState): screenSharingIDsState => {
+    return pluginState(state).screenSharingIDs;
 };
+
+export const screenSharingIDInCurrentCall: (state: GlobalState) => string =
+    createSelector(
+        'screenSharingIDInCurrentCall',
+        callsScreenSharingIDs,
+        connectedChannelID,
+        (ids, channelID) => ids[channelID] || '',
+    );
 
 export const callThreadID = (state: GlobalState, channelID: string) => {
     return pluginState(state).calls[channelID]?.threadID || '';

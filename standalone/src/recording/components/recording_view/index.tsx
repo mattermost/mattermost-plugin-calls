@@ -14,7 +14,7 @@ import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import Timestamp from 'src/components/timestamp';
-import {callScreenSharingID, connectedProfilesInCurrentCall, usersStatusesInCurrentCall, hostIDInCurrentCall} from 'src/selectors';
+import {screenSharingIDInCurrentCall, connectedProfilesInCurrentCall, usersStatusesInCurrentCall, hostIDInCurrentCall} from 'src/selectors';
 
 import {callProfileImages} from 'src/recording/selectors';
 
@@ -26,7 +26,7 @@ const RecordingView = () => {
     const [screenStream, setScreenStream] = useState<MediaStream|null>(null);
     const callsClient = window.callsClient;
     const channelID = callsClient?.channelID || '';
-    const screenSharingID = useSelector((state: GlobalState) => callScreenSharingID(state, channelID)) || '';
+    const screenSharingID = useSelector((state: GlobalState) => screenSharingIDInCurrentCall(state));
     const statuses = useSelector(usersStatusesInCurrentCall);
     const profiles = sortedProfiles(useSelector(connectedProfilesInCurrentCall), statuses, screenSharingID);
     const profileImages = useSelector((state: GlobalState) => callProfileImages(state, channelID));

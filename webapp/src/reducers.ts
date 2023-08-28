@@ -680,7 +680,7 @@ const hosts = (state: hostsState = {}, action: hostsStateAction) => {
     }
 };
 
-type screenSharingIDsState = {
+export type screenSharingIDsState = {
     [channelID: string]: string;
 }
 

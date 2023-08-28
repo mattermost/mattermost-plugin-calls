@@ -14,7 +14,7 @@ import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, tra
 import {
     usersStatusesInCurrentCall,
     callStartAt,
-    callScreenSharingID,
+    screenSharingIDInCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
@@ -37,7 +37,7 @@ const mapStateToProps = (state: GlobalState) => {
     const channel = getChannel(state, String(window.callsClient?.channelID));
     const currentUserID = getCurrentUserId(state);
 
-    const screenSharingID = callScreenSharingID(state, channel?.id) || '';
+    const screenSharingID = screenSharingIDInCurrentCall(state);
 
     const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
