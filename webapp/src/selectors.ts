@@ -173,7 +173,7 @@ export const callInCurrentChannel: (state: GlobalState) => callState =
         (callsStates, currChannelId) => callsStates[currChannelId],
     );
 
-export const callsID = (state: GlobalState, channelID: string): string | undefined => {
+export const getCallID = (state: GlobalState, channelID: string): string | undefined => {
     return pluginState(state).calls[channelID]?.ID;
 };
 
