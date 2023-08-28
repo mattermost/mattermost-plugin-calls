@@ -363,7 +363,7 @@ func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title
 
 			// This is ugly.
 			if *config.EmailSettings.PushNotificationContents == model.IdLoadedNotification {
-				msg.IsIdLoaded = p.checkLicenseForIdLoaded()
+				msg.IsIdLoaded = p.checkLicenseForIDLoaded()
 			} else {
 				nameFormat := p.getNotificationNameFormat(member.Id)
 				channelName := p.getChannelName(channel, user, members, nameFormat, member.Id)
