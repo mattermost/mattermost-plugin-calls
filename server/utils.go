@@ -90,7 +90,7 @@ func (p *Plugin) getNotificationNameFormat(userID string) string {
 	return *config.TeamSettings.TeammateNameDisplay
 }
 
-func (p *Plugin) getChannelName(channel *model.Channel, sender *model.User, users []*model.User, nameFormat, excludeID string) string {
+func getChannelNameForNotification(channel *model.Channel, sender *model.User, users []*model.User, nameFormat, excludeID string) string {
 	switch channel.Type {
 	case model.ChannelTypeDirect:
 		return sender.GetDisplayNameWithPrefix(nameFormat, "@")

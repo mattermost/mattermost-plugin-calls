@@ -8,8 +8,10 @@ export const JOINED_USER_NOTIFICATION_TIMEOUT = 5000;
 export const MAX_CHANNEL_LINK_TOOLTIP_NAMES = 8;
 export const RING_LENGTH = 30000;
 export const DEFAULT_RING_SOUND = 'Calm';
+export const CALL_START_POST_TYPE = 'custom_calls';
+export const CALL_RECORDING_POST_TYPE = 'custom_calls_recording';
 
-export const CallAlertConfigs: {[key: string]: CallAlertConfig} = {
+export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
     missingAudioInput: {
         type: CallAlertType.Error,
         icon: 'microphone',

@@ -21,6 +21,11 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 )
 
+const (
+	callStartPostType     = "custom_calls"
+	callRecordingPostType = "custom_calls_recording"
+)
+
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
 type Plugin struct {
 	plugin.MattermostPlugin
@@ -296,7 +301,7 @@ func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title
 		ChannelId: channelID,
 		RootId:    threadID,
 		Message:   postMsg,
-		Type:      "custom_calls",
+		Type:      callStartPostType,
 		Props: map[string]interface{}{
 			"attachments": []*model.SlackAttachment{&slackAttachment},
 			"start_at":    startAt,
@@ -328,62 +333,7 @@ func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title
 		return "", "", err
 	}
 
-	channel, appErr := p.API.GetChannel(channelID)
-	if appErr != nil {
-		p.LogError("failed to get channel", "error", appErr.Error())
-		return createdPost.Id, threadID, nil
-	}
-
-	if channel.Type == model.ChannelTypeDirect || channel.Type == model.ChannelTypeGroup {
-		members, appErr := p.API.GetUsersInChannel(channelID, model.ChannelSortByUsername, 0, 10)
-		if appErr != nil {
-			p.LogError("failed to get channel users", "error", appErr.Error())
-			return createdPost.Id, threadID, nil
-		}
-
-		for _, member := range members {
-			if member.Id == user.Id {
-				continue
-			}
-
-			msg := &model.PushNotification{
-				Category:    model.CategoryCanReply,
-				Version:     model.PushMessageV2,
-				Type:        model.PushTypeMessage,
-				TeamId:      channel.TeamId,
-				ChannelId:   channelID,
-				PostId:      createdPost.Id,
-				RootId:      threadID,
-				SenderId:    userID,
-				ChannelType: channel.Type,
-				Message:     buildGenericPushNotificationMessage(),
-			}
-
-			config := p.API.GetConfig()
-
-			// This is ugly.
-			if *config.EmailSettings.PushNotificationContents == model.IdLoadedNotification {
-				msg.IsIdLoaded = p.checkLicenseForIDLoaded()
-			} else {
-				nameFormat := p.getNotificationNameFormat(member.Id)
-				channelName := p.getChannelName(channel, user, members, nameFormat, member.Id)
-				senderName := user.GetDisplayName(nameFormat)
-				msg.SenderName = senderName
-				msg.ChannelName = channelName
-
-				if *config.EmailSettings.PushNotificationContents == model.GenericNoChannelNotification && channel.Type != model.ChannelTypeDirect {
-					msg.ChannelName = ""
-				}
-				if *config.EmailSettings.PushNotificationContents == model.FullNotification {
-					msg.Message = buildPushNotificationMessage(senderName)
-				}
-			}
-
-			if err := p.API.SendPushNotification(msg, member.Id); err != nil {
-				p.LogError(fmt.Sprintf("failed to send push notification for userID: %s", member.Id), "error", err.Error())
-			}
-		}
-	}
+	p.sendPushNotifications(channelID, createdPost.Id, threadID, user, cfg)
 
 	return createdPost.Id, threadID, nil
 }

@@ -10,7 +10,7 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 	// 1. This is a call start post
 	// 2. We have enabled ringing
 	// 3. The channel is a DM or GM
-	if notification.PostType != "custom_calls" || !*p.getConfiguration().EnableRinging {
+	if notification.PostType != callStartPostType || !*p.getConfiguration().EnableRinging {
 		return nil, ""
 	}
 
@@ -36,6 +36,73 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 	return notification, ""
 }
 
+func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string, sender *model.User, config *model.Config) {
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.LogError("failed to get channel", "error", appErr.Error())
+		return
+	}
+
+	if channel.Type != model.ChannelTypeDirect && channel.Type != model.ChannelTypeGroup {
+		return
+	}
+
+	members, appErr := p.API.GetUsersInChannel(channelID, model.ChannelSortByUsername, 0, 8)
+	if appErr != nil {
+		p.LogError("failed to get channel users", "error", appErr.Error())
+		return
+	}
+
+	for _, member := range members {
+		if member.Id == sender.Id {
+			continue
+		}
+
+		msg := &model.PushNotification{
+			Category:    model.CategoryCanReply,
+			Version:     model.PushMessageV2,
+			Type:        model.PushTypeMessage,
+			TeamId:      channel.TeamId,
+			ChannelId:   channelID,
+			PostId:      createdPostID,
+			RootId:      threadID,
+			SenderId:    sender.Id,
+			ChannelType: channel.Type,
+			Message:     buildGenericPushNotificationMessage(),
+		}
+
+		// This is ugly.
+		if *config.EmailSettings.PushNotificationContents == model.IdLoadedNotification {
+			msg.IsIdLoaded = p.checkLicenseForIDLoaded()
+		} else {
+			nameFormat := p.getNotificationNameFormat(member.Id)
+			channelName := getChannelNameForNotification(channel, sender, members, nameFormat, member.Id)
+			senderName := sender.GetDisplayName(nameFormat)
+			msg.SenderName = senderName
+			msg.ChannelName = channelName
+
+			if *config.EmailSettings.PushNotificationContents == model.GenericNoChannelNotification && channel.Type != model.ChannelTypeDirect {
+				msg.ChannelName = ""
+			}
+			if *config.EmailSettings.PushNotificationContents == model.FullNotification {
+				msg.Message = buildPushNotificationMessage(senderName)
+			}
+		}
+
+		if err := p.API.SendPushNotification(msg, member.Id); err != nil {
+			p.LogError(fmt.Sprintf("failed to send push notification for userID: %s", member.Id), "error", err.Error())
+		}
+	}
+}
+
+func (p *Plugin) checkLicenseForIDLoaded() bool {
+	licence := p.API.GetLicense()
+	if licence == nil || licence.Features == nil || licence.Features.IDLoadedPushNotifications == nil {
+		return false
+	}
+	return *licence.Features.IDLoadedPushNotifications
+}
+
 func buildPushNotificationMessage(senderName string) string {
 	// TODO: translations https://mattermost.atlassian.net/browse/MM-54256
 	return fmt.Sprintf("\u200b%s is inviting you to a call", senderName)
@@ -44,12 +111,4 @@ func buildPushNotificationMessage(senderName string) string {
 func buildGenericPushNotificationMessage() string {
 	// TODO: translations https://mattermost.atlassian.net/browse/MM-54256
 	return "You've been invited to a call"
-}
-
-func (p *Plugin) checkLicenseForIDLoaded() bool {
-	licence := p.API.GetLicense()
-	if licence == nil {
-		return false
-	}
-	return *licence.Features.IDLoadedPushNotifications
 }
