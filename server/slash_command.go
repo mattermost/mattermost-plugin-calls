@@ -176,10 +176,7 @@ func (p *Plugin) handleHostCommand(args *model.CommandArgs, fields []string) (*m
 		return nil, fmt.Errorf("Invalid number of arguments provided")
 	}
 
-	newHostUsername := fields[2]
-	if strings.HasPrefix(newHostUsername, "@") {
-		newHostUsername = newHostUsername[1:]
-	}
+	newHostUsername := strings.TrimPrefix(fields[2], "@")
 
 	newHost, appErr := p.API.GetUserByUsername(newHostUsername)
 	if appErr != nil {
