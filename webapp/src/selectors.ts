@@ -197,6 +197,18 @@ export const callRecording = (state: GlobalState, callID: string): CallRecording
     return pluginState(state).callsRecordings[callID];
 };
 
+export const isRecording = (state: GlobalState, callID: string): boolean => {
+    const recording = callRecording(state, callID);
+    if (!recording) {
+        return false;
+    }
+
+    // Toggle wise (start/stop) we don't care whether the recording job is actually running.
+    // We should be able to stop a recording even during the initialization phase.
+
+    return recording.init_at > recording.end_at;
+};
+
 export const expandedView = (state: GlobalState) => {
     return pluginState(state).expandedView;
 };

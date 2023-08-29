@@ -82,36 +82,38 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 	}
 
-	if err := p.kvSetAtomicChannelState(us.channelID, func(state *channelState) (*channelState, error) {
-		if state == nil {
-			return nil, fmt.Errorf("channel state is missing from store")
-		}
-		if state.Call == nil {
-			return nil, fmt.Errorf("call state is missing from channel state")
-		}
+	state, err := p.lockCall(us.channelID)
+	if err != nil {
+		return fmt.Errorf("failed to lock call: %w", err)
+	}
+	defer p.unlockCall(us.channelID)
+	if state == nil {
+		return fmt.Errorf("channel state is missing from store")
+	}
+	if state.Call == nil {
+		return fmt.Errorf("call state is missing from channel state")
+	}
 
-		if msg.Type == clientMessageTypeScreenOn {
-			if state.Call.ScreenSharingID != "" {
-				return nil, fmt.Errorf("cannot start screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
-			}
-			state.Call.ScreenSharingID = us.userID
-			state.Call.ScreenStreamID = data["screenStreamID"]
-			state.Call.ScreenStartAt = time.Now().Unix()
-		} else {
-			if state.Call.ScreenSharingID != us.userID {
-				return nil, fmt.Errorf("cannot stop screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
-			}
-			state.Call.ScreenSharingID = ""
-			state.Call.ScreenStreamID = ""
-			if state.Call.ScreenStartAt > 0 {
-				state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
-				state.Call.ScreenStartAt = 0
-			}
+	if msg.Type == clientMessageTypeScreenOn {
+		if state.Call.ScreenSharingID != "" {
+			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
 		}
-
-		return state, nil
-	}); err != nil {
-		return err
+		state.Call.ScreenSharingID = us.userID
+		state.Call.ScreenStreamID = data["screenStreamID"]
+		state.Call.ScreenStartAt = time.Now().Unix()
+	} else {
+		if state.Call.ScreenSharingID != us.userID {
+			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
+		}
+		state.Call.ScreenSharingID = ""
+		state.Call.ScreenStreamID = ""
+		if state.Call.ScreenStartAt > 0 {
+			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
+			state.Call.ScreenStartAt = 0
+		}
+	}
+	if err := p.kvSetChannelState(us.channelID, state); err != nil {
+		return fmt.Errorf("failed to set channel state: %w", err)
 	}
 
 	msgType := rtc.ScreenOnMessage
@@ -139,7 +141,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 
 		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
-			return fmt.Errorf("failed to send RTC message: %w", err)
+			p.LogError("failed to send RTC message", "error", err)
 		}
 	}
 
@@ -166,10 +168,11 @@ func (ed EmojiData) toMap() map[string]interface{} {
 	}
 }
 
-func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID string) {
+func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID string) error {
 	p.metrics.IncWebSocketEvent("in", msg.Type)
 	switch msg.Type {
 	case clientMessageTypeSDP:
+		p.LogDebug("received sdp", "connID", us.connID, "originalConnID", us.originalConnID, "userID", us.userID)
 		// if I am not the handler for this we relay the signaling message.
 		if handlerID != p.nodeID {
 			// need to relay signaling.
@@ -180,7 +183,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				SenderID:      p.nodeID,
 				ClientMessage: msg,
 			}, clusterMessageTypeSignaling, handlerID); err != nil {
-				p.LogError(err.Error())
+				return err
 			}
 		} else {
 			rtcMsg := rtc.Message{
@@ -190,11 +193,11 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 
 			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
-				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
+				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		}
 	case clientMessageTypeICE:
-		p.LogDebug("candidate!")
+		p.LogDebug("received ice candidate", "connID", us.connID, "originalConnID", us.originalConnID, "userID", us.userID)
 		if handlerID == p.nodeID {
 			rtcMsg := rtc.Message{
 				SessionID: us.originalConnID,
@@ -203,7 +206,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 
 			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
-				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
+				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		} else {
 			// need to relay signaling.
@@ -214,7 +217,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				SenderID:      p.nodeID,
 				ClientMessage: msg,
 			}, clusterMessageTypeSignaling, handlerID); err != nil {
-				p.LogError(err.Error())
+				return err
 			}
 		}
 	case clientMessageTypeMute, clientMessageTypeUnmute:
@@ -227,7 +230,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				SenderID:      p.nodeID,
 				ClientMessage: msg,
 			}, clusterMessageTypeUserState, handlerID); err != nil {
-				p.LogError(err.Error())
+				return err
 			}
 		} else {
 			msgType := rtc.UnmuteMessage
@@ -242,24 +245,28 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 
 			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
-				p.LogError(fmt.Errorf("failed to send RTC message: %w", err).Error())
+				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		}
 
-		if err := p.kvSetAtomicChannelState(us.channelID, func(state *channelState) (*channelState, error) {
-			if state == nil {
-				return nil, fmt.Errorf("channel state is missing from store")
-			}
-			if state.Call == nil {
-				return nil, fmt.Errorf("call state is missing from channel state")
-			}
-			if uState := state.Call.Users[us.userID]; uState != nil {
-				uState.Unmuted = msg.Type == clientMessageTypeUnmute
-			}
-
-			return state, nil
-		}); err != nil {
-			p.LogError(err.Error())
+		state, err := p.lockCall(us.channelID)
+		if err != nil {
+			return fmt.Errorf("failed to lock call: %w", err)
+		}
+		defer p.unlockCall(us.channelID)
+		if state == nil {
+			return fmt.Errorf("channel state is missing from store")
+		}
+		if state.Call == nil {
+			return fmt.Errorf("call state is missing from channel state")
+		}
+		uState := state.Call.Users[us.userID]
+		if uState == nil {
+			return fmt.Errorf("user state is missing from call state")
+		}
+		uState.Unmuted = msg.Type == clientMessageTypeUnmute
+		if err := p.kvSetChannelState(us.channelID, state); err != nil {
+			return fmt.Errorf("failed to set channel state: %w", err)
 		}
 
 		evType := wsEventUserUnmuted
@@ -271,7 +278,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
 		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
-			p.LogError(err.Error())
+			return err
 		}
 	case clientMessageTypeRaiseHand, clientMessageTypeUnraiseHand:
 		evType := wsEventUserUnraiseHand
@@ -279,37 +286,40 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			evType = wsEventUserRaiseHand
 		}
 
-		var ts int64
-		if msg.Type == clientMessageTypeRaiseHand {
-			ts = time.Now().UnixMilli()
+		state, err := p.lockCall(us.channelID)
+		if err != nil {
+			return fmt.Errorf("failed to lock call: %w", err)
 		}
-
-		if err := p.kvSetAtomicChannelState(us.channelID, func(state *channelState) (*channelState, error) {
-			if state == nil {
-				return nil, fmt.Errorf("channel state is missing from store")
-			}
-			if state.Call == nil {
-				return nil, fmt.Errorf("call state is missing from channel state")
-			}
-			if uState := state.Call.Users[us.userID]; uState != nil {
-				uState.RaisedHand = ts
-			}
-
-			return state, nil
-		}); err != nil {
-			p.LogError(err.Error())
+		defer p.unlockCall(us.channelID)
+		if state == nil {
+			return fmt.Errorf("channel state is missing from store")
+		}
+		if state.Call == nil {
+			return fmt.Errorf("call state is missing from channel state")
+		}
+		uState := state.Call.Users[us.userID]
+		if uState == nil {
+			return fmt.Errorf("user state is missing from call state")
+		}
+		if msg.Type == clientMessageTypeRaiseHand {
+			uState.RaisedHand = time.Now().UnixMilli()
+		} else {
+			uState.RaisedHand = 0
+		}
+		if err := p.kvSetChannelState(us.channelID, state); err != nil {
+			return fmt.Errorf("failed to set channel state: %w", err)
 		}
 
 		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":      us.userID,
-			"raised_hand": ts,
+			"raised_hand": uState.RaisedHand,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeReact:
 		evType := wsEventUserReacted
 
 		var emoji EmojiData
 		if err := json.Unmarshal(msg.Data, &emoji); err != nil {
-			p.LogError(err.Error())
+			return fmt.Errorf("failed to unmarshal emoji data: %w", err)
 		}
 
 		p.publishWebSocketEvent(evType, map[string]interface{}{
@@ -318,9 +328,10 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"timestamp": time.Now().UnixMilli(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 	default:
-		p.LogError("invalid client message", "type", msg.Type)
-		return
+		return fmt.Errorf("invalid client message type %q", msg.Type)
 	}
+
+	return nil
 }
 
 func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
@@ -348,7 +359,9 @@ func (p *Plugin) wsReader(us *session, handlerID string) {
 			if !ok {
 				return
 			}
-			p.handleClientMsg(us, msg, handlerID)
+			if err := p.handleClientMsg(us, msg, handlerID); err != nil {
+				p.LogError("handleClientMsg failed", "err", err.Error(), "connID", us.connID)
+			}
 		case <-us.wsReconnectCh:
 			return
 		case <-us.leaveCh:
@@ -434,7 +447,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 		p.LogDebug("timeout waiting for reconnection", "userID", userID, "connID", connID, "channelID", channelID)
 	}
 
-	state, err := p.kvGetChannelState(channelID)
+	state, err := p.kvGetChannelState(channelID, false)
 	if err != nil {
 		return err
 	}
@@ -466,7 +479,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 	return nil
 }
 
-func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) error {
+func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (retErr error) {
 	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
 
 	// We should go through only if the user has permissions to the requested channel
@@ -501,23 +514,22 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 		}
 	}
 
-	state, prevState, err := p.addUserSession(userID, connID, channel)
+	prevState, err := p.lockCall(channelID)
 	if err != nil {
+		return fmt.Errorf("failed to lock call: %w", err)
+	}
+
+	state, err := p.addUserSession(prevState, userID, connID, channel.Id)
+	if err != nil {
+		p.unlockCall(channelID)
 		return fmt.Errorf("failed to add user session: %w", err)
 	} else if state.Call == nil {
+		p.unlockCall(channelID)
 		return fmt.Errorf("state.Call should not be nil")
 	} else if len(state.Call.Users) == 1 {
-		p.track(evCallStarted, map[string]interface{}{
-			"ParticipantID": userID,
-			"CallID":        state.Call.ID,
-			"ChannelID":     channelID,
-			"ChannelType":   channel.Type,
-		})
-
 		// new call has started
 		// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
-		cfg := p.getConfiguration()
-		if cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
+		if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
 			p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
 			p.API.SendEphemeralPost(
 				userID,
@@ -529,8 +541,14 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 			)
 		}
 
-		postID, threadID, err := p.startNewCallPost(userID, channelID, state.Call.StartAt, title, threadID)
+		postID, threadID, err := p.createCallStartedPost(state, userID, channelID, title, threadID)
 		if err != nil {
+			p.LogError(err.Error())
+		}
+
+		state.Call.PostID = postID
+		state.Call.ThreadID = threadID
+		if err := p.kvSetChannelState(channelID, state); err != nil {
 			p.LogError(err.Error())
 		}
 
@@ -544,6 +562,13 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 			"owner_id":  state.Call.OwnerID,
 			"host_id":   state.Call.HostID,
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+		p.track(evCallStarted, map[string]interface{}{
+			"ParticipantID": userID,
+			"CallID":        state.Call.ID,
+			"ChannelID":     channelID,
+			"ChannelType":   channel.Type,
+		})
 	}
 
 	handlerID, err := p.getHandlerID()
@@ -560,6 +585,9 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 	p.sessions[connID] = us
 	p.mut.Unlock()
 	defer func() {
+		if retErr != nil {
+			p.unlockCall(channelID)
+		}
 		if err := p.handleLeave(us, userID, connID, channelID); err != nil {
 			p.LogError(err.Error())
 		}
@@ -614,19 +642,6 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 	p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
 		"userID": userID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-	p.metrics.IncWebSocketConn(channelID)
-	defer p.metrics.DecWebSocketConn(channelID)
-	p.track(evCallUserJoined, map[string]interface{}{
-		"ParticipantID": userID,
-		"ChannelID":     channelID,
-		"CallID":        state.Call.ID,
-	})
-
-	if prevState.Call != nil && state.Call.HostID != prevState.Call.HostID {
-		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
-			"hostID": state.Call.HostID,
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-	}
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
@@ -634,6 +649,16 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) e
 			"recState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
+
+	p.unlockCall(channelID)
+
+	p.metrics.IncWebSocketConn(channelID)
+	defer p.metrics.DecWebSocketConn(channelID)
+	p.track(evCallUserJoined, map[string]interface{}{
+		"ParticipantID": userID,
+		"ChannelID":     channelID,
+		"CallID":        state.Call.ID,
+	})
 
 	p.wsReader(us, handlerID)
 
@@ -648,7 +673,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		return fmt.Errorf("forbidden")
 	}
 
-	state, err := p.kvGetChannelState(channelID)
+	state, err := p.kvGetChannelState(channelID, false)
 	if err != nil {
 		return err
 	} else if state == nil || state.Call == nil {
@@ -748,7 +773,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		return
 	}
 
-	if us != nil && !us.limiter.Allow() {
+	if us != nil && !us.wsMsgLimiter.Allow() {
 		p.LogError("message was dropped by rate limiter", "msgType", msg.Type, "userID", us.userID, "connID", us.connID)
 		return
 	}

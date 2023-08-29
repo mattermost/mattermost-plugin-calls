@@ -18,6 +18,7 @@ require (
 	github.com/mattermost/logr/v2 v2.0.16
 	github.com/mattermost/mattermost/server/public v0.0.9-0.20230824163353-69c11cfe1403
 	github.com/mattermost/rtcd v0.11.1
+	github.com/mattermost/squirrel v0.2.0
 	github.com/pion/interceptor v0.1.12
 	github.com/pion/rtp v1.7.13
 	github.com/pkg/errors v0.9.1
@@ -46,6 +47,8 @@ require (
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
 	github.com/hashicorp/go-plugin v1.4.10 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
+	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
+	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 // indirect
 	github.com/mattermost/ldap v3.0.4+incompatible // indirect
@@ -76,7 +79,7 @@ require (
 	github.com/pyroscope-io/godeltaprof v0.1.1 // indirect
 	github.com/segmentio/backo-go v1.0.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/tidwall/gjson v1.14.3 // indirect
+	github.com/tidwall/gjson v1.14.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tinylib/msgp v1.1.8 // indirect

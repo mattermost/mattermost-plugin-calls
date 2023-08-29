@@ -67,12 +67,6 @@ func TestClose(t *testing.T) {
 		})
 		require.Nil(t, err)
 
-		go func() {
-			// Just drain the event channel
-			for range c.EventChannel {
-			}
-		}()
-
 		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
 
@@ -95,12 +89,6 @@ func TestClose(t *testing.T) {
 		})
 		require.Nil(t, err)
 
-		go func() {
-			// Just drain the event channel
-			for range c.EventChannel {
-			}
-		}()
-
 		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
 
@@ -118,12 +106,6 @@ func TestClose(t *testing.T) {
 			AuthToken: "authToken",
 		})
 		require.Nil(t, err)
-
-		go func() {
-			// Just drain the event channel
-			for range c.EventChannel {
-			}
-		}()
 
 		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
@@ -165,12 +147,6 @@ func TestSendMessage(t *testing.T) {
 		})
 		require.Nil(t, err)
 
-		go func() {
-			// Just drain the event channel
-			for range c.EventChannel {
-			}
-		}()
-
 		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
 
@@ -190,12 +166,6 @@ func TestSendMessage(t *testing.T) {
 		})
 		require.Nil(t, err)
 
-		go func() {
-			// Just drain the event channel
-			for range c.EventChannel {
-			}
-		}()
-
 		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
 
@@ -213,12 +183,6 @@ func TestSendMessage(t *testing.T) {
 			AuthToken: "authToken",
 		})
 		require.Nil(t, err)
-
-		go func() {
-			// Just drain the event channel
-			for range c.EventChannel {
-			}
-		}()
 
 		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)
@@ -239,12 +203,6 @@ func TestSendMessage(t *testing.T) {
 			AuthToken: "authToken",
 		})
 		require.Nil(t, err)
-
-		go func() {
-			// Just drain the event channel
-			for range c.EventChannel {
-			}
-		}()
 
 		err = c.SendMessage("test_action", map[string]interface{}{"test": "data"})
 		assert.Nil(t, err)

@@ -23,8 +23,8 @@ type userState struct {
 }
 
 type callStats struct {
-	Participants   int   `json:"participants"`
-	ScreenDuration int64 `json:"screen_duration"`
+	Participants   map[string]struct{} `json:"participants"`
+	ScreenDuration int64               `json:"screen_duration"`
 }
 
 type callState struct {
@@ -223,9 +223,8 @@ func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClien
 	return users, states
 }
 
-func (p *Plugin) kvGetChannelState(channelID string) (*channelState, error) {
-	p.metrics.IncStoreOp("KVGet")
-	data, appErr := p.API.KVGet(channelID)
+func (p *Plugin) kvGetChannelState(channelID string, fromMaster bool) (*channelState, error) {
+	data, appErr := p.KVGet(channelID, fromMaster)
 	if appErr != nil {
 		return nil, fmt.Errorf("KVGet failed: %w", appErr)
 	}
@@ -239,27 +238,22 @@ func (p *Plugin) kvGetChannelState(channelID string) (*channelState, error) {
 	return state, nil
 }
 
-func (p *Plugin) kvSetAtomicChannelState(channelID string, cb func(state *channelState) (*channelState, error)) error {
-	return p.kvSetAtomic(channelID, func(data []byte) ([]byte, error) {
-		var err error
-		var state *channelState
-		if data != nil {
-			if err := json.Unmarshal(data, &state); err != nil {
-				return nil, err
-			}
-		}
-		state, err = cb(state)
-		if err != nil {
-			return nil, err
-		}
-		if state == nil {
-			return nil, nil
-		}
-		return json.Marshal(state)
-	})
+func (p *Plugin) kvSetChannelState(channelID string, state *channelState) error {
+	p.metrics.IncStoreOp("KVSet")
+
+	data, err := json.Marshal(state)
+	if err != nil {
+		return fmt.Errorf("failed to marshal channel state: %w", err)
+	}
+
+	appErr := p.API.KVSet(channelID, data)
+	if appErr != nil {
+		return fmt.Errorf("KVSet failed: %w", appErr)
+	}
+	return nil
 }
 
-func (p *Plugin) cleanUpState() error {
+func (p *Plugin) cleanUpState() (retErr error) {
 	p.LogDebug("cleaning up calls state")
 	var page int
 	perPage := 100
@@ -293,32 +287,37 @@ func (p *Plugin) cleanUpState() error {
 				continue
 			}
 
-			if err := p.cleanCallState(k); err != nil {
+			state, err := p.lockCall(k)
+			if err != nil {
+				p.LogError("failed to lock call", "err", err.Error())
+				continue
+			}
+			if err := p.cleanCallState(k, state); err != nil {
+				p.unlockCall(k)
 				return fmt.Errorf("failed to clean up state: %w", err)
 			}
+			p.unlockCall(k)
 		}
 		page++
 	}
 	return nil
 }
 
-func (p *Plugin) cleanCallState(channelID string) error {
-	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil {
-			return nil, nil
-		}
-		state.NodeID = ""
-
-		if state.Call != nil {
-			if _, err := p.updateCallPostEnded(state.Call.PostID); err != nil {
-				p.LogError(err.Error())
-			}
-		}
-		state.Call = nil
-		return state, nil
-	}); err != nil {
-		return fmt.Errorf("failed to cleanup state: %w", err)
+// NOTE: cleanCallState is meant to be called under lock (on channelID) so that
+// the operation can be performed atomically.
+func (p *Plugin) cleanCallState(channelID string, state *channelState) error {
+	if state == nil {
+		return nil
 	}
 
-	return nil
+	state.NodeID = ""
+
+	if state.Call != nil {
+		if _, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Stats.Participants)); err != nil {
+			return err
+		}
+		state.Call = nil
+	}
+
+	return p.kvSetChannelState(channelID, state)
 }

@@ -233,6 +233,7 @@ const Left = styled.div`
     flex-grow: 10;
     overflow: hidden;
     white-space: nowrap;
+    align-items: center;
 `;
 
 const Right = styled.div`
@@ -246,6 +247,7 @@ const CallIndicator = styled.div<{ ended: boolean }>`
     padding: 10px;
     width: 40px;
     height: 40px;
+    flex-shrink: 0;
 `;
 
 const MessageWrapper = styled.div`
