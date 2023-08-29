@@ -6,9 +6,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/mattermost/mattermost/server/public/shared/driver"
 
 	"github.com/mattermost/mattermost/server/public/model"
-	"github.com/mattermost/mattermost/server/v8/platform/shared/driver"
 
 	sq "github.com/mattermost/squirrel"
 )
