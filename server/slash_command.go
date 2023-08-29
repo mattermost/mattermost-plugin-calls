@@ -24,6 +24,7 @@ const (
 	statsCommandTrigger        = "stats"
 	endCommandTrigger          = "end"
 	recordingCommandTrigger    = "recording"
+	hostCommandTrigger         = "host"
 )
 
 var subCommands = []string{
@@ -35,6 +36,7 @@ var subCommands = []string{
 	endCommandTrigger,
 	statsCommandTrigger,
 	recordingCommandTrigger,
+	hostCommandTrigger,
 }
 
 func getAutocompleteData() *model.AutocompleteData {
@@ -56,6 +58,10 @@ func getAutocompleteData() *model.AutocompleteData {
 	recordingCmdData := model.NewAutocompleteData(recordingCommandTrigger, "", "Manage calls recordings")
 	recordingCmdData.AddTextArgument("Available options: start, stop", "", "start|stop")
 	data.AddCommand(recordingCmdData)
+
+	hostCmdData := model.NewAutocompleteData(hostCommandTrigger, "", "Change the host (system admins only).")
+	hostCmdData.AddTextArgument("@username", "", "@*")
+	data.AddCommand(hostCmdData)
 
 	return data
 }
@@ -165,6 +171,28 @@ func (p *Plugin) handleRecordingCommand(fields []string) (*model.CommandResponse
 	return &model.CommandResponse{}, nil
 }
 
+func (p *Plugin) handleHostCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("Invalid number of arguments provided")
+	}
+
+	newHostUsername := fields[2]
+	if strings.HasPrefix(newHostUsername, "@") {
+		newHostUsername = newHostUsername[1:]
+	}
+
+	newHost, appErr := p.API.GetUserByUsername(newHostUsername)
+	if appErr != nil {
+		return nil, fmt.Errorf("Could not find user `%s`", newHostUsername)
+	}
+
+	if err := p.changeHost(args.UserId, args.ChannelId, newHost.Id); err != nil {
+		return nil, err
+	}
+
+	return &model.CommandResponse{}, nil
+}
+
 func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
@@ -231,6 +259,17 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == recordingCommandTrigger {
 		resp, err := p.handleRecordingCommand(fields)
+		if err != nil {
+			return &model.CommandResponse{
+				ResponseType: model.CommandResponseTypeEphemeral,
+				Text:         fmt.Sprintf("Error: %s", err.Error()),
+			}, nil
+		}
+		return resp, nil
+	}
+
+	if subCmd == hostCommandTrigger {
+		resp, err := p.handleHostCommand(args, fields)
 		if err != nil {
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,

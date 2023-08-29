@@ -44,6 +44,7 @@ type callState struct {
 	HostID                string                `json:"host_id"`
 	Recording             *recordingState       `json:"recording,omitempty"`
 	DismissedNotification map[string]bool       `json:"dismissed_notification,omitempty"`
+	HostLocked            bool                  `json:"host_locked"`
 }
 
 type channelState struct {

@@ -133,7 +133,7 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		}
 	}
 
-	if state.Call.HostID == "" && userID != p.getBotID() {
+	if state.Call.HostID == "" && userID != p.getBotID() && !state.Call.HostLocked {
 		state.Call.HostID = userID
 	}
 
@@ -213,7 +213,7 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 
 	delete(state.Call.Sessions, connID)
 
-	if state.Call.HostID == userID && len(state.Call.Sessions) > 0 {
+	if state.Call.HostID == userID && len(state.Call.Sessions) > 0 && !state.Call.HostLocked {
 		state.Call.HostID = state.Call.getHostID(p.getBotID())
 	}
 
