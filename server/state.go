@@ -45,6 +45,7 @@ type callState struct {
 	Recording              *jobState             `json:"recording,omitempty"`
 	Transcription          *jobState             `json:"transcription,omitempty"`
 	DismissedNotification  map[string]bool       `json:"dismissed_notification,omitempty"`
+	HostLocked             bool                  `json:"host_locked"`
 }
 
 type channelState struct {
@@ -205,8 +206,19 @@ func (us *userState) getClientState(sessionID string) UserStateClient {
 }
 
 func (cs *callState) getHostID(botID string) string {
-	var host userState
+	if cs.HostLocked {
+		return cs.HostID
+	}
 
+	// if current host is still in the call, keep them as the host
+	for _, state := range cs.Sessions {
+		if state.UserID == cs.HostID {
+			return cs.HostID
+		}
+	}
+
+	// the participant who joined earliest should be host
+	var host userState
 	for _, state := range cs.Sessions {
 		if state.UserID == botID {
 			continue

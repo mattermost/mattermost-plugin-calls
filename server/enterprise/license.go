@@ -45,3 +45,7 @@ func (e *LicenseChecker) RecordingsAllowed() bool {
 func (e *LicenseChecker) TranscriptionsAllowed() bool {
 	return e.isAtLeastE20Licensed()
 }
+
+func (e *LicenseChecker) HostControlsAllowed() bool {
+	return e.isAtLeastE20Licensed()
+}
