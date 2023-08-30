@@ -53,7 +53,7 @@ func (p *Plugin) KVGet(key string, fromWriter bool) ([]byte, error) {
 	if !fromWriter {
 		data, appErr := p.API.KVGet(key)
 		if appErr != nil {
-			return nil, fmt.Errorf("failed to kvget for key: %s error: %s", key, appErr.Error())
+			return nil, fmt.Errorf("failed to kvget for key: %s error: %w", key, appErr)
 		}
 		return data, nil
 	}
