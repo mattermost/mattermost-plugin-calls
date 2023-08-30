@@ -133,9 +133,7 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		}
 	}
 
-	if state.Call.HostID == "" && userID != p.getBotID() && !state.Call.HostLocked {
-		state.Call.HostID = userID
-	}
+	state.Call.HostID = state.Call.getHostID(p.getBotID())
 
 	state.Call.Sessions[connID] = &userState{
 		UserID: userID,
@@ -213,9 +211,7 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 
 	delete(state.Call.Sessions, connID)
 
-	if state.Call.HostID == userID && len(state.Call.Sessions) > 0 && !state.Call.HostLocked {
-		state.Call.HostID = state.Call.getHostID(p.getBotID())
-	}
+	state.Call.HostID = state.Call.getHostID(p.getBotID())
 
 	// If the bot leaves the call and recording has not been stopped it either means
 	// something has failed or the max duration timeout triggered.

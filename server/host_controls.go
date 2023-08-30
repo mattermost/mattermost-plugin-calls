@@ -22,17 +22,10 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	}
 
 	if state.Call.HostID == newHostID {
-		return errors.New("user is already the host")
+		return nil
 	}
 
-	inCall := false
-	for id := range state.Call.Users {
-		if id == newHostID {
-			inCall = true
-			break
-		}
-	}
-	if !inCall {
+	if _, ok := state.Call.Users[newHostID]; !ok {
 		return errors.New("user is not in the call")
 	}
 

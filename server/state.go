@@ -186,8 +186,22 @@ func (us *userState) getClientState(sessionID string) UserStateClient {
 }
 
 func (cs *callState) getHostID(botID string) string {
-	var host userState
+	if cs.HostLocked {
+		return cs.HostID
+	}
 
+	// if current host isn't in the call anymore, remove
+	if _, ok := cs.Users[cs.HostID]; !ok {
+		cs.HostID = ""
+	}
+
+	// don't change hosts if we have one already
+	if cs.HostID != "" {
+		return cs.HostID
+	}
+
+	// the participant who joined earliest should be host
+	var host userState
 	for _, state := range cs.Sessions {
 		if state.UserID == botID {
 			continue
