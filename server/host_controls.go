@@ -11,6 +11,10 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 		return errors.New("no permissions to change host")
 	}
 
+	if newHostID == p.getBotID() {
+		return errors.New("cannot assign the bot to be host")
+	}
+
 	state, err := p.lockCall(channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
