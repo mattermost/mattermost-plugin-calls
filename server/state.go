@@ -190,13 +190,8 @@ func (cs *callState) getHostID(botID string) string {
 		return cs.HostID
 	}
 
-	// if current host isn't in the call anymore, remove
-	if _, ok := cs.Users[cs.HostID]; !ok {
-		cs.HostID = ""
-	}
-
-	// don't change hosts if we have one already
-	if cs.HostID != "" {
+	// if current host is still in the call, keep them as the host
+	if _, ok := cs.Users[cs.HostID]; ok {
 		return cs.HostID
 	}
 
