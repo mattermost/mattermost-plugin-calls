@@ -18,20 +18,20 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
-    recordingInCurrentCall,
+    recordingForCurrentCall,
     isRecordingInCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
     recordingMaxDuration,
     recordingsEnabled,
-    hostIDInCurrentCall,
-    hostChangeAtInCurrentCall,
-    callStartAt,
-    callThreadID,
-    screenSharingIDInCurrentCall,
+    hostIDForCurrentCall,
+    hostChangeAtForCurrentCall,
+    callStartAtForCurrentCall,
+    callThreadIDForCallInChannel,
+    screenSharingIDForCurrentCall,
     usersStatusesInCurrentCall,
-    connectedProfilesInCurrentCall,
-    connectedChannel,
+    profilesInCurrentCall,
+    channelForCurrentCall,
 } from 'src/selectors';
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
@@ -41,17 +41,17 @@ import ExpandedView from './component';
 const mapStateToProps = (state: GlobalState) => {
     const currentUserID = getCurrentUserId(state);
     const currentTeamID = getCurrentTeamId(state);
-    const channel = connectedChannel(state);
+    const channel = channelForCurrentCall(state);
     const channelTeam = getTeam(state, channel?.team_id);
-    const screenSharingID = screenSharingIDInCurrentCall(state);
-    const threadID = callThreadID(state, channel?.id);
+    const screenSharingID = screenSharingIDForCurrentCall(state);
+    const threadID = callThreadIDForCallInChannel(state, channel?.id);
 
     const sortedProfiles = (profiles: UserProfile[], statuses: { [key: string]: UserState }) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
     };
 
     const statuses = usersStatusesInCurrentCall(state);
-    const profiles = sortedProfiles(connectedProfilesInCurrentCall(state), statuses);
+    const profiles = sortedProfiles(profilesInCurrentCall(state), statuses);
 
     const pictures: { [key: string]: string } = {};
     for (let i = 0; i < profiles.length; i++) {
@@ -75,10 +75,10 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         pictures,
         statuses,
-        callStartAt: callStartAt(state),
-        callHostID: hostIDInCurrentCall(state),
-        callHostChangeAt: hostChangeAtInCurrentCall(state),
-        callRecording: recordingInCurrentCall(state),
+        callStartAt: callStartAtForCurrentCall(state),
+        callHostID: hostIDForCurrentCall(state),
+        callHostChangeAt: hostChangeAtForCurrentCall(state),
+        callRecording: recordingForCurrentCall(state),
         isRecording: isRecordingInCurrentCall(state),
         screenSharingID,
         channel,

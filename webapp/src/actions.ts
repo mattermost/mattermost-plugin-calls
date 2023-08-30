@@ -21,7 +21,7 @@ import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
 import {
-    channelHasCall, connectedCallID, incomingCalls,
+    channelHasCall, idForCurrentCall, incomingCalls,
     ringingEnabled,
     ringingForCall,
     callDismissedNotification,
@@ -326,8 +326,8 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
 
         // Never send a notification for a call you started yourself, or a call you are currently in.
         const currentUserID = getCurrentUserId(getState());
-        const connectedID = connectedCallID(getState());
-        if (currentUserID === callerID || connectedID === callID) {
+        const currentCallID = idForCurrentCall(getState());
+        if (currentUserID === callerID || currentCallID === callID) {
             return;
         }
 

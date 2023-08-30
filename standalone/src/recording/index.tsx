@@ -8,7 +8,7 @@ import {Theme} from 'mattermost-redux/types/themes';
 import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/users';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
-import {connectedProfilesInChannel, callStartAtInChannel} from 'plugin/selectors';
+import {profilesInCallInChannel, callStartAtForCallInChannel} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {getProfilesByIds, getPluginPath, fetchTranslationsFile, setCallsGlobalCSSVars, runWithRetry} from 'plugin/utils';
 import React from 'react';
@@ -70,7 +70,7 @@ async function initRecordingStore(store: Store, channelID: string) {
 }
 
 async function initRecording(store: Store, theme: Theme, channelID: string) {
-    if (!callStartAtInChannel(store.getState(), channelID)) {
+    if (!callStartAtForCallInChannel(store.getState(), channelID)) {
         throw new Error('call is missing from store');
     }
 
@@ -83,7 +83,7 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
         },
     });
 
-    const profiles = connectedProfilesInChannel(store.getState(), channelID);
+    const profiles = profilesInCallInChannel(store.getState(), channelID);
 
     if (profiles?.length > 0) {
         store.dispatch({

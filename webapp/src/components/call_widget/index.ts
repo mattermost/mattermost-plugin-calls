@@ -13,15 +13,15 @@ import {bindActionCreators, Dispatch} from 'redux';
 import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 import {
     usersStatusesInCurrentCall,
-    callStartAt,
-    screenSharingIDInCurrentCall,
+    callStartAtForCurrentCall,
+    screenSharingIDForCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
-    connectedProfilesInCurrentCall,
-    hostIDInCurrentCall,
-    hostChangeAtInCurrentCall,
-    recordingInCurrentCall,
+    profilesInCurrentCall,
+    hostIDForCurrentCall,
+    hostChangeAtForCurrentCall,
+    recordingForCurrentCall,
     sortedIncomingCalls,
     recentlyJoinedUsersInCurrentCall,
 } from 'src/selectors';
@@ -37,14 +37,14 @@ const mapStateToProps = (state: GlobalState) => {
     const channel = getChannel(state, String(window.callsClient?.channelID));
     const currentUserID = getCurrentUserId(state);
 
-    const screenSharingID = screenSharingIDInCurrentCall(state);
+    const screenSharingID = screenSharingIDForCurrentCall(state);
 
     const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
     };
 
     const statuses = usersStatusesInCurrentCall(state);
-    const profiles = sortedProfiles(connectedProfilesInCurrentCall(state), statuses);
+    const profiles = sortedProfiles(profilesInCurrentCall(state), statuses);
 
     const profilesMap: IDMappedObjects<UserProfile> = {};
     const picturesMap: {
@@ -68,10 +68,10 @@ const mapStateToProps = (state: GlobalState) => {
         profilesMap,
         picturesMap,
         statuses,
-        callStartAt: callStartAt(state),
-        callHostID: hostIDInCurrentCall(state),
-        callHostChangeAt: hostChangeAtInCurrentCall(state),
-        callRecording: recordingInCurrentCall(state),
+        callStartAt: callStartAtForCurrentCall(state),
+        callHostID: hostIDForCurrentCall(state),
+        callHostChangeAt: hostChangeAtForCurrentCall(state),
+        callRecording: recordingForCurrentCall(state),
         screenSharingID,
         allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),

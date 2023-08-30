@@ -5,14 +5,14 @@ import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
 
 import {hideEndCallModal} from '../../actions';
-import {connectedUsersInChannel, endCallModal} from '../../selectors';
+import {usersInCallInChannel, endCallModal} from '../../selectors';
 import {isDMChannel, getUserIdFromDM} from '../../utils';
 
 import EndCallModal from './component';
 
 const mapStateToProps = (state: GlobalState) => {
     const endCallState = endCallModal(state);
-    const connectedUsers = connectedUsersInChannel(state, endCallState.targetID);
+    const connectedUsers = usersInCallInChannel(state, endCallState.targetID);
 
     const channel = getChannel(state, endCallState.targetID);
 

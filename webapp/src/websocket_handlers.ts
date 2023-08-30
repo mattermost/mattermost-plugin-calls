@@ -43,7 +43,7 @@ import {
 } from './action_types';
 import {logErr} from './log';
 import {
-    connectedChannelID,
+    channelIDForCurrentCall,
     idToProfileInCurrentCall,
     ringingEnabled,
     shouldPlayJoinUserSound,
@@ -60,7 +60,7 @@ import {
 
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    if (connectedChannelID(store.getState()) === channelID) {
+    if (channelIDForCurrentCall(store.getState()) === channelID) {
         window.callsClient?.disconnect();
     }
 
@@ -269,7 +269,7 @@ export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRa
 export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReactionData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
-    if (connectedChannelID(store.getState()) !== channelID) {
+    if (channelIDForCurrentCall(store.getState()) !== channelID) {
         return;
     }
 

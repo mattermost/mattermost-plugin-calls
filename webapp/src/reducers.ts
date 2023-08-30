@@ -80,11 +80,11 @@ const channels = (state: channelsState = {}, action: channelsStateAction) => {
     }
 };
 
-type connectedProfilesState = {
+type profilesState = {
     [channelID: string]: UserProfile[],
 }
 
-type connectedProfilesAction = {
+type profilesAction = {
     type: string;
     data: {
         channelID: string;
@@ -95,7 +95,7 @@ type connectedProfilesAction = {
 }
 
 // Profiles (as in whole User objects) connected to calls.
-const connectedProfiles = (state: connectedProfilesState = {}, action: connectedProfilesAction) => {
+const profiles = (state: profilesState = {}, action: profilesAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
@@ -140,11 +140,11 @@ const connectedProfiles = (state: connectedProfilesState = {}, action: connected
     }
 };
 
-export type connectedChannelsState = {
+export type usersState = {
     [channelID: string]: string[];
 }
 
-type connectedChannelsAction = {
+type usersAction = {
     type: string;
     data: {
         channelID: string;
@@ -153,7 +153,7 @@ type connectedChannelsAction = {
     };
 }
 
-const connectedChannels = (state: connectedChannelsState = {}, action: connectedChannelsAction) => {
+const users = (state: usersState = {}, action: usersAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
@@ -191,9 +191,9 @@ const connectedChannels = (state: connectedChannelsState = {}, action: connected
     }
 };
 
-type connectedChannelIDState = string | null;
+type channelIDState = string | null;
 
-type connectedChannelIDAction = {
+type channelIDAction = {
     type: string;
     data: {
         channelID: string;
@@ -202,7 +202,8 @@ type connectedChannelIDAction = {
     };
 }
 
-const connectedChannelID = (state: connectedChannelIDState = null, action: connectedChannelIDAction) => {
+// channelID is the channel ID of the call the current user is connected to.
+const channelID = (state: channelIDState = null, action: channelIDAction) => {
     switch (action.type) {
     case UNINIT:
         return null;
@@ -809,7 +810,7 @@ export type recentlyJoinedUsersState = {
     [channelID: string]: string[];
 }
 
-const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: connectedChannelsAction) => {
+const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: usersAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
@@ -931,9 +932,9 @@ const dismissedCalls = (state: { [callID: string]: boolean } = {}, action: RingN
 
 export default combineReducers({
     channels,
-    connectedChannels,
-    connectedChannelID,
-    connectedProfiles,
+    users,
+    channelID,
+    profiles,
     reactions,
     usersStatuses,
     calls,

@@ -85,9 +85,9 @@ import {logErr, logDebug} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
-    connectedChannelID,
-    connectedUsersInCurrentChannel,
-    connectedUsersInChannel,
+    channelIDForCurrentCall,
+    usersInCallInCurrentChannel,
+    usersInCallInChannel,
     isLimitRestricted,
     iceServers,
     needsTURNCredentials,
@@ -99,8 +99,8 @@ import {
     hasPermissionsToEnableCalls,
     callsConfig,
     ringingEnabled,
-    hostChangeAtInCurrentCall,
-    callStartAtInChannel,
+    hostChangeAtForCurrentCall,
+    callStartAtForCallInChannel,
 } from './selectors';
 import {
     JOIN_CALL,
@@ -276,7 +276,7 @@ export default class Plugin {
 
         const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
             try {
-                const users = connectedUsersInCurrentChannel(store.getState());
+                const users = usersInCallInCurrentChannel(store.getState());
                 if (users && users.length > 0) {
                     store.dispatch({
                         type: PROFILES_CONNECTED,
@@ -290,15 +290,15 @@ export default class Plugin {
                 logErr(err);
             }
 
-            if (!connectedChannelID(store.getState())) {
+            if (!channelIDForCurrentCall(store.getState())) {
                 connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
                 // this is done in the call_start ws event handler.
-                if (connectedUsersInChannel(store.getState(), channelId).length > 0) {
+                if (usersInCallInChannel(store.getState(), channelId).length > 0) {
                     followThread(store, channelId, teamId);
                 }
-            } else if (connectedChannelID(store.getState()) !== channelId) {
+            } else if (channelIDForCurrentCall(store.getState()) !== channelId) {
                 store.dispatch({
                     type: SHOW_SWITCH_CALL_MODAL,
                 });
@@ -595,7 +595,7 @@ export default class Plugin {
                             channelID: data[i].channel_id,
                         },
                     });
-                    if (!callStartAtInChannel(store.getState(), data[i].channel_id)) {
+                    if (!callStartAtForCallInChannel(store.getState(), data[i].channel_id)) {
                         actions.push({
                             type: CALL_STATE,
                             data: {
@@ -713,7 +713,7 @@ export default class Plugin {
                     data: {
                         channelID,
                         hostID: call.host_id,
-                        hostChangeAt: hostChangeAtInCurrentCall(store.getState()) || call.start_at,
+                        hostChangeAt: hostChangeAtForCurrentCall(store.getState()) || call.start_at,
                     },
                 });
 
@@ -838,7 +838,7 @@ export default class Plugin {
                 fetchChannelData(currChannelId).then((actions) =>
                     store.dispatch(batchActions(actions)),
                 );
-                if (currChannelId && Boolean(joinCallParam) && !connectedChannelID(store.getState())) {
+                if (currChannelId && Boolean(joinCallParam) && !channelIDForCurrentCall(store.getState())) {
                     connectCall(currChannelId);
                 }
                 joinCallParam = '';

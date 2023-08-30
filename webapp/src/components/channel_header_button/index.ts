@@ -4,8 +4,8 @@ import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/user
 import {connect} from 'react-redux';
 
 import {
-    connectedUsersInCurrentChannel,
-    connectedChannelID,
+    usersInCallInCurrentChannel,
+    channelIDForCurrentCall,
     isCloudProfessionalOrEnterpriseOrTrial,
     isLimitRestricted,
     maxParticipants,
@@ -19,8 +19,8 @@ const mapStateToProps = (state: GlobalState) => {
     const channel = getCurrentChannel(state);
     return {
         show: callsShowButton(state, channel?.id),
-        inCall: Boolean(connectedChannelID(state) && connectedChannelID(state) === channel?.id),
-        hasCall: connectedUsersInCurrentChannel(state).length > 0,
+        inCall: Boolean(channelIDForCurrentCall(state) && channelIDForCurrentCall(state) === channel?.id),
+        hasCall: usersInCallInCurrentChannel(state).length > 0,
         isAdmin: isCurrentUserSystemAdmin(state),
         isCloudStarter: isCloudStarter(state),
         isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),
