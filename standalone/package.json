@@ -67,7 +67,7 @@
     "webpack-cli": "4.7.2"
   },
   "dependencies": {
-    "@calls/common": "github:mattermost/calls-common#e8695a965e978c5379fe93a18e73a040cf9fcfd1",
+    "@calls/common": "github:mattermost/calls-common#43011d8e9c7985b0542628329be098715a43dc03",
     "@mattermost/compass-icons": "0.1.31",
     "@mattermost/types": "6.7.0-0",
     "@msgpack/msgpack": "2.7.1",
