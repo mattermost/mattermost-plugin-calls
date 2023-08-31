@@ -63,9 +63,9 @@ type CallStateClient struct {
 	ID      string `json:"id"`
 	StartAt int64  `json:"start_at"`
 
-	// DEPRECATED in favour of Sessions (since MM 8.1)
+	// DEPRECATED in favour of Sessions (since v0.20)
 	Users []string `json:"users"`
-	// DEPRECATED in favour of Sessions (since MM 8.1)
+	// DEPRECATED in favour of Sessions (since v0.20)
 	States []UserStateClient `json:"states,omitempty"`
 
 	Sessions []UserStateClient `json:"sessions"`
@@ -201,9 +201,9 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		ID:      cs.ID,
 		StartAt: cs.StartAt,
 
-		// DEPRECATED since 8.1
+		// DEPRECATED since v0.20
 		Users: users,
-		// DEPRECATED since 8.1
+		// DEPRECATED since v0.20
 		States: states,
 
 		Sessions:              states,

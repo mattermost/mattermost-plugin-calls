@@ -105,9 +105,9 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		return nil, fmt.Errorf("call has ended")
 	}
 
-	// if _, ok := state.Call.Users[userID]; ok {
-	// 	return nil, fmt.Errorf("user is already connected")
-	// }
+	if _, ok := state.Call.Sessions[connID]; ok {
+		return nil, fmt.Errorf("session is already connected")
+	}
 
 	// Check for cloud limits -- needs to be done here to prevent a race condition
 	if allowed, err := p.joinAllowed(state); !allowed {
