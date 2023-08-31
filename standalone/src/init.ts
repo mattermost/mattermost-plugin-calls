@@ -1,5 +1,4 @@
 import {
-    CallChannelState,
     CallHostChangedData,
     CallRecordingStateData,
     CallStartData,
@@ -12,9 +11,9 @@ import {
     UserRaiseUnraiseHandData,
     UserReactionData,
     UserScreenOnOffData,
-    UserState,
     UserVoiceOnOffData,
     WebsocketEventData,
+    CallStateData,
 } from '@calls/common/lib/types';
 import {WebSocketMessage} from '@mattermost/types/websocket';
 import {setServerVersion} from 'mattermost-redux/actions/general';
@@ -27,14 +26,6 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
 import {Theme} from 'mattermost-redux/types/themes';
-import {
-    USER_SCREEN_ON,
-    PROFILES_CONNECTED,
-    USERS_CONNECTED,
-    USERS_CONNECTED_STATES,
-    CALL_STATE,
-    CALL_HOST,
-} from 'plugin/action_types';
 import {getCallsConfig} from 'plugin/actions';
 import CallsClient from 'plugin/client';
 import {
@@ -48,7 +39,6 @@ import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getWSConnectionURL,
     getPluginPath,
-    getProfilesByIds,
 } from 'plugin/utils';
 import {
     handleUserConnected,
@@ -67,6 +57,7 @@ import {
     handleUserReaction,
     handleCallRecordingState,
     handleUserDismissedNotification,
+    handleCallState,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
 import {CallActions, CurrentCallData, CurrentCallDataDefault, CallsClientConfig, CallsClientJoinData} from 'src/types/types';
@@ -133,78 +124,6 @@ function connectCall(
     }
 }
 
-async function fetchChannelData(store: Store, channelID: string) {
-    const resp = await Client4.doFetch<CallChannelState>(
-        `${getPluginPath()}/${channelID}`,
-        {method: 'get'},
-    );
-
-    if (!resp.call) {
-        // This is expected if the client is starting the call.
-        return;
-    }
-
-    store.dispatch({
-        type: USERS_CONNECTED,
-        data: {
-            users: resp.call.users,
-            channelID,
-        },
-    });
-
-    store.dispatch({
-        type: USER_SCREEN_ON,
-        data: {
-            channelID,
-            userID: resp.call.screen_sharing_id,
-        },
-    });
-
-    store.dispatch({
-        type: CALL_STATE,
-        data: {
-            ID: resp.call.id,
-            channelID: resp.channel_id,
-            startAt: resp.call.start_at,
-            ownerID: resp.call.owner_id,
-            threadID: resp.call.thread_id,
-        },
-    });
-
-    store.dispatch({
-        type: CALL_HOST,
-        data: {
-            channelID,
-            hostID: resp.call.host_id,
-            hostChangeAt: resp.call.start_at,
-        },
-    });
-
-    if (resp.call.users.length > 0) {
-        store.dispatch({
-            type: PROFILES_CONNECTED,
-            data: {
-                profiles: await getProfilesByIds(store.getState(), resp.call.users),
-                channelID,
-            },
-        });
-
-        const userStates: Record<string, UserState> = {};
-        const users = resp.call.users || [];
-        const states = resp.call.states || [];
-        for (let i = 0; i < users.length; i++) {
-            userStates[users[i]] = {...states[i], id: users[i], voice: false};
-        }
-        store.dispatch({
-            type: USERS_CONNECTED_STATES,
-            data: {
-                states: userStates,
-                channelID,
-            },
-        });
-    }
-}
-
 type InitConfig = {
     name: string,
     initCb: (store: Store, theme: Theme, channelID: string) => void,
@@ -268,7 +187,6 @@ export default async function init(cfg: InitConfig) {
 
     try {
         await Promise.all([
-            fetchChannelData(store, channelID),
             store.dispatch(getCallsConfig()),
         ]);
     } catch (err) {
@@ -292,7 +210,7 @@ export default async function init(cfg: InitConfig) {
         simulcast: callsConfig(store.getState()).EnableSimulcast,
     };
 
-    connectCall(joinData, clientConfig, (ev) => {
+    connectCall(joinData, clientConfig, async (ev) => {
         switch (ev.event) {
         case 'hello':
             store.dispatch(setServerVersion((ev.data as HelloData).server_version));
@@ -344,6 +262,9 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_user_dismissed_notification`:
             handleUserDismissedNotification(store, ev as WebSocketMessage<UserDismissedNotification>);
+            break;
+        case `custom_${pluginId}_call_state`:
+            await handleCallState(store, ev as WebSocketMessage<CallStateData>);
             break;
         default:
         }

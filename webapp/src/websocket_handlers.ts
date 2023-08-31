@@ -1,7 +1,6 @@
 import {
     CallHostChangedData,
     CallRecordingStateData,
-    CallStartData,
     EmptyData,
     Reaction,
     UserConnectedData,
@@ -12,12 +11,15 @@ import {
     UserReactionData,
     UserScreenOnOffData,
     UserVoiceOnOffData,
+    CallStartData,
+    CallStateData,
+    CallState,
 } from '@calls/common/lib/types';
 import {WebSocketMessage} from '@mattermost/types/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected} from 'src/actions';
+import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected, loadCallState} from 'src/actions';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 import {notificationSounds} from 'src/webapp_globals';
 
@@ -74,6 +76,15 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     if (ringingEnabled(store.getState())) {
         const callID = calls(store.getState())[channelID].ID || '';
         store.dispatch(removeIncomingCallNotification(callID));
+    }
+}
+
+export async function handleCallState(store: Store, ev: WebSocketMessage<CallStateData>) {
+    try {
+        const call: CallState = JSON.parse(ev.data.call);
+        await store.dispatch(loadCallState(ev.data.channel_id, call));
+    } catch (err) {
+        logErr(err);
     }
 }
 

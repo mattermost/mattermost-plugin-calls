@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 
-import {CallChannelState, UserState} from '@calls/common/lib/types';
+import {CallChannelState} from '@calls/common/lib/types';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
@@ -24,6 +24,7 @@ import {
     incomingCallOnChannel,
     showScreenSourceModal,
     showSwitchCallModal,
+    loadCallState,
 } from 'src/actions';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
@@ -51,14 +52,10 @@ import {
     RECEIVED_CHANNEL_STATE,
     USER_CONNECTED,
     USERS_CONNECTED,
-    USERS_CONNECTED_STATES,
     PROFILES_CONNECTED,
     CALL_STATE,
-    USER_SCREEN_ON,
     UNINIT,
     SHOW_SWITCH_CALL_MODAL,
-    CALL_HOST,
-    CALL_RECORDING_STATE,
     USER_MUTED,
     USER_UNMUTED,
     USER_RAISE_HAND,
@@ -91,7 +88,6 @@ import {
     hasPermissionsToEnableCalls,
     isCloudStarter,
     ringingEnabled,
-    hostChangeAtForCurrentCall,
     callStartAtForCallInChannel,
     callsConfig,
     callsExplicitlyEnabled,
@@ -126,12 +122,13 @@ import {
     handleUserMuted,
     handleUserRaisedHand,
     handleUserReaction,
-    handleUserScreenOff,
-    handleUserScreenOn,
+    handleCallState,
     handleUserUnmuted,
-    handleUserUnraisedHand,
-    handleUserVoiceOff,
     handleUserVoiceOn,
+    handleUserVoiceOff,
+    handleUserScreenOn,
+    handleUserScreenOff,
+    handleUserUnraisedHand,
 } from './websocket_handlers';
 
 export default class Plugin {
@@ -223,6 +220,10 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_dismissed_notification`, (ev) => {
             handleUserDismissedNotification(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_state`, (ev) => {
+            handleCallState(store, ev);
         });
     }
 
@@ -585,40 +586,57 @@ export default class Plugin {
                 const data = await Client4.doFetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
 
                 for (let i = 0; i < data.length; i++) {
+                    const call = data[i].call;
+
+                    if (!call || !call.users?.length) {
+                        continue;
+                    }
+
                     actions.push({
                         type: USERS_CONNECTED,
                         data: {
-                            users: data[i].call?.users,
+                            users: call.users,
                             channelID: data[i].channel_id,
                         },
                     });
+
+                    actions.push({
+                        type: PROFILES_CONNECTED,
+                        data: {
+                            // eslint-disable-next-line no-await-in-loop
+                            profiles: await getProfilesByIds(store.getState(), call.users),
+                            channelID: data[i].channel_id,
+                        },
+                    });
+
                     if (!callStartAtForCallInChannel(store.getState(), data[i].channel_id)) {
                         actions.push({
                             type: CALL_STATE,
                             data: {
-                                ID: data[i].call?.id,
+                                ID: call.id,
                                 channelID: data[i].channel_id,
-                                startAt: data[i].call?.start_at,
-                                ownerID: data[i].call?.owner_id,
+                                startAt: call.start_at,
+                                ownerID: call.owner_id,
+                                threadID: call.thread_id,
                             },
                         });
 
                         if (ringingEnabled(store.getState()) && data[i].call) {
                             // dismissedNotification is populated after the actions array has been batched, so manually check:
-                            const dismissed = data[i].call?.dismissed_notification;
+                            const dismissed = call.dismissed_notification;
                             if (dismissed) {
                                 const currentUserID = getCurrentUserId(store.getState());
                                 if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
                                     actions.push({
                                         type: DISMISS_CALL,
                                         data: {
-                                            callID: data[i].call.id,
+                                            callID: call.id,
                                         },
                                     });
                                     continue;
                                 }
                             }
-                            store.dispatch(incomingCallOnChannel(data[i].channel_id, data[i].call.id, data[i].call.owner_id, data[i].call.start_at));
+                            store.dispatch(incomingCallOnChannel(data[i].channel_id, call.id, call.owner_id, call.start_at));
                         }
                     }
                 }
@@ -629,10 +647,11 @@ export default class Plugin {
             return actions;
         };
 
-        const fetchChannelData = async (channelID: string): Promise<AnyAction[]> => {
+        const fetchChannelData = async (channelID: string) => {
             if (!channelID) {
                 // Must be Global threads view, or another view that isn't a channel.
-                return [];
+                logDebug('fetchChannelData: missing channelID');
+                return;
             }
 
             let channel = getChannel(store.getState(), channelID);
@@ -659,109 +678,26 @@ export default class Plugin {
                 logErr(err);
             }
 
-            const actions = [];
-
             try {
                 const data = await Client4.doFetch<CallChannelState>(`${getPluginPath()}/${channelID}`, {method: 'get'});
-                actions.push({
+                store.dispatch({
                     type: RECEIVED_CHANNEL_STATE,
                     data: {id: channelID, enabled: data.enabled},
                 });
 
                 const call = data.call;
                 if (!call) {
-                    return actions;
+                    return;
                 }
 
-                actions.push({
-                    type: CALL_STATE,
-                    data: {
-                        ID: call.id,
-                        channelID,
-                        startAt: call.start_at,
-                        ownerID: call.owner_id,
-                        threadID: call.thread_id,
-                    },
-                });
-
-                const dismissed = call.dismissed_notification;
-                if (dismissed) {
-                    const currentUserID = getCurrentUserId(store.getState());
-                    if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
-                        actions.push({
-                            type: DISMISS_CALL,
-                            data: {
-                                callID: call.id,
-                            },
-                        });
-                    }
-                }
-
-                actions.push({
-                    type: USERS_CONNECTED,
-                    data: {
-                        users: call.users || [],
-                        channelID,
-                    },
-                });
-
-                actions.push({
-                    type: CALL_HOST,
-                    data: {
-                        channelID,
-                        hostID: call.host_id,
-                        hostChangeAt: hostChangeAtForCurrentCall(store.getState()) || call.start_at,
-                    },
-                });
-
-                if (call.users && call.users.length > 0) {
-                    actions.push({
-                        type: PROFILES_CONNECTED,
-                        data: {
-                            profiles: await getProfilesByIds(store.getState(), call.users),
-                            channelID,
-                        },
-                    });
-                }
-
-                actions.push({
-                    type: CALL_RECORDING_STATE,
-                    data: {
-                        callID: channelID,
-                        recState: call.recording,
-                    },
-                });
-
-                actions.push({
-                    type: USER_SCREEN_ON,
-                    data: {
-                        channelID,
-                        userID: call.screen_sharing_id,
-                    },
-                });
-
-                const userStates: Record<string, UserState> = {};
-                const users = call.users || [];
-                const states = call.states || [];
-                for (let i = 0; i < users.length; i++) {
-                    userStates[users[i]] = {...states[i], id: users[i]};
-                }
-                actions.push({
-                    type: USERS_CONNECTED_STATES,
-                    data: {
-                        states: userStates,
-                        channelID,
-                    },
-                });
+                await store.dispatch(loadCallState(channelID, call));
             } catch (err) {
                 logErr(err);
-                actions.push({
+                store.dispatch({
                     type: RECEIVED_CHANNEL_STATE,
                     data: {id: channelID, enabled: false},
                 });
             }
-
-            return actions;
         };
 
         // Run onActivate once we're logged in.
@@ -784,7 +720,7 @@ export default class Plugin {
             const actions = await fetchChannels();
             const currChannelId = getCurrentChannelId(store.getState());
             if (currChannelId) {
-                actions.push(...await fetchChannelData(currChannelId));
+                await fetchChannelData(currChannelId);
             } else {
                 const expandedID = getExpandedChannelID();
                 if (expandedID.length > 0) {
@@ -796,7 +732,7 @@ export default class Plugin {
                             currentUserID: getCurrentUserId(store.getState()),
                         },
                     });
-                    actions.push(...await fetchChannelData(expandedID));
+                    await fetchChannelData(expandedID);
                 }
             }
 
@@ -832,9 +768,6 @@ export default class Plugin {
             if (currChannelId !== currentChannelId) {
                 currChannelId = currentChannelId;
 
-                fetchChannelData(currChannelId).then((actions) =>
-                    store.dispatch(batchActions(actions)),
-                );
                 if (currChannelId && Boolean(joinCallParam) && !channelIDForCurrentCall(store.getState())) {
                     connectCall(currChannelId);
                 }
