@@ -277,7 +277,7 @@ func (s *jobService) UpdateJobRunner(runner string) error {
 	})
 }
 
-func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, error) {
+func (s *jobService) RunRecordingJob(callID, postID, recordingID, authToken string) (string, error) {
 	cfg := s.ctx.getConfiguration()
 	if cfg == nil {
 		return "", fmt.Errorf("failed to get plugin configuration")
@@ -302,6 +302,7 @@ func (s *jobService) RunRecordingJob(callID, postID, authToken string) (string, 
 	baseRecorderCfg.SiteURL = siteURL
 	baseRecorderCfg.CallID = callID
 	baseRecorderCfg.ThreadID = postID
+	baseRecorderCfg.RecordingID = recordingID
 	baseRecorderCfg.AuthToken = authToken
 
 	jobCfg := job.Config{
