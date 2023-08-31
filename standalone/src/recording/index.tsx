@@ -8,9 +8,9 @@ import {Theme} from 'mattermost-redux/types/themes';
 import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/users';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
-import {voiceConnectedProfilesInChannel} from 'plugin/selectors';
+import {voiceConnectedProfilesInChannel, voiceChannelCallStartAt} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
-import {getProfilesByIds, getPluginPath, fetchTranslationsFile, setCallsGlobalCSSVars} from 'plugin/utils';
+import {getProfilesByIds, getPluginPath, fetchTranslationsFile, setCallsGlobalCSSVars, runWithRetry} from 'plugin/utils';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
@@ -30,37 +30,50 @@ async function fetchProfileImages(profiles: UserProfile[]) {
     const promises = [];
     for (const profile of profiles) {
         promises.push(
-            fetch(`${getPluginPath()}/bot/users/${profile.id}/image`,
-                Client4.getOptions({method: 'get'})).then((res) => {
-                if (!res.ok) {
-                    throw new Error('fetch failed');
-                }
-                return res.blob();
-            }).then((data) => {
-                profileImages[profile.id] = URL.createObjectURL(data);
-            }).catch((err) => {
-                logErr(err);
-            }));
+            runWithRetry(() => {
+                return fetch(`${getPluginPath()}/bot/users/${profile.id}/image`, Client4.getOptions({method: 'get'})).then((res) => {
+                    if (!res.ok) {
+                        throw new Error('image fetch failed');
+                    }
+                    return res.blob();
+                }).then((data) => {
+                    profileImages[profile.id] = URL.createObjectURL(data);
+                });
+            }),
+        );
     }
-    await Promise.all(promises);
+
+    try {
+        await Promise.all(promises);
+    } catch (err) {
+        logErr('failed to load profile images', err);
+    }
+
     return profileImages;
 }
 
 async function initRecordingStore(store: Store, channelID: string) {
-    const channel = await Client4.doFetch(
-        `${getPluginPath()}/bot/channels/${channelID}`,
-        {method: 'get'},
-    );
+    try {
+        const channel = await runWithRetry(() => {
+            return Client4.doFetch(`${getPluginPath()}/bot/channels/${channelID}`, {method: 'get'});
+        });
 
-    store.dispatch(
-        {
-            type: ChannelTypes.RECEIVED_CHANNEL,
-            data: channel,
-        },
-    );
+        store.dispatch(
+            {
+                type: ChannelTypes.RECEIVED_CHANNEL,
+                data: channel,
+            },
+        );
+    } catch (err) {
+        logErr('failed to fetch channel', err);
+    }
 }
 
 async function initRecording(store: Store, theme: Theme, channelID: string) {
+    if (!voiceChannelCallStartAt(store.getState(), channelID)) {
+        throw new Error('call is missing from store');
+    }
+
     await store.dispatch({
         type: VOICE_CHANNEL_USER_CONNECTED,
         data: {
@@ -88,7 +101,7 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
     let messages;
     if (locale !== 'en') {
         try {
-            messages = await fetchTranslationsFile(locale);
+            messages = await runWithRetry(() => fetchTranslationsFile(locale));
         } catch (err) {
             logErr('failed to fetch translations files', err);
         }
@@ -113,14 +126,20 @@ async function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEv
     switch (ev.event) {
     case `custom_${pluginId}_user_connected`: {
         const data = ev.data as UserConnectedData;
-        const profiles = await getProfilesByIds(store.getState(), [data.userID]);
-        store.dispatch({
-            type: RECEIVED_CALL_PROFILE_IMAGES,
-            data: {
-                channelID: data.channelID,
-                profileImages: await fetchProfileImages(profiles),
-            },
-        });
+
+        try {
+            const profiles = await runWithRetry(() => getProfilesByIds(store.getState(), [data.userID]));
+            store.dispatch({
+                type: RECEIVED_CALL_PROFILE_IMAGES,
+                data: {
+                    channelID: data.channelID,
+                    profileImages: await fetchProfileImages(profiles),
+                },
+            });
+        } catch (err) {
+            logErr('failed to fetch user profiles', err);
+        }
+
         break;
     }
     default:
@@ -133,11 +152,11 @@ function deinitRecording() {
     delete window.callsClient;
 }
 
-init({
+runWithRetry(() => init({
     name: 'recording',
     reducer: recordingReducer,
     initStore: initRecordingStore,
     initCb: initRecording,
     wsHandler: wsHandlerRecording,
     closeCb: deinitRecording,
-});
+}));

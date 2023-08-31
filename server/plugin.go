@@ -4,6 +4,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -11,6 +12,7 @@ import (
 
 	"golang.org/x/time/rate"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
@@ -52,6 +54,14 @@ type Plugin struct {
 	apiLimitersMut sync.RWMutex
 
 	botSession *model.Session
+
+	// A map of callID -> *cluster.Mutex to guarantee atomicity of call state
+	// operations.
+	callsClusterLocks map[string]*cluster.Mutex
+
+	// Database handle to the writer DB node
+	wDB        *sql.DB
+	driverName string
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
@@ -104,7 +114,7 @@ func (p *Plugin) startSession(us *session, senderID string) {
 	}
 }
 
-func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterEvent) {
+func (p *Plugin) OnPluginClusterEvent(_ *plugin.Context, ev model.PluginClusterEvent) {
 	select {
 	case p.clusterEvCh <- ev:
 	default:
@@ -265,7 +275,7 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title, threadID string) (string, string, error) {
+func (p *Plugin) createCallStartedPost(state *channelState, userID, channelID, title, threadID string) (string, string, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return "", "", appErr
@@ -299,7 +309,7 @@ func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title
 		Type:      "custom_calls",
 		Props: map[string]interface{}{
 			"attachments": []*model.SlackAttachment{&slackAttachment},
-			"start_at":    startAt,
+			"start_at":    state.Call.StartAt,
 			"title":       title,
 		},
 	}
@@ -312,26 +322,10 @@ func (p *Plugin) startNewCallPost(userID, channelID string, startAt int64, title
 		threadID = createdPost.Id
 	}
 
-	err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil {
-			return nil, fmt.Errorf("channel state is missing from store")
-		}
-		if state.Call == nil {
-			return nil, fmt.Errorf("call is missing from channel state")
-		}
-
-		state.Call.PostID = createdPost.Id
-		state.Call.ThreadID = threadID
-		return state, nil
-	})
-	if err != nil {
-		return "", "", err
-	}
-
 	return createdPost.Id, threadID, nil
 }
 
-func (p *Plugin) updateCallPostEnded(postID string) (float64, error) {
+func (p *Plugin) updateCallPostEnded(postID string, participants []string) (float64, error) {
 	post, appErr := p.API.GetPost(postID)
 	if appErr != nil {
 		return 0, appErr
@@ -348,6 +342,7 @@ func (p *Plugin) updateCallPostEnded(postID string) (float64, error) {
 	post.DelProp("attachments")
 	post.AddProp("attachments", []*model.SlackAttachment{&slackAttachment})
 	post.AddProp("end_at", time.Now().UnixMilli())
+	post.AddProp("participants", participants)
 
 	_, appErr = p.API.UpdatePost(post)
 	if appErr != nil {

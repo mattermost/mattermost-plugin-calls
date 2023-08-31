@@ -134,77 +134,74 @@ function connectCall(
 }
 
 async function fetchChannelData(store: Store, channelID: string) {
-    try {
-        const resp = await Client4.doFetch<CallChannelState>(
-            `${getPluginPath()}/${channelID}`,
-            {method: 'get'},
-        );
+    const resp = await Client4.doFetch<CallChannelState>(
+        `${getPluginPath()}/${channelID}`,
+        {method: 'get'},
+    );
 
-        if (!resp.call) {
-            return;
+    if (!resp.call) {
+        // This is expected if the client is starting the call.
+        return;
+    }
+
+    store.dispatch({
+        type: VOICE_CHANNEL_USERS_CONNECTED,
+        data: {
+            users: resp.call.users,
+            channelID,
+        },
+    });
+
+    store.dispatch({
+        type: VOICE_CHANNEL_ROOT_POST,
+        data: {
+            channelID,
+            rootPost: resp.call.thread_id,
+        },
+    });
+
+    store.dispatch({
+        type: VOICE_CHANNEL_USER_SCREEN_ON,
+        data: {
+            channelID,
+            userID: resp.call.screen_sharing_id,
+        },
+    });
+
+    store.dispatch({
+        type: VOICE_CHANNEL_CALL_START,
+        data: {
+            ID: resp.call.id,
+            channelID: resp.channel_id,
+            startAt: resp.call.start_at,
+            ownerID: resp.call.owner_id,
+            hostID: resp.call.host_id,
+            dismissedNotification: resp.call.dismissed_notification || {},
+        },
+    });
+
+    if (resp.call.users.length > 0) {
+        store.dispatch({
+            type: VOICE_CHANNEL_PROFILES_CONNECTED,
+            data: {
+                profiles: await getProfilesByIds(store.getState(), resp.call.users),
+                channelID,
+            },
+        });
+
+        const userStates: Record<string, UserState> = {};
+        const users = resp.call.users || [];
+        const states = resp.call.states || [];
+        for (let i = 0; i < users.length; i++) {
+            userStates[users[i]] = {...states[i], id: users[i], voice: false};
         }
-
         store.dispatch({
-            type: VOICE_CHANNEL_USERS_CONNECTED,
+            type: VOICE_CHANNEL_USERS_CONNECTED_STATES,
             data: {
-                users: resp.call.users,
+                states: userStates,
                 channelID,
             },
         });
-
-        store.dispatch({
-            type: VOICE_CHANNEL_ROOT_POST,
-            data: {
-                channelID,
-                rootPost: resp.call.thread_id,
-            },
-        });
-
-        store.dispatch({
-            type: VOICE_CHANNEL_USER_SCREEN_ON,
-            data: {
-                channelID,
-                userID: resp.call.screen_sharing_id,
-            },
-        });
-
-        store.dispatch({
-            type: VOICE_CHANNEL_CALL_START,
-            data: {
-                ID: resp.call.id,
-                channelID: resp.channel_id,
-                startAt: resp.call.start_at,
-                ownerID: resp.call.owner_id,
-                hostID: resp.call.host_id,
-                dismissedNotification: resp.call.dismissed_notification || {},
-            },
-        });
-
-        if (resp.call.users.length > 0) {
-            store.dispatch({
-                type: VOICE_CHANNEL_PROFILES_CONNECTED,
-                data: {
-                    profiles: await getProfilesByIds(store.getState(), resp.call.users),
-                    channelID,
-                },
-            });
-
-            const userStates: Record<string, UserState> = {};
-            const users = resp.call.users || [];
-            const states = resp.call.states || [];
-            for (let i = 0; i < users.length; i++) {
-                userStates[users[i]] = {...states[i], id: users[i], voice: false};
-            }
-            store.dispatch({
-                type: VOICE_CHANNEL_USERS_CONNECTED_STATES,
-                data: {
-                    states: userStates,
-                    channelID,
-                },
-            });
-        }
-    } catch (err) {
-        logErr(err);
     }
 }
 
@@ -269,10 +266,14 @@ export default async function init(cfg: InitConfig) {
         return;
     }
 
-    await Promise.all([
-        fetchChannelData(store, channelID),
-        store.dispatch(getCallsConfig()),
-    ]);
+    try {
+        await Promise.all([
+            fetchChannelData(store, channelID),
+            store.dispatch(getCallsConfig()),
+        ]);
+    } catch (err) {
+        throw new Error(`failed to fetch channel data: ${err}`);
+    }
 
     const iceConfigs = [...iceServers(store.getState())];
     if (needsTURNCredentials(store.getState())) {
@@ -355,7 +356,12 @@ export default async function init(cfg: InitConfig) {
     const theme = getTheme(store.getState());
     applyTheme(theme);
 
-    await cfg.initCb(store, theme, channelID);
+    try {
+        await cfg.initCb(store, theme, channelID);
+    } catch (err) {
+        window.callsClient?.destroy();
+        throw new Error(`initCb failed: ${err}`);
+    }
 
     logDebug(`${cfg.name} init completed in ${Math.round(performance.now() - initStartTime)}ms`);
 }
