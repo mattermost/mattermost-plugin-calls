@@ -114,31 +114,13 @@ func (p *Plugin) OnActivate() error {
 	p.botSession = session
 
 	if p.licenseChecker.RecordingsAllowed() && cfg.recordingsEnabled() {
-		recorderVersion, ok := manifest.Props["calls_recorder_version"].(string)
-		if !ok {
-			err = fmt.Errorf("failed to get recorder version from manifest")
-			p.LogError(err.Error())
-			return err
-		}
-		recordingJobRunner = "mattermost/calls-recorder:" + recorderVersion
-
-		if err := p.initJobService(); err != nil {
-			err = fmt.Errorf("failed to initialize job service: %w", err)
-			p.LogError(err.Error())
-			return err
-		}
-
-		p.LogDebug("job service initialized successfully")
-
 		go func() {
-			p.LogDebug("updating job runner")
-			jobService := p.getJobService()
-			if err := jobService.UpdateJobRunner(recordingJobRunner); err != nil {
-				err = fmt.Errorf("failed to update job runner: %w", err)
+			if err := p.initJobService(); err != nil {
+				err = fmt.Errorf("failed to initialize job service: %w", err)
 				p.LogError(err.Error())
 				return
 			}
-			p.LogDebug("job runner updated successfully")
+			p.LogDebug("job service initialized successfully")
 		}()
 	}
 

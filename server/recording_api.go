@@ -104,7 +104,7 @@ func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID 
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return. We lock again as soon as this returns.
 	p.unlockCall(callID)
-	recJobID, jobErr := p.getJobService().RunRecordingJob(callID, state.Call.PostID, p.botSession.Token)
+	recJobID, jobErr := p.getJobService().RunRecordingJob(callID, state.Call.PostID, recState.ID, p.botSession.Token)
 	state, err := p.lockCall(callID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
