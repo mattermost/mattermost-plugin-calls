@@ -69,13 +69,14 @@ import {
     handleUserDismissedNotification,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
-import {CallActions, CurrentCallData, CurrentCallDataDefault, CallsClientConfig} from 'src/types/types';
+import {CallActions, CurrentCallData, CurrentCallDataDefault, CallsClientConfig, CallsClientJoinData} from 'src/types/types';
 
 import {
     getCallID,
     getCallTitle,
     getToken,
     getRootID,
+    getJobID,
 } from './common';
 import {applyTheme} from './theme_utils';
 
@@ -96,9 +97,7 @@ function setBasename() {
 }
 
 function connectCall(
-    channelID: string,
-    callTitle: string,
-    rootID: string,
+    joinData: CallsClientJoinData,
     clientConfig: CallsClientConfig,
     wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void,
     closeCb?: (err?: Error) => void,
@@ -118,7 +117,7 @@ function connectCall(
             }
         });
 
-        window.callsClient.init(channelID, callTitle, rootID).then(() => {
+        window.callsClient.init(joinData).then(() => {
             window.callsClient?.ws?.on('event', wsEventHandler);
         }).catch((err: Error) => {
             logErr(err);
@@ -236,8 +235,12 @@ export default async function init(cfg: InitConfig) {
         return;
     }
 
-    const callTitle = getCallTitle();
-    const rootID = getRootID();
+    const joinData = {
+        channelID,
+        title: getCallTitle(),
+        threadID: getRootID(),
+        jobID: getJobID(),
+    };
 
     // Setting the base URL if present, in case MM is running under a subpath.
     if (window.basename) {
@@ -289,7 +292,7 @@ export default async function init(cfg: InitConfig) {
         simulcast: callsConfig(store.getState()).EnableSimulcast,
     };
 
-    connectCall(channelID, callTitle, rootID, clientConfig, (ev) => {
+    connectCall(joinData, clientConfig, (ev) => {
         switch (ev.event) {
         case 'hello':
             store.dispatch(setServerVersion((ev.data as HelloData).server_version));

@@ -39,6 +39,17 @@ const (
 	wsReconnectionTimeout            = 10 * time.Second
 )
 
+type CallsClientJoinData struct {
+	ChannelID string
+	Title     string
+	ThreadID  string
+
+	// JobID is the id of the job tight to the bot connection to
+	// a call (e.g. recording, transcription). It's a parameter reserved to the
+	// Calls bot only.
+	JobID string
+}
+
 func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *model.WebsocketBroadcast) {
 	botID := p.getBotID()
 	// We don't want to expose to the client that the bot is in a call.
@@ -479,7 +490,8 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 	return nil
 }
 
-func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (retErr error) {
+func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData) (retErr error) {
+	channelID := joinData.ChannelID
 	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
 
 	// We should go through only if the user has permissions to the requested channel
@@ -487,6 +499,11 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 	if !(p.isBot(userID) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost)) {
 		return fmt.Errorf("forbidden")
 	}
+
+	if userID == p.getBotID() && joinData.JobID == "" {
+		return fmt.Errorf("JobID should not be empty for bot connections")
+	}
+
 	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
 		return appErr
@@ -495,8 +512,8 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 		return fmt.Errorf("cannot join call in archived channel")
 	}
 
-	if threadID != "" {
-		post, appErr := p.API.GetPost(threadID)
+	if joinData.ThreadID != "" {
+		post, appErr := p.API.GetPost(joinData.ThreadID)
 		if appErr != nil {
 			return appErr
 		}
@@ -519,7 +536,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
 
-	state, err := p.addUserSession(prevState, userID, connID, channel.Id)
+	state, err := p.addUserSession(prevState, userID, connID, channelID, joinData.JobID)
 	if err != nil {
 		p.unlockCall(channelID)
 		return fmt.Errorf("failed to add user session: %w", err)
@@ -541,7 +558,7 @@ func (p *Plugin) handleJoin(userID, connID, channelID, title, threadID string) (
 			)
 		}
 
-		postID, threadID, err := p.createCallStartedPost(state, userID, channelID, title, threadID)
+		postID, threadID, err := p.createCallStartedPost(state, userID, channelID, joinData.Title, joinData.ThreadID)
 		if err != nil {
 			p.LogError(err.Error())
 		}
@@ -794,8 +811,19 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		// it will be an empty string.
 		threadID, _ := req.Data["threadID"].(string)
 
+		// JobID is optional, so if it's not present,
+		// it will be an empty string.
+		jobID, _ := req.Data["jobID"].(string)
+
+		joinData := CallsClientJoinData{
+			channelID,
+			title,
+			threadID,
+			jobID,
+		}
+
 		go func() {
-			if err := p.handleJoin(userID, connID, channelID, title, threadID); err != nil {
+			if err := p.handleJoin(userID, connID, joinData); err != nil {
 				p.LogWarn(err.Error(), "userID", userID, "connID", connID, "channelID", channelID)
 				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
