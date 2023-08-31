@@ -250,7 +250,7 @@ func (m *rtcdClientManager) GetHostForNewCall() (string, error) {
 // Send routes the message to the appropriate host that's handling the given
 // call. If this is missing a new client is created and added to the mapping.
 func (m *rtcdClientManager) Send(msg rtcd.ClientMessage, callID string) error {
-	state, err := m.ctx.kvGetChannelState(callID)
+	state, err := m.ctx.kvGetChannelState(callID, false)
 	if err != nil {
 		return fmt.Errorf("failed to get channel state: %w", err)
 	}
@@ -416,8 +416,7 @@ func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.Dial
 
 func (m *rtcdClientManager) getStoredRTCDConfig() (rtcd.ClientConfig, error) {
 	var cfg rtcd.ClientConfig
-	m.ctx.metrics.IncStoreOp("KVGet")
-	data, appErr := m.ctx.API.KVGet(rtcdConfigKey)
+	data, appErr := m.ctx.KVGet(rtcdConfigKey, false)
 	if appErr != nil {
 		return cfg, fmt.Errorf("failed to get rtcd config: %w", appErr)
 	}
@@ -518,14 +517,14 @@ func (m *rtcdClientManager) storeConfig(cfg rtcd.ClientConfig) error {
 func (m *rtcdClientManager) registerRTCDClient(cfg rtcd.ClientConfig, reconnectCb rtcd.ClientReconnectCb, dialFn rtcd.DialContextFn) (rtcd.ClientConfig, *rtcd.Client, error) {
 	// Here we need some coordination to avoid multiple plugin instances to
 	// register at the same time (at most one would succeed).
-	mutex, err := cluster.NewMutex(m.ctx.API, "rtcd_registration")
+	mutex, err := cluster.NewMutex(m.ctx.API, m.ctx.metrics, "rtcd_registration", cluster.MutexConfig{})
 	if err != nil {
 		return cfg, nil, fmt.Errorf("failed to create cluster mutex: %w", err)
 	}
 
 	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
 	defer cancelCtx()
-	if err := mutex.LockWithContext(lockCtx); err != nil {
+	if err := mutex.Lock(lockCtx); err != nil {
 		return cfg, nil, fmt.Errorf("failed to acquire cluster lock: %w", err)
 	}
 	defer mutex.Unlock()

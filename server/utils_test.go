@@ -47,6 +47,13 @@ func Test_isMobilePostGA(t *testing.T) {
 			wantMobile: true,
 			wantPostGA: true,
 		},
+		{
+			name:       "no user agent",
+			userAgent:  "",
+			params:     "",
+			wantMobile: false,
+			wantPostGA: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

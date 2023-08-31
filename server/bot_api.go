@@ -37,7 +37,7 @@ func (p *Plugin) isBotSession(r *http.Request) bool {
 	return p.isBot(r.Header.Get("Mattermost-User-Id"))
 }
 
-func (p *Plugin) handleBotGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
+func (p *Plugin) handleBotGetChannel(w http.ResponseWriter, _ *http.Request, channelID string) {
 	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
 		p.LogError(appErr.Error())
@@ -59,7 +59,7 @@ func (p *Plugin) handleBotGetUserImage(w http.ResponseWriter, r *http.Request, u
 	http.ServeContent(w, r, userID, time.Now(), bytes.NewReader(data))
 }
 
-func (p *Plugin) handleBotGetUpload(w http.ResponseWriter, r *http.Request, uploadID string) {
+func (p *Plugin) handleBotGetUpload(w http.ResponseWriter, _ *http.Request, uploadID string) {
 	var res httpResponse
 	defer p.httpResponseHandler(&res, w)
 

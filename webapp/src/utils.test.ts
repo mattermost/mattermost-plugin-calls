@@ -6,6 +6,9 @@ import {
     getWSConnectionURL,
     shouldRenderDesktopWidget,
     toHuman,
+    sleep,
+    runWithRetry,
+    maxAttemptsReachedErr,
 } from './utils';
 
 describe('utils', () => {
@@ -196,6 +199,46 @@ describe('utils', () => {
         testCases.forEach((testCase) => it(testCase.description, () => {
             expect(callStartedTimestampFn(intl, testCase.input)).toEqual(testCase.expected);
         }));
+    });
+
+    describe('sleep', () => {
+        test('1s', async () => {
+            const sleepTimeMs = 500;
+            const start = Date.now();
+            await sleep(sleepTimeMs);
+            expect(Date.now() - start).toBeGreaterThan(sleepTimeMs);
+        });
+    });
+
+    describe('runWithRetry', () => {
+        const failsN = (n: number) => {
+            let failures = 0;
+            return () => {
+                if (failures === n) {
+                    return 45;
+                }
+                failures++;
+                throw new Error('request failed');
+            };
+        };
+
+        test('single failure', async () => {
+            expect(await runWithRetry(failsN(1))).toEqual(45);
+        });
+
+        test('multiple failures', async () => {
+            expect(await runWithRetry(failsN(4))).toEqual(45);
+        });
+
+        test('with custom retry time', async () => {
+            const start = Date.now();
+            expect(await runWithRetry(failsN(1), 500)).toEqual(45);
+            expect(Date.now() - start).toBeGreaterThan(500);
+        });
+
+        test('maximum attempts reached', async () => {
+            await expect(runWithRetry(failsN(3), 10, 3)).rejects.toEqual(maxAttemptsReachedErr);
+        });
     });
 });
 

@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -17,11 +18,15 @@ import (
 )
 
 func (p *Plugin) createBotSession() (*model.Session, error) {
-	m, err := cluster.NewMutex(p.API, "ensure_bot")
+	m, err := cluster.NewMutex(p.API, p.metrics, "ensure_bot", cluster.MutexConfig{})
 	if err != nil {
 		return nil, err
 	}
-	m.Lock()
+	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
+	defer cancelCtx()
+	if err := m.Lock(lockCtx); err != nil {
+		return nil, fmt.Errorf("failed to lock cluster mutex: %w", err)
+	}
 	defer m.Unlock()
 
 	botID, err := p.API.EnsureBotUser(&model.Bot{
@@ -51,6 +56,11 @@ func (p *Plugin) OnActivate() error {
 	if os.Getenv("MM_CALLS_DISABLE") == "true" {
 		p.LogInfo("disable flag is set, exiting")
 		return fmt.Errorf("disabled by environment flag")
+	}
+
+	if err := p.initDB(); err != nil {
+		p.LogError(err.Error())
+		return err
 	}
 
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
@@ -198,6 +208,12 @@ func (p *Plugin) OnActivate() error {
 func (p *Plugin) OnDeactivate() error {
 	p.LogDebug("deactivate")
 	close(p.stopCh)
+
+	if p.wDB != nil {
+		if err := p.wDB.Close(); err != nil {
+			p.LogError(err.Error())
+		}
+	}
 
 	if p.rtcdManager != nil {
 		if err := p.rtcdManager.Close(); err != nil {

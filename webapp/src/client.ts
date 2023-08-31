@@ -8,7 +8,7 @@ import {EventEmitter} from 'events';
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate';
 
-import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo} from 'src/types/types';
+import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo, CallsClientJoinData} from 'src/types/types';
 
 import {logErr, logDebug, logWarn, logInfo} from './log';
 import {getScreenStream} from './utils';
@@ -154,8 +154,8 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
-    public async init(channelID: string, title?: string, rootId?: string) {
-        this.channelID = channelID;
+    public async init(joinData: CallsClientJoinData) {
+        this.channelID = joinData.channelID;
 
         if (!window.isSecureContext) {
             throw insecureContextErr;
@@ -201,17 +201,13 @@ export default class CallsClient extends EventEmitter {
             if (isReconnect) {
                 logDebug('ws reconnect, sending reconnect msg');
                 ws.send('reconnect', {
-                    channelID,
+                    channelID: joinData.channelID,
                     originalConnID,
                     prevConnID,
                 });
             } else {
                 logDebug('ws open, sending join msg');
-                ws.send('join', {
-                    channelID,
-                    title,
-                    threadID: rootId,
-                });
+                ws.send('join', joinData);
             }
         });
 

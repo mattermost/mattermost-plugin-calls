@@ -27,7 +27,7 @@ var callDismissNotificationRE = regexp.MustCompile(`^/calls/([a-z0-9]+)/dismiss-
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
-func (p *Plugin) handleGetVersion(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleGetVersion(w http.ResponseWriter) {
 	info := map[string]interface{}{
 		"version": manifest.Version,
 		"build":   buildHash,
@@ -49,7 +49,7 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 
 	mobile, postGA := isMobilePostGA(r)
 
-	state, err := p.kvGetChannelState(channelID)
+	state, err := p.kvGetChannelState(channelID, false)
 	if err != nil {
 		p.LogError(err.Error())
 	}
@@ -136,10 +136,10 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			state, err := p.kvGetChannelState(channelID)
+			state, err := p.kvGetChannelState(channelID, false)
 			if err != nil {
 				p.LogError(err.Error())
-				http.Error(w, appErr.Error(), http.StatusInternalServerError)
+				continue
 			}
 
 			enabled := state.Enabled
@@ -179,12 +179,13 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 
 	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 
-	state, err := p.kvGetChannelState(channelID)
+	state, err := p.lockCall(channelID)
 	if err != nil {
-		res.Err = err.Error()
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
+	defer p.unlockCall(channelID)
 
 	if state == nil || state.Call == nil {
 		res.Err = "no call ongoing"
@@ -198,40 +199,32 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 		return
 	}
 
-	callID := state.Call.ID
+	if state.Call.EndAt == 0 {
+		state.Call.EndAt = time.Now().UnixMilli()
+	}
 
-	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil || state.Call == nil {
-			return nil, nil
-		}
-
-		if state.Call.ID != callID {
-			return nil, fmt.Errorf("previous call has ended and new one has started")
-		}
-
-		if state.Call.EndAt == 0 {
-			state.Call.EndAt = time.Now().UnixMilli()
-		}
-
-		return state, nil
-	}); err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusForbidden
+	if err := p.kvSetChannelState(channelID, state); err != nil {
+		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
 	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+	callID := state.Call.ID
 
 	go func() {
 		// We wait a few seconds for the call to end cleanly. If this doesn't
 		// happen we force end it.
 		time.Sleep(5 * time.Second)
 
-		state, err := p.kvGetChannelState(channelID)
+		state, err := p.lockCall(channelID)
 		if err != nil {
-			p.LogError(err.Error())
+			p.LogError("failed to lock call", "err", err.Error())
 			return
 		}
+		defer p.unlockCall(channelID)
+
 		if state == nil || state.Call == nil || state.Call.ID != callID {
 			return
 		}
@@ -244,7 +237,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 			}
 		}
 
-		if err := p.cleanCallState(channelID); err != nil {
+		if err := p.cleanCallState(channelID, state); err != nil {
 			p.LogError(err.Error())
 		}
 	}()
@@ -259,12 +252,13 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 
 	userID := r.Header.Get("Mattermost-User-Id")
 
-	state, err := p.kvGetChannelState(channelID)
+	state, err := p.lockCall(channelID)
 	if err != nil {
-		res.Err = err.Error()
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
+	defer p.unlockCall(channelID)
 
 	if state == nil || state.Call == nil {
 		res.Err = "no call ongoing"
@@ -272,33 +266,21 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	callID := state.Call.ID
+	if state.Call.DismissedNotification == nil {
+		state.Call.DismissedNotification = make(map[string]bool)
+	}
+	state.Call.DismissedNotification[userID] = true
 
-	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil || state.Call == nil {
-			return nil, nil
-		}
-
-		if state.Call.ID != callID {
-			return nil, fmt.Errorf("previous call has ended and new one has started")
-		}
-
-		if state.Call.DismissedNotification == nil {
-			state.Call.DismissedNotification = make(map[string]bool)
-		}
-		state.Call.DismissedNotification[userID] = true
-
-		return state, nil
-	}); err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusForbidden
+	if err := p.kvSetChannelState(channelID, state); err != nil {
+		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
 	// For now, only send to the user that dismissed the notification. May change in the future.
 	p.publishWebSocketEvent(wsEventUserDismissedNotification, map[string]interface{}{
 		"userID": userID,
-		"callID": callID,
+		"callID": state.Call.ID,
 	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 
 	res.Code = http.StatusOK
@@ -386,15 +368,27 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		return
 	}
 
-	if err := p.kvSetAtomicChannelState(channelID, func(state *channelState) (*channelState, error) {
-		if state == nil {
-			state = &channelState{}
+	state, err := p.lockCall(channelID)
+	if err != nil {
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer func() {
+		p.unlockCall(channelID)
+		if res.Err != "" {
+			return
 		}
-		state.Enabled = info.Enabled
-		return state, nil
-	}); err != nil {
-		// handle creation case
-		res.Err = err.Error()
+		if err := json.NewEncoder(w).Encode(info); err != nil {
+			p.LogError(err.Error())
+		}
+	}()
+	if state == nil {
+		state = &channelState{}
+	}
+	state.Enabled = info.Enabled
+	if err := p.kvSetChannelState(channelID, state); err != nil {
+		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
@@ -407,10 +401,6 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 	}
 
 	p.publishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-
-	if err := json.NewEncoder(w).Encode(info); err != nil {
-		p.LogError(err.Error())
-	}
 }
 
 func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
@@ -519,9 +509,9 @@ func (p *Plugin) checkAPIRateLimits(userID string) error {
 	return nil
 }
 
-func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/version") {
-		p.handleGetVersion(w, r)
+		p.handleGetVersion(w)
 		return
 	}
 
