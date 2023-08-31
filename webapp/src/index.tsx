@@ -586,6 +586,14 @@ export default class Plugin {
                 const data = await Client4.doFetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
 
                 for (let i = 0; i < data.length; i++) {
+                    actions.push({
+                        type: RECEIVED_CHANNEL_STATE,
+                        data: {
+                            id: data[i].channel_id,
+                            enabled: data[i].enabled,
+                        },
+                    });
+
                     const call = data[i].call;
 
                     if (!call || !call.users?.length) {
@@ -647,6 +655,18 @@ export default class Plugin {
             return actions;
         };
 
+        const registerHeaderMenuComponentIfNeeded = async (channelID: string) => {
+            try {
+                registry.unregisterComponent(channelHeaderMenuID);
+                if (hasPermissionsToEnableCalls(store.getState(), channelID)) {
+                    registerChannelHeaderMenuAction();
+                }
+            } catch (err) {
+                registry.unregisterComponent(channelHeaderMenuID);
+                logErr(err);
+            }
+        };
+
         const fetchChannelData = async (channelID: string) => {
             if (!channelID) {
                 // Must be Global threads view, or another view that isn't a channel.
@@ -668,15 +688,7 @@ export default class Plugin {
                 }
             }
 
-            try {
-                registry.unregisterComponent(channelHeaderMenuID);
-                if (hasPermissionsToEnableCalls(store.getState(), channelID)) {
-                    registerChannelHeaderMenuAction();
-                }
-            } catch (err) {
-                registry.unregisterComponent(channelHeaderMenuID);
-                logErr(err);
-            }
+            await registerHeaderMenuComponentIfNeeded(channelID);
 
             try {
                 const data = await Client4.doFetch<CallChannelState>(`${getPluginPath()}/${channelID}`, {method: 'get'});
@@ -766,7 +778,14 @@ export default class Plugin {
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
             if (currChannelId !== currentChannelId) {
+                const firstLoad = !currChannelId;
                 currChannelId = currentChannelId;
+
+                // We only want to register the header menu component on first load and not
+                // on every channel switch.
+                if (firstLoad) {
+                    registerHeaderMenuComponentIfNeeded(currentChannelId);
+                }
 
                 if (currChannelId && Boolean(joinCallParam) && !channelIDForCurrentCall(store.getState())) {
                     connectCall(currChannelId);
