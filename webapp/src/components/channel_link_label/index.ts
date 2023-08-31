@@ -2,7 +2,6 @@ import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {connect} from 'react-redux';
-
 import {voiceConnectedChannels, voiceConnectedProfilesInChannel} from 'src/selectors';
 
 import ChannelLinkLabel from './component';

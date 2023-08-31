@@ -1,7 +1,6 @@
 import React from 'react';
-import styled from 'styled-components';
-
 import {isMac} from 'src/shortcuts';
+import styled from 'styled-components';
 
 type Props = {
     shortcut: string,

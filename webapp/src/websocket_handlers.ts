@@ -16,31 +16,30 @@ import {
 import {WebSocketMessage} from '@mattermost/types/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-
 import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected} from 'src/actions';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 import {notificationSounds} from 'src/webapp_globals';
 
 import {
-    VOICE_CHANNEL_USER_MUTED,
-    VOICE_CHANNEL_USER_UNMUTED,
-    VOICE_CHANNEL_USER_CONNECTED,
-    VOICE_CHANNEL_PROFILE_CONNECTED,
-    VOICE_CHANNEL_CALL_START,
+    DISMISS_CALL,
     VOICE_CHANNEL_CALL_END,
-    VOICE_CHANNEL_ROOT_POST,
-    VOICE_CHANNEL_USER_VOICE_ON,
-    VOICE_CHANNEL_USER_VOICE_OFF,
-    VOICE_CHANNEL_USER_SCREEN_ON,
-    VOICE_CHANNEL_USER_SCREEN_OFF,
-    VOICE_CHANNEL_USER_RAISE_HAND,
-    VOICE_CHANNEL_USER_UNRAISE_HAND,
-    VOICE_CHANNEL_USER_REACTED,
-    VOICE_CHANNEL_USER_REACTED_TIMEOUT,
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
+    VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_PROFILE_CONNECTED,
+    VOICE_CHANNEL_ROOT_POST,
+    VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_JOINED_TIMEOUT,
-    DISMISS_CALL,
+    VOICE_CHANNEL_USER_MUTED,
+    VOICE_CHANNEL_USER_RAISE_HAND,
+    VOICE_CHANNEL_USER_REACTED,
+    VOICE_CHANNEL_USER_REACTED_TIMEOUT,
+    VOICE_CHANNEL_USER_SCREEN_OFF,
+    VOICE_CHANNEL_USER_SCREEN_ON,
+    VOICE_CHANNEL_USER_UNMUTED,
+    VOICE_CHANNEL_USER_UNRAISE_HAND,
+    VOICE_CHANNEL_USER_VOICE_OFF,
+    VOICE_CHANNEL_USER_VOICE_ON,
 } from './action_types';
 import {logErr} from './log';
 import {
@@ -52,11 +51,11 @@ import {
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
 import {
-    getProfilesByIds,
-    playSound,
     followThread,
-    getUserDisplayName,
     getCallsClient,
+    getProfilesByIds,
+    getUserDisplayName,
+    playSound,
 } from './utils';
 
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {

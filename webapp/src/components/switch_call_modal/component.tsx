@@ -1,12 +1,11 @@
+import './component.scss';
+
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
-
 import CompassIcon from 'src/components/icons/compassIcon';
-import {isDMChannel, isGMChannel, getUserDisplayName, untranslatable} from 'src/utils';
-
-import './component.scss';
+import {getUserDisplayName, isDMChannel, isGMChannel, untranslatable} from 'src/utils';
 
 interface Props {
     intl: IntlShape,

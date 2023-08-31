@@ -13,7 +13,6 @@ import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-re
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
 import {MessageDescriptor} from 'react-intl';
 import {Dispatch} from 'redux';
-
 import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from 'src/cloud_pricing/modals';
 import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
@@ -34,23 +33,23 @@ import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
     ADD_INCOMING_CALL,
+    DID_RING_FOR_CALL,
+    DISMISS_CALL,
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
     RECORDINGS_ENABLED,
+    REMOVE_INCOMING_CALL,
+    RINGING_FOR_CALL,
+    RTCD_ENABLED,
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
     VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
     VOICE_CHANNEL_USER_DISCONNECTED,
-    RTCD_ENABLED,
-    REMOVE_INCOMING_CALL,
-    DID_RING_FOR_CALL,
-    RINGING_FOR_CALL,
-    DISMISS_CALL,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {

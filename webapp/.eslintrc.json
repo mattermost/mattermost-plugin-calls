@@ -20,7 +20,8 @@
     "react",
     "import",
     "formatjs",
-    "unused-imports"
+    "unused-imports",
+    "simple-import-sort"
   ],
   "env": {
     "browser": true,
@@ -48,6 +49,8 @@
     }
   },
   "rules": {
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error",
     "formatjs/no-literal-string-in-jsx": [
       2
     ],
@@ -144,62 +147,6 @@
     "guard-for-in": 2,
     "id-blacklist": 0,
     "import/no-unresolved": 0,
-    // ts handles this better
-    "import/order": [
-      "error",
-      {
-        "newlines-between": "always",
-        "groups": [
-          "builtin",
-          "external",
-          [
-            "internal",
-            "parent"
-          ],
-          "sibling",
-          "index"
-        ],
-        "pathGroups": [
-          {
-            "pattern": "(@mattermost|mattermost-redux)/**",
-            "group": "external",
-            "position": "after"
-          }
-        ],
-        "alphabetize": {
-          "order": "asc",
-          "caseInsensitive": true
-        }
-      }
-    ],
-    "indent": [
-      2,
-      4,
-      {
-        "SwitchCase": 0
-      }
-    ],
-    "jsx-quotes": [
-      2,
-      "prefer-single"
-    ],
-    "key-spacing": [
-      2,
-      {
-        "beforeColon": false,
-        "afterColon": true,
-        "mode": "strict"
-      }
-    ],
-    "keyword-spacing": [
-      2,
-      {
-        "before": true,
-        "after": true,
-        "overrides": {}
-      }
-    ],
-    "line-comment-position": 0,
     "linebreak-style": 2,
     "lines-around-comment": [
       2,

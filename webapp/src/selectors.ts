@@ -12,10 +12,10 @@ import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/enti
 import {getCurrentTeamId, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {
     getCurrentUserId,
-    getUsers,
     getUserIdsInChannels,
-    isCurrentUserSystemAdmin,
+    getUsers,
     getUserStatuses,
+    isCurrentUserSystemAdmin,
 } from 'mattermost-redux/selectors/entities/users';
 import {
     getGroupDisplayNameFromUserIds,
@@ -25,7 +25,6 @@ import {
 } from 'mattermost-redux/utils/channel_utils';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
-
 import {callState} from 'src/reducers';
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
 import {getChannelURL} from 'src/utils';

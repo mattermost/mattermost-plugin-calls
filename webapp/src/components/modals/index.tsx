@@ -3,10 +3,9 @@
 
 import React, {ComponentProps} from 'react';
 import {useIntl} from 'react-intl';
-import styled from 'styled-components';
-
 import GenericModal from 'src/components/generic_modal';
 import {VerticalSpacer} from 'src/components/shared';
+import styled from 'styled-components';
 
 type Props = Partial<ComponentProps<typeof GenericModal>>;
 export const IDTestModeUser = 'calls_test_mode_user';

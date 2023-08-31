@@ -5,20 +5,18 @@ import {getLicenseConfig} from 'mattermost-redux/actions/general';
 import React, {ChangeEvent, useEffect, useState} from 'react';
 import {FormattedMessage} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
-import {CustomComponentProps} from 'src/types/mattermost-webapp';
-
 import {requestOnPremTrialLicense, setRTCDEnabled} from 'src/actions';
 import {
-    LabelRow,
-    UpgradePill,
     EnterprisePill,
-    LeftBox,
-    Title,
-    Text,
     Footer,
     FooterText,
+    LabelRow,
+    LeftBox,
     leftCol,
     rightCol,
+    Text,
+    Title,
+    UpgradePill,
 } from 'src/components/admin_console_settings/common';
 import {
     IDOnPremTrialError,
@@ -30,6 +28,7 @@ import {PrimaryButton} from 'src/components/buttons';
 import {HorizontalSpacer, VerticalSpacer} from 'src/components/shared';
 import manifest from 'src/manifest';
 import {adminStats, isCloud, isOnPremNotEnterprise} from 'src/selectors';
+import {CustomComponentProps} from 'src/types/mattermost-webapp';
 import {untranslatable} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 

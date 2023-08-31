@@ -4,8 +4,7 @@
 import {EmojiData} from '@calls/common/lib/types';
 import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
 import React from 'react';
-
-import {Emojis, EmojiIndicesByUnicode} from 'src/emojis/emoji';
+import {EmojiIndicesByUnicode, Emojis} from 'src/emojis/emoji';
 
 interface Props {
     emoji?: EmojiData;

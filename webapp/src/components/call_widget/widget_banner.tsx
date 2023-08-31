@@ -1,7 +1,6 @@
 import React, {useState} from 'react';
-import styled from 'styled-components';
-
 import CompassIcon from 'src/components/icons/compassIcon';
+import styled from 'styled-components';
 
 type Props = {
     id: string,
