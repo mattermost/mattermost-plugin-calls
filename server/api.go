@@ -138,7 +138,7 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 			state, err := p.kvGetChannelState(channelID)
 			if err != nil {
 				p.LogError(err.Error())
-				http.Error(w, appErr.Error(), http.StatusInternalServerError)
+				continue
 			}
 
 			enabled := state.Enabled
