@@ -95,20 +95,15 @@ export const useOnACallWithoutGlobalWidget = () => {
 };
 
 const getNotificationSoundFromChannelMemberAndUser = (member: ChannelMembership | null | undefined, user: UserProfile) => {
-    // @ts-ignore We're using an outdated webapp
     if (member?.notify_props?.desktop_notification_sound) {
-        // @ts-ignore same
         return member.notify_props.desktop_notification_sound;
     }
 
-    // @ts-ignore same
     return user.notify_props?.desktop_notification_sound ? user.notify_props.desktop_notification_sound : 'Bing';
 };
 
 const getDesktopSoundFromChannelMemberAndUser = (member: ChannelMembership | null | undefined, user: UserProfile) => {
-    // @ts-ignore We're using an outdated webapp
     if (member?.notify_props?.desktop_sound) {
-        // @ts-ignore We're using an outdated webapp
         if (member.notify_props.desktop_sound === 'off') {
             return false;
         }
@@ -118,15 +113,12 @@ const getDesktopSoundFromChannelMemberAndUser = (member: ChannelMembership | nul
 };
 
 const getRingingFromUser = (user: UserProfile) => {
-    // @ts-ignore We're using an outdated webapp
     const callsRing = !user.notify_props || (user.notify_props.calls_desktop_sound || 'true') === 'true'; // default true if not set
     return !user.notify_props || (callsRing && user.notify_props.desktop !== NotificationLevel.NONE);
 };
 
 const getDesktopNotification = (member: ChannelMembership | null | undefined, user: UserProfile) => {
-    // @ts-ignore We're using an outdated webapp
     if (member?.notify_props?.desktop_sound) {
-        // @ts-ignore We're using an outdated webapp
         if (member.notify_props.desktop === NotificationLevel.NONE) {
             return false;
         }
@@ -171,12 +163,10 @@ export const useRingingAndNotification = (call: IncomingCallNotification, onWidg
         // If we're on the desktopWidget then don't ring because the ringing will be handled by the main webapp.
         const ringHandledByWebapp = onWidget && shouldRenderDesktopWidget();
 
-        // @ts-ignore Our mattermost import is old and at the moment un-updatable.
         if (!shouldRing || didRing || ringHandledByWebapp) {
             return;
         }
 
-        // @ts-ignore same
         dispatch(ringForCall(call.callID, currentUser.notify_props.calls_notification_sound || DEFAULT_RING_SOUND));
     }, []);
 };
