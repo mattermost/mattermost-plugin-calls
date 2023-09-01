@@ -1,4 +1,4 @@
-import {CallsConfig, UserState} from '@calls/common/lib/types';
+import {CallsConfig, UserState, CallState} from '@calls/common/lib/types';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
@@ -434,7 +434,7 @@ export const stopRingingForCall = (callID: string): ActionFunc => {
     };
 };
 
-export const loadCallState = (channelID: string, call: any) => async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export const loadCallState = (channelID: string, call: CallState) => async (dispatch: DispatchFunc, getState: GetStateFunc) => {
     const actions: AnyAction[] = [];
 
     actions.push({
