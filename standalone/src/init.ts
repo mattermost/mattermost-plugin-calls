@@ -78,14 +78,14 @@ import {
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
 import RestClient from 'src/rest_client';
-import {CallActions, CallsClientConfig, CurrentCallData, CurrentCallDataDefault, CallsClientConfig, CallsClientJoinData} from 'src/types/types';
+import {CallActions, CallsClientConfig, CallsClientJoinData, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     getCallID,
     getCallTitle,
+    getJobID,
     getRootID,
     getToken,
-    getJobID,
 } from './common';
 import {applyTheme} from './theme_utils';
 
