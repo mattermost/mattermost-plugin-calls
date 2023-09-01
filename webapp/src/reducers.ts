@@ -2,7 +2,6 @@
 import {CallRecordingState, CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
 import {combineReducers} from 'redux';
-
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {
     CallsConfigDefault,
@@ -14,7 +13,11 @@ import {
 } from 'src/types/types';
 
 import {
+    ADD_INCOMING_CALL,
     DESKTOP_WIDGET_CONNECTED,
+    DID_NOTIFY_FOR_CALL,
+    DID_RING_FOR_CALL,
+    DISMISS_CALL,
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
@@ -22,6 +25,10 @@ import {
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CHANNEL_STATE,
+    RECORDINGS_ENABLED,
+    REMOVE_INCOMING_CALL,
+    RINGING_FOR_CALL,
+    RTCD_ENABLED,
     SHOW_END_CALL_MODAL,
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
@@ -37,6 +44,7 @@ import {
     VOICE_CHANNEL_UNINIT,
     VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_DISCONNECTED,
+    VOICE_CHANNEL_USER_JOINED_TIMEOUT,
     VOICE_CHANNEL_USER_MUTED,
     VOICE_CHANNEL_USER_RAISE_HAND,
     VOICE_CHANNEL_USER_REACTED,
@@ -49,15 +57,6 @@ import {
     VOICE_CHANNEL_USER_VOICE_ON,
     VOICE_CHANNEL_USERS_CONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
-    VOICE_CHANNEL_USER_JOINED_TIMEOUT,
-    RECORDINGS_ENABLED,
-    ADD_INCOMING_CALL,
-    REMOVE_INCOMING_CALL,
-    DID_RING_FOR_CALL,
-    RTCD_ENABLED,
-    DID_NOTIFY_FOR_CALL,
-    RINGING_FOR_CALL,
-    DISMISS_CALL,
 } from './action_types';
 
 interface channelStateAction {

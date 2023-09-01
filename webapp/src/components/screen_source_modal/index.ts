@@ -5,7 +5,6 @@ import {bindActionCreators, Dispatch} from 'redux';
 
 import {hideScreenSourceModal} from '../../actions';
 import {connectedChannelID, screenSourceModal} from '../../selectors';
-
 import ScreenSourceModal from './component';
 
 const mapStateToProps = (state: GlobalState) => {

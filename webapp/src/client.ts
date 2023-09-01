@@ -1,16 +1,15 @@
 /* eslint-disable max-lines */
 
-import {parseRTCStats, RTCPeer, RTCMonitor} from '@calls/common';
+// eslint-disable-next-line simple-import-sort/imports
+import {parseRTCStats, RTCMonitor, RTCPeer} from '@calls/common';
 import {EmojiData} from '@calls/common/lib/types';
-// eslint-disable-next-line import/order
 import {EventEmitter} from 'events';
 
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate';
-
 import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo} from 'src/types/types';
 
-import {logErr, logDebug, logWarn, logInfo} from './log';
+import {logDebug, logErr, logInfo, logWarn} from './log';
 import {getScreenStream} from './utils';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 
@@ -494,14 +493,14 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
-    public getLocalScreenStream(): MediaStream|null {
+    public getLocalScreenStream(): MediaStream | null {
         if (!this.localScreenTrack) {
             return null;
         }
         return new MediaStream([this.localScreenTrack]);
     }
 
-    public getRemoteScreenStream(): MediaStream|null {
+    public getRemoteScreenStream(): MediaStream | null {
         if (!this.remoteScreenTrack || this.remoteScreenTrack.readyState !== 'live') {
             return null;
         }
@@ -608,7 +607,7 @@ export default class CallsClient extends EventEmitter {
             throw new Error('not connected');
         }
 
-        const tracksInfo : TrackInfo[] = [];
+        const tracksInfo: TrackInfo[] = [];
         this.streams.forEach((stream) => {
             return stream.getTracks().forEach((track) => {
                 tracksInfo.push({

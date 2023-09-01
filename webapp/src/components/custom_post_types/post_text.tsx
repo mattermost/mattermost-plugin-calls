@@ -6,9 +6,8 @@ import {Team} from '@mattermost/types/teams';
 import {getChannelsNameMapInCurrentTeam} from 'mattermost-redux/selectors/entities/channels';
 import React, {ReactNode, ReactNodeArray} from 'react';
 import {useSelector} from 'react-redux';
-import styled from 'styled-components';
-
 import {ChannelNamesMap} from 'src/components/custom_post_types/types';
+import styled from 'styled-components';
 
 interface Props {
     text: string;

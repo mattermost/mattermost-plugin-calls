@@ -3,9 +3,9 @@ import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redu
 import {getTeam as getTeamAction, selectTeam} from 'mattermost-redux/actions/teams';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {Theme} from 'mattermost-redux/types/themes';
 import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {
     VOICE_CHANNEL_USER_CONNECTED,
@@ -17,9 +17,9 @@ import {
 } from 'plugin/log';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
-    sendDesktopEvent,
-    playSound,
     fetchTranslationsFile,
+    playSound,
+    sendDesktopEvent,
 } from 'plugin/utils';
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -92,7 +92,7 @@ async function initStoreWidget(store: Store, channelID: string) {
     } else {
         await getChannelMembers(channel.id)(store.dispatch, store.getState);
         const teams = getTeams(store.getState());
-        await selectTeam(Object.values(teams)[0])(store.dispatch, store.getState);
+        store.dispatch(selectTeam(Object.values(teams)[0]));
     }
 }
 

@@ -11,8 +11,6 @@ import EmojiPicker, {
 import React, {forwardRef, useImperativeHandle, useState} from 'react';
 import {OverlayTrigger} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
-import styled, {css} from 'styled-components';
-
 import {Emoji} from 'src/components/emoji/emoji';
 import ControlsButton from 'src/components/expanded_view/controls_button';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -25,6 +23,7 @@ import {EmojiIndicesByAlias} from 'src/emojis/emoji';
 import {MAKE_REACTION, RAISE_LOWER_HAND, reverseKeyMappings} from 'src/shortcuts';
 import * as Telemetry from 'src/types/telemetry';
 import {getCallsClient} from 'src/utils';
+import styled, {css} from 'styled-components';
 
 const EMOJI_VERSION = '13';
 

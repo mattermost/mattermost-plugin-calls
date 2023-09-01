@@ -1,4 +1,6 @@
 /* eslint-disable max-lines */
+import './component.scss';
+
 import {mosThreshold} from '@calls/common';
 import {UserState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
@@ -9,7 +11,6 @@ import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from '
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
-
 import {AudioInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
 import Badge from 'src/components/badge';
@@ -61,8 +62,6 @@ import LoadingOverlay from './loading_overlay';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
-
-import './component.scss';
 
 interface Props {
     intl: IntlShape,

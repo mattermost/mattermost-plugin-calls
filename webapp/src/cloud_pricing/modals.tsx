@@ -5,12 +5,11 @@ import {Thunk} from 'mattermost-redux/types/actions';
 import React, {ComponentProps} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
-import styled from 'styled-components';
-
 import {displayCloudPricing, notifyAdminCloudFreeTrial} from 'src/actions';
 import GenericModal from 'src/components/generic_modal';
 import {VerticalSpacer} from 'src/components/shared';
 import {isCloudTrialCompleted} from 'src/selectors';
+import styled from 'styled-components';
 
 export const IDUser = 'cloud_free_trial_user';
 export const IDAdmin = 'cloud_free_trial_admin';

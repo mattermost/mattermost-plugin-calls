@@ -1,6 +1,5 @@
 import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
-import {LicenseSkus} from '@mattermost/types/general';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
@@ -12,10 +11,10 @@ import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/enti
 import {getCurrentTeamId, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {
     getCurrentUserId,
-    getUsers,
     getUserIdsInChannels,
-    isCurrentUserSystemAdmin,
+    getUsers,
     getUserStatuses,
+    isCurrentUserSystemAdmin,
 } from 'mattermost-redux/selectors/entities/users';
 import {
     getGroupDisplayNameFromUserIds,
@@ -25,7 +24,6 @@ import {
 } from 'mattermost-redux/utils/channel_utils';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
-
 import {callState} from 'src/reducers';
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
 import {getChannelURL} from 'src/utils';
@@ -358,6 +356,15 @@ export const hasPermissionsToEnableCalls = (state: GlobalState, channelId: strin
 //
 // Selectors for Cloud and beta limits:
 //
+// Having trouble importing this, so embed.
+enum LicenseSkus {
+    E10 = 'E10',
+    E20 = 'E20',
+    Starter = 'starter',
+    Professional = 'professional',
+    Enterprise = 'enterprise',
+}
+
 const cloudSku = (state: GlobalState): string =>
     callsConfig(state).sku_short_name;
 

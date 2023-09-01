@@ -14,7 +14,6 @@ import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-r
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
-
 import CallsClient from 'src/client';
 
 import {logDebug, logErr, logWarn} from './log';

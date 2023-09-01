@@ -1,3 +1,12 @@
+// CSS
+import 'mattermost-webapp/sass/styles.scss';
+import 'mattermost-webapp/components/widgets/menu/menu.scss';
+import 'mattermost-webapp/components/widgets/menu/menu_group.scss';
+import 'mattermost-webapp/components/widgets/menu/menu_header.scss';
+import 'mattermost-webapp/components/widgets/menu/menu_wrapper.scss';
+import 'mattermost-webapp/components/widgets/menu/menu_items/menu_item.scss';
+import '@mattermost/compass-icons/css/compass-icons.css';
+
 import {
     CallChannelState,
     CallHostChangedData,
@@ -16,24 +25,23 @@ import {
     UserVoiceOnOffData,
     WebsocketEventData,
 } from '@calls/common/lib/types';
-import {WebSocketMessage} from '@mattermost/types/websocket';
+import {WebSocketMessage} from '@mattermost/client';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
-import {getMyTeams, getMyTeamMembers} from 'mattermost-redux/actions/teams';
+import {getMyTeamMembers, getMyTeams} from 'mattermost-redux/actions/teams';
 import {getMe} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
-import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
+import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {Theme} from 'mattermost-redux/types/themes';
 import {
-    VOICE_CHANNEL_USER_SCREEN_ON,
-    VOICE_CHANNEL_ROOT_POST,
+    VOICE_CHANNEL_CALL_START,
     VOICE_CHANNEL_PROFILES_CONNECTED,
+    VOICE_CHANNEL_ROOT_POST,
+    VOICE_CHANNEL_USER_SCREEN_ON,
     VOICE_CHANNEL_USERS_CONNECTED,
     VOICE_CHANNEL_USERS_CONNECTED_STATES,
-    VOICE_CHANNEL_CALL_START,
 } from 'plugin/action_types';
 import {getCallsConfig} from 'plugin/actions';
 import CallsClient from 'plugin/client';
@@ -43,50 +51,42 @@ import {
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
-import {iceServers, needsTURNCredentials, callsConfig} from 'plugin/selectors';
+import {callsConfig, iceServers, needsTURNCredentials} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
-    getWSConnectionURL,
     getPluginPath,
     getProfilesByIds,
+    getWSConnectionURL,
 } from 'plugin/utils';
 import {
+    handleCallEnd,
+    handleCallHostChanged,
+    handleCallRecordingState,
+    handleCallStart,
     handleUserConnected,
     handleUserDisconnected,
-    handleCallStart,
-    handleCallEnd,
-    handleUserMuted,
-    handleUserUnmuted,
-    handleUserScreenOn,
-    handleUserScreenOff,
-    handleUserVoiceOn,
-    handleUserVoiceOff,
-    handleUserRaisedHand,
-    handleUserUnraisedHand,
-    handleCallHostChanged,
-    handleUserReaction,
-    handleCallRecordingState,
     handleUserDismissedNotification,
+    handleUserMuted,
+    handleUserRaisedHand,
+    handleUserReaction,
+    handleUserScreenOff,
+    handleUserScreenOn,
+    handleUserUnmuted,
+    handleUserUnraisedHand,
+    handleUserVoiceOff,
+    handleUserVoiceOn,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
-import {CallActions, CurrentCallData, CurrentCallDataDefault, CallsClientConfig} from 'src/types/types';
+import RestClient from 'src/rest_client';
+import {CallActions, CallsClientConfig, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     getCallID,
     getCallTitle,
-    getToken,
     getRootID,
+    getToken,
 } from './common';
 import {applyTheme} from './theme_utils';
-
-// CSS
-import 'mattermost-webapp/sass/styles.scss';
-import 'mattermost-webapp/components/widgets/menu/menu.scss';
-import 'mattermost-webapp/components/widgets/menu/menu_group.scss';
-import 'mattermost-webapp/components/widgets/menu/menu_header.scss';
-import 'mattermost-webapp/components/widgets/menu/menu_wrapper.scss';
-import 'mattermost-webapp/components/widgets/menu/menu_items/menu_item.scss';
-import '@mattermost/compass-icons/css/compass-icons.css';
 
 function setBasename() {
     const idx = window.location.pathname.indexOf('/plugins/');
@@ -135,7 +135,7 @@ function connectCall(
 }
 
 async function fetchChannelData(store: Store, channelID: string) {
-    const resp = await Client4.doFetch<CallChannelState>(
+    const resp = await RestClient.fetch<CallChannelState>(
         `${getPluginPath()}/${channelID}`,
         {method: 'get'},
     );
@@ -275,7 +275,7 @@ export default async function init(cfg: InitConfig) {
     const iceConfigs = [...iceServers(store.getState())];
     if (needsTURNCredentials(store.getState())) {
         logDebug('turn credentials needed');
-        const configs = await Client4.doFetch<RTCIceServer[]>(
+        const configs = await RestClient.fetch<RTCIceServer[]>(
             `${getPluginPath()}/turn-credentials`,
             {method: 'get'},
         );

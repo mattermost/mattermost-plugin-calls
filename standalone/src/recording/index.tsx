@@ -1,25 +1,31 @@
 import {UserConnectedData, WebsocketEventData} from '@calls/common/lib/types';
+import {WebSocketMessage} from '@mattermost/client';
 import {UserProfile} from '@mattermost/types/users';
-import {WebSocketMessage} from '@mattermost/types/websocket';
 import {ChannelTypes} from 'mattermost-redux/action_types';
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
-import {Theme} from 'mattermost-redux/types/themes';
-import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/users';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
-import {voiceConnectedProfilesInChannel, voiceChannelCallStartAt} from 'plugin/selectors';
+import {voiceChannelCallStartAt, voiceConnectedProfilesInChannel} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
-import {getProfilesByIds, getPluginPath, fetchTranslationsFile, setCallsGlobalCSSVars, runWithRetry} from 'plugin/utils';
+import {
+    fetchTranslationsFile,
+    getPluginPath,
+    getProfilesByIds,
+    runWithRetry,
+    setCallsGlobalCSSVars,
+} from 'plugin/utils';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {VOICE_CHANNEL_USER_CONNECTED} from 'src/action_types';
+import recordingReducer from 'src/recording/reducers';
+import RestClient from 'src/rest_client';
 
 import init from '../init';
-import recordingReducer from 'src/recording/reducers';
-
 import {
     RECEIVED_CALL_PROFILE_IMAGES,
 } from './action_types';
@@ -55,7 +61,7 @@ async function fetchProfileImages(profiles: UserProfile[]) {
 async function initRecordingStore(store: Store, channelID: string) {
     try {
         const channel = await runWithRetry(() => {
-            return Client4.doFetch(`${getPluginPath()}/bot/channels/${channelID}`, {method: 'get'});
+            return RestClient.fetch(`${getPluginPath()}/bot/channels/${channelID}`, {method: 'get'});
         });
 
         store.dispatch(

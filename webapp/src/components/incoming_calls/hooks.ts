@@ -12,7 +12,6 @@ import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {useEffect} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector, useStore} from 'react-redux';
-
 import {DID_NOTIFY_FOR_CALL, DID_RING_FOR_CALL} from 'src/action_types';
 import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal, trackEvent} from 'src/actions';
 import {DEFAULT_RING_SOUND} from 'src/constants';

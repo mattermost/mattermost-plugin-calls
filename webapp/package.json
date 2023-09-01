@@ -5,6 +5,7 @@
     "npm": "^9.0.0"
   },
   "scripts": {
+    "preinstall": "./install_mattermost_webapp.sh",
     "build": "webpack --mode=production",
     "build:watch": "webpack --mode=production --watch",
     "debug": "webpack --mode=none",
@@ -28,6 +29,7 @@
     "@babel/preset-react": "7.16.0",
     "@babel/preset-typescript": "7.16.0",
     "@formatjs/cli": "5.0.7",
+    "@mattermost/types": "file:mattermost-webapp/webapp/platform/types",
     "@types/jest": "27.0.2",
     "@types/lodash": "4.14.182",
     "@types/luxon": "3.3.0",
@@ -50,9 +52,9 @@
     "eslint": "8.33.0",
     "eslint-import-resolver-webpack": "0.13.2",
     "eslint-plugin-formatjs": "4.6.0",
-    "eslint-plugin-import": "2.27.5",
     "eslint-plugin-react": "7.32.2",
     "eslint-plugin-react-hooks": "4.6.0",
+    "eslint-plugin-simple-import-sort": "10.0.0",
     "eslint-plugin-unused-imports": "2.0.0",
     "file-loader": "6.2.0",
     "identity-obj-proxy": "3.0.0",
@@ -60,7 +62,7 @@
     "jest-canvas-mock": "2.4.0",
     "jest-junit": "12.2.0",
     "luxon": "3.3.0",
-    "mattermost-webapp": "github:mattermost/mattermost-webapp#6dcac2993000139f19c1b018f7fa6b9266973918",
+    "mattermost-webapp": "file:mattermost-webapp/webapp/channels",
     "process": "0.11.10",
     "react-intl": "5.20.12",
     "redux-thunk": "2.4.1",
@@ -72,7 +74,6 @@
   },
   "dependencies": {
     "@calls/common": "github:mattermost/calls-common#43011d8e9c7985b0542628329be098715a43dc03",
-    "@mattermost/types": "6.7.0-0",
     "@msgpack/msgpack": "2.7.1",
     "@redux-devtools/extension": "3.2.3",
     "core-js": "3.26.1",
@@ -90,10 +91,14 @@
     "semver-parser": "4.0.0",
     "styled-components": "5.3.6"
   },
+  "overrides": {
+    "@mattermost/client": "./mattermost-webapp/webapp/platform/client"
+  },
   "jest": {
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/non_npm_dependencies/"
+      "/non_npm_dependencies/",
+      "/mattermost-webapp/"
     ],
     "clearMocks": true,
     "collectCoverageFrom": [
@@ -108,9 +113,10 @@
       "^.+\\.(css|less|scss)$": "identity-obj-proxy",
       "^.*i18n.*\\.(json)$": "<rootDir>/tests/i18n_mock.json",
       "^bundle-loader\\?lazy\\!(.*)$": "$1",
-      "^@mattermost/types/(.*)$": "<rootDir>/node_modules/@mattermost/types/lib/$1",
-      "^mattermost-redux(.*)$": "<rootDir>/node_modules/mattermost-webapp/packages/mattermost-redux/src$1",
-      "^reselect": "<rootDir>/node_modules/mattermost-webapp/packages/reselect/src"
+      "^@mattermost/types/(.*)$": "<rootDir>/mattermost-webapp/webapp/platform/types/src/$1",
+      "^@mattermost/client/(.*)$": "<rootDir>/mattermost-webapp/webapp/platform/client/src/$1",
+      "^mattermost-redux(.*)$": "<rootDir>/mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src$1",
+      "^reselect": "<rootDir>/mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/selectors/create_selector/index"
     },
     "moduleDirectories": [
       "",

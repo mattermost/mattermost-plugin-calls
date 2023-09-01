@@ -1,14 +1,12 @@
+import './component.scss';
 
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
-
 import {endCall} from 'src/actions';
 import CompassIcon from 'src/components/icons/compassIcon';
-import {isDMChannel, isGMChannel, getUserDisplayName} from 'src/utils';
-
-import './component.scss';
+import {getUserDisplayName, isDMChannel, isGMChannel} from 'src/utils';
 
 interface Props {
     intl: IntlShape,
@@ -177,9 +175,9 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
                     </div>
 
                     { this.state.errorMsg &&
-                    <div style={this.style.error as CSSProperties}>
-                        { formatMessage({defaultMessage: 'An error has occurred: {errorMsg}'}, {errorMsg: this.state.errorMsg}) }
-                    </div>
+                        <div style={this.style.error as CSSProperties}>
+                            { formatMessage({defaultMessage: 'An error has occurred: {errorMsg}'}, {errorMsg: this.state.errorMsg}) }
+                        </div>
                     }
 
                     <div style={this.style.footer}>

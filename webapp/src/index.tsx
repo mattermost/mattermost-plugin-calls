@@ -1,10 +1,10 @@
 /* eslint-disable max-lines */
 
-import {UserState, CallChannelState} from '@calls/common/lib/types';
+import {CallChannelState, UserState} from '@calls/common/lib/types';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
-import {getCurrentChannelId, getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
@@ -19,14 +19,13 @@ import {injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {AnyAction} from 'redux';
 import {batchActions} from 'redux-batched-actions';
-
 import {
+    displayCallErrorModal,
+    displayCallsTestModeUser,
     displayFreeTrial,
     getCallsConfig,
-    displayCallErrorModal,
-    showScreenSourceModal,
-    displayCallsTestModeUser,
     incomingCallOnChannel,
+    showScreenSourceModal,
     showSwitchCallModal,
 } from 'src/actions';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
@@ -47,27 +46,28 @@ import {PostTypeRecording} from 'src/components/custom_post_types/post_type_reco
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import {DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
+import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
 import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
-    RECEIVED_CHANNEL_STATE,
-    VOICE_CHANNEL_USER_CONNECTED,
-    VOICE_CHANNEL_USERS_CONNECTED,
-    VOICE_CHANNEL_USERS_CONNECTED_STATES,
-    VOICE_CHANNEL_PROFILES_CONNECTED,
-    VOICE_CHANNEL_CALL_START,
-    VOICE_CHANNEL_USER_SCREEN_ON,
-    VOICE_CHANNEL_UNINIT,
-    VOICE_CHANNEL_ROOT_POST,
-    SHOW_SWITCH_CALL_MODAL,
     DESKTOP_WIDGET_CONNECTED,
+    RECEIVED_CHANNEL_STATE,
+    SHOW_SWITCH_CALL_MODAL,
     VOICE_CHANNEL_CALL_HOST,
     VOICE_CHANNEL_CALL_RECORDING_STATE,
+    VOICE_CHANNEL_CALL_START,
+    VOICE_CHANNEL_PROFILES_CONNECTED,
+    VOICE_CHANNEL_ROOT_POST,
+    VOICE_CHANNEL_UNINIT,
+    VOICE_CHANNEL_USER_CONNECTED,
     VOICE_CHANNEL_USER_MUTED,
-    VOICE_CHANNEL_USER_UNMUTED,
     VOICE_CHANNEL_USER_RAISE_HAND,
+    VOICE_CHANNEL_USER_SCREEN_ON,
+    VOICE_CHANNEL_USER_UNMUTED,
     VOICE_CHANNEL_USER_UNRAISE_HAND,
+    VOICE_CHANNEL_USERS_CONNECTED,
+    VOICE_CHANNEL_USERS_CONNECTED_STATES,
 } from './action_types';
 import CallsClient from './client';
 import CallWidget from './components/call_widget';
@@ -81,25 +81,25 @@ import EndCallModal from './components/end_call_modal';
 import ExpandedView from './components/expanded_view';
 import ScreenSourceModal from './components/screen_source_modal';
 import SwitchCallModal from './components/switch_call_modal';
-import {logErr, logDebug} from './log';
+import {logDebug, logErr} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
+    callsConfig,
+    callsExplicitlyDisabled,
+    callsExplicitlyEnabled,
+    channelHasCall,
     connectedChannelID,
+    defaultEnabled,
+    hasPermissionsToEnableCalls,
+    iceServers,
+    isCloudStarter,
+    isLimitRestricted,
+    needsTURNCredentials,
+    ringingEnabled,
+    voiceChannelCallStartAt,
     voiceConnectedUsers,
     voiceConnectedUsersInChannel,
-    voiceChannelCallStartAt,
-    isLimitRestricted,
-    iceServers,
-    needsTURNCredentials,
-    defaultEnabled,
-    isCloudStarter,
-    channelHasCall,
-    callsExplicitlyEnabled,
-    callsExplicitlyDisabled,
-    hasPermissionsToEnableCalls,
-    callsConfig,
-    ringingEnabled,
 } from './selectors';
 import {
     JOIN_CALL,
@@ -107,37 +107,37 @@ import {
 } from './shortcuts';
 import {PluginRegistry, Store} from './types/mattermost-webapp';
 import {
-    getPluginPath,
+    desktopGTE,
+    followThread,
+    getChannelURL,
     getExpandedChannelID,
+    getPluginPath,
     getProfilesByIds,
-    isDMChannel,
+    getTranslations,
     getUserIdFromDM,
     getWSConnectionURL,
+    isDMChannel,
     playSound,
-    followThread,
-    shouldRenderDesktopWidget,
     sendDesktopEvent,
-    getChannelURL,
-    getTranslations,
-    desktopGTE,
+    shouldRenderDesktopWidget,
 } from './utils';
 import {
-    handleUserConnected,
-    handleUserDisconnected,
-    handleCallStart,
     handleCallEnd,
-    handleUserMuted,
-    handleUserUnmuted,
-    handleUserScreenOn,
-    handleUserScreenOff,
-    handleUserVoiceOn,
-    handleUserVoiceOff,
-    handleUserRaisedHand,
-    handleUserUnraisedHand,
-    handleUserReaction,
     handleCallHostChanged,
     handleCallRecordingState,
+    handleCallStart,
+    handleUserConnected,
+    handleUserDisconnected,
     handleUserDismissedNotification,
+    handleUserMuted,
+    handleUserRaisedHand,
+    handleUserReaction,
+    handleUserScreenOff,
+    handleUserScreenOn,
+    handleUserUnmuted,
+    handleUserUnraisedHand,
+    handleUserVoiceOff,
+    handleUserVoiceOn,
 } from './websocket_handlers';
 
 export default class Plugin {
@@ -412,7 +412,7 @@ export default class Plugin {
                 if (needsTURNCredentials(state)) {
                     logDebug('turn credentials needed');
                     try {
-                        iceConfigs.push(...await Client4.doFetch<RTCIceServer[]>(`${getPluginPath()}/turn-credentials`, {method: 'get'}));
+                        iceConfigs.push(...await RestClient.fetch<RTCIceServer[]>(`${getPluginPath()}/turn-credentials`, {method: 'get'}));
                     } catch (err) {
                         logErr(err);
                     }
@@ -565,7 +565,7 @@ export default class Plugin {
                 ChannelHeaderMenuButton,
                 async () => {
                     try {
-                        const data = await Client4.doFetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
+                        const data = await RestClient.fetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
                             method: 'post',
                             body: JSON.stringify({enabled: callsExplicitlyDisabled(store.getState(), currChannelId)}),
                         });
@@ -584,7 +584,7 @@ export default class Plugin {
         const fetchChannels = async (): Promise<AnyAction[]> => {
             const actions = [];
             try {
-                const data = await Client4.doFetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
+                const data = await RestClient.fetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
 
                 for (let i = 0; i < data.length; i++) {
                     actions.push({
@@ -660,7 +660,7 @@ export default class Plugin {
             const actions = [];
 
             try {
-                const data = await Client4.doFetch<CallChannelState>(`${getPluginPath()}/${channelID}`, {method: 'get'});
+                const data = await RestClient.fetch<CallChannelState>(`${getPluginPath()}/${channelID}`, {method: 'get'});
                 actions.push({
                     type: RECEIVED_CHANNEL_STATE,
                     data: {id: channelID, enabled: data.enabled},

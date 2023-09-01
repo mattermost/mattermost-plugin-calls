@@ -3,7 +3,6 @@ import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels'
 import React, {useMemo, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-
 import ConnectedProfiles from 'src/components/connected_profiles';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import {useDismissJoin} from 'src/components/incoming_calls/hooks';

@@ -8,7 +8,6 @@ import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {connect} from 'react-redux';
 import {withRouter} from 'react-router-dom';
-
 import {
     hideExpandedView,
     prefetchThread,
@@ -20,10 +19,10 @@ import {
 import {
     allowScreenSharing,
     callRecording,
-    isRecording,
     connectedChannelID,
     expandedView,
     getChannelUrlAndDisplayName,
+    isRecording,
     recordingMaxDuration,
     recordingsEnabled,
     voiceChannelCallHostChangeAt,

@@ -7,8 +7,6 @@ import React, {useCallback} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-import styled from 'styled-components';
-
 import ConnectedProfiles from 'src/components/connected_profiles';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
@@ -19,12 +17,13 @@ import {Header, SubHeader} from 'src/components/shared';
 import Timestamp from 'src/components/timestamp';
 import {voiceChannelCallID} from 'src/selectors';
 import {
-    shouldRenderDesktopWidget,
-    sendDesktopEvent,
-    untranslatable,
+    callStartedTimestampFn,
     getUserDisplayName,
-    toHuman, callStartedTimestampFn,
+    sendDesktopEvent,
+    shouldRenderDesktopWidget,
+    toHuman, untranslatable,
 } from 'src/utils';
+import styled from 'styled-components';
 
 interface Props {
     post: Post,

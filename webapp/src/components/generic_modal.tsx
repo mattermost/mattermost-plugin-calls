@@ -5,9 +5,8 @@ import classNames from 'classnames';
 import React from 'react';
 import {Modal, ModalHeader} from 'react-bootstrap';
 import {FormattedMessage} from 'react-intl';
-import styled from 'styled-components';
-
 import {DestructiveButton, PrimaryButton, TertiaryButton} from 'src/components/buttons';
+import styled from 'styled-components';
 
 type Props = {
     className?: string;

@@ -5,9 +5,8 @@ import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
 
 import {hideEndCallModal} from '../../actions';
-import {voiceConnectedUsersInChannel, endCallModal} from '../../selectors';
-import {isDMChannel, getUserIdFromDM} from '../../utils';
-
+import {endCallModal, voiceConnectedUsersInChannel} from '../../selectors';
+import {getUserIdFromDM, isDMChannel} from '../../utils';
 import EndCallModal from './component';
 
 const mapStateToProps = (state: GlobalState) => {
