@@ -412,7 +412,7 @@ export default class Plugin {
                 if (needsTURNCredentials(state)) {
                     logDebug('turn credentials needed');
                     try {
-                        iceConfigs.push(...await RestClient.fetch<RTCIceServer[]>(`${getPluginPath()}/turn-credentials`, {method: 'get'}));
+                        iceConfigs.push(...await RestClient.doFetch<RTCIceServer[]>(`${getPluginPath()}/turn-credentials`, {method: 'get'}));
                     } catch (err) {
                         logErr(err);
                     }
@@ -569,7 +569,7 @@ export default class Plugin {
                 ChannelHeaderMenuButton,
                 async () => {
                     try {
-                        const data = await RestClient.fetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
+                        const data = await RestClient.doFetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
                             method: 'post',
                             body: JSON.stringify({enabled: callsExplicitlyDisabled(store.getState(), currChannelId)}),
                         });
@@ -588,7 +588,7 @@ export default class Plugin {
         const fetchChannels = async (): Promise<AnyAction[]> => {
             const actions = [];
             try {
-                const data = await RestClient.fetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
+                const data = await RestClient.doFetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
 
                 for (let i = 0; i < data.length; i++) {
                     actions.push({
@@ -664,7 +664,7 @@ export default class Plugin {
             const actions = [];
 
             try {
-                const data = await RestClient.fetch<CallChannelState>(`${getPluginPath()}/${channelID}`, {method: 'get'});
+                const data = await RestClient.doFetch<CallChannelState>(`${getPluginPath()}/${channelID}`, {method: 'get'});
                 actions.push({
                     type: RECEIVED_CHANNEL_STATE,
                     data: {id: channelID, enabled: data.enabled},

@@ -61,7 +61,7 @@ async function fetchProfileImages(profiles: UserProfile[]) {
 async function initRecordingStore(store: Store, channelID: string) {
     try {
         const channel = await runWithRetry(() => {
-            return RestClient.fetch(`${getPluginPath()}/bot/channels/${channelID}`, {method: 'get'});
+            return RestClient.doFetch(`${getPluginPath()}/bot/channels/${channelID}`, {method: 'get'});
         });
 
         store.dispatch(

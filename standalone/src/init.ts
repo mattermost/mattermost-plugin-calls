@@ -134,7 +134,7 @@ function connectCall(
 }
 
 async function fetchChannelData(store: Store, channelID: string) {
-    const resp = await RestClient.fetch<CallChannelState>(
+    const resp = await RestClient.doFetch<CallChannelState>(
         `${getPluginPath()}/${channelID}`,
         {method: 'get'},
     );
@@ -278,7 +278,7 @@ export default async function init(cfg: InitConfig) {
     const iceConfigs = [...iceServers(store.getState())];
     if (needsTURNCredentials(store.getState())) {
         logDebug('turn credentials needed');
-        const configs = await RestClient.fetch<RTCIceServer[]>(
+        const configs = await RestClient.doFetch<RTCIceServer[]>(
             `${getPluginPath()}/turn-credentials`,
             {method: 'get'},
         );
