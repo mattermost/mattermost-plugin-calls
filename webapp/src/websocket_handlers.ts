@@ -35,7 +35,7 @@ import {
     USER_SCREEN_ON,
     USER_SCREEN_OFF,
     USER_RAISE_HAND,
-    USER_UNRAISE_HAND,
+    USER_LOWER_HAND,
     USER_REACTED,
     USER_REACTED_TIMEOUT,
     CALL_HOST,
@@ -133,13 +133,14 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
 export function handleUserDisconnected(store: Store, ev: WebSocketMessage<UserDisconnectedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
-    store.dispatch(userDisconnected(channelID, ev.data.userID));
+    store.dispatch(userDisconnected(channelID, ev.data.userID, ev.data.session_id));
 }
 
 export async function handleUserConnected(store: Store, ev: WebSocketMessage<UserConnectedData>) {
     const userID = ev.data.userID;
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     const currentUserID = getCurrentUserId(store.getState());
+    const sessionID = ev.data.session_id;
 
     if (window.callsClient?.channelID === channelID) {
         if (userID === currentUserID) {
@@ -161,6 +162,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
             channelID,
             userID,
             currentUserID,
+            session_id: sessionID,
         },
     });
 
@@ -194,6 +196,7 @@ export function handleUserMuted(store: Store, ev: WebSocketMessage<UserMutedUnmu
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -205,6 +208,7 @@ export function handleUserUnmuted(store: Store, ev: WebSocketMessage<UserMutedUn
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -216,6 +220,7 @@ export function handleUserVoiceOn(store: Store, ev: WebSocketMessage<UserVoiceOn
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -227,6 +232,7 @@ export function handleUserVoiceOff(store: Store, ev: WebSocketMessage<UserVoiceO
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -238,6 +244,7 @@ export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreen
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -249,6 +256,7 @@ export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScree
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -261,6 +269,7 @@ export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRais
             channelID,
             userID: ev.data.userID,
             raised_hand: ev.data.raised_hand,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -268,11 +277,12 @@ export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRais
 export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: USER_UNRAISE_HAND,
+        type: USER_LOWER_HAND,
         data: {
             channelID,
             userID: ev.data.userID,
             raised_hand: ev.data.raised_hand,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -296,6 +306,7 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
             channelID,
             userID: ev.data.user_id,
             reaction,
+            session_id: ev.data.session_id,
         },
     });
     setTimeout(() => {
@@ -305,6 +316,7 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
                 channelID,
                 userID: ev.data.user_id,
                 reaction,
+                session_id: ev.data.session_id,
             },
         });
     }, REACTION_TIMEOUT_IN_REACTION_STREAM);

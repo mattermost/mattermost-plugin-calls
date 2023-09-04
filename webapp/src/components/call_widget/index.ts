@@ -1,4 +1,3 @@
-import {UserState} from '@calls/common/lib/types';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
@@ -12,7 +11,7 @@ import {bindActionCreators, Dispatch} from 'redux';
 
 import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 import {
-    usersStatusesInCurrentCall,
+    sessionsInCurrentCall,
     callStartAtForCurrentCall,
     screenSharingIDForCurrentCall,
     expandedView,
@@ -24,8 +23,9 @@ import {
     recordingForCurrentCall,
     sortedIncomingCalls,
     recentlyJoinedUsersInCurrentCall,
+    sessionForCurrentCall,
 } from 'src/selectors';
-import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
+import {alphaSortSessions, stateSortSessions} from 'src/utils';
 
 import CallWidget from './component';
 
@@ -39,12 +39,7 @@ const mapStateToProps = (state: GlobalState) => {
 
     const screenSharingID = screenSharingIDForCurrentCall(state);
 
-    const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
-        return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
-    };
-
-    const statuses = usersStatusesInCurrentCall(state);
-    const profiles = sortedProfiles(profilesInCurrentCall(state), statuses);
+    const profiles = profilesInCurrentCall(state);
 
     const profilesMap: IDMappedObjects<UserProfile> = {};
     const picturesMap: {
@@ -56,6 +51,8 @@ const mapStateToProps = (state: GlobalState) => {
         profilesMap[profiles[i].id] = profiles[i];
     }
 
+    const sessions = sessionsInCurrentCall(state).sort(alphaSortSessions(profilesMap)).sort(stateSortSessions(screenSharingID, true));
+
     const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
 
     return {
@@ -64,10 +61,10 @@ const mapStateToProps = (state: GlobalState) => {
         team: getTeam(state, channel?.team_id || getCurrentTeamId(state)),
         channelURL,
         channelDisplayName,
-        profiles,
+        sessions,
+        currentSession: sessionForCurrentCall(state),
         profilesMap,
         picturesMap,
-        statuses,
         callStartAt: callStartAtForCurrentCall(state),
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),

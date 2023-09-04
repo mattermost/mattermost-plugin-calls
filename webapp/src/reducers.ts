@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import {CallRecordingState, CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
+import {CallRecordingState, CallsConfig, Reaction, UserSessionState} from '@calls/common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
 import {combineReducers} from 'redux';
 
@@ -43,10 +43,9 @@ import {
     USER_SCREEN_OFF,
     USER_SCREEN_ON,
     USER_UNMUTED,
-    USER_UNRAISE_HAND,
+    USER_LOWER_HAND,
     USER_VOICE_OFF,
     USER_VOICE_ON,
-    USERS_CONNECTED,
     USERS_CONNECTED_STATES,
     USER_JOINED_TIMEOUT,
     RECORDINGS_ENABLED,
@@ -81,16 +80,19 @@ const channels = (state: channelsState = {}, action: channelsStateAction) => {
 };
 
 type profilesState = {
-    [channelID: string]: UserProfile[],
+    [channelID: string]: {
+        [sessionID: string]: UserProfile;
+    };
 }
 
 type profilesAction = {
     type: string;
     data: {
         channelID: string;
+        session_id: string;
         userID?: string;
         profile?: UserProfile;
-        profiles?: UserProfile[];
+        profiles?: {[sessionID: string]: UserProfile};
     };
 }
 
@@ -108,83 +110,35 @@ const profiles = (state: profilesState = {}, action: profilesAction) => {
         if (!state[action.data.channelID]) {
             return {
                 ...state,
-                [action.data.channelID]: [action.data.profile],
+                [action.data.channelID]: {
+                    [action.data.session_id]: action.data.profile,
+                },
             };
         }
 
-        // avoid duplicates
-        for (const profile of state[action.data.channelID]) {
-            if (profile.id === action.data.profile?.id) {
-                return state;
-            }
-        }
         return {
             ...state,
-            [action.data.channelID]: [
+            [action.data.channelID]: {
                 ...state[action.data.channelID],
-                action.data.profile,
-            ],
+                [action.data.session_id]: action.data.profile,
+            },
         };
-    case USER_DISCONNECTED:
-        return {
-            ...state,
-            [action.data.channelID]: state[action.data.channelID]?.filter((val) => val.id !== action.data.userID),
-        };
-    case CALL_END:
-        return {
-            ...state,
-            [action.data.channelID]: [],
-        };
-    default:
-        return state;
-    }
-};
-
-export type usersState = {
-    [channelID: string]: string[];
-}
-
-type usersAction = {
-    type: string;
-    data: {
-        channelID: string;
-        userID?: string;
-        users?: string[];
-    };
-}
-
-const users = (state: usersState = {}, action: usersAction) => {
-    switch (action.type) {
-    case UNINIT:
-        return {};
-    case USER_CONNECTED:
+    case USER_DISCONNECTED: {
         if (!state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: [action.data.userID],
-            };
+            return state;
         }
+
+        const nextState = {...state[action.data.channelID]};
+        delete nextState[action.data.session_id];
         return {
             ...state,
-            [action.data.channelID]: [
-                ...state[action.data.channelID],
-                action.data.userID,
-            ],
+            [action.data.channelID]: nextState,
         };
-    case USER_DISCONNECTED:
-        return {
-            ...state,
-            [action.data.channelID]: state[action.data.channelID]?.filter((val) => val !== action.data.userID),
-        };
-    case USERS_CONNECTED:
-        return {
-            ...state,
-            [action.data.channelID]: action.data.users,
-        };
+    }
     case CALL_END:
         return {
             ...state,
-            [action.data.channelID]: [],
+            [action.data.channelID]: {},
         };
     default:
         return state;
@@ -209,18 +163,6 @@ const channelID = (state: channelIDState = null, action: channelIDAction) => {
         return null;
     case DESKTOP_WIDGET_CONNECTED:
         return action.data.channelID;
-    case USER_CONNECTED: {
-        const callsClient = window.callsClient || window.opener?.callsClient;
-        if (action.data.currentUserID === action.data.userID && callsClient?.channelID === action.data.channelID) {
-            return action.data.channelID;
-        }
-        return state;
-    }
-    case USER_DISCONNECTED:
-        if (action.data.currentUserID === action.data.userID && state === action.data.channelID) {
-            return null;
-        }
-        return state;
     case CALL_END:
         if (state === action.data.channelID) {
             return null;
@@ -231,24 +173,25 @@ const channelID = (state: channelIDState = null, action: channelIDAction) => {
     }
 };
 
-export type usersStatusesState = {
+export type sessionsState = {
     [channelID: string]: {
-        [userID: string]: UserState;
+        [sessionID: string]: UserSessionState;
     };
 }
 
-type usersStatusesAction = {
+type sessionsAction = {
     type: string;
     data: {
         channelID: string;
         userID: string;
+        session_id: string;
         raised_hand?: number;
         reaction?: Reaction;
-        states: { [userID: string]: UserState };
+        states: { [userID: string]: UserSessionState };
     };
 }
 
-const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesAction) => {
+const sessions = (state: sessionsState = {}, action: sessionsAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
@@ -258,8 +201,9 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
                 ...state,
                 [action.data.channelID]: {
                     ...state[action.data.channelID],
-                    [action.data.userID]: {
-                        id: action.data.userID,
+                    [action.data.session_id]: {
+                        session_id: action.data.session_id,
+                        user_id: action.data.userID,
                         unmuted: false,
                         voice: false,
                         raised_hand: 0,
@@ -271,7 +215,7 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
     case USER_DISCONNECTED:
         if (state[action.data.channelID]) {
             // eslint-disable-next-line
-            const {[action.data.userID]: omit, ...res} = state[action.data.channelID];
+            const {[action.data.session_id]: omit, ...res} = state[action.data.channelID];
             return {
                 ...state,
                 [action.data.channelID]: res,
@@ -288,8 +232,9 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             return {
                 ...state,
                 [action.data.channelID]: {
-                    [action.data.userID]: {
-                        id: action.data.userID,
+                    [action.data.session_id]: {
+                        session_id: action.data.session_id,
+                        user_id: action.data.userID,
                         unmuted: false,
                         voice: false,
                         raised_hand: 0,
@@ -301,8 +246,8 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             ...state,
             [action.data.channelID]: {
                 ...state[action.data.channelID],
-                [action.data.userID]: {
-                    ...state[action.data.channelID][action.data.userID],
+                [action.data.session_id]: {
+                    ...state[action.data.channelID][action.data.session_id],
                     unmuted: false,
                 },
             },
@@ -312,8 +257,9 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             return {
                 ...state,
                 [action.data.channelID]: {
-                    [action.data.userID]: {
-                        id: action.data.userID,
+                    [action.data.session_id]: {
+                        session_id: action.data.session_id,
+                        user_id: action.data.userID,
                         unmuted: true,
                         voice: false,
                         raised_hand: 0,
@@ -325,8 +271,8 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             ...state,
             [action.data.channelID]: {
                 ...state[action.data.channelID],
-                [action.data.userID]: {
-                    ...state[action.data.channelID][action.data.userID],
+                [action.data.session_id]: {
+                    ...state[action.data.channelID][action.data.session_id],
                     unmuted: true,
                 },
             },
@@ -336,8 +282,9 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             return {
                 ...state,
                 [action.data.channelID]: {
-                    [action.data.userID]: {
-                        id: action.data.userID,
+                    [action.data.session_id]: {
+                        session_id: action.data.session_id,
+                        user_id: action.data.userID,
                         unmuted: false,
                         voice: true,
                         raised_hand: 0,
@@ -349,8 +296,8 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             ...state,
             [action.data.channelID]: {
                 ...state[action.data.channelID],
-                [action.data.userID]: {
-                    ...state[action.data.channelID][action.data.userID],
+                [action.data.session_id]: {
+                    ...state[action.data.channelID][action.data.session_id],
                     voice: true,
                 },
             },
@@ -360,8 +307,9 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             return {
                 ...state,
                 [action.data.channelID]: {
-                    [action.data.userID]: {
-                        id: action.data.userID,
+                    [action.data.session_id]: {
+                        session_id: action.data.session_id,
+                        user_id: action.data.userID,
                         unmuted: false,
                         voice: false,
                         raised_hand: 0,
@@ -373,8 +321,8 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             ...state,
             [action.data.channelID]: {
                 ...state[action.data.channelID],
-                [action.data.userID]: {
-                    ...state[action.data.channelID][action.data.userID],
+                [action.data.session_id]: {
+                    ...state[action.data.channelID][action.data.session_id],
                     voice: false,
                 },
             },
@@ -384,8 +332,9 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             return {
                 ...state,
                 [action.data.channelID]: {
-                    [action.data.userID]: {
-                        id: action.data.userID,
+                    [action.data.session_id]: {
+                        session_id: action.data.session_id,
+                        user_id: action.data.userID,
                         unmuted: false,
                         voice: false,
                         raised_hand: action.data.raised_hand,
@@ -397,19 +346,20 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             ...state,
             [action.data.channelID]: {
                 ...state[action.data.channelID],
-                [action.data.userID]: {
-                    ...state[action.data.channelID][action.data.userID],
+                [action.data.session_id]: {
+                    ...state[action.data.channelID][action.data.session_id],
                     raised_hand: action.data.raised_hand,
                 },
             },
         };
-    case USER_UNRAISE_HAND:
+    case USER_LOWER_HAND:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
                 [action.data.channelID]: {
-                    [action.data.userID]: {
-                        id: action.data.userID,
+                    [action.data.session_id]: {
+                        session_id: action.data.session_id,
+                        user_id: action.data.userID,
                         voice: false,
                         unmuted: false,
                         raised_hand: action.data.raised_hand,
@@ -421,8 +371,8 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             ...state,
             [action.data.channelID]: {
                 ...state[action.data.channelID],
-                [action.data.userID]: {
-                    ...state[action.data.channelID][action.data.userID],
+                [action.data.session_id]: {
+                    ...state[action.data.channelID][action.data.session_id],
                     raised_hand: action.data.raised_hand,
                 },
             },
@@ -432,8 +382,9 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             return {
                 ...state,
                 [action.data.channelID]: {
-                    [action.data.userID]: {
-                        id: action.data.userID,
+                    [action.data.session_id]: {
+                        session_id: action.data.session_id,
+                        user_id: action.data.userID,
                         voice: false,
                         unmuted: false,
                         raised_hand: 0,
@@ -446,14 +397,14 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             ...state,
             [action.data.channelID]: {
                 ...state[action.data.channelID],
-                [action.data.userID]: {
-                    ...state[action.data.channelID][action.data.userID],
+                [action.data.session_id]: {
+                    ...state[action.data.channelID][action.data.session_id],
                     reaction: action.data.reaction,
                 },
             },
         };
     case USER_REACTED_TIMEOUT: {
-        const storedReaction = state[action.data.channelID]?.[action.data.userID]?.reaction;
+        const storedReaction = state[action.data.channelID]?.[action.data.session_id]?.reaction;
         if (!storedReaction || !action.data.reaction) {
             return state;
         }
@@ -464,8 +415,8 @@ const usersStatuses = (state: usersStatusesState = {}, action: usersStatusesActi
             ...state,
             [action.data.channelID]: {
                 ...state[action.data.channelID],
-                [action.data.userID]: {
-                    ...state[action.data.channelID][action.data.userID],
+                [action.data.session_id]: {
+                    ...state[action.data.channelID][action.data.session_id],
                     reaction: null,
                 },
             },
@@ -495,7 +446,7 @@ const removeReaction = (reactions: Reaction[], reaction: Reaction) => {
     return reactions.filter((r) => r.user_id !== reaction.user_id || r.timestamp > reaction.timestamp);
 };
 
-const reactions = (state: usersReactionsState = {}, action: usersStatusesAction) => {
+const reactions = (state: usersReactionsState = {}, action: sessionsAction) => {
     switch (action.type) {
     case USER_REACTED:
         if (action.data.reaction) {
@@ -810,7 +761,15 @@ export type recentlyJoinedUsersState = {
     [channelID: string]: string[];
 }
 
-const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: usersAction) => {
+type recentlyJoinedUsersAction = {
+    type: string;
+    data: {
+        channelID: string;
+        userID: string;
+    };
+}
+
+const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: recentlyJoinedUsersAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
@@ -932,11 +891,10 @@ const dismissedCalls = (state: { [callID: string]: boolean } = {}, action: RingN
 
 export default combineReducers({
     channels,
-    users,
     channelID,
     profiles,
     reactions,
-    usersStatuses,
+    sessions,
     calls,
     hosts,
     screenSharingIDs,

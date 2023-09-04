@@ -1,6 +1,9 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {
+    UserSessionState,
+} from '@calls/common/lib/types';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import {useIntl} from 'react-intl';
@@ -11,7 +14,7 @@ import {Emoji} from 'src/components/emoji/emoji';
 import HandEmoji from 'src/components/icons/hand';
 import {
     idToProfileInCurrentCall,
-    usersStatusesInCurrentCall,
+    sessionsInCurrentCall,
     reactionsInCurrentCall,
 } from 'src/selectors';
 import {getUserDisplayName, split} from 'src/utils';
@@ -21,7 +24,7 @@ export const ReactionStream = () => {
     const {formatMessage, formatList} = useIntl();
 
     const currentUserID = useSelector(getCurrentUserId);
-    const statuses = useSelector(usersStatusesInCurrentCall);
+    const sessions = useSelector(sessionsInCurrentCall);
     const profileMap = useSelector(idToProfileInCurrentCall);
     const vReactions = useSelector(reactionsInCurrentCall);
 
@@ -48,15 +51,13 @@ export const ReactionStream = () => {
     });
 
     let handsUp;
-    const userIdsHandsUp = Object.keys(statuses)
-        .filter((id) => statuses[id]?.raised_hand)
-        .sort((a, b) => statuses[a].raised_hand - statuses[b].raised_hand);
+    const sessionsHandsUp = sessions.filter((session) => session.raised_hand).sort((a, b) => a.raised_hand - b.raised_hand);
 
-    if (userIdsHandsUp?.length) {
-        const getName = (userId: string) => {
-            return userId === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[userId], true);
+    if (sessionsHandsUp.length > 0) {
+        const getName = (session: UserSessionState) => {
+            return session.user_id === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[session.user_id], true);
         };
-        const [displayed, overflowed] = split(userIdsHandsUp, 2, true);
+        const [displayed, overflowed] = split(sessionsHandsUp, 2, true);
         const userList = displayed.map(getName);
 
         if (overflowed) {
@@ -77,7 +78,7 @@ export const ReactionStream = () => {
                 />
                 <span>
                     {formatMessage({defaultMessage: '{users} raised a hand'}, {
-                        count: userIdsHandsUp.length,
+                        count: sessionsHandsUp.length,
                         users: <Bold>{formatList(userList)}</Bold>,
                     })}
                 </span>

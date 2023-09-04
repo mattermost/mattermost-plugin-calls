@@ -1,4 +1,4 @@
-import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
+import {CallsConfig, Reaction, UserSessionState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {LicenseSkus} from '@mattermost/types/general';
 import {GlobalState} from '@mattermost/types/store';
@@ -28,13 +28,12 @@ import {createSelector} from 'reselect';
 
 import {
     callState,
-    usersState,
-    usersStatusesState,
-    usersReactionsState,
+    sessionsState,
     hostsState,
     screenSharingIDsState,
     callsRecordingsState,
     recentlyJoinedUsersState,
+    usersReactionsState,
 } from 'src/reducers';
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
 import {getChannelURL} from 'src/utils';
@@ -44,35 +43,8 @@ import {pluginId} from './manifest';
 //@ts-ignore GlobalState is not complete
 const pluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
 
-const usersInCalls = (state: GlobalState): usersState =>
-    pluginState(state).users;
-
-export const usersInCallInCurrentChannel: (state: GlobalState) => string[] =
-    createSelector(
-        'usersInCallInCurrentChannel',
-        usersInCalls,
-        getCurrentChannelId,
-        (users, currChannelId) => users[currChannelId] || [],
-    );
-
-const numUsersInCallInCurrentChannel = (state: GlobalState) =>
-    usersInCallInCurrentChannel(state).length;
-
-export const usersInCallInChannel = (state: GlobalState, channelId: string): string[] => {
-    const users = usersInCalls(state);
-    if (users && users[channelId]) {
-        return users[channelId];
-    }
-    return [];
-};
-
-export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
-    const users = usersInCallInChannel(state, channelId);
-    return users && users.length > 0;
-};
-
 export const channelIDForCurrentCall = (state: GlobalState): string =>
-    pluginState(state).channelID || '';
+    pluginState(state).channelID || window.callsClient?.channelID || window.opener?.callsClient?.channelID || '';
 
 export const channelForCurrentCall: (state: GlobalState) => Channel | undefined =
     createSelector(
@@ -105,16 +77,6 @@ export const teamForCurrentCall: (state: GlobalState) => Team | null =
         },
     );
 
-const numUsersInCurrentCall : (state: GlobalState) => number =
-    createSelector(
-        'numUsersInCurrentCall',
-        channelIDForCurrentCall,
-        usersInCalls,
-        (channelID, users) => {
-            return users[String(channelID)]?.length || 0;
-        },
-    );
-
 const profilesInCalls = (state: GlobalState) => pluginState(state).profiles;
 
 export const profilesInCurrentCall : (state: GlobalState) => UserProfile[] =
@@ -122,7 +84,7 @@ export const profilesInCurrentCall : (state: GlobalState) => UserProfile[] =
         'profilesInCurrentCall',
         profilesInCalls,
         channelIDForCurrentCall,
-        (profiles, channelID) => profiles[channelID] || [],
+        (profiles, channelID) => (Object.values(profiles[channelID] || {}) as UserProfile[]).filter((el, idx, arr) => arr.indexOf(el) === idx),
     );
 
 export const profilesInCallInCurrentChannel: (state: GlobalState) => UserProfile[] =
@@ -130,7 +92,7 @@ export const profilesInCallInCurrentChannel: (state: GlobalState) => UserProfile
         'profilesInCallInCurrentChannel',
         profilesInCalls,
         getCurrentChannelId,
-        (profiles, currChannelId) => profiles[currChannelId] || [],
+        (profiles, currChannelId) => (Object.values(profiles[currChannelId] || {}) as UserProfile[]).filter((el, idx, arr) => arr.indexOf(el) === idx),
     );
 
 // idToProfileInCurrentCall creates an id->UserProfile object for the currently connected call.
@@ -143,19 +105,34 @@ export const idToProfileInCurrentCall: (state: GlobalState) => { [id: string]: U
 
 export const profilesInCallInChannel: (state: GlobalState, channelId: string) => UserProfile[] =
     (state, channelID) => {
-        return profilesInCalls(state)[channelID] || [];
+        return (Object.values(profilesInCalls(state)[channelID] || {}) as UserProfile[]).filter((el, idx, arr) => arr.indexOf(el) === idx);
     };
 
-const usersStatusesInCalls = (state: GlobalState): usersStatusesState => {
-    return pluginState(state).usersStatuses;
+export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
+    return profilesInCallInChannel(state, channelId).length > 0;
 };
 
-export const usersStatusesInCurrentCall: (state: GlobalState) => { [id: string]: UserState } =
+const sessionsInCalls = (state: GlobalState): sessionsState => {
+    return pluginState(state).sessions;
+};
+
+export const sessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
     createSelector(
-        'usersStatusesInCurrentCall',
-        usersStatusesInCalls,
+        'sessionsInCurrentCall',
+        sessionsInCalls,
         channelIDForCurrentCall,
-        (statuses, channelID) => statuses[channelID] || {},
+        (sessions, channelID) => Object.values(sessions[channelID] || {}),
+    );
+
+const sessionIDForCurrentCall = () => window.callsClient?.getSessionID() || window.opener?.callsClient.getSessionID();
+
+export const sessionForCurrentCall: (state: GlobalState) => UserSessionState =
+    createSelector(
+        'sessionsInCurrentCall',
+        sessionsInCalls,
+        channelIDForCurrentCall,
+        sessionIDForCurrentCall,
+        (sessions, channelID, sessionID) => sessions[channelID]?.[sessionID],
     );
 
 const reactionsInCalls = (state: GlobalState): usersReactionsState => {
@@ -340,7 +317,7 @@ export const needsTURNCredentials = (state: GlobalState) =>
     callsConfig(state).NeedsTURNCredentials;
 
 export const isLimitRestricted = (state: GlobalState): boolean => {
-    const numCurrentUsers = numUsersInCallInCurrentChannel(state);
+    const numCurrentUsers = profilesInCallInCurrentChannel(state).length;
     const max = maxParticipants(state);
     return max > 0 && numCurrentUsers >= max;
 };
@@ -446,7 +423,7 @@ export const callsUserPreferences = (state: GlobalState): CallsUserPreferences =
     pluginState(state).callsUserPreferences;
 
 export const shouldPlayJoinUserSound = (state: GlobalState): boolean =>
-    numUsersInCurrentCall(state) < callsUserPreferences(state).joinSoundParticipantsThreshold;
+    profilesInCurrentCall(state).length < callsUserPreferences(state).joinSoundParticipantsThreshold;
 
 export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
     const license = getLicense(state);

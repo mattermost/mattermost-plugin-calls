@@ -635,4 +635,8 @@ export default class CallsClient extends EventEmitter {
     public isConnecting() {
         return !this.connected && !this.closed;
     }
+
+    public getSessionID() {
+        return this.ws?.getOriginalConnID();
+    }
 }

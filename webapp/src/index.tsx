@@ -50,8 +50,6 @@ import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/ty
 import {
     DESKTOP_WIDGET_CONNECTED,
     RECEIVED_CHANNEL_STATE,
-    USER_CONNECTED,
-    USERS_CONNECTED,
     PROFILES_CONNECTED,
     CALL_STATE,
     UNINIT,
@@ -59,7 +57,7 @@ import {
     USER_MUTED,
     USER_UNMUTED,
     USER_RAISE_HAND,
-    USER_UNRAISE_HAND,
+    USER_LOWER_HAND,
     DISMISS_CALL,
 } from './action_types';
 import CallsClient from './client';
@@ -79,8 +77,6 @@ import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
     channelIDForCurrentCall,
-    usersInCallInCurrentChannel,
-    usersInCallInChannel,
     isLimitRestricted,
     iceServers,
     needsTURNCredentials,
@@ -93,6 +89,7 @@ import {
     callsExplicitlyEnabled,
     callsExplicitlyDisabled,
     channelHasCall,
+    profilesInCallInChannel,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {PluginRegistry, Store} from './types/mattermost-webapp';
@@ -104,6 +101,8 @@ import {
     getPluginPath,
     getProfilesByIds,
     getTranslations,
+    getProfilesForSessions,
+    isDMChannel,
     getUserIdFromDM,
     getWSConnectionURL,
     isDMChannel,
@@ -269,27 +268,12 @@ export default class Plugin {
         });
 
         const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
-            try {
-                const users = usersInCallInCurrentChannel(store.getState());
-                if (users && users.length > 0) {
-                    store.dispatch({
-                        type: PROFILES_CONNECTED,
-                        data: {
-                            profiles: await getProfilesByIds(store.getState(), users),
-                            channelId,
-                        },
-                    });
-                }
-            } catch (err) {
-                logErr(err);
-            }
-
             if (!channelIDForCurrentCall(store.getState())) {
                 connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
                 // this is done in the call_start ws event handler.
-                if (usersInCallInChannel(store.getState(), channelId).length > 0) {
+                if (profilesInCallInChannel(store.getState(), channelId).length > 0) {
                     followThread(store, channelId, teamId);
                 }
             } else if (channelIDForCurrentCall(store.getState()) !== channelId) {
@@ -474,6 +458,7 @@ export default class Plugin {
                         data: {
                             channelID: window.callsClient?.channelID,
                             userID: getCurrentUserId(store.getState()),
+                            session_id: window.callsClient?.getSessionID(),
                         },
                     });
                 });
@@ -484,6 +469,7 @@ export default class Plugin {
                         data: {
                             channelID: window.callsClient?.channelID,
                             userID: getCurrentUserId(store.getState()),
+                            session_id: window.callsClient?.getSessionID(),
                         },
                     });
                 });
@@ -495,16 +481,18 @@ export default class Plugin {
                             channelID: window.callsClient?.channelID,
                             userID: getCurrentUserId(store.getState()),
                             raised_hand: Date.now(),
+                            session_id: window.callsClient?.getSessionID(),
                         },
                     });
                 });
 
                 window.callsClient.on('lower_hand', () => {
                     store.dispatch({
-                        type: USER_UNRAISE_HAND,
+                        type: USER_LOWER_HAND,
                         data: {
                             channelID: window.callsClient?.channelID,
                             userID: getCurrentUserId(store.getState()),
+                            session_id: window.callsClient?.getSessionID(),
                         },
                     });
                 });
@@ -601,18 +589,10 @@ export default class Plugin {
                     }
 
                     actions.push({
-                        type: USERS_CONNECTED,
-                        data: {
-                            users: call.users,
-                            channelID: data[i].channel_id,
-                        },
-                    });
-
-                    actions.push({
                         type: PROFILES_CONNECTED,
                         data: {
                             // eslint-disable-next-line no-await-in-loop
-                            profiles: await getProfilesByIds(store.getState(), call.users),
+                            profiles: await getProfilesForSessions(store.getState(), call.sessions),
                             channelID: data[i].channel_id,
                         },
                     });
@@ -736,14 +716,6 @@ export default class Plugin {
             } else {
                 const expandedID = getExpandedChannelID();
                 if (expandedID.length > 0) {
-                    actions.push({
-                        type: USER_CONNECTED,
-                        data: {
-                            channelID: expandedID,
-                            userID: getCurrentUserId(store.getState()),
-                            currentUserID: getCurrentUserId(store.getState()),
-                        },
-                    });
                     await fetchChannelData(expandedID);
                 }
             }

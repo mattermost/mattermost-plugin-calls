@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import {mosThreshold} from '@calls/common';
-import {UserState} from '@calls/common/lib/types';
+import {UserSessionState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
@@ -71,13 +71,11 @@ interface Props {
     team: Team,
     channelURL: string,
     channelDisplayName: string,
-    profiles: UserProfile[],
+    sessions: UserSessionState[],
+    currentSession: UserSessionState,
     profilesMap: IDMappedObjects<UserProfile>,
     picturesMap: {
         [key: string]: string,
-    },
-    statuses: {
-        [key: string]: UserState,
     },
     callStartAt: number,
     callHostID: string,
@@ -666,13 +664,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     isMuted() {
-        const currUserState = this.props.statuses[this.props.currentUserID];
-        return currUserState ? !currUserState.unmuted : true;
+        return this.props.currentSession ? !this.props.currentSession.unmuted : true;
     }
 
     isHandRaised() {
-        const currUserState = this.props.statuses[this.props.currentUserID];
-        return currUserState ? currUserState.raised_hand > 0 : false;
+        return this.props.currentSession ? this.props.currentSession.raised_hand > 0 : false;
     }
 
     onDisconnectClick = () => {
@@ -905,14 +901,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     renderSpeaking = () => {
         const {formatMessage} = this.props.intl;
         let speakingProfile;
-        for (let i = 0; i < this.props.profiles.length; i++) {
-            const profile = this.props.profiles[i];
-            const status = this.props.statuses[profile.id];
-            if (status?.voice) {
-                speakingProfile = profile;
+
+        for (let i = 0; i < this.props.sessions.length; i++) {
+            if (this.props.sessions[i].voice) {
+                speakingProfile = this.props.profilesMap[this.props.sessions[i].user_id];
                 break;
             }
         }
+
         return (
             <div style={{fontSize: '14px', lineHeight: '20px', display: 'flex', whiteSpace: 'pre'}}>
                 <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
@@ -931,29 +927,23 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const {formatMessage} = this.props.intl;
 
         const renderParticipants = () => {
-            return this.props.profiles.map((profile) => {
-                const status = this.props.statuses[profile.id];
-                let isMuted = true;
-                let isSpeaking = false;
-                let isHandRaised = false;
-                if (status) {
-                    isMuted = !status.unmuted;
-                    isSpeaking = Boolean(status.voice);
-                    isHandRaised = Boolean(status.raised_hand > 0);
-                }
+            return this.props.sessions.map((session) => {
+                const isMuted = !session.unmuted;
+                const isSpeaking = Boolean(session.voice);
+                const isHandRaised = Boolean(session.raised_hand > 0);
 
                 const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
                 return (
                     <li
                         className='MenuItem'
-                        key={'participants_profile_' + profile.id}
+                        key={'participants_profile_' + session.session_id}
                         style={{display: 'flex', padding: '10px 16px', gap: '12px'}}
                     >
                         <Avatar
                             size={20}
                             fontSize={14}
-                            url={this.props.picturesMap[profile.id]}
+                            url={this.props.picturesMap[session.user_id]}
                             borderGlowWidth={isSpeaking ? 2 : 0}
                         />
 
@@ -961,8 +951,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             className='MenuItem__primary-text'
                             style={{padding: '0', lineHeight: '20px', fontSize: '14px'}}
                         >
-                            {getUserDisplayName(profile)}
-                            {profile.id === this.props.currentUserID &&
+                            {getUserDisplayName(this.props.profilesMap[session.user_id])}
+                            {session.user_id === this.props.currentUserID &&
                                 <span
                                     style={{
                                         color: 'rgba(var(--center-channel-color-rgb), 0.56)',
@@ -983,9 +973,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 gap: '14px',
                             }}
                         >
-                            {status?.reaction &&
+                            {session?.reaction &&
                             <Emoji
-                                emoji={status.reaction.emoji}
+                                emoji={session.reaction.emoji}
                                 size={14}
                             />
                             }
@@ -996,7 +986,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 />
                             }
 
-                            {this.props.screenSharingID === profile.id &&
+                            {this.props.screenSharingID === session.user_id &&
                                 <ScreenIcon
                                     fill={'rgb(var(--dnd-indicator-rgb))'}
                                     style={{width: '14px', height: '14px'}}
@@ -1345,11 +1335,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     renderSpeakingProfile = () => {
         let speakingPictureURL;
-        for (let i = 0; i < this.props.profiles.length; i++) {
-            const profile = this.props.profiles[i];
-            const status = this.props.statuses[profile.id];
-            if (status?.voice) {
-                speakingPictureURL = this.props.picturesMap[profile.id];
+        for (let i = 0; i < this.props.sessions.length; i++) {
+            if (this.props.sessions[i].voice) {
+                speakingPictureURL = this.props.picturesMap[this.props.sessions[i].user_id];
                 break;
             }
         }
@@ -1908,7 +1896,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                     color: this.state.showParticipantsList ? 'var(--button-bg)' : '',
                                 }}
                             >
-                                {this.props.profiles.length}
+                                {this.props.sessions.length}
                             </span>
                         </WidgetButton>
 

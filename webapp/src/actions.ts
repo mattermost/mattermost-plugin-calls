@@ -1,4 +1,4 @@
-import {CallsConfig, UserState, CallState} from '@calls/common/lib/types';
+import {CallsConfig, UserState, CallState, SessionState} from '@calls/common/lib/types';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
@@ -31,7 +31,7 @@ import {
 } from 'src/selectors';
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
-import {getPluginPath, isDesktopApp, isDMChannel, isGMChannel, getProfilesByIds} from 'src/utils';
+import {getPluginPath, isDesktopApp, isDMChannel, isGMChannel, getProfilesForSessions} from 'src/utils';
 import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
@@ -54,7 +54,6 @@ import {
     RINGING_FOR_CALL,
     DISMISS_CALL,
     CALL_STATE,
-    USERS_CONNECTED,
     USERS_CONNECTED_STATES,
     PROFILES_CONNECTED,
     CALL_HOST,
@@ -357,7 +356,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
     };
 }
 
-export const userDisconnected = (channelID: string, userID: string) => {
+export const userDisconnected = (channelID: string, userID: string, sessionID: string) => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         // save for later
         const callID = calls(getState())[channelID].ID || '';
@@ -367,6 +366,7 @@ export const userDisconnected = (channelID: string, userID: string) => {
             data: {
                 channelID,
                 userID,
+                session_id: sessionID,
                 currentUserID: getCurrentUserId(getState()),
             },
         });
@@ -448,46 +448,6 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
         },
     });
 
-    const dismissed = call.dismissed_notification;
-    if (dismissed) {
-        const currentUserID = getCurrentUserId(getState());
-        if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
-            actions.push({
-                type: DISMISS_CALL,
-                data: {
-                    callID: call.id,
-                },
-            });
-        }
-    }
-
-    actions.push({
-        type: USERS_CONNECTED,
-        data: {
-            users: call.users || [],
-            channelID,
-        },
-    });
-
-    actions.push({
-        type: CALL_HOST,
-        data: {
-            channelID,
-            hostID: call.host_id,
-            hostChangeAt: hostChangeAtForCurrentCall(getState()) || call.start_at,
-        },
-    });
-
-    if (call.users && call.users.length > 0) {
-        actions.push({
-            type: PROFILES_CONNECTED,
-            data: {
-                profiles: await getProfilesByIds(getState(), call.users),
-                channelID,
-            },
-        });
-    }
-
     actions.push({
         type: CALL_RECORDING_STATE,
         data: {
@@ -504,16 +464,47 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
         },
     });
 
-    const userStates: Record<string, UserState> = {};
-    const users = call.users || [];
-    const states = call.states || [];
-    for (let i = 0; i < users.length; i++) {
-        userStates[users[i]] = {...states[i], id: users[i]};
+    actions.push({
+        type: CALL_HOST,
+        data: {
+            channelID,
+            hostID: call.host_id,
+            hostChangeAt: hostChangeAtForCurrentCall(getState()) || call.start_at,
+        },
+    });
+
+    const dismissed = call.dismissed_notification;
+    if (dismissed) {
+        const currentUserID = getCurrentUserId(getState());
+        if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
+            actions.push({
+                type: DISMISS_CALL,
+                data: {
+                    callID: call.id,
+                },
+            });
+        }
     }
+
+    const states: Record<string, SessionState> = {};
+    for (let i = 0; i < call.sessions.length; i++) {
+        states[call.sessions[i].session_id] = call.sessions[i];
+    }
+
+    if (call.sessions.length > 0) {
+        actions.push({
+            type: PROFILES_CONNECTED,
+            data: {
+                profiles: await getProfilesForSessions(getState(), call.sessions),
+                channelID,
+            },
+        });
+    }
+
     actions.push({
         type: USERS_CONNECTED_STATES,
         data: {
-            states: userStates,
+            states,
             channelID,
         },
     });

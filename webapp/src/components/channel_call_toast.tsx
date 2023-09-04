@@ -13,7 +13,6 @@ import {
     dismissedCallForCurrentChannel,
     isLimitRestricted,
     callInCurrentChannel,
-    usersInCallInCurrentChannel,
     profilesInCallInCurrentChannel,
 } from 'src/selectors';
 import {callStartedTimestampFn} from 'src/utils';
@@ -22,7 +21,6 @@ const ChannelCallToast = () => {
     const intl = useIntl();
     const currChannelID = useSelector(getCurrentChannelId);
     const connectedID = useSelector(channelIDForCurrentCall);
-    const connectedUsers = useSelector(usersInCallInCurrentChannel);
     const call = useSelector(callInCurrentChannel);
     const profiles = useSelector(profilesInCallInCurrentChannel);
     const limitRestricted = useSelector(isLimitRestricted);
@@ -34,17 +32,15 @@ const ChannelCallToast = () => {
 
     useMemo(() => {
         const thePictures = [];
-        if (currChannelID !== connectedID && connectedUsers) {
-            if (connectedUsers.length > 0 && profiles.length === connectedUsers.length) {
-                for (let i = 0; i < connectedUsers.length; i++) {
-                    thePictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
-                }
+        if (currChannelID !== connectedID) {
+            for (let i = 0; i < profiles.length; i++) {
+                thePictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
             }
         }
         setPictures(thePictures);
-    }, [currChannelID, connectedID, connectedUsers, profiles]);
+    }, [currChannelID, connectedID, profiles]);
 
-    const hasCall = (currChannelID !== connectedID && connectedUsers && connectedUsers.length > 0);
+    const hasCall = (currChannelID !== connectedID && profiles.length > 0);
 
     if (!hasCall || dismissed || limitRestricted) {
         return null;

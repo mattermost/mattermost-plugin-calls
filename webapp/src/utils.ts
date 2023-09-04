@@ -1,10 +1,11 @@
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@calls/common';
-import {UserState} from '@calls/common/lib/types';
+import {UserSessionState, SessionState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
+import {IDMappedObjects} from '@mattermost/types/utilities';
 import {DateTime, Duration, DurationLikeObject} from 'luxon';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {Client4} from 'mattermost-redux/client';
@@ -138,38 +139,22 @@ export function getExpandedChannelID() {
     return window.location.pathname.substr(idx + pattern.length);
 }
 
-export function alphaSortProfiles(elA: UserProfile, elB: UserProfile) {
-    const nameA = getUserDisplayName(elA);
-    const nameB = getUserDisplayName(elB);
-    return nameA.localeCompare(nameB);
+export function alphaSortSessions(profiles: IDMappedObjects<UserProfile>) {
+    return (elA: UserSessionState, elB: UserSessionState) => {
+        const profileA = profiles[elA.user_id];
+        const profileB = profiles[elB.user_id];
+        const nameA = getUserDisplayName(profileA);
+        const nameB = getUserDisplayName(profileB);
+        return nameA.localeCompare(nameB);
+    };
 }
 
-export function stateSortProfiles(profiles: UserProfile[], statuses: { [key: string]: UserState }, presenterID: string, considerReaction = false) {
-    return (elA: UserProfile, elB: UserProfile) => {
-        let stateA = statuses[elA.id];
-        let stateB = statuses[elB.id];
-
-        if (elA.id === presenterID) {
+export function stateSortSessions(presenterID: string, considerReaction = false) {
+    return (stateA: UserSessionState, stateB: UserSessionState) => {
+        if (stateA.session_id === presenterID) {
             return -1;
-        } else if (elB.id === presenterID) {
+        } else if (stateB.session_id === presenterID) {
             return 1;
-        }
-
-        if (!stateA) {
-            stateA = {
-                id: elA.id,
-                voice: false,
-                unmuted: false,
-                raised_hand: 0,
-            };
-        }
-        if (!stateB) {
-            stateB = {
-                id: elB.id,
-                voice: false,
-                unmuted: false,
-                raised_hand: 0,
-            };
         }
 
         if (stateA.raised_hand && !stateB.raised_hand) {
@@ -273,6 +258,15 @@ export async function getProfilesByIds(state: GlobalState, ids: string[]): Promi
         profiles.push(...(await Client4.getProfilesByIds(missingIds)));
     }
     return profiles;
+}
+
+export async function getProfilesForSessions(state: GlobalState, sessions: SessionState[]): Promise<{[sessionID: string]: UserProfile}> {
+    const ids = sessions.map((session) => session.user_id);
+    const profiles = await getProfilesByIds(state, ids);
+    return profiles.reduce((obj, profile, idx) => {
+        obj[sessions[idx].session_id] = profile;
+        return obj;
+    }, {} as {[sessionID: string]: UserProfile});
 }
 
 export function getUserIdFromDM(dmName: string, currentUserId: string) {
