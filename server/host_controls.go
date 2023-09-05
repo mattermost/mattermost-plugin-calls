@@ -26,6 +26,13 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	}
 
 	if state.Call.HostID == newHostID {
+		// Host is same, but do we need to host lock?
+		if !state.Call.HostLocked {
+			state.Call.HostLocked = true
+			if err := p.kvSetChannelState(channelID, state); err != nil {
+				return fmt.Errorf("failed to set channel state: %w", err)
+			}
+		}
 		return nil
 	}
 
