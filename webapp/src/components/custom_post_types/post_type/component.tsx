@@ -29,7 +29,6 @@ import {
 interface Props {
     post: Post,
     connectedID: string,
-    pictures: string[],
     profiles: UserProfile[],
     isCloudPaid: boolean,
     maxParticipants: number,
@@ -39,7 +38,6 @@ interface Props {
 const PostType = ({
     post,
     connectedID,
-    pictures,
     profiles,
     isCloudPaid,
     maxParticipants,
@@ -190,7 +188,6 @@ const PostType = ({
                                 <Profiles>
                                     <ConnectedProfiles
                                         profiles={profiles}
-                                        pictures={pictures}
                                         size={32}
                                         fontSize={12}
                                         border={true}

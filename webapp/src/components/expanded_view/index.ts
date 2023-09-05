@@ -1,7 +1,4 @@
 import {GlobalState} from '@mattermost/types/store';
-import {UserProfile} from '@mattermost/types/users';
-import {IDMappedObjects} from '@mattermost/types/utilities';
-import {Client4} from 'mattermost-redux/client';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
@@ -29,10 +26,10 @@ import {
     callStartAtForCurrentCall,
     callThreadIDForCallInChannel,
     screenSharingIDForCurrentCall,
-    profilesInCurrentCall,
     channelForCurrentCall,
     sessionsInCurrentCall,
     sessionForCurrentCall,
+    profilesInCurrentCallMap,
 } from 'src/selectors';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
@@ -47,17 +44,8 @@ const mapStateToProps = (state: GlobalState) => {
     const screenSharingID = screenSharingIDForCurrentCall(state);
     const threadID = callThreadIDForCallInChannel(state, channel?.id || '');
 
-    const profiles = profilesInCurrentCall(state);
-    const profilesMap: IDMappedObjects<UserProfile> = {};
-    const picturesMap: {
-        [key: string]: string,
-    } = {};
-    for (let i = 0; i < profiles.length; i++) {
-        const pic = Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
-        picturesMap[profiles[i].id] = pic;
-        profilesMap[profiles[i].id] = profiles[i];
-    }
-    const sessions = sessionsInCurrentCall(state).sort(alphaSortSessions(profilesMap)).sort(stateSortSessions(screenSharingID, true));
+    const profiles = profilesInCurrentCallMap(state);
+    const sessions = sessionsInCurrentCall(state).sort(alphaSortSessions(profiles)).sort(stateSortSessions(screenSharingID, true));
 
     let connectedDMUser;
     if (channel && isDMChannel(channel)) {
@@ -73,8 +61,7 @@ const mapStateToProps = (state: GlobalState) => {
         show: expandedView(state),
         currentUserID,
         currentTeamID,
-        profiles: profilesMap,
-        pictures: picturesMap,
+        profiles,
         sessions,
         currentSession: sessionForCurrentCall(state),
         callStartAt: callStartAtForCurrentCall(state),

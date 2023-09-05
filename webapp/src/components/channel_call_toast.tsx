@@ -1,6 +1,5 @@
-import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import React, {useMemo, useState} from 'react';
+import React from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
@@ -25,20 +24,9 @@ const ChannelCallToast = () => {
     const profiles = useSelector(profilesInCallInCurrentChannel);
     const limitRestricted = useSelector(isLimitRestricted);
     const dismissed = useSelector(dismissedCallForCurrentChannel);
-    const [pictures, setPictures] = useState<string[]>([]);
 
     const callID = useSelector(callInCurrentChannel)?.ID || '';
     const [onDismiss, onJoin] = useDismissJoin(currChannelID, callID);
-
-    useMemo(() => {
-        const thePictures = [];
-        if (currChannelID !== connectedID) {
-            for (let i = 0; i < profiles.length; i++) {
-                thePictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
-            }
-        }
-        setPictures(thePictures);
-    }, [currChannelID, connectedID, profiles]);
 
     const hasCall = (currChannelID !== connectedID && profiles.length > 0);
 
@@ -94,7 +82,6 @@ const ChannelCallToast = () => {
             >
                 <ConnectedProfiles
                     profiles={profiles}
-                    pictures={pictures}
                     size={24}
                     fontSize={10}
                     border={false}

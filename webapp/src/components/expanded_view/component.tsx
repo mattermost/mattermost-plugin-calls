@@ -11,6 +11,7 @@ import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
+import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/types/themes';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 import React from 'react';
@@ -92,9 +93,6 @@ interface Props extends RouteComponentProps {
     profiles: {
         [userID: string]: UserProfile,
     }
-    pictures: {
-        [userID: string]: string,
-    },
     sessions: UserSessionState[],
     currentSession: UserSessionState,
     callStartAt: number,
@@ -807,7 +805,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <CallParticipant
                     key={session.session_id}
                     name={`${getUserDisplayName(profile)} ${profile.id === this.props.currentUserID ? formatMessage({defaultMessage: '(you)'}) : ''}`}
-                    pictureURL={this.props.pictures[profile.id]}
+                    pictureURL={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
                     isMuted={isMuted}
                     isSpeaking={isSpeaking}
                     isHandRaised={isHandRaised}
@@ -842,7 +840,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         fontSize={10}
                         border={false}
                         borderGlowWidth={isSpeaking ? 2 : 0}
-                        url={this.props.pictures[profile.id]}
+                        url={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
                     />
 
                     <span style={{fontWeight: 600, fontSize: '14px', lineHeight: '20px'}}>

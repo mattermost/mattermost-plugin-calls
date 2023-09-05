@@ -95,10 +95,10 @@ export const profilesInCallInCurrentChannel: (state: GlobalState) => UserProfile
         (profiles, currChannelId) => (Object.values(profiles[currChannelId] || {}) as UserProfile[]).filter((el, idx, arr) => arr.indexOf(el) === idx),
     );
 
-// idToProfileInCurrentCall creates an id->UserProfile object for the currently connected call.
-export const idToProfileInCurrentCall: (state: GlobalState) => { [id: string]: UserProfile } =
+// profilesInCurrentCallMap creates an id->UserProfile object for the currently connected call.
+export const profilesInCurrentCallMap: (state: GlobalState) => { [id: string]: UserProfile } =
     createSelector(
-        'idToProfileInCurrentCall',
+        'profilesInCurrentCallMap',
         profilesInCurrentCall,
         (profiles) => makeIdToObject(profiles),
     );

@@ -1,7 +1,5 @@
-
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
-import {Client4} from 'mattermost-redux/client';
 import {Preferences} from 'mattermost-redux/constants';
 import {getBool} from 'mattermost-redux/selectors/entities/preferences';
 import {connect} from 'react-redux';
@@ -19,19 +17,10 @@ interface OwnProps {
 }
 
 const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
-    const pictures = [];
-    const profiles = profilesInCallInChannel(state, ownProps.post.channel_id);
-    if (profiles.length > 0) {
-        for (let i = 0; i < profiles.length; i++) {
-            pictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
-        }
-    }
-
     return {
         ...ownProps,
         connectedID: channelIDForCurrentCall(state) || '',
-        pictures,
-        profiles,
+        profiles: profilesInCallInChannel(state, ownProps.post.channel_id),
         isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),
         maxParticipants: maxParticipants(state),
         militaryTime: getBool(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.USE_MILITARY_TIME, false),

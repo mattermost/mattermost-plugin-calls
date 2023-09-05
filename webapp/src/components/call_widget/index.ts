@@ -1,7 +1,4 @@
 import {GlobalState} from '@mattermost/types/store';
-import {UserProfile} from '@mattermost/types/users';
-import {IDMappedObjects} from '@mattermost/types/utilities';
-import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTeam, getCurrentTeamId, getMyTeams} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
@@ -17,7 +14,7 @@ import {
     expandedView,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
-    profilesInCurrentCall,
+    profilesInCurrentCallMap,
     hostIDForCurrentCall,
     hostChangeAtForCurrentCall,
     recordingForCurrentCall,
@@ -39,19 +36,8 @@ const mapStateToProps = (state: GlobalState) => {
 
     const screenSharingID = screenSharingIDForCurrentCall(state);
 
-    const profiles = profilesInCurrentCall(state);
-
-    const profilesMap: IDMappedObjects<UserProfile> = {};
-    const picturesMap: {
-        [key: string]: string,
-    } = {};
-    for (let i = 0; i < profiles.length; i++) {
-        const pic = Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
-        picturesMap[profiles[i].id] = pic;
-        profilesMap[profiles[i].id] = profiles[i];
-    }
-
-    const sessions = sessionsInCurrentCall(state).sort(alphaSortSessions(profilesMap)).sort(stateSortSessions(screenSharingID, true));
+    const profiles = profilesInCurrentCallMap(state);
+    const sessions = sessionsInCurrentCall(state).sort(alphaSortSessions(profiles)).sort(stateSortSessions(screenSharingID, true));
 
     const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
 
@@ -63,8 +49,7 @@ const mapStateToProps = (state: GlobalState) => {
         channelDisplayName,
         sessions,
         currentSession: sessionForCurrentCall(state),
-        profilesMap,
-        picturesMap,
+        profiles,
         callStartAt: callStartAtForCurrentCall(state),
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),

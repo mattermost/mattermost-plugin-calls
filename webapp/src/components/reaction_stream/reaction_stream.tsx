@@ -13,7 +13,7 @@ import styled, {css} from 'styled-components';
 import {Emoji} from 'src/components/emoji/emoji';
 import HandEmoji from 'src/components/icons/hand';
 import {
-    idToProfileInCurrentCall,
+    profilesInCurrentCallMap,
     sessionsInCurrentCall,
     reactionsInCurrentCall,
 } from 'src/selectors';
@@ -25,7 +25,7 @@ export const ReactionStream = () => {
 
     const currentUserID = useSelector(getCurrentUserId);
     const sessions = useSelector(sessionsInCurrentCall);
-    const profileMap = useSelector(idToProfileInCurrentCall);
+    const profileMap = useSelector(profilesInCurrentCallMap);
     const vReactions = useSelector(reactionsInCurrentCall);
 
     const reversed = [...vReactions].reverse();

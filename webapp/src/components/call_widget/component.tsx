@@ -5,6 +5,7 @@ import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
+import {Client4} from 'mattermost-redux/client';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
@@ -73,10 +74,7 @@ interface Props {
     channelDisplayName: string,
     sessions: UserSessionState[],
     currentSession: UserSessionState,
-    profilesMap: IDMappedObjects<UserProfile>,
-    picturesMap: {
-        [key: string]: string,
-    },
+    profiles: IDMappedObjects<UserProfile>,
     callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
@@ -752,7 +750,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         let profile;
         if (!isSharing) {
-            profile = this.props.profilesMap[this.props.screenSharingID];
+            profile = this.props.profiles[this.props.screenSharingID];
             if (!profile) {
                 return null;
             }
@@ -903,8 +901,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         let speakingProfile;
 
         for (let i = 0; i < this.props.sessions.length; i++) {
-            if (this.props.sessions[i].voice) {
-                speakingProfile = this.props.profilesMap[this.props.sessions[i].user_id];
+            const session = this.props.sessions[i];
+            const profile = this.props.profiles[session.user_id];
+            if (session.voice && profile) {
+                speakingProfile = profile;
                 break;
             }
         }
@@ -934,6 +934,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                 const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
+                const profile = this.props.profiles[session.user_id];
+                if (!profile) {
+                    return null;
+                }
+
                 return (
                     <li
                         className='MenuItem'
@@ -943,7 +948,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <Avatar
                             size={20}
                             fontSize={14}
-                            url={this.props.picturesMap[session.user_id]}
+                            url={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
                             borderGlowWidth={isSpeaking ? 2 : 0}
                         />
 
@@ -951,7 +956,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             className='MenuItem__primary-text'
                             style={{padding: '0', lineHeight: '20px', fontSize: '14px'}}
                         >
-                            {getUserDisplayName(this.props.profilesMap[session.user_id])}
+                            {getUserDisplayName(profile)}
                             {session.user_id === this.props.currentUserID &&
                                 <span
                                     style={{
@@ -1336,8 +1341,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     renderSpeakingProfile = () => {
         let speakingPictureURL;
         for (let i = 0; i < this.props.sessions.length; i++) {
-            if (this.props.sessions[i].voice) {
-                speakingPictureURL = this.props.picturesMap[this.props.sessions[i].user_id];
+            const session = this.props.sessions[i];
+            const profile = this.props.profiles[session.user_id];
+            if (session.voice && profile) {
+                speakingPictureURL = Client4.getProfilePictureUrl(profile.id, profile.last_picture_update);
                 break;
             }
         }
@@ -1559,11 +1566,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 return null;
             }
 
-            const profile = this.props.profilesMap[userID];
-            const picture = this.props.picturesMap[userID];
+            const profile = this.props.profiles[userID];
             if (!profile) {
                 return null;
             }
+
+            const picture = Client4.getProfilePictureUrl(userID, profile.last_picture_update);
 
             return (
                 <div

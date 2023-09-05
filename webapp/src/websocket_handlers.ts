@@ -46,7 +46,7 @@ import {
 import {logErr} from './log';
 import {
     channelIDForCurrentCall,
-    idToProfileInCurrentCall,
+    profilesInCurrentCallMap,
     ringingEnabled,
     shouldPlayJoinUserSound,
     calls,
@@ -180,7 +180,8 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
         store.dispatch({
             type: PROFILE_CONNECTED,
             data: {
-                profile: (await getProfilesByIds(store.getState(), [ev.data.userID]))[0],
+                profile: (await getProfilesByIds(store.getState(), [userID]))[0],
+                session_id: sessionID,
                 channelID,
             },
         });
@@ -294,7 +295,7 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
         return;
     }
 
-    const profiles = idToProfileInCurrentCall(store.getState());
+    const profiles = profilesInCurrentCallMap(store.getState());
     const displayName = getUserDisplayName(profiles[ev.data.user_id]);
     const reaction: Reaction = {
         ...ev.data,
