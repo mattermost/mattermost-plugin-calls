@@ -13,8 +13,8 @@ require (
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/mattermost/calls-offloader v0.3.0
-	github.com/mattermost/calls-recorder v0.4.0
+	github.com/mattermost/calls-offloader v0.3.2
+	github.com/mattermost/calls-recorder v0.4.2
 	github.com/mattermost/logr/v2 v2.0.16
 	github.com/mattermost/mattermost/server/public v0.0.9-0.20230824163353-69c11cfe1403
 	github.com/mattermost/rtcd v0.11.1
@@ -92,6 +92,7 @@ require (
 	golang.org/x/net v0.11.0 // indirect
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/text v0.10.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/grpc v1.56.1 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
