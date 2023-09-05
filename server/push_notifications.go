@@ -28,6 +28,7 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 	nameFormat := p.getNotificationNameFormat(userID)
 	sender, appErr := p.API.GetUser(notification.SenderId)
 	if appErr != nil {
+		p.LogError("failed to get sender user", "error", appErr.Error())
 		return nil, ""
 	}
 	senderName := sender.GetDisplayName(nameFormat)
