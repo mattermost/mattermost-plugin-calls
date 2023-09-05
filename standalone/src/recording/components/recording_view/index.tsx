@@ -1,22 +1,20 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {UserState} from '@calls/common/lib/types';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
+import {Client4} from 'mattermost-redux/client';
 import Avatar from 'plugin/components/avatar/avatar';
 import CallParticipant from 'plugin/components/expanded_view/call_participant';
 import {ReactionStream} from 'plugin/components/reaction_stream/reaction_stream';
 import {logErr} from 'plugin/log';
-import {alphaSortProfiles, getUserDisplayName, stateSortProfiles, untranslatable} from 'plugin/utils';
+import {alphaSortSessions, getUserDisplayName, stateSortSessions, untranslatable} from 'plugin/utils';
 import React, {useEffect, useState, useCallback} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import Timestamp from 'src/components/timestamp';
-import {screenSharingIDForCurrentCall, profilesInCurrentCall, usersStatusesInCurrentCall, hostIDForCurrentCall} from 'src/selectors';
-
-import {callProfileImages} from 'src/recording/selectors';
+import {screenSharingIDForCurrentCall, hostIDForCurrentCall, profilesInCurrentCallMap, sessionsInCurrentCall} from 'src/selectors';
 
 const MaxParticipantsPerRow = 10;
 
@@ -25,17 +23,11 @@ const RecordingView = () => {
     const [screenPlayerNode, setScreenPlayerNode] = useState<HTMLVideoElement|null>(null);
     const [screenStream, setScreenStream] = useState<MediaStream|null>(null);
     const callsClient = window.callsClient;
-    const channelID = callsClient?.channelID || '';
     const screenSharingID = useSelector((state: GlobalState) => screenSharingIDForCurrentCall(state));
-    const statuses = useSelector(usersStatusesInCurrentCall);
-    const profiles = sortedProfiles(useSelector(profilesInCurrentCall), statuses, screenSharingID);
-    const profileImages = useSelector((state: GlobalState) => callProfileImages(state, channelID));
-    const pictures: {[key: string]: string} = {};
-    if (profileImages) {
-        for (let i = 0; i < profiles.length; i++) {
-            pictures[String(profiles[i].id)] = profileImages[profiles[i].id];
-        }
-    }
+
+    const profiles = useSelector(profilesInCurrentCallMap);
+    const sessions = useSelector((state: GlobalState) => sessionsInCurrentCall(state).sort(alphaSortSessions(profiles)).sort(stateSortSessions(screenSharingID, true)));
+
     const hostID = useSelector((state: GlobalState) => hostIDForCurrentCall(state));
 
     const attachVoiceTracks = (tracks: MediaStreamTrack[]) => {
@@ -86,9 +78,9 @@ const RecordingView = () => {
 
     const renderScreenSharingPlayer = () => {
         let profile: UserProfile | null = null;
-        for (let i = 0; i < profiles.length; i++) {
-            if (profiles[i].id === screenSharingID) {
-                profile = profiles[i];
+        for (let i = 0; i < sessions.length; i++) {
+            if (sessions[i].user_id === screenSharingID) {
+                profile = profiles[sessions[i].user_id];
                 break;
             }
         }
@@ -135,26 +127,25 @@ const RecordingView = () => {
     };
 
     const renderParticipants = () => {
-        return profiles.map((profile) => {
-            const status = statuses[profile.id];
-            let isMuted = true;
-            let isSpeaking = false;
-            let isHandRaised = false;
-            if (status) {
-                isMuted = !status.unmuted;
-                isSpeaking = Boolean(status.voice);
-                isHandRaised = Boolean(status.raised_hand > 0);
+        return sessions.map((session) => {
+            const isMuted = !session.unmuted;
+            const isSpeaking = Boolean(session.voice);
+            const isHandRaised = Boolean(session.raised_hand > 0);
+
+            const profile = profiles[session.user_id];
+            if (!profile) {
+                return null;
             }
 
             return (
                 <CallParticipant
-                    key={profile.id}
+                    key={session.session_id}
                     name={getUserDisplayName(profile)}
-                    pictureURL={pictures[profile.id]}
+                    pictureURL={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
                     isMuted={isMuted}
                     isSpeaking={isSpeaking}
                     isHandRaised={isHandRaised}
-                    reaction={status?.reaction}
+                    reaction={session?.reaction}
                     isHost={profile.id === hostID}
                 />
             );
@@ -163,10 +154,10 @@ const RecordingView = () => {
 
     const renderSpeaking = () => {
         let speakingProfile;
-        for (let i = 0; i < profiles.length; i++) {
-            const profile = profiles[i];
-            const status = statuses[profile.id];
-            if (status?.voice) {
+        for (let i = 0; i < sessions.length; i++) {
+            const session = sessions[i];
+            const profile = profiles[sessions[i].user_id];
+            if (session?.voice && profile) {
                 speakingProfile = profile;
                 break;
             }
@@ -190,7 +181,7 @@ const RecordingView = () => {
                     fontSize={14}
                     border={false}
                     borderGlowWidth={3}
-                    url={pictures[speakingProfile.id]}
+                    url={Client4.getProfilePictureUrl(speakingProfile.id, speakingProfile.last_picture_update)}
                 />
                 <span style={{marginLeft: '8px'}}>{getUserDisplayName(speakingProfile)}</span>
                 <span style={{fontWeight: 400}}>{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
@@ -211,7 +202,7 @@ const RecordingView = () => {
                         id='calls-recording-view-participants-grid'
                         style={{
                             ...style.participants,
-                            gridTemplateColumns: `repeat(${Math.min(profiles.length, MaxParticipantsPerRow)}, 1fr)`,
+                            gridTemplateColumns: `repeat(${Math.min(sessions.length, MaxParticipantsPerRow)}, 1fr)`,
                         }}
                     >
                         { renderParticipants() }
@@ -225,7 +216,7 @@ const RecordingView = () => {
             >
                 <div><Timestamp/></div>
                 <span style={{marginLeft: '4px'}}>
-                    {untranslatable('• ')}{formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: profiles.length})}
+                    {untranslatable('• ')}{formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: sessions.length})}
                 </span>
                 { hasScreenShare && renderSpeaking() }
             </div>
@@ -238,10 +229,6 @@ const RecordingView = () => {
 };
 
 export default RecordingView;
-
-const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}, screenSharingID: string) => {
-    return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID));
-};
 
 const style = {
     root: {
