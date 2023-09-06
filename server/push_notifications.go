@@ -60,7 +60,6 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 		}
 
 		msg := &model.PushNotification{
-			Category:    model.CategoryCanReply,
 			Version:     model.PushMessageV2,
 			Type:        model.PushTypeMessage,
 			TeamId:      channel.TeamId,
