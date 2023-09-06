@@ -37,3 +37,11 @@ export async function startCall(userState: string) {
     return userPage;
 }
 
+export async function joinCall(userState: string) {
+    const browser = await chromium.launch();
+    const context = await browser.newContext({storageState: userState});
+    const userPage = new PlaywrightDevPage(await context.newPage());
+    await userPage.goto();
+    await userPage.joinCall();
+    return userPage;
+}
