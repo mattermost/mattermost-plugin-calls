@@ -640,7 +640,7 @@ type screenSharingIDAction = {
     type: string;
     data: {
         channelID: string;
-        userID?: string;
+        session_id: string;
     }
 }
 
@@ -651,18 +651,21 @@ const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenShari
     case USER_SCREEN_ON:
         return {
             ...state,
-            [action.data.channelID]: action.data.userID,
+            [action.data.channelID]: action.data.session_id,
         };
     case USER_DISCONNECTED: {
         // If the user who disconnected matches the one sharing we
         // want to fallthrough and clear the state.
-        if (action.data.userID !== state[action.data.channelID]) {
+        if (action.data.session_id !== state[action.data.channelID]) {
             return state;
         }
     }
     // eslint-disable-next-line no-fallthrough
     case CALL_END:
     case USER_SCREEN_OFF:
+        if (action.data.session_id !== state[action.data.channelID]) {
+            return state;
+        }
         return {
             ...state,
             [action.data.channelID]: '',

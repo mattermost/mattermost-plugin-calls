@@ -70,13 +70,17 @@ type CallStateClient struct {
 
 	Sessions []UserStateClient `json:"sessions"`
 
-	ThreadID              string                `json:"thread_id"`
-	PostID                string                `json:"post_id"`
-	ScreenSharingID       string                `json:"screen_sharing_id"`
-	OwnerID               string                `json:"owner_id"`
-	HostID                string                `json:"host_id"`
-	Recording             *RecordingStateClient `json:"recording,omitempty"`
-	DismissedNotification map[string]bool       `json:"dismissed_notification,omitempty"`
+	ThreadID string `json:"thread_id"`
+	PostID   string `json:"post_id"`
+
+	// DEPRECATED in favour of ScreenSharingSessionID (since v0.20)
+	ScreenSharingID string `json:"screen_sharing_id"`
+
+	ScreenSharingSessionID string                `json:"screen_sharing_session_id"`
+	OwnerID                string                `json:"owner_id"`
+	HostID                 string                `json:"host_id"`
+	Recording              *RecordingStateClient `json:"recording,omitempty"`
+	DismissedNotification  map[string]bool       `json:"dismissed_notification,omitempty"`
 }
 
 type RecordingStateClient struct {
@@ -197,6 +201,11 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		}
 	}
 
+	var screenSharingUserID string
+	if s := cs.Sessions[cs.ScreenSharingID]; s != nil {
+		screenSharingUserID = s.UserID
+	}
+
 	return &CallStateClient{
 		ID:      cs.ID,
 		StartAt: cs.StartAt,
@@ -206,14 +215,18 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		// DEPRECATED since v0.20
 		States: states,
 
-		Sessions:              states,
-		ThreadID:              cs.ThreadID,
-		PostID:                cs.PostID,
-		ScreenSharingID:       cs.ScreenSharingID,
-		OwnerID:               cs.OwnerID,
-		HostID:                cs.HostID,
-		Recording:             cs.Recording.getClientState(),
-		DismissedNotification: dismissed,
+		Sessions: states,
+		ThreadID: cs.ThreadID,
+		PostID:   cs.PostID,
+
+		// DEPRECATED since v0.20
+		ScreenSharingID: screenSharingUserID,
+
+		ScreenSharingSessionID: cs.ScreenSharingID,
+		OwnerID:                cs.OwnerID,
+		HostID:                 cs.HostID,
+		Recording:              cs.Recording.getClientState(),
+		DismissedNotification:  dismissed,
 	}
 }
 

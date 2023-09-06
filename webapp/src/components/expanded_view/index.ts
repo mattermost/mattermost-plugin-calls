@@ -25,7 +25,7 @@ import {
     hostChangeAtForCurrentCall,
     callStartAtForCurrentCall,
     callThreadIDForCallInChannel,
-    screenSharingIDForCurrentCall,
+    screenSharingSessionForCurrentCall,
     channelForCurrentCall,
     sessionsInCurrentCall,
     sessionForCurrentCall,
@@ -41,11 +41,13 @@ const mapStateToProps = (state: GlobalState) => {
     const currentTeamID = getCurrentTeamId(state);
     const channel = channelForCurrentCall(state);
     const channelTeam = getTeam(state, channel?.team_id || '');
-    const screenSharingID = screenSharingIDForCurrentCall(state);
+    const screenSharingSession = screenSharingSessionForCurrentCall(state);
     const threadID = callThreadIDForCallInChannel(state, channel?.id || '');
 
     const profiles = profilesInCurrentCallMap(state);
-    const sessions = sessionsInCurrentCall(state).sort(alphaSortSessions(profiles)).sort(stateSortSessions(screenSharingID, true));
+    const sessions = sessionsInCurrentCall(state)
+        .sort(alphaSortSessions(profiles))
+        .sort(stateSortSessions(screenSharingSession?.session_id || '', true));
 
     let connectedDMUser;
     if (channel && isDMChannel(channel)) {
@@ -69,7 +71,7 @@ const mapStateToProps = (state: GlobalState) => {
         callHostChangeAt: hostChangeAtForCurrentCall(state),
         callRecording: recordingForCurrentCall(state),
         isRecording: isRecordingInCurrentCall(state),
-        screenSharingID,
+        screenSharingSession,
         channel,
         channelTeam,
         channelDisplayName,

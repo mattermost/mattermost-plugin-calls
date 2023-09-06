@@ -263,8 +263,16 @@ export async function getProfilesByIds(state: GlobalState, ids: string[]): Promi
 export async function getProfilesForSessions(state: GlobalState, sessions: SessionState[]): Promise<{[sessionID: string]: UserProfile}> {
     const ids = sessions.map((session) => session.user_id);
     const profiles = await getProfilesByIds(state, ids);
-    return profiles.reduce((obj, profile, idx) => {
-        obj[sessions[idx].session_id] = profile;
+
+    // Returned profiles can be deduplicated so we need a map in order to
+    // produce the expected output where each session ID points to a profile.
+    const profilesMap = profiles.reduce((obj, profile) => {
+        obj[profile.id] = profile;
+        return obj;
+    }, {} as {[userID: string]: UserProfile});
+
+    return sessions.reduce((obj, session) => {
+        obj[session.session_id] = profilesMap[session.user_id];
         return obj;
     }, {} as {[sessionID: string]: UserProfile});
 }

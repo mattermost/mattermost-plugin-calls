@@ -73,13 +73,13 @@ interface Props {
     channelURL: string,
     channelDisplayName: string,
     sessions: UserSessionState[],
-    currentSession: UserSessionState,
+    currentSession?: UserSessionState,
     profiles: IDMappedObjects<UserProfile>,
     callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
     callRecording?: CallRecordingReduxState,
-    screenSharingID: string,
+    screenSharingSession?: UserSessionState,
     show: boolean,
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
@@ -109,7 +109,6 @@ interface DraggingState {
 interface State {
     showMenu: boolean,
     showParticipantsList: boolean,
-    screenSharingID?: string,
     screenStream: MediaStream | null,
     currentAudioInputDevice?: MediaDeviceInfo | null,
     currentAudioOutputDevice?: MediaDeviceInfo | null,
@@ -621,11 +620,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
         const state = {} as State;
 
-        if (this.props.screenSharingID === this.props.currentUserID) {
+        if (this.props.screenSharingSession?.session_id === this.props.currentSession?.session_id) {
             window.callsClient?.unshareScreen();
             state.screenStream = null;
             this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
-        } else if (!this.props.screenSharingID) {
+        } else if (!this.props.screenSharingSession) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 if (this.props.global) {
                     sendDesktopEvent('desktop-sources-modal-request');
@@ -740,17 +739,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     renderScreenSharingPanel = () => {
-        if (!this.props.screenSharingID) {
+        if (!this.props.screenSharingSession) {
             return null;
         }
 
         const {formatMessage} = this.props.intl;
 
-        const isSharing = this.props.screenSharingID === this.props.currentUserID;
+        const isSharing = this.props.screenSharingSession.session_id === this.props.currentSession?.session_id;
 
         let profile;
         if (!isSharing) {
-            profile = this.props.profiles[this.props.screenSharingID];
+            profile = this.props.profiles[this.props.screenSharingSession.user_id];
             if (!profile) {
                 return null;
             }
@@ -860,9 +859,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     renderScreenShareButton = () => {
         const {formatMessage} = this.props.intl;
-        const sharingID = this.props.screenSharingID;
-        const currentID = this.props.currentUserID;
-        const isSharing = sharingID === currentID;
+        const sharingID = this.props.screenSharingSession?.session_id;
+        const isSharing = sharingID && sharingID === this.props.currentSession?.session_id;
 
         let fill = '';
         if (isSharing) {
@@ -891,7 +889,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.16)' : ''}
                 icon={<ShareIcon style={{fill}}/>}
                 unavailable={this.state.alerts.missingScreenPermissions.active}
-                disabled={sharingID !== '' && !isSharing}
+                disabled={Boolean(sharingID) && !isSharing}
             />
         );
     };
@@ -991,7 +989,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 />
                             }
 
-                            {this.props.screenSharingID === session.user_id &&
+                            {this.props.screenSharingSession?.session_id === session.session_id &&
                                 <ScreenIcon
                                     fill={'rgb(var(--dnd-indicator-rgb))'}
                                     style={{width: '14px', height: '14px'}}
@@ -1251,10 +1249,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     renderScreenSharingMenuItem = () => {
         const {formatMessage} = this.props.intl;
-        const sharingID = this.props.screenSharingID;
-        const currentID = this.props.currentUserID;
-        const isSharing = sharingID === currentID;
-        const isDisabled = Boolean(sharingID !== '' && !isSharing);
+        const sharingID = this.props.screenSharingSession?.session_id;
+        const isSharing = sharingID && sharingID === this.props.currentSession?.session_id;
+        const isDisabled = Boolean(sharingID && !isSharing);
         const noPermissions = this.state.alerts.missingScreenPermissions.active;
 
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;

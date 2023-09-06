@@ -10,7 +10,7 @@ import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, tra
 import {
     sessionsInCurrentCall,
     callStartAtForCurrentCall,
-    screenSharingIDForCurrentCall,
+    screenSharingSessionForCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
@@ -34,10 +34,12 @@ const mapStateToProps = (state: GlobalState) => {
     const channel = getChannel(state, String(window.callsClient?.channelID));
     const currentUserID = getCurrentUserId(state);
 
-    const screenSharingID = screenSharingIDForCurrentCall(state);
+    const screenSharingSession = screenSharingSessionForCurrentCall(state);
 
     const profiles = profilesInCurrentCallMap(state);
-    const sessions = sessionsInCurrentCall(state).sort(alphaSortSessions(profiles)).sort(stateSortSessions(screenSharingID, true));
+    const sessions = sessionsInCurrentCall(state)
+        .sort(alphaSortSessions(profiles))
+        .sort(stateSortSessions(screenSharingSession?.session_id || '', true));
 
     const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
 
@@ -54,7 +56,7 @@ const mapStateToProps = (state: GlobalState) => {
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),
         callRecording: recordingForCurrentCall(state),
-        screenSharingID,
+        screenSharingSession,
         allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),
         recentlyJoinedUsers: recentlyJoinedUsersInCurrentCall(state),

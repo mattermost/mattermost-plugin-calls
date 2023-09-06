@@ -158,7 +158,7 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
         channelIDForCurrentCall,
         (callsStates, channelID) => callsStates[channelID]?.startAt ||
           window.callsClient?.initTime ||
-          window.opener.callsClient?.initTime || 0,
+          window.opener?.callsClient?.initTime || 0,
     );
 
 export const callInCurrentChannel: (state: GlobalState) => callState =
@@ -205,12 +205,13 @@ const screenSharingIDsForCalls = (state: GlobalState): screenSharingIDsState => 
     return pluginState(state).screenSharingIDs;
 };
 
-export const screenSharingIDForCurrentCall: (state: GlobalState) => string =
+export const screenSharingSessionForCurrentCall: (state: GlobalState) => UserSessionState | undefined =
     createSelector(
-        'screenSharingIDForCurrentCall',
+        'screenSharingSessionForCurrentCall',
         screenSharingIDsForCalls,
         channelIDForCurrentCall,
-        (ids, channelID) => ids[channelID] || '',
+        sessionsInCalls,
+        (ids, channelID, sessions) => sessions[channelID]?.[ids[channelID]],
     );
 
 export const callThreadIDForCallInChannel = (state: GlobalState, channelID: string) => {

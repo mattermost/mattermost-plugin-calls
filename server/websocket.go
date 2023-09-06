@@ -108,14 +108,14 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 
 	if msg.Type == clientMessageTypeScreenOn {
 		if state.Call.ScreenSharingID != "" {
-			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
+			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingID)
 		}
-		state.Call.ScreenSharingID = us.userID
+		state.Call.ScreenSharingID = us.originalConnID
 		state.Call.ScreenStreamID = data["screenStreamID"]
 		state.Call.ScreenStartAt = time.Now().Unix()
 	} else {
-		if state.Call.ScreenSharingID != us.userID {
-			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
+		if state.Call.ScreenSharingID != us.originalConnID {
+			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingID)
 		}
 		state.Call.ScreenSharingID = ""
 		state.Call.ScreenStreamID = ""
@@ -665,7 +665,7 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 	p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
 		"userID":     userID,
 		"session_id": connID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true, OmitUsers: map[string]bool{userID: true}})
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{

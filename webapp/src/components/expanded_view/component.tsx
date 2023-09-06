@@ -94,7 +94,7 @@ interface Props extends RouteComponentProps {
         [userID: string]: UserProfile,
     }
     sessions: UserSessionState[],
-    currentSession: UserSessionState,
+    currentSession?: UserSessionState,
     callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
@@ -106,7 +106,7 @@ interface Props extends RouteComponentProps {
     prefetchThread: (postId: string) => void,
     closeRhs?: () => void,
     isRhsOpen?: boolean,
-    screenSharingID: string,
+    screenSharingSession?: UserSessionState,
     channel?: Channel,
     channelTeam?: Team,
     channelDisplayName: string;
@@ -460,13 +460,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return;
         }
         const callsClient = getCallsClient();
-        if (this.props.screenSharingID === this.props.currentUserID) {
+        if (this.props.screenSharingSession && this.props.screenSharingSession?.session_id === this.props.currentSession?.session_id) {
             callsClient?.unshareScreen();
             this.setState({
                 screenStream: null,
             });
             this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
-        } else if (!this.props.screenSharingID) {
+        } else if (!this.props.screenSharingSession) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 this.props.showScreenSourceModal();
             } else if (shouldRenderDesktopWidget()) {
@@ -726,13 +726,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     renderScreenSharingPlayer = () => {
-        const isSharing = this.props.screenSharingID === this.props.currentUserID;
+        const isSharing = this.props.screenSharingSession?.session_id === this.props.currentSession?.session_id;
         const {formatMessage} = this.props.intl;
 
         let profile;
         if (!isSharing) {
             for (let i = 0; i < this.props.sessions.length; i++) {
-                if (this.props.sessions[i].session_id === this.props.screenSharingID) {
+                if (this.props.sessions[i].session_id === this.props.screenSharingSession?.session_id) {
                     profile = this.props.profiles[this.props.sessions[i].user_id];
                     break;
                 }
@@ -879,7 +879,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         }
 
-                        {this.props.screenSharingID === profile.id &&
+                        {this.props.screenSharingSession?.session_id === session.session_id &&
                             <ScreenIcon
                                 fill={'rgb(var(--dnd-indicator-rgb))'}
                                 style={{width: '16px', height: '16px'}}
@@ -962,9 +962,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext!);
         }
 
-        const sharingID = this.props.screenSharingID;
-        const currentID = this.props.currentUserID;
-        const isSharing = sharingID === currentID;
+        const sharingID = this.props.screenSharingSession?.session_id;
+        const isSharing = sharingID === this.props.currentSession?.session_id;
 
         let shareScreenTooltipText = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'});
         if (noScreenPermissions) {
@@ -1042,7 +1041,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </button>
                     </div>
 
-                    {!this.props.screenSharingID &&
+                    {!this.props.screenSharingSession &&
                         <div style={this.style.centerView}>
                             <ul
                                 id='calls-expanded-view-participants-grid'
@@ -1055,7 +1054,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </ul>
                         </div>
                     }
-                    {this.props.screenSharingID && this.renderScreenSharingPlayer()}
+                    {this.props.screenSharingSession && this.renderScreenSharingPlayer()}
                     <div
                         id='calls-expanded-view-controls'
                         style={this.style.controls}
@@ -1127,7 +1126,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         />
                                     }
                                     unavailable={noScreenPermissions}
-                                    disabled={sharingID !== '' && !isSharing}
+                                    disabled={Boolean(sharingID) && !isSharing}
                                 />
                             }
 

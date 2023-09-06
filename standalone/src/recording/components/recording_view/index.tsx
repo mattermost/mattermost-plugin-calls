@@ -14,7 +14,7 @@ import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import Timestamp from 'src/components/timestamp';
-import {screenSharingIDForCurrentCall, hostIDForCurrentCall, profilesInCurrentCallMap, sessionsInCurrentCall} from 'src/selectors';
+import {screenSharingSessionForCurrentCall, hostIDForCurrentCall, profilesInCurrentCallMap, sessionsInCurrentCall} from 'src/selectors';
 
 const MaxParticipantsPerRow = 10;
 
@@ -23,10 +23,12 @@ const RecordingView = () => {
     const [screenPlayerNode, setScreenPlayerNode] = useState<HTMLVideoElement|null>(null);
     const [screenStream, setScreenStream] = useState<MediaStream|null>(null);
     const callsClient = window.callsClient;
-    const screenSharingID = useSelector((state: GlobalState) => screenSharingIDForCurrentCall(state));
+    const screenSharingSession = useSelector(screenSharingSessionForCurrentCall);
 
     const profiles = useSelector(profilesInCurrentCallMap);
-    const sessions = useSelector((state: GlobalState) => sessionsInCurrentCall(state).sort(alphaSortSessions(profiles)).sort(stateSortSessions(screenSharingID, true)));
+    const sessions = useSelector((state: GlobalState) => sessionsInCurrentCall(state)
+        .sort(alphaSortSessions(profiles))
+        .sort(stateSortSessions(screenSharingSession?.session_id || '', true)));
 
     const hostID = useSelector((state: GlobalState) => hostIDForCurrentCall(state));
 
@@ -79,7 +81,7 @@ const RecordingView = () => {
     const renderScreenSharingPlayer = () => {
         let profile: UserProfile | null = null;
         for (let i = 0; i < sessions.length; i++) {
-            if (sessions[i].user_id === screenSharingID) {
+            if (sessions[i].session_id === screenSharingSession?.session_id) {
                 profile = profiles[sessions[i].user_id];
                 break;
             }
@@ -189,7 +191,7 @@ const RecordingView = () => {
         );
     };
 
-    const hasScreenShare = Boolean(screenSharingID);
+    const hasScreenShare = Boolean(screenSharingSession);
 
     return (
         <div

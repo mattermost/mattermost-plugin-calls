@@ -461,6 +461,7 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
         data: {
             channelID,
             userID: call.screen_sharing_id,
+            session_id: call.screen_sharing_session_id,
         },
     });
 
