@@ -31,11 +31,11 @@ import {
     CALL_RECORDING_STATE,
     CALL_STATE,
     CALL_HOST,
-    PROFILE_CONNECTED,
-    PROFILES_CONNECTED,
+    PROFILE_JOINED,
+    PROFILES_JOINED,
     UNINIT,
-    USER_CONNECTED,
-    USER_DISCONNECTED,
+    USER_JOINED,
+    USER_LEFT,
     USER_MUTED,
     USER_RAISE_HAND,
     USER_REACTED,
@@ -46,7 +46,7 @@ import {
     USER_LOWER_HAND,
     USER_VOICE_OFF,
     USER_VOICE_ON,
-    USERS_CONNECTED_STATES,
+    USERS_STATES,
     USER_JOINED_TIMEOUT,
     RECORDINGS_ENABLED,
     ADD_INCOMING_CALL,
@@ -101,12 +101,12 @@ const profiles = (state: profilesState = {}, action: profilesAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
-    case PROFILES_CONNECTED:
+    case PROFILES_JOINED:
         return {
             ...state,
             [action.data.channelID]: action.data.profiles,
         };
-    case PROFILE_CONNECTED:
+    case PROFILE_JOINED:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -123,7 +123,7 @@ const profiles = (state: profilesState = {}, action: profilesAction) => {
                 [action.data.session_id]: action.data.profile,
             },
         };
-    case USER_DISCONNECTED: {
+    case USER_LEFT: {
         if (!state[action.data.channelID]) {
             return state;
         }
@@ -195,7 +195,7 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
-    case USER_CONNECTED:
+    case USER_JOINED:
         if (state[action.data.channelID]) {
             return {
                 ...state,
@@ -212,7 +212,7 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
             };
         }
         return state;
-    case USER_DISCONNECTED:
+    case USER_LEFT:
         if (state[action.data.channelID]) {
             // eslint-disable-next-line
             const {[action.data.session_id]: omit, ...res} = state[action.data.channelID];
@@ -222,7 +222,7 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
             };
         }
         return state;
-    case USERS_CONNECTED_STATES:
+    case USERS_STATES:
         return {
             ...state,
             [action.data.channelID]: action.data.states,
@@ -479,7 +479,7 @@ const reactions = (state: usersReactionsState = {}, action: sessionsAction) => {
                     }),
             },
         };
-    case USER_DISCONNECTED:
+    case USER_LEFT:
         if (!state[action.data.channelID] || !state[action.data.channelID].reactions) {
             return state;
         }
@@ -530,7 +530,7 @@ const recordings = (state: callsRecordingsState = {}, action: recordingStateActi
     switch (action.type) {
     case UNINIT:
         return {};
-    case USER_DISCONNECTED: {
+    case USER_LEFT: {
         const theAction = action as userDisconnectedAction;
         if (theAction.data.currentUserID === theAction.data.userID) {
             const nextState = {...state};
@@ -653,7 +653,7 @@ const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenShari
             ...state,
             [action.data.channelID]: action.data.session_id,
         };
-    case USER_DISCONNECTED: {
+    case USER_LEFT: {
         // If the user who disconnected matches the one sharing we
         // want to fallthrough and clear the state.
         if (action.data.session_id !== state[action.data.channelID]) {
@@ -776,7 +776,7 @@ const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: recen
     switch (action.type) {
     case UNINIT:
         return {};
-    case USER_CONNECTED:
+    case USER_JOINED:
         if (!state[action.data.channelID]) {
             return {
                 ...state,
@@ -790,7 +790,7 @@ const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: recen
                 action.data.userID,
             ],
         };
-    case USER_DISCONNECTED:
+    case USER_LEFT:
         return {
             ...state,
             [action.data.channelID]: state[action.data.channelID]?.filter((val) => val !== action.data.userID),

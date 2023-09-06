@@ -3,8 +3,8 @@ import {
     CallRecordingStateData,
     EmptyData,
     Reaction,
-    UserConnectedData,
-    UserDisconnectedData,
+    UserJoinedData,
+    UserLeftData,
     UserDismissedNotification,
     UserMutedUnmutedData,
     UserRaiseUnraiseHandData,
@@ -19,15 +19,15 @@ import {WebSocketMessage} from '@mattermost/types/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected, loadCallState} from 'src/actions';
+import {incomingCallOnChannel, removeIncomingCallNotification, userLeft, loadCallState} from 'src/actions';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 import {notificationSounds} from 'src/webapp_globals';
 
 import {
     USER_MUTED,
     USER_UNMUTED,
-    USER_CONNECTED,
-    PROFILE_CONNECTED,
+    USER_JOINED,
+    PROFILE_JOINED,
     CALL_STATE,
     CALL_END,
     USER_VOICE_ON,
@@ -130,14 +130,14 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
     }
 }
 
-export function handleUserDisconnected(store: Store, ev: WebSocketMessage<UserDisconnectedData>) {
+export function handleUserLeft(store: Store, ev: WebSocketMessage<UserLeftData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
-    store.dispatch(userDisconnected(channelID, ev.data.userID, ev.data.session_id));
+    store.dispatch(userLeft(channelID, ev.data.user_id, ev.data.session_id));
 }
 
-export async function handleUserConnected(store: Store, ev: WebSocketMessage<UserConnectedData>) {
-    const userID = ev.data.userID;
+export async function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedData>) {
+    const userID = ev.data.user_id;
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     const currentUserID = getCurrentUserId(store.getState());
     const sessionID = ev.data.session_id;
@@ -157,7 +157,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
     }
 
     store.dispatch({
-        type: USER_CONNECTED,
+        type: USER_JOINED,
         data: {
             channelID,
             userID,
@@ -178,7 +178,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
 
     try {
         store.dispatch({
-            type: PROFILE_CONNECTED,
+            type: PROFILE_JOINED,
             data: {
                 profile: (await getProfilesByIds(store.getState(), [userID]))[0],
                 session_id: sessionID,

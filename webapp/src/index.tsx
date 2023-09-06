@@ -50,7 +50,7 @@ import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/ty
 import {
     DESKTOP_WIDGET_CONNECTED,
     RECEIVED_CHANNEL_STATE,
-    PROFILES_CONNECTED,
+    PROFILES_JOINED,
     CALL_STATE,
     UNINIT,
     SHOW_SWITCH_CALL_MODAL,
@@ -128,6 +128,8 @@ import {
     handleUserScreenOn,
     handleUserScreenOff,
     handleUserUnraisedHand,
+    handleUserJoined,
+    handleUserLeft,
 } from './websocket_handlers';
 
 export default class Plugin {
@@ -157,12 +159,12 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_connected`, (ev) => {
-            handleUserConnected(store, ev);
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_joined`, (ev) => {
+            handleUserJoined(store, ev);
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_disconnected`, (ev) => {
-            handleUserDisconnected(store, ev);
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_left`, (ev) => {
+            handleUserLeft(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_muted`, (ev) => {
@@ -589,7 +591,7 @@ export default class Plugin {
                     }
 
                     actions.push({
-                        type: PROFILES_CONNECTED,
+                        type: PROFILES_JOINED,
                         data: {
                             // eslint-disable-next-line no-await-in-loop
                             profiles: await getProfilesForSessions(store.getState(), call.sessions),

@@ -24,8 +24,8 @@ const (
 	// DEPRECATED in favour of user_left (since v0.20)
 	wsEventUserDisconnected = "user_disconnected"
 
-	wsEventSessionJoined             = "user_joined"
-	wsEventSessionLeft               = "user_left"
+	wsEventUserJoined                = "user_joined"
+	wsEventUserLeft                  = "user_left"
 	wsEventUserMuted                 = "user_muted"
 	wsEventUserUnmuted               = "user_unmuted"
 	wsEventUserVoiceOn               = "user_voice_on"
@@ -677,6 +677,13 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 			"userID": userID,
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
+
+	// We omit the current user since they'll be receiving the whole state so no
+	// need to send a redundant event.
+	p.publishWebSocketEvent(wsEventUserJoined, map[string]interface{}{
+		"user_id":    userID,
+		"session_id": connID,
+	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true, OmitUsers: map[string]bool{userID: true}})
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{

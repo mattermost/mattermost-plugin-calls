@@ -1,4 +1,4 @@
-import {CallsConfig, UserState, CallState, SessionState} from '@calls/common/lib/types';
+import {CallsConfig, UserState, CallState, SessionState, UserSessionState} from '@calls/common/lib/types';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
@@ -47,17 +47,17 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
-    USER_DISCONNECTED,
     RTCD_ENABLED,
     REMOVE_INCOMING_CALL,
     DID_RING_FOR_CALL,
     RINGING_FOR_CALL,
     DISMISS_CALL,
     CALL_STATE,
-    USERS_CONNECTED_STATES,
-    PROFILES_CONNECTED,
+    USERS_STATES,
+    PROFILES_JOINED,
     CALL_HOST,
     USER_SCREEN_ON,
+    USER_LEFT,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -356,13 +356,13 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
     };
 }
 
-export const userDisconnected = (channelID: string, userID: string, sessionID: string) => {
+export const userLeft = (channelID: string, userID: string, sessionID: string) => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         // save for later
         const callID = calls(getState())[channelID].ID || '';
 
         await dispatch({
-            type: USER_DISCONNECTED,
+            type: USER_LEFT,
             data: {
                 channelID,
                 userID,
@@ -487,14 +487,14 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
         }
     }
 
-    const states: Record<string, SessionState> = {};
+    const states: Record<string, UserSessionState> = {};
     for (let i = 0; i < call.sessions.length; i++) {
         states[call.sessions[i].session_id] = call.sessions[i];
     }
 
     if (call.sessions.length > 0) {
         actions.push({
-            type: PROFILES_CONNECTED,
+            type: PROFILES_JOINED,
             data: {
                 profiles: await getProfilesForSessions(getState(), call.sessions),
                 channelID,
@@ -503,7 +503,7 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
     }
 
     actions.push({
-        type: USERS_CONNECTED_STATES,
+        type: USERS_STATES,
         data: {
             states,
             channelID,

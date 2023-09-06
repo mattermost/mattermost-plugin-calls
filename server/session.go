@@ -296,6 +296,11 @@ func (p *Plugin) removeSession(us *session) error {
 			}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 		}
 
+		p.publishWebSocketEvent(wsEventUserLeft, map[string]interface{}{
+			"user_id":    us.userID,
+			"session_id": us.originalConnID,
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+
 		// If the removed user was sharing we should send out a screen off event.
 		if prevState.Call.ScreenSharingID != "" && (currState.Call == nil || currState.Call.ScreenSharingID == "") {
 			p.LogDebug("removed session was sharing, sending screen off event", "userID", us.userID, "connID", us.connID)
