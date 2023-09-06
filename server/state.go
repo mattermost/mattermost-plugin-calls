@@ -138,6 +138,19 @@ func (cs *callState) Clone() *callState {
 	return &newState
 }
 
+func (cs *callState) sessionsForUser(userID string) []*userState {
+	if cs == nil {
+		return nil
+	}
+	var sessions []*userState
+	for _, session := range cs.Sessions {
+		if session.UserID == userID {
+			sessions = append(sessions, session)
+		}
+	}
+	return sessions
+}
+
 func (cs *channelState) getRecording() (*recordingState, error) {
 	if cs == nil {
 		return nil, fmt.Errorf("channel state is missing from store")

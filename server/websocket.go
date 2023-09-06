@@ -17,9 +17,15 @@ import (
 )
 
 const (
-	wsEventSignal                    = "signal"
-	wsEventUserConnected             = "user_connected"
-	wsEventUserDisconnected          = "user_disconnected"
+	wsEventSignal = "signal"
+
+	// DEPRECATED in favour of user_joined (since v0.20)
+	wsEventUserConnected = "user_connected"
+	// DEPRECATED in favour of user_left (since v0.20)
+	wsEventUserDisconnected = "user_disconnected"
+
+	wsEventSessionJoined             = "user_joined"
+	wsEventSessionLeft               = "user_left"
 	wsEventUserMuted                 = "user_muted"
 	wsEventUserUnmuted               = "user_unmuted"
 	wsEventUserVoiceOn               = "user_voice_on"
@@ -662,10 +668,15 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 	p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
 		"connID": connID,
 	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
-	p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
-		"userID":     userID,
-		"session_id": connID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true, OmitUsers: map[string]bool{userID: true}})
+
+	if len(state.Call.sessionsForUser(userID)) == 1 {
+		// Only send event on first session join.
+		// This is to keep backwards compatibility with clients not supporting
+		// multi-sessions.
+		p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
+			"userID": userID,
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
