@@ -42,9 +42,9 @@ const mapStateToProps = (state: GlobalState) => {
     const currentUserID = getCurrentUserId(state);
     const currentTeamID = getCurrentTeamId(state);
     const channel = channelForCurrentCall(state);
-    const channelTeam = getTeam(state, channel?.team_id);
+    const channelTeam = getTeam(state, channel?.team_id || '');
     const screenSharingID = screenSharingIDForCurrentCall(state);
-    const threadID = callThreadIDForCallInChannel(state, channel?.id);
+    const threadID = callThreadIDForCallInChannel(state, channel?.id || '');
 
     const sortedProfiles = (profiles: UserProfile[], statuses: { [key: string]: UserState }) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));

@@ -1,4 +1,3 @@
-import {Channel} from '@mattermost/types/channels';
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 
@@ -9,7 +8,6 @@ import './component.scss';
 
 interface Props {
     intl: IntlShape,
-    connectedChannel: Channel,
     show: boolean,
     hideScreenSourceModal: () => void,
 }

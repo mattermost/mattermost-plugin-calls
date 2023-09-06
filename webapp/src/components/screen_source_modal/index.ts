@@ -3,13 +3,12 @@ import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
 
 import {hideScreenSourceModal} from '../../actions';
-import {screenSourceModal, channelForCurrentCall} from '../../selectors';
+import {screenSourceModal} from '../../selectors';
 
 import ScreenSourceModal from './component';
 
 const mapStateToProps = (state: GlobalState) => {
     return {
-        connectedChannel: channelForCurrentCall(state),
         show: screenSourceModal(state),
     };
 };

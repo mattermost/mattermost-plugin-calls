@@ -74,7 +74,7 @@ export const channelHasCall = (state: GlobalState, channelId: string): boolean =
 export const channelIDForCurrentCall = (state: GlobalState): string =>
     pluginState(state).channelID || '';
 
-export const channelForCurrentCall: (state: GlobalState) => Channel =
+export const channelForCurrentCall: (state: GlobalState) => Channel | undefined =
     createSelector(
         'channelForCurrentCall',
         getAllChannels,
@@ -456,7 +456,7 @@ export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
 
 export const adminStats = (state: GlobalState) => state.entities.admin.analytics;
 
-export const getChannelUrlAndDisplayName = (state: GlobalState, channel: Channel) => {
+export const getChannelUrlAndDisplayName = (state: GlobalState, channel?: Channel) => {
     const currentUserID = getCurrentUserId(state);
     const teammateNameDisplaySetting = getTeammateNameDisplaySetting(state);
     const users = getUsers(state);
