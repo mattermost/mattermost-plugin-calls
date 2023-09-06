@@ -109,7 +109,7 @@ interface Props extends RouteComponentProps {
     isRhsOpen?: boolean,
     screenSharingID: string,
     channel?: Channel,
-    channelTeam: Team,
+    channelTeam?: Team,
     channelDisplayName: string;
     connectedDMUser: UserProfile | undefined,
     threadID: Post['id'],
@@ -657,7 +657,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID) {
             // close rhs
             this.props.closeRhs?.();
-        } else if (this.props.channel && this.props.channel.team_id && this.props.channel.team_id !== this.props.currentTeamID) {
+        } else if (this.props.channelTeam && this.props.channelTeam.id !== this.props.currentTeamID) {
             // go to call thread in channels
             this.props.history.push(`/${this.props.channelTeam.name}/pl/${this.props.threadID}`);
         } else if (this.props.threadID) {
@@ -984,13 +984,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         let chatToolTipText = showChatThread ? formatMessage({defaultMessage: 'Hide chat'}) : formatMessage({defaultMessage: 'Show chat'});
 
         const chatToolTipSubtext = '';
-        const chatDisabled = this.props.channel && this.props.channel.team_id !== this.props.currentTeamID;
+        const chatDisabled = this.props.channelTeam && this.props.channelTeam.id !== this.props.currentTeamID;
         if (chatDisabled) {
             chatToolTipText = formatMessage({
                 defaultMessage: 'Chat unavailable: different team selected. Click here to switch back to {channelName} in {teamName}.',
             }, {
                 channelName: this.props.channelDisplayName,
-                teamName: this.props.channelTeam.display_name,
+                teamName: this.props.channelTeam!.display_name,
             });
         }
 
