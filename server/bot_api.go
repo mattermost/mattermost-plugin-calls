@@ -229,7 +229,7 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 		UserId:    p.getBotID(),
 		ChannelId: callID,
 		Message:   postMsg,
-		Type:      "custom_calls_recording",
+		Type:      callRecordingPostType,
 		RootId:    threadID,
 		FileIds:   []string{fileID},
 	}

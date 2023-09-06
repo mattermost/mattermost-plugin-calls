@@ -7,10 +7,12 @@ import (
 	"bytes"
 	"compress/zlib"
 	"fmt"
+	"github.com/mattermost/mattermost/server/public/model"
 	"io"
 	"math"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -37,6 +39,43 @@ func (p *Plugin) setHandlerID(nodeID string) error {
 		return fmt.Errorf("failed to set handler id: %w", appErr)
 	}
 	return nil
+}
+
+func (p *Plugin) getNotificationNameFormat(userID string) string {
+	config := p.API.GetConfig()
+	if !*config.PrivacySettings.ShowFullName {
+		return model.ShowUsername
+	}
+
+	if preferences, appErr := p.API.GetPreferencesForUser(userID); appErr == nil {
+		for _, pref := range preferences {
+			if pref.Category == model.PreferenceCategoryDisplaySettings && pref.Name == model.PreferenceNameNameFormat {
+				return pref.Value
+			}
+		}
+	}
+
+	return *config.TeamSettings.TeammateNameDisplay
+}
+
+func getChannelNameForNotification(channel *model.Channel, sender *model.User, users []*model.User, nameFormat, excludeID string) string {
+	switch channel.Type {
+	case model.ChannelTypeDirect:
+		return sender.GetDisplayNameWithPrefix(nameFormat, "@")
+	case model.ChannelTypeGroup:
+		var names []string
+		for _, user := range users {
+			if user.Id != excludeID {
+				names = append(names, user.GetDisplayName(nameFormat))
+			}
+		}
+
+		sort.Strings(names)
+
+		return strings.Join(names, ", ")
+	default:
+		return channel.DisplayName
+	}
 }
 
 func unpackSDPData(data []byte) ([]byte, error) {

@@ -23,6 +23,11 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 )
 
+const (
+	callStartPostType     = "custom_calls"
+	callRecordingPostType = "custom_calls_recording"
+)
+
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
 type Plugin struct {
 	plugin.MattermostPlugin
@@ -306,7 +311,7 @@ func (p *Plugin) createCallStartedPost(state *channelState, userID, channelID, t
 		ChannelId: channelID,
 		RootId:    threadID,
 		Message:   postMsg,
-		Type:      "custom_calls",
+		Type:      callStartPostType,
 		Props: map[string]interface{}{
 			"attachments": []*model.SlackAttachment{&slackAttachment},
 			"start_at":    state.Call.StartAt,
@@ -321,6 +326,8 @@ func (p *Plugin) createCallStartedPost(state *channelState, userID, channelID, t
 	if threadID == "" {
 		threadID = createdPost.Id
 	}
+
+	p.sendPushNotifications(channelID, createdPost.Id, threadID, user, cfg)
 
 	return createdPost.Id, threadID, nil
 }
