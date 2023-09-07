@@ -27,6 +27,7 @@ const (
 	wsEventUserScreenOn              = "user_screen_on"
 	wsEventUserScreenOff             = "user_screen_off"
 	wsEventCallStart                 = "call_start"
+	wsEventCallState                 = "call_state"
 	wsEventCallEnd                   = "call_end"
 	wsEventUserRaiseHand             = "user_raise_hand"
 	wsEventUserUnraiseHand           = "user_unraise_hand"
@@ -665,6 +666,16 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 			"callID":   channelID,
 			"recState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}
+
+	clientStateData, err := json.Marshal(state.Call.getClientState(p.getBotID(), userID))
+	if err != nil {
+		p.LogError("failed to marshal client state", "err", err.Error())
+	} else {
+		p.publishWebSocketEvent(wsEventCallState, map[string]interface{}{
+			"channel_id": channelID,
+			"call":       string(clientStateData),
+		}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 	}
 
 	p.unlockCall(channelID)

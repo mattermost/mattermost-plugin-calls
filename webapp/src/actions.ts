@@ -1,4 +1,4 @@
-import {CallsConfig} from '@calls/common/lib/types';
+import {CallsConfig, UserState, CallState} from '@calls/common/lib/types';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
@@ -12,7 +12,8 @@ import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
 import {MessageDescriptor} from 'react-intl';
-import {Dispatch} from 'redux';
+import {Dispatch, AnyAction} from 'redux';
+import {batchActions} from 'redux-batched-actions';
 
 import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from 'src/cloud_pricing/modals';
 import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
@@ -26,10 +27,11 @@ import {
     ringingForCall,
     callDismissedNotification,
     calls,
+    hostChangeAtForCurrentCall,
 } from 'src/selectors';
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
-import {getPluginPath, isDesktopApp, isDMChannel, isGMChannel} from 'src/utils';
+import {getPluginPath, isDesktopApp, isDMChannel, isGMChannel, getProfilesByIds} from 'src/utils';
 import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
@@ -51,6 +53,12 @@ import {
     DID_RING_FOR_CALL,
     RINGING_FOR_CALL,
     DISMISS_CALL,
+    CALL_STATE,
+    USERS_CONNECTED,
+    USERS_CONNECTED_STATES,
+    PROFILES_CONNECTED,
+    CALL_HOST,
+    USER_SCREEN_ON,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
@@ -424,4 +432,91 @@ export const stopRingingForCall = (callID: string): ActionFunc => {
         });
         return {};
     };
+};
+
+export const loadCallState = (channelID: string, call: CallState) => async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+    const actions: AnyAction[] = [];
+
+    actions.push({
+        type: CALL_STATE,
+        data: {
+            ID: call.id,
+            channelID,
+            startAt: call.start_at,
+            ownerID: call.owner_id,
+            threadID: call.thread_id,
+        },
+    });
+
+    const dismissed = call.dismissed_notification;
+    if (dismissed) {
+        const currentUserID = getCurrentUserId(getState());
+        if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
+            actions.push({
+                type: DISMISS_CALL,
+                data: {
+                    callID: call.id,
+                },
+            });
+        }
+    }
+
+    actions.push({
+        type: USERS_CONNECTED,
+        data: {
+            users: call.users || [],
+            channelID,
+        },
+    });
+
+    actions.push({
+        type: CALL_HOST,
+        data: {
+            channelID,
+            hostID: call.host_id,
+            hostChangeAt: hostChangeAtForCurrentCall(getState()) || call.start_at,
+        },
+    });
+
+    if (call.users && call.users.length > 0) {
+        actions.push({
+            type: PROFILES_CONNECTED,
+            data: {
+                profiles: await getProfilesByIds(getState(), call.users),
+                channelID,
+            },
+        });
+    }
+
+    actions.push({
+        type: CALL_RECORDING_STATE,
+        data: {
+            callID: channelID,
+            recState: call.recording,
+        },
+    });
+
+    actions.push({
+        type: USER_SCREEN_ON,
+        data: {
+            channelID,
+            userID: call.screen_sharing_id,
+        },
+    });
+
+    const userStates: Record<string, UserState> = {};
+    const users = call.users || [];
+    const states = call.states || [];
+    for (let i = 0; i < users.length; i++) {
+        userStates[users[i]] = {...states[i], id: users[i]};
+    }
+    actions.push({
+        type: USERS_CONNECTED_STATES,
+        data: {
+            states: userStates,
+            channelID,
+        },
+    });
+
+    dispatch(batchActions(actions));
 };

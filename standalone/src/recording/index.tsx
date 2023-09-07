@@ -1,4 +1,4 @@
-import {UserConnectedData, WebsocketEventData} from '@calls/common/lib/types';
+import {UserConnectedData, WebsocketEventData, CallStateData} from '@calls/common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
 import {WebSocketMessage} from '@mattermost/types/websocket';
 import {ChannelTypes} from 'mattermost-redux/action_types';
@@ -8,7 +8,7 @@ import {Theme} from 'mattermost-redux/types/themes';
 import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/users';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
-import {profilesInCallInChannel, callStartAtForCallInChannel} from 'plugin/selectors';
+import {profilesInCallInChannel} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {getProfilesByIds, getPluginPath, fetchTranslationsFile, setCallsGlobalCSSVars, runWithRetry} from 'plugin/utils';
 import React from 'react';
@@ -70,10 +70,6 @@ async function initRecordingStore(store: Store, channelID: string) {
 }
 
 async function initRecording(store: Store, theme: Theme, channelID: string) {
-    if (!callStartAtForCallInChannel(store.getState(), channelID)) {
-        throw new Error('call is missing from store');
-    }
-
     await store.dispatch({
         type: USER_CONNECTED,
         data: {
@@ -82,18 +78,6 @@ async function initRecording(store: Store, theme: Theme, channelID: string) {
             currentUserID: getCurrentUserId(store.getState()),
         },
     });
-
-    const profiles = profilesInCallInChannel(store.getState(), channelID);
-
-    if (profiles?.length > 0) {
-        store.dispatch({
-            type: RECEIVED_CALL_PROFILE_IMAGES,
-            data: {
-                channelID,
-                profileImages: await fetchProfileImages(profiles),
-            },
-        });
-    }
 
     setCallsGlobalCSSVars(theme.sidebarBg);
 
@@ -138,6 +122,23 @@ async function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEv
             });
         } catch (err) {
             logErr('failed to fetch user profiles', err);
+        }
+
+        break;
+    }
+    case `custom_${pluginId}_call_state`: {
+        const data = ev.data as CallStateData;
+
+        const profiles = profilesInCallInChannel(store.getState(), data.channel_id);
+
+        if (profiles?.length > 0) {
+            store.dispatch({
+                type: RECEIVED_CALL_PROFILE_IMAGES,
+                data: {
+                    channelID: data.channel_id,
+                    profileImages: await fetchProfileImages(profiles),
+                },
+            });
         }
 
         break;
