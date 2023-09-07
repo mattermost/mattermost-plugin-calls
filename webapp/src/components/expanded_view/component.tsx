@@ -44,6 +44,7 @@ import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import {
     CallAlertConfigs,
 } from 'src/constants';
+import {logErr} from 'src/log';
 import {
     MUTE_UNMUTE,
     RAISE_LOWER_HAND,
@@ -107,8 +108,8 @@ interface Props extends RouteComponentProps {
     closeRhs?: () => void,
     isRhsOpen?: boolean,
     screenSharingID: string,
-    channel: Channel,
-    channelTeam: Team,
+    channel?: Channel,
+    channelTeam?: Team,
     channelDisplayName: string;
     connectedDMUser: UserProfile | undefined,
     threadID: Post['id'],
@@ -443,6 +444,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     onRecordToggle = async (fromShortcut?: boolean) => {
+        if (!this.props.channel) {
+            logErr('channel should be defined');
+            return;
+        }
+
         if (this.props.isRecording) {
             await stopCallRecording(this.props.channel.id);
             this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
@@ -651,7 +657,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         if (this.props.isRhsOpen && this.props.rhsSelectedThreadID === this.props.threadID) {
             // close rhs
             this.props.closeRhs?.();
-        } else if (this.props.channel.team_id && this.props.channel.team_id !== this.props.currentTeamID) {
+        } else if (this.props.channelTeam && this.props.channelTeam.id !== this.props.currentTeamID) {
             // go to call thread in channels
             this.props.history.push(`/${this.props.channelTeam.name}/pl/${this.props.threadID}`);
         } else if (this.props.threadID) {
@@ -668,6 +674,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 
     dismissRecordingPrompt = () => {
+        if (!this.props.channel) {
+            logErr('channel should be defined');
+            return;
+        }
+
         // Dismiss our prompt.
         this.props.recordingPromptDismissedAt(this.props.channel.id, Date.now());
 
@@ -973,13 +984,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         let chatToolTipText = showChatThread ? formatMessage({defaultMessage: 'Hide chat'}) : formatMessage({defaultMessage: 'Show chat'});
 
         const chatToolTipSubtext = '';
-        const chatDisabled = Boolean(this.props.channel?.team_id) && this.props.channel.team_id !== this.props.currentTeamID;
+        const chatDisabled = this.props.channelTeam && this.props.channelTeam.id !== this.props.currentTeamID;
         if (chatDisabled) {
             chatToolTipText = formatMessage({
                 defaultMessage: 'Chat unavailable: different team selected. Click here to switch back to {channelName} in {teamName}.',
             }, {
                 channelName: this.props.channelDisplayName,
-                teamName: this.props.channelTeam.display_name,
+                teamName: this.props.channelTeam!.display_name,
             });
         }
 

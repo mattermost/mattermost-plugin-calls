@@ -21,11 +21,11 @@ import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
 import {
-    channelHasCall, connectedCallID, incomingCalls,
+    channelHasCall, idForCurrentCall, incomingCalls,
     ringingEnabled,
     ringingForCall,
-    voiceChannelCallDismissedNotification,
-    voiceChannelCalls,
+    callDismissedNotification,
+    calls,
 } from 'src/selectors';
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
@@ -43,9 +43,9 @@ import {
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
-    VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
-    VOICE_CHANNEL_CALL_RECORDING_STATE,
-    VOICE_CHANNEL_USER_DISCONNECTED,
+    CALL_REC_PROMPT_DISMISSED,
+    CALL_RECORDING_STATE,
+    USER_DISCONNECTED,
     RTCD_ENABLED,
     REMOVE_INCOMING_CALL,
     DID_RING_FOR_CALL,
@@ -242,7 +242,7 @@ export const startCallRecording = (callID: string) => (dispatch: Dispatch<Generi
         {method: 'post'},
     ).catch((err) => {
         dispatch({
-            type: VOICE_CHANNEL_CALL_RECORDING_STATE,
+            type: CALL_RECORDING_STATE,
             data: {
                 callID,
                 recState: {
@@ -266,7 +266,7 @@ export const stopCallRecording = async (callID: string) => {
 
 export const recordingPromptDismissedAt = (callID: string, dismissedAt: number) => (dispatch: Dispatch<GenericAction>) => {
     dispatch({
-        type: VOICE_CHANNEL_CALL_REC_PROMPT_DISMISSED,
+        type: CALL_REC_PROMPT_DISMISSED,
         data: {
             callID,
             dismissedAt,
@@ -316,7 +316,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
             return;
         }
 
-        if (voiceChannelCallDismissedNotification(getState(), channelID)) {
+        if (callDismissedNotification(getState(), channelID)) {
             return;
         }
 
@@ -326,8 +326,8 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
 
         // Never send a notification for a call you started yourself, or a call you are currently in.
         const currentUserID = getCurrentUserId(getState());
-        const connectedID = connectedCallID(getState());
-        if (currentUserID === callerID || connectedID === callID) {
+        const currentCallID = idForCurrentCall(getState());
+        if (currentUserID === callerID || currentCallID === callID) {
             return;
         }
 
@@ -352,10 +352,10 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
 export const userDisconnected = (channelID: string, userID: string) => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         // save for later
-        const callID = voiceChannelCalls(getState())[channelID].ID || '';
+        const callID = calls(getState())[channelID].ID || '';
 
         await dispatch({
-            type: VOICE_CHANNEL_USER_DISCONNECTED,
+            type: USER_DISCONNECTED,
             data: {
                 channelID,
                 userID,

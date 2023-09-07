@@ -18,11 +18,11 @@ import * as Telemetry from 'src/types/telemetry';
 
 import {logDebug} from './log';
 import {
-    connectedChannelID,
-    voiceConnectedUsersInChannel,
-    voiceChannelCallOwnerID,
-    voiceChannelCallHostID,
-    isRecording,
+    channelIDForCurrentCall,
+    usersInCallInChannel,
+    callOwnerIDForCallInChannel,
+    hostIDForCurrentCall,
+    isRecordingInCurrentCall,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
 import {sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
@@ -43,13 +43,13 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         return {message, args};
     }
 
-    const connectedID = connectedChannelID(store.getState());
+    const connectedID = channelIDForCurrentCall(store.getState());
 
     switch (subCmd) {
     case 'join':
     case 'start':
         if (subCmd === 'start') {
-            if (voiceConnectedUsersInChannel(store.getState(), args.channel_id).length > 0) {
+            if (usersInCallInChannel(store.getState(), args.channel_id).length > 0) {
                 store.dispatch(displayGenericErrorModal(
                     defineMessage({defaultMessage: 'Unable to start call'}),
                     defineMessage({defaultMessage: 'A call is already ongoing in the channel.'}),
@@ -110,7 +110,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         ));
         return {};
     case 'end':
-        if (voiceConnectedUsersInChannel(store.getState(), args.channel_id)?.length === 0) {
+        if (usersInCallInChannel(store.getState(), args.channel_id)?.length === 0) {
             store.dispatch(displayGenericErrorModal(
                 defineMessage({defaultMessage: 'Unable to end the call'}),
                 defineMessage({defaultMessage: 'There\'s no ongoing call in the channel.'}),
@@ -119,7 +119,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         if (!isCurrentUserSystemAdmin(store.getState()) &&
-                    getCurrentUserId(store.getState()) !== voiceChannelCallOwnerID(store.getState(), args.channel_id)) {
+                    getCurrentUserId(store.getState()) !== callOwnerIDForCallInChannel(store.getState(), args.channel_id)) {
             store.dispatch(displayGenericErrorModal(
                 defineMessage({defaultMessage: 'Unable to end the call'}),
                 defineMessage({defaultMessage: 'You don\'t have permission to end the call. Please ask the call owner to end call.'}),
@@ -177,7 +177,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         const state = store.getState();
-        const isHost = voiceChannelCallHostID(state, connectedID) === getCurrentUserId(state);
+        const isHost = hostIDForCurrentCall(state) === getCurrentUserId(state);
 
         if (fields[2] === 'start') {
             trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.SlashCommand)(store.dispatch, store.getState);
@@ -190,7 +190,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
                 return {};
             }
 
-            if (isRecording(state, connectedID)) {
+            if (isRecordingInCurrentCall(state)) {
                 store.dispatch(displayGenericErrorModal(
                     startErrorTitle,
                     defineMessage({defaultMessage: 'A recording is already in progress.'}),
@@ -212,7 +212,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
                 return {};
             }
 
-            if (!isRecording(state, connectedID)) {
+            if (!isRecordingInCurrentCall(state)) {
                 store.dispatch(displayGenericErrorModal(
                     stopErrorTitle,
                     defineMessage({defaultMessage: 'No recording is in progress.'}),

@@ -28,12 +28,12 @@ import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
 import {Theme} from 'mattermost-redux/types/themes';
 import {
-    VOICE_CHANNEL_USER_SCREEN_ON,
-    VOICE_CHANNEL_ROOT_POST,
-    VOICE_CHANNEL_PROFILES_CONNECTED,
-    VOICE_CHANNEL_USERS_CONNECTED,
-    VOICE_CHANNEL_USERS_CONNECTED_STATES,
-    VOICE_CHANNEL_CALL_START,
+    USER_SCREEN_ON,
+    PROFILES_CONNECTED,
+    USERS_CONNECTED,
+    USERS_CONNECTED_STATES,
+    CALL_STATE,
+    CALL_HOST,
 } from 'plugin/action_types';
 import {getCallsConfig} from 'plugin/actions';
 import CallsClient from 'plugin/client';
@@ -145,7 +145,7 @@ async function fetchChannelData(store: Store, channelID: string) {
     }
 
     store.dispatch({
-        type: VOICE_CHANNEL_USERS_CONNECTED,
+        type: USERS_CONNECTED,
         data: {
             users: resp.call.users,
             channelID,
@@ -153,15 +153,7 @@ async function fetchChannelData(store: Store, channelID: string) {
     });
 
     store.dispatch({
-        type: VOICE_CHANNEL_ROOT_POST,
-        data: {
-            channelID,
-            rootPost: resp.call.thread_id,
-        },
-    });
-
-    store.dispatch({
-        type: VOICE_CHANNEL_USER_SCREEN_ON,
+        type: USER_SCREEN_ON,
         data: {
             channelID,
             userID: resp.call.screen_sharing_id,
@@ -169,20 +161,28 @@ async function fetchChannelData(store: Store, channelID: string) {
     });
 
     store.dispatch({
-        type: VOICE_CHANNEL_CALL_START,
+        type: CALL_STATE,
         data: {
             ID: resp.call.id,
             channelID: resp.channel_id,
             startAt: resp.call.start_at,
             ownerID: resp.call.owner_id,
+            threadID: resp.call.thread_id,
+        },
+    });
+
+    store.dispatch({
+        type: CALL_HOST,
+        data: {
+            channelID,
             hostID: resp.call.host_id,
-            dismissedNotification: resp.call.dismissed_notification || {},
+            hostChangeAt: resp.call.start_at,
         },
     });
 
     if (resp.call.users.length > 0) {
         store.dispatch({
-            type: VOICE_CHANNEL_PROFILES_CONNECTED,
+            type: PROFILES_CONNECTED,
             data: {
                 profiles: await getProfilesByIds(store.getState(), resp.call.users),
                 channelID,
@@ -196,7 +196,7 @@ async function fetchChannelData(store: Store, channelID: string) {
             userStates[users[i]] = {...states[i], id: users[i], voice: false};
         }
         store.dispatch({
-            type: VOICE_CHANNEL_USERS_CONNECTED_STATES,
+            type: USERS_CONNECTED_STATES,
             data: {
                 states: userStates,
                 channelID,

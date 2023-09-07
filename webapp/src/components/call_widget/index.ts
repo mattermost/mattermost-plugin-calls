@@ -12,18 +12,18 @@ import {bindActionCreators, Dispatch} from 'redux';
 
 import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 import {
-    voiceUsersStatuses,
-    voiceChannelCallStartAt,
-    voiceChannelScreenSharingID,
+    usersStatusesInCurrentCall,
+    callStartAtForCurrentCall,
+    screenSharingIDForCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
     allowScreenSharing,
-    voiceConnectedProfiles,
-    voiceChannelCallHostID,
-    callRecording,
-    voiceChannelCallHostChangeAt,
-    recentlyJoinedUsers,
+    profilesInCurrentCall,
+    hostIDForCurrentCall,
+    hostChangeAtForCurrentCall,
+    recordingForCurrentCall,
     sortedIncomingCalls,
+    recentlyJoinedUsersInCurrentCall,
 } from 'src/selectors';
 import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
 
@@ -37,14 +37,14 @@ const mapStateToProps = (state: GlobalState) => {
     const channel = getChannel(state, String(window.callsClient?.channelID));
     const currentUserID = getCurrentUserId(state);
 
-    const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
+    const screenSharingID = screenSharingIDForCurrentCall(state);
 
     const sortedProfiles = (profiles: UserProfile[], statuses: {[key: string]: UserState}) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
     };
 
-    const statuses = voiceUsersStatuses(state);
-    const profiles = sortedProfiles(voiceConnectedProfiles(state), statuses);
+    const statuses = usersStatusesInCurrentCall(state);
+    const profiles = sortedProfiles(profilesInCurrentCall(state), statuses);
 
     const profilesMap: IDMappedObjects<UserProfile> = {};
     const picturesMap: {
@@ -67,15 +67,15 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         profilesMap,
         picturesMap,
-        statuses: voiceUsersStatuses(state) || {},
-        callStartAt: voiceChannelCallStartAt(state, channel?.id) || Number(window.callsClient?.initTime),
-        callHostID: voiceChannelCallHostID(state, channel?.id) || '',
-        callHostChangeAt: voiceChannelCallHostChangeAt(state, channel?.id) || 0,
-        callRecording: callRecording(state, channel?.id),
+        statuses,
+        callStartAt: callStartAtForCurrentCall(state),
+        callHostID: hostIDForCurrentCall(state),
+        callHostChangeAt: hostChangeAtForCurrentCall(state),
+        callRecording: recordingForCurrentCall(state),
         screenSharingID,
         allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),
-        recentlyJoinedUsers: recentlyJoinedUsers(state, channel?.id),
+        recentlyJoinedUsers: recentlyJoinedUsersInCurrentCall(state),
         wider: getMyTeams(state)?.length > 1,
         callsIncoming: sortedIncomingCalls(state),
     };

@@ -9,9 +9,9 @@ import {connect} from 'react-redux';
 
 import PostType from 'src/components/custom_post_types/post_type/component';
 import {
-    voiceConnectedChannels,
-    voiceConnectedProfilesInChannel,
-    connectedChannelID,
+    usersInCallInChannel,
+    profilesInCallInChannel,
+    channelIDForCurrentCall,
     isCloudProfessionalOrEnterpriseOrTrial,
     maxParticipants,
 } from 'src/selectors';
@@ -21,22 +21,19 @@ interface OwnProps {
 }
 
 const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
-    const channels = voiceConnectedChannels(state);
+    const users = usersInCallInChannel(state, ownProps.post.channel_id);
     let profiles: UserProfile[] = [];
     const pictures = [];
-    if (channels) {
-        const users = channels[ownProps.post.channel_id];
-        if (users && users.length > 0) {
-            profiles = voiceConnectedProfilesInChannel(state, ownProps.post.channel_id);
-            for (let i = 0; i < profiles.length; i++) {
-                pictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
-            }
+    if (users && users.length > 0) {
+        profiles = profilesInCallInChannel(state, ownProps.post.channel_id);
+        for (let i = 0; i < profiles.length; i++) {
+            pictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
         }
     }
 
     return {
         ...ownProps,
-        connectedID: connectedChannelID(state) || '',
+        connectedID: channelIDForCurrentCall(state) || '',
         pictures,
         profiles,
         isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),

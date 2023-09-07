@@ -18,8 +18,8 @@ import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal, track
 import {DEFAULT_RING_SOUND} from 'src/constants';
 import {logDebug} from 'src/log';
 import {
-    connectedChannelID,
-    connectedTeam,
+    channelIDForCurrentCall,
+    teamForCurrentCall,
     currentlyRinging,
     didNotifyForCall,
     didRingForCall,
@@ -42,7 +42,7 @@ import {notificationSounds, sendDesktopNotificationToMe} from 'src/webapp_global
 export const useDismissJoin = (channelID: string, callID: string, onWidget = false) => {
     const store = useStore();
     const dispatch = useDispatch();
-    const connectedID = useSelector(connectedChannelID) || '';
+    const connectedID = useSelector(channelIDForCurrentCall) || '';
     const global = isDesktopApp();
     const source = telemetrySource(onWidget);
 
@@ -91,7 +91,7 @@ export const useDismissJoin = (channelID: string, callID: string, onWidget = fal
 };
 
 export const useOnACallWithoutGlobalWidget = () => {
-    const connectedChannel = useSelector(connectedChannelID);
+    const connectedChannel = useSelector(channelIDForCurrentCall);
     return Boolean(connectedChannel && !shouldRenderDesktopWidget());
 };
 
@@ -154,7 +154,7 @@ export const useRingingAndNotification = (call: IncomingCallNotification, onWidg
     const [shouldRing] = useNotificationSettings(call.channelID, currentUser);
     const currRinging = useSelector(currentlyRinging);
     const currRingingForThisCall = useSelector((state: GlobalState) => ringingForCall(state, call.callID));
-    const connected = Boolean(useSelector(connectedChannelID));
+    const connected = Boolean(useSelector(channelIDForCurrentCall));
     useNotification(call);
 
     useEffect(() => {
@@ -246,7 +246,7 @@ export const useGetCallerNameAndOthers = (call: IncomingCallNotification, splitA
 export const useOnChannelLinkClick = (call: IncomingCallNotification, onWidget = false) => {
     const dispatch = useDispatch();
     const global = Boolean(isDesktopApp() && getCallsClient());
-    const defaultTeam = useSelector(connectedTeam);
+    const defaultTeam = useSelector(teamForCurrentCall);
     const channel = useSelector((state: GlobalState) => getChannel(state, call.channelID));
     let channelURL = useSelector((state: GlobalState) => getChannelURL(state, channel, channel.team_id));
     const source = telemetrySource(onWidget);

@@ -2,7 +2,6 @@ import {UserState} from '@calls/common/lib/types';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {Client4} from 'mattermost-redux/client';
-import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
@@ -19,20 +18,20 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
-    callRecording,
-    isRecording,
-    connectedChannelID,
+    recordingForCurrentCall,
+    isRecordingInCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
     recordingMaxDuration,
     recordingsEnabled,
-    voiceChannelCallHostChangeAt,
-    voiceChannelCallHostID,
-    voiceChannelCallStartAt,
-    voiceChannelRootPost,
-    voiceChannelScreenSharingID,
-    voiceConnectedProfiles,
-    voiceUsersStatuses,
+    hostIDForCurrentCall,
+    hostChangeAtForCurrentCall,
+    callStartAtForCurrentCall,
+    callThreadIDForCallInChannel,
+    screenSharingIDForCurrentCall,
+    usersStatusesInCurrentCall,
+    profilesInCurrentCall,
+    channelForCurrentCall,
 } from 'src/selectors';
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
@@ -42,17 +41,17 @@ import ExpandedView from './component';
 const mapStateToProps = (state: GlobalState) => {
     const currentUserID = getCurrentUserId(state);
     const currentTeamID = getCurrentTeamId(state);
-    const channel = getChannel(state, connectedChannelID(state) || '');
-    const channelTeam = getTeam(state, channel?.team_id);
-    const screenSharingID = voiceChannelScreenSharingID(state, channel?.id) || '';
-    const threadID = voiceChannelRootPost(state, channel?.id);
+    const channel = channelForCurrentCall(state);
+    const channelTeam = getTeam(state, channel?.team_id || '');
+    const screenSharingID = screenSharingIDForCurrentCall(state);
+    const threadID = callThreadIDForCallInChannel(state, channel?.id || '');
 
     const sortedProfiles = (profiles: UserProfile[], statuses: { [key: string]: UserState }) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
     };
 
-    const statuses = voiceUsersStatuses(state);
-    const profiles = sortedProfiles(voiceConnectedProfiles(state), statuses);
+    const statuses = usersStatusesInCurrentCall(state);
+    const profiles = sortedProfiles(profilesInCurrentCall(state), statuses);
 
     const pictures: { [key: string]: string } = {};
     for (let i = 0; i < profiles.length; i++) {
@@ -76,11 +75,11 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         pictures,
         statuses,
-        callStartAt: voiceChannelCallStartAt(state, channel?.id) || 0,
-        callHostID: voiceChannelCallHostID(state, channel?.id) || '',
-        callHostChangeAt: voiceChannelCallHostChangeAt(state, channel?.id) || 0,
-        callRecording: callRecording(state, channel?.id),
-        isRecording: isRecording(state, channel?.id),
+        callStartAt: callStartAtForCurrentCall(state),
+        callHostID: hostIDForCurrentCall(state),
+        callHostChangeAt: hostChangeAtForCurrentCall(state),
+        callRecording: recordingForCurrentCall(state),
+        isRecording: isRecordingInCurrentCall(state),
         screenSharingID,
         channel,
         channelTeam,

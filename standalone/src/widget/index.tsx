@@ -8,7 +8,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {Theme} from 'mattermost-redux/types/themes';
 import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {
-    VOICE_CHANNEL_USER_CONNECTED,
+    USER_CONNECTED,
 } from 'plugin/action_types';
 import CallWidget from 'plugin/components/call_widget';
 import {
@@ -30,7 +30,7 @@ import init from '../init';
 
 async function initWidget(store: Store, theme: Theme, channelID: string) {
     store.dispatch({
-        type: VOICE_CHANNEL_USER_CONNECTED,
+        type: USER_CONNECTED,
         data: {
             channelID,
             userID: getCurrentUserId(store.getState()),

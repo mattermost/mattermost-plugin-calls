@@ -11,7 +11,7 @@ import './component.scss';
 interface Props {
     intl: IntlShape,
     currentChannel: Channel,
-    connectedChannel: Channel,
+    connectedChannel?: Channel,
     currentDMUser: UserProfile | undefined,
     connectedDMUser: UserProfile | undefined,
     show: boolean,
@@ -118,7 +118,7 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
     render() {
         const {formatMessage} = this.props.intl;
 
-        if (!this.props.show) {
+        if (!this.props.show || !this.props.connectedChannel) {
             return null;
         }
 

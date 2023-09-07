@@ -17,7 +17,7 @@ import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import {useDismissJoin} from 'src/components/incoming_calls/hooks';
 import {Header, SubHeader} from 'src/components/shared';
 import Timestamp from 'src/components/timestamp';
-import {voiceChannelCallID} from 'src/selectors';
+import {idForCallInChannel} from 'src/selectors';
 import {
     shouldRenderDesktopWidget,
     sendDesktopEvent,
@@ -51,7 +51,7 @@ const PostType = ({
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
-    const callID = useSelector((state: GlobalState) => voiceChannelCallID(state, post.channel_id)) || '';
+    const callID = useSelector((state: GlobalState) => idForCallInChannel(state, post.channel_id)) || '';
     const [, onJoin] = useDismissJoin(post.channel_id, callID);
 
     const timestampFn = useCallback(() => {

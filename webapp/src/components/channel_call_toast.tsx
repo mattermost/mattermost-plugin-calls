@@ -9,27 +9,27 @@ import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import {useDismissJoin} from 'src/components/incoming_calls/hooks';
 import Timestamp from 'src/components/timestamp';
 import {
-    connectedChannelID,
+    channelIDForCurrentCall,
     dismissedCallForCurrentChannel,
     isLimitRestricted,
-    voiceChannelCallInCurrentChannel,
-    voiceConnectedCurrentChannel,
-    voiceProfilesInCurrentChannel,
+    callInCurrentChannel,
+    usersInCallInCurrentChannel,
+    profilesInCallInCurrentChannel,
 } from 'src/selectors';
 import {callStartedTimestampFn} from 'src/utils';
 
 const ChannelCallToast = () => {
     const intl = useIntl();
     const currChannelID = useSelector(getCurrentChannelId);
-    const connectedID = useSelector(connectedChannelID);
-    const connectedUsers = useSelector(voiceConnectedCurrentChannel);
-    const call = useSelector(voiceChannelCallInCurrentChannel);
-    const profiles = useSelector(voiceProfilesInCurrentChannel);
+    const connectedID = useSelector(channelIDForCurrentCall);
+    const connectedUsers = useSelector(usersInCallInCurrentChannel);
+    const call = useSelector(callInCurrentChannel);
+    const profiles = useSelector(profilesInCallInCurrentChannel);
     const limitRestricted = useSelector(isLimitRestricted);
     const dismissed = useSelector(dismissedCallForCurrentChannel);
     const [pictures, setPictures] = useState<string[]>([]);
 
-    const callID = useSelector(voiceChannelCallInCurrentChannel)?.ID || '';
+    const callID = useSelector(callInCurrentChannel)?.ID || '';
     const [onDismiss, onJoin] = useDismissJoin(currChannelID, callID);
 
     useMemo(() => {
