@@ -1,4 +1,4 @@
-import {CallsConfig, UserState, CallState, SessionState, UserSessionState} from '@calls/common/lib/types';
+import {CallsConfig, CallState, UserSessionState} from '@calls/common/lib/types';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
