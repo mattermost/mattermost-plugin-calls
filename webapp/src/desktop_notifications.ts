@@ -6,7 +6,7 @@ import {CALL_START_POST_TYPE} from 'src/constants';
 import {ringingEnabled} from 'src/selectors';
 import {isDmGmChannel} from 'src/utils';
 
-export function desktopNotificationHandler(store: Store, post: Post, channel: Channel, args: DesktopNotificationArgs): { error?: string, args?: DesktopNotificationArgs } {
+export function desktopNotificationHandler(store: Store, post: Post, channel: Channel, args: DesktopNotificationArgs): {error?: string, args?: DesktopNotificationArgs} {
     if (args.notify) {
         // Calls will notify if:
         //  1. it's a custom_calls post (call has started)
@@ -19,12 +19,6 @@ export function desktopNotificationHandler(store: Store, post: Post, channel: Ch
         if (post.type === CALL_START_POST_TYPE &&
             isDmGmChannel(channel) &&
             ringingEnabled(store.getState())) {
-            return {args: {...args, notify: false}};
-        }
-
-        // Prevent pinging for messages if we have the thread open in the expanded window
-        // And prevent all pinging from the expanded view
-        if (window.callActions?.isRHSChatThreadOpenToThreadId(post.root_id) || window.opener) {
             return {args: {...args, notify: false}};
         }
     }
