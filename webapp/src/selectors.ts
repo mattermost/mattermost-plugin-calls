@@ -240,6 +240,9 @@ export const callThreadIDForCallInChannel = (state: GlobalState, channelID: stri
     return pluginState(state).calls[channelID]?.threadID || '';
 };
 
+export const callThreadIDForCurrentCall = (state: GlobalState) =>
+    callInCurrentChannel(state).threadID;
+
 const recordingsForCalls = (state: GlobalState): callsRecordingsState => {
     return pluginState(state).recordings;
 };

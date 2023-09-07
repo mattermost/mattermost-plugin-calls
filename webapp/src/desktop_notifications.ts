@@ -3,10 +3,14 @@ import {Post} from '@mattermost/types/posts';
 import {DesktopNotificationArgs, Store} from 'src/types/mattermost-webapp';
 
 import {CALL_START_POST_TYPE} from 'src/constants';
-import {ringingEnabled} from 'src/selectors';
+import {
+    callThreadIDForCurrentCall,
+    channelIDForCurrentCall,
+    ringingEnabled,
+} from 'src/selectors';
 import {isDmGmChannel} from 'src/utils';
 
-export function desktopNotificationHandler(store: Store, post: Post, channel: Channel, args: DesktopNotificationArgs): {error?: string, args?: DesktopNotificationArgs} {
+export function desktopNotificationHandler(store: Store, post: Post, channel: Channel, args: DesktopNotificationArgs): { error?: string, args?: DesktopNotificationArgs } {
     if (args.notify) {
         // Calls will notify if:
         //  1. it's a custom_calls post (call has started)
@@ -19,6 +23,12 @@ export function desktopNotificationHandler(store: Store, post: Post, channel: Ch
         if (post.type === CALL_START_POST_TYPE &&
             isDmGmChannel(channel) &&
             ringingEnabled(store.getState())) {
+            return {args: {...args, notify: false}};
+        }
+
+        // Do not notify for a call's thread if the user is currently in that call.
+        if (channelIDForCurrentCall(store.getState()) === post.channel_id &&
+            callThreadIDForCurrentCall(store.getState()) === post.root_id) {
             return {args: {...args, notify: false}};
         }
     }
