@@ -64,7 +64,7 @@ func TestCallStateGetClientState(t *testing.T) {
 				},
 			},
 			ThreadID:        "threadID",
-			ScreenSharingID: "screenSharingID",
+			ScreenSharingID: "sessionA",
 			OwnerID:         "ownerID",
 			HostID:          "hostID",
 		}
@@ -86,10 +86,11 @@ func TestCallStateGetClientState(t *testing.T) {
 					RaisedHand: 1100,
 				},
 			},
-			ThreadID:        cs.ThreadID,
-			ScreenSharingID: cs.ScreenSharingID,
-			OwnerID:         cs.OwnerID,
-			HostID:          cs.HostID,
+			ThreadID:               cs.ThreadID,
+			ScreenSharingID:        "userA",
+			ScreenSharingSessionID: cs.ScreenSharingID,
+			OwnerID:                cs.OwnerID,
+			HostID:                 cs.HostID,
 		}
 
 		require.Equal(t, &ccs, cs.getClientState("botID", "userID"))
