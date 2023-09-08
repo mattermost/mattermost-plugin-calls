@@ -7,7 +7,6 @@ import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {connect} from 'react-redux';
 import {withRouter} from 'react-router-dom';
-
 import {
     hideExpandedView,
     prefetchThread,
@@ -18,20 +17,20 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
-    recordingForCurrentCall,
-    isRecordingInCurrentCall,
+    callStartAtForCurrentCall,
+    channelForCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
+    hostChangeAtForCurrentCall,
+    hostIDForCurrentCall,
+    isRecordingInCurrentCall,
+    profilesInCurrentCall,
+    recordingForCurrentCall,
     recordingMaxDuration,
     recordingsEnabled,
-    hostIDForCurrentCall,
-    hostChangeAtForCurrentCall,
-    callStartAtForCurrentCall,
-    threadIDForCallInChannel,
     screenSharingIDForCurrentCall,
+    threadIDForCallInChannel,
     usersStatusesInCurrentCall,
-    profilesInCurrentCall,
-    channelForCurrentCall,
 } from 'src/selectors';
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';

@@ -1,14 +1,13 @@
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {DesktopNotificationArgs, Store} from 'src/types/mattermost-webapp';
-
 import {CALL_START_POST_TYPE} from 'src/constants';
 import {
-    threadIDForCurrentCall,
     channelIDForCurrentCall,
     ringingEnabled,
+    threadIDForCurrentCall,
 } from 'src/selectors';
+import {DesktopNotificationArgs, Store} from 'src/types/mattermost-webapp';
 import {RealNewPostMessageProps} from 'src/types/types';
 import {isDmGmChannel} from 'src/utils';
 
