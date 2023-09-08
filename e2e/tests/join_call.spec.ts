@@ -72,7 +72,7 @@ test.describe('join call', () => {
         await userPage.leaveCall();
     });
 
-    test.only('multiple sessions per user', async ({page}) => {
+    test('multiple sessions per user', async ({page}) => {
         // start a call
         const sessionAPage = await startCall(userStorages[1]);
         const sessionBPage = await joinCall(userStorages[1]);
