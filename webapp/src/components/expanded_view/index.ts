@@ -7,6 +7,7 @@ import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {connect} from 'react-redux';
 import {withRouter} from 'react-router-dom';
+
 import {
     hideExpandedView,
     prefetchThread,
@@ -17,20 +18,20 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
-    callStartAtForCurrentCall,
-    callThreadIDForCallInChannel,
-    channelForCurrentCall,
+    recordingForCurrentCall,
+    isRecordingInCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
-    hostChangeAtForCurrentCall,
-    hostIDForCurrentCall,
-    isRecordingInCurrentCall,
-    profilesInCurrentCall,
-    recordingForCurrentCall,
     recordingMaxDuration,
     recordingsEnabled,
+    hostIDForCurrentCall,
+    hostChangeAtForCurrentCall,
+    callStartAtForCurrentCall,
+    threadIDForCallInChannel,
     screenSharingIDForCurrentCall,
     usersStatusesInCurrentCall,
+    profilesInCurrentCall,
+    channelForCurrentCall,
 } from 'src/selectors';
 import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
@@ -43,7 +44,7 @@ const mapStateToProps = (state: GlobalState) => {
     const channel = channelForCurrentCall(state);
     const channelTeam = getTeam(state, channel?.team_id || '');
     const screenSharingID = screenSharingIDForCurrentCall(state);
-    const threadID = callThreadIDForCallInChannel(state, channel?.id || '');
+    const threadID = threadIDForCallInChannel(state, channel?.id || '');
 
     const sortedProfiles = (profiles: UserProfile[], statuses: { [key: string]: UserState }) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));

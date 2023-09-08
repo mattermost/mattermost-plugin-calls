@@ -265,7 +265,7 @@ export default class Plugin {
         });
 
         registry.registerDesktopNotificationHook?.(async (post, msgProps, channel, teamId, args) => {
-            return desktopNotificationHandler(store, post, channel, args);
+            return desktopNotificationHandler(store, post, msgProps, channel, args);
         });
 
         const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
