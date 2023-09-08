@@ -168,3 +168,14 @@ export const UserStatuses = {
     ONLINE: 'online',
     DND: 'dnd',
 };
+
+export type RealNewPostMessageProps = {
+    channel_display_name: string;
+    channel_name: string;
+    channel_type: ChannelType;
+    mentions: string; // JSON string[]
+    post: string; // JSON Post
+    sender_name: string; // @username
+    set_online: boolean;
+    team_id: string;
+}

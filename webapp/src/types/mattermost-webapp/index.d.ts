@@ -5,6 +5,8 @@ import {GlobalState} from '@mattermost/types/store';
 import {Store as BaseStore} from 'redux';
 import {ThunkDispatch} from 'redux-thunk';
 
+import {RealNewPostMessageProps} from 'src/types/types';
+
 export type Translations = {
     [key: string]: string;
 };
@@ -49,7 +51,7 @@ export interface PluginRegistry {
     registerSlashCommandWillBePostedHook(hook: (message: string, args: CommandArgs) => SlashCommandWillBePostedReturn);
 
     // registerDesktopNotificationHook requires MM v8.1
-    registerDesktopNotificationHook(hook: (post: Post, msgProps: NewPostMessageProps, channel: Channel, teamId: string, args: DesktopNotificationArgs) => Promise<{
+    registerDesktopNotificationHook(hook: (post: Post, msgProps: RealNewPostMessageProps, channel: Channel, teamId: string, args: DesktopNotificationArgs) => Promise<{
         error?: string;
         args?: DesktopNotificationArgs;
     }>)
