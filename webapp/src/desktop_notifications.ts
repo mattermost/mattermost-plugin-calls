@@ -5,7 +5,7 @@ import {DesktopNotificationArgs, Store} from 'src/types/mattermost-webapp';
 
 import {CALL_START_POST_TYPE} from 'src/constants';
 import {
-    callThreadIDForCurrentCall,
+    threadIDForCurrentCall,
     channelIDForCurrentCall,
     ringingEnabled,
 } from 'src/selectors';
@@ -36,7 +36,7 @@ export function desktopNotificationHandler(
 
         // Do not notify for a call's thread if the user is currently in that call...
         if (channelIDForCurrentCall(store.getState()) === post.channel_id &&
-            callThreadIDForCurrentCall(store.getState()) === post.root_id) {
+            threadIDForCurrentCall(store.getState()) === post.root_id) {
             let mentions = [];
             if (msgProps.mentions) {
                 mentions = JSON.parse(msgProps.mentions);

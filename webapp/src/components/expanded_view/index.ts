@@ -27,7 +27,7 @@ import {
     hostIDForCurrentCall,
     hostChangeAtForCurrentCall,
     callStartAtForCurrentCall,
-    callThreadIDForCallInChannel,
+    threadIDForCallInChannel,
     screenSharingIDForCurrentCall,
     usersStatusesInCurrentCall,
     profilesInCurrentCall,
@@ -44,7 +44,7 @@ const mapStateToProps = (state: GlobalState) => {
     const channel = channelForCurrentCall(state);
     const channelTeam = getTeam(state, channel?.team_id || '');
     const screenSharingID = screenSharingIDForCurrentCall(state);
-    const threadID = callThreadIDForCallInChannel(state, channel?.id || '');
+    const threadID = threadIDForCallInChannel(state, channel?.id || '');
 
     const sortedProfiles = (profiles: UserProfile[], statuses: { [key: string]: UserState }) => {
         return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
