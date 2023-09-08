@@ -67,6 +67,7 @@
     "process": "0.11.10",
     "react-intl": "5.20.12",
     "redux-thunk": "2.4.1",
+    "sass": "1.66.1",
     "sass-loader": "13.2.0",
     "style-loader": "3.0.0",
     "typescript": "4.9.5",
