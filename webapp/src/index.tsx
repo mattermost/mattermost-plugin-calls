@@ -1,6 +1,13 @@
 /* eslint-disable max-lines */
 
 import {CallChannelState} from '@calls/common/lib/types';
+import React from 'react';
+import ReactDOM from 'react-dom';
+import {injectIntl, IntlProvider} from 'react-intl';
+import {Provider} from 'react-redux';
+import {AnyAction} from 'redux';
+import {batchActions} from 'redux-batched-actions';
+
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
@@ -9,13 +16,6 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
-import React from 'react';
-import ReactDOM from 'react-dom';
-import {injectIntl, IntlProvider} from 'react-intl';
-import {Provider} from 'react-redux';
-import {AnyAction} from 'redux';
-import {batchActions} from 'redux-batched-actions';
-
 import {
     displayCallErrorModal,
     displayCallsTestModeUser,
@@ -44,6 +44,7 @@ import {PostTypeRecording} from 'src/components/custom_post_types/post_type_reco
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
+import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
 import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
@@ -407,7 +408,7 @@ export default class Plugin {
                 if (needsTURNCredentials(state)) {
                     logDebug('turn credentials needed');
                     try {
-                        iceConfigs.push(...await Client4.doFetch<RTCIceServer[]>(`${getPluginPath()}/turn-credentials`, {method: 'get'}));
+                        iceConfigs.push(...await RestClient.doFetch<RTCIceServer[]>(`${getPluginPath()}/turn-credentials`, {method: 'get'}));
                     } catch (err) {
                         logErr(err);
                     }
@@ -564,7 +565,7 @@ export default class Plugin {
                 ChannelHeaderMenuButton,
                 async () => {
                     try {
-                        const data = await Client4.doFetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
+                        const data = await RestClient.doFetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
                             method: 'post',
                             body: JSON.stringify({enabled: callsExplicitlyDisabled(store.getState(), currChannelId)}),
                         });
@@ -583,7 +584,7 @@ export default class Plugin {
         const fetchChannels = async (): Promise<AnyAction[]> => {
             const actions = [];
             try {
-                const data = await Client4.doFetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
+                const data = await RestClient.doFetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
 
                 for (let i = 0; i < data.length; i++) {
                     actions.push({
@@ -691,7 +692,7 @@ export default class Plugin {
             await registerHeaderMenuComponentIfNeeded(channelID);
 
             try {
-                const data = await Client4.doFetch<CallChannelState>(`${getPluginPath()}/${channelID}`, {method: 'get'});
+                const data = await RestClient.doFetch<CallChannelState>(`${getPluginPath()}/${channelID}`, {method: 'get'});
                 store.dispatch({
                     type: RECEIVED_CHANNEL_STATE,
                     data: {id: channelID, enabled: data.enabled},

@@ -1,9 +1,9 @@
-import {GlobalState} from '@mattermost/types/store';
-import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
 
+import {GlobalState} from '@mattermost/types/store';
+import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {dismissIncomingCallNotification, hideSwitchCallModal} from 'src/actions';
 import {switchCallModal, idForCallInChannel, channelForCurrentCall} from 'src/selectors';
 import {isDMChannel, getUserIdFromDM} from 'src/utils';

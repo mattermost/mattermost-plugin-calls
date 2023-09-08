@@ -16,7 +16,6 @@ export const EnableIPv6 = (props: CustomComponentProps) => {
     const helpText = useHelptext(props.helpText);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        // @ts-ignore -- newVal needs to be a boolean, but the signature says 'string'
         props.onChange(props.id, e.target.value === 'true');
     };
 

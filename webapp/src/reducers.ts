@@ -1,8 +1,8 @@
 /* eslint-disable max-lines */
 import {CallRecordingState, CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
-import {UserProfile} from '@mattermost/types/users';
 import {combineReducers} from 'redux';
 
+import {UserProfile} from '@mattermost/types/users';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {
     CallsConfigDefault,

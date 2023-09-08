@@ -1,7 +1,7 @@
-import {Channel} from '@mattermost/types/channels';
-import {Post} from '@mattermost/types/posts';
 import {DesktopNotificationArgs, Store} from 'src/types/mattermost-webapp';
 
+import {Channel} from '@mattermost/types/channels';
+import {Post} from '@mattermost/types/posts';
 import {CALL_START_POST_TYPE} from 'src/constants';
 import {ringingEnabled} from 'src/selectors';
 import {isDmGmChannel} from 'src/utils';

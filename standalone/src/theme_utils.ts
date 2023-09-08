@@ -1,5 +1,5 @@
 import cssVars from 'css-vars-ponyfill';
-import {Theme} from 'mattermost-redux/types/themes';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {blendColors, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 // NOTE: functions in this file are ported over from mattermost-webapp/utils/utils.tsx

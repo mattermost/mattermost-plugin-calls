@@ -1,9 +1,9 @@
-import {UserProfile} from '@mattermost/types/users';
 import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
 
 import {getUserDisplayName, split} from '../utils';
+import {UserProfile} from '@mattermost/types/users';
 
 import Avatar from './avatar/avatar';
 

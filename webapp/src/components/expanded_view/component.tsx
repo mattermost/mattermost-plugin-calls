@@ -3,15 +3,12 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import './component.scss';
+
 import {mosThreshold} from '@calls/common';
 import {
     UserState,
 } from '@calls/common/lib/types';
-import {Channel} from '@mattermost/types/channels';
-import {Post} from '@mattermost/types/posts';
-import {Team} from '@mattermost/types/teams';
-import {UserProfile} from '@mattermost/types/users';
-import {Theme} from 'mattermost-redux/types/themes';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 import React from 'react';
 import {IntlShape} from 'react-intl';
@@ -19,6 +16,11 @@ import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
 import styled, {createGlobalStyle, css} from 'styled-components';
 
+import {Channel} from '@mattermost/types/channels';
+import {Post} from '@mattermost/types/posts';
+import {Team} from '@mattermost/types/teams';
+import {UserProfile} from '@mattermost/types/users';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {
     stopCallRecording,
 } from 'src/actions';
@@ -46,16 +48,16 @@ import {
 } from 'src/constants';
 import {logErr} from 'src/log';
 import {
-    MUTE_UNMUTE,
-    RAISE_LOWER_HAND,
-    SHARE_UNSHARE_SCREEN,
-    PARTICIPANTS_LIST_TOGGLE,
-    LEAVE_CALL,
-    PUSH_TO_TALK,
-    RECORDING_TOGGLE,
     keyToAction,
-    reverseKeyMappings,
+    LEAVE_CALL,
     MAKE_REACTION,
+    MUTE_UNMUTE,
+    PARTICIPANTS_LIST_TOGGLE,
+    PUSH_TO_TALK,
+    RAISE_LOWER_HAND,
+    RECORDING_TOGGLE,
+    reverseKeyMappings,
+    SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
 import * as Telemetry from 'src/types/telemetry';
 import {
@@ -65,15 +67,15 @@ import {
     CallRecordingReduxState,
 } from 'src/types/types';
 import {
-    getUserDisplayName,
+    getCallsClient,
     getScreenStream,
-    isDMChannel,
+    getUserDisplayName,
     hasExperimentalFlag,
+    isDMChannel,
     sendDesktopEvent,
+    setCallsGlobalCSSVars,
     shouldRenderDesktopWidget,
     untranslatable,
-    setCallsGlobalCSSVars,
-    getCallsClient,
 } from 'src/utils';
 
 import CallParticipant from './call_participant';
@@ -81,7 +83,6 @@ import ControlsButton from './controls_button';
 import GlobalBanner from './global_banner';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 import RecordingInfoPrompt from './recording_info_prompt';
-import './component.scss';
 
 interface Props extends RouteComponentProps {
     intl: IntlShape,

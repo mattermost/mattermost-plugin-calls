@@ -15,7 +15,7 @@ import {
     WebsocketEventData,
     CallStateData,
 } from '@calls/common/lib/types';
-import {WebSocketMessage} from '@mattermost/types/websocket';
+import {WebSocketMessage} from '@mattermost/client/websocket';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
 import {getMyTeams, getMyTeamMembers} from 'mattermost-redux/actions/teams';
@@ -23,9 +23,8 @@ import {getMe} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
-import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
+import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {Theme} from 'mattermost-redux/types/themes';
 import {getCallsConfig} from 'plugin/actions';
 import CallsClient from 'plugin/client';
 import {
@@ -60,6 +59,7 @@ import {
     handleCallState,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
+import RestClient from 'src/rest_client';
 import {CallActions, CurrentCallData, CurrentCallDataDefault, CallsClientConfig, CallsClientJoinData} from 'src/types/types';
 
 import {
@@ -196,7 +196,7 @@ export default async function init(cfg: InitConfig) {
     const iceConfigs = [...iceServers(store.getState())];
     if (needsTURNCredentials(store.getState())) {
         logDebug('turn credentials needed');
-        const configs = await Client4.doFetch<RTCIceServer[]>(
+        const configs = await RestClient.doFetch<RTCIceServer[]>(
             `${getPluginPath()}/turn-credentials`,
             {method: 'get'},
         );

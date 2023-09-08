@@ -23,5 +23,6 @@ report.xml
 
 webapp/src/manifest.js
 webapp/src/manifest.ts
+webapp/mattermost-webapp/
 server/manifest.go
 server/data/

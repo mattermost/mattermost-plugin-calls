@@ -4,7 +4,6 @@ import {IntlShape} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {CapturerSource} from 'src/types/types';
 import {hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
-import './component.scss';
 
 interface Props {
     intl: IntlShape,

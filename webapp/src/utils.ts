@@ -1,20 +1,20 @@
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@calls/common';
 import {UserState} from '@calls/common/lib/types';
+import {DateTime, Duration, DurationLikeObject} from 'luxon';
+import {IntlShape} from 'react-intl';
+import {parseSemVer} from 'semver-parser';
+
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
-import {DateTime, Duration, DurationLikeObject} from 'luxon';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {Client4} from 'mattermost-redux/client';
 import {General} from 'mattermost-redux/constants';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {IntlShape} from 'react-intl';
-import {parseSemVer} from 'semver-parser';
-
 import CallsClient from 'src/client';
 
 import {logDebug, logErr, logWarn} from './log';
@@ -225,7 +225,6 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
     } else {
         // browser
         try {
-            // @ts-ignore (fixed in typescript 4.4+ but webapp is on 4.3.4)
             screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: true,
                 audio: Boolean(withAudio),

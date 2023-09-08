@@ -1,17 +1,17 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import React from 'react';
+import {FormattedMessage} from 'react-intl';
+import {useDispatch, useSelector} from 'react-redux';
+import styled from 'styled-components';
+
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTeam} from 'mattermost-redux/selectors/entities/teams';
-import React from 'react';
-import {FormattedMessage} from 'react-intl';
-import {useDispatch, useSelector} from 'react-redux';
-import styled from 'styled-components';
-
 import {displayCloudPricing} from 'src/actions';
 import {PrimaryButton, TertiaryButton} from 'src/components/buttons';
 import {

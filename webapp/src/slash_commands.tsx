@@ -1,11 +1,11 @@
 
+import {defineMessage} from 'react-intl';
+
 import {CommandArgs} from '@mattermost/types/integrations';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionResult} from 'mattermost-redux/types/actions';
-import {defineMessage} from 'react-intl';
-
 import {SHOW_END_CALL_MODAL} from 'src/action_types';
 import {
     startCallRecording,

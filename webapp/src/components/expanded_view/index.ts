@@ -1,13 +1,13 @@
 import {UserState} from '@calls/common/lib/types';
+import {connect} from 'react-redux';
+import {withRouter} from 'react-router-dom';
+
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
-import {connect} from 'react-redux';
-import {withRouter} from 'react-router-dom';
-
 import {
     hideExpandedView,
     prefetchThread,

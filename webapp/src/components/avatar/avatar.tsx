@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {memo, HTMLAttributes} from 'react';
+import React, {HTMLAttributes, memo} from 'react';
 import styled, {css} from 'styled-components';
 
 import CompassIcon from 'src/components/icons/compassIcon';

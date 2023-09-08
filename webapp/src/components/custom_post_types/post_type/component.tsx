@@ -1,14 +1,14 @@
-import {Post} from '@mattermost/types/posts';
-import {GlobalState} from '@mattermost/types/store';
-import {UserProfile} from '@mattermost/types/users';
 import {DateTime, Duration as LuxonDuration} from 'luxon';
-import {getUser} from 'mattermost-redux/selectors/entities/users';
 import React, {useCallback} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import styled from 'styled-components';
 
+import {Post} from '@mattermost/types/posts';
+import {GlobalState} from '@mattermost/types/store';
+import {UserProfile} from '@mattermost/types/users';
+import {getUser} from 'mattermost-redux/selectors/entities/users';
 import ConnectedProfiles from 'src/components/connected_profiles';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
@@ -19,11 +19,12 @@ import {Header, SubHeader} from 'src/components/shared';
 import Timestamp from 'src/components/timestamp';
 import {idForCallInChannel} from 'src/selectors';
 import {
-    shouldRenderDesktopWidget,
-    sendDesktopEvent,
-    untranslatable,
+    callStartedTimestampFn,
     getUserDisplayName,
-    toHuman, callStartedTimestampFn,
+    sendDesktopEvent,
+    shouldRenderDesktopWidget,
+    toHuman,
+    untranslatable,
 } from 'src/utils';
 
 interface Props {

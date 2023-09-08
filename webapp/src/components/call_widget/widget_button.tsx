@@ -1,4 +1,4 @@
-import React, {useRef, useState, CSSProperties} from 'react';
+import React, {CSSProperties, useRef, useState} from 'react';
 import {Overlay} from 'react-bootstrap';
 import styled, {css} from 'styled-components';
 
