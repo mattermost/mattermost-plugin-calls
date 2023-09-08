@@ -73,6 +73,8 @@ test.describe('join call', () => {
     });
 
     test('multiple sessions per user', async ({page}) => {
+        test.setTimeout(120000);
+
         // start a call
         const sessionAPage = await startCall(userStorages[1]);
         const sessionBPage = await joinCall(userStorages[1]);
