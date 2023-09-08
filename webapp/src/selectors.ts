@@ -236,9 +236,12 @@ export const screenSharingIDForCurrentCall: (state: GlobalState) => string =
         (ids, channelID) => ids[channelID] || '',
     );
 
-export const callThreadIDForCallInChannel = (state: GlobalState, channelID: string) => {
+export const threadIDForCallInChannel = (state: GlobalState, channelID: string) => {
     return pluginState(state).calls[channelID]?.threadID || '';
 };
+
+export const threadIDForCurrentCall = (state: GlobalState) =>
+    callInCurrentChannel(state).threadID;
 
 const recordingsForCalls = (state: GlobalState): callsRecordingsState => {
     return pluginState(state).recordings;
