@@ -108,7 +108,7 @@ export const hideScreenSourceModal = () => (dispatch: Dispatch<GenericAction>) =
 
 export const getCallsConfig = (): ActionFunc => {
     return bindClientFunc({
-        clientFunc: () => RestClient.doFetch<CallsConfig>(
+        clientFunc: () => RestClient.fetch<CallsConfig>(
             `${getPluginPath()}/config`,
             {method: 'get'},
         ),
@@ -131,7 +131,7 @@ export const setRTCDEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericA
 };
 
 export const notifyAdminCloudFreeTrial = async () => {
-    return RestClient.doFetch(
+    return RestClient.fetch(
         `${getPluginPath()}/cloud-notify-admins`,
         {method: 'post'},
     );
@@ -171,7 +171,7 @@ export const displayCloudPricing = () => {
 
 export const requestOnPremTrialLicense = async (users: number, termsAccepted: boolean, receiveEmailsAccepted: boolean) => {
     try {
-        const response = await RestClient.doFetch(
+        const response = await RestClient.fetch(
             `${Client4.getBaseRoute()}/trial-license`,
             {
                 method: 'post',
@@ -191,7 +191,7 @@ export const requestOnPremTrialLicense = async (users: number, termsAccepted: bo
 };
 
 export const endCall = (channelID: string) => {
-    return RestClient.doFetch(
+    return RestClient.fetch(
         `${getPluginPath()}/calls/${channelID}/end`,
         {method: 'post'},
     );
@@ -223,7 +223,7 @@ export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, pro
             source,
             props,
         };
-        RestClient.doFetch(
+        RestClient.fetch(
             `${getPluginPath()}/telemetry/track`,
             {method: 'post', body: JSON.stringify(eventData)},
         ).catch((e) => {
@@ -245,7 +245,7 @@ export function prefetchThread(postId: string) {
 }
 
 export const startCallRecording = (callID: string) => (dispatch: Dispatch<GenericAction>) => {
-    RestClient.doFetch(
+    RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/recording/start`,
         {method: 'post'},
     ).catch((err) => {
@@ -266,7 +266,7 @@ export const startCallRecording = (callID: string) => (dispatch: Dispatch<Generi
 };
 
 export const stopCallRecording = async (callID: string) => {
-    return RestClient.doFetch(
+    return RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/recording/stop`,
         {method: 'post'},
     );
@@ -379,7 +379,7 @@ export const userDisconnected = (channelID: string, userID: string) => {
 
 export const dismissIncomingCallNotification = (channelID: string, callID: string) => {
     return async (dispatch: DispatchFunc) => {
-        RestClient.doFetch(
+        RestClient.fetch(
             `${getPluginPath()}/calls/${channelID}/dismiss-notification`,
             {method: 'post'},
         ).catch((e) => logErr(e));

@@ -196,7 +196,7 @@ export default async function init(cfg: InitConfig) {
     const iceConfigs = [...iceServers(store.getState())];
     if (needsTURNCredentials(store.getState())) {
         logDebug('turn credentials needed');
-        const configs = await RestClient.doFetch<RTCIceServer[]>(
+        const configs = await RestClient.fetch<RTCIceServer[]>(
             `${getPluginPath()}/turn-credentials`,
             {method: 'get'},
         );
