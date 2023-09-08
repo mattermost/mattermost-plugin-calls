@@ -1,7 +1,3 @@
-import {useEffect} from 'react';
-import {useIntl} from 'react-intl';
-import {useDispatch, useSelector, useStore} from 'react-redux';
-
 import {ChannelMembership} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
@@ -13,18 +9,21 @@ import {getCurrentUser, getUser, makeGetProfilesInChannel} from 'mattermost-redu
 import {isChannelMuted} from 'mattermost-redux/utils/channel_utils';
 import {isMinimumServerVersion} from 'mattermost-redux/utils/helpers';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
+import {useEffect} from 'react';
+import {useIntl} from 'react-intl';
+import {useDispatch, useSelector, useStore} from 'react-redux';
 import {DID_NOTIFY_FOR_CALL, DID_RING_FOR_CALL} from 'src/action_types';
 import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal, trackEvent} from 'src/actions';
 import {DEFAULT_RING_SOUND} from 'src/constants';
 import {logDebug} from 'src/log';
 import {
     channelIDForCurrentCall,
-    teamForCurrentCall,
     currentlyRinging,
     didNotifyForCall,
     didRingForCall,
     getStatusForCurrentUser,
     ringingForCall,
+    teamForCurrentCall,
 } from 'src/selectors';
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType, IncomingCallNotification, UserStatuses} from 'src/types/types';

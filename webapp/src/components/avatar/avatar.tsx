@@ -2,9 +2,8 @@
 // See LICENSE.txt for license information.
 
 import React, {HTMLAttributes, memo} from 'react';
-import styled, {css} from 'styled-components';
-
 import CompassIcon from 'src/components/icons/compassIcon';
+import styled, {css} from 'styled-components';
 
 type Props = {
     size?: number;

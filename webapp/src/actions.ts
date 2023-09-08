@@ -1,8 +1,4 @@
-import {CallsConfig, UserState, CallState} from '@calls/common/lib/types';
-import {MessageDescriptor} from 'react-intl';
-import {Dispatch, AnyAction} from 'redux';
-import {batchActions} from 'redux-batched-actions';
-
+import {CallsConfig, CallState, UserState} from '@calls/common/lib/types';
 import {ClientError} from '@mattermost/client';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
@@ -15,6 +11,9 @@ import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
+import {MessageDescriptor} from 'react-intl';
+import {AnyAction, Dispatch} from 'redux';
+import {batchActions} from 'redux-batched-actions';
 import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from 'src/cloud_pricing/modals';
 import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
@@ -23,43 +22,43 @@ import {RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
 import RestClient from 'src/rest_client';
 import {
-    channelHasCall, idForCurrentCall, incomingCalls,
-    ringingEnabled,
-    ringingForCall,
     callDismissedNotification,
     calls,
-    hostChangeAtForCurrentCall,
+    channelHasCall, hostChangeAtForCurrentCall,
+    idForCurrentCall, incomingCalls,
+    ringingEnabled,
+    ringingForCall,
 } from 'src/selectors';
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
-import {getPluginPath, isDesktopApp, isDMChannel, isGMChannel, getProfilesByIds} from 'src/utils';
+import {getPluginPath, getProfilesByIds, isDesktopApp, isDMChannel, isGMChannel} from 'src/utils';
 import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
     ADD_INCOMING_CALL,
+    CALL_HOST,
+    CALL_REC_PROMPT_DISMISSED,
+    CALL_RECORDING_STATE,
+    CALL_STATE,
+    DID_RING_FOR_CALL,
+    DISMISS_CALL,
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
+    PROFILES_CONNECTED,
     RECEIVED_CALLS_CONFIG,
     RECORDINGS_ENABLED,
+    REMOVE_INCOMING_CALL,
+    RINGING_FOR_CALL,
+    RTCD_ENABLED,
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
-    CALL_REC_PROMPT_DISMISSED,
-    CALL_RECORDING_STATE,
     USER_DISCONNECTED,
-    RTCD_ENABLED,
-    REMOVE_INCOMING_CALL,
-    DID_RING_FOR_CALL,
-    RINGING_FOR_CALL,
-    DISMISS_CALL,
-    CALL_STATE,
+    USER_SCREEN_ON,
     USERS_CONNECTED,
     USERS_CONNECTED_STATES,
-    PROFILES_CONNECTED,
-    CALL_HOST,
-    USER_SCREEN_ON,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {

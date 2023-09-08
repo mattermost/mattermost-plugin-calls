@@ -1,19 +1,18 @@
 
-import {connect} from 'react-redux';
-
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {Client4} from 'mattermost-redux/client';
 import {Preferences} from 'mattermost-redux/constants';
 import {getBool} from 'mattermost-redux/selectors/entities/preferences';
+import {connect} from 'react-redux';
 import PostType from 'src/components/custom_post_types/post_type/component';
 import {
-    usersInCallInChannel,
-    profilesInCallInChannel,
     channelIDForCurrentCall,
     isCloudProfessionalOrEnterpriseOrTrial,
     maxParticipants,
+    profilesInCallInChannel,
+    usersInCallInChannel,
 } from 'src/selectors';
 
 interface OwnProps {

@@ -2,11 +2,10 @@
 // See LICENSE.txt for license information.
 
 import {DateTime} from 'luxon';
+import HandsSvg from 'mattermost-webapp/src/components/common/svg_images_components/hands_svg';
 import React, {ComponentProps} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {NavLink} from 'react-router-dom';
-
-import HandsSvg from 'mattermost-webapp/src/components/common/svg_images_components/hands_svg';
 import {navigateToURL} from 'src/browser_routing';
 import {
     ModalBody,

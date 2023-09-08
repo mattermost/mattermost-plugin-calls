@@ -1,13 +1,6 @@
 /* eslint-disable max-lines */
 
 import {CallChannelState} from '@calls/common/lib/types';
-import React from 'react';
-import ReactDOM from 'react-dom';
-import {injectIntl, IntlProvider} from 'react-intl';
-import {Provider} from 'react-redux';
-import {AnyAction} from 'redux';
-import {batchActions} from 'redux-batched-actions';
-
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
@@ -16,15 +9,21 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import React from 'react';
+import ReactDOM from 'react-dom';
+import {injectIntl, IntlProvider} from 'react-intl';
+import {Provider} from 'react-redux';
+import {AnyAction} from 'redux';
+import {batchActions} from 'redux-batched-actions';
 import {
     displayCallErrorModal,
     displayCallsTestModeUser,
     displayFreeTrial,
     getCallsConfig,
     incomingCallOnChannel,
+    loadCallState,
     showScreenSourceModal,
     showSwitchCallModal,
-    loadCallState,
 } from 'src/actions';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
@@ -49,19 +48,19 @@ import slashCommandsHandler from 'src/slash_commands';
 import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
-    DESKTOP_WIDGET_CONNECTED,
-    RECEIVED_CHANNEL_STATE,
-    USER_CONNECTED,
-    USERS_CONNECTED,
-    PROFILES_CONNECTED,
     CALL_STATE,
-    UNINIT,
-    SHOW_SWITCH_CALL_MODAL,
-    USER_MUTED,
-    USER_UNMUTED,
-    USER_RAISE_HAND,
-    USER_UNRAISE_HAND,
+    DESKTOP_WIDGET_CONNECTED,
     DISMISS_CALL,
+    PROFILES_CONNECTED,
+    RECEIVED_CHANNEL_STATE,
+    SHOW_SWITCH_CALL_MODAL,
+    UNINIT,
+    USER_CONNECTED,
+    USER_MUTED,
+    USER_RAISE_HAND,
+    USER_UNMUTED,
+    USER_UNRAISE_HAND,
+    USERS_CONNECTED,
 } from './action_types';
 import CallsClient from './client';
 import CallWidget from './components/call_widget';
@@ -79,21 +78,21 @@ import {logDebug, logErr} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
+    callsConfig,
+    callsExplicitlyDisabled,
+    callsExplicitlyEnabled,
+    callStartAtForCallInChannel,
+    channelHasCall,
     channelIDForCurrentCall,
-    usersInCallInCurrentChannel,
-    usersInCallInChannel,
-    isLimitRestricted,
-    iceServers,
-    needsTURNCredentials,
     defaultEnabled,
     hasPermissionsToEnableCalls,
+    iceServers,
     isCloudStarter,
+    isLimitRestricted,
+    needsTURNCredentials,
     ringingEnabled,
-    callStartAtForCallInChannel,
-    callsConfig,
-    callsExplicitlyEnabled,
-    callsExplicitlyDisabled,
-    channelHasCall,
+    usersInCallInChannel,
+    usersInCallInCurrentChannel,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {PluginRegistry, Store} from './types/mattermost-webapp';
@@ -117,19 +116,19 @@ import {
     handleCallHostChanged,
     handleCallRecordingState,
     handleCallStart,
+    handleCallState,
     handleUserConnected,
     handleUserDisconnected,
     handleUserDismissedNotification,
     handleUserMuted,
     handleUserRaisedHand,
     handleUserReaction,
-    handleCallState,
-    handleUserUnmuted,
-    handleUserVoiceOn,
-    handleUserVoiceOff,
-    handleUserScreenOn,
     handleUserScreenOff,
+    handleUserScreenOn,
+    handleUserUnmuted,
     handleUserUnraisedHand,
+    handleUserVoiceOff,
+    handleUserVoiceOn,
 } from './websocket_handlers';
 
 export default class Plugin {

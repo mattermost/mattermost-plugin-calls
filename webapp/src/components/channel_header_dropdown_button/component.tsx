@@ -1,10 +1,9 @@
 import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
-import styled, {css} from 'styled-components';
-
 import CompassIcon from 'src/components/icons/compassIcon';
 import {Header, SubHeader} from 'src/components/shared';
+import styled, {css} from 'styled-components';
 
 interface Props {
     show: boolean,

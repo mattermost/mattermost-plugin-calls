@@ -1,9 +1,8 @@
-import {DesktopNotificationArgs, Store} from 'src/types/mattermost-webapp';
-
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {CALL_START_POST_TYPE} from 'src/constants';
 import {ringingEnabled} from 'src/selectors';
+import {DesktopNotificationArgs, Store} from 'src/types/mattermost-webapp';
 import {isDmGmChannel} from 'src/utils';
 
 export function desktopNotificationHandler(store: Store, post: Post, channel: Channel, args: DesktopNotificationArgs): {error?: string, args?: DesktopNotificationArgs} {

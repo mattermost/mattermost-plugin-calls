@@ -1,9 +1,8 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import styled from 'styled-components';
-
 import GenericModal from 'src/components/generic_modal';
+import styled from 'styled-components';
 
 export const leftCol = 'col-sm-4';
 export const rightCol = 'col-sm-8';

@@ -9,18 +9,16 @@ import {mosThreshold} from '@calls/common';
 import {
     UserState,
 } from '@calls/common/lib/types';
-import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
-import React from 'react';
-import {IntlShape} from 'react-intl';
-import {RouteComponentProps} from 'react-router-dom';
-import {compareSemVer} from 'semver-parser';
-import styled, {createGlobalStyle, css} from 'styled-components';
-
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
+import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
+import React from 'react';
+import {IntlShape} from 'react-intl';
+import {RouteComponentProps} from 'react-router-dom';
+import {compareSemVer} from 'semver-parser';
 import {
     stopCallRecording,
 } from 'src/actions';
@@ -77,6 +75,7 @@ import {
     shouldRenderDesktopWidget,
     untranslatable,
 } from 'src/utils';
+import styled, {createGlobalStyle, css} from 'styled-components';
 
 import CallParticipant from './call_participant';
 import ControlsButton from './controls_button';

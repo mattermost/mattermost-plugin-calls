@@ -1,4 +1,4 @@
-import {UserConnectedData, WebsocketEventData, CallStateData} from '@calls/common/lib/types';
+import {CallStateData, UserConnectedData, WebsocketEventData} from '@calls/common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {UserProfile} from '@mattermost/types/users';
 import {ChannelTypes} from 'mattermost-redux/action_types';
@@ -10,17 +10,16 @@ import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {profilesInCallInChannel} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
-import {getProfilesByIds, getPluginPath, fetchTranslationsFile, setCallsGlobalCSSVars, runWithRetry} from 'plugin/utils';
+import {fetchTranslationsFile, getPluginPath, getProfilesByIds, runWithRetry, setCallsGlobalCSSVars} from 'plugin/utils';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {USER_CONNECTED} from 'src/action_types';
+import recordingReducer from 'src/recording/reducers';
 import RestClient from 'src/rest_client';
 
 import init from '../init';
-import recordingReducer from 'src/recording/reducers';
-
 import {
     RECEIVED_CALL_PROFILE_IMAGES,
 } from './action_types';

@@ -1,29 +1,28 @@
 import {UserState} from '@calls/common/lib/types';
-import {injectIntl} from 'react-intl';
-import {connect} from 'react-redux';
-import {bindActionCreators, Dispatch} from 'redux';
-
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getTeam, getCurrentTeamId, getMyTeams} from 'mattermost-redux/selectors/entities/teams';
+import {getCurrentTeamId, getMyTeams, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {injectIntl} from 'react-intl';
+import {connect} from 'react-redux';
+import {bindActionCreators, Dispatch} from 'redux';
 import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 import {
-    usersStatusesInCurrentCall,
+    allowScreenSharing,
     callStartAtForCurrentCall,
-    screenSharingIDForCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
-    allowScreenSharing,
-    profilesInCurrentCall,
-    hostIDForCurrentCall,
     hostChangeAtForCurrentCall,
-    recordingForCurrentCall,
-    sortedIncomingCalls,
+    hostIDForCurrentCall,
+    profilesInCurrentCall,
     recentlyJoinedUsersInCurrentCall,
+    recordingForCurrentCall,
+    screenSharingIDForCurrentCall,
+    sortedIncomingCalls,
+    usersStatusesInCurrentCall,
 } from 'src/selectors';
 import {alphaSortProfiles, stateSortProfiles} from 'src/utils';
 

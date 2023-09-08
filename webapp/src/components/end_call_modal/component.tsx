@@ -1,10 +1,9 @@
 import './component.scss';
 
-import React, {CSSProperties} from 'react';
-import {IntlShape} from 'react-intl';
-
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
+import React, {CSSProperties} from 'react';
+import {IntlShape} from 'react-intl';
 import {endCall} from 'src/actions';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {getUserDisplayName, isDMChannel, isGMChannel} from 'src/utils';

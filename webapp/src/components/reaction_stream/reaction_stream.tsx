@@ -1,20 +1,19 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-import styled, {css} from 'styled-components';
-
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {Emoji} from 'src/components/emoji/emoji';
 import HandEmoji from 'src/components/icons/hand';
 import {
     idToProfileInCurrentCall,
-    usersStatusesInCurrentCall,
     reactionsInCurrentCall,
+    usersStatusesInCurrentCall,
 } from 'src/selectors';
 import {getUserDisplayName, split} from 'src/utils';
+import styled, {css} from 'styled-components';
 
 // add a list of reactions, on top of that add the hands up as the top element
 export const ReactionStream = () => {

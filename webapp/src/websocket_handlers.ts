@@ -1,6 +1,9 @@
 import {
     CallHostChangedData,
     CallRecordingStateData,
+    CallStartData,
+    CallState,
+    CallStateData,
     EmptyData,
     Reaction,
     UserConnectedData,
@@ -11,53 +14,49 @@ import {
     UserReactionData,
     UserScreenOnOffData,
     UserVoiceOnOffData,
-    CallStartData,
-    CallStateData,
-    CallState,
 } from '@calls/common/lib/types';
-
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected, loadCallState} from 'src/actions';
+import {incomingCallOnChannel, loadCallState, removeIncomingCallNotification, userDisconnected} from 'src/actions';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 import {notificationSounds} from 'src/webapp_globals';
 
 import {
-    USER_MUTED,
-    USER_UNMUTED,
-    USER_CONNECTED,
-    PROFILE_CONNECTED,
-    CALL_STATE,
     CALL_END,
-    USER_VOICE_ON,
-    USER_VOICE_OFF,
-    USER_SCREEN_ON,
-    USER_SCREEN_OFF,
-    USER_RAISE_HAND,
-    USER_UNRAISE_HAND,
-    USER_REACTED,
-    USER_REACTED_TIMEOUT,
     CALL_HOST,
     CALL_RECORDING_STATE,
-    USER_JOINED_TIMEOUT,
+    CALL_STATE,
     DISMISS_CALL,
+    PROFILE_CONNECTED,
+    USER_CONNECTED,
+    USER_JOINED_TIMEOUT,
+    USER_MUTED,
+    USER_RAISE_HAND,
+    USER_REACTED,
+    USER_REACTED_TIMEOUT,
+    USER_SCREEN_OFF,
+    USER_SCREEN_ON,
+    USER_UNMUTED,
+    USER_UNRAISE_HAND,
+    USER_VOICE_OFF,
+    USER_VOICE_ON,
 } from './action_types';
 import {logErr} from './log';
 import {
+    calls,
     channelIDForCurrentCall,
     idToProfileInCurrentCall,
     ringingEnabled,
     shouldPlayJoinUserSound,
-    calls,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
 import {
-    getProfilesByIds,
-    playSound,
     followThread,
-    getUserDisplayName,
     getCallsClient,
+    getProfilesByIds,
+    getUserDisplayName,
+    playSound,
 } from './utils';
 
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {

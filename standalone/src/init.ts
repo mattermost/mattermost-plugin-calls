@@ -1,7 +1,17 @@
+// CSS
+import 'mattermost-webapp/sass/styles.scss';
+import 'mattermost-webapp/components/widgets/menu/menu.scss';
+import 'mattermost-webapp/components/widgets/menu/menu_group.scss';
+import 'mattermost-webapp/components/widgets/menu/menu_header.scss';
+import 'mattermost-webapp/components/widgets/menu/menu_wrapper.scss';
+import 'mattermost-webapp/components/widgets/menu/menu_items/menu_item.scss';
+import '@mattermost/compass-icons/css/compass-icons.css';
+
 import {
     CallHostChangedData,
     CallRecordingStateData,
     CallStartData,
+    CallStateData,
     EmptyData,
     HelloData,
     UserConnectedData,
@@ -13,12 +23,11 @@ import {
     UserScreenOnOffData,
     UserVoiceOnOffData,
     WebsocketEventData,
-    CallStateData,
 } from '@calls/common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
-import {getMyTeams, getMyTeamMembers} from 'mattermost-redux/actions/teams';
+import {getMyTeamMembers, getMyTeams} from 'mattermost-redux/actions/teams';
 import {getMe} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
@@ -33,52 +42,43 @@ import {
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
-import {iceServers, needsTURNCredentials, callsConfig} from 'plugin/selectors';
+import {callsConfig, iceServers, needsTURNCredentials} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
-    getWSConnectionURL,
     getPluginPath,
+    getWSConnectionURL,
 } from 'plugin/utils';
 import {
+    handleCallEnd,
+    handleCallHostChanged,
+    handleCallRecordingState,
+    handleCallStart,
+    handleCallState,
     handleUserConnected,
     handleUserDisconnected,
-    handleCallStart,
-    handleCallEnd,
-    handleUserMuted,
-    handleUserUnmuted,
-    handleUserScreenOn,
-    handleUserScreenOff,
-    handleUserVoiceOn,
-    handleUserVoiceOff,
-    handleUserRaisedHand,
-    handleUserUnraisedHand,
-    handleCallHostChanged,
-    handleUserReaction,
-    handleCallRecordingState,
     handleUserDismissedNotification,
-    handleCallState,
+    handleUserMuted,
+    handleUserRaisedHand,
+    handleUserReaction,
+    handleUserScreenOff,
+    handleUserScreenOn,
+    handleUserUnmuted,
+    handleUserUnraisedHand,
+    handleUserVoiceOff,
+    handleUserVoiceOn,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
 import RestClient from 'src/rest_client';
-import {CallActions, CurrentCallData, CurrentCallDataDefault, CallsClientConfig, CallsClientJoinData} from 'src/types/types';
+import {CallActions, CallsClientConfig, CallsClientJoinData, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     getCallID,
     getCallTitle,
-    getToken,
-    getRootID,
     getJobID,
+    getRootID,
+    getToken,
 } from './common';
 import {applyTheme} from './theme_utils';
-
-// CSS
-import 'mattermost-webapp/sass/styles.scss';
-import 'mattermost-webapp/components/widgets/menu/menu.scss';
-import 'mattermost-webapp/components/widgets/menu/menu_group.scss';
-import 'mattermost-webapp/components/widgets/menu/menu_header.scss';
-import 'mattermost-webapp/components/widgets/menu/menu_wrapper.scss';
-import 'mattermost-webapp/components/widgets/menu/menu_items/menu_item.scss';
-import '@mattermost/compass-icons/css/compass-icons.css';
 
 function setBasename() {
     const idx = window.location.pathname.indexOf('/plugins/');

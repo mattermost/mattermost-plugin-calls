@@ -1,5 +1,4 @@
 import {CallsConfig, Reaction, UserState} from '@calls/common/lib/types';
-
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
@@ -12,10 +11,10 @@ import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/enti
 import {getCurrentTeamId, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {
     getCurrentUserId,
-    getUsers,
     getUserIdsInChannels,
-    isCurrentUserSystemAdmin,
+    getUsers,
     getUserStatuses,
+    isCurrentUserSystemAdmin,
 } from 'mattermost-redux/selectors/entities/users';
 import {
     getGroupDisplayNameFromUserIds,
@@ -26,14 +25,14 @@ import {
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
 import {
+    callsRecordingsState,
     callState,
+    hostsState,
+    recentlyJoinedUsersState,
+    screenSharingIDsState,
+    usersReactionsState,
     usersState,
     usersStatusesState,
-    usersReactionsState,
-    hostsState,
-    screenSharingIDsState,
-    callsRecordingsState,
-    recentlyJoinedUsersState,
 } from 'src/reducers';
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
 import {getChannelURL} from 'src/utils';

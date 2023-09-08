@@ -1,14 +1,13 @@
 /* eslint-disable max-lines */
 
+// eslint-disable-next-line simple-import-sort/imports
 import {parseRTCStats, RTCMonitor, RTCPeer} from '@calls/common';
 import {EmojiData} from '@calls/common/lib/types';
-// eslint-disable-next-line import/order
 import {EventEmitter} from 'events';
 
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate';
-
-import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo, CallsClientJoinData} from 'src/types/types';
+import {AudioDevices, CallsClientConfig, CallsClientJoinData, CallsClientStats, TrackInfo} from 'src/types/types';
 
 import {logDebug, logErr, logInfo, logWarn} from './log';
 import {getScreenStream} from './utils';

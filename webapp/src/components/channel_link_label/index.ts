@@ -1,9 +1,8 @@
-import {connect} from 'react-redux';
-
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
-import {usersInCallInChannel, profilesInCallInChannel} from 'src/selectors';
+import {connect} from 'react-redux';
+import {profilesInCallInChannel, usersInCallInChannel} from 'src/selectors';
 
 import ChannelLinkLabel from './component';
 

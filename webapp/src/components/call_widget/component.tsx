@@ -3,15 +3,14 @@ import './component.scss';
 
 import {mosThreshold} from '@calls/common';
 import {UserState} from '@calls/common/lib/types';
-import React, {CSSProperties} from 'react';
-import {IntlShape} from 'react-intl';
-import {compareSemVer} from 'semver-parser';
-
 import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
+import React, {CSSProperties} from 'react';
+import {IntlShape} from 'react-intl';
+import {compareSemVer} from 'semver-parser';
 import {AudioInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
 import Badge from 'src/components/badge';
