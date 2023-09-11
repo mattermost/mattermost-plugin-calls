@@ -60,7 +60,7 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	}
 }
 
-func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID string) (*RecordingStateClient, httpResponse) {
+func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID string) (*JobStateClient, httpResponse) {
 	var res httpResponse
 
 	if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
@@ -69,7 +69,7 @@ func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID 
 		return nil, res
 	}
 
-	recState := new(recordingState)
+	recState := new(jobState)
 	recState.ID = model.NewId()
 	recState.CreatorID = userID
 	recState.InitAt = time.Now().UnixMilli()
@@ -155,7 +155,7 @@ func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID 
 	return recState.getClientState(), res
 }
 
-func (p *Plugin) handleRecordingStopAction(state *channelState, callID string) (*RecordingStateClient, httpResponse) {
+func (p *Plugin) handleRecordingStopAction(state *channelState, callID string) (*JobStateClient, httpResponse) {
 	var res httpResponse
 
 	if state.Call.Recording == nil || state.Call.Recording.EndAt != 0 {
@@ -191,7 +191,7 @@ func (p *Plugin) handleRecordingStopAction(state *channelState, callID string) (
 		}
 	}()
 
-	if err := p.getJobService().StopJob(callID); err != nil {
+	if err := p.getJobService().StopJob(callID, recState.BotConnID); err != nil {
 		res.Err = "failed to stop recording job: " + err.Error()
 		res.Code = http.StatusInternalServerError
 		return nil, res
@@ -259,7 +259,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 		return
 	}
 
-	var recState *RecordingStateClient
+	var recState *JobStateClient
 	switch action {
 	case "start":
 		recState, res = p.handleRecordingStartAction(state, callID, userID)

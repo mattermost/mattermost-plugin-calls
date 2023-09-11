@@ -334,8 +334,11 @@ func (p *Plugin) removeSession(us *session) error {
 	// If the bot is the only user left in the call we automatically stop the recording.
 	if currState.Call != nil && currState.Call.Recording != nil && currState.Call.onlyUserLeft(p.getBotID()) {
 		p.LogDebug("all users left call with recording in progress, stopping", "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
-		if err := p.getJobService().StopJob(us.channelID); err != nil {
-			p.LogError("failed to stop recording job", "error", err.Error(), "channelID", us.channelID, "jobID", currState.Call.Recording.JobID)
+		if err := p.getJobService().StopJob(us.channelID, currState.Call.Recording.BotConnID); err != nil {
+			p.LogError("failed to stop recording job", "error", err.Error(),
+				"channelID", us.channelID,
+				"jobID", currState.Call.Recording.JobID,
+				"botConnID", currState.Call.Recording.BotConnID)
 		}
 	}
 
