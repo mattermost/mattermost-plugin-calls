@@ -59,8 +59,11 @@ type CallsClientJoinData struct {
 
 func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *model.WebsocketBroadcast) {
 	botID := p.getBotID()
-	// We don't want to expose to the client that the bot is in a call.
+	// We don't want to expose to clients that the bot is in a call.
 	if (ev == wsEventUserConnected || ev == wsEventUserDisconnected) && data["userID"] == botID {
+		return
+	}
+	if (ev == wsEventUserJoined || ev == wsEventUserLeft) && data["user_id"] == botID {
 		return
 	}
 
