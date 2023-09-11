@@ -17,7 +17,7 @@ require (
 	github.com/mattermost/calls-recorder v0.4.2
 	github.com/mattermost/logr/v2 v2.0.16
 	github.com/mattermost/mattermost/server/public v0.0.9-0.20230824163353-69c11cfe1403
-	github.com/mattermost/rtcd v0.11.1
+	github.com/mattermost/rtcd v0.11.3-0.20230908175616-86c644a7881a
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pion/interceptor v0.1.12
 	github.com/pion/rtp v1.7.13
@@ -76,7 +76,7 @@ require (
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.0 // indirect
-	github.com/pyroscope-io/godeltaprof v0.1.1 // indirect
+	github.com/pyroscope-io/godeltaprof v0.1.2 // indirect
 	github.com/segmentio/backo-go v1.0.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
