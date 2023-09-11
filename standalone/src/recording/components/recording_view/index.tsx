@@ -3,7 +3,6 @@
 
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
-import {Client4} from 'mattermost-redux/client';
 import Avatar from 'plugin/components/avatar/avatar';
 import CallParticipant from 'plugin/components/expanded_view/call_participant';
 import {ReactionStream} from 'plugin/components/reaction_stream/reaction_stream';
@@ -15,6 +14,8 @@ import {useSelector} from 'react-redux';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import Timestamp from 'src/components/timestamp';
 import {screenSharingSessionForCurrentCall, hostIDForCurrentCall, profilesInCurrentCallMap, sessionsInCurrentCall} from 'src/selectors';
+
+import {callProfileImages} from 'src/recording/selectors';
 
 const MaxParticipantsPerRow = 10;
 
@@ -29,6 +30,7 @@ const RecordingView = () => {
     const sessions = useSelector((state: GlobalState) => sessionsInCurrentCall(state)
         .sort(alphaSortSessions(profiles))
         .sort(stateSortSessions(screenSharingSession?.session_id || '', true)));
+    const profileImages = useSelector((state: GlobalState) => callProfileImages(state, callsClient?.channelID || ''));
 
     const hostID = useSelector((state: GlobalState) => hostIDForCurrentCall(state));
 
@@ -143,7 +145,7 @@ const RecordingView = () => {
                 <CallParticipant
                     key={session.session_id}
                     name={getUserDisplayName(profile)}
-                    pictureURL={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
+                    pictureURL={profileImages[profile.id]}
                     isMuted={isMuted}
                     isSpeaking={isSpeaking}
                     isHandRaised={isHandRaised}
@@ -183,7 +185,7 @@ const RecordingView = () => {
                     fontSize={14}
                     border={false}
                     borderGlowWidth={3}
-                    url={Client4.getProfilePictureUrl(speakingProfile.id, speakingProfile.last_picture_update)}
+                    url={profileImages[speakingProfile.id]}
                 />
                 <span style={{marginLeft: '8px'}}>{getUserDisplayName(speakingProfile)}</span>
                 <span style={{fontWeight: 400}}>{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
