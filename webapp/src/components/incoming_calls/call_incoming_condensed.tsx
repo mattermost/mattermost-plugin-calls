@@ -1,5 +1,4 @@
 import {GlobalState} from '@mattermost/types/store';
-import {Client4} from 'mattermost-redux/client';
 import {getUser} from 'mattermost-redux/selectors/entities/users';
 import React, {useEffect, useRef, useState} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
@@ -15,6 +14,7 @@ import {
     useRingingAndNotification,
 } from 'src/components/incoming_calls/hooks';
 import {pluginId} from 'src/manifest';
+import RestClient from 'src/rest_client';
 import {ChannelType, IncomingCallNotification} from 'src/types/types';
 import {isDesktopApp} from 'src/utils';
 import styled, {css} from 'styled-components';
@@ -69,7 +69,7 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
         >
             <Inner>
                 <Avatar
-                    url={Client4.getProfilePictureUrl(caller.id, caller.last_picture_update)}
+                    url={RestClient.getProfilePictureUrl(caller.id, caller.last_picture_update)}
                     size={20}
                     border={false}
                 />

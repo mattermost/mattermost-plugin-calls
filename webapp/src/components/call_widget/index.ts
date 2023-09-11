@@ -2,7 +2,6 @@ import {UserState} from '@calls/common/lib/types';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId, getMyTeams, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
@@ -10,6 +9,7 @@ import {injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
 import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
+import RestClient from 'src/rest_client';
 import {
     allowScreenSharing,
     callStartAtForCurrentCall,
@@ -50,7 +50,7 @@ const mapStateToProps = (state: GlobalState) => {
         [key: string]: string,
     } = {};
     for (let i = 0; i < profiles.length; i++) {
-        const pic = Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
+        const pic = RestClient.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
         picturesMap[profiles[i].id] = pic;
         profilesMap[profiles[i].id] = profiles[i];
     }

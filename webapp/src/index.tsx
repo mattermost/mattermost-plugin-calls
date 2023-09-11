@@ -3,7 +3,6 @@
 import {CallChannelState} from '@calls/common/lib/types';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
-import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
@@ -230,7 +229,7 @@ export default class Plugin {
     private initialize(registry: PluginRegistry, store: Store) {
         // Setting the base URL if present, in case MM is running under a subpath.
         if (window.basename) {
-            Client4.setUrl(window.basename);
+            RestClient.setUrl(window.basename);
         }
 
         // Register root DOM element for Calls. This is where the widget will render.

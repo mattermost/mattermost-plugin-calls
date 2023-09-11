@@ -7,7 +7,6 @@ import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {DateTime, Duration, DurationLikeObject} from 'luxon';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
-import {Client4} from 'mattermost-redux/client';
 import {General} from 'mattermost-redux/constants';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
@@ -15,6 +14,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 import CallsClient from 'src/client';
+import RestClient from 'src/rest_client';
 
 import {logDebug, logErr, logWarn} from './log';
 import {pluginId} from './manifest';
@@ -37,7 +37,7 @@ export function getWSConnectionURL(config: Partial<ClientConfig>): string {
     const uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
     const baseURL = config && config.WebsocketURL ? config.WebsocketURL : `${uri}//${loc.host}${window.basename || ''}`;
 
-    return `${baseURL}${Client4.getUrlVersion()}/websocket`;
+    return `${baseURL}${RestClient.getUrlVersion()}/websocket`;
 }
 
 export function getTeamRelativeURL(team: Team) {
@@ -268,7 +268,7 @@ export async function getProfilesByIds(state: GlobalState, ids: string[]): Promi
         }
     }
     if (missingIds.length > 0) {
-        profiles.push(...(await Client4.getProfilesByIds(missingIds)));
+        profiles.push(...(await RestClient.getProfilesByIds(missingIds)));
     }
     return profiles;
 }

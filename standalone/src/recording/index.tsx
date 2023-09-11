@@ -2,12 +2,13 @@ import {CallStateData, UserConnectedData, WebsocketEventData} from '@calls/commo
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {UserProfile} from '@mattermost/types/users';
 import {ChannelTypes} from 'mattermost-redux/action_types';
-import {Client4} from 'mattermost-redux/client';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {USER_CONNECTED} from 'plugin/action_types';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
+import RestClient from 'plugin/rest_client';
 import {profilesInCallInChannel} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {fetchTranslationsFile, getPluginPath, getProfilesByIds, runWithRetry, setCallsGlobalCSSVars} from 'plugin/utils';
@@ -15,9 +16,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
-import {USER_CONNECTED} from 'src/action_types';
 import recordingReducer from 'src/recording/reducers';
-import RestClient from 'src/rest_client';
 
 import init from '../init';
 import {
@@ -31,7 +30,7 @@ async function fetchProfileImages(profiles: UserProfile[]) {
     for (const profile of profiles) {
         promises.push(
             runWithRetry(() => {
-                return fetch(`${getPluginPath()}/bot/users/${profile.id}/image`, Client4.getOptions({method: 'get'})).then((res) => {
+                return fetch(`${getPluginPath()}/bot/users/${profile.id}/image`, RestClient.getOptions({method: 'get'})).then((res) => {
                     if (!res.ok) {
                         throw new Error('image fetch failed');
                     }

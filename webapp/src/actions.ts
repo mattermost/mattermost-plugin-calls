@@ -4,7 +4,6 @@ import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
-import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
@@ -172,7 +171,7 @@ export const displayCloudPricing = () => {
 export const requestOnPremTrialLicense = async (users: number, termsAccepted: boolean, receiveEmailsAccepted: boolean) => {
     try {
         const response = await RestClient.fetch(
-            `${Client4.getBaseRoute()}/trial-license`,
+            `${RestClient.getBaseRoute()}/trial-license`,
             {
                 method: 'post',
                 body: JSON.stringify({

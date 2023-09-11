@@ -1,4 +1,3 @@
-import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import React, {useMemo, useState} from 'react';
 import {useIntl} from 'react-intl';
@@ -7,6 +6,7 @@ import ConnectedProfiles from 'src/components/connected_profiles';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import {useDismissJoin} from 'src/components/incoming_calls/hooks';
 import Timestamp from 'src/components/timestamp';
+import RestClient from 'src/rest_client';
 import {
     callInCurrentChannel,
     channelIDForCurrentCall,
@@ -36,7 +36,7 @@ const ChannelCallToast = () => {
         if (currChannelID !== connectedID && connectedUsers) {
             if (connectedUsers.length > 0 && profiles.length === connectedUsers.length) {
                 for (let i = 0; i < connectedUsers.length; i++) {
-                    thePictures.push(Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
+                    thePictures.push(RestClient.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update));
                 }
             }
         }

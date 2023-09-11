@@ -29,7 +29,6 @@ import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
 import {getMyTeamMembers, getMyTeams} from 'mattermost-redux/actions/teams';
 import {getMe} from 'mattermost-redux/actions/users';
-import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
@@ -42,8 +41,10 @@ import {
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
+import RestClient from 'plugin/rest_client';
 import {callsConfig, iceServers, needsTURNCredentials} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
+import {CallActions, CallsClientConfig, CallsClientJoinData, CurrentCallData, CurrentCallDataDefault} from 'plugin/types/types';
 import {
     getPluginPath,
     getWSConnectionURL,
@@ -68,8 +69,6 @@ import {
     handleUserVoiceOn,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
-import RestClient from 'src/rest_client';
-import {CallActions, CallsClientConfig, CallsClientJoinData, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     getCallID,
@@ -163,9 +162,9 @@ export default async function init(cfg: InitConfig) {
 
     // Setting the base URL if present, in case MM is running under a subpath.
     if (window.basename) {
-        Client4.setUrl(window.basename);
+        RestClient.setUrl(window.basename);
     }
-    Client4.setToken(getToken());
+    RestClient.setToken(getToken());
 
     // initialize some basic state.
     await Promise.all([

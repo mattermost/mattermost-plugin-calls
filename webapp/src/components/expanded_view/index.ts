@@ -1,7 +1,6 @@
 import {UserState} from '@calls/common/lib/types';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
-import {Client4} from 'mattermost-redux/client';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
@@ -15,6 +14,7 @@ import {
     startCallRecording,
     trackEvent,
 } from 'src/actions';
+import RestClient from 'src/rest_client';
 import {
     allowScreenSharing,
     callStartAtForCurrentCall,
@@ -54,7 +54,7 @@ const mapStateToProps = (state: GlobalState) => {
 
     const pictures: { [key: string]: string } = {};
     for (let i = 0; i < profiles.length; i++) {
-        pictures[String(profiles[i].id)] = Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
+        pictures[String(profiles[i].id)] = RestClient.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
     }
 
     let connectedDMUser;
