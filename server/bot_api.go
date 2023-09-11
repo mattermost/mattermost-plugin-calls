@@ -16,11 +16,14 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
-var botChRE = regexp.MustCompile(`^\/bot\/channels\/([a-z0-9]+)$`)
-var botUserImageRE = regexp.MustCompile(`^\/bot\/users\/([a-z0-9]+)\/image$`)
-var botUploadsRE = regexp.MustCompile(`^\/bot\/uploads\/?([a-z0-9]+)?$`)
-var botRecordingsRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/recordings$`)
-var botJobsStatusRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/jobs\/([a-z0-9]+)\/status$`)
+var (
+	botChRE                = regexp.MustCompile(`^\/bot\/channels\/([a-z0-9]+)$`)
+	botUserImageRE         = regexp.MustCompile(`^\/bot\/users\/([a-z0-9]+)\/image$`)
+	botUploadsRE           = regexp.MustCompile(`^\/bot\/uploads\/?([a-z0-9]+)?$`)
+	botRecordingsRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/recordings$`)
+	botJobsStatusRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/jobs\/([a-z0-9]+)\/status$`)
+	botProfileForSessionRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/sessions\/([a-z0-9]+)\/profile$`)
+)
 
 func (p *Plugin) getBotID() string {
 	if p.botSession != nil {
@@ -330,6 +333,47 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 	res.Code = http.StatusBadRequest
 }
 
+func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, callID, sessionID string) {
+	var res httpResponse
+	defer p.httpResponseHandler(&res, w)
+
+	state, err := p.lockCall(callID)
+	if err != nil {
+		p.LogError("handleBotGetProfileForSession: failed to lock call", "err", err.Error())
+		res.Code = http.StatusInternalServerError
+		res.Err = err.Error()
+		return
+	}
+	defer p.unlockCall(callID)
+
+	if state == nil || state.Call == nil {
+		res.Code = http.StatusBadRequest
+		res.Err = "no call ongoing"
+		return
+	}
+
+	ust := state.Call.Sessions[sessionID]
+	if ust.UserID == "" {
+		res.Code = http.StatusNotFound
+		res.Err = "not found"
+		return
+	}
+
+	user, appErr := p.API.GetUser(ust.UserID)
+	if appErr != nil {
+		res.Code = http.StatusInternalServerError
+		res.Err = appErr.Error()
+		return
+	}
+
+	user.Sanitize(nil)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
 func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
 	if !p.licenseChecker.RecordingsAllowed() {
 		http.Error(w, "Forbidden", http.StatusForbidden)
@@ -354,6 +398,11 @@ func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
 
 		if matches := botUploadsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 && matches[1] != "" {
 			p.handleBotGetUpload(w, r, matches[1])
+			return
+		}
+
+		if matches := botProfileForSessionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
+			p.handleBotGetProfileForSession(w, matches[1], matches[2])
 			return
 		}
 	}
