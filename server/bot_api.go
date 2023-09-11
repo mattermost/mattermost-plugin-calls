@@ -23,6 +23,7 @@ var (
 	botRecordingsRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/recordings$`)
 	botJobsStatusRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/jobs\/([a-z0-9]+)\/status$`)
 	botProfileForSessionRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/sessions\/([a-z0-9]+)\/profile$`)
+	botTranscriptionsRE    = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/transcriptions$`)
 )
 
 func (p *Plugin) getBotID() string {
@@ -425,7 +426,93 @@ func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
 			p.handleBotPostJobsStatus(w, r, matches[1], matches[2])
 			return
 		}
+
+		if matches := botTranscriptionsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleBotPostTranscriptions(w, r, matches[1])
+			return
+		}
 	}
 
 	http.NotFound(w, r)
+}
+
+func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Request, callID string) {
+	var res httpResponse
+	defer p.httpAudit("handleBotPostTranscription", &res, w, r)
+
+	var info map[string]string
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
+		res.Err = "failed to decode request body: " + err.Error()
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	postID := info["thread_id"]
+	if postID == "" {
+		res.Err = "missing thread_id from request body"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	fileID := info["file_id"]
+	if fileID == "" {
+		res.Err = "missing file_id from request body"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	// Update call post
+	post, appErr := p.API.GetPost(postID)
+	if appErr != nil {
+		res.Err = "failed to get call post: " + appErr.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	threadID := post.Id
+
+	// Post in thread
+	if post.RootId != "" {
+		threadID = post.RootId
+	}
+
+	transcriptions, ok := post.GetProp("transcription_files").([]interface{})
+	if !ok {
+		transcriptions = []interface{}{
+			fileID,
+		}
+	} else {
+		transcriptions = append(transcriptions, fileID)
+	}
+	post.AddProp("transcription_files", transcriptions)
+	_, appErr = p.API.UpdatePost(post)
+	if appErr != nil {
+		res.Err = "failed to update call thread: " + appErr.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	startAt, _ := post.GetProp("start_at").(int64)
+	postMsg := "Here's the call transcription"
+	if title, _ := post.GetProp("title").(string); title != "" {
+		postMsg = fmt.Sprintf("%s of %s at %s UTC", postMsg, title, time.UnixMilli(startAt).Format("3:04PM"))
+	}
+	post = &model.Post{
+		UserId:    p.getBotID(),
+		ChannelId: callID,
+		Message:   postMsg,
+		Type:      "custom_calls_transcription",
+		RootId:    threadID,
+		FileIds:   []string{fileID},
+	}
+
+	_, appErr = p.API.CreatePost(post)
+	if appErr != nil {
+		res.Err = "failed to create post: " + appErr.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	res.Code = http.StatusOK
+	res.Msg = "success"
 }
