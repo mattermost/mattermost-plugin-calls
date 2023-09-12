@@ -1,3 +1,5 @@
+import './component.scss';
+
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
