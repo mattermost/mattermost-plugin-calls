@@ -1,7 +1,7 @@
 import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {startCall, getUserStoragesForTest, getUsernamesForTest} from '../utils';
+import {newUserPage, startCall, getUserStoragesForTest, getUsernamesForTest} from '../utils';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
@@ -70,5 +70,44 @@ test.describe('join call', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
 
         await userPage.leaveCall();
+    });
+
+    test('user profile popover', async ({page}) => {
+        const userAPage = page;
+        const userBPage = await newUserPage(userStorages[1]);
+        await userBPage.goto();
+
+        // We have both users send a message so it's much easier to
+        // consistently find the proper selector to open the profile.
+        await userAPage.locator('#post_textbox').fill('messageA');
+        await userAPage.locator('[data-testid=SendMessageButton]').click();
+        await userBPage.page.locator('#post_textbox').fill('messageB');
+        await userBPage.page.locator('[data-testid=SendMessageButton]').click();
+
+        await userAPage.locator('.post__header').locator('button.user-popover').last().click();
+        await expect(userAPage.locator('#user-profile-popover')).toBeVisible();
+        await userAPage.locator('#user-profile-popover').locator('#startCallButton').click();
+
+        await expect(userAPage.locator('#calls-widget')).toBeVisible();
+        await expect(userAPage.locator('#calls-widget-loading-overlay')).toBeHidden();
+
+        await userAPage.locator('#calls-widget-leave-button').click();
+        await expect(userAPage.locator('#calls-widget')).toBeHidden();
+
+        // We then verify that join button is disabled if the other user is already in a call.
+        await userBPage.startCall();
+
+        // We have both users send a message so it's much easier to
+        // consistently find the proper selector to open the profile.
+        await userAPage.locator('#post_textbox').fill('messageA');
+        await userAPage.locator('[data-testid=SendMessageButton]').click();
+        await userBPage.page.locator('#post_textbox').fill('messageB');
+        await userBPage.page.locator('[data-testid=SendMessageButton]').click();
+
+        await userAPage.locator('.post__header').locator('button.user-popover').last().click();
+        await expect(userAPage.locator('#user-profile-popover')).toBeVisible();
+        await expect(userAPage.locator('#user-profile-popover').locator('#startCallButton')).toBeDisabled();
+
+        await userBPage.leaveCall();
     });
 });
