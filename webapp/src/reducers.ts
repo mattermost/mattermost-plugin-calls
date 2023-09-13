@@ -935,6 +935,11 @@ export default combineReducers({
     users,
     channelID,
     profiles,
+
+    // DEPRECATED - Needed to keep compatibility with older MM server
+    // version.
+    voiceConnectedProfiles: profiles,
+
     reactions,
     usersStatuses,
     calls,
