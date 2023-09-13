@@ -25,7 +25,7 @@ type Metrics struct {
 	registry   *prometheus.Registry
 	rtcMetrics *perf.Metrics
 
-	WebSocketConnections             *prometheus.GaugeVec
+	WebSocketConnections             prometheus.Gauge
 	WebSocketEventCounters           *prometheus.CounterVec
 	ClusterEventCounters             *prometheus.CounterVec
 	StoreOpCounters                  *prometheus.CounterVec
@@ -43,14 +43,12 @@ func NewMetrics() *Metrics {
 	}))
 	m.registry.MustRegister(collectors.NewGoCollector())
 
-	m.WebSocketConnections = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	m.WebSocketConnections = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: metricsSubSystemWS,
 		Name:      "connections_total",
 		Help:      "The total number of active WebSocket connections.",
-	},
-		[]string{"callID"},
-	)
+	})
 	m.registry.MustRegister(m.WebSocketConnections)
 
 	m.WebSocketEventCounters = prometheus.NewCounterVec(
@@ -136,12 +134,12 @@ func (m *Metrics) IncWebSocketEvent(direction, evType string) {
 	m.WebSocketEventCounters.With(prometheus.Labels{"direction": direction, "type": evType}).Inc()
 }
 
-func (m *Metrics) IncWebSocketConn(callID string) {
-	m.WebSocketConnections.With(prometheus.Labels{"callID": callID}).Inc()
+func (m *Metrics) IncWebSocketConn() {
+	m.WebSocketConnections.Inc()
 }
 
-func (m *Metrics) DecWebSocketConn(callID string) {
-	m.WebSocketConnections.With(prometheus.Labels{"callID": callID}).Dec()
+func (m *Metrics) DecWebSocketConn() {
+	m.WebSocketConnections.Dec()
 }
 
 func (m *Metrics) IncClusterEvent(evType string) {
