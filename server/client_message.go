@@ -27,6 +27,9 @@ const (
 	clientMessageTypeRaiseHand   = "raise_hand"
 	clientMessageTypeUnraiseHand = "unraise_hand"
 	clientMessageTypeReact       = "react"
+
+	// Bot only
+	clientMessageTypeJobStarted = "job_started"
 )
 
 func (m *clientMessage) ToJSON() ([]byte, error) {

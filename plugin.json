@@ -180,6 +180,13 @@
         "hosting": "on-prem"
       },
       {
+        "key": "EnableTranscriptions",
+        "display_name": "Enable call transcriptions (Experimental)",
+        "type": "bool",
+        "default": false,
+        "help_text": "(Optional) When set to true it enables the call transcriptions functionality."
+      },
+      {
         "key": "EnableIPv6",
         "display_name": "(Experimental) Enable IPv6 support",
         "type": "bool",
@@ -199,6 +206,7 @@
   "props": {
     "min_rtcd_version": "v0.10.1",
     "min_offloader_version": "v0.3.2",
-    "calls_recorder_version": "v0.5.1"
+    "calls_recorder_version": "v0.5.1",
+    "calls_transcriber_version": "v0.1.0"
   }
 }

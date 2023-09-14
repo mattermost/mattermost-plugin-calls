@@ -171,6 +171,19 @@ func (cs *channelState) getRecording() (*jobState, error) {
 	return cs.Call.Recording, nil
 }
 
+func (cs *channelState) getTranscription() (*jobState, error) {
+	if cs == nil {
+		return nil, fmt.Errorf("channel state is missing from store")
+	}
+	if cs.Call == nil {
+		return nil, fmt.Errorf("no call ongoing")
+	}
+	if cs.Call.Transcription == nil {
+		return nil, fmt.Errorf("no transcription ongoing")
+	}
+	return cs.Call.Transcription, nil
+}
+
 func (cs *channelState) Clone() *channelState {
 	if cs == nil {
 		return nil
@@ -246,6 +259,7 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		OwnerID:                cs.OwnerID,
 		HostID:                 cs.HostID,
 		Recording:              cs.Recording.getClientState(),
+		Transcription:          cs.Transcription.getClientState(),
 		DismissedNotification:  dismissed,
 	}
 }

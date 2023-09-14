@@ -18,7 +18,9 @@ import (
 
 	offloader "github.com/mattermost/calls-offloader/public"
 	"github.com/mattermost/calls-offloader/public/job"
+
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
+	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
 )
 
 const (
@@ -29,7 +31,11 @@ const (
 )
 
 var (
-	recordingJobRunner  = ""
+	recorderJobRunner    = ""
+	transcriberJobRunner = ""
+)
+
+var (
 	recorderBaseConfigs = map[string]recorder.RecorderConfig{
 		"low": {
 			Width:        1280,
@@ -127,13 +133,19 @@ func (p *Plugin) getJobServiceClientConfig(serviceURL string) (offloader.ClientC
 		return cfg, nil
 	}
 
-	if storedCfg, err := p.getStoredJobServiceClientConfig(); err != nil {
+	storedCfg, err := p.getStoredJobServiceClientConfig()
+	if err != nil {
 		return cfg, fmt.Errorf("failed to get job service credentials: %w", err)
-	} else if storedCfg.URL == cfg.URL && storedCfg.ClientID == cfg.ClientID {
+	}
+
+	if storedCfg.URL == cfg.URL && storedCfg.ClientID == cfg.ClientID {
 		return storedCfg, nil
 	}
 
-	if cfg.AuthKey == "" {
+	if storedCfg.AuthKey != "" {
+		p.LogDebug("auth key found in db stored job service config")
+		cfg.AuthKey = storedCfg.AuthKey
+	} else {
 		p.LogDebug("auth key missing from job service config, generating a new one")
 		cfg.AuthKey, err = random.NewSecureString(32)
 		if err != nil {
@@ -208,8 +220,11 @@ func (s *jobService) StopJob(channelID, connID string) error {
 		return fmt.Errorf("channelID should not be empty")
 	}
 
+	// A job can be stopped before the bot is able to join. In such case there's
+	// no point in sending an event. The bot isn't allowed to join back.
 	if connID == "" {
-		return fmt.Errorf("connID should not be empty")
+		s.ctx.LogDebug("stopping job with empty connID", "channelID", channelID)
+		return nil
 	}
 
 	// Since MM-52346, stopping a job really means signaling the bot it's time to leave
@@ -217,10 +232,15 @@ func (s *jobService) StopJob(channelID, connID string) error {
 	s.ctx.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{
 		"channelID": channelID,
 	}, &model.WebsocketBroadcast{ConnectionId: connID, ReliableClusterSend: true})
+
 	return nil
 }
 
-func (s *jobService) Init(runner string) error {
+func (s *jobService) Init(runners []string) error {
+	if len(runners) == 0 {
+		return fmt.Errorf("unexpected empty runners")
+	}
+
 	// Here we need some coordination to avoid multiple plugin instances to
 	// initialize the service concurrently.
 	mutex, err := cluster.NewMutex(s.ctx.API, s.ctx.metrics, "job_service_runner_update", cluster.MutexConfig{})
@@ -236,11 +256,11 @@ func (s *jobService) Init(runner string) error {
 	defer mutex.Unlock()
 
 	return s.client.Init(job.ServiceConfig{
-		Runner: runner,
+		Runners: runners,
 	})
 }
 
-func (s *jobService) RunRecordingJob(callID, postID, recordingID, authToken string) (string, error) {
+func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken string) (string, error) {
 	cfg := s.ctx.getConfiguration()
 	if cfg == nil {
 		return "", fmt.Errorf("failed to get plugin configuration")
@@ -259,20 +279,33 @@ func (s *jobService) RunRecordingJob(callID, postID, recordingID, authToken stri
 		siteURL = *serverCfg.ServiceSettings.SiteURL
 	}
 
-	maxDuration := int64(*cfg.MaxRecordingDuration * 60)
-
-	baseRecorderCfg := recorderBaseConfigs[cfg.RecordingQuality]
-	baseRecorderCfg.SiteURL = siteURL
-	baseRecorderCfg.CallID = callID
-	baseRecorderCfg.ThreadID = postID
-	baseRecorderCfg.RecordingID = recordingID
-	baseRecorderCfg.AuthToken = authToken
-
 	jobCfg := job.Config{
-		Type:           job.TypeRecording,
-		MaxDurationSec: maxDuration,
-		Runner:         recordingJobRunner,
-		InputData:      baseRecorderCfg.ToMap(),
+		Type: jobType,
+	}
+
+	switch jobType {
+	case job.TypeRecording:
+		baseRecorderCfg := recorderBaseConfigs[cfg.RecordingQuality]
+		baseRecorderCfg.SiteURL = siteURL
+		baseRecorderCfg.CallID = callID
+		baseRecorderCfg.ThreadID = postID
+		baseRecorderCfg.RecordingID = jobID
+		baseRecorderCfg.AuthToken = authToken
+
+		jobCfg.Runner = recorderJobRunner
+		jobCfg.MaxDurationSec = int64(*cfg.MaxRecordingDuration * 60)
+		jobCfg.InputData = baseRecorderCfg.ToMap()
+	case job.TypeTranscribing:
+		var transcriberConfig transcriber.CallTranscriberConfig
+		transcriberConfig.SiteURL = siteURL
+		transcriberConfig.CallID = callID
+		transcriberConfig.ThreadID = postID
+		transcriberConfig.TranscriptionID = jobID
+		transcriberConfig.AuthToken = authToken
+
+		jobCfg.Runner = transcriberJobRunner
+		jobCfg.MaxDurationSec = int64(*cfg.MaxRecordingDuration * 60)
+		jobCfg.InputData = transcriberConfig.ToMap()
 	}
 
 	jb, err := s.client.CreateJob(jobCfg)
@@ -322,14 +355,20 @@ func (p *Plugin) initJobService() error {
 	if !ok {
 		return fmt.Errorf("failed to get recorder version from manifest")
 	}
-	recordingJobRunner = "mattermost/calls-recorder:" + recorderVersion
+	recorderJobRunner = "mattermost/calls-recorder:" + recorderVersion
+
+	transcriberVersion, ok := manifest.Props["calls_transcriber_version"].(string)
+	if !ok {
+		return fmt.Errorf("failed to get transcriber version from manifest")
+	}
+	transcriberJobRunner = "mattermost/calls-transcriber:" + transcriberVersion
 
 	jobService, err := p.newJobService(p.getConfiguration().getJobServiceURL())
 	if err != nil {
 		return fmt.Errorf("failed to create job service: %w", err)
 	}
 
-	if err := jobService.Init(recordingJobRunner); err != nil {
+	if err := jobService.Init([]string{recorderJobRunner, transcriberJobRunner}); err != nil {
 		return err
 	}
 

@@ -69,6 +69,8 @@ export interface PluginRegistry {
     registerAdminConsoleCustomSetting(key: string, component: React.FunctionComponent<CustomComponentProps>, options?: { showTitle: boolean });
 
     registerTranslations(handler: (locale: string) => Translations | Promise<Translations>);
+
+    registerFilePreviewComponent(overrideFn: (fi: FileInfo, post: Post) => boolean, component: React.ElementType);
 }
 
 export type SlashCommandWillBePostedReturn = { error: string } | { message: string, args: CommandArgs } | unknown;

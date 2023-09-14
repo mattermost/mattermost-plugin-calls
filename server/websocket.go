@@ -42,6 +42,7 @@ const (
 	wsEventError                     = "error"
 	wsEventCallHostChanged           = "call_host_changed"
 	wsEventCallRecordingState        = "call_recording_state"
+	wsEventCallTranscriptionState    = "call_transcription_state"
 	wsEventUserDismissedNotification = "user_dismissed_notification"
 	wsReconnectionTimeout            = 10 * time.Second
 )
@@ -352,6 +353,42 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"emoji":      emoji.toMap(),
 			"timestamp":  time.Now().UnixMilli(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+	case clientMessageTypeJobStarted:
+		if us.userID != p.getBotID() {
+			return fmt.Errorf("invalid event")
+		}
+
+		state, err := p.lockCall(us.channelID)
+		if err != nil {
+			return fmt.Errorf("failed to lock call: %w", err)
+		}
+		defer p.unlockCall(us.channelID)
+
+		recState, err := state.getRecording()
+		if err != nil {
+			return fmt.Errorf("failed to get recording state: %w", err)
+		}
+
+		if us.originalConnID != recState.BotConnID {
+			return fmt.Errorf("invalid connection ID")
+		}
+
+		if recState.StartAt > 0 {
+			return fmt.Errorf("recording has already started")
+		}
+
+		p.LogDebug("recording job has started", "jobID", recState.JobID)
+		recState.StartAt = time.Now().UnixMilli()
+		state.Call.Recording = recState
+
+		if err := p.kvSetChannelState(us.channelID, state); err != nil {
+			return fmt.Errorf("failed to set channel state: %w", err)
+		}
+
+		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			"callID":   us.channelID,
+			"recState": recState.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	default:
 		return fmt.Errorf("invalid client message type %q", msg.Type)
 	}
@@ -936,7 +973,6 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 		msg.Data = []byte(msgData)
-
 	}
 
 	select {

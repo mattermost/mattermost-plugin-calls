@@ -54,6 +54,7 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
+    CALL_TRANSCRIPTION_STATE,
     RTCD_ENABLED,
     REMOVE_INCOMING_CALL,
     DID_RING_FOR_CALL,
@@ -269,12 +270,38 @@ export const startCallRecording = (callID: string) => (dispatch: Dispatch<Generi
             },
         });
     });
+
+    Client4.doFetch(
+        `${getPluginPath()}/calls/${callID}/transcription/start`,
+        {method: 'post'},
+    ).catch((err) => {
+        dispatch({
+            type: CALL_TRANSCRIPTION_STATE,
+            data: {
+                callID,
+                recState: {
+                    init_at: 0,
+                    start_at: 0,
+                    end_at: 0,
+                    err: err.message,
+                    error_at: Date.now(),
+                },
+            },
+        });
+    });
 };
 
-export const stopCallRecording = async (callID: string) => {
-    return Client4.doFetch(
-        `${getPluginPath()}/calls/${callID}/recording/stop`,
-        {method: 'post'},
+export const stopCallRecording = (callID: string) => {
+    return Promise.all([
+        Client4.doFetch(
+            `${getPluginPath()}/calls/${callID}/recording/stop`,
+            {method: 'post'},
+        ),
+        Client4.doFetch(
+            `${getPluginPath()}/calls/${callID}/transcription/stop`,
+            {method: 'post'},
+        ),
+    ],
     );
 };
 

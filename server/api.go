@@ -609,6 +609,11 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 			p.handleRecordingAction(w, r, matches[1], matches[2])
 			return
 		}
+
+		if matches := callTranscriptionActionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
+			p.handleTranscriptionAction(w, r, matches[1], matches[2])
+			return
+		}
 	}
 
 	http.NotFound(w, r)
