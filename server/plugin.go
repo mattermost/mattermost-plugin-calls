@@ -333,6 +333,10 @@ func (p *Plugin) createCallStartedPost(state *channelState, userID, channelID, t
 }
 
 func (p *Plugin) updateCallPostEnded(postID string, participants []string) (float64, error) {
+	if postID == "" {
+		return 0, fmt.Errorf("postID should not be empty")
+	}
+
 	post, appErr := p.API.GetPost(postID)
 	if appErr != nil {
 		return 0, appErr
