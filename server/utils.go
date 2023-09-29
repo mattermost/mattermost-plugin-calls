@@ -43,7 +43,12 @@ func (p *Plugin) setHandlerID(nodeID string) error {
 
 func (p *Plugin) getNotificationNameFormat(userID string) string {
 	config := p.API.GetConfig()
-	if !*config.PrivacySettings.ShowFullName {
+	if config == nil {
+		p.LogError("failed to get config")
+		return model.ShowUsername
+	}
+
+	if config.PrivacySettings.ShowFullName == nil || !*config.PrivacySettings.ShowFullName {
 		return model.ShowUsername
 	}
 
