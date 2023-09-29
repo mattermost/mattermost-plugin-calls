@@ -314,7 +314,7 @@ func (p *Plugin) cleanCallState(channelID string, state *channelState) error {
 
 	if state.Call != nil {
 		if _, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Stats.Participants)); err != nil {
-			return err
+			p.LogError("failed to update call post", "err", err.Error())
 		}
 		state.Call = nil
 	}
