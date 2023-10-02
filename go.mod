@@ -17,7 +17,7 @@ require (
 	github.com/mattermost/calls-recorder v0.4.2
 	github.com/mattermost/logr/v2 v2.0.16
 	github.com/mattermost/mattermost/server/public v0.0.9-0.20230824163353-69c11cfe1403
-	github.com/mattermost/rtcd v0.11.1
+	github.com/mattermost/rtcd v0.11.3-0.20231002104152-aecbbdc43773
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pion/interceptor v0.1.12
 	github.com/pion/rtp v1.7.13
@@ -43,6 +43,7 @@ require (
 	github.com/gofrs/flock v0.8.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.4 // indirect
 	github.com/graph-gophers/graphql-go v1.5.1-0.20230110080634-edea822f558a // indirect
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
 	github.com/hashicorp/go-plugin v1.4.10 // indirect
@@ -76,7 +77,6 @@ require (
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.0 // indirect
-	github.com/pyroscope-io/godeltaprof v0.1.1 // indirect
 	github.com/segmentio/backo-go v1.0.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
