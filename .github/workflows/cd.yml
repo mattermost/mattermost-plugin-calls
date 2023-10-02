@@ -14,4 +14,6 @@ permissions:
 jobs:
   plugin-cd:
     uses: mattermost/actions-workflows/.github/workflows/plugin-cd.yml@main
+    with:
+      golang-version: "1.19"
     secrets: inherit
