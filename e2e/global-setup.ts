@@ -211,13 +211,14 @@ async function globalSetup(config: FullConfig) {
         headers,
     });
 
-    // enable calls for all channels
+    // enable calls for all channels, enable ringing
     const serverConfig = await (await adminContext.get('/api/v4/config')).json();
     serverConfig.PluginSettings.Plugins = {
         ...serverConfig.PluginSettings.Plugins,
         [`${plugin.id}`]: {
             ...serverConfig.PluginSettings.Plugins[plugin.id],
             defaultenabled: true,
+            enableringing: true,
         },
     };
     await adminContext.put('/api/v4/config', {
