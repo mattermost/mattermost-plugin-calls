@@ -33,11 +33,12 @@ import {
     getCallsClient,
     getChannelURL,
     isDesktopApp,
+    notificationsStopRinging,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
     split,
 } from 'src/utils';
-import {notificationSounds, sendDesktopNotificationToMe} from 'src/webapp_globals';
+import {sendDesktopNotificationToMe} from 'src/webapp_globals';
 
 export const useDismissJoin = (channelID: string, callID: string, onWidget = false) => {
     const store = useStore();
@@ -54,7 +55,7 @@ export const useDismissJoin = (channelID: string, callID: string, onWidget = fal
 
     const onJoin = (ev: React.MouseEvent<HTMLElement>) => {
         ev.stopPropagation();
-        notificationSounds?.stopRing(); // Stop ringing for _any_ incoming call.
+        notificationsStopRinging(); // Stop ringing for _any_ incoming call.
         dispatch(trackEvent(Telemetry.Event.NotificationJoin, source));
 
         if (connectedID) {
@@ -124,16 +125,12 @@ const getRingingFromUser = (user: UserProfile) => {
     return !user.notify_props || (callsRing && user.notify_props.desktop !== NotificationLevel.NONE);
 };
 
-const getDesktopNotification = (member: ChannelMembership | null | undefined, user: UserProfile) => {
-    // @ts-ignore We're using an outdated webapp
-    if (member?.notify_props?.desktop_sound) {
-        // @ts-ignore We're using an outdated webapp
-        if (member.notify_props.desktop === NotificationLevel.NONE) {
-            return false;
-        }
-    }
-
+const getDesktopNotificationFromUser = (user: UserProfile) => {
     return !user.notify_props || user.notify_props.desktop !== NotificationLevel.NONE;
+};
+
+const getDesktopNotificationFromChannel = (member: ChannelMembership | null | undefined) => {
+    return !member?.notify_props?.desktop || member.notify_props.desktop !== NotificationLevel.NONE;
 };
 
 // useNotificationSettings returns [shouldRing, shouldDesktopNotificationSound, shouldDesktopNotification]
@@ -143,7 +140,9 @@ const useNotificationSettings = (channelID: string, user: UserProfile) => {
     const muted = !member || isChannelMuted(member) || status === UserStatuses.DND || status === UserStatuses.OUT_OF_OFFICE;
     const ring = !muted && getRingingFromUser(user);
     const desktopSoundEnabled = getDesktopSoundFromChannelMemberAndUser(member, user);
-    const desktopNotificationEnabled = getDesktopNotification(member, user);
+    const desktopNotificationEnabledInChannel = getDesktopNotificationFromChannel(member);
+    const desktopNotificationEnabledGlobally = getDesktopNotificationFromUser(user);
+    const desktopNotificationEnabled = desktopNotificationEnabledInChannel && desktopNotificationEnabledGlobally;
     return [!muted && ring, !muted && desktopSoundEnabled, !muted && desktopNotificationEnabled];
 };
 
@@ -206,6 +205,11 @@ export const useNotification = (call: IncomingCallNotification) => {
                 }
                 const soundName = getNotificationSoundFromChannelMemberAndUser(myChannelMember, currentUser);
                 dispatch(sendDesktopNotificationToMe(title, body, channel, channel.team_id, !shouldDesktopNotificationSound, soundName, url));
+
+                // window.e2eDesktopNotificationSent is added when running the e2e tests
+                if (window.e2eDesktopNotificationsSent) {
+                    window.e2eDesktopNotificationsSent.push(body);
+                }
             }
         }
 
@@ -258,14 +262,14 @@ export const useOnChannelLinkClick = (call: IncomingCallNotification, onWidget =
 
     if (global) {
         return () => {
-            notificationSounds?.stopRing(); // User interacted with notifications, so stop ringing for _any_ incoming call.
+            notificationsStopRinging(); // User interacted with notifications, so stop ringing for _any_ incoming call.
             dispatch(trackEvent(Telemetry.Event.NotificationClickGotoChannel, source));
             sendDesktopEvent('calls-link-click', {link: channelURL});
         };
     }
 
     return () => {
-        notificationSounds?.stopRing();
+        notificationsStopRinging();
         dispatch(trackEvent(Telemetry.Event.NotificationClickGotoChannel, source));
         const win = window.opener ? window.opener : window;
         win.postMessage({type: 'browser-history-push-return', message: {pathName: channelURL}}, window.origin);

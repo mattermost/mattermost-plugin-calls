@@ -26,6 +26,7 @@ test.describe('keyboard shortcuts', () => {
         }
 
         await expect(page.locator('#calls-widget')).toBeVisible();
+        await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
 
         if (process.platform === 'darwin') {
             await page.keyboard.press('Meta+Shift+L');

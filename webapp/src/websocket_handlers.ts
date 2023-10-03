@@ -21,7 +21,6 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected, loadCallState} from 'src/actions';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
-import {notificationSounds} from 'src/webapp_globals';
 
 import {
     USER_MUTED,
@@ -58,6 +57,7 @@ import {
     followThread,
     getUserDisplayName,
     getCallsClient,
+    notificationsStopRinging,
 } from './utils';
 
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
@@ -152,7 +152,7 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
     if (ringingEnabled(store.getState()) && userID === currentUserID) {
         const callID = calls(store.getState())[channelID].ID || '';
         store.dispatch(removeIncomingCallNotification(callID));
-        notificationSounds?.stopRing(); // And stop ringing for _any_ incoming call.
+        notificationsStopRinging(); // And stop ringing for _any_ incoming call.
     }
 
     store.dispatch({

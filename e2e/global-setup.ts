@@ -1,14 +1,14 @@
 import {readFile} from 'fs/promises';
 
-import {request, FullConfig} from '@playwright/test';
+import {request, FullConfig, expect} from '@playwright/test';
 
 import plugin from '../plugin.json';
 
 import {adminState, baseURL, defaultTeam, userPassword, userPrefix, channelPrefix} from './constants';
 
 async function globalSetup(config: FullConfig) {
-    const numUsers = config.workers * 2;
-    const numChannels = config.workers * 2;
+    const numUsers = config.workers * 3;
+    const numChannels = config.workers * 3;
 
     const headers = {'X-Requested-With': 'XMLHttpRequest'};
 
@@ -113,6 +113,7 @@ async function globalSetup(config: FullConfig) {
         {user_id: userID, category: 'insights', name: 'insights_tutorial_state', value: '{"insights_modal_viewed":true}'},
         {user_id: userID, category: 'drafts', name: 'drafts_tour_tip_showed', value: '{"drafts_tour_tip_showed":true}'},
         {user_id: userID, category: 'crt_thread_pane_step', name: userID, value: '999'},
+        {user_id: userID, category: 'system_notice', name: 'GMasDM', value: 'true'},
     ];
 
     // set admin preferences
@@ -122,6 +123,17 @@ async function globalSetup(config: FullConfig) {
         data: getPreferences(adminUser.id),
         headers,
     });
+
+    // set automatic replies setting (ooo) to true for notifications tests
+    resp = await adminContext.put('api/v4/config/patch', {
+        headers,
+        data: {
+            TeamSettings: {
+                ExperimentalEnableAutomaticReplies: true,
+            },
+        },
+    });
+    await expect(resp.status()).toEqual(200);
 
     // add users to team.
     for (let i = 0; i < numUsers; i++) {

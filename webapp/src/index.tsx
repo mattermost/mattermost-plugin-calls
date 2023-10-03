@@ -96,7 +96,7 @@ import {
     channelHasCall,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
-import {PluginRegistry, Store} from './types/mattermost-webapp';
+import {DesktopNotificationArgs, PluginRegistry, Store} from './types/mattermost-webapp';
 import {
     desktopGTE,
     followThread,
@@ -834,6 +834,11 @@ declare global {
         screenSharingTrackId: string,
         currentCallData?: CurrentCallData,
         callActions?: CallActions,
+        e2eDesktopNotificationsRejected?: DesktopNotificationArgs[],
+        e2eDesktopNotificationsSent?: string[],
+        e2eNotificationsSoundedAt?: number[],
+        e2eNotificationsSoundStoppedAt?: number[],
+        e2eRingLength?: number,
     }
 
     interface HTMLVideoElement {

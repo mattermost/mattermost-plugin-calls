@@ -1,6 +1,6 @@
 import {readFile} from 'fs/promises';
 
-import {test, expect, chromium} from '@playwright/test';
+import {test, expect} from '@playwright/test';
 
 import {adminState} from '../constants';
 import PlaywrightDevPage from '../page';
@@ -26,7 +26,7 @@ test.describe('start/join call in channel with calls disabled', () => {
         await devPage.disableCalls();
 
         await page.locator('#post_textbox').fill('/call start');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
 
         await expect(page.locator('#calls_generic_error').filter({has: page.getByText('Calls are disabled in this channel.')})).toBeVisible();
@@ -40,7 +40,7 @@ test.describe('start/join call in channel with calls disabled', () => {
         await devPage.disableCalls();
 
         await page.locator('#post_textbox').fill('/call join');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
 
         await expect(page.locator('#calls_generic_error').filter({has: page.getByText('Calls are disabled in this channel.')})).toBeVisible();
@@ -63,10 +63,11 @@ test.describe('start new call', () => {
 
     test('slash command', async ({page, context}) => {
         await page.locator('#post_textbox').fill('/call join');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeVisible();
+        await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
         await page.locator('#post_textbox').fill('/call leave');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
@@ -81,25 +82,26 @@ test.describe('start new call', () => {
 
     test('cannot start call twice', async ({page, context}) => {
         await page.locator('#post_textbox').fill('/call start');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeVisible();
+        await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
 
         await page.locator('#post_textbox').fill('/call start');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeVisible();
 
         await expect(page.locator('#calls_generic_error').filter({has: page.getByText('A call is already ongoing in the channel.')})).toBeVisible();
         await page.keyboard.press('Escape');
 
         await page.locator('#post_textbox').fill('/call leave');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
     test('slash command from existing thread', async ({page, context}) => {
         // create a test thread
         await page.locator('#post_textbox').fill('test thread');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
         const post = page.locator('.post-message__text').last();
         await expect(post).toBeVisible();
 
@@ -209,7 +211,7 @@ test.describe('auto join link', () => {
 
     test('public channel', async ({page, context}) => {
         await page.locator('#post_textbox').fill('/call link');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
 
         const post = page.locator('.post-message__text').last();
         await expect(post).toBeVisible();
@@ -232,7 +234,7 @@ test.describe('auto join link', () => {
         await devPage.gotoDM(usernames[1]);
 
         await page.locator('#post_textbox').fill('/call link');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
 
         const post = page.locator('.post-message__text').last();
         await expect(post).toBeVisible();

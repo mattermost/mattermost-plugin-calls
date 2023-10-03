@@ -35,7 +35,7 @@ import {
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
 import {iceServers, needsTURNCredentials, callsConfig} from 'plugin/selectors';
-import {Store} from 'plugin/types/mattermost-webapp';
+import {DesktopNotificationArgs, Store} from 'plugin/types/mattermost-webapp';
 import {
     getWSConnectionURL,
     getPluginPath,
@@ -298,6 +298,11 @@ declare global {
         screenSharingTrackId: string,
         currentCallData?: CurrentCallData,
         callActions?: CallActions,
+        e2eDesktopNotificationsRejected?: DesktopNotificationArgs[],
+        e2eDesktopNotificationsSent?: string[],
+        e2eNotificationsSoundedAt?: number[],
+        e2eNotificationsSoundStoppedAt?: number[],
+        e2eRingLength?: number,
     }
 
     interface HTMLVideoElement {

@@ -11,6 +11,7 @@
     "@playwright/test": "1.33.0",
     "@typescript-eslint/eslint-plugin": "5.49.0",
     "eslint": "8.33.0",
-    "eslint-plugin-import": "2.27.5"
+    "eslint-plugin-import": "2.27.5",
+    "@mattermost/types": "6.7.0-0"
   }
 }

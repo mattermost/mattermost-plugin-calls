@@ -64,6 +64,7 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
 
     return (
         <Container
+            data-testid={onWidget ? 'call-incoming-condensed-widget' : 'call-incoming-condensed'}
             className={className}
             onClick={onContainerClick}
             disabled={onWebappExpanded}
