@@ -273,7 +273,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	if status.JobType == public.JobTypeRecording {
+	if status.JobType == public.JobTypeRecording && status.Status == public.JobStatusTypeFailed {
 		if state.Call.Recording == nil {
 			res.Err = "no recording ongoing"
 			res.Code = http.StatusBadRequest
