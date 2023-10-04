@@ -28,10 +28,14 @@ export function getUserStoragesForTest() {
     return [`${names[0]}StorageState.json`, `${names[1]}StorageState.json`];
 }
 
-export async function startCall(userState: string) {
+export async function newUserPage(userState: string) {
     const browser = await chromium.launch();
     const context = await browser.newContext({storageState: userState});
-    const userPage = new PlaywrightDevPage(await context.newPage());
+    return new PlaywrightDevPage(await context.newPage());
+}
+
+export async function startCall(userState: string) {
+    const userPage = await newUserPage(userState);
     await userPage.goto();
     await userPage.startCall();
     return userPage;
