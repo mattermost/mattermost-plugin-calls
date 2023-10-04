@@ -273,7 +273,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	if status.JobType == public.JobTypeRecording && status.Status == public.JobStatusTypeFailed {
+	if status.JobType == public.JobTypeRecording {
 		if state.Call.Recording == nil {
 			res.Err = "no recording ongoing"
 			res.Code = http.StatusBadRequest
@@ -292,8 +292,23 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 			return
 		}
 
-		state.Call.Recording.EndAt = time.Now().UnixMilli()
-		state.Call.Recording.Err = status.Error
+		if status.Status == public.JobStatusTypeFailed {
+			p.LogDebug("recording has failed", "jobID", jobID)
+			state.Call.Recording.EndAt = time.Now().UnixMilli()
+			state.Call.Recording.Err = status.Error
+		} else if status.Status == public.JobStatusTypeStarted {
+			if state.Call.Recording.StartAt > 0 {
+				res.Err = "recording has already started"
+				res.Code = http.StatusBadRequest
+				return
+			}
+			p.LogDebug("recording has started", "jobID", jobID)
+			state.Call.Recording.StartAt = time.Now().UnixMilli()
+		} else {
+			res.Err = "unsupported status type"
+			res.Code = http.StatusBadRequest
+			return
+		}
 
 		if err := p.kvSetChannelState(callID, state); err != nil {
 			res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
