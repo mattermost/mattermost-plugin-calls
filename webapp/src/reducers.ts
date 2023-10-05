@@ -859,6 +859,7 @@ const ringingForCalls = (state: { [callID: string]: boolean } = {}, action: Ring
 const didRingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
     switch (action.type) {
     case DID_RING_FOR_CALL:
+    case RINGING_FOR_CALL:
         return {
             ...state,
             [action.data.callID]: true,
@@ -896,6 +897,11 @@ export default combineReducers({
     channels,
     channelID,
     profiles,
+
+    // DEPRECATED - Needed to keep compatibility with older MM server
+    // version.
+    voiceConnectedProfiles: profiles,
+
     reactions,
     sessions,
     calls,

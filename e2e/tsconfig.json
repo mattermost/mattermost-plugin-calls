@@ -19,10 +19,10 @@
     "isolatedModules": true,
     "noEmit": true,
     "experimentalDecorators": true,
-    "baseUrl": ".",
+    "baseUrl": "./",
     "paths": {
-      "src": ["src"],
-    },
+      "webapp/*": ["../webapp/*"]
+    }
   },
   "include": [
     "./**/*"
@@ -30,5 +30,5 @@
   "exclude": [
     "dist",
     "!node_modules/@types"
-  ],
+  ]
 }

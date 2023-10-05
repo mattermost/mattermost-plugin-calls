@@ -26,6 +26,7 @@ import {
     showSwitchCallModal,
     loadCallState,
 } from 'src/actions';
+import {navigateToURL} from 'src/browser_routing';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
@@ -92,7 +93,7 @@ import {
     profilesInCallInChannel,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
-import {PluginRegistry, Store} from './types/mattermost-webapp';
+import {DesktopNotificationArgs, PluginRegistry, Store} from './types/mattermost-webapp';
 import {
     desktopGTE,
     followThread,
@@ -537,6 +538,8 @@ export default class Plugin {
                 store.dispatch(displayCallErrorModal(ev.data.message.callID, new Error(ev.data.message.errMsg)));
             } else if (ev.data?.type === 'calls-run-slash-command') {
                 slashCommandsHandler(store, joinCall, ev.data.message, ev.data.args);
+            } else if (ev.data?.type === 'calls-link-click') {
+                navigateToURL(ev.data.message.link);
             }
         };
         window.addEventListener('message', windowEventHandler);
@@ -801,6 +804,11 @@ declare global {
         screenSharingTrackId: string,
         currentCallData?: CurrentCallData,
         callActions?: CallActions,
+        e2eDesktopNotificationsRejected?: DesktopNotificationArgs[],
+        e2eDesktopNotificationsSent?: string[],
+        e2eNotificationsSoundedAt?: number[],
+        e2eNotificationsSoundStoppedAt?: number[],
+        e2eRingLength?: number,
     }
 
     interface HTMLVideoElement {

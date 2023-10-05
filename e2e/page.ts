@@ -1,6 +1,7 @@
 import {expect, Page} from '@playwright/test';
 
-import {baseURL, defaultTeam} from './constants';
+import {apiGetGroupChannel} from './channels';
+import {baseURL, defaultTeam, pluginID} from './constants';
 import {getChannelNamesForTest} from './utils';
 
 export default class PlaywrightDevPage {
@@ -22,6 +23,17 @@ export default class PlaywrightDevPage {
         await this.page.goto(`${baseURL}/${defaultTeam}/messages/@${username}`);
     }
 
+    // Assuming user only has one GM channel during the test, for simplicity
+    async getGMChannel(userName: string) {
+        return apiGetGroupChannel(this.page.request, userName);
+    }
+
+    async goToGM(userName: string) {
+        const channel = await this.getGMChannel(userName);
+        await this.page.goto(`${baseURL}/${defaultTeam}/channels/${channel.name}`);
+        return channel;
+    }
+
     async leaveCall() {
         await this.page.locator('#calls-widget-leave-button').click();
         await expect(this.page.locator('#calls-widget')).toBeHidden();
@@ -32,7 +44,7 @@ export default class PlaywrightDevPage {
         await expect(startCallButton).toBeVisible();
         await startCallButton.click();
         await expect(this.page.locator('#calls-widget')).toBeVisible();
-        await expect(this.page.locator('#calls-widget-loading-overlay')).toBeHidden();
+        await expect(this.page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
     }
 
     async joinCall() {
@@ -40,7 +52,7 @@ export default class PlaywrightDevPage {
         await expect(joinCallButton).toBeVisible();
         await joinCallButton.click();
         await expect(this.page.locator('#calls-widget')).toBeVisible();
-        await expect(this.page.locator('#calls-widget-loading-overlay')).toBeHidden();
+        await expect(this.page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
     }
 
     async enableCalls() {
@@ -65,5 +77,41 @@ export default class PlaywrightDevPage {
         return new Promise((res) => {
             setTimeout(() => res(true), ms);
         });
+    }
+
+    async openWidget(channelName: string) {
+        const resp = await this.page.request.get(`${baseURL}/api/v4/teams/name/${defaultTeam}/channels/name/${channelName}`);
+        const channel = await resp.json();
+
+        await this.page.goto(`${baseURL}/plugins/${pluginID}/standalone/widget.html?call_id=${channel.id}`);
+        await expect(this.page.locator('#calls-widget')).toBeVisible();
+        await expect(this.page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
+    }
+
+    async hideDocument(hide = true) {
+        await this.page.evaluate((hidden) => {
+            Object.defineProperty(document, 'visibilityState', {value: hidden ? 'hidden' : 'visible', writable: true});
+            Object.defineProperty(document, 'hidden', {value: hidden, writable: true});
+            document.dispatchEvent(new Event('visibilitychange'));
+        }, hide);
+    }
+
+    async expectNotifications(numDesktopNotificationsRejected: number, numDesktopNotificationsSent: number, numNotificationsSounded: number, numNotificationsStoppedAt: number) {
+        const desktopNotificationsRejected = await this.page.evaluate(() => {
+            return window.e2eDesktopNotificationsRejected || [];
+        });
+        const notificationsSoundedAt = await this.page.evaluate(() => {
+            return window.e2eNotificationsSoundedAt || [];
+        });
+        const desktopNotificationsSent = await this.page.evaluate(() => {
+            return window.e2eDesktopNotificationsSent || [];
+        });
+        const notificationsSoundStoppedAt = await this.page.evaluate(() => {
+            return window.e2eNotificationsSoundStoppedAt || [];
+        });
+        await expect(desktopNotificationsRejected.length).toEqual(numDesktopNotificationsRejected);
+        await expect(desktopNotificationsSent.length).toEqual(numDesktopNotificationsSent);
+        await expect(notificationsSoundedAt.length).toEqual(numNotificationsSounded);
+        await expect(notificationsSoundStoppedAt.length).toEqual(numNotificationsStoppedAt);
     }
 }

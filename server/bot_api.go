@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
@@ -18,6 +20,7 @@ var botChRE = regexp.MustCompile(`^\/bot\/channels\/([a-z0-9]+)$`)
 var botUserImageRE = regexp.MustCompile(`^\/bot\/users\/([a-z0-9]+)\/image$`)
 var botUploadsRE = regexp.MustCompile(`^\/bot\/uploads\/?([a-z0-9]+)?$`)
 var botRecordingsRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/recordings$`)
+var botJobsStatusRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/jobs\/([a-z0-9]+)\/status$`)
 
 func (p *Plugin) getBotID() string {
 	if p.botSession != nil {
@@ -245,6 +248,88 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	res.Msg = "success"
 }
 
+func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request, callID, jobID string) {
+	var res httpResponse
+	defer p.httpAudit("handleBotPostJobsStatus", &res, w, r)
+
+	var status public.JobStatus
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&status); err != nil {
+		res.Err = "failed to decode request body: " + err.Error()
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	state, err := p.lockCall(callID)
+	if err != nil {
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer p.unlockCall(callID)
+
+	if state == nil || state.Call == nil {
+		res.Err = "no call ongoing"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if status.JobType == public.JobTypeRecording {
+		if state.Call.Recording == nil {
+			res.Err = "no recording ongoing"
+			res.Code = http.StatusBadRequest
+			return
+		}
+
+		if state.Call.Recording.ID != jobID {
+			res.Err = "invalid recording job ID"
+			res.Code = http.StatusBadRequest
+			return
+		}
+
+		if state.Call.Recording.EndAt > 0 {
+			res.Err = "recording has ended"
+			res.Code = http.StatusBadRequest
+			return
+		}
+
+		if status.Status == public.JobStatusTypeFailed {
+			p.LogDebug("recording has failed", "jobID", jobID)
+			state.Call.Recording.EndAt = time.Now().UnixMilli()
+			state.Call.Recording.Err = status.Error
+		} else if status.Status == public.JobStatusTypeStarted {
+			if state.Call.Recording.StartAt > 0 {
+				res.Err = "recording has already started"
+				res.Code = http.StatusBadRequest
+				return
+			}
+			p.LogDebug("recording has started", "jobID", jobID)
+			state.Call.Recording.StartAt = time.Now().UnixMilli()
+		} else {
+			res.Err = "unsupported status type"
+			res.Code = http.StatusBadRequest
+			return
+		}
+
+		if err := p.kvSetChannelState(callID, state); err != nil {
+			res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+			res.Code = http.StatusInternalServerError
+			return
+		}
+
+		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			"callID":   callID,
+			"recState": state.Call.Recording.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+		res.Code = http.StatusOK
+		res.Msg = "success"
+		return
+	}
+
+	res.Err = "bad request"
+	res.Code = http.StatusBadRequest
+}
+
 func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
 	if !p.licenseChecker.RecordingsAllowed() {
 		http.Error(w, "Forbidden", http.StatusForbidden)
@@ -284,6 +369,11 @@ func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
 
 		if matches := botRecordingsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
 			p.handleBotPostRecordings(w, r, matches[1])
+			return
+		}
+
+		if matches := botJobsStatusRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
+			p.handleBotPostJobsStatus(w, r, matches[1], matches[2])
 			return
 		}
 	}

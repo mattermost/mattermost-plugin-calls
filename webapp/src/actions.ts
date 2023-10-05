@@ -31,7 +31,14 @@ import {
 } from 'src/selectors';
 import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
-import {getPluginPath, isDesktopApp, isDMChannel, isGMChannel, getProfilesForSessions} from 'src/utils';
+import {
+    getPluginPath,
+    isDesktopApp,
+    isDMChannel,
+    isGMChannel,
+    notificationsStopRinging,
+    getProfilesForSessions,
+} from 'src/utils';
 import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
@@ -409,20 +416,30 @@ export const removeIncomingCallNotification = (callID: string): ActionFunc => {
 export const ringForCall = (callID: string, sound: string) => {
     return async (dispatch: DispatchFunc) => {
         notificationSounds?.ring(sound);
+
+        // window.e2eNotificationsSoundedAt is added when running the e2e tests
+        if (window.e2eNotificationsSoundedAt) {
+            window.e2eNotificationsSoundedAt.push(Date.now());
+        }
+
+        // register we've rang, so we don't ring again ever for this call
         await dispatch({
             type: RINGING_FOR_CALL,
             data: {
                 callID,
             },
         });
-        setTimeout(() => dispatch(stopRingingForCall(callID)), RING_LENGTH);
+
+        // window.e2eRingLength is added when running the e2e tests
+        const ringLength = window.e2eRingLength ? window.e2eRingLength : RING_LENGTH;
+        setTimeout(() => dispatch(stopRingingForCall(callID)), ringLength);
     };
 };
 
 export const stopRingingForCall = (callID: string): ActionFunc => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         if (ringingForCall(getState(), callID)) {
-            notificationSounds?.stopRing();
+            notificationsStopRinging();
         }
         dispatch({
             type: DID_RING_FOR_CALL,

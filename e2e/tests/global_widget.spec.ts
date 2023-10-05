@@ -1,18 +1,16 @@
 import {test, expect} from '@playwright/test';
 
 import {baseURL, defaultTeam, pluginID} from '../constants';
+import PlaywrightDevPage from '../page';
 import {getChannelNamesForTest, getUserStoragesForTest} from '../utils';
 
 test.describe('global widget', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
     test('start call', async ({page, request}) => {
-        const channelName = getChannelNamesForTest()[0];
-        const resp = await request.get(`${baseURL}/api/v4/teams/name/${defaultTeam}/channels/name/${channelName}`);
-        const channel = await resp.json();
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.openWidget(getChannelNamesForTest()[0]);
 
-        await page.goto(`${baseURL}/plugins/${pluginID}/standalone/widget.html?call_id=${channel.id}`);
-        await expect(page.locator('#calls-widget')).toBeVisible();
         await expect(page.locator('#calls-widget-leave-button')).toBeVisible();
         await page.locator('#calls-widget-leave-button').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
@@ -20,12 +18,8 @@ test.describe('global widget', () => {
 
     test('recording widget banner', async ({page, request, context}) => {
         // start call
-        const channelName = getChannelNamesForTest()[0];
-        const resp = await request.get(`${baseURL}/api/v4/teams/name/${defaultTeam}/channels/name/${channelName}`);
-        const channel = await resp.json();
-
-        await page.goto(`${baseURL}/plugins/${pluginID}/standalone/widget.html?call_id=${channel.id}`);
-        await expect(page.locator('#calls-widget')).toBeVisible();
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.openWidget(getChannelNamesForTest()[0]);
 
         // open popout to control recording
         const [popOut, _] = await Promise.all([
@@ -64,12 +58,8 @@ test.describe('global widget', () => {
         context,
     }) => {
         // start call
-        const channelName = getChannelNamesForTest()[0];
-        const resp = await request.get(`${baseURL}/api/v4/teams/name/${defaultTeam}/channels/name/${channelName}`);
-        const channel = await resp.json();
-
-        await page.goto(`${baseURL}/plugins/${pluginID}/standalone/widget.html?call_id=${channel.id}`);
-        await expect(page.locator('#calls-widget')).toBeVisible();
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.openWidget(getChannelNamesForTest()[0]);
 
         // open popout to control recording
         let [popOut, _] = await Promise.all([
@@ -137,12 +127,8 @@ test.describe('global widget', () => {
         context,
     }) => {
         // start call
-        const channelName = getChannelNamesForTest()[0];
-        const resp = await request.get(`${baseURL}/api/v4/teams/name/${defaultTeam}/channels/name/${channelName}`);
-        const channel = await resp.json();
-
-        await page.goto(`${baseURL}/plugins/${pluginID}/standalone/widget.html?call_id=${channel.id}`);
-        await expect(page.locator('#calls-widget')).toBeVisible();
+        const devPage = new PlaywrightDevPage(page);
+        devPage.openWidget(getChannelNamesForTest()[0]);
 
         // open popout to control recording
         let [popOut, _] = await Promise.all([

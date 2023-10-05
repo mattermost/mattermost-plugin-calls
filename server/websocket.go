@@ -707,8 +707,8 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 
 	p.unlockCall(channelID)
 
-	p.metrics.IncWebSocketConn(channelID)
-	defer p.metrics.DecWebSocketConn(channelID)
+	p.metrics.IncWebSocketConn()
+	defer p.metrics.DecWebSocketConn()
 	p.track(evCallUserJoined, map[string]interface{}{
 		"ParticipantID": userID,
 		"ChannelID":     channelID,

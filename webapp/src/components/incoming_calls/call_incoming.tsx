@@ -58,7 +58,10 @@ export const CallIncoming = ({call}: Props) => {
     }
 
     return (
-        <Container onClick={onContainerClick}>
+        <Container
+            data-testid={'call-incoming'}
+            onClick={onContainerClick}
+        >
             <Inner>
                 <Row>
                     <Avatar
@@ -71,6 +74,7 @@ export const CallIncoming = ({call}: Props) => {
                 </Row>
                 <RowSpaced>
                     <WideButton
+                        data-testid={'call-incoming-dismiss'}
                         onClick={onDismiss}
                         css={'margin-right: 8px'}
                     >

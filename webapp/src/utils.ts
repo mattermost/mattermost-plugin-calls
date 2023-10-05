@@ -17,6 +17,7 @@ import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 
 import CallsClient from 'src/client';
+import {notificationSounds} from 'src/webapp_globals';
 
 import {logDebug, logErr, logWarn} from './log';
 import {pluginId} from './manifest';
@@ -501,4 +502,13 @@ export async function runWithRetry(fn: () => any, retryIntervalMs = 100, maxAtte
     }
 
     throw maxAttemptsReachedErr;
+}
+
+export function notificationsStopRinging() {
+    notificationSounds?.stopRing();
+
+    // window.e2eNotificationsSoundStoppedAt is added when running the e2e tests
+    if (window.e2eNotificationsSoundStoppedAt) {
+        window.e2eNotificationsSoundStoppedAt.push(Date.now());
+    }
 }
