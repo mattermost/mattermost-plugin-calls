@@ -1,6 +1,8 @@
+
 import {expect, test} from '@playwright/test';
 
 import {apiChannelNotifyProps} from '../channels';
+import {adminState, baseURL} from '../constants';
 import PlaywrightDevPage from '../page';
 import {apiPatchNotifyProps, apiPutStatus} from '../users';
 import {
@@ -651,6 +653,18 @@ test.describe('notifications', () => {
     });
 
     test('user is OOO: no ringing, no desktop notification', async ({page, request}) => {
+        // set automatic replies setting (ooo) to true
+        const adminContext = (await newUserPage(adminState.storageStatePath)).page.request;
+        let resp = await adminContext.put(`${baseURL}/api/v4/config/patch`, {
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            data: {
+                TeamSettings: {
+                    ExperimentalEnableAutomaticReplies: true,
+                },
+            },
+        });
+        await expect(resp.status()).toEqual(200);
+
         await apiPatchNotifyProps(request, {
             desktop: 'mentions',
             calls_desktop_sound: 'true',
@@ -682,7 +696,17 @@ test.describe('notifications', () => {
         await expect(notification).toContainText(`${usernames[1]} is inviting you to a call`);
         await devPage.expectNotifications(0, 0, 0, 0);
 
+        // cleanup
         await user1.leaveCall();
+        resp = await adminContext.put(`${baseURL}/api/v4/config/patch`, {
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            data: {
+                TeamSettings: {
+                    ExperimentalEnableAutomaticReplies: false,
+                },
+            },
+        });
+        await expect(resp.status()).toEqual(200);
     });
 
     test('gm channel pref sound off: ringing sound yes, desktop notification yes', async ({page, request}) => {

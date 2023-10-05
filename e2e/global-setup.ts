@@ -127,17 +127,6 @@ async function globalSetup(config: FullConfig) {
         headers,
     });
 
-    // set automatic replies setting (ooo) to true for notifications tests
-    resp = await adminContext.put('api/v4/config/patch', {
-        headers,
-        data: {
-            TeamSettings: {
-                ExperimentalEnableAutomaticReplies: true,
-            },
-        },
-    });
-    await expect(resp.status()).toEqual(200);
-
     // add users to team.
     for (let i = 0; i < numUsers; i++) {
         const username = `${userPrefix}${i}`;
