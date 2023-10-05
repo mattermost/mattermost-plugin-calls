@@ -63,9 +63,9 @@ type CallStateClient struct {
 	ID      string `json:"id"`
 	StartAt int64  `json:"start_at"`
 
-	// DEPRECATED in favour of Sessions (since v0.20)
+	// DEPRECATED in favour of Sessions (since v0.21)
 	Users []string `json:"users"`
-	// DEPRECATED in favour of Sessions (since v0.20)
+	// DEPRECATED in favour of Sessions (since v0.21)
 	States []UserStateClient `json:"states,omitempty"`
 
 	Sessions []UserStateClient `json:"sessions"`
@@ -73,7 +73,7 @@ type CallStateClient struct {
 	ThreadID string `json:"thread_id"`
 	PostID   string `json:"post_id"`
 
-	// DEPRECATED in favour of ScreenSharingSessionID (since v0.20)
+	// DEPRECATED in favour of ScreenSharingSessionID (since v0.21)
 	ScreenSharingID string `json:"screen_sharing_id"`
 
 	ScreenSharingSessionID string                `json:"screen_sharing_session_id"`
@@ -223,16 +223,16 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		ID:      cs.ID,
 		StartAt: cs.StartAt,
 
-		// DEPRECATED since v0.20
+		// DEPRECATED since v0.21
 		Users: users,
-		// DEPRECATED since v0.20
+		// DEPRECATED since v0.21
 		States: states,
 
 		Sessions: states,
 		ThreadID: cs.ThreadID,
 		PostID:   cs.PostID,
 
-		// DEPRECATED since v0.20
+		// DEPRECATED since v0.21
 		ScreenSharingID: screenSharingUserID,
 
 		ScreenSharingSessionID: cs.ScreenSharingID,

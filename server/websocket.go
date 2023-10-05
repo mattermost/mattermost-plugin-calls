@@ -19,9 +19,9 @@ import (
 const (
 	wsEventSignal = "signal"
 
-	// DEPRECATED in favour of user_joined (since v0.20)
+	// DEPRECATED in favour of user_joined (since v0.21.0)
 	wsEventUserConnected = "user_connected"
-	// DEPRECATED in favour of user_left (since v0.20)
+	// DEPRECATED in favour of user_left (since v0.21.0)
 	wsEventUserDisconnected = "user_disconnected"
 
 	wsEventUserJoined                = "user_joined"
