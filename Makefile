@@ -71,6 +71,7 @@ ifneq ($(HAS_WEBAPP),)
 	cd webapp && npm run check-types
 	cd standalone && npm run lint
 	cd standalone && npm run check-types
+	cd e2e && npm run lint && npm run check-types
 endif
 
 golangci-lint: ## Run golangci-lint on codebase
