@@ -16,6 +16,7 @@ require (
 	github.com/mattermost/calls-offloader v0.3.2
 	github.com/mattermost/calls-recorder v0.4.2
 	github.com/mattermost/logr/v2 v2.0.16
+	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.1
 	github.com/mattermost/mattermost/server/public v0.0.9-0.20230824163353-69c11cfe1403
 	github.com/mattermost/rtcd v0.11.3
 	github.com/mattermost/squirrel v0.2.0
@@ -28,6 +29,8 @@ require (
 )
 
 replace github.com/pion/interceptor v0.1.12 => github.com/streamer45/interceptor v0.0.0-20230202152215-57f3ac9e7696
+
+replace github.com/mattermost/mattermost-plugin-calls/server/public => ./server/public
 
 require (
 	git.mills.io/prologic/bitcask v1.0.2 // indirect

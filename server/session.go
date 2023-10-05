@@ -118,15 +118,16 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		return nil, fmt.Errorf("user cannot join because of limits")
 	}
 
-	// When the bot joins the call it means the recording has started.
+	// When the bot joins the call it means the recording is starting. The actual
+	// start time is when the bot sends the status update through the API.
 	if userID == p.getBotID() {
-		if state.Call.Recording != nil && state.Call.Recording.StartAt == 0 {
+		if state.Call.Recording != nil && state.Call.Recording.StartAt == 0 && state.Call.Recording.BotConnID == "" {
 			if state.Call.Recording.ID != jobID {
 				return nil, fmt.Errorf("invalid job ID for recording")
 			}
-			state.Call.Recording.StartAt = time.Now().UnixMilli()
+			p.LogDebug("bot joined, recording is starting", "jobID", jobID)
 			state.Call.Recording.BotConnID = connID
-		} else if state.Call.Recording == nil || state.Call.Recording.StartAt > 0 {
+		} else if state.Call.Recording == nil || state.Call.Recording.StartAt > 0 || state.Call.Recording.BotConnID != "" {
 			// In this case we should fail to prevent the bot from recording
 			// without consent.
 			return nil, fmt.Errorf("recording not in progress or already started")
