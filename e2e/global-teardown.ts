@@ -5,7 +5,7 @@ import {FullConfig} from '@playwright/test';
 import {adminState, userPrefix} from './constants';
 
 async function globalTeardown(config: FullConfig) {
-    const numUsers = config.workers * 2;
+    const numUsers = config.workers * 3;
 
     await fs.unlink(adminState.storageStatePath);
 

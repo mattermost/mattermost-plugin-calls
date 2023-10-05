@@ -1,14 +1,15 @@
 import {readFile} from 'fs/promises';
 
-import {request, FullConfig} from '@playwright/test';
+import {request, FullConfig, expect} from '@playwright/test';
 
 import plugin from '../plugin.json';
 
 import {adminState, baseURL, defaultTeam, userPassword, userPrefix, channelPrefix} from './constants';
 
 async function globalSetup(config: FullConfig) {
-    const numUsers = config.workers * 2;
-    const numChannels = config.workers * 2;
+    const numUsers = config.workers * 3;
+    const numChannels = config.workers * 3;
+    const userIDs = [];
 
     const headers = {'X-Requested-With': 'XMLHttpRequest'};
 
@@ -82,13 +83,15 @@ async function globalSetup(config: FullConfig) {
                 }],
             },
         });
-        await requestContext.post('/api/v4/users/login', {
+        const resp = await requestContext.post('/api/v4/users/login', {
             data: {
                 login_id: username,
                 password: userPassword,
             },
             headers,
         });
+        const user = await resp.json();
+        userIDs.push(user.id);
         await requestContext.storageState({path: `${userPrefix}${i}StorageState.json`});
         await requestContext.dispose();
     }
@@ -113,6 +116,7 @@ async function globalSetup(config: FullConfig) {
         {user_id: userID, category: 'insights', name: 'insights_tutorial_state', value: '{"insights_modal_viewed":true}'},
         {user_id: userID, category: 'drafts', name: 'drafts_tour_tip_showed', value: '{"drafts_tour_tip_showed":true}'},
         {user_id: userID, category: 'crt_thread_pane_step', name: userID, value: '999'},
+        {user_id: userID, category: 'system_notice', name: 'GMasDM', value: 'true'},
     ];
 
     // set admin preferences
@@ -195,17 +199,27 @@ async function globalSetup(config: FullConfig) {
         });
     }
 
+    // create GM channels
+    for (let i = 0; i < config.workers; i++) {
+        resp = await adminContext.post('/api/v4/channels/group', {
+            headers,
+            data: [userIDs[i * 3], userIDs[(i * 3) + 1], userIDs[(i * 3) + 2]],
+        });
+        await expect(resp.status()).toEqual(201);
+    }
+
     await adminContext.post(`/api/v4/plugins/${plugin.id}/enable`, {
         headers,
     });
 
-    // enable calls for all channels
+    // enable calls for all channels, enable ringing
     const serverConfig = await (await adminContext.get('/api/v4/config')).json();
     serverConfig.PluginSettings.Plugins = {
         ...serverConfig.PluginSettings.Plugins,
         [`${plugin.id}`]: {
             ...serverConfig.PluginSettings.Plugins[plugin.id],
             defaultenabled: true,
+            enableringing: true,
         },
     };
     await adminContext.put('/api/v4/config', {

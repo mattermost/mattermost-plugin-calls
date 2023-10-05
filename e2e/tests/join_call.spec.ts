@@ -41,6 +41,7 @@ test.describe('join call', () => {
         await expect(userPage.page.getByTestId('call-joined-participant-notification')).toContainText(usernames[0] + ' has joined the call.');
 
         await expect(page.locator('#calls-widget')).toBeVisible();
+        await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
 
         const devPage = new PlaywrightDevPage(page);
         await devPage.leaveCall();
@@ -61,6 +62,7 @@ test.describe('join call', () => {
 
         await joinCallButton.click();
         await expect(page.locator('#calls-widget')).toBeVisible();
+        await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
 
         expect(await page.locator('data-testid=call-thread').last().screenshot()).toMatchSnapshot('call-thread-leave.png');
 

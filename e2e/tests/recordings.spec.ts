@@ -19,7 +19,7 @@ test.describe('call recordings', () => {
 
         // start recording
         await page.locator('#post_textbox').fill('/call recording start');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
 
         // verify recording badge renders correctly
         await expect(page.getByTestId('calls-recording-badge')).toBeVisible();
@@ -38,7 +38,7 @@ test.describe('call recordings', () => {
 
         // stop recording
         await page.locator('#post_textbox').fill('/call recording stop');
-        await page.locator('[data-testid=SendMessageButton]').click();
+        await page.getByTestId('SendMessageButton').click();
 
         // very recording ended prompt renders correctly
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();

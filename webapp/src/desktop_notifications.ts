@@ -31,6 +31,10 @@ export function desktopNotificationHandler(
         if (post.type === CALL_START_POST_TYPE &&
             isDmGmChannel(channel) &&
             ringingEnabled(store.getState())) {
+            // e2eNotificationsRejected is added when running the e2e tests
+            if (window.e2eDesktopNotificationsRejected) {
+                window.e2eDesktopNotificationsRejected.push(args);
+            }
             return {args: {...args, notify: false}};
         }
 
