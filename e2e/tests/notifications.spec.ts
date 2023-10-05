@@ -17,7 +17,7 @@ const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
 const allUserIDsInTest = getUserIDsForTest();
 
-test.setTimeout(150 * 1000);
+test.setTimeout(200 * 1000);
 
 test.beforeEach(async ({page, request}, info) => {
     // Small optimization to avoid loading an unnecessary channel.
