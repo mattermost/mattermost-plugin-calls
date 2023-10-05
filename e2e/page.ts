@@ -1,7 +1,6 @@
 import {expect, Page} from '@playwright/test';
-import {APIRequestContext} from 'playwright-core';
 
-import {apiCreateGroupChannel} from './channels';
+import {apiGetGroupChannel} from './channels';
 import {baseURL, defaultTeam, pluginID} from './constants';
 import {getChannelNamesForTest} from './utils';
 
@@ -24,8 +23,13 @@ export default class PlaywrightDevPage {
         await this.page.goto(`${baseURL}/${defaultTeam}/messages/@${username}`);
     }
 
-    async createAndGoToGM(userIDs: string[]) {
-        const channel = await apiCreateGroupChannel(this.page.request, userIDs);
+    // Assuming user only has one GM channel during the test, for simplicity
+    async getGMChannel(userName: string) {
+        return apiGetGroupChannel(this.page.request, userName);
+    }
+
+    async goToGM(userName: string) {
+        const channel = await this.getGMChannel(userName);
         await this.page.goto(`${baseURL}/${defaultTeam}/channels/${channel.name}`);
         return channel;
     }

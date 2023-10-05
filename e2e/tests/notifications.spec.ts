@@ -7,14 +7,17 @@ import {
     getChannelNamesForTest,
     getUserIDsForTest,
     getUsernamesForTest,
-    getUserStoragesForTest, newUserPage,
+    getUserStoragesForTest,
+    newUserPage,
+    openGM,
     startDMWith,
-    startGMWith,
 } from '../utils';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
 const allUserIDsInTest = getUserIDsForTest();
+
+test.setTimeout(150 * 1000);
 
 test.beforeEach(async ({page, request}, info) => {
     // Small optimization to avoid loading an unnecessary channel.
@@ -24,13 +27,14 @@ test.beforeEach(async ({page, request}, info) => {
 
     // reset user notifications and group channel notifications
     await apiPutStatus(request, 'online');
-    const devPage = new PlaywrightDevPage(page);
-    const channel = await devPage.createAndGoToGM(allUserIDsInTest);
     await apiPatchNotifyProps(request, {
         desktop: 'mentions',
         calls_desktop_sound: 'true',
         auto_responder_active: 'false',
     });
+
+    const devPage = new PlaywrightDevPage(page);
+    const channel = await devPage.getGMChannel(usernames[0]);
     await apiChannelNotifyProps(request, channel.id, allUserIDsInTest[0],
         {mark_unread: 'all', desktop: 'default', desktop_sound: 'on'},
     );
@@ -41,7 +45,7 @@ test.afterEach(async ({page, request}) => {
     // reset user notifications and group channel notifications
     await apiPutStatus(request, 'online');
     const devPage = new PlaywrightDevPage(page);
-    const channel = await devPage.createAndGoToGM(allUserIDsInTest);
+    const channel = await devPage.getGMChannel(usernames[0]);
     await apiPatchNotifyProps(request, {
         desktop: 'mentions',
         calls_desktop_sound: 'true',
@@ -157,7 +161,7 @@ test.describe('notifications', () => {
         // we need to be 'hidden' so that our desktop notifications are sent
         await devPage.hideDocument(true);
 
-        const user1 = await startGMWith(userStorages[1], allUserIDsInTest);
+        const user1 = await openGM(userStorages[1], usernames[1]);
         await user1.startCall();
 
         const notification = await page.getByTestId('call-incoming');
@@ -196,7 +200,7 @@ test.describe('notifications', () => {
         // we need to be 'hidden' so that our desktop notifications are sent
         await devPage.hideDocument(true);
 
-        const user1 = await startGMWith(userStorages[1], allUserIDsInTest);
+        const user1 = await openGM(userStorages[1], usernames[1]);
         await user1.startCall();
 
         const notification = await page.getByTestId('call-incoming');
@@ -220,7 +224,7 @@ test.describe('notifications', () => {
         // we need to be 'hidden' so that our desktop notifications are sent
         await devPage.hideDocument(true);
 
-        const user1 = await startGMWith(userStorages[1], allUserIDsInTest);
+        const user1 = await openGM(userStorages[1], usernames[1]);
         await user1.startCall();
 
         const notification = await page.getByTestId('call-incoming');
@@ -247,7 +251,7 @@ test.describe('notifications', () => {
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
 
-        const user2 = await startGMWith(userStorages[2], allUserIDsInTest);
+        const user2 = await openGM(userStorages[2], usernames[2]);
         await user2.startCall();
 
         const notification = await page.getByTestId('call-incoming');
@@ -305,7 +309,7 @@ test.describe('notifications', () => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.wait(1000);
 
-        const user2 = await startGMWith(userStorages[2], allUserIDsInTest);
+        const user2 = await openGM(userStorages[2], usernames[2]);
         await user2.startCall();
 
         const notification = await page.getByTestId('call-incoming');
@@ -339,7 +343,7 @@ test.describe('notifications', () => {
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
 
-        const user2 = await startGMWith(userStorages[2], allUserIDsInTest);
+        const user2 = await openGM(userStorages[2], usernames[2]);
         await user2.startCall();
 
         const notificationsRejected = await page.evaluate(() => {
@@ -396,7 +400,7 @@ test.describe('notifications', () => {
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
 
-        const user2 = await startGMWith(userStorages[2], allUserIDsInTest);
+        const user2 = await openGM(userStorages[2], usernames[2]);
         await user2.startCall();
 
         let notification = await page.getByTestId('call-incoming-condensed-widget');
@@ -423,7 +427,7 @@ test.describe('notifications', () => {
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
 
-        const user2 = await startGMWith(userStorages[2], allUserIDsInTest);
+        const user2 = await openGM(userStorages[2], usernames[2]);
         await user2.startCall();
 
         let notification = await page.getByTestId('call-incoming');
@@ -468,7 +472,7 @@ test.describe('notifications', () => {
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
 
-        const user2 = await startGMWith(userStorages[2], allUserIDsInTest);
+        const user2 = await openGM(userStorages[2], usernames[2]);
         await user2.startCall();
 
         let notification = await page.getByTestId('call-incoming');
@@ -683,7 +687,7 @@ test.describe('notifications', () => {
 
     test('gm channel pref sound off: ringing sound yes, desktop notification yes', async ({page, request}) => {
         const devPage = new PlaywrightDevPage(page);
-        const channel = await devPage.createAndGoToGM(allUserIDsInTest);
+        const channel = await devPage.goToGM(usernames[0]);
         await apiChannelNotifyProps(request, channel.id, allUserIDsInTest[0], {desktop_sound: 'off'});
         await devPage.goto();
         await page.evaluate(() => {
@@ -695,7 +699,7 @@ test.describe('notifications', () => {
         // we need to be 'hidden' so that our desktop notifications are sent
         await devPage.hideDocument(true);
 
-        const user1 = await startGMWith(userStorages[1], allUserIDsInTest);
+        const user1 = await openGM(userStorages[1], usernames[1]);
         await user1.startCall();
 
         const notification = await page.getByTestId('call-incoming');
@@ -725,7 +729,7 @@ test.describe('notifications', () => {
         request,
     }) => {
         const devPage = new PlaywrightDevPage(page);
-        const channel = await devPage.createAndGoToGM(allUserIDsInTest);
+        const channel = await devPage.goToGM(usernames[0]);
         await apiChannelNotifyProps(request, channel.id, allUserIDsInTest[0], {desktop: 'none'});
         await devPage.goto();
         await page.evaluate(() => {
@@ -735,7 +739,7 @@ test.describe('notifications', () => {
         });
 
         //await devPage.hideDocument(true);
-        const user1 = await startGMWith(userStorages[1], allUserIDsInTest);
+        const user1 = await openGM(userStorages[1], usernames[1]);
         await user1.startCall();
 
         const notification = await page.getByTestId('call-incoming');
@@ -748,7 +752,7 @@ test.describe('notifications', () => {
 
     test('gm channel pref mute: ringing sound no, desktop notification no', async ({page, request}) => {
         const devPage = new PlaywrightDevPage(page);
-        const channel = await devPage.createAndGoToGM(allUserIDsInTest);
+        const channel = await devPage.goToGM(usernames[0]);
         await apiChannelNotifyProps(request, channel.id, allUserIDsInTest[0], {mark_unread: 'mention'});
         await devPage.goto();
         await page.evaluate(() => {
@@ -759,7 +763,7 @@ test.describe('notifications', () => {
 
         await devPage.hideDocument(true);
 
-        const user1 = await startGMWith(userStorages[1], allUserIDsInTest);
+        const user1 = await openGM(userStorages[1], usernames[1]);
         await user1.startCall();
 
         const notification = await page.getByTestId('call-incoming');

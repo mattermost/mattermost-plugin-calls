@@ -60,11 +60,8 @@ export async function startDMWith(userState: string, targetUserName: string) {
     return userPage;
 }
 
-export async function startGMWith(userState: string, targetUserIDs: string[]) {
-    const browser = await chromium.launch();
-    const context = await browser.newContext({storageState: userState});
-    const userPage = new PlaywrightDevPage(await context.newPage());
-
-    await userPage.createAndGoToGM(targetUserIDs);
+export async function openGM(userState: string, userName: string) {
+    const userPage = await newUserPage(userState);
+    await userPage.goToGM(userName);
     return userPage;
 }

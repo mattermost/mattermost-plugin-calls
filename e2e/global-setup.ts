@@ -9,6 +9,7 @@ import {adminState, baseURL, defaultTeam, userPassword, userPrefix, channelPrefi
 async function globalSetup(config: FullConfig) {
     const numUsers = config.workers * 3;
     const numChannels = config.workers * 3;
+    const userIDs = [];
 
     const headers = {'X-Requested-With': 'XMLHttpRequest'};
 
@@ -82,13 +83,15 @@ async function globalSetup(config: FullConfig) {
                 }],
             },
         });
-        await requestContext.post('/api/v4/users/login', {
+        const resp = await requestContext.post('/api/v4/users/login', {
             data: {
                 login_id: username,
                 password: userPassword,
             },
             headers,
         });
+        const user = await resp.json();
+        userIDs.push(user.id);
         await requestContext.storageState({path: `${userPrefix}${i}StorageState.json`});
         await requestContext.dispose();
     }
@@ -205,6 +208,15 @@ async function globalSetup(config: FullConfig) {
             },
             headers,
         });
+    }
+
+    // create GM channels
+    for (let i = 0; i < config.workers; i++) {
+        resp = await adminContext.post('/api/v4/channels/group', {
+            headers,
+            data: [userIDs[i * 3], userIDs[(i * 3) + 1], userIDs[(i * 3) + 2]],
+        });
+        await expect(resp.status()).toEqual(201);
     }
 
     await adminContext.post(`/api/v4/plugins/${plugin.id}/enable`, {
