@@ -63,14 +63,12 @@ i18n-check:
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: apply golangci-lint webapp/node_modules standalone/node_modules gomod-check i18n-check
+check-style: apply golangci-lint webapp/node_modules standalone/node_modules e2e/node_modules gomod-check i18n-check
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
-	cd webapp && npm run lint
-	cd webapp && npm run check-types
-	cd standalone && npm run lint
-	cd standalone && npm run check-types
+	cd webapp && npm run lint && npm run check-types
+	cd standalone && npm run lint && npm run check-types
 	cd e2e && npm run lint && npm run check-types
 endif
 
@@ -149,6 +147,12 @@ standalone/node_modules: $(wildcard standalone/package.json)
 ifneq ($(HAS_WEBAPP),)
 	cd standalone && node skip_integrity_check.js
 	cd standalone && $(NPM) install
+	touch $@
+endif
+
+e2e/node_modules: $(wildcard e2e/package.json)
+ifneq ($(HAS_WEBAPP),)
+	cd e2e && $(NPM) install
 	touch $@
 endif
 
@@ -363,6 +367,7 @@ ifneq ($(HAS_WEBAPP),)
 	rm -fr webapp/node_modules
 	rm -fr standalone/dist
 	rm -fr standalone/node_modules
+	rm -fr e2e/node_modules
 endif
 	rm -fr build/bin/
 	rm -fr e2e/tests-results/
