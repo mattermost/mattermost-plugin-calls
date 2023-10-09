@@ -277,61 +277,74 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
+	var jb *jobState
+	switch status.JobType {
+	case public.JobTypeRecording:
+		jb = state.Call.Recording
+	case public.JobTypeTranscribing:
+		jb = state.Call.Transcription
+	default:
+		res.Err = "invalid job type"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if jb == nil {
+		res.Err = "no job ongoing"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if jb.ID != jobID {
+		res.Err = "invalid recording job ID"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if jb.EndAt > 0 {
+		res.Err = "job has ended"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if status.Status == public.JobStatusTypeFailed {
+		p.LogDebug("job has failed", "jobID", jobID)
+		jb.EndAt = time.Now().UnixMilli()
+		jb.Err = status.Error
+	} else if status.Status == public.JobStatusTypeStarted {
+		if jb.StartAt > 0 {
+			res.Err = "job has already started"
+			res.Code = http.StatusBadRequest
+			return
+		}
+		p.LogDebug("job has started", "jobID", jobID)
+		jb.StartAt = time.Now().UnixMilli()
+	} else {
+		res.Err = "unsupported status type"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if err := p.kvSetChannelState(callID, state); err != nil {
+		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
 	if status.JobType == public.JobTypeRecording {
-		if state.Call.Recording == nil {
-			res.Err = "no recording ongoing"
-			res.Code = http.StatusBadRequest
-			return
-		}
-
-		if state.Call.Recording.ID != jobID {
-			res.Err = "invalid recording job ID"
-			res.Code = http.StatusBadRequest
-			return
-		}
-
-		if state.Call.Recording.EndAt > 0 {
-			res.Err = "recording has ended"
-			res.Code = http.StatusBadRequest
-			return
-		}
-
-		if status.Status == public.JobStatusTypeFailed {
-			p.LogDebug("recording has failed", "jobID", jobID)
-			state.Call.Recording.EndAt = time.Now().UnixMilli()
-			state.Call.Recording.Err = status.Error
-		} else if status.Status == public.JobStatusTypeStarted {
-			if state.Call.Recording.StartAt > 0 {
-				res.Err = "recording has already started"
-				res.Code = http.StatusBadRequest
-				return
-			}
-			p.LogDebug("recording has started", "jobID", jobID)
-			state.Call.Recording.StartAt = time.Now().UnixMilli()
-		} else {
-			res.Err = "unsupported status type"
-			res.Code = http.StatusBadRequest
-			return
-		}
-
-		if err := p.kvSetChannelState(callID, state); err != nil {
-			res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
-			res.Code = http.StatusInternalServerError
-			return
-		}
-
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
 			"recState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
-
-		res.Code = http.StatusOK
-		res.Msg = "success"
-		return
+	} else {
+		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
+			"callID":  callID,
+			"trState": state.Call.Transcription.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	}
 
-	res.Err = "bad request"
-	res.Code = http.StatusBadRequest
+	res.Code = http.StatusOK
+	res.Msg = "success"
 }
 
 func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, callID, sessionID string) {

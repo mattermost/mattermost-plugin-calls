@@ -3,7 +3,8 @@ package public
 type JobType string
 
 const (
-	JobTypeRecording JobType = "recording"
+	JobTypeRecording    JobType = "recording"
+	JobTypeTranscribing         = "transcribing"
 )
 
 type JobStatusType string
