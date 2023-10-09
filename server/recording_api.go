@@ -51,6 +51,12 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 			return
 		}
 
+		if state.Call.Transcription != nil && state.Call.Transcription.EndAt == 0 {
+			if err := p.stopTranscribingJob(state, callID); err != nil {
+				p.LogError("failed to stop transcribing job", "callID", callID, "err", err.Error())
+			}
+		}
+
 		clientState := recState.getClientState()
 		clientState.Err = "failed to start recording job: timed out waiting for bot to join call"
 		clientState.EndAt = time.Now().UnixMilli()
@@ -62,13 +68,9 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	}
 }
 
-func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID string) (*JobStateClient, httpResponse) {
-	var res httpResponse
-
+func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (rst *JobStateClient, rcode int, rerr error) {
 	if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
-		res.Err = "recording already in progress"
-		res.Code = http.StatusForbidden
-		return nil, res
+		return nil, http.StatusForbidden, fmt.Errorf("recording already in progress")
 	}
 
 	recState := new(jobState)
@@ -78,16 +80,14 @@ func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID 
 	state.Call.Recording = recState
 
 	if err := p.kvSetChannelState(callID, state); err != nil {
-		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
 	}
 
 	defer func() {
 		// In case of any error we relay it to the client.
-		if res.Err != "" && recState != nil {
+		if rerr != nil && recState != nil {
 			recState.EndAt = time.Now().UnixMilli()
-			recState.Err = res.Err
+			recState.Err = rerr.Error()
 			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 				"callID":   callID,
 				"recState": recState.getClientState().toMap(),
@@ -109,43 +109,39 @@ func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID 
 	recJobID, jobErr := p.getJobService().RunJob(job.TypeRecording, callID, state.Call.PostID, recState.ID, p.botSession.Token)
 	state, err := p.lockCall(callID)
 	if err != nil {
-		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to lock call: %w", err)
 	}
 
 	recState, err = state.getRecording()
 	if err != nil {
-		res.Err = fmt.Errorf("failed to get recording state: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to get recording state: %w", err)
 	}
 
 	if jobErr != nil {
 		state.Call.Recording = nil
 		if err := p.kvSetChannelState(callID, state); err != nil {
-			res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
-			res.Code = http.StatusInternalServerError
-			return nil, res
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
 		}
-		res.Err = "failed to create recording job: " + jobErr.Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create recording job: %w", jobErr)
 	}
 
 	if recState.JobID != "" {
-		res.Err = "recording job already in progress"
-		res.Code = http.StatusForbidden
-		return nil, res
+		return nil, http.StatusForbidden, fmt.Errorf("recording job already in progress")
 	}
 	recState.JobID = recJobID
 	if err := p.kvSetChannelState(callID, state); err != nil {
-		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
 	}
 
 	p.LogDebug("recording job started successfully", "jobID", recJobID, "callID", callID)
+
+	if cfg := p.getConfiguration(); cfg.transcriptionsEnabled() {
+		p.LogDebug("transcriptions enabled, starting job", "callID", callID)
+		if err := p.startTranscribingJob(state, callID, userID); err != nil {
+			p.LogError("failed to start transcribing job", "callID", callID, "err", err.Error())
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to start transcribing job: %w", err)
+		}
+	}
 
 	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 		"callID":   callID,
@@ -154,38 +150,29 @@ func (p *Plugin) handleRecordingStartAction(state *channelState, callID, userID 
 
 	go p.recJobTimeoutChecker(callID, recJobID)
 
-	return recState.getClientState(), res
+	return recState.getClientState(), http.StatusOK, nil
 }
 
-func (p *Plugin) handleRecordingStopAction(state *channelState, callID string) (*JobStateClient, httpResponse) {
-	var res httpResponse
-
+func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobStateClient, rcode int, rerr error) {
 	if state.Call.Recording == nil || state.Call.Recording.EndAt != 0 {
-		res.Err = "no recording in progress"
-		res.Code = http.StatusForbidden
-		return nil, res
+		return nil, http.StatusForbidden, fmt.Errorf("no recording in progress")
 	}
 
 	recState, err := state.getRecording()
 	if err != nil {
-		res.Err = fmt.Errorf("failed to get recording state: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to get recording state: %w", err)
 	}
 	recState.EndAt = time.Now().UnixMilli()
 	state.Call.Recording = nil
 
 	if err := p.kvSetChannelState(callID, state); err != nil {
-		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
 	}
 
 	defer func() {
 		// In case of any error we relay it to the client.
-		if res.Err != "" {
-			recState.EndAt = time.Now().UnixMilli()
-			recState.Err = res.Err
+		if rerr != nil {
+			recState.Err = rerr.Error()
 			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 				"callID":   callID,
 				"recState": recState.getClientState().toMap(),
@@ -193,10 +180,14 @@ func (p *Plugin) handleRecordingStopAction(state *channelState, callID string) (
 		}
 	}()
 
+	if state.Call.Transcription != nil && state.Call.Transcription.EndAt == 0 {
+		if err := p.stopTranscribingJob(state, callID); err != nil {
+			p.LogError("failed to stop transcribing job", "callID", callID, "err", err.Error())
+		}
+	}
+
 	if err := p.getJobService().StopJob(callID, recState.BotConnID); err != nil {
-		res.Err = "failed to stop recording job: " + err.Error()
-		res.Code = http.StatusInternalServerError
-		return nil, res
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to stop recording job: %w", err)
 	}
 
 	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
@@ -204,7 +195,7 @@ func (p *Plugin) handleRecordingStopAction(state *channelState, callID string) (
 		"recState": recState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
-	return recState.getClientState(), res
+	return recState.getClientState(), http.StatusOK, nil
 }
 
 func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, callID, action string) {
@@ -261,19 +252,22 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 		return
 	}
 
+	var code int
 	var recState *JobStateClient
 	switch action {
 	case "start":
-		recState, res = p.handleRecordingStartAction(state, callID, userID)
+		recState, code, err = p.startRecordingJob(state, callID, userID)
 	case "stop":
-		recState, res = p.handleRecordingStopAction(state, callID)
+		recState, code, err = p.stopRecordingJob(state, callID)
 	default:
 		res.Err = "unsupported recording action"
 		res.Code = http.StatusBadRequest
 		return
 	}
 
-	if res.Err != "" {
+	if err != nil {
+		res.Code = code
+		res.Err = err.Error()
 		return
 	}
 

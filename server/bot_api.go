@@ -308,9 +308,20 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 	}
 
 	if status.Status == public.JobStatusTypeFailed {
-		p.LogDebug("job has failed", "jobID", jobID)
+		p.LogDebug("job has failed", "jobID", jobID, "jobType", status.JobType)
 		jb.EndAt = time.Now().UnixMilli()
 		jb.Err = status.Error
+
+		if status.JobType == public.JobTypeRecording && state.Call.Transcription != nil {
+			if err := p.stopTranscribingJob(state, callID); err != nil {
+				p.LogError("failed to stop transcribing job", "callID", callID, "err", err.Error())
+			}
+		} else if status.JobType == public.JobTypeTranscribing && state.Call.Recording != nil {
+			if _, _, err := p.stopRecordingJob(state, callID); err != nil {
+				p.LogError("failed to stop recording job", "callID", callID, "err", err.Error())
+			}
+		}
+
 	} else if status.Status == public.JobStatusTypeStarted {
 		if jb.StartAt > 0 {
 			res.Err = "job has already started"

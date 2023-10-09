@@ -15,16 +15,15 @@ import (
 )
 
 const (
-	rootCommandTrigger          = "call"
-	startCommandTrigger         = "start"
-	joinCommandTrigger          = "join"
-	leaveCommandTrigger         = "leave"
-	linkCommandTrigger          = "link"
-	experimentalCommandTrigger  = "experimental"
-	statsCommandTrigger         = "stats"
-	endCommandTrigger           = "end"
-	recordingCommandTrigger     = "recording"
-	transcriptionCommandTrigger = "transcription"
+	rootCommandTrigger         = "call"
+	startCommandTrigger        = "start"
+	joinCommandTrigger         = "join"
+	leaveCommandTrigger        = "leave"
+	linkCommandTrigger         = "link"
+	experimentalCommandTrigger = "experimental"
+	statsCommandTrigger        = "stats"
+	endCommandTrigger          = "end"
+	recordingCommandTrigger    = "recording"
 )
 
 var subCommands = []string{
@@ -36,7 +35,6 @@ var subCommands = []string{
 	endCommandTrigger,
 	statsCommandTrigger,
 	recordingCommandTrigger,
-	transcriptionCommandTrigger,
 }
 
 func getAutocompleteData() *model.AutocompleteData {
@@ -58,10 +56,6 @@ func getAutocompleteData() *model.AutocompleteData {
 	recordingCmdData := model.NewAutocompleteData(recordingCommandTrigger, "", "Manage calls recordings")
 	recordingCmdData.AddTextArgument("Available options: start, stop", "", "start|stop")
 	data.AddCommand(recordingCmdData)
-
-	transcriptionCmdData := model.NewAutocompleteData(transcriptionCommandTrigger, "", "Manage calls transcriptions")
-	transcriptionCmdData.AddTextArgument("Available options: start, stop", "", "start|stop")
-	data.AddCommand(transcriptionCmdData)
 
 	return data
 }
@@ -171,18 +165,6 @@ func (p *Plugin) handleRecordingCommand(fields []string) (*model.CommandResponse
 	return &model.CommandResponse{}, nil
 }
 
-func (p *Plugin) handleTranscriptionCommand(fields []string) (*model.CommandResponse, error) {
-	if len(fields) != 3 {
-		return nil, fmt.Errorf("Invalid number of arguments provided")
-	}
-
-	if subCmd := fields[2]; subCmd != "start" && subCmd != "stop" {
-		return nil, fmt.Errorf("Invalid subcommand %q", subCmd)
-	}
-
-	return &model.CommandResponse{}, nil
-}
-
 func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
@@ -249,17 +231,6 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == recordingCommandTrigger {
 		resp, err := p.handleRecordingCommand(fields)
-		if err != nil {
-			return &model.CommandResponse{
-				ResponseType: model.CommandResponseTypeEphemeral,
-				Text:         fmt.Sprintf("Error: %s", err.Error()),
-			}, nil
-		}
-		return resp, nil
-	}
-
-	if subCmd == transcriptionCommandTrigger {
-		resp, err := p.handleTranscriptionCommand(fields)
 		if err != nil {
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,
