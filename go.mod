@@ -13,9 +13,9 @@ require (
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/mattermost/calls-offloader v0.3.2
-	github.com/mattermost/calls-recorder v0.4.2
-	github.com/mattermost/calls-transcriber v0.0.0-20230831220846-34e7c1266373
+	github.com/mattermost/calls-offloader v0.4.1-0.20231009231505-f9d7f45a2055
+	github.com/mattermost/calls-recorder v0.5.2-0.20231005222207-35b06266dd56
+	github.com/mattermost/calls-transcriber v0.0.0-20231009225308-0909fc1dad5b
 	github.com/mattermost/logr/v2 v2.0.16
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.1
 	github.com/mattermost/mattermost/server/public v0.0.9-0.20230824163353-69c11cfe1403
@@ -28,8 +28,6 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8
 )
-
-replace github.com/mattermost/calls-offloader => ../calls-offloader
 
 replace github.com/pion/interceptor => github.com/streamer45/interceptor v0.0.0-20230202152215-57f3ac9e7696
 
