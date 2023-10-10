@@ -218,6 +218,8 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 		threadID = post.RootId
 	}
 
+	// TODO: consider deprecating this in favour of the new recordings metadata
+	// object.
 	recordingFiles, ok := post.GetProp("recording_files").([]interface{})
 	if !ok {
 		recordingFiles = []interface{}{
@@ -251,6 +253,7 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
+	// We update the metadata with the file and post IDs for the recording.
 	recordings, ok := post.GetProp("recordings").(map[string]any)
 	if ok {
 		var rm jobMetadata
@@ -321,6 +324,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 		threadID = post.RootId
 	}
 
+	// We update the metadata with the file ID for the transcription.
 	transcriptions, ok := post.GetProp("transcriptions").(map[string]any)
 	if ok {
 		var tm jobMetadata

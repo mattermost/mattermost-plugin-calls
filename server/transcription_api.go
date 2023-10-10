@@ -68,6 +68,10 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 		return fmt.Errorf("transcription already in progress")
 	}
 
+	if trID == "" {
+		return fmt.Errorf("trID should not be empty")
+	}
+
 	trState := new(jobState)
 	trState.ID = trID
 	trState.CreatorID = userID
