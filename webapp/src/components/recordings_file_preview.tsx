@@ -13,12 +13,10 @@ type Props = {
 }
 
 const RecordingsFilePreview = ({fileInfo, post}: Props) => {
-    const callThread = useSelector((state: GlobalState) => getPost(state, post.root_id));
+    const callPost = useSelector((state: GlobalState) => getPost(state, post.props?.call_post_id));
 
-    const transcriptionsID = callThread?.props?.transcription_files?.[0];
-
-    // TODO: add support for multiple recordings/transcriptions per call
-    // thread.
+    const recording = callPost?.props?.recordings[post.props?.recording_id];
+    const transcription = callPost?.props?.transcriptions[recording?.tr_id];
 
     return (
         <Video
@@ -30,12 +28,12 @@ const RecordingsFilePreview = ({fileInfo, post}: Props) => {
                 src={Client4.getFileUrl(fileInfo.id, Date.now())}
                 type={fileInfo.mime_type}
             />
-            { transcriptionsID &&
+            { transcription?.file_id &&
             <track
                 label='Transcription'
                 kind='subtitles'
                 srcLang='en'
-                src={Client4.getFileUrl(transcriptionsID, Date.now())}
+                src={Client4.getFileUrl(transcription.file_id, Date.now())}
                 default={true}
             />
             }

@@ -135,12 +135,18 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 
 	p.LogDebug("recording job started successfully", "jobID", recJobID, "callID", callID)
 
+	var trID string
 	if cfg := p.getConfiguration(); cfg.transcriptionsEnabled() {
+		trID = model.NewId()
 		p.LogDebug("transcriptions enabled, starting job", "callID", callID)
-		if err := p.startTranscribingJob(state, callID, userID); err != nil {
+		if err := p.startTranscribingJob(state, callID, userID, trID); err != nil {
 			p.LogError("failed to start transcribing job", "callID", callID, "err", err.Error())
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to start transcribing job: %w", err)
 		}
+	}
+
+	if err := p.saveRecordingMetadata(state.Call.PostID, recState.ID, trID); err != nil {
+		p.LogError("failed to save recording metadata", "err", err.Error())
 	}
 
 	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{

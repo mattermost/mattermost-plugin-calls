@@ -21,6 +21,7 @@ import {
     sortedIncomingCalls,
     recentlyJoinedUsersInCurrentCall,
     sessionForCurrentCall,
+    transcriptionsEnabled,
 } from 'src/selectors';
 import {alphaSortSessions, stateSortSessions} from 'src/utils';
 
@@ -62,6 +63,7 @@ const mapStateToProps = (state: GlobalState) => {
         recentlyJoinedUsers: recentlyJoinedUsersInCurrentCall(state),
         wider: getMyTeams(state)?.length > 1,
         callsIncoming: sortedIncomingCalls(state),
+        transcriptionsEnabled: transcriptionsEnabled(state),
     };
 };
 

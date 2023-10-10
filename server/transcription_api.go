@@ -63,13 +63,13 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 	}
 }
 
-func (p *Plugin) startTranscribingJob(state *channelState, callID, userID string) (rerr error) {
+func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID string) (rerr error) {
 	if state.Call.Transcription != nil && state.Call.Transcription.EndAt == 0 {
 		return fmt.Errorf("transcription already in progress")
 	}
 
 	trState := new(jobState)
-	trState.ID = model.NewId()
+	trState.ID = trID
 	trState.CreatorID = userID
 	trState.InitAt = time.Now().UnixMilli()
 	state.Call.Transcription = trState
