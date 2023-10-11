@@ -20,9 +20,6 @@
     "noEmit": true,
     "experimentalDecorators": true,
     "baseUrl": "./",
-    "paths": {
-      "webapp/*": ["../webapp/*"]
-    }
   },
   "include": [
     "./**/*"

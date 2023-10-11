@@ -1,5 +1,3 @@
-import {DesktopNotificationArgs} from 'webapp/src/types/mattermost-webapp';
-
 declare global {
     interface Window {
         callsClient: any,
@@ -19,3 +17,11 @@ export type UserState = {
     storageStatePath: string;
 };
 
+export type DesktopNotificationArgs = {
+    title: string;
+    body: string;
+    silent: boolean;
+    soundName: string;
+    url: string;
+    notify: boolean;
+};
