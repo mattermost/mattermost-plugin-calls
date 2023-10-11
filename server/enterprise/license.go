@@ -39,3 +39,7 @@ func (e *LicenseChecker) RTCDAllowed() bool {
 func (e *LicenseChecker) RecordingsAllowed() bool {
 	return e.isAtLeastE20Licensed()
 }
+
+func (e *LicenseChecker) HostControlsAllowed() bool {
+	return e.isAtLeastE20Licensed()
+}

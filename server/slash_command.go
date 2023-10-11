@@ -36,10 +36,9 @@ var subCommands = []string{
 	endCommandTrigger,
 	statsCommandTrigger,
 	recordingCommandTrigger,
-	hostCommandTrigger,
 }
 
-func getAutocompleteData() *model.AutocompleteData {
+func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data := model.NewAutocompleteData(rootCommandTrigger, "[command]",
 		"Available commands: "+strings.Join(subCommands, ","))
 	startCmdData := model.NewAutocompleteData(startCommandTrigger, "", "Starts a call in the current channel")
@@ -59,9 +58,12 @@ func getAutocompleteData() *model.AutocompleteData {
 	recordingCmdData.AddTextArgument("Available options: start, stop", "", "start|stop")
 	data.AddCommand(recordingCmdData)
 
-	hostCmdData := model.NewAutocompleteData(hostCommandTrigger, "", "Change the host (system admins only).")
-	hostCmdData.AddTextArgument("@username", "", "@*")
-	data.AddCommand(hostCmdData)
+	if p.licenseChecker.HostControlsAllowed() {
+		subCommands = append(subCommands, hostCommandTrigger)
+		hostCmdData := model.NewAutocompleteData(hostCommandTrigger, "", "Change the host (system admins only).")
+		hostCmdData.AddTextArgument("@username", "", "@*")
+		data.AddCommand(hostCmdData)
+	}
 
 	return data
 }
@@ -74,7 +76,7 @@ func (p *Plugin) registerCommands() error {
 		AutoComplete:     true,
 		AutoCompleteDesc: "Available commands: " + strings.Join(subCommands, ", "),
 		AutoCompleteHint: "[command]",
-		AutocompleteData: getAutocompleteData(),
+		AutocompleteData: p.getAutocompleteData(),
 	}); err != nil {
 		return fmt.Errorf("failed to register %s command: %w", rootCommandTrigger, err)
 	}
@@ -265,7 +267,7 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 		return resp, nil
 	}
 
-	if subCmd == hostCommandTrigger {
+	if subCmd == hostCommandTrigger && p.licenseChecker.HostControlsAllowed() {
 		resp, err := p.handleHostCommand(args, fields)
 		if err != nil {
 			return &model.CommandResponse{
