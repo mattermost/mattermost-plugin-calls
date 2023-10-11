@@ -681,12 +681,10 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
-	// We omit the current user since they'll be receiving the whole state so no
-	// need to send a redundant event.
 	p.publishWebSocketEvent(wsEventUserJoined, map[string]interface{}{
 		"user_id":    userID,
 		"session_id": connID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true, OmitUsers: map[string]bool{userID: true}})
+	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
