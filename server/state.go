@@ -191,8 +191,10 @@ func (cs *callState) getHostID(botID string) string {
 	}
 
 	// if current host is still in the call, keep them as the host
-	if _, ok := cs.Users[cs.HostID]; ok {
-		return cs.HostID
+	for _, state := range cs.Sessions {
+		if state.UserID == cs.HostID {
+			return cs.HostID
+		}
 	}
 
 	// the participant who joined earliest should be host

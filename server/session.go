@@ -140,8 +140,6 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 
 	state.Call.HostID = state.Call.getHostID(p.getBotID())
 
-	state.Call.Sessions[connID] = struct{}{}
-
 	if state.Call.Stats.Participants == nil {
 		state.Call.Stats.Participants = map[string]struct{}{}
 	}
