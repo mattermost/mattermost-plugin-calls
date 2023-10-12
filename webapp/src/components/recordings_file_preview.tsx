@@ -15,11 +15,12 @@ type Props = {
 const RecordingsFilePreview = ({fileInfo, post}: Props) => {
     const callPost = useSelector((state: GlobalState) => getPost(state, post.props?.call_post_id));
 
-    const recording = callPost?.props?.recordings[post.props?.recording_id];
-    const transcription = callPost?.props?.transcriptions[recording?.tr_id];
+    const recording = callPost?.props?.recordings?.[post.props?.recording_id];
+    const transcription = callPost?.props?.transcriptions?.[recording?.tr_id];
 
     return (
         <Video
+            data-testid='calls-recording-player'
             width='640'
             height='480'
             controls={true}
@@ -30,6 +31,7 @@ const RecordingsFilePreview = ({fileInfo, post}: Props) => {
             />
             { transcription?.file_id &&
             <track
+                data-testid='calls-recording-transcription'
                 label='Transcription'
                 kind='subtitles'
                 srcLang='en'
