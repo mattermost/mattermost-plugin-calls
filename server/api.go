@@ -510,6 +510,12 @@ func (p *Plugin) checkAPIRateLimits(userID string) error {
 }
 
 func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if r := recover(); r != nil {
+			p.logPanic(r)
+		}
+	}()
+
 	if strings.HasPrefix(r.URL.Path, "/version") {
 		p.handleGetVersion(w)
 		return

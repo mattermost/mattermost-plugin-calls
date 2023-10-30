@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"runtime/debug"
 	"strings"
 
 	"github.com/mattermost/logr/v2"
@@ -16,6 +17,14 @@ import (
 
 const pkgPath = "github.com/mattermost/mattermost-plugin-calls/server/"
 const rtcdPrefix = "/service/rtc"
+
+func (p *Plugin) logPanic(reason any) {
+	p.LogError(fmt.Sprintf("panic: %v", reason))
+
+	for _, line := range strings.Split(string(debug.Stack()), "\n") {
+		p.LogError(strings.TrimSpace(line))
+	}
+}
 
 func getErrOrigin() string {
 	var origin string
