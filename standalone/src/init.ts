@@ -4,8 +4,8 @@ import {
     CallStartData,
     EmptyData,
     HelloData,
-    UserConnectedData,
-    UserDisconnectedData,
+    UserJoinedData,
+    UserLeftData,
     UserDismissedNotification,
     UserMutedUnmutedData,
     UserRaiseUnraiseHandData,
@@ -41,8 +41,8 @@ import {
     getPluginPath,
 } from 'plugin/utils';
 import {
-    handleUserConnected,
-    handleUserDisconnected,
+    handleUserJoined,
+    handleUserLeft,
     handleCallStart,
     handleCallEnd,
     handleUserMuted,
@@ -221,11 +221,11 @@ export default async function init(cfg: InitConfig) {
         case `custom_${pluginId}_call_end`:
             handleCallEnd(store, ev as WebSocketMessage<EmptyData>);
             break;
-        case `custom_${pluginId}_user_connected`:
-            handleUserConnected(store, ev as WebSocketMessage<UserConnectedData>);
+        case `custom_${pluginId}_user_joined`:
+            handleUserJoined(store, ev as WebSocketMessage<UserJoinedData>);
             break;
-        case `custom_${pluginId}_user_disconnected`:
-            handleUserDisconnected(store, ev as WebSocketMessage<UserDisconnectedData>);
+        case `custom_${pluginId}_user_left`:
+            handleUserLeft(store, ev as WebSocketMessage<UserLeftData>);
             break;
         case `custom_${pluginId}_user_voice_on`:
             handleUserVoiceOn(store, ev as WebSocketMessage<UserVoiceOnOffData>);

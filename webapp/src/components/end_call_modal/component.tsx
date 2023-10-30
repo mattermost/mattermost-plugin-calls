@@ -15,7 +15,7 @@ interface Props {
     show: boolean,
     channel: Channel,
     connectedDMUser: UserProfile | undefined,
-    connectedUsers: string[],
+    numParticipants: number,
     hideEndCallModal: () => void,
 }
 
@@ -150,7 +150,7 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
         } else {
             msg = (<React.Fragment>
                 {formatMessage({defaultMessage: 'Are you sure you want to end a call with {count, plural, =1 {# participant} other {# participants}} in {channelName}?'},
-                    {count: this.props.connectedUsers.length, channelName: this.props.channel.display_name})}
+                    {count: this.props.numParticipants, channelName: this.props.channel.display_name})}
             </React.Fragment>);
         }
 

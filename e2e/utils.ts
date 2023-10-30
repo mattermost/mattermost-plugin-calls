@@ -65,3 +65,10 @@ export async function openGM(userState: string, userName: string) {
     await userPage.goToGM(userName);
     return userPage;
 }
+
+export async function joinCall(userState: string) {
+    const userPage = await newUserPage(userState);
+    await userPage.goto();
+    await userPage.joinCall();
+    return userPage;
+}

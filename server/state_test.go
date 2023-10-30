@@ -20,22 +20,25 @@ func samePointer(t *testing.T, a, b interface{}) bool {
 func TestUserStateGetClientState(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		var us userState
-		require.Empty(t, us.getClientState())
+		require.Empty(t, us.getClientState(""))
 	})
 
 	t.Run("non-nil", func(t *testing.T) {
 		us := &userState{
+			UserID:     "userID",
 			Unmuted:    true,
 			RaisedHand: 1000,
 			JoinAt:     100,
 		}
 
 		cs := UserStateClient{
+			SessionID:  "sessionID",
+			UserID:     "userID",
 			Unmuted:    us.Unmuted,
 			RaisedHand: us.RaisedHand,
 		}
 
-		require.Equal(t, cs, us.getClientState())
+		require.Equal(t, cs, us.getClientState("sessionID"))
 	})
 }
 
@@ -45,6 +48,7 @@ func TestCallStateGetClientState(t *testing.T) {
 		var css CallStateClient
 		css.Users = []string{}
 		css.States = []UserStateClient{}
+		css.Sessions = css.States
 		require.Equal(t, &css, cs.getClientState("botID", "userID"))
 	})
 
@@ -52,15 +56,15 @@ func TestCallStateGetClientState(t *testing.T) {
 		cs := &callState{
 			ID:      "test",
 			StartAt: 100,
-			Users: map[string]*userState{
-				"userA": {
+			Sessions: map[string]*userState{
+				"sessionA": {
+					UserID:     "userA",
 					JoinAt:     1000,
 					RaisedHand: 1100,
 				},
 			},
-			Sessions:        nil,
 			ThreadID:        "threadID",
-			ScreenSharingID: "screenSharingID",
+			ScreenSharingID: "sessionA",
 			OwnerID:         "ownerID",
 			HostID:          "hostID",
 		}
@@ -69,12 +73,24 @@ func TestCallStateGetClientState(t *testing.T) {
 			StartAt: cs.StartAt,
 			Users:   []string{"userA"},
 			States: []UserStateClient{
-				{RaisedHand: 1100},
+				{
+					SessionID:  "sessionA",
+					UserID:     "userA",
+					RaisedHand: 1100,
+				},
 			},
-			ThreadID:        cs.ThreadID,
-			ScreenSharingID: cs.ScreenSharingID,
-			OwnerID:         cs.OwnerID,
-			HostID:          cs.HostID,
+			Sessions: []UserStateClient{
+				{
+					SessionID:  "sessionA",
+					UserID:     "userA",
+					RaisedHand: 1100,
+				},
+			},
+			ThreadID:               cs.ThreadID,
+			ScreenSharingID:        "userA",
+			ScreenSharingSessionID: cs.ScreenSharingID,
+			OwnerID:                cs.OwnerID,
+			HostID:                 cs.HostID,
 		}
 
 		require.Equal(t, &ccs, cs.getClientState("botID", "userID"))
@@ -84,12 +100,14 @@ func TestCallStateGetClientState(t *testing.T) {
 		cs := &callState{
 			ID:      "test",
 			StartAt: 100,
-			Users: map[string]*userState{
-				"userA": {
+			Sessions: map[string]*userState{
+				"sessionA": {
+					UserID:     "userA",
 					JoinAt:     1000,
 					RaisedHand: 1100,
 				},
-				"botID": {
+				"botSessionID": {
+					UserID: "botID",
 					JoinAt: 1200,
 				},
 			},
@@ -100,11 +118,89 @@ func TestCallStateGetClientState(t *testing.T) {
 			StartAt: 100,
 			Users:   []string{"userA"},
 			States: []UserStateClient{
-				{RaisedHand: 1100},
+				{
+					SessionID:  "sessionA",
+					UserID:     "userA",
+					RaisedHand: 1100,
+				},
+			},
+			Sessions: []UserStateClient{
+				{
+					SessionID:  "sessionA",
+					UserID:     "userA",
+					RaisedHand: 1100,
+				},
 			},
 		}
 
 		require.Equal(t, &ccs, cs.getClientState("botID", "userID"))
+	})
+
+	t.Run("multiple sessions per user", func(t *testing.T) {
+		cs := &callState{
+			ID:      "test",
+			StartAt: 100,
+			Sessions: map[string]*userState{
+				"sessionA": {
+					UserID: "userA",
+					JoinAt: 1000,
+				},
+				"sessionB": {
+					UserID: "userA",
+					JoinAt: 1100,
+				},
+				"sessionC": {
+					UserID: "userB",
+					JoinAt: 1200,
+				},
+			},
+		}
+
+		ccs := CallStateClient{
+			ID:      "test",
+			StartAt: 100,
+			Users:   []string{"userA", "userA", "userB"},
+			States: []UserStateClient{
+				{
+					SessionID:  "sessionA",
+					UserID:     "userA",
+					RaisedHand: 0,
+				},
+				{
+					SessionID:  "sessionB",
+					UserID:     "userA",
+					RaisedHand: 0,
+				},
+				{
+					SessionID:  "sessionC",
+					UserID:     "userB",
+					RaisedHand: 0,
+				},
+			},
+			Sessions: []UserStateClient{
+				{
+					SessionID:  "sessionA",
+					UserID:     "userA",
+					RaisedHand: 0,
+				},
+				{
+					SessionID:  "sessionB",
+					UserID:     "userA",
+					RaisedHand: 0,
+				},
+				{
+					SessionID:  "sessionC",
+					UserID:     "userB",
+					RaisedHand: 0,
+				},
+			},
+		}
+
+		actualCS := cs.getClientState("botID", "")
+
+		require.ElementsMatch(t, ccs.Users, actualCS.Users)
+		require.ElementsMatch(t, ccs.States, actualCS.States)
+		require.ElementsMatch(t, ccs.Sessions, actualCS.Sessions)
 	})
 }
 
@@ -114,12 +210,13 @@ func TestCallStateGetHostID(t *testing.T) {
 		require.Empty(t, cs.getHostID("botID"))
 	})
 
-	t.Run("singl user", func(t *testing.T) {
+	t.Run("single user", func(t *testing.T) {
 		cs := &callState{
 			ID:      "test",
 			StartAt: 100,
-			Users: map[string]*userState{
-				"userA": {
+			Sessions: map[string]*userState{
+				"sessionA": {
+					UserID:     "userA",
 					JoinAt:     1000,
 					RaisedHand: 1100,
 				},
@@ -133,16 +230,19 @@ func TestCallStateGetHostID(t *testing.T) {
 		cs := &callState{
 			ID:      "test",
 			StartAt: 100,
-			Users: map[string]*userState{
-				"userA": {
+			Sessions: map[string]*userState{
+				"sessionA": {
+					UserID:     "userA",
 					JoinAt:     1000,
 					RaisedHand: 1100,
 				},
-				"userB": {
+				"sessionB": {
+					UserID:  "userB",
 					JoinAt:  800,
 					Unmuted: true,
 				},
-				"userC": {
+				"sessionC": {
+					UserID:  "userC",
 					JoinAt:  1100,
 					Unmuted: true,
 				},
@@ -156,19 +256,23 @@ func TestCallStateGetHostID(t *testing.T) {
 		cs := &callState{
 			ID:      "test",
 			StartAt: 100,
-			Users: map[string]*userState{
-				"botID": {
+			Sessions: map[string]*userState{
+				"botSessionID": {
+					UserID: "botID",
 					JoinAt: 800,
 				},
-				"userA": {
+				"sessionA": {
+					UserID:     "userA",
 					JoinAt:     1000,
 					RaisedHand: 1100,
 				},
-				"userB": {
+				"sessionB": {
+					UserID:  "userB",
 					JoinAt:  1100,
 					Unmuted: true,
 				},
-				"userC": {
+				"sessionC": {
+					UserID:  "userC",
 					JoinAt:  1200,
 					Unmuted: true,
 				},
@@ -219,24 +323,22 @@ func TestChannelStateClone(t *testing.T) {
 			NodeID:  "nodeID",
 			Enabled: model.NewBool(true),
 			Call: &callState{
-				Users: map[string]*userState{
-					"userA": {
+				Sessions: map[string]*userState{
+					"sessionA": {
+						UserID:  "userA",
 						JoinAt:  1000,
 						Unmuted: true,
 					},
-					"userB": {
+					"sessionB": {
+						UserID:  "userB",
 						JoinAt:  1000,
 						Unmuted: true,
 					},
-					"userC": {
+					"sessionC": {
+						UserID:  "userC",
 						JoinAt:  1000,
 						Unmuted: true,
 					},
-				},
-				Sessions: map[string]struct{}{
-					"userA": {},
-					"userC": {},
-					"userB": {},
 				},
 				Recording: &recordingState{
 					RecordingStateClient: RecordingStateClient{
@@ -256,10 +358,6 @@ func TestChannelStateClone(t *testing.T) {
 		})
 
 		require.Condition(t, func() bool {
-			return !samePointer(t, cs.Call.Users, cloned.Call.Users)
-		})
-
-		require.Condition(t, func() bool {
 			return !samePointer(t, cs.Call.Sessions, cloned.Call.Sessions)
 		})
 
@@ -268,7 +366,7 @@ func TestChannelStateClone(t *testing.T) {
 		})
 
 		require.Condition(t, func() bool {
-			return cs.Call.Users["userA"] != cloned.Call.Users["userA"]
+			return cs.Call.Sessions["sessionA"] != cloned.Call.Sessions["sessionA"]
 		})
 	})
 }

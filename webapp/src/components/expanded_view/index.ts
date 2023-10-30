@@ -1,7 +1,4 @@
-import {UserState} from '@calls/common/lib/types';
 import {GlobalState} from '@mattermost/types/store';
-import {UserProfile} from '@mattermost/types/users';
-import {Client4} from 'mattermost-redux/client';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
@@ -28,12 +25,13 @@ import {
     hostChangeAtForCurrentCall,
     callStartAtForCurrentCall,
     threadIDForCallInChannel,
-    screenSharingIDForCurrentCall,
-    usersStatusesInCurrentCall,
-    profilesInCurrentCall,
+    screenSharingSessionForCurrentCall,
     channelForCurrentCall,
+    sessionsInCurrentCall,
+    sessionForCurrentCall,
+    profilesInCurrentCallMap,
 } from 'src/selectors';
-import {alphaSortProfiles, getUserIdFromDM, isDMChannel, stateSortProfiles} from 'src/utils';
+import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
 
 import ExpandedView from './component';
@@ -43,20 +41,13 @@ const mapStateToProps = (state: GlobalState) => {
     const currentTeamID = getCurrentTeamId(state);
     const channel = channelForCurrentCall(state);
     const channelTeam = getTeam(state, channel?.team_id || '');
-    const screenSharingID = screenSharingIDForCurrentCall(state);
+    const screenSharingSession = screenSharingSessionForCurrentCall(state);
     const threadID = threadIDForCallInChannel(state, channel?.id || '');
 
-    const sortedProfiles = (profiles: UserProfile[], statuses: { [key: string]: UserState }) => {
-        return [...profiles].sort(alphaSortProfiles).sort(stateSortProfiles(profiles, statuses, screenSharingID, true));
-    };
-
-    const statuses = usersStatusesInCurrentCall(state);
-    const profiles = sortedProfiles(profilesInCurrentCall(state), statuses);
-
-    const pictures: { [key: string]: string } = {};
-    for (let i = 0; i < profiles.length; i++) {
-        pictures[String(profiles[i].id)] = Client4.getProfilePictureUrl(profiles[i].id, profiles[i].last_picture_update);
-    }
+    const profiles = profilesInCurrentCallMap(state);
+    const sessions = sessionsInCurrentCall(state)
+        .sort(alphaSortSessions(profiles))
+        .sort(stateSortSessions(screenSharingSession?.session_id || '', true));
 
     let connectedDMUser;
     if (channel && isDMChannel(channel)) {
@@ -73,14 +64,14 @@ const mapStateToProps = (state: GlobalState) => {
         currentUserID,
         currentTeamID,
         profiles,
-        pictures,
-        statuses,
+        sessions,
+        currentSession: sessionForCurrentCall(state),
         callStartAt: callStartAtForCurrentCall(state),
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),
         callRecording: recordingForCurrentCall(state),
         isRecording: isRecordingInCurrentCall(state),
-        screenSharingID,
+        screenSharingSession,
         channel,
         channelTeam,
         channelDisplayName,

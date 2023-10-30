@@ -1,9 +1,8 @@
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
-import {UserProfile} from '@mattermost/types/users';
 import {connect} from 'react-redux';
 
-import {usersInCallInChannel, profilesInCallInChannel} from 'src/selectors';
+import {profilesInCallInChannel} from 'src/selectors';
 
 import ChannelLinkLabel from './component';
 
@@ -12,15 +11,9 @@ interface OwnProps {
 }
 
 const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
-    let hasCall = false;
-    const users = usersInCallInChannel(state, ownProps.channel.id);
-    let profiles: UserProfile[] = [];
-    if (users && users.length > 0) {
-        hasCall = true;
-        profiles = profilesInCallInChannel(state, ownProps.channel.id);
-    }
+    const profiles = profilesInCallInChannel(state, ownProps.channel.id);
     return {
-        hasCall,
+        hasCall: profiles.length > 0,
         profiles,
     };
 };

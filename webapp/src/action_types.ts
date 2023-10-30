@@ -1,21 +1,20 @@
 import {pluginId} from './manifest';
 
-export const USER_CONNECTED = pluginId + '_user_connected';
-export const USER_DISCONNECTED = pluginId + '_user_disconnected';
+export const USER_JOINED = pluginId + '_user_joined';
+export const USER_LEFT = pluginId + '_user_left';
 export const USER_MUTED = pluginId + '_user_muted';
 export const USER_UNMUTED = pluginId + '_user_unmuted';
 export const USER_VOICE_ON = pluginId + '_user_voice_on';
 export const USER_VOICE_OFF = pluginId + '_user_voice_off';
-export const USERS_CONNECTED = pluginId + '_users_connected';
-export const USERS_CONNECTED_STATES = pluginId + '_users_connected_states';
-export const PROFILE_CONNECTED = pluginId + '_profile_connected';
-export const PROFILES_CONNECTED = pluginId + '_profiles_connected';
+export const USERS_STATES = pluginId + '_users_states';
+export const PROFILE_JOINED = pluginId + '_profile_joined';
+export const PROFILES_JOINED = pluginId + '_profiles_joined';
 export const CALL_STATE = pluginId + '_call_state';
 export const USER_SCREEN_ON = pluginId + '_screen_on';
 export const USER_SCREEN_OFF = pluginId + '_screen_off';
 export const UNINIT = pluginId + '_uninit';
 export const USER_RAISE_HAND = pluginId + '_user_raise_hand';
-export const USER_UNRAISE_HAND = pluginId + '_user_unraise_hand';
+export const USER_LOWER_HAND = pluginId + '_user_unraise_hand';
 export const USER_REACTED = pluginId + '_user_reacted';
 export const USER_REACTED_TIMEOUT = pluginId + '_user_reacted_timeout';
 export const CALL_HOST = pluginId + '_call_host';

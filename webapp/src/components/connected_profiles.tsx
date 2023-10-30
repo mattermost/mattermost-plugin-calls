@@ -1,4 +1,5 @@
 import {UserProfile} from '@mattermost/types/users';
+import {Client4} from 'mattermost-redux/client';
 import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
@@ -8,7 +9,6 @@ import {getUserDisplayName, split} from '../utils';
 import Avatar from './avatar/avatar';
 
 interface Props {
-    pictures: string[],
     profiles: UserProfile[],
     maxShowedProfiles: number,
     size: number;
@@ -16,12 +16,12 @@ interface Props {
     border?: boolean;
 }
 
-const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSize, border}: Props) => {
+const ConnectedProfiles = ({profiles, maxShowedProfiles, size, fontSize, border}: Props) => {
     const {formatList} = useIntl();
     maxShowedProfiles = maxShowedProfiles || 2;
     const [showedProfiles, overflowedProfiles] = split(profiles, maxShowedProfiles);
 
-    const els = showedProfiles.map((profile, idx) => {
+    const els = showedProfiles.map((profile) => {
         return (
             <OverlayTrigger
                 placement='bottom'
@@ -35,7 +35,7 @@ const ConnectedProfiles = ({pictures, profiles, maxShowedProfiles, size, fontSiz
                 <Avatar
                     size={size}
                     fontSize={fontSize}
-                    url={pictures[idx]}
+                    url={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
                     border={Boolean(border)}
                 />
             </OverlayTrigger>
