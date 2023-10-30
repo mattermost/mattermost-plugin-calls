@@ -13,13 +13,14 @@ test.beforeEach(async ({page, context}) => {
 test.describe('call recordings and transcriptions', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('recording - slash command', async ({page}) => {
+    test('recording - slash command', async ({page, request}) => {
         test.setTimeout(150000);
 
         await apiDisableTranscriptions();
 
         // start call
         const devPage = new PlaywrightDevPage(page);
+
         await devPage.startCall();
 
         // start recording
@@ -98,6 +99,13 @@ test.describe('call recordings and transcriptions', () => {
 
         // verify transcription track exists
         await expect(page.getByTestId('calls-recording-transcription')).toHaveAttribute('label', 'Transcription');
+
+        // fetch transcription file and verify it has the expected content
+        const src = await page.getByTestId('calls-recording-transcription').getAttribute('src');
+        const resp = await request.get(`${baseURL}${src}`);
+        expect(resp.status()).toEqual(200);
+        const transcriptionData = await resp.body();
+        await expect(transcriptionData.toString()).toContain('This is a test transcription sample');
 
         // exit preview
         await page.keyboard.press('Escape');
