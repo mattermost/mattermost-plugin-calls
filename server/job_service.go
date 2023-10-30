@@ -215,14 +215,14 @@ func (p *Plugin) getJobService() *jobService {
 	return p.jobService
 }
 
-func (s *jobService) StopJob(channelID, connID string) error {
+func (s *jobService) StopJob(channelID, botConnID string) error {
 	if channelID == "" {
 		return fmt.Errorf("channelID should not be empty")
 	}
 
 	// A job can be stopped before the bot is able to join. In such case there's
 	// no point in sending an event. The bot isn't allowed to join back.
-	if connID == "" {
+	if botConnID == "" {
 		s.ctx.LogDebug("stopping job with empty connID", "channelID", channelID)
 		return nil
 	}
@@ -231,7 +231,7 @@ func (s *jobService) StopJob(channelID, connID string) error {
 	// the call. We do this implicitly by sending a fake call end event.
 	s.ctx.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{
 		"channelID": channelID,
-	}, &model.WebsocketBroadcast{ConnectionId: connID, ReliableClusterSend: true})
+	}, &model.WebsocketBroadcast{ConnectionId: botConnID, ReliableClusterSend: true})
 
 	return nil
 }
