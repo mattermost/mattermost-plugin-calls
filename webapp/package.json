@@ -67,7 +67,7 @@
     "webpack-cli": "4.10.0"
   },
   "dependencies": {
-    "@calls/common": "github:mattermost/calls-common#bc135ef3eca8be1c3f66ba0e87e10dec54321c90",
+    "@calls/common": "github:mattermost/calls-common#c8007b251d755ca5c3795599118167ba2213612c",
     "@mattermost/types": "6.7.0-0",
     "@msgpack/msgpack": "2.7.1",
     "@redux-devtools/extension": "3.2.3",
