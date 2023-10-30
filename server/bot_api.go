@@ -413,7 +413,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 	}
 
 	if jb.ID != jobID {
-		res.Err = "invalid recording job ID"
+		res.Err = "invalid job ID"
 		res.Code = http.StatusBadRequest
 		return
 	}
