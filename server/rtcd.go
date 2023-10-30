@@ -605,7 +605,8 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 			evType = wsEventUserVoiceOn
 		}
 		m.ctx.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID": rtcMsg.UserID,
+			"userID":     rtcMsg.UserID,
+			"session_id": rtcMsg.SessionID,
 		}, &model.WebsocketBroadcast{ChannelId: rtcMsg.CallID})
 		return nil
 	}

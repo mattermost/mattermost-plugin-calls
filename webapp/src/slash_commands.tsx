@@ -19,7 +19,7 @@ import * as Telemetry from 'src/types/telemetry';
 import {logDebug} from './log';
 import {
     channelIDForCurrentCall,
-    usersInCallInChannel,
+    profilesInCallInChannel,
     callOwnerIDForCallInChannel,
     hostIDForCurrentCall,
     isRecordingInCurrentCall,
@@ -49,7 +49,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
     case 'join':
     case 'start':
         if (subCmd === 'start') {
-            if (usersInCallInChannel(store.getState(), args.channel_id).length > 0) {
+            if (profilesInCallInChannel(store.getState(), args.channel_id).length > 0) {
                 store.dispatch(displayGenericErrorModal(
                     defineMessage({defaultMessage: 'Unable to start call'}),
                     defineMessage({defaultMessage: 'A call is already ongoing in the channel.'}),
@@ -110,7 +110,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         ));
         return {};
     case 'end':
-        if (usersInCallInChannel(store.getState(), args.channel_id)?.length === 0) {
+        if (profilesInCallInChannel(store.getState(), args.channel_id)?.length === 0) {
             store.dispatch(displayGenericErrorModal(
                 defineMessage({defaultMessage: 'Unable to end the call'}),
                 defineMessage({defaultMessage: 'There\'s no ongoing call in the channel.'}),

@@ -198,4 +198,8 @@ export class WebSocketClient extends EventEmitter {
 
         this.reconnectRetryTime += wsReconnectTimeIncrement;
     }
+
+    getOriginalConnID() {
+        return this.originalConnID;
+    }
 }

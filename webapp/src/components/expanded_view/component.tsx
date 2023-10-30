@@ -5,12 +5,13 @@
 
 import {mosThreshold} from '@calls/common';
 import {
-    UserState,
+    UserSessionState,
 } from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
+import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/types/themes';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 import React from 'react';
@@ -89,13 +90,11 @@ interface Props extends RouteComponentProps {
     show: boolean,
     currentUserID: string,
     currentTeamID: string,
-    profiles: UserProfile[],
-    pictures: {
-        [key: string]: string,
-    },
-    statuses: {
-        [key: string]: UserState,
-    },
+    profiles: {
+        [userID: string]: UserProfile,
+    }
+    sessions: UserSessionState[],
+    currentSession?: UserSessionState,
     callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
@@ -107,7 +106,7 @@ interface Props extends RouteComponentProps {
     prefetchThread: (postId: string) => void,
     closeRhs?: () => void,
     isRhsOpen?: boolean,
-    screenSharingID: string,
+    screenSharingSession?: UserSessionState,
     channel?: Channel,
     channelTeam?: Team,
     channelDisplayName: string;
@@ -434,13 +433,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     isMuted() {
-        const currUserState = this.props.statuses[this.props.currentUserID];
-        return currUserState ? !currUserState.unmuted : true;
+        return this.props.currentSession ? !this.props.currentSession.unmuted : true;
     }
 
     isHandRaised() {
-        const currUserState = this.props.statuses[this.props.currentUserID];
-        return currUserState ? currUserState.raised_hand > 0 : false;
+        return this.props.currentSession ? this.props.currentSession.raised_hand > 0 : false;
     }
 
     onRecordToggle = async (fromShortcut?: boolean) => {
@@ -463,13 +460,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return;
         }
         const callsClient = getCallsClient();
-        if (this.props.screenSharingID === this.props.currentUserID) {
+        if (this.props.screenSharingSession && this.props.screenSharingSession?.session_id === this.props.currentSession?.session_id) {
             callsClient?.unshareScreen();
             this.setState({
                 screenStream: null,
             });
             this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
-        } else if (!this.props.screenSharingID) {
+        } else if (!this.props.screenSharingSession) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 this.props.showScreenSourceModal();
             } else if (shouldRenderDesktopWidget()) {
@@ -729,14 +726,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     renderScreenSharingPlayer = () => {
-        const isSharing = this.props.screenSharingID === this.props.currentUserID;
+        const isSharing = this.props.screenSharingSession?.session_id === this.props.currentSession?.session_id;
         const {formatMessage} = this.props.intl;
 
         let profile;
         if (!isSharing) {
-            for (let i = 0; i < this.props.profiles.length; i++) {
-                if (this.props.profiles[i].id === this.props.screenSharingID) {
-                    profile = this.props.profiles[i];
+            for (let i = 0; i < this.props.sessions.length; i++) {
+                if (this.props.sessions[i].session_id === this.props.screenSharingSession?.session_id) {
+                    profile = this.props.profiles[this.props.sessions[i].user_id];
                     break;
                 }
             }
@@ -794,27 +791,25 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     renderParticipants = () => {
         const {formatMessage} = this.props.intl;
-        return this.props.profiles.map((profile) => {
-            const status = this.props.statuses[profile.id];
+        return this.props.sessions.map((session) => {
+            const isMuted = !session.unmuted;
+            const isSpeaking = Boolean(session.voice);
+            const isHandRaised = Boolean(session.raised_hand > 0);
+            const profile = this.props.profiles[session.user_id];
 
-            let isMuted = true;
-            let isSpeaking = false;
-            let isHandRaised = false;
-            if (status) {
-                isMuted = !status.unmuted;
-                isSpeaking = Boolean(status.voice);
-                isHandRaised = Boolean(status.raised_hand > 0);
+            if (!profile) {
+                return null;
             }
 
             return (
                 <CallParticipant
-                    key={profile.id}
+                    key={session.session_id}
                     name={`${getUserDisplayName(profile)} ${profile.id === this.props.currentUserID ? formatMessage({defaultMessage: '(you)'}) : ''}`}
-                    pictureURL={this.props.pictures[profile.id]}
+                    pictureURL={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
                     isMuted={isMuted}
                     isSpeaking={isSpeaking}
                     isHandRaised={isHandRaised}
-                    reaction={status?.reaction}
+                    reaction={session?.reaction}
                     isHost={profile.id === this.props.callHostID}
                 />
             );
@@ -823,22 +818,21 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     renderParticipantsRHSList = () => {
         const {formatMessage} = this.props.intl;
-        return this.props.profiles.map((profile) => {
-            const status = this.props.statuses[profile.id];
-            let isMuted = true;
-            let isSpeaking = false;
-            let isHandRaised = false;
-            if (status) {
-                isMuted = !status.unmuted;
-                isSpeaking = Boolean(status.voice);
-                isHandRaised = Boolean(status.raised_hand > 0);
+        return this.props.sessions.map((session) => {
+            const isMuted = !session.unmuted;
+            const isSpeaking = Boolean(session.voice);
+            const isHandRaised = Boolean(session.raised_hand > 0);
+            const profile = this.props.profiles[session.user_id];
+
+            if (!profile) {
+                return null;
             }
 
             const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
             return (
                 <li
-                    key={'participants_rhs_profile_' + profile.id}
+                    key={'participants_rhs_profile_' + session.session_id}
                     style={{display: 'flex', alignItems: 'center', padding: '8px 16px', gap: '8px'}}
                 >
                     <Avatar
@@ -846,7 +840,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         fontSize={10}
                         border={false}
                         borderGlowWidth={isSpeaking ? 2 : 0}
-                        url={this.props.pictures[profile.id]}
+                        url={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
                     />
 
                     <span style={{fontWeight: 600, fontSize: '14px', lineHeight: '20px'}}>
@@ -862,7 +856,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             gap: '12px',
                         }}
                     >
-                        {status?.reaction &&
+                        {session?.reaction &&
                             <div
                                 style={{
                                     marginBottom: 4,
@@ -870,7 +864,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 }}
                             >
                                 <Emoji
-                                    emoji={status.reaction.emoji}
+                                    emoji={session.reaction.emoji}
                                     size={16}
                                 />
                             </div>
@@ -885,7 +879,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         }
 
-                        {this.props.screenSharingID === profile.id &&
+                        {this.props.screenSharingSession?.session_id === session.session_id &&
                             <ScreenIcon
                                 fill={'rgb(var(--dnd-indicator-rgb))'}
                                 style={{width: '16px', height: '16px'}}
@@ -968,9 +962,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext!);
         }
 
-        const sharingID = this.props.screenSharingID;
-        const currentID = this.props.currentUserID;
-        const isSharing = sharingID === currentID;
+        const sharingID = this.props.screenSharingSession?.session_id;
+        const isSharing = sharingID === this.props.currentSession?.session_id;
 
         let shareScreenTooltipText = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'});
         if (noScreenPermissions) {
@@ -1028,7 +1021,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         />
                         <span style={{margin: '4px'}}>{untranslatable('•')}</span>
                         <span style={{margin: '4px', whiteSpace: 'nowrap'}}>
-                            {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.profiles.length})}
+                            {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.sessions.length})}
                         </span>
 
                         <div style={this.style.headerSpreader}/>
@@ -1048,20 +1041,20 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </button>
                     </div>
 
-                    {!this.props.screenSharingID &&
+                    {!this.props.screenSharingSession &&
                         <div style={this.style.centerView}>
                             <ul
                                 id='calls-expanded-view-participants-grid'
                                 style={{
                                     ...this.style.participants,
-                                    gridTemplateColumns: `repeat(${Math.min(this.props.profiles.length, MaxParticipantsPerRow)}, 1fr)`,
+                                    gridTemplateColumns: `repeat(${Math.min(this.props.sessions.length, MaxParticipantsPerRow)}, 1fr)`,
                                 }}
                             >
                                 {this.renderParticipants()}
                             </ul>
                         </div>
                     }
-                    {this.props.screenSharingID && this.renderScreenSharingPlayer()}
+                    {this.props.screenSharingSession && this.renderScreenSharingPlayer()}
                     <div
                         id='calls-expanded-view-controls'
                         style={this.style.controls}
@@ -1133,7 +1126,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         />
                                     }
                                     unavailable={noScreenPermissions}
-                                    disabled={sharingID !== '' && !isSharing}
+                                    disabled={Boolean(sharingID) && !isSharing}
                                 />
                             }
 

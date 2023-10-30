@@ -3,8 +3,8 @@ import {
     CallRecordingStateData,
     EmptyData,
     Reaction,
-    UserConnectedData,
-    UserDisconnectedData,
+    UserJoinedData,
+    UserLeftData,
     UserDismissedNotification,
     UserMutedUnmutedData,
     UserRaiseUnraiseHandData,
@@ -19,14 +19,14 @@ import {WebSocketMessage} from '@mattermost/types/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-import {incomingCallOnChannel, removeIncomingCallNotification, userDisconnected, loadCallState} from 'src/actions';
+import {incomingCallOnChannel, removeIncomingCallNotification, userLeft, loadCallState} from 'src/actions';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 
 import {
     USER_MUTED,
     USER_UNMUTED,
-    USER_CONNECTED,
-    PROFILE_CONNECTED,
+    USER_JOINED,
+    PROFILE_JOINED,
     CALL_STATE,
     CALL_END,
     USER_VOICE_ON,
@@ -34,7 +34,7 @@ import {
     USER_SCREEN_ON,
     USER_SCREEN_OFF,
     USER_RAISE_HAND,
-    USER_UNRAISE_HAND,
+    USER_LOWER_HAND,
     USER_REACTED,
     USER_REACTED_TIMEOUT,
     CALL_HOST,
@@ -45,7 +45,7 @@ import {
 import {logErr} from './log';
 import {
     channelIDForCurrentCall,
-    idToProfileInCurrentCall,
+    profilesInCurrentCallMap,
     ringingEnabled,
     shouldPlayJoinUserSound,
     calls,
@@ -130,16 +130,17 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
     }
 }
 
-export function handleUserDisconnected(store: Store, ev: WebSocketMessage<UserDisconnectedData>) {
+export function handleUserLeft(store: Store, ev: WebSocketMessage<UserLeftData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
-    store.dispatch(userDisconnected(channelID, ev.data.userID));
+    store.dispatch(userLeft(channelID, ev.data.user_id, ev.data.session_id));
 }
 
-export async function handleUserConnected(store: Store, ev: WebSocketMessage<UserConnectedData>) {
-    const userID = ev.data.userID;
+export async function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedData>) {
+    const userID = ev.data.user_id;
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     const currentUserID = getCurrentUserId(store.getState());
+    const sessionID = ev.data.session_id;
 
     if (window.callsClient?.channelID === channelID) {
         if (userID === currentUserID) {
@@ -156,11 +157,12 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
     }
 
     store.dispatch({
-        type: USER_CONNECTED,
+        type: USER_JOINED,
         data: {
             channelID,
             userID,
             currentUserID,
+            session_id: sessionID,
         },
     });
 
@@ -176,9 +178,10 @@ export async function handleUserConnected(store: Store, ev: WebSocketMessage<Use
 
     try {
         store.dispatch({
-            type: PROFILE_CONNECTED,
+            type: PROFILE_JOINED,
             data: {
-                profile: (await getProfilesByIds(store.getState(), [ev.data.userID]))[0],
+                profile: (await getProfilesByIds(store.getState(), [userID]))[0],
+                session_id: sessionID,
                 channelID,
             },
         });
@@ -194,6 +197,7 @@ export function handleUserMuted(store: Store, ev: WebSocketMessage<UserMutedUnmu
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -205,6 +209,7 @@ export function handleUserUnmuted(store: Store, ev: WebSocketMessage<UserMutedUn
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -216,6 +221,7 @@ export function handleUserVoiceOn(store: Store, ev: WebSocketMessage<UserVoiceOn
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -227,6 +233,7 @@ export function handleUserVoiceOff(store: Store, ev: WebSocketMessage<UserVoiceO
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -238,6 +245,7 @@ export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreen
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -249,6 +257,7 @@ export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScree
         data: {
             channelID,
             userID: ev.data.userID,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -261,6 +270,7 @@ export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRais
             channelID,
             userID: ev.data.userID,
             raised_hand: ev.data.raised_hand,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -268,11 +278,12 @@ export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRais
 export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: USER_UNRAISE_HAND,
+        type: USER_LOWER_HAND,
         data: {
             channelID,
             userID: ev.data.userID,
             raised_hand: ev.data.raised_hand,
+            session_id: ev.data.session_id,
         },
     });
 }
@@ -284,7 +295,7 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
         return;
     }
 
-    const profiles = idToProfileInCurrentCall(store.getState());
+    const profiles = profilesInCurrentCallMap(store.getState());
     const displayName = getUserDisplayName(profiles[ev.data.user_id]);
     const reaction: Reaction = {
         ...ev.data,
@@ -296,6 +307,7 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
             channelID,
             userID: ev.data.user_id,
             reaction,
+            session_id: ev.data.session_id,
         },
     });
     setTimeout(() => {
@@ -305,6 +317,7 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
                 channelID,
                 userID: ev.data.user_id,
                 reaction,
+                session_id: ev.data.session_id,
             },
         });
     }, REACTION_TIMEOUT_IN_REACTION_STREAM);

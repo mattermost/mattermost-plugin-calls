@@ -5,7 +5,6 @@ import {ChannelTypes} from 'mattermost-redux/action_types';
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {Theme} from 'mattermost-redux/types/themes';
-import {getCurrentUserId} from 'mattermost-webapp/packages/mattermost-redux/src/selectors/entities/users';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {profilesInCallInChannel} from 'plugin/selectors';
@@ -15,7 +14,6 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
-import {USER_CONNECTED} from 'src/action_types';
 
 import init from '../init';
 import recordingReducer from 'src/recording/reducers';
@@ -69,16 +67,7 @@ async function initRecordingStore(store: Store, channelID: string) {
     }
 }
 
-async function initRecording(store: Store, theme: Theme, channelID: string) {
-    await store.dispatch({
-        type: USER_CONNECTED,
-        data: {
-            channelID,
-            userID: getCurrentUserId(store.getState()),
-            currentUserID: getCurrentUserId(store.getState()),
-        },
-    });
-
+async function initRecording(store: Store, theme: Theme) {
     setCallsGlobalCSSVars(theme.sidebarBg);
 
     const locale = getCurrentUserLocale(store.getState()) || 'en';

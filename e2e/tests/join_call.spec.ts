@@ -1,7 +1,7 @@
 import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {newUserPage, startCall, getUserStoragesForTest, getUsernamesForTest} from '../utils';
+import {newUserPage, startCall, joinCall, getUserStoragesForTest, getUsernamesForTest} from '../utils';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
@@ -111,5 +111,27 @@ test.describe('join call', () => {
         await expect(userAPage.locator('#user-profile-popover').locator('#startCallButton')).toBeDisabled();
 
         await userBPage.leaveCall();
+    });
+
+    test('multiple sessions per user', async ({page}) => {
+        test.setTimeout(150000);
+
+        // start a call
+        const sessionAPage = await startCall(userStorages[1]);
+        const sessionBPage = await joinCall(userStorages[1]);
+        const sessionCPage = await joinCall(userStorages[1]);
+
+        // Verify there are three participants
+        const numParticipantsEl = sessionCPage.page.locator('#calls-widget-participants-button span');
+        await expect(numParticipantsEl).toBeVisible();
+        const content = await numParticipantsEl.textContent();
+        if (content !== '3') {
+            test.fail();
+            return;
+        }
+
+        await sessionAPage.leaveCall();
+        await sessionBPage.leaveCall();
+        await sessionCPage.leaveCall();
     });
 });

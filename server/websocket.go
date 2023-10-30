@@ -17,9 +17,15 @@ import (
 )
 
 const (
-	wsEventSignal                    = "signal"
-	wsEventUserConnected             = "user_connected"
-	wsEventUserDisconnected          = "user_disconnected"
+	wsEventSignal = "signal"
+
+	// DEPRECATED in favour of user_joined (since v0.21.0)
+	wsEventUserConnected = "user_connected"
+	// DEPRECATED in favour of user_left (since v0.21.0)
+	wsEventUserDisconnected = "user_disconnected"
+
+	wsEventUserJoined                = "user_joined"
+	wsEventUserLeft                  = "user_left"
 	wsEventUserMuted                 = "user_muted"
 	wsEventUserUnmuted               = "user_unmuted"
 	wsEventUserVoiceOn               = "user_voice_on"
@@ -53,8 +59,11 @@ type CallsClientJoinData struct {
 
 func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *model.WebsocketBroadcast) {
 	botID := p.getBotID()
-	// We don't want to expose to the client that the bot is in a call.
+	// We don't want to expose to clients that the bot is in a call.
 	if (ev == wsEventUserConnected || ev == wsEventUserDisconnected) && data["userID"] == botID {
+		return
+	}
+	if (ev == wsEventUserJoined || ev == wsEventUserLeft) && data["user_id"] == botID {
 		return
 	}
 
@@ -108,14 +117,14 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 
 	if msg.Type == clientMessageTypeScreenOn {
 		if state.Call.ScreenSharingID != "" {
-			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
+			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingID)
 		}
-		state.Call.ScreenSharingID = us.userID
+		state.Call.ScreenSharingID = us.originalConnID
 		state.Call.ScreenStreamID = data["screenStreamID"]
 		state.Call.ScreenStartAt = time.Now().Unix()
 	} else {
-		if state.Call.ScreenSharingID != us.userID {
-			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: %q", state.Call.ScreenSharingID)
+		if state.Call.ScreenSharingID != us.originalConnID {
+			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingID)
 		}
 		state.Call.ScreenSharingID = ""
 		state.Call.ScreenStreamID = ""
@@ -158,7 +167,8 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 	}
 
 	p.publishWebSocketEvent(wsMsgType, map[string]interface{}{
-		"userID": us.userID,
+		"userID":     us.userID,
+		"session_id": us.originalConnID,
 	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 
 	return nil
@@ -272,7 +282,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if state.Call == nil {
 			return fmt.Errorf("call state is missing from channel state")
 		}
-		uState := state.Call.Users[us.userID]
+		uState := state.Call.Sessions[us.originalConnID]
 		if uState == nil {
 			return fmt.Errorf("user state is missing from call state")
 		}
@@ -286,7 +296,8 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			evType = wsEventUserMuted
 		}
 		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID": us.userID,
+			"userID":     us.userID,
+			"session_id": us.originalConnID,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
 		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
@@ -309,7 +320,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if state.Call == nil {
 			return fmt.Errorf("call state is missing from channel state")
 		}
-		uState := state.Call.Users[us.userID]
+		uState := state.Call.Sessions[us.originalConnID]
 		if uState == nil {
 			return fmt.Errorf("user state is missing from call state")
 		}
@@ -324,6 +335,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 
 		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":      us.userID,
+			"session_id":  us.originalConnID,
 			"raised_hand": uState.RaisedHand,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeReact:
@@ -335,9 +347,10 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		}
 
 		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"user_id":   us.userID,
-			"emoji":     emoji.toMap(),
-			"timestamp": time.Now().UnixMilli(),
+			"user_id":    us.userID,
+			"session_id": us.originalConnID,
+			"emoji":      emoji.toMap(),
+			"timestamp":  time.Now().UnixMilli(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 	default:
 		return fmt.Errorf("invalid client message type %q", msg.Type)
@@ -419,7 +432,8 @@ func (p *Plugin) wsWriter() {
 					evType = wsEventUserVoiceOn
 				}
 				p.publishWebSocketEvent(evType, map[string]interface{}{
-					"userID": us.userID,
+					"userID":     us.userID,
+					"session_id": us.originalConnID,
 				}, &model.WebsocketBroadcast{ChannelId: us.channelID})
 				continue
 			}
@@ -544,7 +558,7 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 	} else if state.Call == nil {
 		p.unlockCall(channelID)
 		return fmt.Errorf("state.Call should not be nil")
-	} else if len(state.Call.Users) == 1 {
+	} else if len(state.Call.Sessions) == 1 {
 		// new call has started
 		// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
 		if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
@@ -657,8 +671,19 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 	p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
 		"connID": connID,
 	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
-	p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
-		"userID": userID,
+
+	if len(state.Call.sessionsForUser(userID)) == 1 {
+		// Only send event on first session join.
+		// This is to keep backwards compatibility with clients not supporting
+		// multi-sessions.
+		p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
+			"userID": userID,
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}
+
+	p.publishWebSocketEvent(wsEventUserJoined, map[string]interface{}{
+		"user_id":    userID,
+		"session_id": connID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
@@ -706,7 +731,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		return err
 	} else if state == nil || state.Call == nil {
 		return fmt.Errorf("call state not found")
-	} else if _, ok := state.Call.Sessions[originalConnID]; !ok {
+	} else if state, ok := state.Call.Sessions[originalConnID]; !ok || state.UserID != userID {
 		return fmt.Errorf("session not found in call state")
 	}
 
