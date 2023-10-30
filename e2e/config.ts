@@ -1,4 +1,4 @@
-import {expect} from '@playwright/test';
+import {request, expect} from '@playwright/test';
 import {APIRequestContext} from 'playwright-core';
 
 import {baseURL, adminState, pluginID} from './constants';
@@ -9,7 +9,10 @@ type CallsConfig = {
 };
 
 export const apiPatchConfig = async (cfg: CallsConfig) => {
-    const adminContext = (await newUserPage(adminState.storageStatePath)).page.request;
+    const adminContext = await request.newContext({
+        baseURL,
+        storageState: adminState.storageStatePath,
+    });
     const serverConfig = await (await adminContext.get(`${baseURL}/api/v4/config`)).json();
 
     serverConfig.PluginSettings.Plugins = {
