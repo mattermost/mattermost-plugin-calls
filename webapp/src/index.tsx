@@ -529,7 +529,10 @@ export default class Plugin {
                 }
                 store.dispatch({
                     type: DESKTOP_WIDGET_CONNECTED,
-                    data: {channelID: ev.data.message.callID},
+                    data: {
+                        channel_id: ev.data.message.callID,
+                        session_id: ev.data.message.sessionID,
+                    },
                 });
             } else if (ev.data?.type === 'calls-join-request') {
                 // we can assume that we are already in a call, since the global widget sent this.
