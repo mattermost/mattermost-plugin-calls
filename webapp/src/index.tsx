@@ -1,13 +1,6 @@
 /* eslint-disable max-lines */
 
 import {CallChannelState} from '@calls/common/lib/types';
-import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
-import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
-import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
-import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {injectIntl, IntlProvider} from 'react-intl';
@@ -15,6 +8,13 @@ import {Provider} from 'react-redux';
 import {AnyAction} from 'redux';
 import {batchActions} from 'redux-batched-actions';
 
+import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
+import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
+import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
+import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {
     displayCallErrorModal,
     displayCallsTestModeUser,

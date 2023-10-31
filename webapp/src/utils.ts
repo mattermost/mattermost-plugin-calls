@@ -1,20 +1,20 @@
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@calls/common';
 import {UserSessionState, SessionState} from '@calls/common/lib/types';
+import {DateTime, Duration, DurationLikeObject} from 'luxon';
+import {IntlShape} from 'react-intl';
+import {parseSemVer} from 'semver-parser';
+
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {DateTime, Duration, DurationLikeObject} from 'luxon';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {General} from 'mattermost-redux/constants';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {IntlShape} from 'react-intl';
-import {parseSemVer} from 'semver-parser';
-
 import CallsClient from 'src/client';
 import RestClient from 'src/rest_client';
 import {notificationSounds} from 'src/webapp_globals';

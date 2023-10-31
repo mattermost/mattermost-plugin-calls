@@ -1,11 +1,10 @@
+import {connect} from 'react-redux';
+
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {Preferences} from 'mattermost-redux/constants';
 import {getBool} from 'mattermost-redux/selectors/entities/preferences';
-import {connect} from 'react-redux';
-
 import PostType from 'src/components/custom_post_types/post_type/component';
-import RestClient from 'src/rest_client';
 import {
     profilesInCallInChannel,
     channelIDForCurrentCall,

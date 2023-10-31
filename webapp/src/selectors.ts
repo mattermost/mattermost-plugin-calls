@@ -1,4 +1,5 @@
 import {CallsConfig, Reaction, UserSessionState} from '@calls/common/lib/types';
+
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';

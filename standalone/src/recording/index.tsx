@@ -1,6 +1,6 @@
 import {UserConnectedData, WebsocketEventData, CallStateData} from '@calls/common/lib/types';
-import {UserProfile} from '@mattermost/types/users';
 import {WebSocketMessage} from '@mattermost/client/websocket';
+import {UserProfile} from '@mattermost/types/users';
 import {ChannelTypes} from 'mattermost-redux/action_types';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';

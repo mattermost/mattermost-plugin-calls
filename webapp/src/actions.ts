@@ -1,4 +1,9 @@
 import {CallsConfig, CallState, UserSessionState} from '@calls/common/lib/types';
+import {MessageDescriptor} from 'react-intl';
+import {Dispatch, AnyAction} from 'redux';
+import {batchActions} from 'redux-batched-actions';
+
+import {ClientError} from '@mattermost/client';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
@@ -9,16 +14,13 @@ import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
-import {MessageDescriptor} from 'react-intl';
-import {Dispatch, AnyAction} from 'redux';
-import {batchActions} from 'redux-batched-actions';
-
 import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from 'src/cloud_pricing/modals';
 import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
+import RestClient from 'src/rest_client';
 import {
     channelHasCall, idForCurrentCall, incomingCalls,
     ringingEnabled,
@@ -38,7 +40,6 @@ import {
     getProfilesForSessions,
 } from 'src/utils';
 import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
-import RestClient from 'src/rest_client';
 
 import {
     ADD_INCOMING_CALL,
@@ -65,7 +66,6 @@ import {
     USER_SCREEN_ON,
     USER_LEFT,
 } from './action_types';
-import { ClientError } from '@mattermost/client';
 
 export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
     dispatch({

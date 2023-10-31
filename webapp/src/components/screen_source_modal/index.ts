@@ -1,9 +1,9 @@
-import {GlobalState} from '@mattermost/types/store';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
 
 import {hideScreenSourceModal} from '../../actions';
 import {screenSourceModal} from '../../selectors';
+import {GlobalState} from '@mattermost/types/store';
 
 import ScreenSourceModal from './component';
 

@@ -1,13 +1,13 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {GlobalState} from '@mattermost/types/store';
-import {Team} from '@mattermost/types/teams';
-import {getChannelsNameMapInCurrentTeam} from 'mattermost-redux/selectors/entities/channels';
 import React, {ReactNode, ReactNodeArray} from 'react';
 import {useSelector} from 'react-redux';
 import styled from 'styled-components';
 
+import {GlobalState} from '@mattermost/types/store';
+import {Team} from '@mattermost/types/teams';
+import {getChannelsNameMapInCurrentTeam} from 'mattermost-redux/selectors/entities/channels';
 import {ChannelNamesMap} from 'src/components/custom_post_types/types';
 
 interface Props {

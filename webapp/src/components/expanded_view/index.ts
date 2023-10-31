@@ -1,10 +1,10 @@
+import {connect} from 'react-redux';
+import {withRouter} from 'react-router-dom';
+
 import {GlobalState} from '@mattermost/types/store';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
-import {connect} from 'react-redux';
-import {withRouter} from 'react-router-dom';
-
 import {
     hideExpandedView,
     prefetchThread,
@@ -13,7 +13,6 @@ import {
     startCallRecording,
     trackEvent,
 } from 'src/actions';
-import RestClient from 'src/rest_client';
 import {
     allowScreenSharing,
     recordingForCurrentCall,

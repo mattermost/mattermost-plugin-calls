@@ -7,12 +7,6 @@ import {mosThreshold} from '@calls/common';
 import {
     UserSessionState,
 } from '@calls/common/lib/types';
-import {Channel} from '@mattermost/types/channels';
-import {Post} from '@mattermost/types/posts';
-import {Team} from '@mattermost/types/teams';
-import {UserProfile} from '@mattermost/types/users';
-import {Client4} from 'mattermost-redux/client';
-import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 import React from 'react';
 import {IntlShape} from 'react-intl';
@@ -20,6 +14,12 @@ import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
 import styled, {createGlobalStyle, css} from 'styled-components';
 
+import {Channel} from '@mattermost/types/channels';
+import {Post} from '@mattermost/types/posts';
+import {Team} from '@mattermost/types/teams';
+import {UserProfile} from '@mattermost/types/users';
+import {Client4} from 'mattermost-redux/client';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {
     stopCallRecording,
 } from 'src/actions';
