@@ -23,11 +23,28 @@
     "jsx": "react",
     "baseUrl": ".",
     "paths": {
-      "src/*": ["src/*", "../webapp/src/*"],
-      "@mattermost/types/*": ["node_modules/@mattermost/types/lib/*"],
-      "mattermost-redux/*": ["node_modules/mattermost-webapp/packages/mattermost-redux/src/*"],
-      "reselect": ["node_modules/mattermost-webapp/packages/reselect/src"],
-      "plugin/*": ["../webapp/src/*"],
+      "src/*": [
+        "src/*",
+        "../webapp/src/*"
+      ],
+      "@mattermost/types/*": [
+        "../webapp/mattermost-webapp/webapp/platform/types/src/*"
+      ],
+      "@mattermost/client": [
+        "../webapp/mattermost-webapp/webapp/platform/client/src"
+      ],
+      "@mattermost/client/*": [
+        "../webapp/mattermost-webapp/webapp/platform/client/src/*"
+      ],
+      "mattermost-redux/*": [
+        "../webapp/mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/*"
+      ],
+      "reselect": [
+        "../webapp/mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/selectors/create_selector/index"
+      ],
+      "plugin/*": [
+        "../webapp/src/*"
+      ]
     },
   },
   "include": [

@@ -107,7 +107,7 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
     private endCall = () => {
         endCall(this.props.channel.id).then(() => {
             this.hideModal();
-        }).catch((err) => {
+        }).catch((err: any) => {
             this.setState({
                 errorMsg: err.response && err.response.data ? err.response.data.err : err.toString(),
             });

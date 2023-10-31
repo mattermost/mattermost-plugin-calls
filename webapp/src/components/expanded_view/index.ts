@@ -13,6 +13,7 @@ import {
     startCallRecording,
     trackEvent,
 } from 'src/actions';
+import RestClient from 'src/rest_client';
 import {
     allowScreenSharing,
     recordingForCurrentCall,

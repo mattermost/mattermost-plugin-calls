@@ -1,6 +1,5 @@
 import {CallsConfig, Reaction, UserSessionState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
-import {LicenseSkus} from '@mattermost/types/general';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
@@ -25,7 +24,6 @@ import {
 } from 'mattermost-redux/utils/channel_utils';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
-
 import {
     callState,
     sessionsState,
@@ -392,6 +390,15 @@ export const hasPermissionsToEnableCalls = (state: GlobalState, channelId: strin
 //
 // Selectors for Cloud and beta limits:
 //
+// Having trouble importing this, so embed.
+enum LicenseSkus {
+    E10 = 'E10',
+    E20 = 'E20',
+    Starter = 'starter',
+    Professional = 'professional',
+    Enterprise = 'enterprise',
+}
+
 const cloudSku = (state: GlobalState): string =>
     callsConfig(state).sku_short_name;
 

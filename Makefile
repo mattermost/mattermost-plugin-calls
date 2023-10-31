@@ -86,7 +86,7 @@ ifneq ($(HAS_SERVER),)
 	fi; \
 
 	@echo Running golangci-lint
-	golangci-lint run ./...
+	golangci-lint run ./server/... ./lt/...
 endif
 
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set
@@ -138,14 +138,12 @@ endif
 ## Ensures NPM dependencies are installed without having to run this all the time.
 webapp/node_modules: $(wildcard webapp/package.json)
 ifneq ($(HAS_WEBAPP),)
-	cd webapp && node skip_integrity_check.js
 	cd webapp && $(NPM) install
 	touch $@
 endif
 
 standalone/node_modules: $(wildcard standalone/package.json)
 ifneq ($(HAS_WEBAPP),)
-	cd standalone && node skip_integrity_check.js
 	cd standalone && $(NPM) install
 	touch $@
 endif

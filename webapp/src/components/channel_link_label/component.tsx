@@ -1,5 +1,5 @@
 import {UserProfile} from '@mattermost/types/users';
-import {Theme} from 'mattermost-redux/types/themes';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
