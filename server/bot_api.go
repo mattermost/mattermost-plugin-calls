@@ -418,7 +418,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	if jb.EndAt > 0 {
+	if status.Status != public.JobStatusTypeFailed && jb.EndAt > 0 {
 		res.Err = "job has ended"
 		res.Code = http.StatusBadRequest
 		return
