@@ -175,36 +175,21 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	var res httpResponse
 	defer p.httpAudit("handleBotPostRecordings", &res, w, r)
 
-	var info map[string]string
+	var info public.JobInfo
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
 		res.Err = "failed to decode request body: " + err.Error()
 		res.Code = http.StatusBadRequest
 		return
 	}
 
-	postID := info["thread_id"]
-	if postID == "" {
-		res.Err = "missing thread_id from request body"
-		res.Code = http.StatusBadRequest
-		return
-	}
-
-	fileID := info["file_id"]
-	if fileID == "" {
-		res.Err = "missing file_id from request body"
-		res.Code = http.StatusBadRequest
-		return
-	}
-
-	recID := info["recording_id"]
-	if recID == "" {
-		res.Err = "missing recording_id from request body"
+	if err := info.IsValid(); err != nil {
+		res.Err = err.Error()
 		res.Code = http.StatusBadRequest
 		return
 	}
 
 	// Update call post
-	post, appErr := p.API.GetPost(postID)
+	post, appErr := p.API.GetPost(info.PostID)
 	if appErr != nil {
 		res.Err = "failed to get call post: " + appErr.Error()
 		res.Code = http.StatusInternalServerError
@@ -223,10 +208,10 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	recordingFiles, ok := post.GetProp("recording_files").([]interface{})
 	if !ok {
 		recordingFiles = []interface{}{
-			fileID,
+			info.FileID,
 		}
 	} else {
-		recordingFiles = append(recordingFiles, fileID)
+		recordingFiles = append(recordingFiles, info.FileID)
 	}
 	post.AddProp("recording_files", recordingFiles)
 
@@ -241,10 +226,10 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 		Message:   postMsg,
 		Type:      callRecordingPostType,
 		RootId:    threadID,
-		FileIds:   []string{fileID},
+		FileIds:   []string{info.FileID},
 	}
-	recPost.AddProp("recording_id", recID)
-	recPost.AddProp("call_post_id", postID)
+	recPost.AddProp("recording_id", info.JobID)
+	recPost.AddProp("call_post_id", info.PostID)
 
 	recPost, appErr = p.API.CreatePost(recPost)
 	if appErr != nil {
@@ -257,13 +242,13 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	recordings, ok := post.GetProp("recordings").(map[string]any)
 	if ok {
 		var rm jobMetadata
-		rm.fromMap(recordings[recID])
-		rm.FileID = fileID
+		rm.fromMap(recordings[info.JobID])
+		rm.FileID = info.FileID
 		rm.PostID = recPost.Id
-		recordings[recID] = rm.toMap()
+		recordings[info.JobID] = rm.toMap()
 		post.AddProp("recordings", recordings)
 	} else {
-		p.LogError("unexpected data found in recordings post prop", "recID", recID)
+		p.LogError("unexpected data found in recordings post prop", "recID", info.JobID)
 	}
 
 	_, appErr = p.API.UpdatePost(post)
@@ -281,36 +266,21 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	var res httpResponse
 	defer p.httpAudit("handleBotPostTranscription", &res, w, r)
 
-	var info map[string]string
+	var info public.JobInfo
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
 		res.Err = "failed to decode request body: " + err.Error()
 		res.Code = http.StatusBadRequest
 		return
 	}
 
-	postID := info["thread_id"]
-	if postID == "" {
-		res.Err = "missing thread_id from request body"
-		res.Code = http.StatusBadRequest
-		return
-	}
-
-	fileID := info["file_id"]
-	if fileID == "" {
-		res.Err = "missing file_id from request body"
-		res.Code = http.StatusBadRequest
-		return
-	}
-
-	trID := info["transcription_id"]
-	if trID == "" {
-		res.Err = "missing transcription_id from request body"
+	if err := info.IsValid(); err != nil {
+		res.Err = err.Error()
 		res.Code = http.StatusBadRequest
 		return
 	}
 
 	// Update call post
-	post, appErr := p.API.GetPost(postID)
+	post, appErr := p.API.GetPost(info.PostID)
 	if appErr != nil {
 		res.Err = "failed to get call post: " + appErr.Error()
 		res.Code = http.StatusInternalServerError
@@ -328,12 +298,12 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	transcriptions, ok := post.GetProp("transcriptions").(map[string]any)
 	if ok {
 		var tm jobMetadata
-		tm.fromMap(transcriptions[trID])
-		tm.FileID = fileID
-		transcriptions[trID] = tm.toMap()
+		tm.fromMap(transcriptions[info.JobID])
+		tm.FileID = info.FileID
+		transcriptions[info.JobID] = tm.toMap()
 		post.AddProp("transcriptions", transcriptions)
 	} else {
-		p.LogError("unexpected data found in transcriptions post prop", "trID", trID)
+		p.LogError("unexpected data found in transcriptions post prop", "trID", info.JobID)
 	}
 
 	startAt, _ := post.GetProp("start_at").(int64)
@@ -347,10 +317,10 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 		Message:   postMsg,
 		Type:      "custom_calls_transcription",
 		RootId:    threadID,
-		FileIds:   []string{fileID},
+		FileIds:   []string{info.FileID},
 	}
-	transcriptionPost.AddProp("call_post_id", postID)
-	transcriptionPost.AddProp("transcription_id", trID)
+	transcriptionPost.AddProp("call_post_id", info.PostID)
+	transcriptionPost.AddProp("transcription_id", info.JobID)
 	_, appErr = p.API.CreatePost(transcriptionPost)
 	if appErr != nil {
 		res.Err = "failed to create post: " + appErr.Error()

@@ -73,12 +73,6 @@ ifneq ($(HAS_WEBAPP),)
 endif
 
 golangci-lint: ## Run golangci-lint on codebase
-# https://stackoverflow.com/a/677212/1027058 (check if a command exists or not)
-	@if ! [ -x "$$(command -v golangci-lint)" ]; then \
-		echo "golangci-lint is not installed. Please see https://github.com/golangci/golangci-lint#install for installation instructions."; \
-		exit 1; \
-	fi; \
-
 ifneq ($(HAS_SERVER),)
 	@if ! [ -x "$$(command -v golangci-lint)" ]; then \
 		echo "golangci-lint is not installed. Please see https://github.com/golangci/golangci-lint#install for installation instructions."; \
@@ -87,6 +81,7 @@ ifneq ($(HAS_SERVER),)
 
 	@echo Running golangci-lint
 	golangci-lint run ./...
+	cd server/public && golangci-lint run ./...
 endif
 
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set
@@ -293,6 +288,7 @@ else
 test: apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/...
+	cd ./server/public && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
 endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;
