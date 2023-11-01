@@ -288,7 +288,7 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		baseRecorderCfg := recorderBaseConfigs[cfg.RecordingQuality]
 		baseRecorderCfg.SiteURL = siteURL
 		baseRecorderCfg.CallID = callID
-		baseRecorderCfg.ThreadID = postID
+		baseRecorderCfg.PostID = postID
 		baseRecorderCfg.RecordingID = jobID
 		baseRecorderCfg.AuthToken = authToken
 
@@ -299,7 +299,7 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		var transcriberConfig transcriber.CallTranscriberConfig
 		transcriberConfig.SiteURL = siteURL
 		transcriberConfig.CallID = callID
-		transcriberConfig.ThreadID = postID
+		transcriberConfig.PostID = postID
 		transcriberConfig.TranscriptionID = jobID
 		transcriberConfig.AuthToken = authToken
 
