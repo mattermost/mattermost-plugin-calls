@@ -359,6 +359,7 @@ func (p *Plugin) initJobService() error {
 		return fmt.Errorf("failed to get recorder version from manifest")
 	}
 	recorderJobRunner = "mattermost/calls-recorder:" + recorderVersion
+	runners := []string{recorderJobRunner}
 
 	transcriberVersion, ok := manifest.Props["calls_transcriber_version"].(string)
 	if !ok {
@@ -366,12 +367,18 @@ func (p *Plugin) initJobService() error {
 	}
 	transcriberJobRunner = "mattermost/calls-transcriber:" + transcriberVersion
 
+	// We only initialize the transcriber runner (image prefetch) if transcriptions are enabled.
+	// We still need to set the runner above in case they are enabled at a later point.
+	if cfg := p.getConfiguration(); cfg.transcriptionsEnabled() {
+		runners = append(runners, transcriberJobRunner)
+	}
+
 	jobService, err := p.newJobService(p.getConfiguration().getJobServiceURL())
 	if err != nil {
 		return fmt.Errorf("failed to create job service: %w", err)
 	}
 
-	if err := jobService.Init([]string{recorderJobRunner, transcriberJobRunner}); err != nil {
+	if err := jobService.Init(runners); err != nil {
 		return err
 	}
 
