@@ -1,4 +1,4 @@
-readonly COMMITHASH=8235b5bb44
+readonly COMMITHASH=8235b5bb44f67bed2855a81ecb57f61b2f597ffd
 
 echo "\n\nInstalling mattermost-webapp from the mattermost repo, using commit hash $COMMITHASH\n"
 
@@ -10,13 +10,12 @@ cd mattermost-webapp
 
 if [ ! -d .git ]; then
   git init
-  git remote add -f origin https://github.com/mattermost/mattermost.git
-  git config core.sparseCheckout true
-  echo "webapp/channels\nwebapp/platform/types\nwebapp/platform/client" >> .git/info/sparse-checkout
+  git config --local uploadpack.allowReachableSHA1InWant true
+  git remote add origin https://github.com/mattermost/mattermost.git
+  git fetch --depth=1 origin $COMMITHASH
+  git reset --hard FETCH_HEAD
 fi
 
-git fetch --depth=1 origin master
-git checkout -f $COMMITHASH
 cd ..
 npm i --save-dev ./mattermost-webapp/webapp/channels
 npm i --save-dev ./mattermost-webapp/webapp/platform/types
