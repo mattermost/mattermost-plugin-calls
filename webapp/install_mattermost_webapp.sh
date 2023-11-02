@@ -12,9 +12,10 @@ if [ ! -d .git ]; then
   git init
   git config --local uploadpack.allowReachableSHA1InWant true
   git remote add origin https://github.com/mattermost/mattermost.git
-  git fetch --depth=1 origin $COMMITHASH
-  git reset --hard FETCH_HEAD
 fi
+
+git fetch --depth=1 origin $COMMITHASH
+git reset --hard FETCH_HEAD
 
 cd ..
 npm i --save-dev ./mattermost-webapp/webapp/channels
