@@ -15,10 +15,10 @@ import {
     CallStateData,
     CallState,
 } from '@calls/common/lib/types';
-import {WebSocketMessage} from '@mattermost/types/websocket';
+
+import {WebSocketMessage} from '@mattermost/client/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-
 import {incomingCallOnChannel, removeIncomingCallNotification, userLeft, loadCallState} from 'src/actions';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 

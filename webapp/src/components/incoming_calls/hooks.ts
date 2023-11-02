@@ -1,3 +1,7 @@
+import {useEffect} from 'react';
+import {useIntl} from 'react-intl';
+import {useDispatch, useSelector, useStore} from 'react-redux';
+
 import {ChannelMembership} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
@@ -9,10 +13,6 @@ import {getCurrentUser, getUser, makeGetProfilesInChannel} from 'mattermost-redu
 import {isChannelMuted} from 'mattermost-redux/utils/channel_utils';
 import {isMinimumServerVersion} from 'mattermost-redux/utils/helpers';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
-import {useEffect} from 'react';
-import {useIntl} from 'react-intl';
-import {useDispatch, useSelector, useStore} from 'react-redux';
-
 import {DID_NOTIFY_FOR_CALL, DID_RING_FOR_CALL} from 'src/action_types';
 import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal, trackEvent} from 'src/actions';
 import {DEFAULT_RING_SOUND} from 'src/constants';
@@ -97,20 +97,15 @@ export const useOnACallWithoutGlobalWidget = () => {
 };
 
 const getNotificationSoundFromChannelMemberAndUser = (member: ChannelMembership | null | undefined, user: UserProfile) => {
-    // @ts-ignore We're using an outdated webapp
     if (member?.notify_props?.desktop_notification_sound) {
-        // @ts-ignore same
         return member.notify_props.desktop_notification_sound;
     }
 
-    // @ts-ignore same
     return user.notify_props?.desktop_notification_sound ? user.notify_props.desktop_notification_sound : 'Bing';
 };
 
 const getDesktopSoundFromChannelMemberAndUser = (member: ChannelMembership | null | undefined, user: UserProfile) => {
-    // @ts-ignore We're using an outdated webapp
     if (member?.notify_props?.desktop_sound) {
-        // @ts-ignore We're using an outdated webapp
         if (member.notify_props.desktop_sound === 'off') {
             return false;
         }
@@ -120,7 +115,6 @@ const getDesktopSoundFromChannelMemberAndUser = (member: ChannelMembership | nul
 };
 
 const getRingingFromUser = (user: UserProfile) => {
-    // @ts-ignore We're using an outdated webapp
     const callsRing = !user.notify_props || (user.notify_props.calls_desktop_sound || 'true') === 'true'; // default true if not set
     return !user.notify_props || (callsRing && user.notify_props.desktop !== NotificationLevel.NONE);
 };
@@ -171,12 +165,10 @@ export const useRingingAndNotification = (call: IncomingCallNotification, onWidg
         // If we're on the desktopWidget then don't ring because the ringing will be handled by the main webapp.
         const ringHandledByWebapp = onWidget && shouldRenderDesktopWidget();
 
-        // @ts-ignore Our mattermost import is old and at the moment un-updatable.
         if (!shouldRing || didRing || ringHandledByWebapp) {
             return;
         }
 
-        // @ts-ignore same
         dispatch(ringForCall(call.callID, currentUser.notify_props.calls_notification_sound || DEFAULT_RING_SOUND));
     }, []);
 };

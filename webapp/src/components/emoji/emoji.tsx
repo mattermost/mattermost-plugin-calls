@@ -2,9 +2,9 @@
 // See LICENSE.txt for license information.
 
 import {EmojiData} from '@calls/common/lib/types';
-import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
 import React from 'react';
 
+import {getEmojiImageUrl} from 'mattermost-redux/utils/emoji_utils';
 import {Emojis, EmojiIndicesByUnicode} from 'src/emojis/emoji';
 
 interface Props {

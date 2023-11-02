@@ -1,10 +1,9 @@
 import {UserConnectedData, WebsocketEventData, CallStateData} from '@calls/common/lib/types';
+import {WebSocketMessage} from '@mattermost/client/websocket';
 import {UserProfile} from '@mattermost/types/users';
-import {WebSocketMessage} from '@mattermost/types/websocket';
 import {ChannelTypes} from 'mattermost-redux/action_types';
-import {Client4} from 'mattermost-redux/client';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
-import {Theme} from 'mattermost-redux/types/themes';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {logErr} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {profilesInCallInChannel} from 'plugin/selectors';
@@ -14,6 +13,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
+import RestClient from 'src/rest_client';
 
 import init from '../init';
 import recordingReducer from 'src/recording/reducers';
@@ -29,7 +29,7 @@ async function fetchProfileImages(profiles: UserProfile[]) {
     for (const profile of profiles) {
         promises.push(
             runWithRetry(() => {
-                return fetch(`${getPluginPath()}/bot/users/${profile.id}/image`, Client4.getOptions({method: 'get'})).then((res) => {
+                return fetch(`${getPluginPath()}/bot/users/${profile.id}/image`, RestClient.getOptions({method: 'get'})).then((res) => {
                     if (!res.ok) {
                         throw new Error('image fetch failed');
                     }
@@ -53,7 +53,7 @@ async function fetchProfileImages(profiles: UserProfile[]) {
 async function initRecordingStore(store: Store, channelID: string) {
     try {
         const channel = await runWithRetry(() => {
-            return Client4.doFetch(`${getPluginPath()}/bot/channels/${channelID}`, {method: 'get'});
+            return RestClient.fetch(`${getPluginPath()}/bot/channels/${channelID}`, {method: 'get'});
         });
 
         store.dispatch(

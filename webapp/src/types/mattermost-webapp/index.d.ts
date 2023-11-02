@@ -1,10 +1,10 @@
+import {Store as BaseStore} from 'redux';
+import {ThunkDispatch} from 'redux-thunk';
+
 import {Channel} from '@mattermost/types/channels';
 import {CommandArgs} from '@mattermost/types/integrations';
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
-import {Store as BaseStore} from 'redux';
-import {ThunkDispatch} from 'redux-thunk';
-
 import {RealNewPostMessageProps} from 'src/types/types';
 
 export type Translations = {

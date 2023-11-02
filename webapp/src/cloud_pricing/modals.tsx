@@ -1,12 +1,12 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {Thunk} from 'mattermost-redux/types/actions';
 import React, {ComponentProps} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import styled from 'styled-components';
 
+import {Thunk} from 'mattermost-redux/types/actions';
 import {displayCloudPricing, notifyAdminCloudFreeTrial} from 'src/actions';
 import GenericModal from 'src/components/generic_modal';
 import {VerticalSpacer} from 'src/components/shared';
