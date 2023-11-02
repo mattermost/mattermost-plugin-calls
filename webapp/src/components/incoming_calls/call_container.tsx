@@ -1,8 +1,8 @@
-import {getMyTeams} from 'mattermost-redux/selectors/entities/teams';
 import React from 'react';
 import {useSelector} from 'react-redux';
 import styled from 'styled-components';
 
+import {getMyTeams} from 'mattermost-redux/selectors/entities/teams';
 import {CallIncoming} from 'src/components/incoming_calls/call_incoming';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
 import {useOnACallWithoutGlobalWidget} from 'src/components/incoming_calls/hooks';

@@ -15,17 +15,15 @@ import {
     WebsocketEventData,
     CallStateData,
 } from '@calls/common/lib/types';
-import {WebSocketMessage} from '@mattermost/types/websocket';
+import {WebSocketMessage} from '@mattermost/client/websocket';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
 import {getMyTeams, getMyTeamMembers} from 'mattermost-redux/actions/teams';
 import {getMe} from 'mattermost-redux/actions/users';
-import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
-import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
+import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {Theme} from 'mattermost-redux/types/themes';
 import {getCallsConfig} from 'plugin/actions';
 import CallsClient from 'plugin/client';
 import {
@@ -34,6 +32,7 @@ import {
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
+import RestClient from 'plugin/rest_client';
 import {iceServers, needsTURNCredentials, callsConfig} from 'plugin/selectors';
 import {DesktopNotificationArgs, Store} from 'plugin/types/mattermost-webapp';
 import {
@@ -163,9 +162,9 @@ export default async function init(cfg: InitConfig) {
 
     // Setting the base URL if present, in case MM is running under a subpath.
     if (window.basename) {
-        Client4.setUrl(window.basename);
+        RestClient.setUrl(window.basename);
     }
-    Client4.setToken(getToken());
+    RestClient.setToken(getToken());
 
     // initialize some basic state.
     await Promise.all([
@@ -196,7 +195,7 @@ export default async function init(cfg: InitConfig) {
     const iceConfigs = [...iceServers(store.getState())];
     if (needsTURNCredentials(store.getState())) {
         logDebug('turn credentials needed');
-        const configs = await Client4.doFetch<RTCIceServer[]>(
+        const configs = await RestClient.fetch<RTCIceServer[]>(
             `${getPluginPath()}/turn-credentials`,
             {method: 'get'},
         );

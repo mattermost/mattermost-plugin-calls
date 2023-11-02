@@ -1,9 +1,9 @@
-import {UserProfile} from '@mattermost/types/users';
-import {Theme} from 'mattermost-redux/types/themes';
 import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
 
+import {UserProfile} from '@mattermost/types/users';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import {MAX_CHANNEL_LINK_TOOLTIP_NAMES} from 'src/constants';
 import {getUserDisplayName, split} from 'src/utils';

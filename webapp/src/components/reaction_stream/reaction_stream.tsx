@@ -4,12 +4,12 @@
 import {
     UserSessionState,
 } from '@calls/common/lib/types';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import styled, {css} from 'styled-components';
 
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {Emoji} from 'src/components/emoji/emoji';
 import HandEmoji from 'src/components/icons/hand';
 import {

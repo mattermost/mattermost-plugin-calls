@@ -1,26 +1,26 @@
 import {CallsConfig, CallState, UserSessionState} from '@calls/common/lib/types';
+import {MessageDescriptor} from 'react-intl';
+import {Dispatch, AnyAction} from 'redux';
+import {batchActions} from 'redux-batched-actions';
+
+import {ClientError} from '@mattermost/client';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
-import {Client4} from 'mattermost-redux/client';
-import {ClientError} from 'mattermost-redux/client/client4';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
-import {MessageDescriptor} from 'react-intl';
-import {Dispatch, AnyAction} from 'redux';
-import {batchActions} from 'redux-batched-actions';
-
 import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from 'src/cloud_pricing/modals';
 import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
+import RestClient from 'src/rest_client';
 import {
     channelHasCall, idForCurrentCall, incomingCalls,
     ringingEnabled,
@@ -114,7 +114,7 @@ export const hideScreenSourceModal = () => (dispatch: Dispatch<GenericAction>) =
 
 export const getCallsConfig = (): ActionFunc => {
     return bindClientFunc({
-        clientFunc: () => Client4.doFetch<CallsConfig>(
+        clientFunc: () => RestClient.fetch<CallsConfig>(
             `${getPluginPath()}/config`,
             {method: 'get'},
         ),
@@ -137,7 +137,7 @@ export const setRTCDEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericA
 };
 
 export const notifyAdminCloudFreeTrial = async () => {
-    return Client4.doFetch(
+    return RestClient.fetch(
         `${getPluginPath()}/cloud-notify-admins`,
         {method: 'post'},
     );
@@ -177,8 +177,8 @@ export const displayCloudPricing = () => {
 
 export const requestOnPremTrialLicense = async (users: number, termsAccepted: boolean, receiveEmailsAccepted: boolean) => {
     try {
-        const response = await Client4.doFetchWithResponse(
-            `${Client4.getBaseRoute()}/trial-license`,
+        const response = await RestClient.fetch(
+            `${RestClient.getBaseRoute()}/trial-license`,
             {
                 method: 'post',
                 body: JSON.stringify({
@@ -197,7 +197,7 @@ export const requestOnPremTrialLicense = async (users: number, termsAccepted: bo
 };
 
 export const endCall = (channelID: string) => {
-    return Client4.doFetch(
+    return RestClient.fetch(
         `${getPluginPath()}/calls/${channelID}/end`,
         {method: 'post'},
     );
@@ -229,7 +229,7 @@ export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, pro
             source,
             props,
         };
-        Client4.doFetch(
+        RestClient.fetch(
             `${getPluginPath()}/telemetry/track`,
             {method: 'post', body: JSON.stringify(eventData)},
         ).catch((e) => {
@@ -251,7 +251,7 @@ export function prefetchThread(postId: string) {
 }
 
 export const startCallRecording = (callID: string) => (dispatch: Dispatch<GenericAction>) => {
-    Client4.doFetch(
+    RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/recording/start`,
         {method: 'post'},
     ).catch((err) => {
@@ -272,7 +272,7 @@ export const startCallRecording = (callID: string) => (dispatch: Dispatch<Generi
 };
 
 export const stopCallRecording = async (callID: string) => {
-    return Client4.doFetch(
+    return RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/recording/stop`,
         {method: 'post'},
     );
@@ -386,7 +386,7 @@ export const userLeft = (channelID: string, userID: string, sessionID: string) =
 
 export const dismissIncomingCallNotification = (channelID: string, callID: string) => {
     return async (dispatch: DispatchFunc) => {
-        Client4.doFetch(
+        RestClient.fetch(
             `${getPluginPath()}/calls/${channelID}/dismiss-notification`,
             {method: 'post'},
         ).catch((e) => logErr(e));
