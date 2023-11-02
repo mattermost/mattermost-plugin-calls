@@ -1,22 +1,22 @@
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@calls/common';
 import {UserSessionState, SessionState} from '@calls/common/lib/types';
+import {DateTime, Duration, DurationLikeObject} from 'luxon';
+import {IntlShape} from 'react-intl';
+import {parseSemVer} from 'semver-parser';
+
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {DateTime, Duration, DurationLikeObject} from 'luxon';
 import {setThreadFollow} from 'mattermost-redux/actions/threads';
-import {Client4} from 'mattermost-redux/client';
 import {General} from 'mattermost-redux/constants';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {IntlShape} from 'react-intl';
-import {parseSemVer} from 'semver-parser';
-
 import CallsClient from 'src/client';
+import RestClient from 'src/rest_client';
 import {notificationSounds} from 'src/webapp_globals';
 
 import {logDebug, logErr, logWarn} from './log';
@@ -40,7 +40,7 @@ export function getWSConnectionURL(config: Partial<ClientConfig>): string {
     const uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
     const baseURL = config && config.WebsocketURL ? config.WebsocketURL : `${uri}//${loc.host}${window.basename || ''}`;
 
-    return `${baseURL}${Client4.getUrlVersion()}/websocket`;
+    return `${baseURL}${RestClient.getUrlVersion()}/websocket`;
 }
 
 export function getTeamRelativeURL(team: Team) {
@@ -211,7 +211,6 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
     } else {
         // browser
         try {
-            // @ts-ignore (fixed in typescript 4.4+ but webapp is on 4.3.4)
             screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: true,
                 audio: Boolean(withAudio),
@@ -256,7 +255,7 @@ export async function getProfilesByIds(state: GlobalState, ids: string[]): Promi
         }
     }
     if (missingIds.length > 0) {
-        profiles.push(...(await Client4.getProfilesByIds(missingIds)));
+        profiles.push(...(await RestClient.getProfilesByIds(missingIds)));
     }
     return profiles;
 }

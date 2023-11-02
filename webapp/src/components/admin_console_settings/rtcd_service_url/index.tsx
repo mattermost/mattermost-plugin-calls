@@ -1,12 +1,12 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {getLicenseConfig} from 'mattermost-redux/actions/general';
 import React, {ChangeEvent, useEffect, useState} from 'react';
 import {FormattedMessage} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
+import {getLicenseConfig} from 'mattermost-redux/actions/general';
 import {requestOnPremTrialLicense, setRTCDEnabled} from 'src/actions';
 import {
     LabelRow,

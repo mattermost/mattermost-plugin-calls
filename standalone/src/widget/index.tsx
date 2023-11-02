@@ -77,7 +77,7 @@ async function initStoreWidget(store: Store, channelID: string) {
     } else {
         await getChannelMembers(channel.id)(store.dispatch, store.getState);
         const teams = getTeams(store.getState());
-        await selectTeam(Object.values(teams)[0])(store.dispatch, store.getState);
+        store.dispatch(selectTeam(Object.values(teams)[0]));
     }
 }
 
