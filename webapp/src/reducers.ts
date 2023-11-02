@@ -145,26 +145,38 @@ const profiles = (state: profilesState = {}, action: profilesAction) => {
     }
 };
 
-type channelIDState = string | null;
+type clientState = {
+    channelID: string;
+    sessionID: string;
+} | null;
 
-type channelIDAction = {
+type clientStateAction = {
     type: string;
     data: {
-        channelID: string;
-        currentUserID: string;
-        userID: string;
+        channel_id: string;
+        session_id: string;
     };
 }
 
-// channelID is the channel ID of the call the current user is connected to.
-const channelID = (state: channelIDState = null, action: channelIDAction) => {
+// clientStateReducer holds the channel and session ID for the call the current user is connected to.
+// This reducer is only needed by the Desktop app client to be aware that the user is
+// connected through the global widget.
+const clientStateReducer = (state: clientState = null, action: clientStateAction) => {
     switch (action.type) {
     case UNINIT:
         return null;
     case DESKTOP_WIDGET_CONNECTED:
-        return action.data.channelID;
+        return {
+            channelID: action.data.channel_id,
+            sessionID: action.data.session_id,
+        };
+    case USER_LEFT:
+        if (action.data.session_id === state?.sessionID) {
+            return null;
+        }
+        return state;
     case CALL_END:
-        if (state === action.data.channelID) {
+        if (action.data.channel_id === state?.channelID) {
             return null;
         }
         return state;
@@ -895,7 +907,7 @@ const dismissedCalls = (state: { [callID: string]: boolean } = {}, action: RingN
 
 export default combineReducers({
     channels,
-    channelID,
+    clientStateReducer,
     profiles,
 
     // DEPRECATED - Needed to keep compatibility with older MM server
