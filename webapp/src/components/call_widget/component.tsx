@@ -434,6 +434,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             if (this.props.global) {
                 sendDesktopEvent('calls-joined-call', {
                     callID: window.callsClient?.channelID,
+                    sessionID: window.callsClient?.getSessionID(),
                 });
             }
 

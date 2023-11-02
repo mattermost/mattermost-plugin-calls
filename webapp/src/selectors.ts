@@ -43,7 +43,7 @@ import {pluginId} from './manifest';
 const pluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
 
 export const channelIDForCurrentCall = (state: GlobalState): string =>
-    pluginState(state).channelID || window.callsClient?.channelID || window.opener?.callsClient?.channelID || '';
+    window.callsClient?.channelID || window.opener?.callsClient?.channelID || pluginState(state).clientStateReducer?.channelID || '';
 
 export const channelForCurrentCall: (state: GlobalState) => Channel | undefined =
     createSelector(
