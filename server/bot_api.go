@@ -175,7 +175,7 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	var res httpResponse
 	defer p.httpAudit("handleBotPostRecordings", &res, w, r)
 
-	var info public.JobInfo
+	var info public.RecordingJobInfo
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
 		res.Err = "failed to decode request body: " + err.Error()
 		res.Code = http.StatusBadRequest
@@ -208,10 +208,10 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	recordingFiles, ok := post.GetProp("recording_files").([]interface{})
 	if !ok {
 		recordingFiles = []interface{}{
-			info.FileID,
+			info.FileIDs[0],
 		}
 	} else {
-		recordingFiles = append(recordingFiles, info.FileID)
+		recordingFiles = append(recordingFiles, info.FileIDs[0])
 	}
 	post.AddProp("recording_files", recordingFiles)
 
@@ -230,7 +230,7 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 		Message:   postMsg,
 		Type:      callRecordingPostType,
 		RootId:    threadID,
-		FileIds:   []string{info.FileID},
+		FileIds:   []string{info.FileIDs[0]},
 	}
 	recPost.AddProp("recording_id", info.JobID)
 	recPost.AddProp("call_post_id", info.PostID)
@@ -247,7 +247,7 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	if ok {
 		var rm jobMetadata
 		rm.fromMap(recordings[info.JobID])
-		rm.FileID = info.FileID
+		rm.FileID = info.FileIDs[0]
 		rm.PostID = recPost.Id
 		recordings[info.JobID] = rm.toMap()
 		post.AddProp("recordings", recordings)
@@ -270,7 +270,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	var res httpResponse
 	defer p.httpAudit("handleBotPostTranscription", &res, w, r)
 
-	var info public.JobInfo
+	var info public.TranscribingJobInfo
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
 		res.Err = "failed to decode request body: " + err.Error()
 		res.Code = http.StatusBadRequest
@@ -303,7 +303,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	if ok {
 		var tm jobMetadata
 		tm.fromMap(transcriptions[info.JobID])
-		tm.FileID = info.FileID
+		tm.FileID = info.FileIDs[0]
 		transcriptions[info.JobID] = tm.toMap()
 		post.AddProp("transcriptions", transcriptions)
 	} else {
@@ -321,7 +321,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 		Message:   postMsg,
 		Type:      "custom_calls_transcription",
 		RootId:    threadID,
-		FileIds:   []string{info.FileID},
+		FileIds:   []string{info.FileIDs[1]},
 	}
 	transcriptionPost.AddProp("call_post_id", info.PostID)
 	transcriptionPost.AddProp("transcription_id", info.JobID)

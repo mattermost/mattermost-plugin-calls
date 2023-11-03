@@ -25,22 +25,38 @@ type JobStatus struct {
 }
 
 type JobInfo struct {
-	PostID string
-	FileID string
-	JobID  string
+	PostID  string
+	FileIDs []string
+	JobID   string
 }
 
-func (i JobInfo) IsValid() error {
-	if i == (JobInfo{}) {
-		return fmt.Errorf("invalid empty info")
-	}
+// We need aliases so that we can have different validation rules.
+type RecordingJobInfo JobInfo
+type TranscribingJobInfo JobInfo
 
+func (i RecordingJobInfo) IsValid() error {
 	if i.PostID == "" {
 		return fmt.Errorf("PostID should not be empty")
 	}
 
-	if i.FileID == "" {
-		return fmt.Errorf("FileID should not be empty")
+	if len(i.FileIDs) == 0 {
+		return fmt.Errorf("invalid FileIDs length")
+	}
+
+	if i.JobID == "" {
+		return fmt.Errorf("JobID should not be empty")
+	}
+
+	return nil
+}
+
+func (i TranscribingJobInfo) IsValid() error {
+	if i.PostID == "" {
+		return fmt.Errorf("PostID should not be empty")
+	}
+
+	if len(i.FileIDs) != 2 {
+		return fmt.Errorf("invalid FileIDs length")
 	}
 
 	if i.JobID == "" {
