@@ -521,6 +521,7 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// NOTE: deprecated in favor of the ServeMetrics hook. Consider removing in v1.0.
 	if strings.HasPrefix(r.URL.Path, "/metrics") && p.metrics != nil {
 		p.metrics.Handler().ServeHTTP(w, r)
 		return

@@ -6,6 +6,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -368,4 +369,8 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 	}
 
 	return dur, nil
+}
+
+func (p *Plugin) ServeMetrics(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
+	p.metrics.Handler().ServeHTTP(w, r)
 }
