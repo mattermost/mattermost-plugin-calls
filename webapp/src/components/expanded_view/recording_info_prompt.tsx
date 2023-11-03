@@ -152,8 +152,13 @@ export default function RecordingInfoPrompt(props: Props) {
     if (hasRecEnded) {
         confirmText = '';
         testId = 'banner-recording-stopped';
-        header = formatMessage({defaultMessage: 'Recording has stopped. Processing…'});
-        body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it\'s finished processing.'});
+        if (props.transcriptionsEnabled) {
+            header = formatMessage({defaultMessage: 'Recording and transcription has stopped. Processing…'});
+            body = formatMessage({defaultMessage: 'You can find the recording and transcription in this call\'s chat thread once it\'s finished processing.'});
+        } else {
+            header = formatMessage({defaultMessage: 'Recording has stopped. Processing…'});
+            body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it\'s finished processing.'});
+        }
     }
 
     let error = '';

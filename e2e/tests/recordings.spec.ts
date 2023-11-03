@@ -86,6 +86,10 @@ test.describe('call recordings and transcriptions', () => {
         await page.locator('#post_textbox').fill('/call recording stop');
         await page.getByTestId('SendMessageButton').click();
 
+        // very recording ended prompt renders correctly
+        await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
+        await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording and transcription has stopped. Processing…');
+
         // verify transcription file has been posted by the bot (assumes CRT enabled)
         await page.locator('.post__body').last().locator('.ThreadFooter button.ReplyButton').click();
         await expect(page.locator('.ThreadViewer').locator('.post__header').last()).toContainText('calls');
