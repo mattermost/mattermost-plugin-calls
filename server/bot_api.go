@@ -217,6 +217,10 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 
 	startAt, _ := post.GetProp("start_at").(int64)
 	postMsg := "Here's the call recording"
+	if cfg := p.getConfiguration(); cfg.transcriptionsEnabled() {
+		postMsg = "Here's the call recording. Transcription is processing and will be posted when ready."
+	}
+
 	if title, _ := post.GetProp("title").(string); title != "" {
 		postMsg = fmt.Sprintf("%s of %s at %s UTC", postMsg, title, time.UnixMilli(startAt).Format("3:04PM"))
 	}
