@@ -298,6 +298,16 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 		threadID = post.RootId
 	}
 
+	// This is a bit hacky but the permissions system doesn't
+	// allow non admin users to access files that are not attached to
+	// a post, even if the channel id is set.
+	// Updating the existing call post solves this problem  without requiring us to expose
+	// a dedicated API.
+	if err := p.updateFileInfoPostID(info.FileIDs[0], info.PostID); err != nil {
+		res.Err = "failed to update fileinfo post id: " + err.Error()
+		res.Code = http.StatusInternalServerError
+	}
+
 	// We update the metadata with the file ID for the transcription.
 	transcriptions, ok := post.GetProp("transcriptions").(map[string]any)
 	if ok {
