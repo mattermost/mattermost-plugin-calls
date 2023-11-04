@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {useSelector} from 'react-redux';
 import styled from 'styled-components';
 
@@ -19,6 +19,8 @@ const RecordingsFilePreview = ({fileInfo, post}: Props) => {
     const recording = callPost?.props?.recordings?.[post.props?.recording_id];
     const transcription = callPost?.props?.transcriptions?.[recording?.tr_id];
 
+    const now = useMemo(() => Date.now(), [recording, transcription]);
+
     return (
         <Video
             data-testid='calls-recording-player'
@@ -27,7 +29,7 @@ const RecordingsFilePreview = ({fileInfo, post}: Props) => {
             controls={true}
         >
             <source
-                src={Client4.getFileUrl(fileInfo.id, Date.now())}
+                src={Client4.getFileUrl(fileInfo.id, now)}
                 type={fileInfo.mime_type}
             />
             { transcription?.file_id &&
@@ -36,7 +38,7 @@ const RecordingsFilePreview = ({fileInfo, post}: Props) => {
                 label='Transcription'
                 kind='subtitles'
                 srcLang='en'
-                src={Client4.getFileUrl(transcription.file_id, Date.now())}
+                src={Client4.getFileUrl(transcription.file_id, now)}
                 default={true}
             />
             }
