@@ -18,7 +18,7 @@ require (
 	github.com/mattermost/logr/v2 v2.0.16
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.1
 	github.com/mattermost/mattermost/server/public v0.0.9-0.20230824163353-69c11cfe1403
-	github.com/mattermost/rtcd v0.11.4-0.20231109204817-8887ae0c3db0
+	github.com/mattermost/rtcd v0.12.0
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pion/interceptor v0.1.25
 	github.com/pion/rtp v1.8.3

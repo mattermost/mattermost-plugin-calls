@@ -303,8 +303,8 @@ github.com/mattermost/logr/v2 v2.0.16 h1:jnePX4cPskC3WDFvUardh/xZfxNdsFXbEERJQ1k
 github.com/mattermost/logr/v2 v2.0.16/go.mod h1:1dm/YhTpozsqANXxo5Pi5zYLBsal2xY0pX+JZNbzYJY=
 github.com/mattermost/mattermost/server/public v0.0.9-0.20230824163353-69c11cfe1403 h1:/rxsEaisu+Rb5mWfoIEnbFqscJeKVkspj+BWzchUAfs=
 github.com/mattermost/mattermost/server/public v0.0.9-0.20230824163353-69c11cfe1403/go.mod h1:sgXQrYzs+IJy51mB8E8OBljagk2u3YwQRoYlBH5goiw=
-github.com/mattermost/rtcd v0.11.4-0.20231109204817-8887ae0c3db0 h1:F5uZC/az4IgHjfoq37qXbE7avyjl/EukFKEVi9tle78=
-github.com/mattermost/rtcd v0.11.4-0.20231109204817-8887ae0c3db0/go.mod h1:s0J7u93n2e2YPATEWCiiJ19iQf2TTHJapXQR2POE8KA=
+github.com/mattermost/rtcd v0.12.0 h1:T/07JYExpwMmWq58QIp8KU08FWOzVmmatzLaEOIMP4A=
+github.com/mattermost/rtcd v0.12.0/go.mod h1:s0J7u93n2e2YPATEWCiiJ19iQf2TTHJapXQR2POE8KA=
 github.com/mattermost/squirrel v0.2.0 h1:8ZWeyf+MWQ2cL7hu9REZgLtz2IJi51qqZEovI3T3TT8=
 github.com/mattermost/squirrel v0.2.0/go.mod h1:NPPtk+CdpWre4GxMGoOpzEVFVc0ZoEFyJBZGCtn9nSU=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
