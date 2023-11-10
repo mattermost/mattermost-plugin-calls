@@ -143,3 +143,7 @@ func (l *logger) IsLevelEnabled(_ logr.Level) bool {
 func (l *logger) With(_ ...logr.Field) *mlog.Logger {
 	return nil
 }
+
+func (l *logger) Sugar(_ ...mlog.Field) mlog.Sugar {
+	return mlog.Sugar{}
+}

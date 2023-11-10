@@ -6,10 +6,12 @@ package main
 import (
 	"bytes"
 	"compress/zlib"
+	"encoding/json"
 	"fmt"
 	"github.com/mattermost/mattermost/server/public/model"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"sort"
@@ -61,6 +63,76 @@ func (p *Plugin) getNotificationNameFormat(userID string) string {
 	}
 
 	return *config.TeamSettings.TeammateNameDisplay
+}
+
+// getPushProxyVersion will return the version if the push proxy is reachable and version >= 5.27.0
+// which is when the "/version" endpoint was added. Otherwise it will return "" for lower versions and for
+// failed attempts to get the version (which could mean only that the push proxy was unavailable temporarily)
+func (p *Plugin) getPushProxyVersion() string {
+	if !p.canSendPushNotifications() {
+		return ""
+	}
+
+	client, err := newClient()
+	if err != nil {
+		p.LogError("failed to create the http Client, err: %w", err)
+		return ""
+	}
+
+	// we know this exists because of the checks in canSendPushNotifications
+	serverURL := strings.TrimRight(*p.API.GetConfig().EmailSettings.PushNotificationServer, "/") + "/version"
+	req, err := http.NewRequest("GET", serverURL, nil)
+	if err != nil {
+		p.LogError("failed to build request, err: %w", err)
+		return ""
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		p.LogError("http request failed, err: %w", err)
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		var respData = struct {
+			Version string
+			Hash    string
+		}{}
+		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+			p.LogError("failed to decode http response, err: %w", err)
+			return ""
+		}
+
+		return respData.Version
+	}
+
+	// Must not be newer version of push proxy
+	return ""
+}
+
+func (p *Plugin) canSendPushNotifications() bool {
+	config := p.API.GetConfig()
+	if config == nil {
+		p.LogError("failed to get config")
+		return false
+	}
+	if config.EmailSettings.SendPushNotifications == nil ||
+		!*config.EmailSettings.SendPushNotifications {
+		return false
+	}
+
+	if config.EmailSettings.PushNotificationServer == nil {
+		return false
+	}
+	pushServer := *config.EmailSettings.PushNotificationServer
+	license := p.API.GetLicense()
+	if pushServer == model.MHPNS && (license == nil || !*license.Features.MHPNS) {
+		p.LogWarn("Push notifications have been disabled. Update your license or go to System Console > Environment > Push Notification Server to use a different server")
+		return false
+	}
+
+	return true
 }
 
 func getChannelNameForNotification(channel *model.Channel, sender *model.User, users []*model.User, nameFormat, excludeID string) string {
@@ -175,4 +247,27 @@ func mapKeys[K comparable, V any](m map[K]V) []K {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// newClient creates a barebones client intended for one-off requests, like getPushProxyVersion.
+// If we end up needing something more long term, we should store the client in the plugin struct.
+func newClient() (*http.Client, error) {
+	dialFn := (&net.Dialer{
+		Timeout:   5 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).DialContext
+
+	transport := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           dialFn,
+		MaxConnsPerHost:       10,
+		MaxIdleConns:          10,
+		MaxIdleConnsPerHost:   10,
+		ResponseHeaderTimeout: 1 * time.Minute,
+		IdleConnTimeout:       30 * time.Second,
+		TLSHandshakeTimeout:   1 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	return &http.Client{Transport: transport}, nil
 }

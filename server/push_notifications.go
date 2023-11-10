@@ -5,6 +5,8 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
+const minPushProxyVersionWithCalls = "5.27.0"
+
 func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, userID string) (*model.PushNotification, string) {
 	// We will use our own notifications if:
 	// 1. This is a call start post
@@ -38,6 +40,10 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 }
 
 func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string, sender *model.User, config *model.Config) {
+	if !p.canSendPushNotifications() {
+		return
+	}
+
 	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
 		p.LogError("failed to get channel", "error", appErr.Error())
@@ -54,6 +60,11 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 		return
 	}
 
+	pushType := model.PushTypeMessage
+	if err := checkMinVersion(minPushProxyVersionWithCalls, p.pushProxyVersion); err == nil {
+		pushType = model.PushTypeCalls
+	}
+
 	for _, member := range members {
 		if member.Id == sender.Id {
 			continue
@@ -61,7 +72,7 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 
 		msg := &model.PushNotification{
 			Version:     model.PushMessageV2,
-			Type:        model.PushTypeMessage,
+			Type:        pushType,
 			TeamId:      channel.TeamId,
 			ChannelId:   channelID,
 			PostId:      createdPostID,
@@ -71,7 +82,9 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 			Message:     buildGenericPushNotificationMessage(),
 		}
 
-		// This is ugly.
+		// This is ugly because it's a little complicated. We need to special case IdLoaded notifications (don't expose
+		// any details of the push notification on the wire). Otherwise, we can send more information, unless the server
+		// has set GenericNoChannel.
 		if *config.EmailSettings.PushNotificationContents == model.IdLoadedNotification {
 			msg.IsIdLoaded = p.checkLicenseForIDLoaded()
 		} else {
