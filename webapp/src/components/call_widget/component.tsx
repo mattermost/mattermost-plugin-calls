@@ -1444,7 +1444,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
 
         if (hasRecEnded) {
-            confirmText = '';
+            if (isHost) {
+                confirmText = formatMessage({defaultMessage: 'Dismiss'});
+            } else {
+                confirmText = '';
+            }
+
             if (this.props.transcriptionsEnabled) {
                 header = formatMessage({defaultMessage: 'Recording and transcription has stopped. Processing…'});
                 body = formatMessage({defaultMessage: 'You can find the recording and transcription in this call\'s chat thread once it\'s finished processing.'});
