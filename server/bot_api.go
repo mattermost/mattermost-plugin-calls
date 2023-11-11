@@ -24,6 +24,7 @@ var (
 	botJobsStatusRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/jobs\/([a-z0-9]+)\/status$`)
 	botProfileForSessionRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/sessions\/([a-z0-9]+)\/profile$`)
 	botTranscriptionsRE    = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/transcriptions$`)
+	botFilenameRE          = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/filename`)
 )
 
 func (p *Plugin) getBotID() string {
@@ -501,6 +502,18 @@ func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, callID, se
 	}
 }
 
+func (p *Plugin) handleBotGetFilenameForCall(w http.ResponseWriter, callID string) {
+	var res httpResponse
+	defer p.httpResponseHandler(&res, w)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"filename": p.genFilenameForCall(callID),
+	}); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
 func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
 	if !p.licenseChecker.RecordingsAllowed() {
 		http.Error(w, "Forbidden", http.StatusForbidden)
@@ -530,6 +543,11 @@ func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
 
 		if matches := botProfileForSessionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
 			p.handleBotGetProfileForSession(w, matches[1], matches[2])
+			return
+		}
+
+		if matches := botFilenameRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleBotGetFilenameForCall(w, matches[1])
 			return
 		}
 	}

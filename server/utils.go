@@ -12,6 +12,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,6 +24,11 @@ import (
 const (
 	handlerKey              = "handler"
 	handlerKeyCheckInterval = 5 * time.Second
+	channelNameMaxLength    = 24
+)
+
+var (
+	filenameSanitizationRE = regexp.MustCompile(`[\\:*?\"<>|\n\s/]`)
 )
 
 func (p *Plugin) getHandlerID() (string, error) {
@@ -175,4 +181,58 @@ func mapKeys[K comparable, V any](m map[K]V) []K {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+func sanitizeFilename(name string) string {
+	return filenameSanitizationRE.ReplaceAllString(name, "_")
+}
+
+func (p *Plugin) genFilenameForCall(channelID string) (filename string) {
+	name := channelID
+	filename = fmt.Sprintf("Call_%s_%s", name, time.Now().UTC().Format("2006-01-02_15-04-05"))
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.LogError("failed to get channel", "err", appErr.Error())
+		return
+	}
+
+	if channel.Type == model.ChannelTypeOpen || channel.Type == model.ChannelTypePrivate {
+		name = channel.DisplayName
+	} else if channel.Type == model.ChannelTypeDirect || channel.Type == model.ChannelTypeGroup {
+		users, appErr := p.API.GetUsersInChannel(channel.Id, model.ChannelSortByUsername, 0, 8)
+		if appErr != nil {
+			p.LogError("failed to get channel users", "err", appErr.Error())
+			return
+		}
+
+		cfg := p.API.GetConfig()
+		if cfg == nil {
+			p.LogError("failed to get configuration")
+			return
+		}
+
+		nameFormat := model.ShowUsername
+		if cfg.PrivacySettings.ShowFullName != nil && *cfg.PrivacySettings.ShowFullName {
+			nameFormat = model.ShowFullName
+		}
+
+		// We simply concatenate all the members display names separated by a dash.
+		name = ""
+		for i, u := range users {
+			name += u.GetDisplayName(nameFormat)
+			if i != len(users)-1 {
+				name += "-"
+			}
+		}
+	}
+
+	// Truncating if too long (e.g. group channels)
+	if len(name) > channelNameMaxLength {
+		name = name[:channelNameMaxLength] + "…"
+	}
+
+	filename = sanitizeFilename(fmt.Sprintf("Call_%s_%s", strings.ReplaceAll(name, " ", "-"), time.Now().UTC().Format("2006-01-02_15-04-05")))
+
+	return
 }
