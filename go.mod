@@ -25,7 +25,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
 	github.com/vmihailenco/msgpack/v5 v5.3.5
-	go.uber.org/mock v0.3.0
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8
 )
 

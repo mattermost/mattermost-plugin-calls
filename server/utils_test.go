@@ -2,14 +2,9 @@ package main
 
 import (
 	"errors"
-	"fmt"
-	mock_main "github.com/mattermost/mattermost-plugin-calls/server/mocks"
 	"github.com/mattermost/mattermost/server/public/model"
-	"go.uber.org/mock/gomock"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -239,7 +234,6 @@ func TestPlugin_canSendPushNotifications(t *testing.T) {
 }
 
 func TestPlugin_getPushProxyVersion(t *testing.T) {
-	ctrl := gomock.NewController(t)
 	config := &model.Config{
 		EmailSettings: model.EmailSettings{
 			PushNotificationServer: model.NewString(model.MHPNS),
@@ -247,17 +241,15 @@ func TestPlugin_getPushProxyVersion(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		config   *model.Config
-		want     string
-		wantErr  error
-		prepMock func(*mock_main.MockSimpleClient)
+		name    string
+		config  *model.Config
+		want    string
+		handler func(http.ResponseWriter)
 	}{
 		{
-			name:    "config nil",
-			config:  nil,
-			want:    "",
-			wantErr: nil,
+			name:   "config nil",
+			config: nil,
+			want:   "",
 		},
 		{
 			name: "no push server",
@@ -266,8 +258,7 @@ func TestPlugin_getPushProxyVersion(t *testing.T) {
 					PushNotificationServer: model.NewString(""),
 				},
 			},
-			want:    "",
-			wantErr: nil,
+			want: "",
 		},
 		{
 			name: "nil push server",
@@ -276,66 +267,47 @@ func TestPlugin_getPushProxyVersion(t *testing.T) {
 					PushNotificationServer: nil,
 				},
 			},
-			want:    "",
-			wantErr: nil,
+			want: "",
 		},
 		{
-			name:    "404 (old push proxy)",
-			config:  config,
-			want:    "",
-			wantErr: nil,
-			prepMock: func(mock *mock_main.MockSimpleClient) {
-				mock.
-					EXPECT().
-					Do(gomock.Any()).
-					Return(&http.Response{
-						StatusCode: http.StatusNotFound,
-						Body:       io.NopCloser(nil),
-					}, nil)
+			name:   "404 (old push proxy)",
+			config: config,
+			want:   "",
+			handler: func(w http.ResponseWriter) {
+				w.WriteHeader(http.StatusNotFound)
 			},
 		},
 		{
-			name:    "client error",
-			config:  config,
-			want:    "",
-			wantErr: fmt.Errorf("http request failed, err: %w", errors.New("something went wrong")),
-			prepMock: func(mock *mock_main.MockSimpleClient) {
-				mock.
-					EXPECT().
-					Do(gomock.Any()).
-					Return(&http.Response{}, errors.New("something went wrong"))
-			},
-		},
-		{
-			name:    "got a version",
-			config:  config,
-			want:    "5.37.0",
-			wantErr: nil,
-			prepMock: func(mock *mock_main.MockSimpleClient) {
-				mock.
-					EXPECT().
-					Do(gomock.Any()).
-					Return(&http.Response{
-						StatusCode: http.StatusOK,
-						Body:       io.NopCloser(strings.NewReader(`{"version": "5.37.0", "hash": "abcde3445"}`)),
-					}, nil)
+			name:   "got a version",
+			config: config,
+			want:   "5.37.0",
+			handler: func(w http.ResponseWriter) {
+				_, _ = w.Write([]byte(`{"version": "5.37.0", "hash": "abcde3445"}`))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &Plugin{}
-			mock := mock_main.NewMockSimpleClient(ctrl)
-			if tt.prepMock != nil {
-				tt.prepMock(mock)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				assert.Equal(t, "/version", req.URL.String())
+				if tt.handler != nil {
+					tt.handler(w)
+				}
+			}))
+			defer server.Close()
+
+			// Do we have a push server url? if so, rewrite it for the test.
+			// Why are we doing it this way? We want to test the variety of different states the config
+			// can be in, as well as the responses the push proxy can give us.
+			if tt.config != nil &&
+				tt.config.EmailSettings.PushNotificationServer != nil &&
+				*tt.config.EmailSettings.PushNotificationServer != "" {
+				tt.config.EmailSettings.PushNotificationServer = model.NewString(server.URL)
 			}
-			ret, err := p.getPushProxyVersion(mock, tt.config)
-			if tt.wantErr != nil {
-				assert.Equal(t, tt.wantErr, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equalf(t, tt.want, ret, "test name: %s", tt.name)
-			}
+			ret, err := getPushProxyVersion(server.Client(), tt.config)
+
+			assert.NoError(t, err)
+			assert.Equalf(t, tt.want, ret, "test name: %s", tt.name)
 		})
 	}
 }

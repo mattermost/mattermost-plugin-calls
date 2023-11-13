@@ -74,7 +74,7 @@ func (p *Plugin) loadPushProxyVersion() {
 
 	client := NewClient()
 	var err error
-	p.pushProxyVersion, err = p.getPushProxyVersion(client, config)
+	p.pushProxyVersion, err = getPushProxyVersion(client, config)
 	if err != nil {
 		p.LogError(err.Error())
 	}
@@ -83,7 +83,7 @@ func (p *Plugin) loadPushProxyVersion() {
 // getPushProxyVersion will return the version if the push proxy is reachable and version >= 5.27.0
 // which is when the "/version" endpoint was added. Otherwise it will return "" for lower versions and for
 // failed attempts to get the version (which could mean only that the push proxy was unavailable temporarily)
-func (p *Plugin) getPushProxyVersion(client SimpleClient, config *model.Config) (string, error) {
+func getPushProxyVersion(client *http.Client, config *model.Config) (string, error) {
 	if config == nil ||
 		config.EmailSettings.PushNotificationServer == nil ||
 		*config.EmailSettings.PushNotificationServer == "" {
@@ -249,14 +249,10 @@ func mapKeys[K comparable, V any](m map[K]V) []K {
 	return keys
 }
 
-type SimpleClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 // NewClient creates a SimpleClient intended for one-off requests, like getPushProxyVersion.
 // If we end up needing something more long term, we should consider storing it.
 func NewClient() *http.Client {
-	client := http.DefaultClient
-	client.Timeout = 10 * time.Second
-	return client
+	return &http.Client{
+		Timeout: 10 * time.Second,
+	}
 }
