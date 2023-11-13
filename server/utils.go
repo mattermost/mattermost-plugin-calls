@@ -65,7 +65,7 @@ func (p *Plugin) getNotificationNameFormat(userID string) string {
 	return *config.TeamSettings.TeammateNameDisplay
 }
 
-func (p *Plugin) setPushProxyVersion() {
+func (p *Plugin) loadPushProxyVersion() {
 	config := p.API.GetConfig()
 	if err := p.canSendPushNotifications(config, p.API.GetLicense()); err != nil {
 		p.LogWarn(err.Error())
@@ -73,7 +73,6 @@ func (p *Plugin) setPushProxyVersion() {
 	}
 
 	client := NewClient()
-
 	var err error
 	p.pushProxyVersion, err = p.getPushProxyVersion(client, config)
 	if err != nil {

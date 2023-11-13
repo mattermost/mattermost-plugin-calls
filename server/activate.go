@@ -124,7 +124,7 @@ func (p *Plugin) OnActivate() error {
 		}()
 	}
 
-	p.setPushProxyVersion()
+	p.loadPushProxyVersion()
 
 	if rtcdURL := cfg.getRTCDURL(); rtcdURL != "" && p.licenseChecker.RTCDAllowed() {
 		rtcdManager, err := p.newRTCDClientManager(rtcdURL)
