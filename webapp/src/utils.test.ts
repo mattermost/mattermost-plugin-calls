@@ -206,7 +206,7 @@ describe('utils', () => {
             const sleepTimeMs = 500;
             const start = Date.now();
             await sleep(sleepTimeMs);
-            expect(Date.now() - start).toBeGreaterThan(sleepTimeMs);
+            expect(Date.now() - start).toBeGreaterThanOrEqual(sleepTimeMs);
         });
     });
 

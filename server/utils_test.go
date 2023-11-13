@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	mockClient "github.com/mattermost/mattermost-plugin-calls/server/simplehttp/mocks"
+	mock_main "github.com/mattermost/mattermost-plugin-calls/server/mocks"
 	"github.com/mattermost/mattermost/server/public/model"
 	"go.uber.org/mock/gomock"
 	"io"
@@ -251,7 +251,7 @@ func TestPlugin_getPushProxyVersion(t *testing.T) {
 		config   *model.Config
 		want     string
 		wantErr  error
-		prepMock func(*mockClient.MockSimpleClient)
+		prepMock func(*mock_main.MockSimpleClient)
 	}{
 		{
 			name:    "config nil",
@@ -284,7 +284,7 @@ func TestPlugin_getPushProxyVersion(t *testing.T) {
 			config:  config,
 			want:    "",
 			wantErr: nil,
-			prepMock: func(mock *mockClient.MockSimpleClient) {
+			prepMock: func(mock *mock_main.MockSimpleClient) {
 				mock.
 					EXPECT().
 					Do(gomock.Any()).
@@ -299,7 +299,7 @@ func TestPlugin_getPushProxyVersion(t *testing.T) {
 			config:  config,
 			want:    "",
 			wantErr: fmt.Errorf("http request failed, err: %w", errors.New("something went wrong")),
-			prepMock: func(mock *mockClient.MockSimpleClient) {
+			prepMock: func(mock *mock_main.MockSimpleClient) {
 				mock.
 					EXPECT().
 					Do(gomock.Any()).
@@ -311,7 +311,7 @@ func TestPlugin_getPushProxyVersion(t *testing.T) {
 			config:  config,
 			want:    "5.37.0",
 			wantErr: nil,
-			prepMock: func(mock *mockClient.MockSimpleClient) {
+			prepMock: func(mock *mock_main.MockSimpleClient) {
 				mock.
 					EXPECT().
 					Do(gomock.Any()).
@@ -325,7 +325,7 @@ func TestPlugin_getPushProxyVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Plugin{}
-			mock := mockClient.NewMockSimpleClient(ctrl)
+			mock := mock_main.NewMockSimpleClient(ctrl)
 			if tt.prepMock != nil {
 				tt.prepMock(mock)
 			}
