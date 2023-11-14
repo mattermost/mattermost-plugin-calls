@@ -195,11 +195,3 @@ func mapKeys[K comparable, V any](m map[K]V) []K {
 	}
 	return keys
 }
-
-// NewClient creates a SimpleClient intended for one-off requests, like getPushProxyVersion.
-// If we end up needing something more long term, we should consider storing it.
-func NewClient() *http.Client {
-	return &http.Client{
-		Timeout: 10 * time.Second,
-	}
-}
