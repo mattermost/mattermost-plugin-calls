@@ -5,8 +5,6 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
-const minPushProxyVersionWithCalls = "5.27.0"
-
 func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, userID string) (*model.PushNotification, string) {
 	// We will use our own notifications if:
 	// 1. This is a call start post

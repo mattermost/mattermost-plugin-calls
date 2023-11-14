@@ -6,7 +6,6 @@ package main
 import (
 	"bytes"
 	"compress/zlib"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/mattermost/mattermost/server/public/model"
@@ -63,58 +62,6 @@ func (p *Plugin) getNotificationNameFormat(userID string) string {
 	}
 
 	return *config.TeamSettings.TeammateNameDisplay
-}
-
-func (p *Plugin) loadPushProxyVersion() {
-	config := p.API.GetConfig()
-	if err := p.canSendPushNotifications(config, p.API.GetLicense()); err != nil {
-		p.LogWarn(err.Error())
-		return
-	}
-
-	client := NewClient()
-	var err error
-	p.pushProxyVersion, err = getPushProxyVersion(client, config)
-	if err != nil {
-		p.LogError(err.Error())
-	}
-}
-
-// getPushProxyVersion will return the version if the push proxy is reachable and version >= 5.27.0
-// which is when the "/version" endpoint was added. Otherwise it will return "" for lower versions and for
-// failed attempts to get the version (which could mean only that the push proxy was unavailable temporarily)
-func getPushProxyVersion(client *http.Client, config *model.Config) (string, error) {
-	if config == nil ||
-		config.EmailSettings.PushNotificationServer == nil ||
-		*config.EmailSettings.PushNotificationServer == "" {
-		return "", nil
-	}
-	serverURL := strings.TrimRight(*config.EmailSettings.PushNotificationServer, "/") + "/version"
-	req, err := http.NewRequest("GET", serverURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to build request, err: %w", err)
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("http request failed, err: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		var respData = struct {
-			Version string
-			Hash    string
-		}{}
-		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-			return "", fmt.Errorf("failed to decode http response, err: %w", err)
-		}
-
-		return respData.Version, nil
-	}
-
-	// Must not be newer version of push proxy
-	return "", nil
 }
 
 func (p *Plugin) canSendPushNotifications(config *model.Config, license *model.License) error {
