@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"github.com/mattermost/mattermost/server/public/model"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -142,6 +144,170 @@ func TestCheckMinVersion(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestPlugin_canSendPushNotifications(t *testing.T) {
+	config := &model.Config{
+		EmailSettings: model.EmailSettings{
+			SendPushNotifications:  model.NewBool(true),
+			PushNotificationServer: model.NewString(model.MHPNS),
+		},
+	}
+	license := &model.License{
+		Features: &model.Features{
+			MHPNS: model.NewBool(true),
+		},
+	}
+	tests := []struct {
+		name    string
+		config  *model.Config
+		license *model.License
+		want    error
+	}{
+		{
+			name:    "no config",
+			config:  nil,
+			license: nil,
+			want:    nil,
+		},
+		{
+			name: "no push notification server",
+			config: &model.Config{
+				EmailSettings: model.EmailSettings{
+					SendPushNotifications:  model.NewBool(true),
+					PushNotificationServer: nil,
+				}},
+			license: nil,
+			want:    nil,
+		},
+		{
+			name: "push notification server blank",
+			config: &model.Config{
+				EmailSettings: model.EmailSettings{
+					SendPushNotifications:  model.NewBool(true),
+					PushNotificationServer: model.NewString(""),
+				}},
+			license: nil,
+			want:    nil,
+		},
+		{
+			name: "push notifications set to false",
+			config: &model.Config{
+				EmailSettings: model.EmailSettings{
+					SendPushNotifications:  model.NewBool(false),
+					PushNotificationServer: model.NewString(model.MHPNS),
+				}},
+			license: nil,
+			want:    nil,
+		},
+		{
+			name:    "no license",
+			config:  config,
+			license: nil,
+			want:    errors.New("push notifications have been disabled. Update your license or go to System Console > Environment > Push Notification Server to use a different server"),
+		},
+		{
+			name:   "no MHPNS in license",
+			config: config,
+			license: &model.License{
+				Features: &model.Features{
+					MHPNS: model.NewBool(false),
+				},
+			},
+			want: errors.New("push notifications have been disabled. Update your license or go to System Console > Environment > Push Notification Server to use a different server"),
+		},
+		{
+			name:    "allowed",
+			config:  config,
+			license: license,
+			want:    nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Plugin{}
+			assert.Equalf(t, tt.want, p.canSendPushNotifications(tt.config, tt.license), "test: %s", tt.name)
+		})
+	}
+}
+
+func TestPlugin_getPushProxyVersion(t *testing.T) {
+	config := &model.Config{
+		EmailSettings: model.EmailSettings{
+			PushNotificationServer: model.NewString(model.MHPNS),
+		},
+	}
+
+	tests := []struct {
+		name    string
+		config  *model.Config
+		want    string
+		handler func(http.ResponseWriter)
+	}{
+		{
+			name:   "config nil",
+			config: nil,
+			want:   "",
+		},
+		{
+			name: "no push server",
+			config: &model.Config{
+				EmailSettings: model.EmailSettings{
+					PushNotificationServer: model.NewString(""),
+				},
+			},
+			want: "",
+		},
+		{
+			name: "nil push server",
+			config: &model.Config{
+				EmailSettings: model.EmailSettings{
+					PushNotificationServer: nil,
+				},
+			},
+			want: "",
+		},
+		{
+			name:   "404 (old push proxy)",
+			config: config,
+			want:   "",
+			handler: func(w http.ResponseWriter) {
+				w.WriteHeader(http.StatusNotFound)
+			},
+		},
+		{
+			name:   "got a version",
+			config: config,
+			want:   "5.37.0",
+			handler: func(w http.ResponseWriter) {
+				_, _ = w.Write([]byte(`{"version": "5.37.0", "hash": "abcde3445"}`))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				assert.Equal(t, "/version", req.URL.String())
+				if tt.handler != nil {
+					tt.handler(w)
+				}
+			}))
+			defer server.Close()
+
+			// Do we have a push server url? if so, rewrite it for the test.
+			// Why are we doing it this way? We want to test the variety of different states the config
+			// can be in, as well as the responses the push proxy can give us.
+			if tt.config != nil &&
+				tt.config.EmailSettings.PushNotificationServer != nil &&
+				*tt.config.EmailSettings.PushNotificationServer != "" {
+				tt.config.EmailSettings.PushNotificationServer = model.NewString(server.URL)
+			}
+			ret, err := getPushProxyVersion(server.Client(), tt.config)
+
+			assert.NoError(t, err)
+			assert.Equalf(t, tt.want, ret, "test name: %s", tt.name)
 		})
 	}
 }
