@@ -17,7 +17,7 @@ require (
 	github.com/mattermost/calls-recorder v0.4.2
 	github.com/mattermost/logr/v2 v2.0.16
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.1
-	github.com/mattermost/mattermost/server/public v0.0.10-0.20231114142547-f0c94858133b
+	github.com/mattermost/mattermost/server/public v0.0.11-0.20231114165607-9c6bfd527dee
 	github.com/mattermost/rtcd v0.12.0
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pion/interceptor v0.1.25
