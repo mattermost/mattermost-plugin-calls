@@ -67,9 +67,6 @@ type Plugin struct {
 	// Database handle to the writer DB node
 	wDB        *sql.DB
 	driverName string
-
-	// Push-proxy's version, refreshed when the plugin activates
-	pushProxyVersion string
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
