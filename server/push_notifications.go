@@ -60,11 +60,6 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 		return
 	}
 
-	pushType := model.PushTypeMessage
-	if err := checkMinVersion(minPushProxyVersionWithCalls, p.pushProxyVersion); err == nil {
-		pushType = model.PushTypeCalls
-	}
-
 	for _, member := range members {
 		if member.Id == sender.Id {
 			continue
@@ -72,7 +67,8 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 
 		msg := &model.PushNotification{
 			Version:     model.PushMessageV2,
-			Type:        pushType,
+			Type:        model.PushTypeMessage,
+			SubType:     model.PushSubTypeCalls,
 			TeamId:      channel.TeamId,
 			ChannelId:   channelID,
 			PostId:      createdPostID,

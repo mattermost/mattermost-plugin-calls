@@ -297,6 +297,8 @@ github.com/mattermost/logr/v2 v2.0.16 h1:jnePX4cPskC3WDFvUardh/xZfxNdsFXbEERJQ1k
 github.com/mattermost/logr/v2 v2.0.16/go.mod h1:1dm/YhTpozsqANXxo5Pi5zYLBsal2xY0pX+JZNbzYJY=
 github.com/mattermost/mattermost/server/public v0.0.10-0.20231109142142-8ffda2b73ea8 h1:tZhcvX1k526YLHeO8lQpFa8J2Ejr7sHEYdzst5xrIjA=
 github.com/mattermost/mattermost/server/public v0.0.10-0.20231109142142-8ffda2b73ea8/go.mod h1:AMuKlAabVFnLvf5bXg+69EdvtLIfty4ahFossB34LM4=
+github.com/mattermost/mattermost/server/public v0.0.10-0.20231114142547-f0c94858133b h1:B2PNC1Mjq7LC2h2d0bkgo5pPZP3b7ik6U13LFsRXRi8=
+github.com/mattermost/mattermost/server/public v0.0.10-0.20231114142547-f0c94858133b/go.mod h1:AMuKlAabVFnLvf5bXg+69EdvtLIfty4ahFossB34LM4=
 github.com/mattermost/rtcd v0.12.0 h1:T/07JYExpwMmWq58QIp8KU08FWOzVmmatzLaEOIMP4A=
 github.com/mattermost/rtcd v0.12.0/go.mod h1:s0J7u93n2e2YPATEWCiiJ19iQf2TTHJapXQR2POE8KA=
 github.com/mattermost/squirrel v0.2.0 h1:8ZWeyf+MWQ2cL7hu9REZgLtz2IJi51qqZEovI3T3TT8=
