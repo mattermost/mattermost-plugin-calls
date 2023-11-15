@@ -150,7 +150,12 @@ export default function RecordingInfoPrompt(props: Props) {
     const declineText = props.isHost ? '' : formatMessage({defaultMessage: 'Leave call'});
 
     if (hasRecEnded) {
-        confirmText = '';
+        if (props.isHost) {
+            confirmText = formatMessage({defaultMessage: 'Dismiss'});
+        } else {
+            confirmText = '';
+        }
+
         testId = 'banner-recording-stopped';
         if (props.transcriptionsEnabled) {
             header = formatMessage({defaultMessage: 'Recording and transcription has stopped. Processing…'});

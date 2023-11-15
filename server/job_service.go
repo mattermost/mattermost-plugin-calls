@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -302,6 +303,9 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		transcriberConfig.PostID = postID
 		transcriberConfig.TranscriptionID = jobID
 		transcriberConfig.AuthToken = authToken
+		if val := os.Getenv("MM_CALLS_TRANSCRIBER_NUM_THREADS"); val != "" {
+			transcriberConfig.NumThreads, _ = strconv.Atoi(val)
+		}
 
 		jobCfg.Runner = transcriberJobRunner
 		// TODO: we should probably have a dedicated timeout here given
