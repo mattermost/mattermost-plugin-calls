@@ -174,3 +174,46 @@ func TestSanitizeFilename(t *testing.T) {
 		})
 	}
 }
+
+func TestTruncateString(t *testing.T) {
+	tcs := []struct {
+		name     string
+		s        string
+		len      int
+		expected string
+	}{
+		{
+			name: "empty string",
+		},
+		{
+			name:     "short",
+			s:        "short name",
+			len:      16,
+			expected: "short name",
+		},
+		{
+			name:     "equal",
+			s:        "short name",
+			len:      10,
+			expected: "short name",
+		},
+		{
+			name:     "long",
+			s:        "long name",
+			len:      8,
+			expected: "long nam…",
+		},
+		{
+			name:     "unicode",
+			s:        "ポケットモンスター",
+			len:      4,
+			expected: "ポケット…",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, truncateString(tc.s, tc.len))
+		})
+	}
+}

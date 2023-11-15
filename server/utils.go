@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Masterminds/semver"
 )
@@ -187,6 +188,14 @@ func sanitizeFilename(name string) string {
 	return filenameSanitizationRE.ReplaceAllString(name, "_")
 }
 
+func truncateString(s string, len int) string {
+	if utf8.RuneCountInString(s) <= len {
+		return s
+	}
+
+	return fmt.Sprintf(fmt.Sprintf("%%.%ds…", len), s)
+}
+
 func (p *Plugin) genFilenameForCall(channelID string) (filename string) {
 	name := channelID
 	filename = fmt.Sprintf("Call_%s_%s", name, time.Now().UTC().Format("2006-01-02_15-04-05"))
@@ -227,10 +236,9 @@ func (p *Plugin) genFilenameForCall(channelID string) (filename string) {
 		}
 	}
 
-	// Truncating if too long (e.g. group channels)
-	if len(name) > channelNameMaxLength {
-		name = name[:channelNameMaxLength] + "…"
-	}
+	// Hard truncating long names at channelNameMaxLength for now.
+	// In the future we can be a bit more clever if needed.
+	name = truncateString(name, channelNameMaxLength)
 
 	filename = sanitizeFilename(fmt.Sprintf("Call_%s_%s", strings.ReplaceAll(name, " ", "-"), time.Now().UTC().Format("2006-01-02_15-04-05")))
 

@@ -24,7 +24,7 @@ var (
 	botJobsStatusRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/jobs\/([a-z0-9]+)\/status$`)
 	botProfileForSessionRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/sessions\/([a-z0-9]+)\/profile$`)
 	botTranscriptionsRE    = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/transcriptions$`)
-	botFilenameRE          = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/filename`)
+	botFilenameRE          = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/filename$`)
 )
 
 func (p *Plugin) getBotID() string {
