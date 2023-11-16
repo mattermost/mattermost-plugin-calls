@@ -10,6 +10,8 @@ require (
 	github.com/stretchr/testify v1.8.4
 )
 
+replace github.com/pion/rtp v1.8.3 => ./lt/pion/rtp
+
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/gorilla/websocket v1.5.0
@@ -65,7 +67,7 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/philhofer/fwd v1.1.2 // indirect
 	github.com/pion/datachannel v1.5.5 // indirect
-	github.com/pion/dtls/v2 v2.2.7 // indirect
+	github.com/pion/dtls/v2 v2.2.8 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/mdns v0.0.9 // indirect
 	github.com/pion/randutil v0.1.0 // indirect

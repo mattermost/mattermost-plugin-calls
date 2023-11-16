@@ -78,6 +78,7 @@ type config struct {
 	wsURL         string
 	duration      time.Duration
 	unmuted       bool
+	customRTP     bool
 	screenSharing bool
 	recording     bool
 	simulcast     bool
@@ -164,6 +165,7 @@ func (u *user) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 	frameDuration := time.Millisecond * time.Duration((float32(header.TimebaseNumerator)/float32(header.TimebaseDenominator))*1000)
 
 	ticker := time.NewTicker(frameDuration)
+	defer ticker.Stop()
 	for ; true; <-ticker.C {
 		var frame []byte
 		var ivfErr error
@@ -290,6 +292,52 @@ func (u *user) transmitScreen(simulcast bool) {
 	}()
 }
 
+func (u *user) transmitCustomRTP() {
+	track, err := webrtc.NewTrackLocalStaticRTP(rtpAudioCodec, "custom", "custom"+model.NewId())
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	_, err = u.pc.AddTrack(track)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for ; true; <-ticker.C {
+			customHeader := []byte{
+				0b10010000,                      // header.Version = 2 + header.Extension = true
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // stuff we don't care about
+				0x10, 0x00, // header.ExtensionProfile = extensionProfileTwoByte
+				0, 1, // extensionLength
+				0, 0, 0, // padding
+				1, // extid
+			}
+
+			customPayload := []byte{}
+
+			err = track.WriteRTP(&rtp.Packet{
+				Header: rtp.Header{
+					SSRC:           454545,
+					SequenceNumber: 45,
+					MarshalToOverride: func(buf []byte) (n int, err error) {
+						return copy(buf, customHeader), nil
+					},
+					MarshalSizeOverride: func() int {
+						return len(customHeader)
+					},
+				},
+				Payload: customPayload,
+			})
+			if err != nil {
+				log.Printf("%s: failed to write custom RTP packet data: %s", u.cfg.username, err.Error())
+			}
+		}
+	}()
+}
+
 func (u *user) transmitAudio() {
 	track, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
 	if err != nil {
@@ -348,6 +396,7 @@ func (u *user) transmitAudio() {
 		// * works around latency issues with Sleep (see https://github.com/golang/go/issues/44343)
 		oggPageDuration := time.Millisecond * 20
 		ticker := time.NewTicker(oggPageDuration)
+		defer ticker.Stop()
 		for ; true; <-ticker.C {
 			var oggErr error
 			var pageData []byte
@@ -483,6 +532,10 @@ func (u *user) initRTC() error {
 			}
 		}
 	})
+
+	if u.cfg.customRTP {
+		u.transmitCustomRTP()
+	}
 
 	if u.cfg.unmuted {
 		u.transmitAudio()
@@ -864,6 +917,7 @@ func main() {
 	var numRecordings int
 	var simulcast bool
 	var setup bool
+	var numCustom int
 
 	flag.StringVar(&teamID, "team", "", "The team ID to start calls in")
 	flag.StringVar(&channelID, "channel", "", "The channel ID to start the call in")
@@ -882,6 +936,7 @@ func main() {
 	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "The password of a system admin account")
 	flag.BoolVar(&simulcast, "simulcast", false, "Whether or not to enable simulcast for screen")
 	flag.BoolVar(&setup, "setup", true, "Whether or not setup actions like creating users, channels, teams and/or members should be executed.")
+	flag.IntVar(&numCustom, "custom", 0, "The number of users sending custom RTP packets")
 
 	flag.Parse()
 
@@ -932,6 +987,10 @@ func main() {
 
 	if numUnmuted > numUsersPerCall {
 		log.Fatalf("unmuted cannot be greater than the number of users per call")
+	}
+
+	if numCustom > numUsersPerCall {
+		log.Fatalf("custom cannot be greater than the number of users per call")
 	}
 
 	if numScreenSharing > numCalls {
@@ -1016,7 +1075,7 @@ func main() {
 	for j := 0; j < numCalls; j++ {
 		log.Printf("starting call in %s", channels[j].DisplayName)
 		for i := 0; i < numUsersPerCall; i++ {
-			go func(idx int, channelID string, teamID string, channelType model.ChannelType, unmuted, screenSharing, recording bool) {
+			go func(idx int, channelID string, teamID string, channelType model.ChannelType, unmuted, customRTP, screenSharing, recording bool) {
 				username := fmt.Sprintf("%s%d", userPrefix, idx)
 				if unmuted {
 					log.Printf("%s: going to transmit voice", username)
@@ -1043,6 +1102,7 @@ func main() {
 					wsURL:         wsURL,
 					duration:      dur,
 					unmuted:       unmuted,
+					customRTP:     customRTP,
 					screenSharing: screenSharing,
 					recording:     recording,
 					simulcast:     simulcast,
@@ -1053,7 +1113,7 @@ func main() {
 				if err := user.Connect(stopCh, channelType); err != nil {
 					log.Printf("connectUser failed: %s", err.Error())
 				}
-			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, channels[j].Type, i < numUnmuted, i == 0 && j < numScreenSharing, j < numRecordings)
+			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, channels[j].Type, i < numUnmuted, i < numCustom, i == 0 && j < numScreenSharing, j < numRecordings)
 		}
 	}
 
