@@ -309,10 +309,11 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		}
 
 		jobCfg.Runner = transcriberJobRunner
-		// TODO: we should probably have a dedicated timeout here given
-		// transcribing will take considerably more time and extend well after
-		// the call has eneded.
-		jobCfg.MaxDurationSec = int64(*cfg.MaxRecordingDuration * 60)
+		// Setting the max duration to double the value of the recording's setting as
+		// the transcribing process will extend well after the call has ended.
+		// This way we account for a worst case of 1x real-time (i.e. taking 1 hour to
+		// transcribe a 1 hour long call).
+		jobCfg.MaxDurationSec = int64(*cfg.MaxRecordingDuration*60) * 2
 		jobCfg.InputData = transcriberConfig.ToMap()
 	}
 
