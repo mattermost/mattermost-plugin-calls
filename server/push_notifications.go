@@ -38,6 +38,10 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 }
 
 func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string, sender *model.User, config *model.Config) {
+	if err := p.canSendPushNotifications(config, p.API.GetLicense()); err != nil {
+		return
+	}
+
 	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
 		p.LogError("failed to get channel", "error", appErr.Error())
@@ -62,6 +66,7 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 		msg := &model.PushNotification{
 			Version:     model.PushMessageV2,
 			Type:        model.PushTypeMessage,
+			SubType:     model.PushSubTypeCalls,
 			TeamId:      channel.TeamId,
 			ChannelId:   channelID,
 			PostId:      createdPostID,
@@ -71,7 +76,9 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 			Message:     buildGenericPushNotificationMessage(),
 		}
 
-		// This is ugly.
+		// This is ugly because it's a little complicated. We need to special case IdLoaded notifications (don't expose
+		// any details of the push notification on the wire). Otherwise, we can send more information, unless the server
+		// has set GenericNoChannel.
 		if *config.EmailSettings.PushNotificationContents == model.IdLoadedNotification {
 			msg.IsIdLoaded = p.checkLicenseForIDLoaded()
 		} else {

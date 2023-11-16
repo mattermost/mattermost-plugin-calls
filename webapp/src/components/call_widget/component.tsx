@@ -435,6 +435,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             if (this.props.global) {
                 sendDesktopEvent('calls-joined-call', {
                     callID: window.callsClient?.channelID,
+                    sessionID: window.callsClient?.getSessionID(),
                 });
             }
 
@@ -956,7 +957,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             style={{padding: '0', lineHeight: '20px', fontSize: '14px'}}
                         >
                             {getUserDisplayName(profile)}
-                            {session.user_id === this.props.currentUserID &&
+                            {session.session_id === this.props.currentSession?.session_id &&
                                 <span
                                     style={{
                                         color: 'rgba(var(--center-channel-color-rgb), 0.56)',

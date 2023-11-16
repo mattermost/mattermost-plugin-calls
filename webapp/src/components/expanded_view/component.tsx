@@ -805,7 +805,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return (
                 <CallParticipant
                     key={session.session_id}
-                    name={`${getUserDisplayName(profile)} ${profile.id === this.props.currentUserID ? formatMessage({defaultMessage: '(you)'}) : ''}`}
+                    name={`${getUserDisplayName(profile)} ${session.session_id === this.props.currentSession?.session_id ? formatMessage({defaultMessage: '(you)'}) : ''}`}
                     pictureURL={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
                     isMuted={isMuted}
                     isSpeaking={isSpeaking}
@@ -845,7 +845,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     />
 
                     <span style={{fontWeight: 600, fontSize: '14px', lineHeight: '20px'}}>
-                        {getUserDisplayName(profile)} {profile.id === this.props.currentUserID && formatMessage({defaultMessage: '(you)'})}
+                        {getUserDisplayName(profile)} {session.session_id === this.props.currentSession?.session_id && formatMessage({defaultMessage: '(you)'})}
                     </span>
 
                     <div

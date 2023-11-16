@@ -61,6 +61,7 @@
   "MQr9sh": "Nije moguće prekinuti poziv",
   "MspN+p": "Nije moguće započeti snimanje",
   "N2IrpM": "Potvrdi",
+  "O6EeNO": "Dozvoli domaćinima poziva snimanje video i audio snimaka sastanka u oblaku. Snimanje uključuje prikaz cijelog prozora poziva zajedno s audio snimkom sudionika i svim zajedničkim video snimkama. <featureLink>Saznaj više o ovoj značajci</featureLink>.",
   "OKhRC6": "Dijeli",
   "OlfjBf": "Snimku možeš pronaći u temi razgovora ovog poziva nakon što se obradi.",
   "OvzONl": "Isključi",
@@ -76,6 +77,7 @@
   "TdTXXf": "Saznaj više",
   "Tg9Lia": "Pozivi trenutačno nisu aktivirani",
   "Thxdph": "Ovaj poziv je dosegnuo najveći kapacitet od {count, plural, =1 {# sudionika} few {# sudionika} other {# sudionika}}.",
+  "TyskrG": "Tvoja probna Mattermost Enterprise verzija! Isteče {trialExpirationDate}. Sada imate pristup <recordingsDocsLink>snimkama poziva</recordingsDocsLink>, <rtcdDocsLink>RTCD uslugama</rtcdDocsLink>, <guestAccountsLink>računima gostiju</guestAccountsLink>, <autoComplianceReportsLink>automatskim izvještajima o usklađenosti</autoComplianceReportsLink> i <mobileSecureNotificationsLink> mobilnim sigurnosnim ID push obavijestima</mobileSecureNotificationsLink>, uz razne druge značajke. Pogledaj sve značajke u našoj <documentationLink>dokumentaciji</documentationLink>.",
   "UcFeI7": "Prikaži popis sudionika",
   "UxatAw": "{count, plural, =1 {# sudionik} few {# sudionika} other {# sudionika}}",
   "Uys4Mj": "Zatvori reakcije",
@@ -162,6 +164,7 @@
   "vxEY29": "Napusti poziv",
   "x6EHjL": "Nemaš dozvolu za snimanje. Zatraži dozvolu za snimanje od voditelja poziva.",
   "x82IOl": "Isključi zvuk",
+  "yL9vD/": "Tvoja probna Mattermost Enterprise verzija! Isteče {trialExpirationDate}. Sada imaš pristup <rtcdDocsLink>RTCD uslugama</rtcdDocsLink>, <recordingsDocsLink>snimanjem poziva</recordingsDocsLink>, <guestAccountsLink>računima gostiju</guestAccountsLink>, <autoComplianceReportsLink>automatskim izvještajima o usklađenosti</autoComplianceReportsLink> i <mobileSecureNotificationsLink> mobilnim sigurnosnim ID push obavijestima</mobileSecureNotificationsLink>, uz mnoge druge značajke. Pogledaj sve značajke u našoj <documentationLink>dokumentaciji</documentationLink>.",
   "yO68rk": "Pozivi se trenutačno izvode u testnom načinu rada i mogu ih pokrenuti samo administratori sustava. Obrati se izravno svom administratoru sustava za pomoć",
   "yjQNKt": "Pozivi su deaktivirani u ovom kanalu.",
   "zx0myy": "Sudionici"

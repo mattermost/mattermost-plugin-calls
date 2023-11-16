@@ -223,7 +223,7 @@ const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
 
 const PickerContainer = styled.div`
     position: absolute;
-    z-index: 1;
+    z-index: 10;
     top: -394px;
     left: -242px;
 
@@ -250,6 +250,7 @@ const PickerContainer = styled.div`
 
 const Bar = styled.div`
     position: absolute;
+    z-index: 10;
     top: -68px;
     left: -242px;
     width: 416px;
