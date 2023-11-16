@@ -166,6 +166,7 @@
   "x82IOl": "Mute",
   "yL9vD/": "Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. You now have access to <rtcdDocsLink>RTCD services</rtcdDocsLink>, <recordingsDocsLink>call recordings</recordingsDocsLink>, <guestAccountsLink>guest accounts</guestAccountsLink>, <autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and <mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, among many other features. View all features in our <documentationLink>documentation</documentationLink>.",
   "yO68rk": "Calls are currently running in test mode and only system admins can start them. Reach out directly to your system admin for assistance",
+  "yidxQc": "Create meeting summary?",
   "yjQNKt": "Calls are disabled in this channel.",
   "zx0myy": "Participants"
 }
