@@ -49,6 +49,7 @@ import {
     HIDE_SWITCH_CALL_MODAL,
     RECEIVED_CALLS_CONFIG,
     RECORDINGS_ENABLED,
+    TRANSCRIPTIONS_ENABLED,
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
@@ -132,6 +133,13 @@ export const setRecordingsEnabled = (enabled: boolean) => (dispatch: Dispatch<Ge
 export const setRTCDEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
     dispatch({
         type: RTCD_ENABLED,
+        data: enabled,
+    });
+};
+
+export const setTranscriptionsEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: TRANSCRIPTIONS_ENABLED,
         data: enabled,
     });
 };

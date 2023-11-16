@@ -1,31 +1,41 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {ChangeEvent} from 'react';
+import React, {ChangeEvent, useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
+import {setTranscriptionsEnabled} from 'src/actions';
 import {leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
 
 export const EnableTranscriptions = (props: CustomComponentProps) => {
+    const dispatch = useDispatch();
     const {formatMessage} = useIntl();
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const recordingEnabled = useSelector(recordingsEnabled);
 
-    if (cloud || restricted || !recordingEnabled) {
-        return null;
-    }
+    // @ts-ignore -- this is complaining b/c value is supposed to be string, but... it can be bool!
+    const [enabled, setEnabled] = useState(() => props.value === 'true' || props.value === true);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        // @ts-ignore -- newVal needs to be a boolean, but the signature says 'string'
         props.onChange(props.id, e.target.value === 'true');
+        setEnabled(e.target.value === 'true');
     };
+
+    // Update global state with a local state change, or props change (eg, remounting)
+    useEffect(() => {
+        dispatch(setTranscriptionsEnabled(enabled));
+    }, [dispatch, enabled]);
 
     // @ts-ignore val is a boolean, but the signature says 'string'. (being defensive here, just in case)
     const checked = props.value === 'true' || props.value === true;
+
+    if (cloud || restricted || !recordingEnabled) {
+        return null;
+    }
 
     return (
         <div

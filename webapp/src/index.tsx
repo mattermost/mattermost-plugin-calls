@@ -33,6 +33,7 @@ import EnableTranscriptions from 'src/components/admin_console_settings/recordin
 import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
 import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
+import TranscriberModelSize from 'src/components/admin_console_settings/recordings/transcriber_model_size';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
 import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
@@ -373,6 +374,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('EnableIPv6', EnableIPv6);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
+        registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             if (shouldRenderDesktopWidget()) {

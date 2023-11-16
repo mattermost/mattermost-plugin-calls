@@ -49,6 +49,7 @@ import {
     USERS_STATES,
     USER_JOINED_TIMEOUT,
     RECORDINGS_ENABLED,
+    TRANSCRIPTIONS_ENABLED,
     ADD_INCOMING_CALL,
     REMOVE_INCOMING_CALL,
     DID_RING_FOR_CALL,
@@ -749,6 +750,8 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
         return action.data;
     case RECORDINGS_ENABLED:
         return {...state, EnableRecordings: action.data};
+    case TRANSCRIPTIONS_ENABLED:
+        return {...state, EnableTranscriptions: action.data};
     default:
         return state;
     }
