@@ -310,18 +310,6 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 		res.Code = http.StatusInternalServerError
 	}
 
-	// We update the metadata with the file ID for the transcription.
-	transcriptions, ok := post.GetProp("transcriptions").(map[string]any)
-	if ok {
-		var tm jobMetadata
-		tm.fromMap(transcriptions[info.JobID])
-		tm.FileID = info.FileIDs[0]
-		transcriptions[info.JobID] = tm.toMap()
-		post.AddProp("transcriptions", transcriptions)
-	} else {
-		p.LogError("unexpected data found in transcriptions post prop", "trID", info.JobID)
-	}
-
 	startAt, _ := post.GetProp("start_at").(int64)
 	postMsg := "Here's the call transcription"
 	if title, _ := post.GetProp("title").(string); title != "" {
@@ -337,11 +325,24 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	}
 	transcriptionPost.AddProp("call_post_id", info.PostID)
 	transcriptionPost.AddProp("transcription_id", info.JobID)
-	_, appErr = p.API.CreatePost(transcriptionPost)
+	trPost, appErr := p.API.CreatePost(transcriptionPost)
 	if appErr != nil {
 		res.Err = "failed to create post: " + appErr.Error()
 		res.Code = http.StatusInternalServerError
 		return
+	}
+
+	// We update the metadata with the file and post IDs for the transcription.
+	transcriptions, ok := post.GetProp("transcriptions").(map[string]any)
+	if ok {
+		var tm jobMetadata
+		tm.fromMap(transcriptions[info.JobID])
+		tm.FileID = info.FileIDs[0]
+		tm.PostID = trPost.Id
+		transcriptions[info.JobID] = tm.toMap()
+		post.AddProp("transcriptions", transcriptions)
+	} else {
+		p.LogError("unexpected data found in transcriptions post prop", "trID", info.JobID)
 	}
 
 	_, appErr = p.API.UpdatePost(post)
