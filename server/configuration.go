@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
 	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -63,6 +64,8 @@ type configuration struct {
 	// Ringing is default off (for now -- 8.0), allow sysadmins to turn it on.
 	// When set to true it enables ringing for DM/GM channels.
 	EnableRinging *bool
+	// The speech-to-text model size to use to transcribe calls.
+	TranscriberModelSize transcriber.ModelSize
 
 	clientConfig
 }
@@ -210,6 +213,9 @@ func (c *configuration) SetDefaults() {
 	if c.EnableRinging == nil {
 		c.EnableRinging = model.NewBool(false)
 	}
+	if c.TranscriberModelSize == "" {
+		c.TranscriberModelSize = transcriber.ModelSizeDefault
+	}
 }
 
 func (c *configuration) IsValid() error {
@@ -253,6 +259,10 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("RecordingQuality is not valid")
 	}
 
+	if ok := c.TranscriberModelSize.IsValid(); !ok {
+		return fmt.Errorf("TranscriberModelSize is not valid")
+	}
+
 	return nil
 }
 
@@ -267,6 +277,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.JobServiceURL = c.JobServiceURL
 	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 	cfg.RecordingQuality = c.RecordingQuality
+	cfg.TranscriberModelSize = c.TranscriberModelSize
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = model.NewInt(*c.UDPServerPort)

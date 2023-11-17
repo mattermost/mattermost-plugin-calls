@@ -303,6 +303,7 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		transcriberConfig.PostID = postID
 		transcriberConfig.TranscriptionID = jobID
 		transcriberConfig.AuthToken = authToken
+		transcriberConfig.ModelSize = cfg.TranscriberModelSize
 		if val := os.Getenv("MM_CALLS_TRANSCRIBER_NUM_THREADS"); val != "" {
 			transcriberConfig.NumThreads, _ = strconv.Atoi(val)
 		}

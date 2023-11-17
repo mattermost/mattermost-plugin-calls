@@ -187,6 +187,28 @@
         "help_text": "(Optional) When set to true it enables the call transcriptions functionality."
       },
       {
+        "key": "TranscriberModelSize",
+        "display_name": "Call transcriber model size",
+        "type": "dropdown",
+        "default": "base",
+        "help_text": "The speech-to-text model size to use. Heavier models will produce more accurate results at the expense of processing time and resources usage.",
+        "options": [
+          {
+            "display_name": "Tiny",
+            "value": "tiny"
+          },
+          {
+            "display_name": "Base",
+            "value": "base"
+          },
+          {
+            "display_name": "Small",
+            "value": "small"
+          }
+        ],
+        "hosting": "on-prem"
+      },
+      {
         "key": "EnableIPv6",
         "display_name": "(Experimental) Enable IPv6 support",
         "type": "bool",
