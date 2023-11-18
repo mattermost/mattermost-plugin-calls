@@ -33,15 +33,20 @@ const CreateMeetingSummaryButton = styled.button`
 	justify-content: center;
 	gap: 6px;
 	border-radius: 4px;
-	background: rgba(var(--center-channel-color-rgb), 0.04);
+	background: rgba(var(--center-channel-color-rgb), 0.08);
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 16px;
 
 	:hover {
-		background: rgba(var(--center-channel-color-rgb), 0.08);
+		background: rgba(var(--center-channel-color-rgb), 0.12);
         color: rgba(var(--center-channel-color-rgb), 0.72);
 	}
 
 	:active {
 		background: rgba(var(--button-bg-rgb), 0.08);
+		color: var(--button-bg);
 	}
 `;
 
