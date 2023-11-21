@@ -472,16 +472,23 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 
 	configData := newCfg.PluginSettings.Plugins[manifest.Id]
 
+	appErr := model.NewAppError("saveConfig", "app.save_config.error", nil, "", http.StatusBadRequest)
+	appErr.SkipTranslation = true
+
 	js, err := json.Marshal(configData)
 	if err != nil {
-		p.LogError("failed to marshal config data", "error", err.Error())
-		return nil, nil
+		err = fmt.Errorf("failed to marshal config data: %w", err)
+		p.LogError(err.Error())
+		appErr.Message = err.Error()
+		return nil, appErr
 	}
 
 	var cfg configuration
 	if err := json.Unmarshal(js, &cfg); err != nil {
-		p.LogError("failed to unmarshal config data", "error", err.Error())
-		return nil, nil
+		err = fmt.Errorf("failed to unmarshal config data: %w", err)
+		p.LogError(err.Error())
+		appErr.Message = err.Error()
+		return nil, appErr
 	}
 
 	// Setting defaults prevents errors in case the plugin is updated after a new
@@ -489,9 +496,7 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 	cfg.SetDefaults()
 
 	if err := cfg.IsValid(); err != nil {
-		appErr := model.NewAppError("saveConfig", "app.save_config.error", nil, "", http.StatusBadRequest)
 		appErr.Message = err.Error()
-		appErr.SkipTranslation = true
 		return nil, appErr
 	}
 

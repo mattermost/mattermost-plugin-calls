@@ -120,6 +120,11 @@ func (l *logger) Fatal(msg string, fields ...logr.Field) {
 	l.p.API.LogError(msg, l.fieldsToArgs(fields)...)
 }
 
+// Satisfying the interface here but we need a fix upstream for this to be any useful.
+func (l *logger) Sugar(_ ...logr.Field) logr.Sugar {
+	return logr.Sugar{}
+}
+
 func (l *logger) Flush() error {
 	return nil
 }
@@ -142,8 +147,4 @@ func (l *logger) IsLevelEnabled(_ logr.Level) bool {
 
 func (l *logger) With(_ ...logr.Field) *mlog.Logger {
 	return nil
-}
-
-func (l *logger) Sugar(_ ...mlog.Field) mlog.Sugar {
-	return mlog.Sugar{}
 }
