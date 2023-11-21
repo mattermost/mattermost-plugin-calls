@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"compress/zlib"
+	"errors"
 	"fmt"
 	"github.com/mattermost/mattermost/server/public/model"
 	"io"
@@ -61,6 +62,24 @@ func (p *Plugin) getNotificationNameFormat(userID string) string {
 	}
 
 	return *config.TeamSettings.TeammateNameDisplay
+}
+
+func (p *Plugin) canSendPushNotifications(config *model.Config, license *model.License) error {
+	if config == nil ||
+		config.EmailSettings.SendPushNotifications == nil ||
+		!*config.EmailSettings.SendPushNotifications {
+		return nil
+	}
+
+	if config.EmailSettings.PushNotificationServer == nil {
+		return nil
+	}
+	pushServer := *config.EmailSettings.PushNotificationServer
+	if pushServer == model.MHPNS && (license == nil || !*license.Features.MHPNS) {
+		return errors.New("push notifications have been disabled. Update your license or go to System Console > Environment > Push Notification Server to use a different server")
+	}
+
+	return nil
 }
 
 func getChannelNameForNotification(channel *model.Channel, sender *model.User, users []*model.User, nameFormat, excludeID string) string {

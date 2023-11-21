@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"github.com/mattermost/mattermost/server/public/model"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -142,6 +144,91 @@ func TestCheckMinVersion(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestPlugin_canSendPushNotifications(t *testing.T) {
+	config := &model.Config{
+		EmailSettings: model.EmailSettings{
+			SendPushNotifications:  model.NewBool(true),
+			PushNotificationServer: model.NewString(model.MHPNS),
+		},
+	}
+	license := &model.License{
+		Features: &model.Features{
+			MHPNS: model.NewBool(true),
+		},
+	}
+	tests := []struct {
+		name    string
+		config  *model.Config
+		license *model.License
+		want    error
+	}{
+		{
+			name:    "no config",
+			config:  nil,
+			license: nil,
+			want:    nil,
+		},
+		{
+			name: "no push notification server",
+			config: &model.Config{
+				EmailSettings: model.EmailSettings{
+					SendPushNotifications:  model.NewBool(true),
+					PushNotificationServer: nil,
+				}},
+			license: nil,
+			want:    nil,
+		},
+		{
+			name: "push notification server blank",
+			config: &model.Config{
+				EmailSettings: model.EmailSettings{
+					SendPushNotifications:  model.NewBool(true),
+					PushNotificationServer: model.NewString(""),
+				}},
+			license: nil,
+			want:    nil,
+		},
+		{
+			name: "push notifications set to false",
+			config: &model.Config{
+				EmailSettings: model.EmailSettings{
+					SendPushNotifications:  model.NewBool(false),
+					PushNotificationServer: model.NewString(model.MHPNS),
+				}},
+			license: nil,
+			want:    nil,
+		},
+		{
+			name:    "no license",
+			config:  config,
+			license: nil,
+			want:    errors.New("push notifications have been disabled. Update your license or go to System Console > Environment > Push Notification Server to use a different server"),
+		},
+		{
+			name:   "no MHPNS in license",
+			config: config,
+			license: &model.License{
+				Features: &model.Features{
+					MHPNS: model.NewBool(false),
+				},
+			},
+			want: errors.New("push notifications have been disabled. Update your license or go to System Console > Environment > Push Notification Server to use a different server"),
+		},
+		{
+			name:    "allowed",
+			config:  config,
+			license: license,
+			want:    nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Plugin{}
+			assert.Equalf(t, tt.want, p.canSendPushNotifications(tt.config, tt.license), "test: %s", tt.name)
 		})
 	}
 }
