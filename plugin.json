@@ -141,7 +141,7 @@
         "display_name": "Enable call recordings (Beta)",
         "type": "bool",
         "default": false,
-        "help_text": "(Optional) When set to true it enables the call recordings functionality."
+        "help_text": "(Optional) When set to true, call recordings are enabled."
       },
       {
         "key": "JobServiceURL",
@@ -184,7 +184,7 @@
         "display_name": "Enable call transcriptions (Experimental)",
         "type": "bool",
         "default": false,
-        "help_text": "(Optional) When set to true it enables the call transcriptions functionality."
+        "help_text": "(Optional) When set to true, call transcriptions are enabled."
       },
       {
         "key": "TranscriberModelSize",

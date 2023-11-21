@@ -51,7 +51,7 @@ export const CallRecordingDisclaimerStrings: {[key: string]: {[key: string]: Mes
     },
     participant: {
         header: defineMessage({defaultMessage: 'Recording is in progress'}),
-        body: defineMessage({defaultMessage: 'The host has started recording this meeting. By staying in the meeting you give consent to being recorded.'}),
+        body: defineMessage({defaultMessage: 'The host has started recording this meeting. By staying in the meeting, you give consent to being recorded.'}),
     },
 };
 
@@ -62,7 +62,7 @@ export const CallTranscribingDisclaimerStrings: {[key: string]: {[key: string]: 
     },
     participant: {
         header: defineMessage({defaultMessage: 'Recording and transcription is in progress'}),
-        body: defineMessage({defaultMessage: 'The host has started recording and transcription for this meeting. By staying in the meeting you give consent to being recorded and transcribed.'}),
+        body: defineMessage({defaultMessage: 'The host has started recording and transcription for this meeting. By staying in the meeting, you give consent to being recorded and transcribed.'}),
     },
 };
 
