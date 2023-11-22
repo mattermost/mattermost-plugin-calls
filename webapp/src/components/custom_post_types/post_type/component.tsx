@@ -33,6 +33,7 @@ interface Props {
     isCloudPaid: boolean,
     maxParticipants: number,
     militaryTime: boolean,
+    compactDisplay: boolean,
 }
 
 const PostType = ({
@@ -42,6 +43,7 @@ const PostType = ({
     isCloudPaid,
     maxParticipants,
     militaryTime,
+    compactDisplay,
 }: Props) => {
     const intl = useIntl();
     const {formatMessage} = intl;
@@ -136,6 +138,8 @@ const PostType = ({
         );
     }
 
+    const compactTitle = compactDisplay ? '\u200b' : '';
+    const title = post.props.title ? <h3 className='markdown__heading'>{post.props.title}</h3> : compactTitle;
     const callActive = !post.props.end_at;
     const inCall = connectedID === post.channel_id;
     const button = inCall ? (
@@ -150,9 +154,7 @@ const PostType = ({
 
     return (
         <>
-            {post.props.title &&
-                <h3 className='markdown__heading'>{post.props.title}</h3>
-            }
+            {title}
             <Main data-testid={'call-thread'}>
                 <SubMain ended={Boolean(post.props.end_at)}>
                     <Left>
