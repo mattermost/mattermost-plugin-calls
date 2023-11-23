@@ -4,11 +4,11 @@ import {createIntl} from 'react-intl';
 import {
     callStartedTimestampFn,
     getWSConnectionURL,
-    shouldRenderDesktopWidget,
-    toHuman,
-    sleep,
-    runWithRetry,
     maxAttemptsReachedErr,
+    runWithRetry,
+    shouldRenderDesktopWidget,
+    sleep,
+    toHuman,
 } from './utils';
 
 describe('utils', () => {

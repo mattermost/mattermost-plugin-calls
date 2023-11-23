@@ -3,10 +3,9 @@
 
 import React, {ComponentProps} from 'react';
 import {ModalHeader} from 'react-bootstrap';
-import {useIntl, MessageDescriptor} from 'react-intl';
-import styled from 'styled-components';
-
+import {MessageDescriptor, useIntl} from 'react-intl';
 import GenericModal from 'src/components/generic_modal';
+import styled from 'styled-components';
 
 type CustomProps = {
     title: MessageDescriptor,

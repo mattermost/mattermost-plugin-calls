@@ -1,10 +1,8 @@
+import {expect, FullConfig, request} from '@playwright/test';
 import {readFile} from 'fs/promises';
 
-import {request, FullConfig, expect} from '@playwright/test';
-
 import plugin from '../plugin.json';
-
-import {adminState, baseURL, defaultTeam, userPassword, userPrefix, channelPrefix} from './constants';
+import {adminState, baseURL, channelPrefix, defaultTeam, userPassword, userPrefix} from './constants';
 
 async function globalSetup(config: FullConfig) {
     const numUsers = config.workers * 3;

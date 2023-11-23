@@ -1,6 +1,5 @@
+import {expect, test} from '@playwright/test';
 import {readFile} from 'fs/promises';
-
-import {test, expect} from '@playwright/test';
 
 import {adminState} from '../constants';
 import PlaywrightDevPage from '../page';

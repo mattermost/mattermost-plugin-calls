@@ -2,9 +2,8 @@
 // See License for license information.
 
 import React from 'react';
-import styled from 'styled-components';
-
 import Icon from 'src/components/icons/svg';
+import styled from 'styled-components';
 
 const Svg = styled(Icon)`
     width: 223px;

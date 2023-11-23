@@ -1,6 +1,5 @@
-import {connect} from 'react-redux';
-
 import {GlobalState} from '@mattermost/types/store';
+import {connect} from 'react-redux';
 import {callsEnabledInCurrentChannel} from 'src/selectors';
 
 import ChannelHeaderMenuButton from './component';

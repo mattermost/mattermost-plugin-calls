@@ -3,14 +3,13 @@
 
 import React, {ChangeEvent} from 'react';
 import {useSelector} from 'react-redux';
-import {CustomComponentProps} from 'src/types/mattermost-webapp';
-
 import {
     LabelRow, leftCol, rightCol,
 } from 'src/components/admin_console_settings/common';
 import {useHelptext} from 'src/components/admin_console_settings/hooks';
 import manifest from 'src/manifest';
 import {rtcdEnabled} from 'src/selectors';
+import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const ICEHostOverride = (props: CustomComponentProps) => {
     const isRTCDEnabled = useSelector(rtcdEnabled);

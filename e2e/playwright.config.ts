@@ -1,4 +1,4 @@
-import {PlaywrightTestConfig, devices} from '@playwright/test';
+import {devices, PlaywrightTestConfig} from '@playwright/test';
 
 const config: PlaywrightTestConfig = {
     globalSetup: require.resolve('./global-setup'),

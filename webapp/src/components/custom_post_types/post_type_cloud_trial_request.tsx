@@ -1,17 +1,15 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
-import {FormattedMessage} from 'react-intl';
-import {useDispatch, useSelector} from 'react-redux';
-import styled from 'styled-components';
-
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTeam} from 'mattermost-redux/selectors/entities/teams';
+import React from 'react';
+import {FormattedMessage} from 'react-intl';
+import {useDispatch, useSelector} from 'react-redux';
 import {displayCloudPricing} from 'src/actions';
 import {PrimaryButton, TertiaryButton} from 'src/components/buttons';
 import {
@@ -23,6 +21,7 @@ import {
 import PostText from 'src/components/custom_post_types/post_text';
 import UpgradeIllustrationSvg from 'src/components/custom_post_types/upgrade_illustration_svg';
 import {isCloud} from 'src/selectors';
+import styled from 'styled-components';
 
 interface Props {
     post: Post;
