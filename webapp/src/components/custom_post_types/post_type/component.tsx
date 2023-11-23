@@ -138,7 +138,7 @@ const PostType = ({
         );
     }
 
-    const compactTitle = compactDisplay ? '\u200b' : '';
+    const compactTitle = compactDisplay ? <br/> : <></>;
     const title = post.props.title ? <h3 className='markdown__heading'>{post.props.title}</h3> : compactTitle;
     const callActive = !post.props.end_at;
     const inCall = connectedID === post.channel_id;
