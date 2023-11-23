@@ -24,7 +24,7 @@ import {
     stopCallRecording,
 } from 'src/actions';
 import Avatar from 'src/components/avatar/avatar';
-import Badge from 'src/components/badge';
+import {Badge, HostBadge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import {Emoji} from 'src/components/emoji/emoji';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
@@ -153,7 +153,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private readonly emojiButtonRef: React.RefObject<ReactionButtonRef>;
     private expandedRootRef = React.createRef<HTMLDivElement>();
     private pushToTalk = false;
-    private screenPlayer : HTMLVideoElement | null = null;
+    private screenPlayer: HTMLVideoElement | null = null;
 
     #unlockNavigation?: () => void;
 
@@ -635,7 +635,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             active: true,
                             show: true,
                         },
-                    }});
+                    },
+                });
             }
             if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
                 this.setState({
@@ -645,7 +646,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             active: false,
                             show: false,
                         },
-                    }});
+                    },
+                });
             }
         });
     }
@@ -823,6 +825,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             const isSpeaking = Boolean(session.voice);
             const isHandRaised = Boolean(session.raised_hand > 0);
             const profile = this.props.profiles[session.user_id];
+            const isHost = this.props.callHostID === session.user_id;
 
             if (!profile) {
                 return null;
@@ -843,9 +846,23 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         url={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
                     />
 
-                    <span style={{fontWeight: 600, fontSize: '14px', lineHeight: '20px'}}>
-                        {getUserDisplayName(profile)} {session.session_id === this.props.currentSession?.session_id && formatMessage({defaultMessage: '(you)'})}
+                    <span
+                        style={{
+                            display: 'block',
+                            flex: 1,
+                            whiteSpace: 'pre',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            fontWeight: 600,
+                            fontSize: '14px',
+                            lineHeight: '20px',
+                        }}
+                    >
+                        {getUserDisplayName(profile)}
                     </span>
+
+                    {session.session_id === this.props.currentSession?.session_id && formatMessage({defaultMessage: '(you)'})}
+                    {isHost && <HostBadge onWhiteBg={true}/>}
 
                     <div
                         style={{
@@ -1240,8 +1257,8 @@ const isActiveElementInteractable = () => {
 const UnreadIndicator = ({mentions}: { mentions?: number }) => {
     return (
         <UnreadDot>
-            { mentions &&
-            <MentionsCounter>{mentions > 99 ? untranslatable('99+') : mentions}</MentionsCounter>
+            {mentions &&
+                <MentionsCounter>{mentions > 99 ? untranslatable('99+') : mentions}</MentionsCounter>
             }
         </UnreadDot>
     );
@@ -1301,33 +1318,33 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
 `;
 
 const CloseButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: auto;
-  color: rgba(var(--center-channel-color-rgb), 0.56);
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-
-  :hover {
-    background: rgba(var(--center-channel-color-rgb), 0.08);
-    color: rgba(var(--center-channel-color-rgb), 0.72);
-    fill: rgba(var(--center-channel-color-rgb), 0.72);
-  }
-
-  i {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
-  }
+    margin-left: auto;
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+
+    :hover {
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        fill: rgba(var(--center-channel-color-rgb), 0.72);
+    }
+
+    i {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
 `;
 
 const Overlay = styled.div`
-  position: absolute;
-  bottom: 96px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+    position: absolute;
+    bottom: 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 `;

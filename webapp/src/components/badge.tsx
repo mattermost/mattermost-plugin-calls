@@ -1,5 +1,6 @@
 import React from 'react';
-import styled from 'styled-components';
+import {useIntl} from 'react-intl';
+import styled, {css} from 'styled-components';
 
 export type Props = {
     id: string,
@@ -15,7 +16,7 @@ export type Props = {
     color?: string,
 }
 
-export default function Badge(props: Props) {
+export function Badge(props: Props) {
     return (
         <Container
             data-testid={props.id}
@@ -25,11 +26,11 @@ export default function Badge(props: Props) {
             padding={props.padding}
             color={props.color}
         >
-            { props.loading &&
-            <Spinner size={props.textSize}/>
+            {props.loading &&
+                <Spinner size={props.textSize}/>
             }
-            { !props.loading &&
-            <Icon fill={props.iconFill}>{props.icon}</Icon>
+            {!props.loading &&
+                <Icon fill={props.iconFill}>{props.icon}</Icon>
             }
             <Text gap={props.gap}>{props.text}</Text>
         </Container>
@@ -45,44 +46,73 @@ type ContainerProps = {
 }
 
 const Container = styled.div<ContainerProps>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: ${({bgColor}) => bgColor || 'transparent'};
-  border-radius: 4px;
-  margin: ${({margin}) => margin || 0};
-  padding: ${({padding}) => padding || 0};
-  font-size: ${({size}) => size}px;
-  line-height: ${({size}) => size}px;
-  color: ${({color}) => color || 'currentColor'};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: ${({bgColor}) => bgColor || 'transparent'};
+    border-radius: 4px;
+    margin: ${({margin}) => margin || 0};
+    padding: ${({padding}) => padding || 0};
+    font-size: ${({size}) => size}px;
+    line-height: ${({size}) => size}px;
+    color: ${({color}) => color || 'currentColor'};
 `;
 
-const Text = styled.span<{gap: number}>`
-  font-weight: 600;
-  margin-left: ${({gap}) => gap}px;
+const Text = styled.span<{ gap: number }>`
+    font-weight: 600;
+    margin-left: ${({gap}) => gap}px;
 `;
 
-const Icon = styled.div<{fill?: string}>`
-  display: flex;
-  fill: ${({fill}) => fill || 'currentColor'};
+const Icon = styled.div<{ fill?: string }>`
+    display: flex;
+    fill: ${({fill}) => fill || 'currentColor'};
 `;
 
-const Spinner = styled.span<{size: number}>`
-  width: ${({size}) => size}px;
-  height: ${({size}) => size}px;
-  border-radius: 50%;
-  display: inline-block;
-  border-top: 2px solid currentColor;
-  border-right: 2px solid transparent;
-  box-sizing: border-box;
-  animation: spin 1s linear infinite;
+const Spinner = styled.span<{ size: number }>`
+    width: ${({size}) => size}px;
+    height: ${({size}) => size}px;
+    border-radius: 50%;
+    display: inline-block;
+    border-top: 2px solid currentColor;
+    border-right: 2px solid transparent;
+    box-sizing: border-box;
+    animation: spin 1s linear infinite;
 
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
     }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
+`;
+
+type HostBadgeProps = {
+    onWhiteBg?: boolean;
+}
+
+export const HostBadge = ({onWhiteBg}: HostBadgeProps) => {
+    const {formatMessage} = useIntl();
+
+    return (
+        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: 'auto', padding: '1px 2px'}}>
+            <HBadge onWhiteBg={onWhiteBg}>
+                {formatMessage({defaultMessage: 'Host'})}
+            </HBadge>
+        </div>
+    );
+};
+
+const HBadge = styled.div<{ onWhiteBg?: boolean }>`
+    font-weight: 600;
+    padding: 0 4px;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    font-size: 10px;
+    line-height: 16px;
+    ${({onWhiteBg}) => onWhiteBg && css`
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+    `}
 `;

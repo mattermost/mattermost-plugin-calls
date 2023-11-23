@@ -13,7 +13,7 @@ import {Client4} from 'mattermost-redux/client';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import {AudioInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
-import Badge from 'src/components/badge';
+import {Badge, HostBadge} from 'src/components/badge';
 import {Emoji} from 'src/components/emoji/emoji';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ExpandIcon from 'src/components/icons/expand';
@@ -481,7 +481,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             active: true,
                             show: true,
                         },
-                    }});
+                    },
+                });
             }
             if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
                 this.setState({
@@ -491,7 +492,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             active: false,
                             show: false,
                         },
-                    }});
+                    },
+                });
             }
         });
     }
@@ -912,7 +914,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <div style={{fontSize: '14px', lineHeight: '20px', display: 'flex', whiteSpace: 'pre'}}>
                 <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
                     {speakingProfile ? getUserDisplayName(speakingProfile) : formatMessage({defaultMessage: 'No one'})}
-                    <span style={{fontWeight: 400}}>{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
+                    <span
+                        style={{fontWeight: 400}}
+                    >{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
                 </span>
             </div>
         );
@@ -930,6 +934,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 const isMuted = !session.unmuted;
                 const isSpeaking = Boolean(session.voice);
                 const isHandRaised = Boolean(session.raised_hand > 0);
+                const isHost = this.props.callHostID === session.user_id;
 
                 const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
@@ -942,7 +947,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <li
                         className='MenuItem'
                         key={'participants_profile_' + session.session_id}
-                        style={{display: 'flex', padding: '10px 16px', gap: '12px'}}
+                        style={{padding: '11px 16px', gap: '12px'}}
                     >
                         <Avatar
                             size={20}
@@ -953,20 +958,30 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                         <span
                             className='MenuItem__primary-text'
-                            style={{padding: '0', lineHeight: '20px', fontSize: '14px'}}
+                            style={{
+                                display: 'block',
+                                flex: 1,
+                                whiteSpace: 'pre',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                padding: '0',
+                                lineHeight: '20px',
+                                fontSize: '14px',
+                            }}
                         >
                             {getUserDisplayName(profile)}
-                            {session.session_id === this.props.currentSession?.session_id &&
-                                <span
-                                    style={{
-                                        color: 'rgba(var(--center-channel-color-rgb), 0.56)',
-                                        whiteSpace: 'pre-wrap',
-                                    }}
-                                >
-                                    {untranslatable(' ')}{formatMessage({defaultMessage: '(you)'})}
-                                </span>
-                            }
                         </span>
+                        {session.session_id === this.props.currentSession?.session_id &&
+                            <span
+                                style={{
+                                    color: 'rgba(var(--center-channel-color-rgb), 0.56)',
+                                    whiteSpace: 'pre-wrap',
+                                }}
+                            >
+                                {untranslatable(' ')}{formatMessage({defaultMessage: '(you)'})}
+                            </span>
+                        }
+                        {isHost && <HostBadge onWhiteBg={true}/>}
 
                         <span
                             style={{
@@ -978,10 +993,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             }}
                         >
                             {session?.reaction &&
-                            <Emoji
-                                emoji={session.reaction.emoji}
-                                size={14}
-                            />
+                                <Emoji
+                                    emoji={session.reaction.emoji}
+                                    size={14}
+                                />
                             }
                             {isHandRaised &&
                                 <HandEmoji
@@ -1096,14 +1111,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             {makeDeviceLabel(device)}
                         </span>
 
-                        { device.deviceId === currentDevice?.deviceId &&
-                        <TickIcon
-                            style={{
-                                width: '16px',
-                                height: '16px',
-                                fill: 'var(--button-bg)',
-                            }}
-                        />
+                        {device.deviceId === currentDevice?.deviceId &&
+                            <TickIcon
+                                style={{
+                                    width: '16px',
+                                    height: '16px',
+                                    fill: 'var(--button-bg)',
+                                }}
+                            />
                         }
                     </button>
                 </li>
@@ -1233,13 +1248,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </div>
 
                         {devices.length > 0 &&
-                        <ShowMoreIcon
-                            style={{
-                                width: '18px',
-                                height: '18px',
-                                fill: isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)',
-                            }}
-                        />
+                            <ShowMoreIcon
+                                style={{
+                                    width: '18px',
+                                    height: '18px',
+                                    fill: isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)',
+                                }}
+                            />
                         }
                     </button>
                 </li>

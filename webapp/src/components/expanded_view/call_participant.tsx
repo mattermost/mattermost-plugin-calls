@@ -1,9 +1,9 @@
 import {Reaction} from '@calls/common/lib/types';
 import React from 'react';
-import {useIntl} from 'react-intl';
 import {CSSObject} from 'styled-components';
 
 import Avatar from 'src/components/avatar/avatar';
+import {HostBadge} from 'src/components/badge';
 import {Emoji} from 'src/components/emoji/emoji';
 import HandEmoji from 'src/components/icons/hand';
 import MutedIcon from 'src/components/icons/muted_icon';
@@ -20,7 +20,6 @@ export type Props = {
 }
 
 export default function CallParticipant(props: Props) {
-    const {formatMessage} = useIntl();
     const MuteIcon = props.isMuted ? MutedIcon : UnmutedIcon;
 
     if (!props.pictureURL) {
@@ -88,21 +87,7 @@ export default function CallParticipant(props: Props) {
                 {props.name}
             </span>
 
-            {props.isHost &&
-                <span
-                    style={{
-                        fontWeight: 600,
-                        padding: '0 4px',
-                        textTransform: 'uppercase',
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        lineHeight: '16px',
-                    }}
-                >
-                    {formatMessage({defaultMessage: 'Host'})}
-                </span>
-            }
+            {props.isHost && <HostBadge/>}
         </li>
     );
 }
