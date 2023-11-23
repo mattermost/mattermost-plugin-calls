@@ -1,10 +1,9 @@
-import {connect} from 'react-redux';
-import {withRouter} from 'react-router-dom';
-
 import {GlobalState} from '@mattermost/types/store';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
+import {connect} from 'react-redux';
+import {withRouter} from 'react-router-dom';
 import {
     hideExpandedView,
     prefetchThread,
@@ -15,21 +14,21 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
-    recordingForCurrentCall,
-    isRecordingInCurrentCall,
+    callStartAtForCurrentCall,
+    channelForCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
+    hostChangeAtForCurrentCall,
+    hostIDForCurrentCall,
+    isRecordingInCurrentCall,
+    profilesInCurrentCallMap,
+    recordingForCurrentCall,
     recordingMaxDuration,
     recordingsEnabled,
-    hostIDForCurrentCall,
-    hostChangeAtForCurrentCall,
-    callStartAtForCurrentCall,
-    threadIDForCallInChannel,
     screenSharingSessionForCurrentCall,
-    channelForCurrentCall,
-    sessionsInCurrentCall,
     sessionForCurrentCall,
-    profilesInCurrentCallMap,
+    sessionsInCurrentCall,
+    threadIDForCallInChannel,
 } from 'src/selectors';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';

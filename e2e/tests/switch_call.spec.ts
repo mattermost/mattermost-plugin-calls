@@ -1,7 +1,7 @@
-import {test, expect, chromium} from '@playwright/test';
+import {chromium, expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {getUserStoragesForTest, getUserIdxForTest} from '../utils';
+import {getUserIdxForTest, getUserStoragesForTest} from '../utils';
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);

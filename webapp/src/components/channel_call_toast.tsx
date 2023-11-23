@@ -1,17 +1,16 @@
+import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import React from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-
-import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import ConnectedProfiles from 'src/components/connected_profiles';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import {useDismissJoin} from 'src/components/incoming_calls/hooks';
 import Timestamp from 'src/components/timestamp';
 import {
+    callInCurrentChannel,
     channelIDForCurrentCall,
     dismissedCallForCurrentChannel,
     isLimitRestricted,
-    callInCurrentChannel,
     profilesInCallInCurrentChannel,
 } from 'src/selectors';
 import {callStartedTimestampFn} from 'src/utils';

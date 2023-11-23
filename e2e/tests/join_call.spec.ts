@@ -1,7 +1,7 @@
-import {test, expect, chromium} from '@playwright/test';
+import {chromium, expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {newUserPage, startCall, joinCall, getUserStoragesForTest, getUsernamesForTest} from '../utils';
+import {getUsernamesForTest, getUserStoragesForTest, joinCall, newUserPage, startCall} from '../utils';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();

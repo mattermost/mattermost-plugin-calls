@@ -1,7 +1,7 @@
-import {test, expect} from '@playwright/test';
+import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {getChannelNamesForTest, getUserStoragesForTest, getUsernamesForTest} from '../utils';
+import {getChannelNamesForTest, getUsernamesForTest, getUserStoragesForTest} from '../utils';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();

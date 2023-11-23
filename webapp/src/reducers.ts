@@ -1,8 +1,7 @@
 /* eslint-disable max-lines */
 import {CallRecordingState, CallsConfig, Reaction, UserSessionState} from '@calls/common/lib/types';
-import {combineReducers} from 'redux';
-
 import {UserProfile} from '@mattermost/types/users';
+import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {
     CallsConfigDefault,
@@ -14,28 +13,38 @@ import {
 } from 'src/types/types';
 
 import {
+    ADD_INCOMING_CALL,
+    CALL_END,
+    CALL_HOST,
+    CALL_REC_PROMPT_DISMISSED,
+    CALL_RECORDING_STATE,
+    CALL_STATE,
     DESKTOP_WIDGET_CONNECTED,
+    DID_NOTIFY_FOR_CALL,
+    DID_RING_FOR_CALL,
+    DISMISS_CALL,
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
+    PROFILE_JOINED,
+    PROFILES_JOINED,
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CHANNEL_STATE,
+    RECORDINGS_ENABLED,
+    REMOVE_INCOMING_CALL,
+    RINGING_FOR_CALL,
+    RTCD_ENABLED,
     SHOW_END_CALL_MODAL,
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
-    CALL_END,
-    CALL_REC_PROMPT_DISMISSED,
-    CALL_RECORDING_STATE,
-    CALL_STATE,
-    CALL_HOST,
-    PROFILE_JOINED,
-    PROFILES_JOINED,
     UNINIT,
     USER_JOINED,
+    USER_JOINED_TIMEOUT,
     USER_LEFT,
+    USER_LOWER_HAND,
     USER_MUTED,
     USER_RAISE_HAND,
     USER_REACTED,
@@ -43,19 +52,9 @@ import {
     USER_SCREEN_OFF,
     USER_SCREEN_ON,
     USER_UNMUTED,
-    USER_LOWER_HAND,
     USER_VOICE_OFF,
     USER_VOICE_ON,
     USERS_STATES,
-    USER_JOINED_TIMEOUT,
-    RECORDINGS_ENABLED,
-    ADD_INCOMING_CALL,
-    REMOVE_INCOMING_CALL,
-    DID_RING_FOR_CALL,
-    RTCD_ENABLED,
-    DID_NOTIFY_FOR_CALL,
-    RINGING_FOR_CALL,
-    DISMISS_CALL,
 } from './action_types';
 
 type channelsState = {

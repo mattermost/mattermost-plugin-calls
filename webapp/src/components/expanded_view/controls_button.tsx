@@ -1,10 +1,9 @@
 import React, {useRef} from 'react';
 import {OverlayTrigger} from 'react-bootstrap';
-import styled, {css} from 'styled-components';
-
 import CompassIcon from 'src/components/icons/compassIcon';
 import {StyledTooltip} from 'src/components/shared';
 import Shortcut from 'src/components/shortcut';
+import styled, {css} from 'styled-components';
 
 export type Props = {
     id: string,

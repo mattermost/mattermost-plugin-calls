@@ -1,6 +1,5 @@
+import {chromium, expect, test} from '@playwright/test';
 import {readFile} from 'fs/promises';
-
-import {test, expect, chromium} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {getUserStoragesForTest} from '../utils';

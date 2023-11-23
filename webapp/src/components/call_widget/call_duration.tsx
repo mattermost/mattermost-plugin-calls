@@ -1,5 +1,5 @@
 import {Duration} from 'luxon';
-import React, {CSSProperties, useState, useEffect} from 'react';
+import React, {CSSProperties, useEffect, useState} from 'react';
 
 type Props = {
     startAt: number,
