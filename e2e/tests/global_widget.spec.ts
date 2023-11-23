@@ -1,4 +1,4 @@
-import {test, expect} from '@playwright/test';
+import {expect, test} from '@playwright/test';
 
 import {baseURL, defaultTeam, pluginID} from '../constants';
 import PlaywrightDevPage from '../page';
