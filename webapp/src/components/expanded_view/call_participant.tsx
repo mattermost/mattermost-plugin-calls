@@ -1,6 +1,5 @@
 import {Reaction} from '@calls/common/lib/types';
 import React from 'react';
-import {useIntl} from 'react-intl';
 import Avatar from 'src/components/avatar/avatar';
 import {HostBadge} from 'src/components/badge';
 import {Emoji} from 'src/components/emoji/emoji';
