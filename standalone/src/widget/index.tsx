@@ -11,9 +11,9 @@ import {
 } from 'plugin/log';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
-    sendDesktopEvent,
-    playSound,
     fetchTranslationsFile,
+    playSound,
+    sendDesktopEvent,
 } from 'plugin/utils';
 import React from 'react';
 import ReactDOM from 'react-dom';

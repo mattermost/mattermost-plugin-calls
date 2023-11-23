@@ -1,5 +1,4 @@
 import {defineMessage, MessageDescriptor} from 'react-intl';
-
 import {CallAlertConfig, CallAlertType} from 'src/types/types';
 
 export const MAX_NUM_REACTIONS_IN_REACTION_STREAM = 50;

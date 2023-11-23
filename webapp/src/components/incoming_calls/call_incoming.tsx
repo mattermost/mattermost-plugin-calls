@@ -1,12 +1,10 @@
-import React from 'react';
-import {FormattedMessage, useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
-import styled from 'styled-components';
-
 import {GlobalState} from '@mattermost/types/store';
 import {
     getUser,
 } from 'mattermost-redux/selectors/entities/users';
+import React from 'react';
+import {FormattedMessage, useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
 import Avatar from 'src/components/avatar/avatar';
 import {Button} from 'src/components/buttons';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -18,6 +16,7 @@ import {
 } from 'src/components/incoming_calls/hooks';
 import RestClient from 'src/rest_client';
 import {ChannelType, IncomingCallNotification} from 'src/types/types';
+import styled from 'styled-components';
 
 type Props = {
     call: IncomingCallNotification;
