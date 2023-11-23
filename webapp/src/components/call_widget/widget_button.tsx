@@ -1,9 +1,8 @@
-import React, {useRef, useState, CSSProperties} from 'react';
+import React, {CSSProperties, useRef, useState} from 'react';
 import {Overlay} from 'react-bootstrap';
-import styled, {css} from 'styled-components';
-
 import {StyledTooltip} from 'src/components/shared';
 import Shortcut from 'src/components/shortcut';
+import styled, {css} from 'styled-components';
 
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 

@@ -1,8 +1,7 @@
+import {chromium} from '@playwright/test';
 import * as fs from 'fs';
 
-import {chromium} from '@playwright/test';
-
-import {userPrefix, channelPrefix} from './constants';
+import {channelPrefix, userPrefix} from './constants';
 import PlaywrightDevPage from './page';
 
 export const headers = {'X-Requested-With': 'XMLHttpRequest'};

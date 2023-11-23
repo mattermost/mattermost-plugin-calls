@@ -1,7 +1,6 @@
 import React from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-
 import {rtcdEnabled} from 'src/selectors';
 import {untranslatable} from 'src/utils';
 

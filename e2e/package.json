@@ -8,10 +8,12 @@
   "devDependencies": {
     "@babel/core": "7.20.12",
     "@babel/eslint-parser": "7.19.1",
+    "@mattermost/types": "6.7.0-0",
     "@playwright/test": "1.33.0",
     "@typescript-eslint/eslint-plugin": "5.49.0",
     "eslint": "8.33.0",
     "eslint-plugin-import": "2.27.5",
-    "@mattermost/types": "6.7.0-0"
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "eslint-plugin-unused-imports": "^2.0.0"
   }
 }

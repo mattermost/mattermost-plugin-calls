@@ -13,7 +13,9 @@
   },
   "parser": "@babel/eslint-parser",
   "plugins": [
-    "import"
+    "import",
+    "unused-imports",
+    "simple-import-sort"
   ],
   "env": {
     "browser": true,
@@ -39,6 +41,8 @@
     }
   },
   "rules": {
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error",
     "array-bracket-spacing": [
       2,
       "never"
@@ -132,33 +136,6 @@
     "guard-for-in": 0,
     "id-blacklist": 0,
     "import/no-unresolved": 2,
-    "import/order": [
-      "error",
-      {
-        "newlines-between": "always",
-        "groups": [
-          "builtin",
-          "external",
-          [
-            "internal",
-            "parent"
-          ],
-          "sibling",
-          "index"
-        ],
-        "pathGroups": [
-          {
-            "pattern": "(@mattermost|mattermost-redux)/**",
-            "group": "external",
-            "position": "after"
-          }
-        ],
-        "alphabetize": {
-          "order": "asc",
-          "caseInsensitive": true
-        }
-      }
-    ],
     "indent": [
       2,
       4,

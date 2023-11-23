@@ -1,16 +1,15 @@
 import React, {ComponentProps} from 'react';
 import {ModalHeader} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
-import styled from 'styled-components';
-
 import {
-    rtcPeerErr,
-    rtcPeerCloseErr,
     insecureContextErr,
+    rtcPeerCloseErr,
+    rtcPeerErr,
 } from 'src/client';
 import GenericModal from 'src/components/generic_modal';
 import LaptopAlertSVG from 'src/components/icons/laptop_alert_svg';
 import {untranslatable} from 'src/utils';
+import styled from 'styled-components';
 
 type CustomProps = {
     channelID?: string,
