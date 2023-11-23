@@ -33,6 +33,7 @@ interface Props {
     maxParticipants: number,
     militaryTime: boolean,
     compactDisplay: boolean,
+    isRHS: boolean,
 }
 
 const PostType = ({
@@ -43,6 +44,7 @@ const PostType = ({
     maxParticipants,
     militaryTime,
     compactDisplay,
+    isRHS,
 }: Props) => {
     const intl = useIntl();
     const {formatMessage} = intl;
@@ -137,7 +139,7 @@ const PostType = ({
         );
     }
 
-    const compactTitle = compactDisplay ? <br/> : <></>;
+    const compactTitle = compactDisplay && !isRHS ? <br/> : <></>;
     const title = post.props.title ? <h3 className='markdown__heading'>{post.props.title}</h3> : compactTitle;
     const callActive = !post.props.end_at;
     const inCall = connectedID === post.channel_id;

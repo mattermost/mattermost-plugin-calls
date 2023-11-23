@@ -14,6 +14,7 @@ import {
 
 interface OwnProps {
     post: Post,
+    isRHS: boolean,
 }
 
 const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
