@@ -1,6 +1,5 @@
 import React, {useState} from 'react';
 import {useIntl} from 'react-intl';
-
 import MutedIcon from 'src/components/icons/muted_icon';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 

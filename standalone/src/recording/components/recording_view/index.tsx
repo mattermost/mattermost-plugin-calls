@@ -8,14 +8,13 @@ import CallParticipant from 'plugin/components/expanded_view/call_participant';
 import {ReactionStream} from 'plugin/components/reaction_stream/reaction_stream';
 import {logErr} from 'plugin/log';
 import {alphaSortSessions, getUserDisplayName, stateSortSessions, untranslatable} from 'plugin/utils';
-import React, {useEffect, useState, useCallback} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import Timestamp from 'src/components/timestamp';
-import {screenSharingSessionForCurrentCall, hostIDForCurrentCall, profilesInCurrentCallMap, sessionsInCurrentCall} from 'src/selectors';
-
 import {callProfileImages} from 'src/recording/selectors';
+import {hostIDForCurrentCall, profilesInCurrentCallMap, screenSharingSessionForCurrentCall, sessionsInCurrentCall} from 'src/selectors';
 
 const MaxParticipantsPerRow = 10;
 

@@ -1,13 +1,6 @@
 /* eslint-disable max-lines */
 
 import {CallChannelState} from '@calls/common/lib/types';
-import React from 'react';
-import ReactDOM from 'react-dom';
-import {injectIntl, IntlProvider} from 'react-intl';
-import {Provider} from 'react-redux';
-import {AnyAction} from 'redux';
-import {batchActions} from 'redux-batched-actions';
-
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
@@ -15,15 +8,21 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import React from 'react';
+import ReactDOM from 'react-dom';
+import {injectIntl, IntlProvider} from 'react-intl';
+import {Provider} from 'react-redux';
+import {AnyAction} from 'redux';
+import {batchActions} from 'redux-batched-actions';
 import {
     displayCallErrorModal,
     displayCallsTestModeUser,
     displayFreeTrial,
     getCallsConfig,
     incomingCallOnChannel,
+    loadCallState,
     showScreenSourceModal,
     showSwitchCallModal,
-    loadCallState,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
@@ -52,17 +51,17 @@ import slashCommandsHandler from 'src/slash_commands';
 import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
-    DESKTOP_WIDGET_CONNECTED,
-    RECEIVED_CHANNEL_STATE,
-    PROFILES_JOINED,
     CALL_STATE,
-    UNINIT,
-    SHOW_SWITCH_CALL_MODAL,
-    USER_MUTED,
-    USER_UNMUTED,
-    USER_RAISE_HAND,
-    USER_LOWER_HAND,
+    DESKTOP_WIDGET_CONNECTED,
     DISMISS_CALL,
+    PROFILES_JOINED,
+    RECEIVED_CHANNEL_STATE,
+    SHOW_SWITCH_CALL_MODAL,
+    UNINIT,
+    USER_LOWER_HAND,
+    USER_MUTED,
+    USER_RAISE_HAND,
+    USER_UNMUTED,
 } from './action_types';
 import CallsClient from './client';
 import CallWidget from './components/call_widget';
@@ -80,20 +79,20 @@ import {logDebug, logErr} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
+    callsConfig,
+    callsExplicitlyDisabled,
+    callsExplicitlyEnabled,
+    callStartAtForCallInChannel,
+    channelHasCall,
     channelIDForCurrentCall,
-    isLimitRestricted,
-    iceServers,
-    needsTURNCredentials,
     defaultEnabled,
     hasPermissionsToEnableCalls,
+    iceServers,
     isCloudStarter,
-    ringingEnabled,
-    callStartAtForCallInChannel,
-    callsConfig,
-    callsExplicitlyEnabled,
-    callsExplicitlyDisabled,
-    channelHasCall,
+    isLimitRestricted,
+    needsTURNCredentials,
     profilesInCallInChannel,
+    ringingEnabled,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {DesktopNotificationArgs, PluginRegistry, Store} from './types/mattermost-webapp';
@@ -103,11 +102,11 @@ import {
     getChannelURL,
     getExpandedChannelID,
     getPluginPath,
-    getTranslations,
     getProfilesForSessions,
-    isDMChannel,
+    getTranslations,
     getUserIdFromDM,
     getWSConnectionURL,
+    isDMChannel,
     playSound,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
@@ -117,19 +116,19 @@ import {
     handleCallHostChanged,
     handleCallRecordingState,
     handleCallStart,
+    handleCallState,
     handleUserDismissedNotification,
+    handleUserJoined,
+    handleUserLeft,
     handleUserMuted,
     handleUserRaisedHand,
     handleUserReaction,
-    handleCallState,
-    handleUserUnmuted,
-    handleUserVoiceOn,
-    handleUserVoiceOff,
-    handleUserScreenOn,
     handleUserScreenOff,
+    handleUserScreenOn,
+    handleUserUnmuted,
     handleUserUnraisedHand,
-    handleUserJoined,
-    handleUserLeft,
+    handleUserVoiceOff,
+    handleUserVoiceOn,
 } from './websocket_handlers';
 
 export default class Plugin {

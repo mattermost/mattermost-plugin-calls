@@ -1,4 +1,4 @@
-import {test, expect, chromium} from '@playwright/test';
+import {chromium, expect, test} from '@playwright/test';
 
 import {apiEnableTranscriptions, apiDisableTranscriptions} from '../config';
 import {baseURL, defaultTeam, pluginID, adminState} from '../constants';

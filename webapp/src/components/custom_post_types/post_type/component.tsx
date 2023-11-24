@@ -1,14 +1,12 @@
+import {Post} from '@mattermost/types/posts';
+import {GlobalState} from '@mattermost/types/store';
+import {UserProfile} from '@mattermost/types/users';
 import {DateTime, Duration as LuxonDuration} from 'luxon';
+import {getUser} from 'mattermost-redux/selectors/entities/users';
 import React, {useCallback} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-import styled from 'styled-components';
-
-import {Post} from '@mattermost/types/posts';
-import {GlobalState} from '@mattermost/types/store';
-import {UserProfile} from '@mattermost/types/users';
-import {getUser} from 'mattermost-redux/selectors/entities/users';
 import ConnectedProfiles from 'src/components/connected_profiles';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
@@ -19,12 +17,13 @@ import {Header, SubHeader} from 'src/components/shared';
 import Timestamp from 'src/components/timestamp';
 import {idForCallInChannel} from 'src/selectors';
 import {
-    shouldRenderDesktopWidget,
-    sendDesktopEvent,
-    untranslatable,
+    callStartedTimestampFn,
     getUserDisplayName,
-    toHuman, callStartedTimestampFn,
+    sendDesktopEvent,
+    shouldRenderDesktopWidget,
+    toHuman, untranslatable,
 } from 'src/utils';
+import styled from 'styled-components';
 
 interface Props {
     post: Post,
@@ -33,6 +32,8 @@ interface Props {
     isCloudPaid: boolean,
     maxParticipants: number,
     militaryTime: boolean,
+    compactDisplay: boolean,
+    isRHS: boolean,
 }
 
 const PostType = ({
@@ -42,6 +43,8 @@ const PostType = ({
     isCloudPaid,
     maxParticipants,
     militaryTime,
+    compactDisplay,
+    isRHS,
 }: Props) => {
     const intl = useIntl();
     const {formatMessage} = intl;
@@ -136,6 +139,8 @@ const PostType = ({
         );
     }
 
+    const compactTitle = compactDisplay && !isRHS ? <br/> : <></>;
+    const title = post.props.title ? <h3 className='markdown__heading'>{post.props.title}</h3> : compactTitle;
     const callActive = !post.props.end_at;
     const inCall = connectedID === post.channel_id;
     const button = inCall ? (
@@ -150,9 +155,7 @@ const PostType = ({
 
     return (
         <>
-            {post.props.title &&
-                <h3 className='markdown__heading'>{post.props.title}</h3>
-            }
+            {title}
             <Main data-testid={'call-thread'}>
                 <SubMain ended={Boolean(post.props.end_at)}>
                     <Left>

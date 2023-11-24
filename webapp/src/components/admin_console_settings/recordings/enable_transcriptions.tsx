@@ -4,11 +4,10 @@
 import React, {ChangeEvent, useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
-import {CustomComponentProps} from 'src/types/mattermost-webapp';
-
 import {setTranscriptionsEnabled} from 'src/actions';
 import {leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
+import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 export const EnableTranscriptions = (props: CustomComponentProps) => {
     const dispatch = useDispatch();

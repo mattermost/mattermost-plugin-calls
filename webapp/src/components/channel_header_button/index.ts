@@ -1,16 +1,15 @@
-import {connect} from 'react-redux';
-
 import {GlobalState} from '@mattermost/types/store';
 import {getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {connect} from 'react-redux';
 import {
-    profilesInCallInCurrentChannel,
+    callsShowButton,
     channelIDForCurrentCall,
     isCloudProfessionalOrEnterpriseOrTrial,
+    isCloudStarter,
     isLimitRestricted,
     maxParticipants,
-    isCloudStarter,
-    callsShowButton,
+    profilesInCallInCurrentChannel,
 } from 'src/selectors';
 
 import ChannelHeaderButton from './component';

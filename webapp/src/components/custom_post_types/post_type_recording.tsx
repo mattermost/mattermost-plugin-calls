@@ -1,11 +1,10 @@
+import {GlobalState} from '@mattermost/types/store';
 import React from 'react';
 import {FormattedMessage} from 'react-intl';
 import {useSelector} from 'react-redux';
-import styled from 'styled-components';
-
-import {GlobalState} from '@mattermost/types/store';
 import IconAI from 'src/components/icons/ai';
 import {transcriptionsEnabled} from 'src/selectors';
+import styled from 'styled-components';
 
 const aiPluginID = 'mattermost-ai';
 

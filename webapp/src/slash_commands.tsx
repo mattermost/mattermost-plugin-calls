@@ -1,16 +1,15 @@
 
-import {defineMessage} from 'react-intl';
-
 import {CommandArgs} from '@mattermost/types/integrations';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionResult} from 'mattermost-redux/types/actions';
+import {defineMessage} from 'react-intl';
 import {SHOW_END_CALL_MODAL} from 'src/action_types';
 import {
+    displayGenericErrorModal,
     startCallRecording,
     stopCallRecording,
-    displayGenericErrorModal,
     trackEvent,
 } from 'src/actions';
 import {DisabledCallsErr} from 'src/constants';
@@ -18,11 +17,11 @@ import * as Telemetry from 'src/types/telemetry';
 
 import {logDebug} from './log';
 import {
-    channelIDForCurrentCall,
-    profilesInCallInChannel,
     callOwnerIDForCallInChannel,
+    channelIDForCurrentCall,
     hostIDForCurrentCall,
     isRecordingInCurrentCall,
+    profilesInCallInChannel,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
 import {sendDesktopEvent, shouldRenderDesktopWidget} from './utils';

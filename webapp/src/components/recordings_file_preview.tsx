@@ -1,12 +1,11 @@
-import React, {useMemo} from 'react';
-import {useSelector} from 'react-redux';
-import styled from 'styled-components';
-
 import {FileInfo} from '@mattermost/types/files';
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {Client4} from 'mattermost-redux/client';
 import {getPost} from 'mattermost-redux/selectors/entities/posts';
+import React, {useMemo} from 'react';
+import {useSelector} from 'react-redux';
+import styled from 'styled-components';
 
 type Props = {
     fileInfo: FileInfo;

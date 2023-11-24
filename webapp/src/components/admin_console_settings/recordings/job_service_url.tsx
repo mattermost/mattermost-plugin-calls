@@ -3,13 +3,12 @@
 
 import React, {ChangeEvent} from 'react';
 import {useSelector} from 'react-redux';
-import {CustomComponentProps} from 'src/types/mattermost-webapp';
-
 import {
     LabelRow, leftCol, rightCol,
 } from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
 import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
+import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const JobServiceURL = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);

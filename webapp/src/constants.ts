@@ -1,5 +1,4 @@
 import {defineMessage, MessageDescriptor} from 'react-intl';
-
 import {CallAlertConfig, CallAlertType} from 'src/types/types';
 
 export const MAX_NUM_REACTIONS_IN_REACTION_STREAM = 50;
@@ -10,6 +9,11 @@ export const RING_LENGTH = 30000;
 export const DEFAULT_RING_SOUND = 'Calm';
 export const CALL_START_POST_TYPE = 'custom_calls';
 export const CALL_RECORDING_POST_TYPE = 'custom_calls_recording';
+
+// From mattermost-webapp/webapp/channels/src/utils/constants.tsx, importing causes tsc to throw fits.
+export const MESSAGE_DISPLAY = 'message_display';
+export const MESSAGE_DISPLAY_COMPACT = 'compact';
+export const MESSAGE_DISPLAY_DEFAULT = 'clean';
 
 export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
     missingAudioInput: {

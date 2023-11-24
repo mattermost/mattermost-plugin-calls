@@ -1,6 +1,5 @@
-import * as fs from 'fs/promises';
-
 import {FullConfig} from '@playwright/test';
+import * as fs from 'fs/promises';
 
 import {adminState, userPrefix} from './constants';
 
