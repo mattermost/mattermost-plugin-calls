@@ -1,7 +1,7 @@
 import {expect} from '@playwright/test';
 import {APIRequestContext} from 'playwright-core';
 
-import {baseURL, adminState} from './constants';
+import {adminState, baseURL} from './constants';
 import {headers, newUserPage} from './utils';
 
 export const apiPatchNotifyProps = async (request: APIRequestContext, newProps: Record<string, string>) => {

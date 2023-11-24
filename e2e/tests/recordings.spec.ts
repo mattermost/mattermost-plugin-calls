@@ -1,7 +1,7 @@
 import {chromium, expect, test} from '@playwright/test';
 
-import {apiEnableTranscriptions, apiDisableTranscriptions} from '../config';
-import {baseURL, defaultTeam, pluginID, adminState} from '../constants';
+import {apiDisableTranscriptions, apiEnableTranscriptions} from '../config';
+import {adminState, baseURL, defaultTeam, pluginID} from '../constants';
 import PlaywrightDevPage from '../page';
 import {getUserStoragesForTest, newUserPage} from '../utils';
 

@@ -1,7 +1,7 @@
-import {request, expect} from '@playwright/test';
+import {expect, request} from '@playwright/test';
 import {APIRequestContext} from 'playwright-core';
 
-import {baseURL, adminState, pluginID} from './constants';
+import {adminState, baseURL, pluginID} from './constants';
 import {headers, newUserPage} from './utils';
 
 type CallsConfig = {
