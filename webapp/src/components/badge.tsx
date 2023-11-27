@@ -96,7 +96,7 @@ export const HostBadge = ({onWhiteBg}: HostBadgeProps) => {
     const {formatMessage} = useIntl();
 
     return (
-        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: 'auto', padding: '1px 2px'}}>
+        <div style={{padding: '1px 2px'}}>
             <HBadge onWhiteBg={onWhiteBg}>
                 {formatMessage({defaultMessage: 'Host'})}
             </HBadge>

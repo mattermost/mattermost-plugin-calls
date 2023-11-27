@@ -933,7 +933,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 const isMuted = !session.unmuted;
                 const isSpeaking = Boolean(session.voice);
                 const isHandRaised = Boolean(session.raised_hand > 0);
+                const isYou = session.session_id === this.props.currentSession?.session_id;
                 const isHost = this.props.callHostID === session.user_id;
+                let youStyle: CSSProperties = {color: 'rgba(var(--center-channel-color-rgb), 0.56)'};
+                if (isYou && isHost) {
+                    youStyle = {...youStyle, marginLeft: '2px'};
+                }
 
                 const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
@@ -959,7 +964,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             className='MenuItem__primary-text'
                             style={{
                                 display: 'block',
-                                flex: 1,
                                 whiteSpace: 'pre',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -970,17 +974,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         >
                             {getUserDisplayName(profile)}
                         </span>
-                        {session.session_id === this.props.currentSession?.session_id &&
-                            <span
-                                style={{
-                                    color: 'rgba(var(--center-channel-color-rgb), 0.56)',
-                                    whiteSpace: 'pre-wrap',
-                                }}
-                            >
-                                {untranslatable(' ')}{formatMessage({defaultMessage: '(you)'})}
+
+                        {(isYou || isHost) &&
+                            <span style={{marginLeft: -8, display: 'flex', alignItems: 'baseline'}}>
+                                {isHost && <HostBadge onWhiteBg={true}/>}
+                                {isYou &&
+                                    <span style={youStyle}>
+                                        {formatMessage({defaultMessage: '(you)'})}
+                                    </span>
+                                }
                             </span>
                         }
-                        {isHost && <HostBadge onWhiteBg={true}/>}
 
                         <span
                             style={{

@@ -16,7 +16,7 @@ import {UserProfile} from '@mattermost/types/users';
 import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
-import React from 'react';
+import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
@@ -825,7 +825,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             const isSpeaking = Boolean(session.voice);
             const isHandRaised = Boolean(session.raised_hand > 0);
             const profile = this.props.profiles[session.user_id];
+            const isYou = session.session_id === this.props.currentSession?.session_id;
             const isHost = this.props.callHostID === session.user_id;
+            let youStyle: CSSProperties = {color: 'rgba(var(--center-channel-color-rgb), 0.56)'};
+            if (isYou && isHost) {
+                youStyle = {...youStyle, marginLeft: '2px'};
+            }
 
             if (!profile) {
                 return null;
@@ -849,7 +854,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <span
                         style={{
                             display: 'block',
-                            flex: 1,
                             whiteSpace: 'pre',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -861,8 +865,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         {getUserDisplayName(profile)}
                     </span>
 
-                    {session.session_id === this.props.currentSession?.session_id && formatMessage({defaultMessage: '(you)'})}
-                    {isHost && <HostBadge onWhiteBg={true}/>}
+                    {(isYou || isHost) &&
+                        <span style={{marginLeft: -4, display: 'flex', alignItems: 'baseline'}}>
+                            {isHost && <HostBadge onWhiteBg={true}/>}
+                            {isYou &&
+                                <span style={youStyle}>
+                                    {formatMessage({defaultMessage: '(you)'})}
+                                </span>
+                            }
+                        </span>
+                    }
 
                     <div
                         style={{
