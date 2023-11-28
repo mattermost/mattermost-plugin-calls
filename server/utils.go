@@ -259,7 +259,7 @@ func (p *Plugin) genFilenameForCall(channelID string) (filename string) {
 	// In the future we can be a bit more clever if needed.
 	name = truncateString(name, channelNameMaxLength)
 
-	filename = sanitizeFilename(fmt.Sprintf("Call_%s_%s", strings.ReplaceAll(name, " ", "-"), time.Now().UTC().Format("2006-01-02_15-04-05")))
+	filename = sanitizeFilename(fmt.Sprintf("Call_%s_%s", strings.ReplaceAll(name, " ", "_"), time.Now().UTC().Format("2006-01-02_15-04-05")))
 
 	return
 }
