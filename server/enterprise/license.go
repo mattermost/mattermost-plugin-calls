@@ -34,8 +34,14 @@ func (e *LicenseChecker) RTCDAllowed() bool {
 	return e.isAtLeastE20Licensed() || license.IsCloud(e.api.GetLicense())
 }
 
-// RecordingsALlowed returns true if the license allows use of
+// RecordingsAllowed returns true if the license allows use of
 // the call recordings functionality.
 func (e *LicenseChecker) RecordingsAllowed() bool {
+	return e.isAtLeastE20Licensed()
+}
+
+// RecordingsAllowed returns true if the license allows use of
+// the call transcriptions functionality.
+func (e *LicenseChecker) TranscriptionsAllowed() bool {
 	return e.isAtLeastE20Licensed()
 }

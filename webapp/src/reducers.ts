@@ -40,6 +40,7 @@ import {
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
+    TRANSCRIPTIONS_ENABLED,
     UNINIT,
     USER_JOINED,
     USER_JOINED_TIMEOUT,
@@ -748,6 +749,8 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
         return action.data;
     case RECORDINGS_ENABLED:
         return {...state, EnableRecordings: action.data};
+    case TRANSCRIPTIONS_ENABLED:
+        return {...state, EnableTranscriptions: action.data};
     default:
         return state;
     }

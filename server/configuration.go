@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
 	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -63,6 +64,8 @@ type configuration struct {
 	// Ringing is default off (for now -- 8.0), allow sysadmins to turn it on.
 	// When set to true it enables ringing for DM/GM channels.
 	EnableRinging *bool
+	// The speech-to-text model size to use to transcribe calls.
+	TranscriberModelSize transcriber.ModelSize
 
 	clientConfig
 }
@@ -91,6 +94,8 @@ type clientConfig struct {
 	AllowScreenSharing *bool
 	// When set to true it enables the call recordings functionality
 	EnableRecordings *bool
+	// When set to true it enables the call transcriptions functionality
+	EnableTranscriptions *bool
 	// The maximum duration (in minutes) for call recordings.
 	MaxRecordingDuration *int
 	// When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.
@@ -155,6 +160,7 @@ func (c *configuration) getClientConfig() clientConfig {
 		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
 		AllowScreenSharing:   c.AllowScreenSharing,
 		EnableRecordings:     c.EnableRecordings,
+		EnableTranscriptions: c.EnableTranscriptions,
 		MaxRecordingDuration: c.MaxRecordingDuration,
 		EnableSimulcast:      c.EnableSimulcast,
 		EnableRinging:        c.EnableRinging,
@@ -189,6 +195,9 @@ func (c *configuration) SetDefaults() {
 	if c.EnableRecordings == nil {
 		c.EnableRecordings = model.NewBool(false)
 	}
+	if c.EnableTranscriptions == nil {
+		c.EnableTranscriptions = model.NewBool(false)
+	}
 	if c.MaxRecordingDuration == nil {
 		c.MaxRecordingDuration = model.NewInt(defaultRecDurationMinutes)
 	}
@@ -203,6 +212,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.EnableRinging == nil {
 		c.EnableRinging = model.NewBool(false)
+	}
+	if c.TranscriberModelSize == "" {
+		c.TranscriberModelSize = transcriber.ModelSizeDefault
 	}
 }
 
@@ -247,6 +259,10 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("RecordingQuality is not valid")
 	}
 
+	if ok := c.TranscriberModelSize.IsValid(); !ok {
+		return fmt.Errorf("TranscriberModelSize is not valid")
+	}
+
 	return nil
 }
 
@@ -261,6 +277,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.JobServiceURL = c.JobServiceURL
 	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 	cfg.RecordingQuality = c.RecordingQuality
+	cfg.TranscriberModelSize = c.TranscriberModelSize
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = model.NewInt(*c.UDPServerPort)
@@ -307,6 +324,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.EnableRecordings = model.NewBool(*c.EnableRecordings)
 	}
 
+	if c.EnableTranscriptions != nil {
+		cfg.EnableTranscriptions = model.NewBool(*c.EnableTranscriptions)
+	}
+
 	if c.MaxRecordingDuration != nil {
 		cfg.MaxRecordingDuration = model.NewInt(*c.MaxRecordingDuration)
 	}
@@ -342,6 +363,13 @@ func (c *configuration) getJobServiceURL() string {
 
 func (c *configuration) recordingsEnabled() bool {
 	if c.EnableRecordings != nil && *c.EnableRecordings {
+		return true
+	}
+	return false
+}
+
+func (c *configuration) transcriptionsEnabled() bool {
+	if c.recordingsEnabled() && c.EnableTranscriptions != nil && *c.EnableTranscriptions {
 		return true
 	}
 	return false
