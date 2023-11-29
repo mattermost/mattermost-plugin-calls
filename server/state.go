@@ -29,22 +29,22 @@ type callStats struct {
 }
 
 type callState struct {
-	ID                    string                `json:"id"`
-	StartAt               int64                 `json:"create_at"`
-	EndAt                 int64                 `json:"end_at"`
-	Sessions              map[string]*userState `json:"sessions,omitempty"`
-	OwnerID               string                `json:"owner_id"`
-	ThreadID              string                `json:"thread_id"`
-	PostID                string                `json:"post_id"`
-	ScreenSharingID       string                `json:"screen_sharing_id"`
-	ScreenStreamID        string                `json:"screen_stream_id"`
-	ScreenStartAt         int64                 `json:"screen_start_at"`
-	Stats                 callStats             `json:"stats"`
-	RTCDHost              string                `json:"rtcd_host"`
-	HostID                string                `json:"host_id"`
-	Recording             *jobState             `json:"recording,omitempty"`
-	Transcription         *jobState             `json:"transcription,omitempty"`
-	DismissedNotification map[string]bool       `json:"dismissed_notification,omitempty"`
+	ID                     string                `json:"id"`
+	StartAt                int64                 `json:"create_at"`
+	EndAt                  int64                 `json:"end_at"`
+	Sessions               map[string]*userState `json:"sessions,omitempty"`
+	OwnerID                string                `json:"owner_id"`
+	ThreadID               string                `json:"thread_id"`
+	PostID                 string                `json:"post_id"`
+	ScreenSharingSessionID string                `json:"screen_sharing_session_id"`
+	ScreenStreamID         string                `json:"screen_stream_id"`
+	ScreenStartAt          int64                 `json:"screen_start_at"`
+	Stats                  callStats             `json:"stats"`
+	RTCDHost               string                `json:"rtcd_host"`
+	HostID                 string                `json:"host_id"`
+	Recording              *jobState             `json:"recording,omitempty"`
+	Transcription          *jobState             `json:"transcription,omitempty"`
+	DismissedNotification  map[string]bool       `json:"dismissed_notification,omitempty"`
 }
 
 type channelState struct {
@@ -235,7 +235,7 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 	}
 
 	var screenSharingUserID string
-	if s := cs.Sessions[cs.ScreenSharingID]; s != nil {
+	if s := cs.Sessions[cs.ScreenSharingSessionID]; s != nil {
 		screenSharingUserID = s.UserID
 	}
 
@@ -255,7 +255,7 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		// DEPRECATED since v0.21
 		ScreenSharingID: screenSharingUserID,
 
-		ScreenSharingSessionID: cs.ScreenSharingID,
+		ScreenSharingSessionID: cs.ScreenSharingSessionID,
 		OwnerID:                cs.OwnerID,
 		HostID:                 cs.HostID,
 		Recording:              cs.Recording.getClientState(),

@@ -117,17 +117,17 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 	}
 
 	if msg.Type == clientMessageTypeScreenOn {
-		if state.Call.ScreenSharingID != "" {
-			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingID)
+		if state.Call.ScreenSharingSessionID != "" {
+			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingSessionID)
 		}
-		state.Call.ScreenSharingID = us.originalConnID
+		state.Call.ScreenSharingSessionID = us.originalConnID
 		state.Call.ScreenStreamID = data["screenStreamID"]
 		state.Call.ScreenStartAt = time.Now().Unix()
 	} else {
-		if state.Call.ScreenSharingID != us.originalConnID {
-			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingID)
+		if state.Call.ScreenSharingSessionID != us.originalConnID {
+			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingSessionID)
 		}
-		state.Call.ScreenSharingID = ""
+		state.Call.ScreenSharingSessionID = ""
 		state.Call.ScreenStreamID = ""
 		if state.Call.ScreenStartAt > 0 {
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
