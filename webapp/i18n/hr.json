@@ -1,7 +1,6 @@
 {
   "/WMCDd": "Dogodila se greška!",
   "/c+F8S": "Poziv od <b>{callerName}</b> sa <b>{others}</b>",
-  "/tRHJl": "Snimaš ovaj sastanak. Razmisli o tome da obavijestiš sve sudionike da se ovaj sastanak snima.",
   "0Ihpmc": "Snimi poziv",
   "0LuKMT": "Već se nalaziš u pozivu",
   "0UG4R4": "Povezivanje s pozivom…",
@@ -63,7 +62,6 @@
   "N2IrpM": "Potvrdi",
   "O6EeNO": "Dozvoli domaćinima poziva snimanje video i audio snimaka sastanka u oblaku. Snimanje uključuje prikaz cijelog prozora poziva zajedno s audio snimkom sudionika i svim zajedničkim video snimkama. <featureLink>Saznaj više o ovoj značajci</featureLink>.",
   "OKhRC6": "Dijeli",
-  "OlfjBf": "Snimku možeš pronaći u temi razgovora ovog poziva nakon što se obradi.",
   "OvzONl": "Isključi",
   "P6PLpi": "Pridruži se",
   "PjoOvw": "Dijeliš svoj ekran",
@@ -89,7 +87,6 @@
   "Xq3WJ4": "Nema dozvola za unos zvuka",
   "YJPC7G": "Stvarno želiš prekinuti poziv sa sudionikom <participant>{name}</participant>?",
   "Z/nRgQ": "Standardno – {deviceLabel}",
-  "ZaJteE": "Domaćin je započeo snimanje ovog sastanka. Ostankom na sastanku odobravaš da te se snima.",
   "Zh+5A6": "Uključi",
   "ZhtEeD": "Nije moguće započeti poziv",
   "ZvZBwP": "Napusti i pridruži se novom pozivu",
