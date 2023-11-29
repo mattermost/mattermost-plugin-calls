@@ -78,3 +78,18 @@ func (p *Plugin) KVGet(key string, fromWriter bool) ([]byte, error) {
 
 	return data, nil
 }
+
+func (p *Plugin) updateFileInfoPostID(fileID, postID string) error {
+	qb := getQueryBuilder(p.driverName).Update("FileInfo").
+		Set("PostId", postID).
+		Where(sq.Eq{"Id": fileID})
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return err
+	}
+	if _, err := p.wDB.Exec(q, args...); err != nil {
+		return err
+	}
+
+	return nil
+}

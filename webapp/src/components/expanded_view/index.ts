@@ -29,6 +29,7 @@ import {
     sessionForCurrentCall,
     sessionsInCurrentCall,
     threadIDForCallInChannel,
+    transcriptionsEnabled,
 } from 'src/selectors';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
@@ -83,6 +84,7 @@ const mapStateToProps = (state: GlobalState) => {
         allowScreenSharing: allowScreenSharing(state),
         recordingsEnabled: recordingsEnabled(state),
         recordingMaxDuration: recordingMaxDuration(state),
+        transcriptionsEnabled: transcriptionsEnabled(state),
     };
 };
 

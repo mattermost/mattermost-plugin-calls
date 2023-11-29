@@ -330,6 +330,9 @@ export const allowScreenSharing = (state: GlobalState) =>
 export const recordingsEnabled = (state: GlobalState) =>
     callsConfig(state).EnableRecordings;
 
+export const transcriptionsEnabled = (state: GlobalState) =>
+    callsConfig(state).EnableTranscriptions;
+
 export const recordingMaxDuration = (state: GlobalState) =>
     callsConfig(state).MaxRecordingDuration;
 

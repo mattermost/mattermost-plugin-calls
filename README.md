@@ -25,7 +25,7 @@ This plugin demands some network configuration changes to allow audio/video comm
 > **_Note_**
 >
 > Building the plugin requires the following:
-> - Golang: version >= **1.18**
+> - Golang: version >= **1.21**
 > - NodeJS: version **16.x**
 > - NPM: version **8.x**
 
