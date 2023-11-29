@@ -13,7 +13,7 @@ const useAIAvailable = () => {
     return useSelector<GlobalState, boolean>((state) => Boolean(state.plugins?.plugins?.[aiPluginID]));
 };
 
-type CallsPostButtonClickedFunc = (post: any) => void;
+type CallsPostButtonClickedFunc = ((post: any) => void) | undefined;
 
 const useCallsPostButtonClicked = () => {
     return useSelector<GlobalState, CallsPostButtonClickedFunc>((state) => {
@@ -71,7 +71,7 @@ export const PostTypeRecording = (props: Props) => {
     return (
         <>
             {msg}
-            {aiAvailable &&
+            {aiAvailable && callsPostButtonClicked &&
             <CreateMeetingSummaryButton
                 onClick={createMeetingSummary}
             >
