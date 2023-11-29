@@ -206,8 +206,8 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 
 	state = state.Clone()
 
-	if state.Call.ScreenSharingID == userID {
-		state.Call.ScreenSharingID = ""
+	if state.Call.ScreenSharingSessionID == connID {
+		state.Call.ScreenSharingSessionID = ""
 		state.Call.ScreenStreamID = ""
 		if state.Call.ScreenStartAt > 0 {
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
@@ -311,7 +311,7 @@ func (p *Plugin) removeSession(us *session) error {
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 
 		// If the removed user was sharing we should send out a screen off event.
-		if prevState.Call.ScreenSharingID != "" && (currState.Call == nil || currState.Call.ScreenSharingID == "") {
+		if prevState.Call.ScreenSharingSessionID != "" && (currState.Call == nil || currState.Call.ScreenSharingSessionID == "") {
 			p.LogDebug("removed session was sharing, sending screen off event", "userID", us.userID, "connID", us.connID)
 			p.publishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 		}
