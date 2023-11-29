@@ -63,10 +63,10 @@ func TestCallStateGetClientState(t *testing.T) {
 					RaisedHand: 1100,
 				},
 			},
-			ThreadID:        "threadID",
-			ScreenSharingID: "sessionA",
-			OwnerID:         "ownerID",
-			HostID:          "hostID",
+			ThreadID:               "threadID",
+			ScreenSharingSessionID: "sessionA",
+			OwnerID:                "ownerID",
+			HostID:                 "hostID",
 		}
 		ccs := CallStateClient{
 			ID:      cs.ID,
@@ -88,7 +88,7 @@ func TestCallStateGetClientState(t *testing.T) {
 			},
 			ThreadID:               cs.ThreadID,
 			ScreenSharingID:        "userA",
-			ScreenSharingSessionID: cs.ScreenSharingID,
+			ScreenSharingSessionID: cs.ScreenSharingSessionID,
 			OwnerID:                cs.OwnerID,
 			HostID:                 cs.HostID,
 		}
