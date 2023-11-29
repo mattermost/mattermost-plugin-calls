@@ -28,9 +28,11 @@ import {navigateToURL} from 'src/browser_routing';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
+import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
 import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
 import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
+import TranscriberModelSize from 'src/components/admin_console_settings/recordings/transcriber_model_size';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
 import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
@@ -41,6 +43,7 @@ import UDPServerPort from 'src/components/admin_console_settings/udp_server_port
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
+import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
@@ -253,6 +256,10 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(EndCallModal));
         registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
 
+        registry.registerFilePreviewComponent((fi, post) => {
+            return String(post.type) === CALL_RECORDING_POST_TYPE;
+        }, RecordingsFilePreview);
+
         registry.registerTranslations((locale: string) => {
             return getTranslations(locale);
         });
@@ -355,6 +362,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
         registry.registerAdminConsoleCustomSetting('RecordingQuality', RecordingQuality);
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
+        registry.registerAdminConsoleCustomSetting('EnableTranscriptions', EnableTranscriptions);
 
         // RTCD server turns on/off the following:
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
@@ -365,6 +373,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('EnableIPv6', EnableIPv6);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
+        registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             if (shouldRenderDesktopWidget()) {

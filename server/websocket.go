@@ -42,6 +42,7 @@ const (
 	wsEventError                     = "error"
 	wsEventCallHostChanged           = "call_host_changed"
 	wsEventCallRecordingState        = "call_recording_state"
+	wsEventCallTranscriptionState    = "call_transcription_state"
 	wsEventUserDismissedNotification = "user_dismissed_notification"
 	wsReconnectionTimeout            = 10 * time.Second
 )
@@ -936,7 +937,6 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 		msg.Data = []byte(msgData)
-
 	}
 
 	select {

@@ -4,6 +4,7 @@ import CompassIcon from 'src/components/icons/compassIcon';
 import RecordCircleIcon from 'src/components/icons/record_circle';
 import {
     CallRecordingDisclaimerStrings,
+    CallTranscribingDisclaimerStrings,
 } from 'src/constants';
 import {CallRecordingReduxState} from 'src/types/types';
 import {
@@ -13,12 +14,13 @@ import {
 import InCallPrompt from './in_call_prompt';
 
 type Props = {
-    isHost: boolean,
-    hostChangeAt: number,
-    recording?: CallRecordingReduxState,
-    recordingMaxDuration: number,
+    isHost: boolean;
+    hostChangeAt: number;
+    recording?: CallRecordingReduxState;
+    recordingMaxDuration: number;
     onDecline: () => void;
     promptDismissed: () => void;
+    transcriptionsEnabled: boolean;
 }
 
 const minutesLeftThreshold = 10;
@@ -136,8 +138,9 @@ export default function RecordingInfoPrompt(props: Props) {
     }
 
     let testId = 'banner-recording';
-    let header = formatMessage(CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].header);
-    let body = formatMessage(CallRecordingDisclaimerStrings[props.isHost ? 'host' : 'participant'].body);
+    const disclaimerStrings = props.transcriptionsEnabled ? CallTranscribingDisclaimerStrings : CallRecordingDisclaimerStrings;
+    let header = formatMessage(disclaimerStrings[props.isHost ? 'host' : 'participant'].header);
+    let body = formatMessage(disclaimerStrings[props.isHost ? 'host' : 'participant'].body);
     let confirmText = props.isHost ? formatMessage({defaultMessage: 'Dismiss'}) : formatMessage({defaultMessage: 'Understood'});
     let icon = (
         <RecordCircleIcon
@@ -146,10 +149,20 @@ export default function RecordingInfoPrompt(props: Props) {
     const declineText = props.isHost ? '' : formatMessage({defaultMessage: 'Leave call'});
 
     if (hasRecEnded) {
-        confirmText = '';
+        if (props.isHost) {
+            confirmText = formatMessage({defaultMessage: 'Dismiss'});
+        } else {
+            confirmText = '';
+        }
+
         testId = 'banner-recording-stopped';
-        header = formatMessage({defaultMessage: 'Recording has stopped. Processing…'});
-        body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it\'s finished processing.'});
+        if (props.transcriptionsEnabled) {
+            header = formatMessage({defaultMessage: 'Recording and transcription has stopped. Processing…'});
+            body = formatMessage({defaultMessage: 'You can find the recording and transcription in this call\'s chat thread once it has finished processing.'});
+        } else {
+            header = formatMessage({defaultMessage: 'Recording has stopped. Processing…'});
+            body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it has finished processing.'});
+        }
     }
 
     let error = '';
