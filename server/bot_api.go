@@ -334,15 +334,49 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 
 	// We update the metadata with the file and post IDs for the transcription.
 	transcriptions, ok := post.GetProp("transcriptions").(map[string]any)
-	if ok {
-		var tm jobMetadata
-		tm.fromMap(transcriptions[info.JobID])
-		tm.FileID = info.FileIDs[0]
-		tm.PostID = trPost.Id
-		transcriptions[info.JobID] = tm.toMap()
-		post.AddProp("transcriptions", transcriptions)
+	if !ok {
+		res.Err = "unexpected data found in transcriptions post prop"
+		res.Code = http.StatusInternalServerError
+		p.LogError(res.Err, "trID", info.JobID)
+		return
+	}
+
+	var tm jobMetadata
+	tm.fromMap(transcriptions[info.JobID])
+	tm.FileID = info.FileIDs[0]
+	tm.PostID = trPost.Id
+	transcriptions[info.JobID] = tm.toMap()
+	post.AddProp("transcriptions", transcriptions)
+
+	// We retrieve the related recording info (if any) so that we can save the file id
+	// for the VTT captions in the props of the recording post that will
+	// eventually render them on top of the video player.
+	recordings, ok := post.GetProp("recordings").(map[string]any)
+	if !ok {
+		res.Err = "unexpected data found in recordings post prop"
+		res.Code = http.StatusInternalServerError
+		p.LogError(res.Err, "trID", info.JobID)
+		return
+	}
+	var rm jobMetadata
+	rm.fromMap(recordings[tm.RecID])
+	if rm.PostID != "" {
+		recPost, appErr := p.API.GetPost(rm.PostID)
+		if appErr != nil {
+			res.Err = "failed to get recording post: " + appErr.Error()
+			res.Code = http.StatusInternalServerError
+			p.LogError(res.Err, "trID", info.JobID)
+			return
+		}
+		recPost.AddProp("captions_file_id", tm.FileID)
+		if _, appErr := p.API.UpdatePost(recPost); appErr != nil {
+			res.Err = "failed to update recording post: " + appErr.Error()
+			res.Code = http.StatusInternalServerError
+			p.LogError(res.Err, "trID", info.JobID)
+			return
+		}
 	} else {
-		p.LogError("unexpected data found in transcriptions post prop", "trID", info.JobID)
+		p.LogWarn("unexpected missing recording post ID", "trID", info.JobID)
 	}
 
 	_, appErr = p.API.UpdatePost(post)
