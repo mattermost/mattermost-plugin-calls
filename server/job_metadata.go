@@ -12,9 +12,9 @@ type jobMetadata struct {
 	FileID string
 	// PostID is the Post.Id that holds the job's artifacts (e.g. recording post).
 	PostID string
-	// RecID is the recording ID.
+	// RecID is the recording job ID.
 	RecID string
-	// TrID is the transcription ID.
+	// TrID is the transcription job ID.
 	TrID string
 }
 
@@ -96,7 +96,8 @@ func (p *Plugin) saveRecordingMetadata(postID, recID, trID string) error {
 	post.AddProp("recordings", recordings)
 
 	// This is where we map a transcription to a recording.
-	// This information will be used by the client when rendering the recording preview.
+	// This information will be used when the transcribing job completes to populate
+	// the recording post props with the captions file id.
 	if trID != "" {
 		tm := jobMetadata{
 			RecID: recID,

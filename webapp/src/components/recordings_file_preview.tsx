@@ -1,10 +1,7 @@
 import {FileInfo} from '@mattermost/types/files';
 import {Post} from '@mattermost/types/posts';
-import {GlobalState} from '@mattermost/types/store';
 import {Client4} from 'mattermost-redux/client';
-import {getPost} from 'mattermost-redux/selectors/entities/posts';
 import React, {useMemo} from 'react';
-import {useSelector} from 'react-redux';
 import styled from 'styled-components';
 
 type Props = {
@@ -13,12 +10,7 @@ type Props = {
 }
 
 const RecordingsFilePreview = ({fileInfo, post}: Props) => {
-    const callPost = useSelector((state: GlobalState) => getPost(state, post.props?.call_post_id));
-
-    const recording = callPost?.props?.recordings?.[post.props?.recording_id];
-    const transcription = callPost?.props?.transcriptions?.[recording?.tr_id];
-
-    const now = useMemo(() => Date.now(), [recording, transcription]);
+    const now = useMemo(() => Date.now(), [post.props.captions_file_id]);
 
     return (
         <Video
@@ -31,13 +23,13 @@ const RecordingsFilePreview = ({fileInfo, post}: Props) => {
                 src={Client4.getFileUrl(fileInfo.id, now)}
                 type={fileInfo.mime_type}
             />
-            { transcription?.file_id &&
+            { post.props.captions_file_id &&
             <track
                 data-testid='calls-recording-transcription'
                 label='Transcription'
                 kind='subtitles'
                 srcLang='en'
-                src={Client4.getFileUrl(transcription.file_id, now)}
+                src={Client4.getFileUrl(post.props.captions_file_id, now)}
                 default={true}
             />
             }
