@@ -1,7 +1,7 @@
 import {chromium} from '@playwright/test';
 import * as fs from 'fs';
 
-import {channelPrefix, userPrefix} from './constants';
+import {baseURL, channelPrefix, defaultTeam, userPrefix} from './constants';
 import PlaywrightDevPage from './page';
 
 export const headers = {'X-Requested-With': 'XMLHttpRequest'};
@@ -70,4 +70,8 @@ export async function joinCall(userState: string) {
     await userPage.goto();
     await userPage.joinCall();
     return userPage;
+}
+
+export function getChannelURL(channelName: string) {
+    return `${baseURL}/${defaultTeam}/channels/${channelName}`;
 }

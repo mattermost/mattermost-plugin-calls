@@ -12,6 +12,7 @@ import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from '
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
+import {navigateToURL} from 'src/browser_routing';
 import {AudioInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
 import Badge from 'src/components/badge';
@@ -1761,7 +1762,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (this.props.global) {
             sendDesktopEvent('calls-widget-channel-link-click', message);
         } else {
-            window.postMessage({type: 'browser-history-push-return', message}, window.origin);
+            navigateToURL(this.props.channelURL);
         }
         this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     };
