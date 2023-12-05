@@ -3,7 +3,13 @@ import {readFile} from 'fs/promises';
 
 import {adminState} from '../constants';
 import PlaywrightDevPage from '../page';
-import {getChannelNamesForTest, getUsernamesForTest, getUserStoragesForTest} from '../utils';
+import {
+    getChannelNamesForTest,
+    getChannelURL,
+    getUserIdxForTest,
+    getUsernamesForTest,
+    getUserStoragesForTest,
+} from '../utils';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
@@ -450,6 +456,34 @@ test.describe('switching views', () => {
 
         // Verify widget is still rendered
         await expect(devPage.page.locator('#calls-widget')).toBeVisible();
+
+        await devPage.leaveCall();
+    });
+});
+
+test.describe('ux', () => {
+    const userIdx = getUserIdxForTest();
+    test.use({storageState: userStorages[0]});
+
+    test('channel link', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+        await devPage.wait(1000);
+
+        // Check we are on the expected URL
+        await expect(page.url()).toEqual(getChannelURL(getChannelNamesForTest()[0]));
+
+        // Switch channel
+        await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
+
+        // Verify we switched channel
+        await expect(page.url()).toEqual(getChannelURL(`calls${userIdx + 1}`));
+
+        // Click channel link in widget
+        await page.locator('.calls-channel-link').click();
+
+        // Verify we switched channel through the link
+        await expect(page.url()).toEqual(getChannelURL(getChannelNamesForTest()[0]));
 
         await devPage.leaveCall();
     });
