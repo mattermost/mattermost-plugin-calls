@@ -1,7 +1,6 @@
 {
   "/WMCDd": "出了点问题!",
   "/c+F8S": "来自<b>{callerName}</b>和<b>{others}</b>的通话",
-  "/tRHJl": "您正在录制本次会议。请考虑通知其他人本次会议正在被记录。",
   "0Ihpmc": "录制通话",
   "0LuKMT": "你已经在通话中了",
   "0UG4R4": "正在连接通话…",
@@ -63,7 +62,6 @@
   "N2IrpM": "确认",
   "O6EeNO": "允许通话主持人在云中记录会议视频和音频。录制包括整个通话窗口视图、参与者的音频轨道和任何共享屏幕视频。<featureLink>了解更多关于此功能的信息</featureLink>。",
   "OKhRC6": "分享",
-  "OlfjBf": "一旦录制完成处理，您可以在此通话的会话中找到录制内容。",
   "OvzONl": "关闭",
   "P6PLpi": "加入",
   "PjoOvw": "正在分享屏幕",
@@ -89,7 +87,6 @@
   "Xq3WJ4": "无音频输入权限",
   "YJPC7G": "您确定要结束与<participant>{name}</participant>的通话吗？",
   "Z/nRgQ": "默认 - {deviceLabel}",
-  "ZaJteE": "主持人已开始录制会议。如果您继续参加会议，即表示您同意被录音。",
   "Zh+5A6": "开启",
   "ZhtEeD": "无法开始通话",
   "ZvZBwP": "离开加入新的通话",
@@ -166,6 +163,7 @@
   "x82IOl": "静音",
   "yL9vD/": "欢迎使用 Mattermost 企业版试用版！它将于 {trialExpirationDate} 到期。您现在可以访问<rtcdDocsLink>RTCD 服务</rtcdDocsLink>、 <recordingsDocsLink>通话录音</recordingsDocsLink>、<guestAccountsLink>访客账户</guestAccountsLink>、<autoComplianceReportsLink>自动合规性报告</autoComplianceReportsLink> 和 <mobileSecureNotificationsLink>移动安全 ID 推送通知</mobileSecureNotificationsLink>，以及其他许多功能。在我们的 <documentationLink>文档</documentationLink> 中查看所有功能。",
   "yO68rk": "通话当前以测试模式运行，只有系统管理员才能开始通话。请直接向您的系统管理员寻求帮助",
+  "yidxQc": "创建会议总结？",
   "yjQNKt": "此频道已禁用通话。",
   "zx0myy": "参与者"
 }

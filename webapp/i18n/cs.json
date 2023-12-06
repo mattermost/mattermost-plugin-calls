@@ -1,7 +1,6 @@
 {
   "/WMCDd": "Něco se pokazilo!",
   "/c+F8S": "Hovor od <b>{callerName}</b> s <b>{others}</b>",
-  "/tRHJl": "Nahráváte tuto schůzku. Zvažte ostatní informovat o tom, že je tato schůzka nahrávána.",
   "0Ihpmc": "Nahrávat hovor",
   "0LuKMT": "Hovor již probíhá",
   "0UG4R4": "Spojuji hovor…",
@@ -63,7 +62,6 @@
   "N2IrpM": "Potvrdit",
   "O6EeNO": "Umožněte hostitelům hovorů nahrávat video a zvuk ze schůzek. Nahrávka zahrnuje zobrazení celého okna hovoru spolu se zvukovou stopou účastníků a veškerým sdíleným videem. <featureLink>Další informace o této funkci najdete za tímto odkazem</featureLink>.",
   "OKhRC6": "Sdílet",
-  "OlfjBf": "Záznam najdete v chatu tohoto hovoru, jakmile bude dokončeno jeho zpracování.",
   "OvzONl": "Vypnout",
   "P6PLpi": "Připojit se",
   "PjoOvw": "Sdílíte obrazovku",
@@ -89,7 +87,6 @@
   "Xq3WJ4": "Není povolený žádný zvukový vstup",
   "YJPC7G": "Určitě chcete ukončit hovor s <participant>{name}</participant>?",
   "Z/nRgQ": "Výchozí nastavení - {deviceLabel}",
-  "ZaJteE": "Hostitel/ka zahájil/a nahrávání této schůzky. Svým setrváním na schůzce dáváte souhlas s nahráváním.",
   "Zh+5A6": "Zapnout",
   "ZhtEeD": "Nelze zahájit hovor",
   "ZvZBwP": "Odejít a připojit se k novému hovoru",

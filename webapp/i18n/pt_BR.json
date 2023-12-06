@@ -1,7 +1,6 @@
 {
   "/WMCDd": "Ocorreu um erro!",
   "/c+F8S": "Ligue de <b>{callerName}</b> com <b>{others}</b>",
-  "/tRHJl": "Você está gravando esta reunião. Considere informar a todos que a reunião está sendo gravada.",
   "0Ihpmc": "Gravar chamada",
   "0LuKMT": "Você já está em uma chamada",
   "0UG4R4": "Conectando à chamada…",
@@ -63,7 +62,6 @@
   "N2IrpM": "Confirmar",
   "O6EeNO": "Permitir que os anfitriões da chamada gravem o áudio e o vídeo da reunião na nuvem. A gravação inclui toda a janela da chamada, juntamente com o áudio dos participantes e qualquer vídeo compartilhado na tela. <featureLink> Saiba mais sobre este recurso </featureLink>.",
   "OKhRC6": "Compartilhar",
-  "OlfjBf": "A gravação estará disponível na conversa desta chamada assim que o processamento for concluído.",
   "OvzONl": "Desativado",
   "P6PLpi": "Juntar-se",
   "PjoOvw": "Você está compartilhando a sua tela",
@@ -89,7 +87,6 @@
   "Xq3WJ4": "Sem permissão para entrada de áudio",
   "YJPC7G": "Tem certeza de que deseja encerrar a chamada com <participant>{name}</participant>?",
   "Z/nRgQ": "Dispositivo padrão - {deviceLabel}",
-  "ZaJteE": "O anfitrião começou a gravar esta reunião. Ao permanecer na reunião, você concorda em ser gravado.",
   "Zh+5A6": "Ativado",
   "ZhtEeD": "Não é possível iniciar a chamada",
   "ZvZBwP": "Sair e ingressar em uma nova chamada",
