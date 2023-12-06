@@ -259,4 +259,29 @@ test.describe('popout window', () => {
         await popOut.getByTestId('lower-hand-button').click();
         await expect(popOut.getByTestId('raise-hand-button')).toBeVisible();
     });
+
+    test('/call leave slash command', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.goto();
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+
+        await popOut.click('#calls-popout-chat-button');
+
+        await expect(popOut.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
+
+        const replyTextbox = popOut.locator('#reply_textbox');
+        const msg = '/call leave';
+        await replyTextbox.type(msg);
+        await replyTextbox.press('Enter');
+
+        // Verify we left the call.
+        await expect(popOut.isClosed()).toEqual(true);
+        await expect(page.locator('#calls-widget')).toBeHidden();
+    });
 });
