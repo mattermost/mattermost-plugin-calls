@@ -1,7 +1,6 @@
 {
   "/WMCDd": "Er ging iets mis!",
   "/c+F8S": "Oproep van <b>{callerName}</b> met <b>{others}</b>",
-  "/tRHJl": "Je neemt deze vergadering op. Laat iedereen weten dat deze vergadering wordt opgenomen.",
   "0Ihpmc": "Gesprek opnemen",
   "0LuKMT": "Je bevindt je al in een gesprek",
   "0UG4R4": "Verbinding maken met het gesprek…",
@@ -63,7 +62,6 @@
   "N2IrpM": "Bevestigen",
   "O6EeNO": "Laat gesprekshosts toe om video en audio van vergaderingen op te nemen in de cloud. De opname omvat de volledige weergave van het gespreksvenster samen met het audiospoor van de deelnemers en eventuele gedeelde schermvideo. <featureLink>Meer informatie over deze functie</featureLink>.",
   "OKhRC6": "Delen",
-  "OlfjBf": "Je kan de opname vinden in de chatdraadje van dit gesprek zodra het verwerkt is.",
   "OvzONl": "Uit",
   "P6PLpi": "Deelnemen",
   "PjoOvw": "Je deelt je scherm",
@@ -89,7 +87,6 @@
   "Xq3WJ4": "Geen audio-ingangsrechten",
   "YJPC7G": "Weet je zeker dat je een gesprek wilt beëindigen met <participant>{name}</participant> ?",
   "Z/nRgQ": "Standaard - {deviceLabel}",
-  "ZaJteE": "De gastheer is begonnen met het opnemen van deze vergadering. Door in de vergadering te blijven geef je toestemming voor opname.",
   "Zh+5A6": "Ingeschakeld",
   "ZhtEeD": "Fout bij het starten van de oproep",
   "ZvZBwP": "Verlaten en aansluiten bij nieuw oproep",
@@ -166,6 +163,7 @@
   "x82IOl": "Dempen",
   "yL9vD/": "Welkom bij jouw Mattermost Enterprise proefversie! Deze verloopt op {trialExpirationDate}. Je hebt nu toegang tot <rtcdDocsLink>RTCD diensten</rtcdDocsLink>, <recordingsDocsLink>gespreksopnames</recordingsDocsLink>, <guestAccountsLink>gastaccounts</guestAccountsLink>, <autoComplianceReportsLink>geautomatiseerde compliance rapporten</autoComplianceReportsLink>, en <mobileSecureNotificationsLink>mobiele secure-ID push meldingen</mobileSecureNotificationsLink>, naast vele andere functies. Bekijk alle functies in onze <documentationLink>documentatie</documentationLink>.",
   "yO68rk": "Gesprekken worden momenteel uitgevoerd in testmodus en alleen systeembeheerders kunnen ze starten. Neem rechtstreeks contact op met jouw systeembeheerder voor ondersteuning",
+  "yidxQc": "Een samenvatting van de vergadering maken?",
   "yjQNKt": "Gesprekken zijn uitgeschakeld in dit kanaal.",
   "zx0myy": "Deelnemers"
 }

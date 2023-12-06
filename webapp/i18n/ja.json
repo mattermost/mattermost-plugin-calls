@@ -1,7 +1,6 @@
 {
   "/WMCDd": "問題が発生しました!",
   "/c+F8S": "<b>{callerName}</b>と<b>{others}</b>からの通話",
-  "/tRHJl": "あなたはこの会議を記録しています。この会議が記録されていることを全員に知らせることを検討してください。",
   "0Ihpmc": "通話を記録する",
   "0LuKMT": "すでに通話中です",
   "0UG4R4": "通話に接続しています…",
@@ -63,7 +62,6 @@
   "N2IrpM": "確認",
   "O6EeNO": "通話のホストは、ミーティングの画面と音声をクラウド上に記録することができます。レコーディングには、通話ウィンドウの画面全体と参加者の音声、共有された画面が含まれます。<featureLink>この機能の詳細はこちら</featureLink> 。",
   "OKhRC6": "共有する",
-  "OlfjBf": "レコーディングは、処理が完了した後、この通話のスレッドから確認できるようになります。",
   "OvzONl": "オフ",
   "P6PLpi": "参加",
   "PjoOvw": "あなたの画面を共有しています",
@@ -89,7 +87,6 @@
   "Xq3WJ4": "音声入力が許可されていません",
   "YJPC7G": "本当に <participant>{name}</participant> との通話を終了してもよろしいですか？",
   "Z/nRgQ": "デフォルト - {deviceLabel}",
-  "ZaJteE": "ホストがこの会議のレコーディングを開始しました。会議に参加し続けることで、レコーディングに同意したことになります。",
   "Zh+5A6": "オン",
   "ZhtEeD": "通話を開始できませんでした",
   "ZvZBwP": "脱退して新しい通話に参加する",
@@ -166,6 +163,7 @@
   "x82IOl": "ミュート",
   "yL9vD/": "Mattermost Enterpriseトライアルへようこそ！期間は {trialExpirationDate} までです。<rtcdDocsLink>RTCDサービス</rtcdDocsLink>,<recordingsDocsLink>レコーディング</recordingsDocsLink>,<guestAccountsLink>ゲストアカウント</guestAccountsLink>,<autoComplianceReportsLink>コンプライアンスレポートの自動化</autoComplianceReportsLink>,<mobileSecureNotificationsLink>セキュアIDによるモバイルプッシュ通知</mobileSecureNotificationsLink>, その他多くの機能が利用可能になりました。全ての機能は<documentationLink>ドキュメント</documentationLink> から確認できます。",
   "yO68rk": "現在、通話機能はテストモードで稼働しており、システム管理者のみが通話を開始できます。サポートが必要な場合は、システム管理者に問い合わせてください",
+  "yidxQc": "会議の要約を作成しますか?",
   "yjQNKt": "このチャンネルでは通話機能は無効です。",
   "zx0myy": "参加者"
 }
