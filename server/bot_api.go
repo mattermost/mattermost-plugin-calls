@@ -189,10 +189,21 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
+	// Here we need to lock since we'll be reading and updating the call
+	// post, potentially concurrently with other events (e.g. call ending,
+	// transcribing job completing).
+	_, err := p.lockCall(callID)
+	if err != nil {
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer p.unlockCall(callID)
+
 	// Update call post
-	post, appErr := p.API.GetPost(info.PostID)
-	if appErr != nil {
-		res.Err = "failed to get call post: " + appErr.Error()
+	post, err := p.GetPost(info.PostID)
+	if err != nil {
+		res.Err = "failed to get call post: " + err.Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
@@ -236,7 +247,7 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	recPost.AddProp("recording_id", info.JobID)
 	recPost.AddProp("call_post_id", info.PostID)
 
-	recPost, appErr = p.API.CreatePost(recPost)
+	recPost, appErr := p.API.CreatePost(recPost)
 	if appErr != nil {
 		res.Err = "failed to create post: " + appErr.Error()
 		res.Code = http.StatusInternalServerError
@@ -284,10 +295,21 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Here we need to lock since we'll be reading and updating the call
+	// post, potentially concurrently with other events (e.g. call ending,
+	// recording job completing).
+	_, err := p.lockCall(callID)
+	if err != nil {
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer p.unlockCall(callID)
+
 	// Update call post
-	post, appErr := p.API.GetPost(info.PostID)
-	if appErr != nil {
-		res.Err = "failed to get call post: " + appErr.Error()
+	post, err := p.GetPost(info.PostID)
+	if err != nil {
+		res.Err = "failed to get call post: " + err.Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
@@ -361,9 +383,9 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	var rm jobMetadata
 	rm.fromMap(recordings[tm.RecID])
 	if rm.PostID != "" {
-		recPost, appErr := p.API.GetPost(rm.PostID)
-		if appErr != nil {
-			res.Err = "failed to get recording post: " + appErr.Error()
+		recPost, err := p.GetPost(rm.PostID)
+		if err != nil {
+			res.Err = "failed to get recording post: " + err.Error()
 			res.Code = http.StatusInternalServerError
 			p.LogError(res.Err, "trID", info.JobID)
 			return
