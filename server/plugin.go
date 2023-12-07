@@ -22,6 +22,8 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
+
+	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -67,6 +69,7 @@ type Plugin struct {
 
 	// Database handle to the writer DB node
 	wDB        *sql.DB
+	wDBx       *sqlx.DB
 	driverName string
 }
 
@@ -338,9 +341,9 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 		return 0, fmt.Errorf("postID should not be empty")
 	}
 
-	post, appErr := p.API.GetPost(postID)
-	if appErr != nil {
-		return 0, appErr
+	post, err := p.GetPost(postID)
+	if err != nil {
+		return 0, err
 	}
 
 	postMsg := "Call ended"
@@ -356,8 +359,7 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 	post.AddProp("end_at", time.Now().UnixMilli())
 	post.AddProp("participants", participants)
 
-	_, appErr = p.API.UpdatePost(post)
-	if appErr != nil {
+	if _, appErr := p.API.UpdatePost(post); appErr != nil {
 		return 0, appErr
 	}
 
