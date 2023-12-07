@@ -13,6 +13,7 @@ require (
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/gorilla/websocket v1.5.0
+	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattermost/calls-offloader v0.5.0
 	github.com/mattermost/calls-recorder v0.6.0
 	github.com/mattermost/calls-transcriber v0.1.0
