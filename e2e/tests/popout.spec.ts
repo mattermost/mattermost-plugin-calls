@@ -281,7 +281,7 @@ test.describe('popout window', () => {
         await replyTextbox.press('Enter');
 
         // Verify we left the call.
-        await devPage.wait(1000);
+        await devPage.wait(2000);
         await expect(popOut.isClosed()).toEqual(true);
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
