@@ -36,23 +36,24 @@ export default class PlaywrightDevPage {
 
     async leaveCall() {
         await this.page.locator('#calls-widget-leave-button').click();
+        await this.page.waitForFunction(() => !window.callsClient || window.callsClient.closed);
         await expect(this.page.locator('#calls-widget')).toBeHidden();
     }
 
     async startCall() {
-        const startCallButton = this.page.locator('[aria-label="channel header region"] button:has-text("Start call")');
+        const startCallButton = this.page.locator('#calls-join-button');
         await expect(startCallButton).toBeVisible();
         await startCallButton.click();
+        await this.page.waitForFunction(() => window.callsClient && window.callsClient.connected && !window.callsClient.closed);
         await expect(this.page.locator('#calls-widget')).toBeVisible();
-        await expect(this.page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
     }
 
     async joinCall() {
-        const joinCallButton = this.page.locator('[aria-label="channel header region"] button:has-text("Join call")');
+        const joinCallButton = this.page.locator('#calls-join-button');
         await expect(joinCallButton).toBeVisible();
         await joinCallButton.click();
+        await this.page.waitForFunction(() => window.callsClient && window.callsClient.connected && !window.callsClient.closed);
         await expect(this.page.locator('#calls-widget')).toBeVisible();
-        await expect(this.page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
     }
 
     async enableCalls() {
