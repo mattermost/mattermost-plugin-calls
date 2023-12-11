@@ -1,3 +1,4 @@
+import {Caption} from '@calls/common/lib/types';
 import {FileInfo} from '@mattermost/types/files';
 import {Post} from '@mattermost/types/posts';
 import {Client4} from 'mattermost-redux/client';
@@ -10,7 +11,7 @@ type Props = {
 }
 
 const RecordingsFilePreview = ({fileInfo, post}: Props) => {
-    const now = useMemo(() => Date.now(), [post.props.captions_file_id]);
+    const now = useMemo(() => Date.now(), [post.props.captions]);
 
     return (
         <Video
@@ -23,15 +24,17 @@ const RecordingsFilePreview = ({fileInfo, post}: Props) => {
                 src={Client4.getFileUrl(fileInfo.id, now)}
                 type={fileInfo.mime_type}
             />
-            { post.props.captions_file_id &&
-            <track
-                data-testid='calls-recording-transcription'
-                label='Transcription'
-                kind='subtitles'
-                srcLang='en'
-                src={Client4.getFileUrl(post.props.captions_file_id, now)}
-                default={true}
-            />
+            { post.props.captions?.map((caption: Caption, idx: number) => (
+                <track
+                    key={idx}
+                    data-testid='calls-recording-transcription'
+                    label={caption.title}
+                    kind='subtitles'
+                    srcLang={caption.language}
+                    src={Client4.getFileUrl(caption.file_id, now)}
+                    default={idx === 0}
+                />
+            ))
             }
         </Video>
     );

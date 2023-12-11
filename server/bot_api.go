@@ -327,7 +327,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	// Updating the file to point to the existing call post solves this problem
 	// without requiring us to expose a dedicated API nor attach the file which
 	// we don't want to show.
-	if err := p.updateFileInfoPostID(info.FileIDs[0], info.PostID); err != nil {
+	if err := p.updateFileInfoPostID(info.Transcriptions[0].FileIDs[0], info.PostID); err != nil {
 		res.Err = "failed to update fileinfo post id: " + err.Error()
 		res.Code = http.StatusInternalServerError
 	}
@@ -343,7 +343,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 		Message:   postMsg,
 		Type:      "custom_calls_transcription",
 		RootId:    threadID,
-		FileIds:   []string{info.FileIDs[1]},
+		FileIds:   []string{info.Transcriptions[0].FileIDs[1]},
 	}
 	transcriptionPost.AddProp("call_post_id", info.PostID)
 	transcriptionPost.AddProp("transcription_id", info.JobID)
@@ -365,7 +365,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 
 	var tm jobMetadata
 	tm.fromMap(transcriptions[info.JobID])
-	tm.FileID = info.FileIDs[0]
+	tm.FileID = info.Transcriptions[0].FileIDs[0]
 	tm.PostID = trPost.Id
 	transcriptions[info.JobID] = tm.toMap()
 	post.AddProp("transcriptions", transcriptions)
@@ -390,7 +390,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 			p.LogError(res.Err, "trID", info.JobID)
 			return
 		}
-		recPost.AddProp("captions_file_id", tm.FileID)
+		recPost.AddProp("captions", info.Transcriptions.ToClientCaptions())
 		if _, appErr := p.API.UpdatePost(recPost); appErr != nil {
 			res.Err = "failed to update recording post: " + appErr.Error()
 			res.Code = http.StatusInternalServerError
