@@ -1,7 +1,6 @@
 {
   "/WMCDd": "Något gick fel!",
   "/c+F8S": "Samtal från <b>{callerName}</b> och <b>{others}</b>",
-  "/tRHJl": "Du spelar in mötet. Låt alla deltagare veta att mötet spelas in.",
   "0Ihpmc": "Spela in samtalet",
   "0LuKMT": "Du är redan i ett samtal",
   "0UG4R4": "Ansluter till samtalet…",
@@ -63,7 +62,6 @@
   "N2IrpM": "Bekräfta",
   "O6EeNO": "Tillåt samtalsvärdar att spela in video och ljud från mötet i molnet. Inspelningen inkluderar hela samtalsfönstervyn tillsammans med deltagarnas ljudspår och eventuell delad skärmvideo. <featureLink>Läs mer om funktionen</featureLink>.",
   "OKhRC6": "Dela",
-  "OlfjBf": "När inspelningen är färdigprocessad hittar du inspelningen i samtalets chatt.",
   "OvzONl": "Av",
   "P6PLpi": "Gå med",
   "PjoOvw": "Du delar din skärm",
@@ -89,7 +87,6 @@
   "Xq3WJ4": "Ingen behörighet till ljudingång",
   "YJPC7G": "Är du säker på att du vill avsluta samtalet med <participant>{name}</participant>?",
   "Z/nRgQ": "Default - {deviceLabel}",
-  "ZaJteE": "Värden har börjat spela in detta samtal. Genom att delta i samtalet ger du ditt samtycke till att bli inspelad.",
   "Zh+5A6": "På",
   "ZhtEeD": "Kan inte starta samtalet",
   "ZvZBwP": "Lämna och anslut till nytt samtal",

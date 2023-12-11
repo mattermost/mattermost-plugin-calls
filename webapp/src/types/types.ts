@@ -16,6 +16,7 @@ export const CallsConfigDefault: CallsConfig = {
     sku_short_name: '',
     EnableSimulcast: false,
     EnableRinging: true,
+    EnableTranscriptions: false,
 };
 
 export type ChannelState = {

@@ -8,12 +8,12 @@ import (
 	"fmt"
 )
 
-type recordingState struct {
+type jobState struct {
 	ID        string `json:"id"`
 	CreatorID string `json:"creator_id"`
 	JobID     string `json:"job_id"`
 	BotConnID string `json:"bot_conn_id"`
-	RecordingStateClient
+	JobStateClient
 }
 
 type userState struct {
@@ -29,21 +29,22 @@ type callStats struct {
 }
 
 type callState struct {
-	ID                    string                `json:"id"`
-	StartAt               int64                 `json:"create_at"`
-	EndAt                 int64                 `json:"end_at"`
-	Sessions              map[string]*userState `json:"sessions,omitempty"`
-	OwnerID               string                `json:"owner_id"`
-	ThreadID              string                `json:"thread_id"`
-	PostID                string                `json:"post_id"`
-	ScreenSharingID       string                `json:"screen_sharing_id"`
-	ScreenStreamID        string                `json:"screen_stream_id"`
-	ScreenStartAt         int64                 `json:"screen_start_at"`
-	Stats                 callStats             `json:"stats"`
-	RTCDHost              string                `json:"rtcd_host"`
-	HostID                string                `json:"host_id"`
-	Recording             *recordingState       `json:"recording,omitempty"`
-	DismissedNotification map[string]bool       `json:"dismissed_notification,omitempty"`
+	ID                     string                `json:"id"`
+	StartAt                int64                 `json:"create_at"`
+	EndAt                  int64                 `json:"end_at"`
+	Sessions               map[string]*userState `json:"sessions,omitempty"`
+	OwnerID                string                `json:"owner_id"`
+	ThreadID               string                `json:"thread_id"`
+	PostID                 string                `json:"post_id"`
+	ScreenSharingSessionID string                `json:"screen_sharing_session_id"`
+	ScreenStreamID         string                `json:"screen_stream_id"`
+	ScreenStartAt          int64                 `json:"screen_start_at"`
+	Stats                  callStats             `json:"stats"`
+	RTCDHost               string                `json:"rtcd_host"`
+	HostID                 string                `json:"host_id"`
+	Recording              *jobState             `json:"recording,omitempty"`
+	Transcription          *jobState             `json:"transcription,omitempty"`
+	DismissedNotification  map[string]bool       `json:"dismissed_notification,omitempty"`
 }
 
 type channelState struct {
@@ -76,14 +77,15 @@ type CallStateClient struct {
 	// DEPRECATED in favour of ScreenSharingSessionID (since v0.21)
 	ScreenSharingID string `json:"screen_sharing_id"`
 
-	ScreenSharingSessionID string                `json:"screen_sharing_session_id"`
-	OwnerID                string                `json:"owner_id"`
-	HostID                 string                `json:"host_id"`
-	Recording              *RecordingStateClient `json:"recording,omitempty"`
-	DismissedNotification  map[string]bool       `json:"dismissed_notification,omitempty"`
+	ScreenSharingSessionID string          `json:"screen_sharing_session_id"`
+	OwnerID                string          `json:"owner_id"`
+	HostID                 string          `json:"host_id"`
+	Recording              *JobStateClient `json:"recording,omitempty"`
+	Transcription          *JobStateClient `json:"transcription,omitempty"`
+	DismissedNotification  map[string]bool `json:"dismissed_notification,omitempty"`
 }
 
-type RecordingStateClient struct {
+type JobStateClient struct {
 	InitAt  int64  `json:"init_at"`
 	StartAt int64  `json:"start_at"`
 	EndAt   int64  `json:"end_at"`
@@ -96,23 +98,23 @@ type ChannelStateClient struct {
 	Call      *CallStateClient `json:"call,omitempty"`
 }
 
-func (rs *RecordingStateClient) toMap() map[string]interface{} {
-	if rs == nil {
+func (js *JobStateClient) toMap() map[string]interface{} {
+	if js == nil {
 		return nil
 	}
 	return map[string]interface{}{
-		"init_at":  rs.InitAt,
-		"start_at": rs.StartAt,
-		"end_at":   rs.EndAt,
-		"err":      rs.Err,
+		"init_at":  js.InitAt,
+		"start_at": js.StartAt,
+		"end_at":   js.EndAt,
+		"err":      js.Err,
 	}
 }
 
-func (rs *recordingState) getClientState() *RecordingStateClient {
-	if rs == nil {
+func (js *jobState) getClientState() *JobStateClient {
+	if js == nil {
 		return nil
 	}
-	return &rs.RecordingStateClient
+	return &js.JobStateClient
 }
 
 func (cs *callState) Clone() *callState {
@@ -131,8 +133,13 @@ func (cs *callState) Clone() *callState {
 	}
 
 	if cs.Recording != nil {
-		newState.Recording = &recordingState{}
+		newState.Recording = &jobState{}
 		*newState.Recording = *cs.Recording
+	}
+
+	if cs.Transcription != nil {
+		newState.Transcription = &jobState{}
+		*newState.Transcription = *cs.Transcription
 	}
 
 	return &newState
@@ -151,7 +158,7 @@ func (cs *callState) sessionsForUser(userID string) []*userState {
 	return sessions
 }
 
-func (cs *channelState) getRecording() (*recordingState, error) {
+func (cs *channelState) getRecording() (*jobState, error) {
 	if cs == nil {
 		return nil, fmt.Errorf("channel state is missing from store")
 	}
@@ -162,6 +169,19 @@ func (cs *channelState) getRecording() (*recordingState, error) {
 		return nil, fmt.Errorf("no recording ongoing")
 	}
 	return cs.Call.Recording, nil
+}
+
+func (cs *channelState) getTranscription() (*jobState, error) {
+	if cs == nil {
+		return nil, fmt.Errorf("channel state is missing from store")
+	}
+	if cs.Call == nil {
+		return nil, fmt.Errorf("no call ongoing")
+	}
+	if cs.Call.Transcription == nil {
+		return nil, fmt.Errorf("no transcription ongoing")
+	}
+	return cs.Call.Transcription, nil
 }
 
 func (cs *channelState) Clone() *channelState {
@@ -215,7 +235,7 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 	}
 
 	var screenSharingUserID string
-	if s := cs.Sessions[cs.ScreenSharingID]; s != nil {
+	if s := cs.Sessions[cs.ScreenSharingSessionID]; s != nil {
 		screenSharingUserID = s.UserID
 	}
 
@@ -235,10 +255,11 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		// DEPRECATED since v0.21
 		ScreenSharingID: screenSharingUserID,
 
-		ScreenSharingSessionID: cs.ScreenSharingID,
+		ScreenSharingSessionID: cs.ScreenSharingSessionID,
 		OwnerID:                cs.OwnerID,
 		HostID:                 cs.HostID,
 		Recording:              cs.Recording.getClientState(),
+		Transcription:          cs.Transcription.getClientState(),
 		DismissedNotification:  dismissed,
 	}
 }

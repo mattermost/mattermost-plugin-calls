@@ -121,6 +121,7 @@ interface Props extends RouteComponentProps {
     recordingMaxDuration: number,
     startCallRecording: (callID: string) => void,
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
+    transcriptionsEnabled: boolean,
 }
 
 interface State {
@@ -1255,6 +1256,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         recordingMaxDuration={this.props.recordingMaxDuration}
                         onDecline={this.onDisconnectClick}
                         promptDismissed={this.dismissRecordingPrompt}
+                        transcriptionsEnabled={this.props.transcriptionsEnabled}
                     />
                 </Overlay>
             </div>

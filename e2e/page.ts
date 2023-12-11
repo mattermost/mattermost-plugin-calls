@@ -114,4 +114,8 @@ export default class PlaywrightDevPage {
         await expect(notificationsSoundedAt.length).toEqual(numNotificationsSounded);
         await expect(notificationsSoundStoppedAt.length).toEqual(numNotificationsStoppedAt);
     }
+
+    async unmute() {
+        await this.page.locator('#voice-mute-unmute').click();
+    }
 }

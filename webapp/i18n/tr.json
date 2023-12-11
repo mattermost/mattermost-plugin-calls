@@ -1,7 +1,6 @@
 {
   "/WMCDd": "Bir şeyler ters gitti!",
   "/c+F8S": "<b>{callerName}</b> ile <b>{others}</b> çağrısı",
-  "/tRHJl": "Bu toplantıyı kaydediyorsunuz. Bu toplantının kaydedildiğinin herkese bildirilmesini değerlendirin.",
   "0Ihpmc": "Çağrıyı kaydet",
   "0LuKMT": "Zaten bir çağrıdasınız",
   "0UG4R4": "Çağrıya bağlanılıyor…",
@@ -63,7 +62,6 @@
   "N2IrpM": "Onayla",
   "O6EeNO": "Çağrı sahiplerinin toplantının görüntüsünü ve sesini buluta kaydetmesini sağlar. Kayıtta, tüm çağrı penceresi görünümü, katılımcıların sesleri ve paylaşılan ekran görüntüsü bulunur. <featureLink>Bu özellik hakkında ayrıntılı bilgi alın</featureLink>.",
   "OKhRC6": "Paylaş",
-  "OlfjBf": "İşlenmesi tamamlandığında, kaydı bu görüşmenin sohbet konusunda bulabilirsiniz.",
   "OvzONl": "Kapat",
   "P6PLpi": "Katıl",
   "PjoOvw": "Ekranınızı paylaşıyorsunuz",
@@ -89,7 +87,6 @@
   "Xq3WJ4": "Ses girişi izni verilmemiş",
   "YJPC7G": "<participant>{name}</participant> çağrısını sonlandırmak istediğinize emin misiniz?",
   "Z/nRgQ": "Varsayılan - {deviceLabel}",
-  "ZaJteE": "Toplantı sahibi bu toplantıyı kaydetmeye başladı. Toplantıda kalarak kayıt alınmasına onay vermiş olursunuz.",
   "Zh+5A6": "Aç",
   "ZhtEeD": "Çağrı başlatılamadı",
   "ZvZBwP": "Ayrıl ve yeni çağrıya katıl",

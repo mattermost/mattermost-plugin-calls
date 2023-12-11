@@ -1,7 +1,6 @@
 {
   "/WMCDd": "Coś poszło nie tak!",
-  "/c+F8S": "Połączenie z <b>{callerName}</b> z <b>{others}</b>",
-  "/tRHJl": "Nagrywasz to spotkanie. Rozważ poinformowanie wszystkich o tym, że to spotkanie jest nagrywane.",
+  "/c+F8S": "Połączenie <b>{callerName}</b> z <b>{others}</b>",
   "0Ihpmc": "Nagraj rozmowę",
   "0LuKMT": "Już jesteś w trakcie rozmowy",
   "0UG4R4": "Nawiązanie połączenia…",
@@ -63,7 +62,6 @@
   "N2IrpM": "Potwierdź",
   "O6EeNO": "Umożliwiaj gospodarzom połączeń nagrywanie obrazu i dźwięku spotkań w chmurze. Nagrywanie obejmuje cały widok okna rozmowy wraz ze ścieżką dźwiękową uczestników i wszelkim wideo z ekranu współdzielonego. <featureLink>Dowiedz się więcej o tej funkcji</featureLink>.",
   "OKhRC6": "Udostępnij",
-  "OlfjBf": "Nagranie będzie można znaleźć w wątku czatu tej rozmowy po zakończeniu jej przetwarzania.",
   "OvzONl": "Wyłącz",
   "P6PLpi": "Dołącz",
   "PjoOvw": "Udostępniasz swój ekran",
@@ -89,7 +87,6 @@
   "Xq3WJ4": "Brak uprawnień do wejścia audio",
   "YJPC7G": "Czy jesteś pewien, że chcesz zakończyć połączenie z <participant>{name}</participant> ?",
   "Z/nRgQ": "Domyślnie -. {deviceLabel}",
-  "ZaJteE": "Prowadzący rozpoczął nagrywanie tego spotkania. Pozostając na spotkaniu wyrażasz zgodę na nagrywanie.",
   "Zh+5A6": "Włącz",
   "ZhtEeD": "Nie można rozpocząć połączenia",
   "ZvZBwP": "Opuścić i dołącz do nowego połączenia",
@@ -166,6 +163,7 @@
   "x82IOl": "Wycisz",
   "yL9vD/": "Witamy w programie próbnym Mattermost Enterprise! Wygasa on w dniu {trialExpirationDate}. Masz teraz dostęp do usług <rtcdDocsLink>RTCD</rtcdDocsLink>, <recordingsDocsLink>nagrań rozmów</recordingsDocsLink>, <guestAccountsLink>kont gości</guestAccountsLink>, <autoComplianceReportsLink>zautomatyzowanych raportów zgodności</autoComplianceReportsLink>, oraz <mobileSecureNotificationsLink>mobilnych powiadomień push secure-ID</mobileSecureNotificationsLink>, wśród wielu innych funkcji. Zobacz wszystkie funkcje w naszej <documentationLink>dokumentacji </documentationLink> .",
   "yO68rk": "Połączenia działają obecnie w trybie testowym i tylko administratorzy systemu mogą je uruchamiać. Skontaktuj się bezpośrednio z administratorem systemu, aby uzyskać pomoc",
+  "yidxQc": "Utworzyć podsumowanie spotkania?",
   "yjQNKt": "Na tym kanale połączenia są wyłączone.",
   "zx0myy": "Uczestnicy"
 }

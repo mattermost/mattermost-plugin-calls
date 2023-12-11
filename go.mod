@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-calls
 
-go 1.19
+go 1.21.4
 
 require (
 	github.com/pion/ice/v2 v2.3.11 // indirect
@@ -13,12 +13,14 @@ require (
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/mattermost/calls-offloader v0.3.2
-	github.com/mattermost/calls-recorder v0.4.2
+	github.com/jmoiron/sqlx v1.3.5
+	github.com/mattermost/calls-offloader v0.5.0
+	github.com/mattermost/calls-recorder v0.6.0
+	github.com/mattermost/calls-transcriber v0.1.0
 	github.com/mattermost/logr/v2 v2.0.16
-	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.1
+	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3-0.20231103204030-06bd54bcfa67
 	github.com/mattermost/mattermost/server/public v0.0.11-0.20231115180603-759bb70b2f44
-	github.com/mattermost/rtcd v0.12.0
+	github.com/mattermost/rtcd v0.12.1-0.20231121174414-6a5686281335
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pion/interceptor v0.1.25
 	github.com/pion/rtp v1.8.3
@@ -28,7 +30,7 @@ require (
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8
 )
 
-replace github.com/pion/interceptor v0.1.25 => github.com/streamer45/interceptor v0.0.0-20231109204624-da39785ad37e
+replace github.com/pion/interceptor => github.com/streamer45/interceptor v0.0.0-20230202152215-57f3ac9e7696
 
 replace github.com/mattermost/mattermost-plugin-calls/server/public => ./server/public
 

@@ -16,11 +16,16 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
-var botChRE = regexp.MustCompile(`^\/bot\/channels\/([a-z0-9]+)$`)
-var botUserImageRE = regexp.MustCompile(`^\/bot\/users\/([a-z0-9]+)\/image$`)
-var botUploadsRE = regexp.MustCompile(`^\/bot\/uploads\/?([a-z0-9]+)?$`)
-var botRecordingsRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/recordings$`)
-var botJobsStatusRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/jobs\/([a-z0-9]+)\/status$`)
+var (
+	botChRE                = regexp.MustCompile(`^\/bot\/channels\/([a-z0-9]+)$`)
+	botUserImageRE         = regexp.MustCompile(`^\/bot\/users\/([a-z0-9]+)\/image$`)
+	botUploadsRE           = regexp.MustCompile(`^\/bot\/uploads\/?([a-z0-9]+)?$`)
+	botRecordingsRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/recordings$`)
+	botJobsStatusRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/jobs\/([a-z0-9]+)\/status$`)
+	botProfileForSessionRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/sessions\/([a-z0-9]+)\/profile$`)
+	botTranscriptionsRE    = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/transcriptions$`)
+	botFilenameRE          = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/filename$`)
+)
 
 func (p *Plugin) getBotID() string {
 	if p.botSession != nil {
@@ -171,31 +176,34 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	var res httpResponse
 	defer p.httpAudit("handleBotPostRecordings", &res, w, r)
 
-	var info map[string]string
+	var info public.RecordingJobInfo
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
 		res.Err = "failed to decode request body: " + err.Error()
 		res.Code = http.StatusBadRequest
 		return
 	}
 
-	postID := info["thread_id"]
-	if postID == "" {
-		res.Err = "missing thread_id from request body"
+	if err := info.IsValid(); err != nil {
+		res.Err = err.Error()
 		res.Code = http.StatusBadRequest
 		return
 	}
 
-	fileID := info["file_id"]
-	if fileID == "" {
-		res.Err = "missing file_id from request body"
-		res.Code = http.StatusBadRequest
+	// Here we need to lock since we'll be reading and updating the call
+	// post, potentially concurrently with other events (e.g. call ending,
+	// transcribing job completing).
+	_, err := p.lockCall(callID)
+	if err != nil {
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
+	defer p.unlockCall(callID)
 
 	// Update call post
-	post, appErr := p.API.GetPost(postID)
-	if appErr != nil {
-		res.Err = "failed to get call post: " + appErr.Error()
+	post, err := p.GetPost(info.PostID)
+	if err != nil {
+		res.Err = "failed to get call post: " + err.Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
@@ -207,15 +215,58 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 		threadID = post.RootId
 	}
 
-	recordings, ok := post.GetProp("recording_files").([]interface{})
+	// TODO: consider deprecating this in favour of the new recordings metadata
+	// object.
+	recordingFiles, ok := post.GetProp("recording_files").([]interface{})
 	if !ok {
-		recordings = []interface{}{
-			fileID,
+		recordingFiles = []interface{}{
+			info.FileIDs[0],
 		}
 	} else {
-		recordings = append(recordings, fileID)
+		recordingFiles = append(recordingFiles, info.FileIDs[0])
 	}
-	post.AddProp("recording_files", recordings)
+	post.AddProp("recording_files", recordingFiles)
+
+	startAt, _ := post.GetProp("start_at").(int64)
+	postMsg := "Here's the call recording"
+	if cfg := p.getConfiguration(); cfg.transcriptionsEnabled() {
+		postMsg = "Here's the call recording. Transcription is processing and will be posted when ready."
+	}
+
+	if title, _ := post.GetProp("title").(string); title != "" {
+		postMsg = fmt.Sprintf("%s of %s at %s UTC", postMsg, title, time.UnixMilli(startAt).Format("3:04PM"))
+	}
+	recPost := &model.Post{
+		UserId:    p.getBotID(),
+		ChannelId: callID,
+		Message:   postMsg,
+		Type:      callRecordingPostType,
+		RootId:    threadID,
+		FileIds:   []string{info.FileIDs[0]},
+	}
+	recPost.AddProp("recording_id", info.JobID)
+	recPost.AddProp("call_post_id", info.PostID)
+
+	recPost, appErr := p.API.CreatePost(recPost)
+	if appErr != nil {
+		res.Err = "failed to create post: " + appErr.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	// We update the metadata with the file and post IDs for the recording.
+	recordings, ok := post.GetProp("recordings").(map[string]any)
+	if ok {
+		var rm jobMetadata
+		rm.fromMap(recordings[info.JobID])
+		rm.FileID = info.FileIDs[0]
+		rm.PostID = recPost.Id
+		recordings[info.JobID] = rm.toMap()
+		post.AddProp("recordings", recordings)
+	} else {
+		p.LogError("unexpected data found in recordings post prop", "recID", info.JobID)
+	}
+
 	_, appErr = p.API.UpdatePost(post)
 	if appErr != nil {
 		res.Err = "failed to update call thread: " + appErr.Error()
@@ -223,23 +274,136 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
+	res.Code = http.StatusOK
+	res.Msg = "success"
+}
+
+func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Request, callID string) {
+	var res httpResponse
+	defer p.httpAudit("handleBotPostTranscription", &res, w, r)
+
+	var info public.TranscribingJobInfo
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
+		res.Err = "failed to decode request body: " + err.Error()
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if err := info.IsValid(); err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	// Here we need to lock since we'll be reading and updating the call
+	// post, potentially concurrently with other events (e.g. call ending,
+	// recording job completing).
+	_, err := p.lockCall(callID)
+	if err != nil {
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer p.unlockCall(callID)
+
+	// Update call post
+	post, err := p.GetPost(info.PostID)
+	if err != nil {
+		res.Err = "failed to get call post: " + err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	threadID := post.Id
+
+	// Post in thread
+	if post.RootId != "" {
+		threadID = post.RootId
+	}
+
+	// This is a bit hacky but the permissions system doesn't
+	// allow non admin users to access files that are not attached to
+	// a post, even if the channel id is set.
+	// Updating the file to point to the existing call post solves this problem
+	// without requiring us to expose a dedicated API nor attach the file which
+	// we don't want to show.
+	if err := p.updateFileInfoPostID(info.Transcriptions[0].FileIDs[0], info.PostID); err != nil {
+		res.Err = "failed to update fileinfo post id: " + err.Error()
+		res.Code = http.StatusInternalServerError
+	}
+
 	startAt, _ := post.GetProp("start_at").(int64)
-	postMsg := "Here's the call recording"
+	postMsg := "Here's the call transcription"
 	if title, _ := post.GetProp("title").(string); title != "" {
 		postMsg = fmt.Sprintf("%s of %s at %s UTC", postMsg, title, time.UnixMilli(startAt).Format("3:04PM"))
 	}
-	post = &model.Post{
+	transcriptionPost := &model.Post{
 		UserId:    p.getBotID(),
 		ChannelId: callID,
 		Message:   postMsg,
-		Type:      callRecordingPostType,
+		Type:      "custom_calls_transcription",
 		RootId:    threadID,
-		FileIds:   []string{fileID},
+		FileIds:   []string{info.Transcriptions[0].FileIDs[1]},
 	}
-
-	_, appErr = p.API.CreatePost(post)
+	transcriptionPost.AddProp("call_post_id", info.PostID)
+	transcriptionPost.AddProp("transcription_id", info.JobID)
+	trPost, appErr := p.API.CreatePost(transcriptionPost)
 	if appErr != nil {
 		res.Err = "failed to create post: " + appErr.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	// We update the metadata with the file and post IDs for the transcription.
+	transcriptions, ok := post.GetProp("transcriptions").(map[string]any)
+	if !ok {
+		res.Err = "unexpected data found in transcriptions post prop"
+		res.Code = http.StatusInternalServerError
+		p.LogError(res.Err, "trID", info.JobID)
+		return
+	}
+
+	var tm jobMetadata
+	tm.fromMap(transcriptions[info.JobID])
+	tm.FileID = info.Transcriptions[0].FileIDs[0]
+	tm.PostID = trPost.Id
+	transcriptions[info.JobID] = tm.toMap()
+	post.AddProp("transcriptions", transcriptions)
+
+	// We retrieve the related recording info (if any) so that we can save the file id
+	// for the VTT captions in the props of the recording post that will
+	// eventually render them on top of the video player.
+	recordings, ok := post.GetProp("recordings").(map[string]any)
+	if !ok {
+		res.Err = "unexpected data found in recordings post prop"
+		res.Code = http.StatusInternalServerError
+		p.LogError(res.Err, "trID", info.JobID)
+		return
+	}
+	var rm jobMetadata
+	rm.fromMap(recordings[tm.RecID])
+	if rm.PostID != "" {
+		recPost, err := p.GetPost(rm.PostID)
+		if err != nil {
+			res.Err = "failed to get recording post: " + err.Error()
+			res.Code = http.StatusInternalServerError
+			p.LogError(res.Err, "trID", info.JobID)
+			return
+		}
+		recPost.AddProp("captions", info.Transcriptions.ToClientCaptions())
+		if _, appErr := p.API.UpdatePost(recPost); appErr != nil {
+			res.Err = "failed to update recording post: " + appErr.Error()
+			res.Code = http.StatusInternalServerError
+			p.LogError(res.Err, "trID", info.JobID)
+			return
+		}
+	} else {
+		p.LogWarn("unexpected missing recording post ID", "trID", info.JobID)
+	}
+
+	_, appErr = p.API.UpdatePost(post)
+	if appErr != nil {
+		res.Err = "failed to update call thread: " + appErr.Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
@@ -273,61 +437,138 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	if status.JobType == public.JobTypeRecording {
-		if state.Call.Recording == nil {
-			res.Err = "no recording ongoing"
-			res.Code = http.StatusBadRequest
-			return
-		}
+	var jb *jobState
+	switch status.JobType {
+	case public.JobTypeRecording:
+		jb = state.Call.Recording
+	case public.JobTypeTranscribing:
+		jb = state.Call.Transcription
+	default:
+		res.Err = "invalid job type"
+		res.Code = http.StatusBadRequest
+		return
+	}
 
-		if state.Call.Recording.ID != jobID {
-			res.Err = "invalid recording job ID"
-			res.Code = http.StatusBadRequest
-			return
-		}
+	if jb == nil {
+		res.Err = "no job ongoing"
+		res.Code = http.StatusBadRequest
+		return
+	}
 
-		if state.Call.Recording.EndAt > 0 {
-			res.Err = "recording has ended"
-			res.Code = http.StatusBadRequest
-			return
-		}
+	if jb.ID != jobID {
+		res.Err = "invalid job ID"
+		res.Code = http.StatusBadRequest
+		return
+	}
 
-		if status.Status == public.JobStatusTypeFailed {
-			p.LogDebug("recording has failed", "jobID", jobID)
-			state.Call.Recording.EndAt = time.Now().UnixMilli()
-			state.Call.Recording.Err = status.Error
-		} else if status.Status == public.JobStatusTypeStarted {
-			if state.Call.Recording.StartAt > 0 {
-				res.Err = "recording has already started"
-				res.Code = http.StatusBadRequest
-				return
+	if status.Status != public.JobStatusTypeFailed && jb.EndAt > 0 {
+		res.Err = "job has ended"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if status.Status == public.JobStatusTypeFailed {
+		p.LogDebug("job has failed", "jobID", jobID, "jobType", status.JobType)
+		jb.EndAt = time.Now().UnixMilli()
+		jb.Err = status.Error
+
+		if status.JobType == public.JobTypeRecording && state.Call.Transcription != nil {
+			if err := p.stopTranscribingJob(state, callID); err != nil {
+				p.LogError("failed to stop transcribing job", "callID", callID, "err", err.Error())
 			}
-			p.LogDebug("recording has started", "jobID", jobID)
-			state.Call.Recording.StartAt = time.Now().UnixMilli()
-		} else {
-			res.Err = "unsupported status type"
+		} else if status.JobType == public.JobTypeTranscribing && state.Call.Recording != nil {
+			if _, _, err := p.stopRecordingJob(state, callID); err != nil {
+				p.LogError("failed to stop recording job", "callID", callID, "err", err.Error())
+			}
+		}
+
+	} else if status.Status == public.JobStatusTypeStarted {
+		if jb.StartAt > 0 {
+			res.Err = "job has already started"
 			res.Code = http.StatusBadRequest
 			return
 		}
+		p.LogDebug("job has started", "jobID", jobID)
+		jb.StartAt = time.Now().UnixMilli()
+	} else {
+		res.Err = "unsupported status type"
+		res.Code = http.StatusBadRequest
+		return
+	}
 
-		if err := p.kvSetChannelState(callID, state); err != nil {
-			res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
-			res.Code = http.StatusInternalServerError
-			return
-		}
+	if err := p.kvSetChannelState(callID, state); err != nil {
+		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
 
+	if status.JobType == public.JobTypeRecording {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
 			"recState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	} else {
+		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
+			"callID":  callID,
+			"trState": state.Call.Transcription.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}
 
-		res.Code = http.StatusOK
-		res.Msg = "success"
+	res.Code = http.StatusOK
+	res.Msg = "success"
+}
+
+func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, callID, sessionID string) {
+	var res httpResponse
+	defer p.httpResponseHandler(&res, w)
+
+	state, err := p.lockCall(callID)
+	if err != nil {
+		p.LogError("handleBotGetProfileForSession: failed to lock call", "err", err.Error())
+		res.Code = http.StatusInternalServerError
+		res.Err = err.Error()
+		return
+	}
+	defer p.unlockCall(callID)
+
+	if state == nil || state.Call == nil {
+		res.Code = http.StatusBadRequest
+		res.Err = "no call ongoing"
 		return
 	}
 
-	res.Err = "bad request"
-	res.Code = http.StatusBadRequest
+	ust := state.Call.Sessions[sessionID]
+	if ust.UserID == "" {
+		res.Code = http.StatusNotFound
+		res.Err = "not found"
+		return
+	}
+
+	user, appErr := p.API.GetUser(ust.UserID)
+	if appErr != nil {
+		res.Code = http.StatusInternalServerError
+		res.Err = appErr.Error()
+		return
+	}
+
+	user.Sanitize(nil)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
+func (p *Plugin) handleBotGetFilenameForCall(w http.ResponseWriter, callID string) {
+	var res httpResponse
+	defer p.httpResponseHandler(&res, w)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"filename": p.genFilenameForCall(callID),
+	}); err != nil {
+		p.LogError(err.Error())
+	}
 }
 
 func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
@@ -356,6 +597,16 @@ func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
 			p.handleBotGetUpload(w, r, matches[1])
 			return
 		}
+
+		if matches := botProfileForSessionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
+			p.handleBotGetProfileForSession(w, matches[1], matches[2])
+			return
+		}
+
+		if matches := botFilenameRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleBotGetFilenameForCall(w, matches[1])
+			return
+		}
 	}
 
 	if r.Method == http.MethodPost {
@@ -374,6 +625,11 @@ func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
 
 		if matches := botJobsStatusRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
 			p.handleBotPostJobsStatus(w, r, matches[1], matches[2])
+			return
+		}
+
+		if matches := botTranscriptionsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
+			p.handleBotPostTranscriptions(w, r, matches[1])
 			return
 		}
 	}

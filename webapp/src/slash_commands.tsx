@@ -95,8 +95,9 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         return {};
     case 'leave':
         if (connectedID && args.channel_id === connectedID) {
-            if (window.callsClient) {
-                window.callsClient.disconnect();
+            const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+            if (callsClient) {
+                callsClient.disconnect();
                 return {};
             } else if (shouldRenderDesktopWidget()) {
                 sendDesktopEvent('calls-leave-call', {callID: args.channel_id});

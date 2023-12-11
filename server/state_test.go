@@ -63,10 +63,10 @@ func TestCallStateGetClientState(t *testing.T) {
 					RaisedHand: 1100,
 				},
 			},
-			ThreadID:        "threadID",
-			ScreenSharingID: "sessionA",
-			OwnerID:         "ownerID",
-			HostID:          "hostID",
+			ThreadID:               "threadID",
+			ScreenSharingSessionID: "sessionA",
+			OwnerID:                "ownerID",
+			HostID:                 "hostID",
 		}
 		ccs := CallStateClient{
 			ID:      cs.ID,
@@ -88,7 +88,7 @@ func TestCallStateGetClientState(t *testing.T) {
 			},
 			ThreadID:               cs.ThreadID,
 			ScreenSharingID:        "userA",
-			ScreenSharingSessionID: cs.ScreenSharingID,
+			ScreenSharingSessionID: cs.ScreenSharingSessionID,
 			OwnerID:                cs.OwnerID,
 			HostID:                 cs.HostID,
 		}
@@ -340,8 +340,8 @@ func TestChannelStateClone(t *testing.T) {
 						Unmuted: true,
 					},
 				},
-				Recording: &recordingState{
-					RecordingStateClient: RecordingStateClient{
+				Recording: &jobState{
+					JobStateClient: JobStateClient{
 						InitAt:  1100,
 						StartAt: 1200,
 					},
@@ -371,24 +371,24 @@ func TestChannelStateClone(t *testing.T) {
 	})
 }
 
-func TestRecordingStateGetClientState(t *testing.T) {
+func TestJobStateGetClientState(t *testing.T) {
 	t.Run("nil", func(t *testing.T) {
-		var rs recordingState
+		var rs jobState
 		require.Empty(t, rs.getClientState())
 	})
 
 	t.Run("non-nil", func(t *testing.T) {
-		rs := &recordingState{
+		rs := &jobState{
 			ID:        "recID",
 			CreatorID: "creatorID",
-			RecordingStateClient: RecordingStateClient{
+			JobStateClient: JobStateClient{
 				InitAt:  100,
 				StartAt: 200,
 				EndAt:   300,
 			},
 		}
 
-		recState := &RecordingStateClient{
+		recState := &JobStateClient{
 			InitAt:  100,
 			StartAt: 200,
 			EndAt:   300,

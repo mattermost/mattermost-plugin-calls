@@ -141,7 +141,7 @@
         "display_name": "Enable call recordings (Beta)",
         "type": "bool",
         "default": false,
-        "help_text": "(Optional) When set to true it enables the call recordings functionality."
+        "help_text": "(Optional) When set to true, call recordings are enabled."
       },
       {
         "key": "JobServiceURL",
@@ -180,6 +180,35 @@
         "hosting": "on-prem"
       },
       {
+        "key": "EnableTranscriptions",
+        "display_name": "Enable call transcriptions (Experimental)",
+        "type": "bool",
+        "default": false,
+        "help_text": "(Optional) When set to true, call transcriptions are enabled."
+      },
+      {
+        "key": "TranscriberModelSize",
+        "display_name": "Call transcriber model size",
+        "type": "dropdown",
+        "default": "base",
+        "help_text": "The speech-to-text model size to use. Heavier models will produce more accurate results at the expense of processing time and resources usage.",
+        "options": [
+          {
+            "display_name": "Tiny",
+            "value": "tiny"
+          },
+          {
+            "display_name": "Base",
+            "value": "base"
+          },
+          {
+            "display_name": "Small",
+            "value": "small"
+          }
+        ],
+        "hosting": "on-prem"
+      },
+      {
         "key": "EnableIPv6",
         "display_name": "(Experimental) Enable IPv6 support",
         "type": "bool",
@@ -198,7 +227,8 @@
   },
   "props": {
     "min_rtcd_version": "v0.10.1",
-    "min_offloader_version": "v0.3.2",
-    "calls_recorder_version": "v0.5.3"
+    "min_offloader_version": "v0.5.0",
+    "calls_recorder_version": "v0.6.0",
+    "calls_transcriber_version": "v0.1.0"
   }
 }

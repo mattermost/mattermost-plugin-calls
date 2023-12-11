@@ -1,7 +1,6 @@
 {
   "/WMCDd": "Quelque chose a mal tourné!",
   "/c+F8S": "Appel de <b>{callerName}</b> avec <b>{others}</b>",
-  "/tRHJl": "Vous enregistrez cette réunion. Pensez à faire savoir à tout le monde que cette réunion est enregistrée",
   "0Ihpmc": "Enregistrer un appel",
   "0LuKMT": "Vous êtes déjà dans un appel",
   "0UG4R4": "Connexion à l'appel…",
@@ -62,7 +61,6 @@
   "N2IrpM": "Confirmer",
   "O6EeNO": "Autorisez les hôtes d'appel à enregistrer la vidéo et l'audio de la réunion dans le cloud. L'enregistrement inclut la vue entière de la fenêtre d'appel ainsi que la piste audio des participants et toute vidéo d'écran partagé. <featureLink>En savoir plus sur cette fonctionnalité</featureLink>.",
   "OKhRC6": "Partager",
-  "OlfjBf": "Vous pouvez trouver l'enregistrement dans le fil de discussion de cet appel une fois le traitement terminé.",
   "OvzONl": "Désactivé",
   "P6PLpi": "Rejoindre",
   "PjoOvw": "Vous partagez votre écran",
@@ -88,7 +86,6 @@
   "Xq3WJ4": "Permissions manquantes pour l'entrée audio",
   "YJPC7G": "Êtes-vous sûr(e) de vouloir finir l'appel avec <participant>{name}</participant> ?",
   "Z/nRgQ": "Défaut - {deviceLabel}",
-  "ZaJteE": "L'hôte a lancé l'enregistrement de cette réuion. En restant dans la réunion, vous acceptez d'être enregistré(e).",
   "Zh+5A6": "Activé",
   "ZhtEeD": "Impossible de lancer l'appel",
   "ZvZBwP": "Quitter et rejoindre le nouvel appel",

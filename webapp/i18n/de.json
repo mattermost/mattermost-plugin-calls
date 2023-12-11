@@ -1,7 +1,6 @@
 {
   "/WMCDd": "Etwas ist schief gelaufen!",
   "/c+F8S": "Aufruf von <b>{callerName}</b> mit <b>{others}</b>",
-  "/tRHJl": "Du zeichnest diese Besprechung auf. Bitte informiere alle Teilnehmer darüber, dass diese Sitzung aufgezeichnet wird.",
   "0Ihpmc": "Anruf aufzeichnen",
   "0LuKMT": "Sie befinden sich bereits in einem Gespräch",
   "0UG4R4": "Verbinden mit dem Anruf…",
@@ -63,7 +62,6 @@
   "N2IrpM": "Bestätigen",
   "O6EeNO": "Erlaube Gastgebern, Video- und Audioaufnahmen von Calls in der Cloud aufzuzeichnen. Die Aufzeichnung umfasst die gesamte Fensteransicht des Anrufs sowie die Audiospur der Teilnehmer und alle freigegebenen Bildschirmvideos. <featureLink>Erfahre mehr über diese Funktion</featureLink>.",
   "OKhRC6": "Teilen",
-  "OlfjBf": "Du kannst die Aufzeichnung in der Unterhaltung dieses Anrufs finden, sobald die Verarbeitung abgeschlossen ist.",
   "OvzONl": "Aus",
   "P6PLpi": "Teilnehmen",
   "PjoOvw": "Du teilst deinen Bildschirm",
@@ -89,7 +87,6 @@
   "Xq3WJ4": "Keine Berechtigungen für den Audioeingang",
   "YJPC7G": "Bist du sicher, dass du ein Gespräch mit <participant>{name}</participant> beenden möchtest?",
   "Z/nRgQ": "Standard - {deviceLabel}",
-  "ZaJteE": "Der Gastgeber hat mit der Aufzeichnung dieses Treffens begonnen. Wenn du an der Sitzung teilnimmst, erklärst du dich mit der Aufzeichnung einverstanden.",
   "Zh+5A6": "Ein",
   "ZhtEeD": "Anruf kann nicht gestartet werden",
   "ZvZBwP": "Verlassen und neues Gespräch beginnen",
@@ -166,6 +163,7 @@
   "x82IOl": "Stummschalten",
   "yL9vD/": "Willkommen zu deinerr Mattermost Enterprise-Testversion! Sie läuft am {trialExpirationDate} ab. Du hast jetzt Zugriff auf <rtcdDocsLink>RTCD-Dienste</rtcdDocsLink>, <recordingsDocsLink>Anrufaufzeichnungen</recordingsDocsLink>, <guestAccountsLink>Gastkonten</guestAccountsLink>, <autoComplianceReportsLink>automatische Compliance-Berichte</autoComplianceReportsLink> und <mobileSecureNotificationsLink>mobile Secure-ID-Push-Benachrichtigungen</mobileSecureNotificationsLink>, neben vielen anderen Funktionen. Alle Funktionen findest du in unserer <documentationLink>Dokumentation</documentationLink>.",
   "yO68rk": "Die Anrufe laufen derzeit im Testmodus, und nur Systemadministratoren können sie starten. Wende dich für Hilfe direkt an deinen Systemadministrator",
+  "yidxQc": "Zusammenfassung des Meetings erstellen?",
   "yjQNKt": "Anrufe sind in diesem Kanal deaktiviert.",
   "zx0myy": "Teilnehmer"
 }

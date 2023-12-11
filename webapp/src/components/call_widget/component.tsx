@@ -12,6 +12,7 @@ import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from '
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
+import {navigateToURL} from 'src/browser_routing';
 import {AudioInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge, HostBadge} from 'src/components/badge';
@@ -36,7 +37,7 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
-import {CallAlertConfigs, CallRecordingDisclaimerStrings} from 'src/constants';
+import {CallAlertConfigs, CallRecordingDisclaimerStrings, CallTranscribingDisclaimerStrings} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -93,6 +94,7 @@ interface Props {
     recentlyJoinedUsers: string[],
     wider: boolean,
     callsIncoming: IncomingCallNotification[],
+    transcriptionsEnabled: boolean,
 }
 
 interface DraggingState {
@@ -1451,8 +1453,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         }
 
-        let header = formatMessage(CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].header);
-        let body = formatMessage(CallRecordingDisclaimerStrings[isHost ? 'host' : 'participant'].body);
+        const disclaimerStrings = this.props.transcriptionsEnabled ? CallTranscribingDisclaimerStrings : CallRecordingDisclaimerStrings;
+        let header = formatMessage(disclaimerStrings[isHost ? 'host' : 'participant'].header);
+        let body = formatMessage(disclaimerStrings[isHost ? 'host' : 'participant'].body);
         let confirmText = isHost ? formatMessage({defaultMessage: 'Dismiss'}) : formatMessage({defaultMessage: 'Understood'});
         let icon = (
             <RecordCircleIcon
@@ -1461,9 +1464,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
 
         if (hasRecEnded) {
-            confirmText = '';
-            header = formatMessage({defaultMessage: 'Recording has stopped. Processing…'});
-            body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it\'s finished processing.'});
+            if (isHost) {
+                confirmText = formatMessage({defaultMessage: 'Dismiss'});
+            } else {
+                confirmText = '';
+            }
+
+            if (this.props.transcriptionsEnabled) {
+                header = formatMessage({defaultMessage: 'Recording and transcription has stopped. Processing…'});
+                body = formatMessage({defaultMessage: 'You can find the recording and transcription in this call\'s chat thread once it has finished processing.'});
+            } else {
+                header = formatMessage({defaultMessage: 'Recording has stopped. Processing…'});
+                body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it has finished processing.'});
+            }
         }
 
         if (recording?.err) {
@@ -1768,7 +1781,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (this.props.global) {
             sendDesktopEvent('calls-widget-channel-link-click', message);
         } else {
-            window.postMessage({type: 'browser-history-push-return', message}, window.origin);
+            navigateToURL(this.props.channelURL);
         }
         this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     };
