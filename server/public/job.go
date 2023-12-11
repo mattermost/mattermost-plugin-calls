@@ -24,15 +24,32 @@ type JobStatus struct {
 	Error   string `json:"omitempty"`
 }
 
-type JobInfo struct {
-	PostID  string
+// We need aliases so that we can have different validation rules.
+type RecordingJobInfo struct {
+	// Recording job ID
+	JobID string
+	// Call post ID
+	PostID string
+	// Recording files IDs
 	FileIDs []string
-	JobID   string
 }
 
-// We need aliases so that we can have different validation rules.
-type RecordingJobInfo JobInfo
-type TranscribingJobInfo JobInfo
+type Transcription struct {
+	Title    string
+	Language string
+	FileIDs  []string
+}
+
+type Transcriptions []Transcription
+
+type TranscribingJobInfo struct {
+	// Transcribing job ID
+	JobID string
+	// Call post ID
+	PostID string
+	// Transcription metadata
+	Transcriptions Transcriptions
+}
 
 func (i RecordingJobInfo) IsValid() error {
 	if i.PostID == "" {
@@ -55,8 +72,14 @@ func (i TranscribingJobInfo) IsValid() error {
 		return fmt.Errorf("PostID should not be empty")
 	}
 
-	if len(i.FileIDs) != 2 {
-		return fmt.Errorf("invalid FileIDs length")
+	if len(i.Transcriptions) == 0 {
+		return fmt.Errorf("invalid Transcriptions length")
+	}
+
+	for _, t := range i.Transcriptions {
+		if err := t.IsValid(); err != nil {
+			return err
+		}
 	}
 
 	if i.JobID == "" {
@@ -64,4 +87,36 @@ func (i TranscribingJobInfo) IsValid() error {
 	}
 
 	return nil
+}
+
+func (t Transcription) IsValid() error {
+	if t.Language == "" {
+		return fmt.Errorf("Language should not be empty")
+	}
+
+	if len(t.FileIDs) < 2 {
+		return fmt.Errorf("invalid FileIDs length")
+	}
+
+	return nil
+}
+
+// We need to do some magic in order to go through the RCP layer without errors.
+func (t Transcription) ToClientMap() map[string]any {
+	if t.Title == "" {
+		t.Title = t.Language
+	}
+	return map[string]any{
+		"title":    t.Title,
+		"language": t.Language,
+		"file_id":  t.FileIDs[0],
+	}
+}
+
+func (t Transcriptions) ToClientCaptions() []any {
+	captions := make([]any, len(t))
+	for i := range t {
+		captions[i] = t[i].ToClientMap()
+	}
+	return captions
 }
