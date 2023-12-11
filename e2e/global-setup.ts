@@ -1,8 +1,7 @@
 import {expect, FullConfig, request} from '@playwright/test';
 import {readFile} from 'fs/promises';
 
-import plugin from '../plugin.json';
-import {adminState, baseURL, channelPrefix, defaultTeam, userPassword, userPrefix} from './constants';
+import {adminState, baseURL, channelPrefix, defaultTeam, pluginID, userPassword, userPrefix} from './constants';
 
 async function globalSetup(config: FullConfig) {
     const numUsers = config.workers * 3;
@@ -189,7 +188,7 @@ async function globalSetup(config: FullConfig) {
             });
         }
 
-        await adminContext.post(`/plugins/${plugin.id}/${channel.id}`, {
+        await adminContext.post(`/plugins/${pluginID}/${channel.id}`, {
             data: {
                 enabled: true,
             },
@@ -206,7 +205,7 @@ async function globalSetup(config: FullConfig) {
         await expect(resp.status()).toEqual(201);
     }
 
-    await adminContext.post(`/api/v4/plugins/${plugin.id}/enable`, {
+    await adminContext.post(`/api/v4/plugins/${pluginID}/enable`, {
         headers,
     });
 
@@ -214,8 +213,8 @@ async function globalSetup(config: FullConfig) {
     const serverConfig = await (await adminContext.get('/api/v4/config')).json();
     serverConfig.PluginSettings.Plugins = {
         ...serverConfig.PluginSettings.Plugins,
-        [`${plugin.id}`]: {
-            ...serverConfig.PluginSettings.Plugins[plugin.id],
+        [`${pluginID}`]: {
+            ...serverConfig.PluginSettings.Plugins[pluginID],
             defaultenabled: true,
             enableringing: true,
         },
