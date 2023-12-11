@@ -297,10 +297,10 @@ github.com/magiconair/properties v1.8.5/go.mod h1:y3VJvCyxH9uVvJTWEGAELF3aiYNyPK
 github.com/mailru/easyjson v0.0.0-20190312143242-1de009706dbe/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mattermost/calls-offloader v0.5.0 h1:3No8IdCiHDamNVvUTlnmKJlAxoWJiXMGu3WU8DBC034=
 github.com/mattermost/calls-offloader v0.5.0/go.mod h1:/xyDQiBZ0XNKNC/ALGp7pkGNApfC6v94CD7tPWGcFvM=
-github.com/mattermost/calls-recorder v0.6.0 h1:ZDaaUseWoUyAZXwBEIFPhkhHbzD+GpBSYedUmAPN+JI=
-github.com/mattermost/calls-recorder v0.6.0/go.mod h1:v/52mE+wIXGJE7ZflpAkoyGd56hbVgC9ZuEBBaRd8KU=
-github.com/mattermost/calls-transcriber v0.1.0 h1:yoY1R7vbs5yWweyxQ9yViA21gsKEWzgpwzc58AAjhKU=
-github.com/mattermost/calls-transcriber v0.1.0/go.mod h1:FT6hCa2dQsbZ/uAT7x6+6e4ArVzq6Wj8QIn5u8XPV4U=
+github.com/mattermost/calls-recorder v0.6.2 h1:tTEoSkXJ9UEfoW7Lr9YQW3YtsHoQ0ycGeStyQrm/5aw=
+github.com/mattermost/calls-recorder v0.6.2/go.mod h1:v/52mE+wIXGJE7ZflpAkoyGd56hbVgC9ZuEBBaRd8KU=
+github.com/mattermost/calls-transcriber v0.1.4 h1:G7Ubm0jJ9mPTo8tYkNmQL2MI627t2XcXMQky947OyRQ=
+github.com/mattermost/calls-transcriber v0.1.4/go.mod h1:jfUzpxyP0ze4agRTjTy9PWurV4m420cJMOIzlZJOncc=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 h1:Khvh6waxG1cHc4Cz5ef9n3XVCxRWpAKUtqg9PJl5+y8=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404/go.mod h1:RyS7FDNQlzF1PsjbJWHRI35exqaKGSO9qD4iv8QjE34=
 github.com/mattermost/ldap v3.0.4+incompatible h1:SOeNnz+JNR+foQ3yHkYqijb9MLPhXN2BZP/PdX23VDU=
@@ -309,8 +309,8 @@ github.com/mattermost/logr/v2 v2.0.16 h1:jnePX4cPskC3WDFvUardh/xZfxNdsFXbEERJQ1k
 github.com/mattermost/logr/v2 v2.0.16/go.mod h1:1dm/YhTpozsqANXxo5Pi5zYLBsal2xY0pX+JZNbzYJY=
 github.com/mattermost/mattermost/server/public v0.0.11-0.20231115180603-759bb70b2f44 h1:aTq8Vvdme0N8G2ZYEbKNlEBuXDr8MACPUmImIieKELc=
 github.com/mattermost/mattermost/server/public v0.0.11-0.20231115180603-759bb70b2f44/go.mod h1:AMuKlAabVFnLvf5bXg+69EdvtLIfty4ahFossB34LM4=
-github.com/mattermost/rtcd v0.12.1-0.20231121174414-6a5686281335 h1:PaE1X/fJftk0FgX9YjvToWnSuF4Mr77K5tuU90LRDSc=
-github.com/mattermost/rtcd v0.12.1-0.20231121174414-6a5686281335/go.mod h1:SK7+TEIpUD/rx53RUiy5KotiBzv1h08PujbK87/jw6M=
+github.com/mattermost/rtcd v0.12.1-0.20231207181014-6f067694af89 h1:sTzOpxqG+SVP/3VqjW75hOKZ/ghaOGfA8/k6fI++h+8=
+github.com/mattermost/rtcd v0.12.1-0.20231207181014-6f067694af89/go.mod h1:M2F8N5aipH6Rne8+CYp/QiaFLy6iru3nTt6u/FUxhXs=
 github.com/mattermost/squirrel v0.2.0 h1:8ZWeyf+MWQ2cL7hu9REZgLtz2IJi51qqZEovI3T3TT8=
 github.com/mattermost/squirrel v0.2.0/go.mod h1:NPPtk+CdpWre4GxMGoOpzEVFVc0ZoEFyJBZGCtn9nSU=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
