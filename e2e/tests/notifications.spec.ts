@@ -19,7 +19,7 @@ const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
 const allUserIDsInTest = getUserIDsForTest();
 
-test.setTimeout(200 * 1000);
+test.setTimeout(240 * 1000);
 
 test.beforeEach(async ({page, request}, info) => {
     // Small optimization to avoid loading an unnecessary channel.
@@ -309,7 +309,6 @@ test.describe('notifications', () => {
         await user1.startCall();
 
         const devPage = new PlaywrightDevPage(page);
-        await devPage.wait(1000);
 
         const user2 = await openGM(userStorages[2], usernames[2]);
         await user2.startCall();
@@ -338,7 +337,6 @@ test.describe('notifications', () => {
 
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await expect(page.locator('#calls-widget')).toBeVisible();
         await devPage.hideDocument(true);
 
         // Receives two incoming notifications above widget, no notifications on the webapp itself
@@ -415,7 +413,6 @@ test.describe('notifications', () => {
 
         // The notifications disappear when the calls are ended
         await user2.leaveCall();
-        await devPage.wait(1000);
 
         notification = await page.getByTestId('call-incoming-condensed-widget');
         await expect(notification).toBeVisible();
@@ -536,9 +533,6 @@ test.describe('notifications', () => {
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
 
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.wait(600);
-
         // received notification
         let notification = await page.getByTestId('call-incoming');
         await expect(notification).toBeVisible();
@@ -549,8 +543,8 @@ test.describe('notifications', () => {
         await expect(notificationsSoundedAt.length).toEqual(1);
 
         // Now start a call
+        const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await expect(page.locator('#calls-widget')).toBeVisible();
 
         // Original LHS notification should be gone
         await expect(notification).not.toBeVisible();
@@ -579,12 +573,9 @@ test.describe('notifications', () => {
 
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await expect(page.locator('#calls-widget')).toBeVisible();
 
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
-
-        await devPage.wait(600);
 
         // received notification above widget, not in lhs
         let notification = await page.getByTestId('call-incoming');

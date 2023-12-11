@@ -373,7 +373,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
 export const userLeft = (channelID: string, userID: string, sessionID: string) => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         // save for later
-        const callID = calls(getState())[channelID].ID || '';
+        const callID = calls(getState())[channelID]?.ID || '';
 
         await dispatch({
             type: USER_LEFT,

@@ -26,12 +26,11 @@ test.describe('screen sharing', () => {
         await expect(page.locator('#screen-player')).toBeVisible();
         await expect(userPage.page.locator('#screen-player')).toBeVisible();
 
-        await devPage.wait(1000);
-
-        const screenStreamID = await userPage.page.evaluate(() => {
+        const screenStreamID = await (await userPage.page.waitForFunction(() => {
+            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        })).evaluate(() => {
             return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
         });
-
         expect(screenStreamID).toContain('screen_');
 
         await page.getByTestId('calls-widget-stop-screenshare').click();
@@ -49,8 +48,6 @@ test.describe('screen sharing', () => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.joinCall();
 
-        await devPage.wait(1000);
-
         if (process.platform === 'darwin') {
             await page.keyboard.press('Meta+Shift+E');
         } else {
@@ -60,12 +57,11 @@ test.describe('screen sharing', () => {
         await expect(page.locator('#screen-player')).toBeVisible();
         await expect(userPage.page.locator('#screen-player')).toBeVisible();
 
-        await devPage.wait(1000);
-
-        const screenTrackID = await userPage.page.evaluate(() => {
+        const screenTrackID = await (await userPage.page.waitForFunction(() => {
+            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        })).evaluate(() => {
             return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
         });
-
         expect(screenTrackID).toContain('screen_');
 
         if (process.platform === 'darwin') {
@@ -95,10 +91,10 @@ test.describe('screen sharing', () => {
         await expect(page.locator('#screen-player')).toBeVisible();
         await expect(userPage.page.locator('#screen-player')).toBeVisible();
 
-        await devPage.wait(1000);
-
         // verify that on the receiving side the screen track is correctly set
-        let screenStreamID = await userPage.page.evaluate(() => {
+        let screenStreamID = await (await userPage.page.waitForFunction(() => {
+            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        })).evaluate(() => {
             return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
         });
         expect(screenStreamID).toContain('screen_');
@@ -117,10 +113,10 @@ test.describe('screen sharing', () => {
         await expect(userPage.page.locator('#screen-player')).toBeVisible();
         await expect(devPage.page.locator('#screen-player')).toBeVisible();
 
-        await userPage.wait(1000);
-
         // verify that on the receiving side the screen track is correctly set
-        screenStreamID = await devPage.page.evaluate(() => {
+        screenStreamID = await (await devPage.page.waitForFunction(() => {
+            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        })).evaluate(() => {
             return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
         });
         expect(screenStreamID).toContain('screen_');
@@ -141,9 +137,9 @@ test.describe('sending voice', () => {
 
         await page.locator('#voice-mute-unmute').click();
 
-        await devPage.wait(1000);
-
-        let voiceTrackID = await userPage.page.evaluate(() => {
+        let voiceTrackID = await (await userPage.page.waitForFunction(() => {
+            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
+        })).evaluate(() => {
             return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
         });
 
@@ -152,9 +148,9 @@ test.describe('sending voice', () => {
 
         await userPage.page.locator('#voice-mute-unmute').click();
 
-        await devPage.wait(1000);
-
-        voiceTrackID = await page.evaluate(() => {
+        voiceTrackID = await (await devPage.page.waitForFunction(() => {
+            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
+        })).evaluate(() => {
             return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
         });
 
