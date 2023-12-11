@@ -275,14 +275,11 @@ test.describe('popout window', () => {
 
         await expect(popOut.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
 
-        const replyTextbox = popOut.locator('#reply_textbox');
-        const msg = '/call leave';
-        await replyTextbox.type(msg);
-        await replyTextbox.press('Enter');
+        await popOut.locator('#reply_textbox').fill('/call leave ');
+        await popOut.getByTestId('SendMessageButton').click();
 
         // Verify we left the call.
-        await devPage.wait(2000);
-        await expect(popOut.isClosed()).toEqual(true);
         await expect(page.locator('#calls-widget')).toBeHidden();
+        await expect(popOut.isClosed()).toEqual(true);
     });
 });

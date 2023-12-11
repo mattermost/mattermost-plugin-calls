@@ -61,7 +61,6 @@ test.describe('start new call', () => {
     test('channel header button', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
         expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('calls-widget-bottom-bar.png');
         await devPage.leaveCall();
     });
@@ -80,7 +79,6 @@ test.describe('start new call', () => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.gotoDM(usernames[1]);
         await devPage.startCall();
-        await devPage.wait(1000);
         expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('dm-calls-widget-bottom-bar.png');
         await devPage.leaveCall();
     });
@@ -130,7 +128,6 @@ test.describe('start new call', () => {
     test('verify no one is talking…', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         await expect(page.locator('#calls-widget').filter({has: page.getByText('No one is talking…')})).toBeVisible();
 
@@ -140,7 +137,6 @@ test.describe('start new call', () => {
     test('ws reconnect', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         const reconnected = await page.evaluate(() => {
             return new Promise((resolve) => {
@@ -202,7 +198,6 @@ test.describe('desktop', () => {
         await page.locator('#calls-widget-toggle-menu-button').click();
         await page.locator('#calls-widget-menu-screenshare').click();
         await expect(page.locator('#calls-screen-source-modal')).toBeVisible();
-        await devPage.wait(1000);
         expect(await page.locator('#calls-screen-source-modal').screenshot()).toMatchSnapshot('calls-screen-source-modal.png');
         await page.locator('#calls-screen-source-modal button:has-text("source_2")').click();
         await page.locator('#calls-screen-source-modal button:has-text("Share")').click();
@@ -215,13 +210,17 @@ test.describe('auto join link', () => {
     test.use({storageState: userStorages[0]});
 
     test('public channel', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+
         await page.locator('#post_textbox').fill('/call link');
         await page.getByTestId('SendMessageButton').click();
 
-        const post = page.locator('.post-message__text').last();
-        await expect(post).toBeVisible();
+        // Make sure we get the ephemeral post and not something else that may
+        // have been posted by a concurrent test.
+        const postContent = page.locator('.post__content', {has: page.locator('.post__visibility', {hasText: '(Only visible to you)'})});
+        await expect(postContent).toBeVisible();
 
-        const content = await post.textContent();
+        const content = await postContent.locator('.post-message__text').textContent();
         if (!content) {
             test.fail();
             return;
@@ -229,9 +228,10 @@ test.describe('auto join link', () => {
         const link = content.replace('Call link: ', '');
         page.goto(link);
 
-        expect(page.locator('#calls-widget .calls-widget-bottom-bar'));
-        await page.locator('#calls-widget-leave-button').click();
-        await expect(page.locator('#calls-widget')).toBeHidden();
+        await expect(page.locator('#calls-widget')).toBeVisible();
+        await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
+
+        await devPage.leaveCall();
     });
 
     test('dm channel', async ({page, context}) => {
@@ -252,9 +252,10 @@ test.describe('auto join link', () => {
         const link = content.replace('Call link: ', '');
         page.goto(link);
 
-        expect(page.locator('#calls-widget .calls-widget-bottom-bar'));
-        await page.locator('#calls-widget-leave-button').click();
-        await expect(page.locator('#calls-widget')).toBeHidden();
+        await expect(page.locator('#calls-widget')).toBeVisible();
+        await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
+
+        await devPage.leaveCall();
     });
 });
 
@@ -264,7 +265,6 @@ test.describe('setting audio input device', () => {
     test('no default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         const currentAudioInputDevice = await page.evaluate(() => {
             return window.callsClient.currentAudioInputDevice?.deviceId;
@@ -280,7 +280,6 @@ test.describe('setting audio input device', () => {
     test('setting default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         await page.locator('#calls-widget-toggle-menu-button').click();
         await expect(page.locator('#calls-widget-audio-input-button')).toBeVisible();
@@ -309,7 +308,6 @@ test.describe('setting audio input device', () => {
         await devPage.leaveCall();
 
         await devPage.startCall();
-        await devPage.wait(1000);
 
         const currentAudioInputDevice2 = await page.evaluate(() => {
             return window.callsClient.currentAudioInputDevice?.deviceId;
@@ -337,7 +335,6 @@ test.describe('setting audio output device', () => {
     test('no default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         const currentAudioOutputDevice = await page.evaluate(() => {
             return window.callsClient.currentAudioOutputDevice?.deviceId;
@@ -353,7 +350,6 @@ test.describe('setting audio output device', () => {
     test('setting default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         await page.locator('#calls-widget-toggle-menu-button').click();
         await expect(page.locator('#calls-widget-audio-output-button')).toBeVisible();
@@ -382,7 +378,6 @@ test.describe('setting audio output device', () => {
         await devPage.leaveCall();
 
         await devPage.startCall();
-        await devPage.wait(1000);
 
         const currentAudioOutputDevice2 = await page.evaluate(() => {
             return window.callsClient.currentAudioOutputDevice?.deviceId;
@@ -410,7 +405,6 @@ test.describe('switching products', () => {
     test('playbooks', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         const switchProductsButton = devPage.page.locator('h1', {hasText: 'Channels'});
         await expect(switchProductsButton).toBeVisible();
@@ -441,7 +435,6 @@ test.describe('switching views', () => {
         const devPage = new PlaywrightDevPage(page);
         devPage.goToChannel(channelName);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         // Switch to admin console
         await devPage.page.locator('#product_switch_menu').click();
@@ -468,7 +461,6 @@ test.describe('ux', () => {
     test('channel link', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         // Check we are on the expected URL
         await expect(page.url()).toEqual(getChannelURL(getChannelNamesForTest()[0]));
