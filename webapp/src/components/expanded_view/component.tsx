@@ -867,12 +867,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                     {(isYou || isHost) &&
                         <span style={{marginLeft: -4, display: 'flex', alignItems: 'baseline'}}>
-                            {isHost && <HostBadge onWhiteBg={true}/>}
                             {isYou &&
                                 <span style={youStyle}>
                                     {formatMessage({defaultMessage: '(you)'})}
                                 </span>
                             }
+                            {isHost && <HostBadge onWhiteBg={true}/>}
                         </span>
                     }
 
