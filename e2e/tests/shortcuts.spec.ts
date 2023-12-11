@@ -39,7 +39,6 @@ test.describe('keyboard shortcuts', () => {
     test('mute/unmute', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         const toggleMute = async () => {
             if (process.platform === 'darwin') {
@@ -75,7 +74,6 @@ test.describe('keyboard shortcuts', () => {
     test('raise/lower hand', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         const toggleHand = async () => {
             if (process.platform === 'darwin') {
@@ -121,7 +119,6 @@ test.describe('keyboard shortcuts', () => {
     test('participants list toggle', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         const toggleParticipants = async () => {
             if (process.platform === 'darwin') {
@@ -147,7 +144,6 @@ test.describe('keyboard shortcuts', () => {
     test('accessibility conflict', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
-        await devPage.wait(1000);
 
         // unmute
         const muteButton = page.locator('#voice-mute-unmute');

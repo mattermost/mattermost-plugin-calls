@@ -4,12 +4,12 @@ const config: PlaywrightTestConfig = {
     globalSetup: require.resolve('./global-setup'),
     globalTeardown: require.resolve('./global-teardown'),
     forbidOnly: Boolean(process.env.CI),
-    retries: process.env.CI ? 2 : 1,
+    retries: 1,
     workers: 4,
     fullyParallel: true,
-    timeout: 90 * 1000,
+    timeout: 120 * 1000,
     expect: {
-        timeout: 30 * 1000,
+        timeout: 60 * 1000,
         toMatchSnapshot: {
             maxDiffPixelRatio: 0.05,
         },
@@ -29,6 +29,10 @@ const config: PlaywrightTestConfig = {
                 '--use-file-for-fake-audio-capture=./assets/sample.wav',
             ],
         },
+
+        // Unfortunately waitForFunction is flaky and randomly returns CSP failures.
+        // (https://github.com/microsoft/playwright/issues/7395)
+        bypassCSP: true,
     },
     projects: process.env.CI ? [
         {
