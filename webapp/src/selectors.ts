@@ -63,6 +63,14 @@ export const idForCurrentCall: (state: GlobalState) => string | undefined =
         (callsStates, channelID) => callsStates[channelID]?.ID,
     );
 
+export const threadIDForCurrentCall: (state: GlobalState) => string | undefined =
+    createSelector(
+        'threadIDForCurrentCall',
+        calls,
+        channelIDForCurrentCall,
+        (callsStates, channelID) => callsStates[channelID]?.threadID,
+    );
+
 export const teamForCurrentCall: (state: GlobalState) => Team | null =
     createSelector(
         'teamForCurrentCall',
@@ -159,7 +167,7 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
           window.opener?.callsClient?.initTime || 0,
     );
 
-export const callInCurrentChannel: (state: GlobalState) => callState =
+export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
     createSelector(
         'callInCurrentChannel',
         calls,
@@ -215,9 +223,6 @@ export const screenSharingSessionForCurrentCall: (state: GlobalState) => UserSes
 export const threadIDForCallInChannel = (state: GlobalState, channelID: string) => {
     return pluginState(state).calls[channelID]?.threadID || '';
 };
-
-export const threadIDForCurrentCall = (state: GlobalState) =>
-    callInCurrentChannel(state).threadID;
 
 const recordingsForCalls = (state: GlobalState): callsRecordingsState => {
     return pluginState(state).recordings;
