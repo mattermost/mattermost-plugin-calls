@@ -31,6 +31,9 @@ func (p *Plugin) initDB() error {
 		return fmt.Errorf("failed to ping writer DB: %w", err)
 	}
 	p.wDBx = sqlx.NewDb(p.wDB, p.driverName)
+	if p.driverName == model.DatabaseDriverMysql {
+		p.wDBx.MapperFunc(func(s string) string { return s })
+	}
 
 	p.LogInfo("handle to writer DB initialized successfully", "driver", p.driverName)
 
