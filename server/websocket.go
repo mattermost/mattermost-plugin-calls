@@ -774,7 +774,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 	// Handle bot reconnection. This is needed to update the bot connection
 	// IDs for any potentially running jobs.
 	if p.isBot(userID) {
-		if err := p.handleBotWSReconnect(connID, originalConnID, channelID); err != nil {
+		if err := p.handleBotWSReconnect(connID, prevConnID, originalConnID, channelID); err != nil {
 			p.mut.Unlock()
 			return fmt.Errorf("handleBotWSReconnect failed: %w", err)
 		}
@@ -988,8 +988,8 @@ func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID string) er
 	return nil
 }
 
-func (p *Plugin) handleBotWSReconnect(connID, originalConnID, channelID string) error {
-	p.LogDebug("bot ws reconnection", "connID", connID, "originalConnID", originalConnID, "channelID", channelID)
+func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channelID string) error {
+	p.LogDebug("bot ws reconnection", "connID", connID, "prevConnID", prevConnID, "originalConnID", originalConnID, "channelID", channelID)
 
 	state, err := p.lockCall(channelID)
 	if err != nil {
@@ -997,7 +997,7 @@ func (p *Plugin) handleBotWSReconnect(connID, originalConnID, channelID string) 
 	}
 	defer p.unlockCall(channelID)
 
-	if state.Call != nil && state.Call.Recording != nil {
+	if state.Call != nil && state.Call.Recording != nil && state.Call.Recording.BotConnID == prevConnID {
 		p.LogDebug("updating bot conn ID for recording job",
 			"recID", state.Call.Recording.ID,
 			"recJobID", state.Call.Recording.JobID,
@@ -1005,8 +1005,7 @@ func (p *Plugin) handleBotWSReconnect(connID, originalConnID, channelID string) 
 			"botConnID", connID,
 		)
 		state.Call.Recording.BotConnID = connID
-	}
-	if state.Call != nil && state.Call.Transcription != nil {
+	} else if state.Call != nil && state.Call.Transcription != nil && state.Call.Transcription.BotConnID == prevConnID {
 		p.LogDebug("updating bot conn ID for transcribing job",
 			"trID", state.Call.Transcription.ID,
 			"trJobID", state.Call.Transcription.JobID,

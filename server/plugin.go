@@ -15,7 +15,7 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
-	"github.com/mattermost/mattermost-plugin-calls/server/performance"
+	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
 
 	"github.com/mattermost/rtcd/service/rtc"
@@ -42,7 +42,7 @@ type Plugin struct {
 	// setConfiguration for usage.
 	configuration *configuration
 
-	metrics   *performance.Metrics
+	metrics   interfaces.Metrics
 	telemetry *telemetry.Client
 
 	mut         sync.RWMutex
