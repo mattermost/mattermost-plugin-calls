@@ -32,22 +32,18 @@ func TestHandleBotWSReconnect(t *testing.T) {
 		metrics:           mockMetrics,
 	}
 
+	channelID := "channelID"
+
+	// Boilerplate mocking
 	var mockConfig model.Config
 	mockConfig.SetDefaults()
 	mockAPI.On("GetConfig").Return(&mockConfig).Once()
-
-	channelID := "channelID"
-
 	mockDriver.On("Conn", true).Return("dbConnID", nil).Once()
 	mockDriver.On("ConnPing", "dbConnID").Return(nil).Once()
-
 	mockDriver.On("ConnQuery", "dbConnID", mock.AnythingOfType("string"), mock.AnythingOfType("[]driver.NamedValue")).Return("rowsID", nil)
 	mockDriver.On("RowsColumns", "rowsID").Return([]string{"PValue"})
-
 	mockDriver.On("RowsClose", "rowsID").Return(nil)
-
 	mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil)
-
 	mockAPI.On("LogInfo",
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("string"),
@@ -55,16 +51,12 @@ func TestHandleBotWSReconnect(t *testing.T) {
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("string"),
 	).Once()
-
 	err := p.initDB()
 	require.NoError(t, err)
-
 	mockAPI.On("LogDebug", mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-
 	mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
-
 	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("IncStoreOp", "KVGet")
@@ -74,12 +66,14 @@ func TestHandleBotWSReconnect(t *testing.T) {
 		stateJSON, err := json.Marshal(&channelState{})
 		require.NoError(t, err)
 
+		// Here we define what data p.kvGetChannelState would return.
 		mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
 			require.Equal(t, "rowsID", rowsID)
 			dest[0] = stateJSON
 			return nil
 		}).Once()
 
+		// Here we assert that KVSet gets called with the expected serialized state.
 		mockAPI.On("KVSet", "channelID", stateJSON).Return(nil).Once()
 
 		err = p.handleBotWSReconnect("", "", "", channelID)
@@ -94,12 +88,14 @@ func TestHandleBotWSReconnect(t *testing.T) {
 		})
 		require.NoError(t, err)
 
+		// Here we define what data p.kvGetChannelState would return.
 		mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
 			require.Equal(t, "rowsID", rowsID)
 			dest[0] = stateJSON
 			return nil
 		}).Once()
 
+		// Here we assert that KVSet gets called with the expected serialized state.
 		mockAPI.On("KVSet", "channelID", stateJSON).Return(nil).Once()
 
 		err = p.handleBotWSReconnect("", "", "", channelID)
@@ -118,16 +114,19 @@ func TestHandleBotWSReconnect(t *testing.T) {
 		stateJSON, err := json.Marshal(state)
 		require.NoError(t, err)
 
+		// Here we define what data p.kvGetChannelState would return.
 		mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
 			require.Equal(t, "rowsID", rowsID)
 			dest[0] = stateJSON
 			return nil
 		}).Once()
 
+		// We do the expected mutation.
 		state.Call.Recording.BotConnID = "connID"
 		expectedStateJSON, err := json.Marshal(state)
 		require.NoError(t, err)
 
+		// Here we assert that KVSet gets called with the expected serialized state.
 		mockAPI.On("KVSet", "channelID", expectedStateJSON).Return(nil).Once()
 
 		err = p.handleBotWSReconnect("connID", "prevConnID", "originalConnID", channelID)
@@ -146,18 +145,21 @@ func TestHandleBotWSReconnect(t *testing.T) {
 		stateJSON, err := json.Marshal(state)
 		require.NoError(t, err)
 
+		// Here we define what data p.kvGetChannelState would return.
 		mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
 			require.Equal(t, "rowsID", rowsID)
 			dest[0] = stateJSON
 			return nil
 		}).Once()
 
+		// We do the expected mutation.
 		state.Call.Transcription.BotConnID = "connID"
 		expectedStateJSON, err := json.Marshal(state)
 		require.NoError(t, err)
 
 		mockAPI.On("KVSet", "channelID", expectedStateJSON).Return(nil).Once()
 
+		// Here we assert that KVSet gets called with the expected serialized state.
 		err = p.handleBotWSReconnect("connID", "prevConnID", "originalConnID", channelID)
 		require.NoError(t, err)
 	})
@@ -178,16 +180,19 @@ func TestHandleBotWSReconnect(t *testing.T) {
 			stateJSON, err := json.Marshal(state)
 			require.NoError(t, err)
 
+			// Here we define what data p.kvGetChannelState would return.
 			mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
 				require.Equal(t, "rowsID", rowsID)
 				dest[0] = stateJSON
 				return nil
 			}).Once()
 
+			// We do the expected mutation.
 			state.Call.Recording.BotConnID = "newRecordingBotConnID"
 			expectedStateJSON, err := json.Marshal(state)
 			require.NoError(t, err)
 
+			// Here we assert that KVSet gets called with the expected serialized state.
 			mockAPI.On("KVSet", "channelID", expectedStateJSON).Return(nil).Once()
 
 			err = p.handleBotWSReconnect("newRecordingBotConnID", "prevRecordingBotConnID", "originalConnID", channelID)
@@ -209,16 +214,19 @@ func TestHandleBotWSReconnect(t *testing.T) {
 			stateJSON, err := json.Marshal(state)
 			require.NoError(t, err)
 
+			// Here we define what data p.kvGetChannelState would return.
 			mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
 				require.Equal(t, "rowsID", rowsID)
 				dest[0] = stateJSON
 				return nil
 			}).Once()
 
+			// We do the expected mutation.
 			state.Call.Transcription.BotConnID = "newTranscribingBotConnID"
 			expectedStateJSON, err := json.Marshal(state)
 			require.NoError(t, err)
 
+			// Here we assert that KVSet gets called with the expected serialized state.
 			mockAPI.On("KVSet", "channelID", expectedStateJSON).Return(nil).Once()
 
 			err = p.handleBotWSReconnect("newTranscribingBotConnID", "prevTranscribingBotConnID", "originalConnID", channelID)
