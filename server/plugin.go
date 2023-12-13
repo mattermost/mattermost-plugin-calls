@@ -65,7 +65,8 @@ type Plugin struct {
 
 	// A map of callID -> *cluster.Mutex to guarantee atomicity of call state
 	// operations.
-	callsClusterLocks map[string]*cluster.Mutex
+	callsClusterLocks    map[string]*cluster.Mutex
+	callsClusterLocksMut sync.RWMutex
 
 	// Database handle to the writer DB node
 	wDB        *sql.DB
