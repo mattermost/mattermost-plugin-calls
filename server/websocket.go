@@ -771,6 +771,15 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		}
 	}
 
+	// Handle bot reconnection. This is needed to update the bot connection
+	// IDs for any potentially running jobs.
+	if p.isBot(userID) {
+		if err := p.handleBotWSReconnect(connID, prevConnID, originalConnID, channelID); err != nil {
+			p.mut.Unlock()
+			return fmt.Errorf("handleBotWSReconnect failed: %w", err)
+		}
+	}
+
 	us = newUserSession(userID, channelID, connID, rtc)
 	us.originalConnID = originalConnID
 	p.sessions[connID] = us
@@ -974,6 +983,40 @@ func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID string) er
 		if err := p.rtcdManager.Send(msg, channelID); err != nil {
 			return fmt.Errorf("failed to send client message: %w", err)
 		}
+	}
+
+	return nil
+}
+
+func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channelID string) error {
+	p.LogDebug("bot ws reconnection", "connID", connID, "prevConnID", prevConnID, "originalConnID", originalConnID, "channelID", channelID)
+
+	state, err := p.lockCall(channelID)
+	if err != nil {
+		return fmt.Errorf("failed to lock call: %w", err)
+	}
+	defer p.unlockCall(channelID)
+
+	if state.Call != nil && state.Call.Recording != nil && state.Call.Recording.BotConnID == prevConnID {
+		p.LogDebug("updating bot conn ID for recording job",
+			"recID", state.Call.Recording.ID,
+			"recJobID", state.Call.Recording.JobID,
+			"botOriginalConnID", originalConnID,
+			"botConnID", connID,
+		)
+		state.Call.Recording.BotConnID = connID
+	} else if state.Call != nil && state.Call.Transcription != nil && state.Call.Transcription.BotConnID == prevConnID {
+		p.LogDebug("updating bot conn ID for transcribing job",
+			"trID", state.Call.Transcription.ID,
+			"trJobID", state.Call.Transcription.JobID,
+			"botOriginalConnID", originalConnID,
+			"botConnID", connID,
+		)
+		state.Call.Transcription.BotConnID = connID
+	}
+
+	if err := p.kvSetChannelState(channelID, state); err != nil {
+		return fmt.Errorf("failed to set channel state: %w", err)
 	}
 
 	return nil

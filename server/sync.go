@@ -14,7 +14,7 @@ import (
 // lockCall locks the global (cluster) mutex for the given channelID and
 // returns the current state.
 func (p *Plugin) lockCall(channelID string) (*channelState, error) {
-	p.mut.Lock()
+	p.callsClusterLocksMut.Lock()
 	mut := p.callsClusterLocks[channelID]
 	if mut == nil {
 		p.LogDebug("creating cluster mutex for call", "channelID", channelID)
@@ -25,13 +25,13 @@ func (p *Plugin) lockCall(channelID string) (*channelState, error) {
 			MetricsGroup:    "mutex_call",
 		})
 		if err != nil {
-			p.mut.Unlock()
+			p.callsClusterLocksMut.Unlock()
 			return nil, fmt.Errorf("failed to create new call cluster mutex: %w", err)
 		}
 		p.callsClusterLocks[channelID] = m
 		mut = m
 	}
-	p.mut.Unlock()
+	p.callsClusterLocksMut.Unlock()
 
 	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
 	defer cancelCtx()
@@ -51,8 +51,8 @@ func (p *Plugin) lockCall(channelID string) (*channelState, error) {
 
 // unlockCall unlocks the global (cluster) mutex for the given channelID.
 func (p *Plugin) unlockCall(channelID string) {
-	p.mut.RLock()
-	defer p.mut.RUnlock()
+	p.callsClusterLocksMut.RLock()
+	defer p.callsClusterLocksMut.RUnlock()
 
 	mut := p.callsClusterLocks[channelID]
 	if mut == nil {

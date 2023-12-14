@@ -15,7 +15,7 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
-	"github.com/mattermost/mattermost-plugin-calls/server/performance"
+	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
 
 	"github.com/mattermost/rtcd/service/rtc"
@@ -42,7 +42,7 @@ type Plugin struct {
 	// setConfiguration for usage.
 	configuration *configuration
 
-	metrics   *performance.Metrics
+	metrics   interfaces.Metrics
 	telemetry *telemetry.Client
 
 	mut         sync.RWMutex
@@ -65,7 +65,8 @@ type Plugin struct {
 
 	// A map of callID -> *cluster.Mutex to guarantee atomicity of call state
 	// operations.
-	callsClusterLocks map[string]*cluster.Mutex
+	callsClusterLocks    map[string]*cluster.Mutex
+	callsClusterLocksMut sync.RWMutex
 
 	// Database handle to the writer DB node
 	wDB        *sql.DB
