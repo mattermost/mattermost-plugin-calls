@@ -1,0 +1,13 @@
+quiet: False
+with-expecter: true
+dir: "server/mocks/{{.PackagePath}}"
+packages:
+    github.com/mattermost/mattermost-plugin-calls/server/interfaces:
+        config:
+        interfaces:
+            Metrics:
+    github.com/mattermost/mattermost/server/public/plugin:
+        config:
+        interfaces:
+            API:
+            Driver:
