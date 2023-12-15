@@ -16,7 +16,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattermost/calls-offloader v0.5.0
 	github.com/mattermost/calls-recorder v0.6.2
-	github.com/mattermost/calls-transcriber v0.1.4
+	github.com/mattermost/calls-transcriber v0.1.5
 	github.com/mattermost/logr/v2 v2.0.16
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.0.11-0.20231115180603-759bb70b2f44
