@@ -34,15 +34,22 @@ import {
     usersReactionsState,
 } from 'src/reducers';
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
-import {getChannelURL} from 'src/utils';
+import {getCallsClient, getChannelURL} from 'src/utils';
 
 import {pluginId} from './manifest';
 
 //@ts-ignore GlobalState is not complete
 const pluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
 
-export const channelIDForCurrentCall = (state: GlobalState): string =>
-    window.callsClient?.channelID || window.opener?.callsClient?.channelID || pluginState(state).clientStateReducer?.channelID || '';
+const clientState = (state: GlobalState) => pluginState(state).clientStateReducer;
+
+export const channelIDForCurrentCall: (state: GlobalState) => string =
+    createSelector(
+        'channelIDForCurrentCall',
+        getCallsClient,
+        clientState,
+        (callsClient, cState) => callsClient?.channelID || callsClient?.channelID || cState?.channelID || '',
+    );
 
 export const channelForCurrentCall: (state: GlobalState) => Channel | undefined =
     createSelector(
