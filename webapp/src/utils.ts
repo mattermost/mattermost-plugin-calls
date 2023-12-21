@@ -77,18 +77,29 @@ export function getChannelURL(state: GlobalState, channel: Channel, teamId: stri
 }
 
 export function getCallsClient(): CallsClient | undefined {
-    return window.opener ? window.opener.callsClient : window.callsClient;
+    let callsClient;
+    try {
+        callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+    } catch (err) {
+        logErr(err);
+    }
+    return callsClient;
 }
 
 export function shouldRenderCallsIncoming() {
-    const win = window.opener ? window.opener : window;
-    const nonChannels = window.location.pathname.startsWith('/boards') || window.location.pathname.startsWith('/playbooks') || window.location.pathname.includes(`${pluginId}/expanded/`);
-    if (win.desktop && nonChannels) {
+    try {
+        const win = window.opener ? window.opener : window;
+        const nonChannels = window.location.pathname.startsWith('/boards') || window.location.pathname.startsWith('/playbooks') || window.location.pathname.includes(`${pluginId}/expanded/`);
+        if (win.desktop && nonChannels) {
         // don't render when we're in desktop, or in boards or playbooks, or in the expanded view.
         // (can be simplified, but this is clearer)
+            return false;
+        }
+        return true;
+    } catch (err) {
+        logErr(err);
         return false;
     }
-    return true;
 }
 
 export function getUserDisplayName(user: UserProfile | undefined, shortForm?: boolean) {
@@ -509,4 +520,15 @@ export function notificationsStopRinging() {
     if (window.e2eNotificationsSoundStoppedAt) {
         window.e2eNotificationsSoundStoppedAt.push(Date.now());
     }
+}
+
+export function getWebappUtils() {
+    let utils;
+    try {
+        utils = window.opener ? window.opener.WebappUtils : window.WebappUtils;
+    } catch (err) {
+        logErr(err);
+    }
+
+    return utils;
 }

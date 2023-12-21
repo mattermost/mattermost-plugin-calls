@@ -1,11 +1,16 @@
 import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
 
+import CallsClient from './client';
+import {pluginId} from './manifest';
 import {
     callStartedTimestampFn,
+    getCallsClient,
+    getWebappUtils,
     getWSConnectionURL,
     maxAttemptsReachedErr,
     runWithRetry,
+    shouldRenderCallsIncoming,
     shouldRenderDesktopWidget,
     sleep,
     toHuman,
@@ -238,6 +243,112 @@ describe('utils', () => {
 
         test('maximum attempts reached', async () => {
             await expect(runWithRetry(failsN(3), 10, 3)).rejects.toEqual(maxAttemptsReachedErr);
+        });
+    });
+
+    describe('getCallsClient', () => {
+        test('undefined', () => {
+            const callsClient = getCallsClient();
+            expect(callsClient).toBeUndefined();
+        });
+
+        test('window.callsClient defined', () => {
+            window.callsClient = {
+                channelID: 'channelID',
+            } as CallsClient;
+            const callsClient = getCallsClient();
+            expect(callsClient).toEqual(window.callsClient);
+        });
+
+        test('window.opener.callsClient defined', () => {
+            global.window.opener = {
+                callsClient: {
+                    channelID: 'channelID',
+                } as CallsClient,
+            };
+            const callsClient = getCallsClient();
+            expect(callsClient).toEqual(window.opener.callsClient);
+            delete global.window.opener;
+        });
+
+        test('undefined window', () => {
+            const originalWindow = global.window;
+
+            // @ts-ignore
+            delete global.window;
+            const callsClient = getCallsClient();
+            expect(callsClient).toBeUndefined();
+            global.window = originalWindow;
+        });
+    });
+
+    describe('getWebappUtils', () => {
+        test('undefined', () => {
+            const utils = getWebappUtils();
+            expect(utils).toBeUndefined();
+        });
+
+        test('window.WebappUtils defined', () => {
+            global.window.WebappUtils = {};
+            const utils = getWebappUtils();
+            expect(utils).toEqual(window.WebappUtils);
+        });
+
+        test('window.opener.WebappUtils defined', () => {
+            global.window.opener = {
+                WebappUtils: {},
+            };
+            const utils = getWebappUtils();
+            expect(utils).toEqual(window.opener.WebappUtils);
+            delete global.window.opener;
+        });
+
+        test('undefined window', () => {
+            const originalWindow = global.window;
+
+            // @ts-ignore
+            delete global.window;
+            const utils = getWebappUtils();
+            expect(utils).toBeUndefined();
+
+            global.window = originalWindow;
+        });
+    });
+
+    describe('shouldRenderCallsIncoming', () => {
+        test('should render', () => {
+            expect(shouldRenderCallsIncoming()).toBe(true);
+        });
+
+        test('window.opener', () => {
+            global.window.opener = {};
+            expect(shouldRenderCallsIncoming()).toBe(true);
+            delete global.window.opener;
+        });
+
+        test('desktop expanded view', () => {
+            const originalWindow = global.window;
+
+            // @ts-ignore
+            delete global.window;
+            global.window = {
+                location: {
+                    pathname: `/plugins/${pluginId}/expanded/channelID`,
+                } as Location,
+                desktop: {},
+            } as any;
+            expect(shouldRenderCallsIncoming()).toBe(false);
+            global.window = originalWindow;
+        });
+
+        test('undefined window', () => {
+            const originalWindow = global.window;
+
+            // @ts-ignore
+            delete global.window;
+            expect(shouldRenderCallsIncoming()).toBe(false);
+
+            global.window = originalWindow;
         });
     });
 });

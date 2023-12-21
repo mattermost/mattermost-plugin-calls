@@ -820,6 +820,7 @@ declare global {
         e2eNotificationsSoundedAt?: number[],
         e2eNotificationsSoundStoppedAt?: number[],
         e2eRingLength?: number,
+        WebappUtils: any,
     }
 
     interface HTMLVideoElement {
