@@ -289,6 +289,7 @@ describe('utils', () => {
         });
 
         test('window.WebappUtils defined', () => {
+            // @ts-ignore
             global.window.WebappUtils = {};
             const utils = getWebappUtils();
             expect(utils).toEqual(window.WebappUtils);
