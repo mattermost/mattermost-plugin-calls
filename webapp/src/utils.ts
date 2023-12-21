@@ -86,6 +86,18 @@ export function getCallsClient(): CallsClient | undefined {
     return callsClient;
 }
 
+export function getCallsClientChannelID(): string {
+    return getCallsClient()?.channelID || '';
+}
+
+export function getCallsClientSessionID(): string {
+    return getCallsClient()?.getSessionID() || '';
+}
+
+export function getCallsClientInitTime(): number {
+    return getCallsClient()?.initTime || 0;
+}
+
 export function shouldRenderCallsIncoming() {
     try {
         const win = window.opener ? window.opener : window;
