@@ -978,7 +978,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         </span>
 
                         {(isYou || isHost) &&
-                            <span style={{marginLeft: -8, display: 'flex', alignItems: 'baseline'}}>
+                            <span style={{marginLeft: -8, display: 'flex', alignItems: 'baseline', gap: 5}}>
                                 {isYou &&
                                     <span style={youStyle}>
                                         {formatMessage({defaultMessage: '(you)'})}
