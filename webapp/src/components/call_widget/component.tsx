@@ -310,6 +310,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.sendGlobalWidgetBounds();
     };
 
+    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
     private handleDesktopEvents = (ev: MessageEvent) => {
         if (ev.origin !== window.origin) {
             return;
@@ -373,7 +374,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             window.visualViewport?.addEventListener('resize', this.onViewportResize);
             this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
             this.menuResizeObserver.observe(this.menuNode.current!);
-            window.addEventListener('message', this.handleDesktopEvents);
+
+            if (window.desktopAPI?.onScreenShared) {
+                logDebug('registering desktopAPI.onScreenShared');
+                window.desktopAPI.onScreenShared((sourceID: string, withAudio: boolean) => {
+                    logDebug('desktopAPI.onScreenShared');
+                    this.shareScreen(sourceID, withAudio);
+                });
+            } else {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                window.addEventListener('message', this.handleDesktopEvents);
+            }
         } else {
             document.addEventListener('mouseup', this.onMouseUp, false);
         }
@@ -508,7 +519,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     public componentWillUnmount() {
         if (this.props.global) {
             window.visualViewport?.removeEventListener('resize', this.onViewportResize);
-            window.removeEventListener('message', this.handleDesktopEvents);
+
+            if (window.desktopAPI?.onScreenShared) {
+                logDebug('unregistering desktopAPI.onScreenShared');
+                window.desktopAPI.unregister('calls-widget-share-screen');
+            } else {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                window.removeEventListener('message', this.handleDesktopEvents);
+            }
         } else {
             document.removeEventListener('mouseup', this.onMouseUp, false);
         }

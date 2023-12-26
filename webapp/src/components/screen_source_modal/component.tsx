@@ -148,7 +148,11 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
     };
 
     private shareScreen = () => {
-        if (shouldRenderDesktopWidget()) {
+        if (window.desktopAPI?.shareScreen) {
+            logDebug('desktopAPI.shareScreen');
+            window.desktopAPI.shareScreen(this.state.selected, hasExperimentalFlag());
+        } else if (shouldRenderDesktopWidget()) {
+            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
             sendDesktopEvent('calls-widget-share-screen', {
                 sourceID: this.state.selected,
                 withAudio: hasExperimentalFlag(),
