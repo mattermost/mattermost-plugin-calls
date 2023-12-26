@@ -71,7 +71,15 @@ export const useDismissJoin = (channelID: string, callID: string, onWidget = fal
                 logDebug('sending calls-widget-channel-link-click and calls-joined-call message to desktop app');
                 const currentChannel = getChannel(store.getState(), connectedID);
                 const channelURL = getChannelURL(store.getState(), currentChannel, currentChannel.team_id);
-                sendDesktopEvent('calls-widget-channel-link-click', {pathName: channelURL});
+
+                if (window.desktopAPI?.openLinkFromCallsWidget) {
+                    logDebug('desktopAPI.openLinkFromCallsWidget');
+                    window.desktopAPI.openLinkFromCallsWidget(channelURL);
+                } else {
+                    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                    sendDesktopEvent('calls-widget-channel-link-click', {pathName: channelURL});
+                }
+
                 sendDesktopEvent('calls-joined-call', {
                     type: 'calls-join-request',
                     callID: channelID,

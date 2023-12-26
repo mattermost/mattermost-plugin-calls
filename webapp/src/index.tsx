@@ -547,7 +547,8 @@ export default class Plugin {
                 store.dispatch(displayCallErrorModal(ev.data.message.callID, new Error(ev.data.message.errMsg)));
             } else if (ev.data?.type === 'calls-run-slash-command') {
                 slashCommandsHandler(store, joinCall, ev.data.message, ev.data.args);
-            } else if (ev.data?.type === 'calls-link-click') {
+            } else if (ev.data?.type === 'calls-link-click' && !window.desktopAPI?.openLinkFromCallsWidget) {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 navigateToURL(ev.data.message.link);
             }
         };
