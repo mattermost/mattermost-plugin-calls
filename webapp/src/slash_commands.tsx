@@ -95,9 +95,14 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         return {};
     case 'leave':
         if (connectedID && args.channel_id === connectedID) {
-            const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+            const win = window.opener || window;
+            const callsClient = win.callsClient;
             if (callsClient) {
                 callsClient.disconnect();
+                return {};
+            } else if (win.desktopAPI?.leaveCall) {
+                logDebug('desktopAPI.leaveCall');
+                win.desktopAPI.leaveCall();
                 return {};
             } else if (shouldRenderDesktopWidget()) {
                 sendDesktopEvent('calls-leave-call', {callID: args.channel_id});

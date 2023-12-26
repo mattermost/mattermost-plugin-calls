@@ -807,7 +807,6 @@ declare global {
         webkitAudioContext: AudioContext,
         basename: string,
 
-        // DEPRECATED
         desktop?: {
             version?: string | null;
         },

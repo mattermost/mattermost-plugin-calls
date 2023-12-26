@@ -101,8 +101,14 @@ function deinitWidget(err?: Error) {
         if (el) {
             ReactDOM.unmountComponentAtNode(el);
         }
-        logDebug('sending leave call message to desktop app');
-        sendDesktopEvent('calls-leave-call');
+
+        if (window.desktopAPI?.leaveCall) {
+            logDebug('desktopAPI.leaveCall');
+            window.desktopAPI.leaveCall();
+        } else {
+            logDebug('sending leave call message to desktop app');
+            sendDesktopEvent('calls-leave-call');
+        }
     }, 250);
 }
 
