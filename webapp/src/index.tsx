@@ -537,7 +537,8 @@ export default class Plugin {
                 followThread(store, ev.data.channelID, getCurrentTeamId(store.getState()));
             } else if (ev.data?.type === 'desktop-sources-modal-request') {
                 store.dispatch(showScreenSourceModal());
-            } else if (ev.data?.type === 'calls-joined-call') {
+            } else if (ev.data?.type === 'calls-joined-call' && !window.desktopAPI?.joinCall) {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 handleDesktopJoinedCall(store, ev.data.message);
             } else if (ev.data?.type === 'calls-join-request') {
                 // we can assume that we are already in a call, since the global widget sent this.

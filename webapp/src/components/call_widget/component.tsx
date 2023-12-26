@@ -432,19 +432,27 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         window.callsClient.on('connect', () => {
             this.setState({connecting: false});
 
-            if (this.props.global) {
-                sendDesktopEvent('calls-joined-call', {
-                    callID: window.callsClient?.channelID,
-                    sessionID: window.callsClient?.getSessionID(),
-                });
+            const callsClient = window.callsClient;
+
+            if (this.props.global && callsClient) {
+                if (window.desktopAPI?.callsWidgetConnected) {
+                    logDebug('desktopAPI.callsWidgetConnected');
+                    window.desktopAPI.callsWidgetConnected(callsClient.channelID, callsClient.getSessionID() || '');
+                } else {
+                    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                    sendDesktopEvent('calls-joined-call', {
+                        callID: callsClient.channelID,
+                        sessionID: callsClient.getSessionID(),
+                    });
+                }
             }
 
             if (isDirectChannel(this.props.channel) || isGroupChannel(this.props.channel)) {
-                window.callsClient?.unmute();
+                callsClient?.unmute();
             }
 
-            this.setState({currentAudioInputDevice: window.callsClient?.currentAudioInputDevice});
-            this.setState({currentAudioOutputDevice: window.callsClient?.currentAudioOutputDevice});
+            this.setState({currentAudioInputDevice: callsClient?.currentAudioInputDevice});
+            this.setState({currentAudioOutputDevice: callsClient?.currentAudioOutputDevice});
         });
 
         window.callsClient.on('error', (err: Error) => {
