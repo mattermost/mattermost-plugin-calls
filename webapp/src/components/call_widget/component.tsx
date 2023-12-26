@@ -644,7 +644,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         } else if (!this.props.screenSharingSession) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 if (this.props.global) {
-                    sendDesktopEvent('desktop-sources-modal-request');
+                    if (window.desktopAPI?.openScreenShareModal) {
+                        logDebug('desktopAPI.openScreenShareModal');
+                        window.desktopAPI.openScreenShareModal();
+                    } else {
+                        // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                        sendDesktopEvent('desktop-sources-modal-request');
+                    }
                 } else {
                     this.props.showScreenSourceModal();
                 }
@@ -1718,7 +1724,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     logDebug('desktopAPI.focusPopout');
                     window.desktopAPI.focusPopout();
                 } else {
-                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                     sendDesktopEvent('calls-popout-focus');
                 }
             } else {

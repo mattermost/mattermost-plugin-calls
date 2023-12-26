@@ -377,6 +377,15 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
         registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
 
+        // Desktop API handlers
+        if (window.desktopAPI?.onOpenScreenShareModal) {
+            logDebug('registering desktopAPI.onOpenScreenShareModal');
+            window.desktopAPI.onOpenScreenShareModal(() => {
+                logDebug('desktopAPI.onOpenScreenShareModal');
+                store.dispatch(showScreenSourceModal());
+            });
+        }
+
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             // Desktop handler
             const payload = {
@@ -536,7 +545,8 @@ export default class Plugin {
             if (ev.data?.type === 'connectCall') {
                 connectCall(ev.data.channelID);
                 followThread(store, ev.data.channelID, getCurrentTeamId(store.getState()));
-            } else if (ev.data?.type === 'desktop-sources-modal-request') {
+            } else if (ev.data?.type === 'desktop-sources-modal-request' && !window.desktopAPI?.onOpenScreenShareModal) {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 store.dispatch(showScreenSourceModal());
             } else if (ev.data?.type === 'calls-joined-call' && !window.desktopAPI?.joinCall) {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
