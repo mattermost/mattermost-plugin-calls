@@ -23,17 +23,23 @@ import {Provider} from 'react-redux';
 import init from '../init';
 
 async function initWidget(store: Store) {
-    window.addEventListener('message', (ev: MessageEvent) => {
-        if (ev.origin !== window.origin) {
-            return;
-        }
-        switch (ev.data?.type) {
-        case 'register-desktop':
-            window.desktop = ev.data.message;
-            break;
-        }
-    });
-    sendDesktopEvent('get-app-version');
+    if (window.desktopAPI?.getAppInfo) {
+        logDebug('desktopAPI.getAppInfo');
+        window.desktop = await window.desktopAPI.getAppInfo();
+    } else {
+        // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+        window.addEventListener('message', (ev: MessageEvent) => {
+            if (ev.origin !== window.origin) {
+                return;
+            }
+            switch (ev.data?.type) {
+            case 'register-desktop':
+                window.desktop = ev.data.message;
+                break;
+            }
+        });
+        sendDesktopEvent('get-app-version');
+    }
 
     const locale = getCurrentUserLocale(store.getState()) || 'en';
 
@@ -107,6 +113,7 @@ function deinitWidget(err?: Error) {
             window.desktopAPI.leaveCall();
         } else {
             logDebug('sending leave call message to desktop app');
+            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
             sendDesktopEvent('calls-leave-call');
         }
     }, 250);
