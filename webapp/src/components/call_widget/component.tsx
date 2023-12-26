@@ -567,11 +567,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     private sendGlobalWidgetBounds = () => {
         const bounds = this.getGlobalWidgetBounds();
-        sendDesktopEvent('calls-widget-resize', {
-            element: 'calls-widget',
-            width: Math.ceil(bounds.width),
-            height: Math.ceil(bounds.height),
-        });
+
+        if (window.desktopAPI?.resizeCallsWidget) {
+            logDebug('desktopAPI.resizeCallsWidget');
+            window.desktopAPI.resizeCallsWidget(Math.ceil(bounds.width), Math.ceil(bounds.height));
+        } else {
+            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+            sendDesktopEvent('calls-widget-resize', {
+                element: 'calls-widget',
+                width: Math.ceil(bounds.width),
+                height: Math.ceil(bounds.height),
+            });
+        }
     };
 
     private keyboardClose = (e: KeyboardEvent) => {
