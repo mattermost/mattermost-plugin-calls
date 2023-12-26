@@ -67,6 +67,7 @@ const PostType = ({
             // will have the client.
             callsClient.disconnect();
         } else if (shouldRenderDesktopWidget()) {
+            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
             sendDesktopEvent('calls-leave-call', {callID: post.channel_id});
         }
     };

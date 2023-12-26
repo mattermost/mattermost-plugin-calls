@@ -390,8 +390,9 @@ export default class Plugin {
                 handleDesktopJoinedCall(store, await window.desktopAPI.joinCall(payload));
                 return;
             } else if (shouldRenderDesktopWidget()) {
-                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 logDebug('sending join call message to desktop app');
+
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 sendDesktopEvent('calls-join-call', payload);
                 return;
             }

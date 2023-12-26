@@ -1714,7 +1714,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     onExpandClick = () => {
         if (this.state.expandedViewWindow && !this.state.expandedViewWindow.closed) {
             if (this.props.global) {
-                sendDesktopEvent('calls-popout-focus');
+                if (window.desktopAPI?.focusPopout) {
+                    logDebug('desktopAPI.focusPopout');
+                    window.desktopAPI.focusPopout();
+                } else {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                    sendDesktopEvent('calls-popout-focus');
+                }
             } else {
                 this.state.expandedViewWindow.focus();
             }

@@ -105,6 +105,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
                 win.desktopAPI.leaveCall();
                 return {};
             } else if (shouldRenderDesktopWidget()) {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 sendDesktopEvent('calls-leave-call', {callID: args.channel_id});
                 return {};
             }
