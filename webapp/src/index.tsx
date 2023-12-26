@@ -1,6 +1,7 @@
 /* eslint-disable max-lines */
 
 import {CallChannelState} from '@calls/common/lib/types';
+import type {DesktopAPI} from '@mattermost/desktop-api';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
@@ -52,7 +53,6 @@ import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/ty
 
 import {
     CALL_STATE,
-    DESKTOP_WIDGET_CONNECTED,
     DISMISS_CALL,
     PROFILES_JOINED,
     RECEIVED_CHANNEL_STATE,
@@ -75,6 +75,9 @@ import EndCallModal from './components/end_call_modal';
 import ExpandedView from './components/expanded_view';
 import ScreenSourceModal from './components/screen_source_modal';
 import SwitchCallModal from './components/switch_call_modal';
+import {
+    handleDesktopJoinedCall,
+} from './desktop';
 import {logDebug, logErr} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
@@ -97,7 +100,6 @@ import {
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {DesktopNotificationArgs, PluginRegistry, Store} from './types/mattermost-webapp';
 import {
-    desktopGTE,
     followThread,
     getChannelURL,
     getExpandedChannelID,
@@ -376,14 +378,21 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
-            if (shouldRenderDesktopWidget()) {
+            // Desktop handler
+            const payload = {
+                callID: channelID,
+                title: title || '',
+                channelURL: getChannelURL(store.getState(), getChannel(store.getState(), channelID), getCurrentTeamId(store.getState())),
+                rootID: rootId || '',
+            };
+            if (window.desktopAPI?.joinCall) {
+                logDebug('desktopAPI.joinCall');
+                handleDesktopJoinedCall(store, await window.desktopAPI.joinCall(payload));
+                return;
+            } else if (shouldRenderDesktopWidget()) {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 logDebug('sending join call message to desktop app');
-                sendDesktopEvent('calls-join-call', {
-                    callID: channelID,
-                    title,
-                    channelURL: getChannelURL(store.getState(), getChannel(store.getState(), channelID), getCurrentTeamId(store.getState())),
-                    rootID: rootId,
-                });
+                sendDesktopEvent('calls-join-call', payload);
                 return;
             }
 
@@ -529,19 +538,7 @@ export default class Plugin {
             } else if (ev.data?.type === 'desktop-sources-modal-request') {
                 store.dispatch(showScreenSourceModal());
             } else if (ev.data?.type === 'calls-joined-call') {
-                if (!desktopGTE(5, 5) && ev.data.message.type === 'calls-join-request') {
-                    // This `calls-joined-call` message has been repurposed as a `calls-join-request` message
-                    // because the current desktop version (< 5.5) does not have a dedicated `calls-join-request` message.
-                    store.dispatch(showSwitchCallModal(ev.data.message.callID));
-                    return;
-                }
-                store.dispatch({
-                    type: DESKTOP_WIDGET_CONNECTED,
-                    data: {
-                        channel_id: ev.data.message.callID,
-                        session_id: ev.data.message.sessionID,
-                    },
-                });
+                handleDesktopJoinedCall(store, ev.data.message);
             } else if (ev.data?.type === 'calls-join-request') {
                 // we can assume that we are already in a call, since the global widget sent this.
                 store.dispatch(showSwitchCallModal(ev.data.message.callID));
@@ -809,9 +806,12 @@ declare global {
         callsClient?: CallsClient,
         webkitAudioContext: AudioContext,
         basename: string,
+
+        // DEPRECATED
         desktop?: {
             version?: string | null;
         },
+        desktopAPI?: DesktopAPI;
         screenSharingTrackId: string,
         currentCallData?: CurrentCallData,
         callActions?: CallActions,

@@ -180,3 +180,13 @@ export type RealNewPostMessageProps = {
     set_online: boolean;
     team_id: string;
 }
+
+// Desktop types
+
+export type CallsDesktopJoinResponse = {
+    callID: string;
+    sessionID: string;
+
+    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+    type?: string;
+}
