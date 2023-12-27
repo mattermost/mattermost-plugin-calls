@@ -381,6 +381,24 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     logDebug('desktopAPI.onScreenShared');
                     this.shareScreen(sourceID, withAudio);
                 });
+
+                logDebug('registering desktopAPI.onCallsError');
+                window.desktopAPI.onCallsError((err: string) => {
+                    logDebug('desktopAPI.onCallsError', err);
+                    if (err === 'screen-permissions') {
+                        logDebug('screen permissions error');
+                        this.setState({
+                            alerts: {
+                                ...this.state.alerts,
+                                missingScreenPermissions: {
+                                    ...this.state.alerts.missingScreenPermissions,
+                                    active: true,
+                                    show: true,
+                                },
+                            },
+                        });
+                    }
+                });
             } else {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 window.addEventListener('message', this.handleDesktopEvents);
@@ -523,6 +541,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             if (window.desktopAPI?.onScreenShared) {
                 logDebug('unregistering desktopAPI.onScreenShared');
                 window.desktopAPI.unregister('calls-widget-share-screen');
+
+                logDebug('unregistering desktopAPI.onCallsError');
+                window.desktopAPI.unregister('calls-error');
             } else {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 window.removeEventListener('message', this.handleDesktopEvents);

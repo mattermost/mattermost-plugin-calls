@@ -38,6 +38,8 @@ async function initWidget(store: Store) {
                 break;
             }
         });
+
+        // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
         sendDesktopEvent('get-app-version');
     }
 
@@ -91,11 +93,17 @@ function deinitWidget(err?: Error) {
     playSound('leave_self');
 
     if (err) {
-        sendDesktopEvent('calls-error', {
-            err: 'client-error',
-            callID: window.callsClient?.channelID,
-            errMsg: err.message,
-        });
+        if (window.desktopAPI?.sendCallsError) {
+            logDebug('desktopAPI.sendCallsError');
+            window.desktopAPI.sendCallsError('client-error', window.callsClient?.channelID, err.message);
+        } else {
+            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+            sendDesktopEvent('calls-error', {
+                err: 'client-error',
+                callID: window.callsClient?.channelID,
+                errMsg: err.message,
+            });
+        }
     }
 
     // Using setTimeout to give the app enough time to play the sound before

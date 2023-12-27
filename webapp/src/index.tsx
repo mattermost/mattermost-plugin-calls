@@ -394,9 +394,19 @@ export default class Plugin {
                 navigateToURL(url);
             });
 
+            logDebug('registering desktopAPI.onCallsError');
+            window.desktopAPI.onCallsError((err: string, callID?: string, errMsg?: string) => {
+                logDebug('desktopAPI.onCallsError');
+                if (err === 'client-error') {
+                    store.dispatch(displayCallErrorModal(new Error(errMsg), callID));
+                }
+            });
+
             this.unsubscribers.push(() => {
                 window.desktopAPI?.unregister('desktop-sources-modal-request');
                 window.desktopAPI?.unregister('calls-join-request');
+                window.desktopAPI?.unregister('calls-link-click');
+                window.desktopAPI?.unregister('calls-error');
             });
         }
 
@@ -483,7 +493,7 @@ export default class Plugin {
                     }
                     if (window.callsClient) {
                         if (err) {
-                            store.dispatch(displayCallErrorModal(window.callsClient.channelID, err));
+                            store.dispatch(displayCallErrorModal(err, window.callsClient.channelID));
                         }
                         window.callsClient.destroy();
                         delete window.callsClient;
@@ -544,7 +554,7 @@ export default class Plugin {
                 }).catch((err: Error) => {
                     logErr(err);
                     unmountCallWidget();
-                    store.dispatch(displayCallErrorModal(channelID, err));
+                    store.dispatch(displayCallErrorModal(err, channelID));
                     delete window.callsClient;
                 });
             } catch (err) {
@@ -569,8 +579,9 @@ export default class Plugin {
                 // we can assume that we are already in a call, since the global widget sent this.
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 store.dispatch(showSwitchCallModal(ev.data.message.callID));
-            } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error') {
-                store.dispatch(displayCallErrorModal(ev.data.message.callID, new Error(ev.data.message.errMsg)));
+            } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error' && !window.desktopAPI?.onCallsError) {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                store.dispatch(displayCallErrorModal(new Error(ev.data.message.errMsg), ev.data.message.callID));
             } else if (ev.data?.type === 'calls-run-slash-command') {
                 slashCommandsHandler(store, joinCall, ev.data.message, ev.data.args);
             } else if (ev.data?.type === 'calls-link-click' && !window.desktopAPI?.openLinkFromCalls) {

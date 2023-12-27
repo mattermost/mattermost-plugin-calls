@@ -4,7 +4,7 @@ import {DesktopCaptureSource} from '@mattermost/desktop-api';
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
-import {logDebug, logInfo} from 'src/log';
+import {logDebug, logErr} from 'src/log';
 import {hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
 
 interface Props {
@@ -196,12 +196,17 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             if (window.desktopAPI?.getDesktopSources) {
                 logDebug('desktopAPI.getDesktopSources');
                 window.desktopAPI.getDesktopSources(payload).then((sources) => {
+                    if (sources.length === 0) {
+                        logErr('desktopAPI.getDesktopSources returned empty');
+                        this.props.hideScreenSourceModal();
+                        return;
+                    }
                     this.setState({
                         sources,
                         selected: sources[0]?.id || '',
                     });
                 }).catch((err) => {
-                    logInfo('desktopAPI.getDesktopSources failed', err);
+                    logErr('desktopAPI.getDesktopSources failed', err);
                     this.props.hideScreenSourceModal();
                 });
             } else {
