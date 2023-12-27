@@ -377,37 +377,30 @@ export default class Plugin {
         // Desktop API handlers
         if (window.desktopAPI?.onOpenScreenShareModal && window.desktopAPI?.onJoinCallRequest) {
             logDebug('registering desktopAPI.onOpenScreenShareModal');
-            window.desktopAPI.onOpenScreenShareModal(() => {
+            this.unsubscribers.push(window.desktopAPI.onOpenScreenShareModal(() => {
                 logDebug('desktopAPI.onOpenScreenShareModal');
                 store.dispatch(showScreenSourceModal());
-            });
+            }));
 
             logDebug('registering desktopAPI.onJoinCallRequest');
-            window.desktopAPI.onJoinCallRequest((channelID: string) => {
+            this.unsubscribers.push(window.desktopAPI.onJoinCallRequest((channelID: string) => {
                 logDebug('desktopAPI.onJoinCallRequest');
                 store.dispatch(showSwitchCallModal(channelID));
-            });
+            }));
 
             logDebug('registering desktopAPI.onLinkOpenedFromCalls');
-            window.desktopAPI.onLinkOpenedFromCalls((url: string) => {
+            this.unsubscribers.push(window.desktopAPI.onLinkOpenedFromCalls((url: string) => {
                 logDebug('desktopAPI.onLinkOpenedFromCalls');
                 navigateToURL(url);
-            });
+            }));
 
             logDebug('registering desktopAPI.onCallsError');
-            window.desktopAPI.onCallsError((err: string, callID?: string, errMsg?: string) => {
+            this.unsubscribers.push(window.desktopAPI.onCallsError((err: string, callID?: string, errMsg?: string) => {
                 logDebug('desktopAPI.onCallsError');
                 if (err === 'client-error') {
                     store.dispatch(displayCallErrorModal(new Error(errMsg), callID));
                 }
-            });
-
-            this.unsubscribers.push(() => {
-                window.desktopAPI?.unregister('desktop-sources-modal-request');
-                window.desktopAPI?.unregister('calls-join-request');
-                window.desktopAPI?.unregister('calls-link-click');
-                window.desktopAPI?.unregister('calls-error');
-            });
+            }));
         }
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {

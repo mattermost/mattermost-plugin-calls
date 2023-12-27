@@ -131,6 +131,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private audioMenuResizeObserver: ResizeObserver | null = null;
     private screenPlayer: HTMLVideoElement | null = null;
     private prevDevicePixelRatio = 0;
+    private unsubscribers: (() => void)[] = [];
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
         return {
@@ -372,18 +373,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (this.props.global) {
             window.visualViewport?.addEventListener('resize', this.onViewportResize);
+            this.unsubscribers.push(() => {
+                window.visualViewport?.removeEventListener('resize', this.onViewportResize);
+            });
+
             this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
             this.menuResizeObserver.observe(this.menuNode.current!);
 
             if (window.desktopAPI?.onScreenShared) {
                 logDebug('registering desktopAPI.onScreenShared');
-                window.desktopAPI.onScreenShared((sourceID: string, withAudio: boolean) => {
+                this.unsubscribers.push(window.desktopAPI.onScreenShared((sourceID: string, withAudio: boolean) => {
                     logDebug('desktopAPI.onScreenShared');
                     this.shareScreen(sourceID, withAudio);
-                });
+                }));
 
                 logDebug('registering desktopAPI.onCallsError');
-                window.desktopAPI.onCallsError((err: string) => {
+                this.unsubscribers.push(window.desktopAPI.onCallsError((err: string) => {
                     logDebug('desktopAPI.onCallsError', err);
                     if (err === 'screen-permissions') {
                         logDebug('screen permissions error');
@@ -398,20 +403,35 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             },
                         });
                     }
-                });
+                }));
             } else {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 window.addEventListener('message', this.handleDesktopEvents);
+                this.unsubscribers.push(() => {
+                    window.removeEventListener('message', this.handleDesktopEvents);
+                });
             }
         } else {
             document.addEventListener('mouseup', this.onMouseUp, false);
+            this.unsubscribers.push(() => {
+                document.removeEventListener('mouseup', this.onMouseUp, false);
+            });
         }
 
         document.addEventListener('click', this.closeOnBlur, true);
+        this.unsubscribers.push(() => {
+            document.removeEventListener('click', this.closeOnBlur, true);
+        });
         document.addEventListener('keyup', this.keyboardClose, true);
+        this.unsubscribers.push(() => {
+            document.removeEventListener('keyup', this.keyboardClose, true);
+        });
 
         // keyboard shortcuts
         document.addEventListener('keydown', this.handleKBShortcuts, true);
+        this.unsubscribers.push(() => {
+            document.removeEventListener('keydown', this.handleKBShortcuts, true);
+        });
 
         // set cross-window actions
         window.callActions = {
@@ -535,30 +555,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentWillUnmount() {
-        if (this.props.global) {
-            window.visualViewport?.removeEventListener('resize', this.onViewportResize);
-
-            if (window.desktopAPI?.onScreenShared) {
-                logDebug('unregistering desktopAPI.onScreenShared');
-                window.desktopAPI.unregister('calls-widget-share-screen');
-
-                logDebug('unregistering desktopAPI.onCallsError');
-                window.desktopAPI.unregister('calls-error');
-            } else {
-                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
-                window.removeEventListener('message', this.handleDesktopEvents);
-            }
-        } else {
-            document.removeEventListener('mouseup', this.onMouseUp, false);
-        }
+        this.unsubscribers.forEach((unsubscribe) => unsubscribe());
+        this.unsubscribers = [];
 
         if (this.menuResizeObserver) {
             this.menuResizeObserver.disconnect();
         }
-
-        document.removeEventListener('click', this.closeOnBlur, true);
-        document.removeEventListener('keyup', this.keyboardClose, true);
-        document.removeEventListener('keydown', this.handleKBShortcuts, true);
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
