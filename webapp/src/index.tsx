@@ -388,9 +388,9 @@ export default class Plugin {
                 store.dispatch(showSwitchCallModal(channelID));
             }));
 
-            logDebug('registering desktopAPI.onLinkOpenedFromCalls');
-            this.unsubscribers.push(window.desktopAPI.onLinkOpenedFromCalls((url: string) => {
-                logDebug('desktopAPI.onLinkOpenedFromCalls');
+            logDebug('registering desktopAPI.onOpenLinkFromCalls');
+            this.unsubscribers.push(window.desktopAPI.onOpenLinkFromCalls((url: string) => {
+                logDebug('desktopAPI.onOpenLinkFromCalls');
                 navigateToURL(url);
             }));
 
