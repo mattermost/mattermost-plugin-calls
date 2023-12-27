@@ -113,6 +113,7 @@ function deinitWidget(err?: Error) {
             window.desktopAPI.leaveCall();
         } else {
             logDebug('sending leave call message to desktop app');
+
             // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
             sendDesktopEvent('calls-leave-call');
         }

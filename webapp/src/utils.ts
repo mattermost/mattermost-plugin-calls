@@ -373,6 +373,7 @@ export function desktopGTE(major: number, minor: number) {
     return version.major > major || version.minor >= minor;
 }
 
+// DEPRECATED: legacy Desktop API logic (<= 5.6.0)
 export function sendDesktopEvent(event: string, data?: Record<string, unknown>) {
     const win = window.opener ? window.opener : window;
     win.postMessage(

@@ -44,7 +44,7 @@ export const useDismissJoin = (channelID: string, callID: string, onWidget = fal
     const store = useStore();
     const dispatch = useDispatch();
     const connectedID = useSelector(channelIDForCurrentCall) || '';
-    const global = isDesktopApp();
+    const global = Boolean(isDesktopApp() && getCallsClient());
     const source = telemetrySource(onWidget);
 
     const onDismiss = (ev: React.MouseEvent<HTMLElement>) => {
@@ -60,30 +60,32 @@ export const useDismissJoin = (channelID: string, callID: string, onWidget = fal
 
         if (connectedID) {
             // Note: notification will be dismissed from the SwitchCallModal
-            if (global && desktopGTE(5, 5)) {
-                logDebug('sending calls-join-request message to desktop app');
-                sendDesktopEvent('calls-join-request', {
-                    callID: channelID,
-                });
-                return;
-            }
             if (global) {
-                logDebug('sending calls-widget-channel-link-click and calls-joined-call message to desktop app');
-                const currentChannel = getChannel(store.getState(), connectedID);
-                const channelURL = getChannelURL(store.getState(), currentChannel, currentChannel.team_id);
+                if (window.desktopAPI?.sendJoinCallRequest) {
+                    logDebug('desktopAPI.sendJoinCallRequest');
+                    window.desktopAPI.sendJoinCallRequest(channelID);
+                } else if (desktopGTE(5, 5)) {
+                    logDebug('sending calls-join-request message to desktop app');
 
-                if (window.desktopAPI?.openLinkFromCallsWidget) {
-                    logDebug('desktopAPI.openLinkFromCallsWidget');
-                    window.desktopAPI.openLinkFromCallsWidget(channelURL);
+                    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                    sendDesktopEvent('calls-join-request', {
+                        callID: channelID,
+                    });
                 } else {
+                    logDebug('sending calls-widget-channel-link-click and calls-joined-call message to desktop app');
+                    const currentChannel = getChannel(store.getState(), connectedID);
+                    const channelURL = getChannelURL(store.getState(), currentChannel, currentChannel.team_id);
+
                     // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                     sendDesktopEvent('calls-widget-channel-link-click', {pathName: channelURL});
+
+                    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                    sendDesktopEvent('calls-joined-call', {
+                        type: 'calls-join-request',
+                        callID: channelID,
+                    });
                 }
 
-                sendDesktopEvent('calls-joined-call', {
-                    type: 'calls-join-request',
-                    callID: channelID,
-                });
                 return;
             }
 
@@ -264,7 +266,14 @@ export const useOnChannelLinkClick = (call: IncomingCallNotification, onWidget =
         return () => {
             notificationsStopRinging(); // User interacted with notifications, so stop ringing for _any_ incoming call.
             dispatch(trackEvent(Telemetry.Event.NotificationClickGotoChannel, source));
-            sendDesktopEvent('calls-link-click', {link: channelURL});
+
+            if (window.desktopAPI?.openLinkFromCalls) {
+                logDebug('desktopAPI.openLinkFromCalls');
+                window.desktopAPI.openLinkFromCalls(channelURL);
+            } else {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                sendDesktopEvent('calls-link-click', {link: channelURL});
+            }
         };
     }
 

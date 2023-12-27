@@ -1805,9 +1805,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         ev.preventDefault();
         const message = {pathName: this.props.channelURL};
         if (this.props.global) {
-            if (window.desktopAPI?.openLinkFromCallsWidget) {
-                logDebug('desktopAPI.openLinkFromCallsWidget');
-                window.desktopAPI.openLinkFromCallsWidget(this.props.channelURL);
+            if (window.desktopAPI?.openLinkFromCalls) {
+                logDebug('desktopAPI.openLinkFromCalls');
+                window.desktopAPI.openLinkFromCalls(this.props.channelURL);
             } else {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 sendDesktopEvent('calls-widget-channel-link-click', message);

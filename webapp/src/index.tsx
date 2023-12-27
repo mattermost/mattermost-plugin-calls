@@ -56,7 +56,6 @@ import {
     DISMISS_CALL,
     PROFILES_JOINED,
     RECEIVED_CHANNEL_STATE,
-    SHOW_SWITCH_CALL_MODAL,
     UNINIT,
     USER_LOWER_HAND,
     USER_MUTED,
@@ -284,9 +283,7 @@ export default class Plugin {
                     followThread(store, channelId, teamId);
                 }
             } else if (channelIDForCurrentCall(store.getState()) !== channelId) {
-                store.dispatch({
-                    type: SHOW_SWITCH_CALL_MODAL,
-                });
+                store.dispatch(showSwitchCallModal(channelId));
             }
         };
 
@@ -378,11 +375,28 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
 
         // Desktop API handlers
-        if (window.desktopAPI?.onOpenScreenShareModal) {
+        if (window.desktopAPI?.onOpenScreenShareModal && window.desktopAPI?.onJoinCallRequest) {
             logDebug('registering desktopAPI.onOpenScreenShareModal');
             window.desktopAPI.onOpenScreenShareModal(() => {
                 logDebug('desktopAPI.onOpenScreenShareModal');
                 store.dispatch(showScreenSourceModal());
+            });
+
+            logDebug('registering desktopAPI.onJoinCallRequest');
+            window.desktopAPI.onJoinCallRequest((channelID: string) => {
+                logDebug('desktopAPI.onJoinCallRequest');
+                store.dispatch(showSwitchCallModal(channelID));
+            });
+
+            logDebug('registering desktopAPI.onLinkOpenedFromCalls');
+            window.desktopAPI.onLinkOpenedFromCalls((url: string) => {
+                logDebug('desktopAPI.onLinkOpenedFromCalls');
+                navigateToURL(url);
+            });
+
+            this.unsubscribers.push(() => {
+                window.desktopAPI?.unregister('desktop-sources-modal-request');
+                window.desktopAPI?.unregister('calls-join-request');
             });
         }
 
@@ -551,14 +565,15 @@ export default class Plugin {
             } else if (ev.data?.type === 'calls-joined-call' && !window.desktopAPI?.joinCall) {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 handleDesktopJoinedCall(store, ev.data.message);
-            } else if (ev.data?.type === 'calls-join-request') {
+            } else if (ev.data?.type === 'calls-join-request' && !window.desktopAPI?.onJoinCallRequest) {
                 // we can assume that we are already in a call, since the global widget sent this.
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 store.dispatch(showSwitchCallModal(ev.data.message.callID));
             } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error') {
                 store.dispatch(displayCallErrorModal(ev.data.message.callID, new Error(ev.data.message.errMsg)));
             } else if (ev.data?.type === 'calls-run-slash-command') {
                 slashCommandsHandler(store, joinCall, ev.data.message, ev.data.args);
-            } else if (ev.data?.type === 'calls-link-click' && !window.desktopAPI?.openLinkFromCallsWidget) {
+            } else if (ev.data?.type === 'calls-link-click' && !window.desktopAPI?.openLinkFromCalls) {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 navigateToURL(ev.data.message.link);
             }
