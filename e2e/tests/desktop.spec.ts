@@ -219,10 +219,10 @@ test.describe('desktop', () => {
             window.callsClient.disconnect(new Error('rtc peer error'));
         });
 
+        await expect(devPage.page.locator('#calls-widget')).toBeHidden();
+
         // Verify error is getting sent
         expect(desktopAPICalls.sendCallsError).toBe(true);
-
-        await devPage.leaveCall();
     });
 
     test('desktopAPI: leave call', async ({page}) => {
