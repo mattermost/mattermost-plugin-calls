@@ -380,7 +380,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
             this.menuResizeObserver.observe(this.menuNode.current!);
 
-            if (window.desktopAPI?.onScreenShared) {
+            if (window.desktopAPI?.onScreenShared && window.desktopAPI?.onCallsError) {
                 logDebug('registering desktopAPI.onScreenShared');
                 this.unsubscribers.push(window.desktopAPI.onScreenShared((sourceID: string, withAudio: boolean) => {
                     logDebug('desktopAPI.onScreenShared');

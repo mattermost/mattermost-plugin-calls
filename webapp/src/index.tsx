@@ -375,25 +375,31 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
 
         // Desktop API handlers
-        if (window.desktopAPI?.onOpenScreenShareModal && window.desktopAPI?.onJoinCallRequest) {
+        if (window.desktopAPI?.onOpenScreenShareModal) {
             logDebug('registering desktopAPI.onOpenScreenShareModal');
             this.unsubscribers.push(window.desktopAPI.onOpenScreenShareModal(() => {
                 logDebug('desktopAPI.onOpenScreenShareModal');
                 store.dispatch(showScreenSourceModal());
             }));
+        }
 
+        if (window.desktopAPI?.onJoinCallRequest) {
             logDebug('registering desktopAPI.onJoinCallRequest');
             this.unsubscribers.push(window.desktopAPI.onJoinCallRequest((channelID: string) => {
                 logDebug('desktopAPI.onJoinCallRequest');
                 store.dispatch(showSwitchCallModal(channelID));
             }));
+        }
 
+        if (window.desktopAPI?.onOpenLinkFromCalls) {
             logDebug('registering desktopAPI.onOpenLinkFromCalls');
             this.unsubscribers.push(window.desktopAPI.onOpenLinkFromCalls((url: string) => {
                 logDebug('desktopAPI.onOpenLinkFromCalls');
                 navigateToURL(url);
             }));
+        }
 
+        if (window.desktopAPI?.onCallsError) {
             logDebug('registering desktopAPI.onCallsError');
             this.unsubscribers.push(window.desktopAPI.onCallsError((err: string, callID?: string, errMsg?: string) => {
                 logDebug('desktopAPI.onCallsError');
