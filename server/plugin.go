@@ -377,3 +377,16 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 func (p *Plugin) ServeMetrics(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	p.metrics.Handler().ServeHTTP(w, r)
 }
+
+// We want to prevent call posts from being modified by the user starting the
+// call to avoid potentially messing with metadata (e.g. job ids).
+// Both Plugin and Calls bot should still be able to do it though.
+func (p *Plugin) MessageWillBeUpdated(c *plugin.Context, newPost, oldPost *model.Post) (*model.Post, string) {
+	if oldPost != nil && oldPost.Type == callStartPostType && c != nil && c.SessionId != "" {
+		if p.botSession == nil || c.SessionId != p.botSession.Id {
+			return nil, "you are not allowed to edit a call post"
+		}
+	}
+
+	return newPost, ""
+}
