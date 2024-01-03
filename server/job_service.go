@@ -360,18 +360,24 @@ func (p *Plugin) jobServiceVersionCheck(client *offloader.Client) error {
 
 func (p *Plugin) initJobService() error {
 	p.LogDebug("initializing job service")
+
+	registry := job.ImageRegistryDefault
+	if val := os.Getenv("MM_CALLS_JOB_SERVICE_IMAGE_REGISTRY"); val != "" {
+		registry = val
+	}
+
 	recorderVersion, ok := manifest.Props["calls_recorder_version"].(string)
 	if !ok {
 		return fmt.Errorf("failed to get recorder version from manifest")
 	}
-	recorderJobRunner = "mattermost/calls-recorder:" + recorderVersion
+	recorderJobRunner = fmt.Sprintf("%s/%s:%s", registry, job.RecordingJobPrefix, recorderVersion)
 	runners := []string{recorderJobRunner}
 
 	transcriberVersion, ok := manifest.Props["calls_transcriber_version"].(string)
 	if !ok {
 		return fmt.Errorf("failed to get transcriber version from manifest")
 	}
-	transcriberJobRunner = "mattermost/calls-transcriber:" + transcriberVersion
+	transcriberJobRunner = fmt.Sprintf("%s/%s:%s", registry, job.TranscribingJobPrefix, transcriberVersion)
 
 	// We only initialize the transcriber runner (image prefetch) if transcriptions are enabled.
 	// We still need to set the runner above in case they are enabled at a later point.
