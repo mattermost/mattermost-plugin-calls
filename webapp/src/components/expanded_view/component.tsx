@@ -297,8 +297,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
             // don't allow navigation in expanded window e.g. permalinks in rhs
             this.#unlockNavigation = props.history.block((tx) => {
-                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
-                sendDesktopEvent('calls-link-click', {link: tx.pathname});
+                if (window.desktopAPI?.openLinkFromCalls) {
+                    logDebug('desktopAPI.openLinkFromCalls');
+                    window.desktopAPI.openLinkFromCalls(tx.pathname);
+                } else {
+                    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                    sendDesktopEvent('calls-link-click', {link: tx.pathname});
+                }
                 return false;
             });
 

@@ -391,14 +391,6 @@ export default class Plugin {
             }));
         }
 
-        if (window.desktopAPI?.onOpenLinkFromCalls) {
-            logDebug('registering desktopAPI.onOpenLinkFromCalls');
-            this.unsubscribers.push(window.desktopAPI.onOpenLinkFromCalls((url: string) => {
-                logDebug('desktopAPI.onOpenLinkFromCalls');
-                navigateToURL(url);
-            }));
-        }
-
         if (window.desktopAPI?.onCallsError) {
             logDebug('registering desktopAPI.onCallsError');
             this.unsubscribers.push(window.desktopAPI.onCallsError((err: string, callID?: string, errMsg?: string) => {
