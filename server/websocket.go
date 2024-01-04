@@ -91,10 +91,16 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 	// Some events only need to be sent to calls participants instead of
 	// all connected channel members.
 	if broadcast != nil && broadcast.ChannelId != "" && call != nil {
+		sentMap := map[string]bool{}
 		for _, s := range call.Sessions {
-			broadcast.UserId = s.UserID
-			p.metrics.IncWebSocketEvent("out", ev)
-			p.API.PublishWebSocketEvent(ev, data, broadcast)
+			if !sentMap[s.UserID] {
+				broadcast.UserId = s.UserID
+				p.metrics.IncWebSocketEvent("out", ev)
+				p.API.PublishWebSocketEvent(ev, data, broadcast)
+
+				// deduplication
+				sentMap[s.UserID] = true
+			}
 		}
 		return
 	}
