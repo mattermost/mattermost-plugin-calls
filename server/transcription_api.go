@@ -59,7 +59,7 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 			"callID":  callID,
 			"trState": clientState.toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 	}
 }
 
@@ -90,7 +90,7 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 			p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 				"callID":  callID,
 				"trState": trState.getClientState().toMap(),
-			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 		}
 	}()
 
@@ -100,7 +100,7 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 		"callID":  callID,
 		"trState": trState.getClientState().toMap(),
-	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return. We lock again as soon as this returns.
@@ -137,7 +137,7 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 		"callID":  callID,
 		"trState": trState.getClientState().toMap(),
-	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 
 	go p.transcriptionJobTimeoutChecker(callID, trJobID)
 
@@ -169,7 +169,7 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 			p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 				"callID":  callID,
 				"trState": trState.getClientState().toMap(),
-			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 		}
 	}()
 
@@ -186,7 +186,7 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 		"callID":  callID,
 		"trState": trState.getClientState().toMap(),
-	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 
 	return nil
 }

@@ -604,10 +604,14 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 		if rtcMsg.Type == rtc.VoiceOnMessage {
 			evType = wsEventUserVoiceOn
 		}
+		call, err := m.ctx.kvGetCallState(rtcMsg.CallID, false)
+		if err != nil {
+			m.ctx.LogError("failed to get call state", "err", err.Error())
+		}
 		m.ctx.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":     rtcMsg.UserID,
 			"session_id": rtcMsg.SessionID,
-		}, &model.WebsocketBroadcast{ChannelId: rtcMsg.CallID})
+		}, &model.WebsocketBroadcast{ChannelId: rtcMsg.CallID}, call)
 		return nil
 	}
 
@@ -615,7 +619,7 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 	m.ctx.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 		"data":   string(rtcMsg.Data),
 		"connID": rtcMsg.SessionID,
-	}, &model.WebsocketBroadcast{UserId: rtcMsg.UserID, ReliableClusterSend: true})
+	}, &model.WebsocketBroadcast{UserId: rtcMsg.UserID, ReliableClusterSend: true}, nil)
 
 	return nil
 }

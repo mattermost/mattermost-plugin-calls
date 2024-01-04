@@ -209,7 +209,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 		return
 	}
 
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}, nil)
 
 	callID := state.Call.ID
 
@@ -281,7 +281,7 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 	p.publishWebSocketEvent(wsEventUserDismissedNotification, map[string]interface{}{
 		"userID": userID,
 		"callID": state.Call.ID,
-	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
+	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}, nil)
 
 	res.Code = http.StatusOK
 	res.Msg = "success"
@@ -400,7 +400,7 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		evType = "channel_disable_voice"
 	}
 
-	p.publishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	p.publishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}, nil)
 }
 
 func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
