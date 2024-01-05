@@ -192,7 +192,7 @@ func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobS
 		}
 	}
 
-	if err := p.getJobService().StopJob(callID, recState.BotConnID); err != nil {
+	if err := p.getJobService().StopJob(callID, recState.ID, p.getBotID(), recState.BotConnID); err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to stop recording job: %w", err)
 	}
 
