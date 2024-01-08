@@ -180,8 +180,3 @@ export type RealNewPostMessageProps = {
     set_online: boolean;
     team_id: string;
 }
-
-export type StopJobData = {
-    channelID: string;
-    jobID: string;
-};
