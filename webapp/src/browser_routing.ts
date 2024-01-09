@@ -3,8 +3,10 @@
 
 import React from 'react';
 
+import {getWebappUtils} from './utils';
+
 // @ts-ignore
-const WebappUtils = window.opener ? window.opener.WebappUtils : window.WebappUtils;
+const WebappUtils = getWebappUtils();
 
 export const navigateToURL = (urlPath: string) => {
     WebappUtils.browserHistory.push(urlPath);
