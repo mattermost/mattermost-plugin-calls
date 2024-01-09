@@ -95,7 +95,7 @@ import {
     ringingEnabled,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
-import {DesktopNotificationArgs, PluginRegistry, Store} from './types/mattermost-webapp';
+import {DesktopNotificationArgs, PluginRegistry, Store, WebAppUtils} from './types/mattermost-webapp';
 import {
     desktopGTE,
     followThread,
@@ -820,6 +820,7 @@ declare global {
         e2eNotificationsSoundedAt?: number[],
         e2eNotificationsSoundStoppedAt?: number[],
         e2eRingLength?: number,
+        WebappUtils: WebAppUtils,
     }
 
     interface HTMLVideoElement {

@@ -34,15 +34,22 @@ import {
     usersReactionsState,
 } from 'src/reducers';
 import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
-import {getChannelURL} from 'src/utils';
+import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL} from 'src/utils';
 
 import {pluginId} from './manifest';
 
 //@ts-ignore GlobalState is not complete
 const pluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
 
-export const channelIDForCurrentCall = (state: GlobalState): string =>
-    window.callsClient?.channelID || window.opener?.callsClient?.channelID || pluginState(state).clientStateReducer?.channelID || '';
+const clientState = (state: GlobalState) => pluginState(state).clientStateReducer;
+
+export const channelIDForCurrentCall: (state: GlobalState) => string =
+    createSelector(
+        'channelIDForCurrentCall',
+        getCallsClientChannelID,
+        clientState,
+        (channelID, cState) => channelID || cState?.channelID || '',
+    );
 
 export const channelForCurrentCall: (state: GlobalState) => Channel | undefined =
     createSelector(
@@ -130,14 +137,12 @@ export const sessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
         (sessions, channelID) => Object.values(sessions[channelID] || {}),
     );
 
-const sessionIDForCurrentCall = () => window.callsClient?.getSessionID() || window.opener?.callsClient.getSessionID();
-
 export const sessionForCurrentCall: (state: GlobalState) => UserSessionState =
     createSelector(
         'sessionsInCurrentCall',
         sessionsInCalls,
         channelIDForCurrentCall,
-        sessionIDForCurrentCall,
+        getCallsClientSessionID,
         (sessions, channelID, sessionID) => sessions[channelID]?.[sessionID],
     );
 
@@ -162,9 +167,8 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
         'callStartAtForCurrentCall',
         calls,
         channelIDForCurrentCall,
-        (callsStates, channelID) => callsStates[channelID]?.startAt ||
-          window.callsClient?.initTime ||
-          window.opener?.callsClient?.initTime || 0,
+        getCallsClientInitTime,
+        (callsStates, channelID, initTime) => callsStates[channelID]?.startAt || initTime || 0,
     );
 
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
