@@ -44,6 +44,7 @@ const (
 	wsEventCallRecordingState        = "call_recording_state"
 	wsEventCallTranscriptionState    = "call_transcription_state"
 	wsEventUserDismissedNotification = "user_dismissed_notification"
+	wsEventJobStop                   = "job_stop"
 	wsReconnectionTimeout            = 10 * time.Second
 )
 

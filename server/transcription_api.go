@@ -173,7 +173,7 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 		}
 	}()
 
-	if err := p.getJobService().StopJob(callID, trState.BotConnID); err != nil {
+	if err := p.getJobService().StopJob(callID, trState.ID, p.getBotID(), trState.BotConnID); err != nil {
 		return fmt.Errorf("failed to stop transcription job: %w", err)
 	}
 
