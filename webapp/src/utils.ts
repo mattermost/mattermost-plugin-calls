@@ -1,7 +1,8 @@
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@calls/common';
-import {SessionState, UserSessionState} from '@calls/common/lib/types';
+import {CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
+import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
@@ -532,6 +533,28 @@ export function notificationsStopRinging() {
     if (window.e2eNotificationsSoundStoppedAt) {
         window.e2eNotificationsSoundStoppedAt.push(Date.now());
     }
+}
+
+export function getCallPropsFromPost(post: Post): CallPostProps {
+    return {
+        title: post.props?.title,
+        start_at: post.props?.start_at,
+        end_at: post.props?.end_at,
+        recordings: post.props?.recordings || [],
+        transcriptions: post.props?.transcriptions || [],
+        participants: post.props?.participants || [],
+
+        // DEPRECATED
+        recording_files: post.props?.recording_files || [],
+    };
+}
+
+export function getCallRecordingPropsFromPost(post: Post): CallRecordingPostProps {
+    return {
+        call_post_id: post.props?.call_post_id,
+        recording_id: post.props?.recording_id,
+        captions: post.props?.captions || [],
+    };
 }
 
 export function getWebappUtils() {
