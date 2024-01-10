@@ -3,6 +3,9 @@ import {FileInfo} from '@mattermost/types/files';
 import {Post} from '@mattermost/types/posts';
 import {Client4} from 'mattermost-redux/client';
 import React, {useMemo} from 'react';
+import {
+    getCallRecordingPropsFromPost,
+} from 'src/utils';
 import styled from 'styled-components';
 
 type Props = {
@@ -11,7 +14,8 @@ type Props = {
 }
 
 const RecordingsFilePreview = ({fileInfo, post}: Props) => {
-    const now = useMemo(() => Date.now(), [post.props.captions]);
+    const recordingPostProps = getCallRecordingPropsFromPost(post);
+    const now = useMemo(() => Date.now(), [recordingPostProps.captions]);
 
     return (
         <Video
@@ -24,7 +28,7 @@ const RecordingsFilePreview = ({fileInfo, post}: Props) => {
                 src={Client4.getFileUrl(fileInfo.id, now)}
                 type={fileInfo.mime_type}
             />
-            { post.props.captions?.map((caption: Caption, idx: number) => (
+            { recordingPostProps.captions?.map((caption: Caption, idx: number) => (
                 <track
                     key={idx}
                     data-testid='calls-recording-transcription'
