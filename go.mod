@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-calls
 
-go 1.21.4
+go 1.21.5
 
 require (
 	github.com/pion/ice/v2 v2.3.11 // indirect
@@ -16,11 +16,11 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattermost/calls-offloader v0.5.0
 	github.com/mattermost/calls-recorder v0.6.2
-	github.com/mattermost/calls-transcriber v0.1.5
+	github.com/mattermost/calls-transcriber v0.1.8
 	github.com/mattermost/logr/v2 v2.0.16
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.0.11-0.20231115180603-759bb70b2f44
-	github.com/mattermost/rtcd v0.12.1-0.20231207181014-6f067694af89
+	github.com/mattermost/rtcd v0.13.0
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pion/interceptor v0.1.25
 	github.com/pion/rtp v1.8.3
