@@ -299,8 +299,8 @@ github.com/mattermost/calls-offloader v0.5.0 h1:3No8IdCiHDamNVvUTlnmKJlAxoWJiXMG
 github.com/mattermost/calls-offloader v0.5.0/go.mod h1:/xyDQiBZ0XNKNC/ALGp7pkGNApfC6v94CD7tPWGcFvM=
 github.com/mattermost/calls-recorder v0.6.2 h1:tTEoSkXJ9UEfoW7Lr9YQW3YtsHoQ0ycGeStyQrm/5aw=
 github.com/mattermost/calls-recorder v0.6.2/go.mod h1:v/52mE+wIXGJE7ZflpAkoyGd56hbVgC9ZuEBBaRd8KU=
-github.com/mattermost/calls-transcriber v0.1.5 h1:aX2zOHFLtrZYX2e7fj544jtKp6DAHBHTvMj1/sng1mk=
-github.com/mattermost/calls-transcriber v0.1.5/go.mod h1:jfUzpxyP0ze4agRTjTy9PWurV4m420cJMOIzlZJOncc=
+github.com/mattermost/calls-transcriber v0.1.8 h1:vwmxHxRHuuuo4wyf+ZfvDj5n2TNpebQO43Qy6u+BAQY=
+github.com/mattermost/calls-transcriber v0.1.8/go.mod h1:G9NBa2ZUzzAM1Eap2YvGyZnvoBy/H2uVUNKGuIHZMMc=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 h1:Khvh6waxG1cHc4Cz5ef9n3XVCxRWpAKUtqg9PJl5+y8=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404/go.mod h1:RyS7FDNQlzF1PsjbJWHRI35exqaKGSO9qD4iv8QjE34=
 github.com/mattermost/ldap v3.0.4+incompatible h1:SOeNnz+JNR+foQ3yHkYqijb9MLPhXN2BZP/PdX23VDU=
@@ -309,8 +309,8 @@ github.com/mattermost/logr/v2 v2.0.16 h1:jnePX4cPskC3WDFvUardh/xZfxNdsFXbEERJQ1k
 github.com/mattermost/logr/v2 v2.0.16/go.mod h1:1dm/YhTpozsqANXxo5Pi5zYLBsal2xY0pX+JZNbzYJY=
 github.com/mattermost/mattermost/server/public v0.0.11-0.20231115180603-759bb70b2f44 h1:aTq8Vvdme0N8G2ZYEbKNlEBuXDr8MACPUmImIieKELc=
 github.com/mattermost/mattermost/server/public v0.0.11-0.20231115180603-759bb70b2f44/go.mod h1:AMuKlAabVFnLvf5bXg+69EdvtLIfty4ahFossB34LM4=
-github.com/mattermost/rtcd v0.12.1-0.20231207181014-6f067694af89 h1:sTzOpxqG+SVP/3VqjW75hOKZ/ghaOGfA8/k6fI++h+8=
-github.com/mattermost/rtcd v0.12.1-0.20231207181014-6f067694af89/go.mod h1:M2F8N5aipH6Rne8+CYp/QiaFLy6iru3nTt6u/FUxhXs=
+github.com/mattermost/rtcd v0.13.0 h1:29A9WHYCERNpvog1IEFNdeBN6ex6RP+JXxj3qVXl6wY=
+github.com/mattermost/rtcd v0.13.0/go.mod h1:M2F8N5aipH6Rne8+CYp/QiaFLy6iru3nTt6u/FUxhXs=
 github.com/mattermost/squirrel v0.2.0 h1:8ZWeyf+MWQ2cL7hu9REZgLtz2IJi51qqZEovI3T3TT8=
 github.com/mattermost/squirrel v0.2.0/go.mod h1:NPPtk+CdpWre4GxMGoOpzEVFVc0ZoEFyJBZGCtn9nSU=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
