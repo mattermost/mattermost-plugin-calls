@@ -372,7 +372,7 @@ func (p *Plugin) removeSession(us *session) error {
 
 		if currState.Call.Recording != nil {
 			p.LogDebug("stopping ongoing recording", "jobID", currState.Call.Recording.JobID, "botConnID", currState.Call.Recording.BotConnID)
-			if err := p.getJobService().StopJob(us.channelID, currState.Call.Recording.BotConnID); err != nil {
+			if err := p.getJobService().StopJob(us.channelID, currState.Call.Recording.ID, p.getBotID(), currState.Call.Recording.BotConnID); err != nil {
 				p.LogError("failed to stop recording job", "error", err.Error(),
 					"channelID", us.channelID,
 					"jobID", currState.Call.Recording.JobID,
@@ -382,7 +382,7 @@ func (p *Plugin) removeSession(us *session) error {
 
 		if currState.Call.Transcription != nil {
 			p.LogDebug("stopping ongoing transcription", "jobID", currState.Call.Transcription.JobID, "botConnID", currState.Call.Transcription.BotConnID)
-			if err := p.getJobService().StopJob(us.channelID, currState.Call.Transcription.BotConnID); err != nil {
+			if err := p.getJobService().StopJob(us.channelID, currState.Call.Transcription.ID, p.getBotID(), currState.Call.Transcription.BotConnID); err != nil {
 				p.LogError("failed to stop recording job", "error", err.Error(),
 					"channelID", us.channelID,
 					"jobID", currState.Call.Transcription.JobID,
