@@ -1,4 +1,4 @@
-import {expect, test} from '@playwright/test';
+import {expect, Response, test} from '@playwright/test';
 import {readFile} from 'fs/promises';
 
 import {adminState} from '../constants';
@@ -476,6 +476,40 @@ test.describe('ux', () => {
 
         // Verify we switched channel through the link
         await expect(page.url()).toEqual(getChannelURL(getChannelNamesForTest()[0]));
+
+        await devPage.leaveCall();
+    });
+});
+
+test.describe('call post', () => {
+    const userIdx = getUserIdxForTest();
+    test.use({storageState: userStorages[0]});
+
+    test('user starting call should not be allowed to edit the call post', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+
+        const postEl = page.locator('.post__body').last();
+        await postEl.hover();
+        const postID = (await postEl.getAttribute('id'))?.substr(0, 26);
+
+        await page.getByTestId('PostDotMenu-Button-' + postID).click();
+
+        await page.locator('#CENTER_dropdown_' + postID).locator('li', {hasText: 'Edit'}).click();
+
+        await page.keyboard.type('Edited');
+
+        const postPatch: Promise<Response> = new Promise((resolve) => {
+            page.on('response', (response) => {
+                if (response.url().endsWith(`/api/v4/posts/${postID}/patch`)) {
+                    resolve(response);
+                }
+            });
+        });
+
+        await page.keyboard.press('Enter');
+
+        expect((await postPatch).ok()).toBe(false);
 
         await devPage.leaveCall();
     });
