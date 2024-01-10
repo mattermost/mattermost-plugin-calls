@@ -5,6 +5,8 @@ import {
     insecureContextErr,
     rtcPeerCloseErr,
     rtcPeerErr,
+    userLeftChannelErr,
+    userRemovedFromChannelErr,
 } from 'src/client';
 import GenericModal from 'src/components/generic_modal';
 import LaptopAlertSVG from 'src/components/icons/laptop_alert_svg';
@@ -124,6 +126,26 @@ export const CallErrorModal = (props: Props) => {
         modalProps.showCancel = true;
         modalProps.cancelButtonText = formatMessage({defaultMessage: 'Cancel'});
         confirmMsg = formatMessage({defaultMessage: 'Learn more'});
+        break;
+    case userRemovedFromChannelErr.message:
+        headerMsg = (
+            <span>{formatMessage({defaultMessage: 'You were removed from channel'})}</span>
+        );
+        msg = (
+            <span>
+                {formatMessage({defaultMessage: 'You were disconnected from the call as you were removed from the channel.'})}
+            </span>
+        );
+        break;
+    case userLeftChannelErr.message:
+        headerMsg = (
+            <span>{formatMessage({defaultMessage: 'You left the channel'})}</span>
+        );
+        msg = (
+            <span>
+                {formatMessage({defaultMessage: 'You were disconnected from the call as you left the channel.'})}
+            </span>
+        );
         break;
     }
 
