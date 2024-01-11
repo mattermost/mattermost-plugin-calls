@@ -129,11 +129,11 @@ export const CallErrorModal = (props: Props) => {
         break;
     case userRemovedFromChannelErr.message:
         headerMsg = (
-            <span>{formatMessage({defaultMessage: 'You were removed from channel'})}</span>
+            <span>{formatMessage({defaultMessage: 'You were removed from the channel'})}</span>
         );
         msg = (
             <span>
-                {formatMessage({defaultMessage: 'You were disconnected from the call as you were removed from the channel.'})}
+                {formatMessage({defaultMessage: 'You have been removed from the channel, and have been disconnected from the call.'})}
             </span>
         );
         break;
@@ -143,7 +143,7 @@ export const CallErrorModal = (props: Props) => {
         );
         msg = (
             <span>
-                {formatMessage({defaultMessage: 'You were disconnected from the call as you left the channel.'})}
+                {formatMessage({defaultMessage: 'You have left the channel, and have been disconnected from the call.'})}
             </span>
         );
         break;
