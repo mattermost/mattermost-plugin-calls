@@ -533,7 +533,7 @@ test.describe('permissions', () => {
 
         // Verify user disconnected and error modal gets shown
         await expect(page.locator('#call-error-modal')).toBeVisible();
-        await expect(page.locator('#call-error-modal')).toContainText('You were disconnected from the call as you left the channel.');
+        await expect(page.locator('#call-error-modal')).toContainText('You have left the channel, and have been disconnected from the call.');
         await expect(page.locator('#calls-widget')).toBeHidden();
         await page.keyboard.press('Escape');
         await expect(page.locator('#call-error-modal')).toBeHidden();
@@ -559,7 +559,7 @@ test.describe('permissions', () => {
 
         // Verify user disconnected and error modal gets shown
         await expect(page.locator('#call-error-modal')).toBeVisible();
-        await expect(page.locator('#call-error-modal')).toContainText('You were disconnected from the call as you were removed from the channel.');
+        await expect(page.locator('#call-error-modal')).toContainText('You have been removed from the channel, and have been disconnected from the call.');
         await expect(page.locator('#calls-widget')).toBeHidden();
 
         // Re-add user to channel
