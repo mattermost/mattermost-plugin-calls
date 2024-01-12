@@ -377,6 +377,22 @@ func (u *User) transmitAudio() {
 	}()
 }
 
+func (u *User) Unmute() {
+	select {
+	case u.wsSendCh <- wsMsg{event: "custom_com.mattermost.calls_unmute", data: nil}:
+	default:
+		log.Printf("failed to send ws message")
+	}
+}
+
+func (u *User) Mute() {
+	select {
+	case u.wsSendCh <- wsMsg{event: "custom_com.mattermost.calls_mute", data: nil}:
+	default:
+		log.Printf("failed to send ws message")
+	}
+}
+
 func (u *User) transmitSpeech() {
 	track, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
 	if err != nil {
@@ -400,19 +416,6 @@ func (u *User) transmitSpeech() {
 	go func() {
 		// Wait for connection established
 		<-u.connectedCh
-
-		select {
-		case u.wsSendCh <- wsMsg{event: "custom_com.mattermost.calls_unmute", data: nil}:
-		default:
-			log.Printf("failed to send ws message")
-		}
-		defer func() {
-			select {
-			case u.wsSendCh <- wsMsg{event: "custom_com.mattermost.calls_mute", data: nil}:
-			default:
-				log.Printf("failed to send ws message")
-			}
-		}()
 
 		enc, err := opus.NewEncoder(24000, 1, opus.AppVoIP)
 		if err != nil {

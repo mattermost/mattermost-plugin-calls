@@ -56,11 +56,22 @@ func main() {
 
 	// "Conversation" logic
 	go func() {
+		time.Sleep(2 * time.Second)
+
+		userA.Unmute()
 		userA.Speak("Hi, this is user A")
 		time.Sleep(4 * time.Second)
+		userA.Mute()
+
+		userB.Unmute()
 		userB.Speak("Hi user A, this is user B responding")
 		time.Sleep(4 * time.Second)
+		userB.Mute()
+
+		userA.Unmute()
 		userA.Speak("Nice to meet you user B!")
+		time.Sleep(4 * time.Second)
+		userA.Mute()
 	}()
 
 	go func() {
