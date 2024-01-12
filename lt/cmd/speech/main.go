@@ -14,7 +14,7 @@ import (
 func main() {
 	stopCh := make(chan struct{})
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(2)
 
 	siteURL := "http://localhost:8065"
 	channelID := "kc6yoe75btbapqtsp6wcarucpe"
