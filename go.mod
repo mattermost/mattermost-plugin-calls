@@ -13,6 +13,7 @@ require (
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/gorilla/websocket v1.5.0
+	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattermost/calls-offloader v0.5.0
 	github.com/mattermost/calls-recorder v0.6.2
@@ -28,6 +29,7 @@ require (
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8
+	gopkg.in/hraban/opus.v2 v2.0.0-20230925203106-0188a62cb302
 )
 
 replace github.com/pion/interceptor => github.com/streamer45/interceptor v0.0.0-20230202152215-57f3ac9e7696

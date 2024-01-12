@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,6 +27,8 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media"
 	"github.com/pion/webrtc/v3/pkg/media/ivfreader"
 	"github.com/pion/webrtc/v3/pkg/media/oggreader"
+
+	"gopkg.in/hraban/opus.v2"
 )
 
 var (
@@ -39,7 +42,6 @@ var (
 	rtpVideoCodecVP8 = webrtc.RTPCodecCapability{
 		MimeType:    "video/VP8",
 		ClockRate:   90000,
-		Channels:    0,
 		SDPFmtpLine: "",
 		RTCPFeedback: []webrtc.RTCPFeedback{
 			{Type: "goog-remb", Parameter: ""},
@@ -73,6 +75,7 @@ type Config struct {
 	WsURL         string
 	Duration      time.Duration
 	Unmuted       bool
+	Speak         bool
 	ScreenSharing bool
 	Recording     bool
 	Simulcast     bool
@@ -411,18 +414,57 @@ func (u *User) transmitSpeech() {
 			}
 		}()
 
+		enc, err := opus.NewEncoder(24000, 1, opus.AppVoIP)
+		if err != nil {
+			log.Fatalf("%s: failed to create opus encoder: %s", u.cfg.Username, err.Error())
+		}
+
 		for text := range u.speechTextCh {
-			log.Printf("received text to speak: %q", text)
+			log.Printf("%s: received text to speak: %q", u.cfg.Username, text)
 
-			// rd, err :=
+			rd, rate, err := textToSpeech(text)
+			if err != nil {
+				log.Printf("%s: textToSpeech failed: %s", u.cfg.Username, err.Error())
+				continue
+			}
 
-			// sampleDuration := time.Millisecond * 20
-			// ticker := time.NewTicker(sampleDuration)
-			// for ; true; <-ticker.C {
-			// 	if err := track.WriteSample(media.Sample{Data: audioData, Duration: sampleDuration}); err != nil {
-			// 		log.Printf("failed to write audio sample: %s", err.Error())
-			// 	}
-			// }
+			log.Printf("%s: raw speech samples decoded (%d)", u.cfg.Username, rate)
+
+			audioSamplesDataBuf := bytes.NewBuffer([]byte{})
+			if _, err := audioSamplesDataBuf.ReadFrom(rd); err != nil {
+				log.Printf("%s: failed to read samples data: %s", u.cfg.Username, err.Error())
+				continue
+			}
+
+			log.Printf("read %d samples bytes", audioSamplesDataBuf.Len())
+
+			sampleDuration := time.Millisecond * 20
+			ticker := time.NewTicker(sampleDuration)
+			audioSamplesData := make([]byte, 480*4)
+			audioSamples := make([]int16, 480)
+			opusData := make([]byte, 8192)
+			for ; true; <-ticker.C {
+				n, err := audioSamplesDataBuf.Read(audioSamplesData)
+				if err != nil {
+					log.Printf("%s: failed to read audio samples: %s", u.cfg.Username, err.Error())
+					break
+				}
+
+				// Convert []byte to []int16
+				for i := 0; i < n; i += 4 {
+					audioSamples[i/4] = int16(binary.LittleEndian.Uint16(audioSamplesData[i : i+4]))
+				}
+
+				n, err = enc.Encode(audioSamples, opusData)
+				if err != nil {
+					log.Printf("%s: failed to encode: %s", u.cfg.Username, err.Error())
+					continue
+				}
+
+				if err := track.WriteSample(media.Sample{Data: opusData[:n], Duration: sampleDuration}); err != nil {
+					log.Printf("%s: failed to write audio sample: %s", u.cfg.Username, err.Error())
+				}
+			}
 		}
 	}()
 }
@@ -541,6 +583,8 @@ func (u *User) initRTC() error {
 
 	if u.cfg.Unmuted {
 		u.transmitAudio()
+	} else if u.cfg.Speak {
+		u.transmitSpeech()
 	}
 
 	if u.cfg.ScreenSharing {
@@ -806,7 +850,7 @@ func (u *User) wsListen(authToken string) {
 	}
 }
 
-func (u *User) Connect(stopCh chan struct{}, channelType model.ChannelType) error {
+func (u *User) Connect(stopCh chan struct{}) error {
 	log.Printf("%s: connecting user", u.cfg.Username)
 
 	var user *model.User
@@ -862,7 +906,15 @@ func (u *User) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 		}
 		cancel()
 
-		if channelType == "O" || channelType == "P" {
+		ctx, cancel = context.WithTimeout(context.Background(), HTTPRequestTimeout)
+		defer cancel()
+		channel, _, err := client.GetChannel(ctx, u.cfg.ChannelID, "")
+		if err != nil {
+			return err
+		}
+		cancel()
+
+		if channel.Type == "O" || channel.Type == "P" {
 			// join channel
 			ctx, cancel = context.WithTimeout(context.Background(), HTTPRequestTimeout)
 			defer cancel()

@@ -191,7 +191,7 @@ func main() {
 	for j := 0; j < numCalls; j++ {
 		log.Printf("starting call in %s", channels[j].DisplayName)
 		for i := 0; i < numUsersPerCall; i++ {
-			go func(idx int, channelID string, teamID string, channelType model.ChannelType, unmuted, screenSharing, recording bool) {
+			go func(idx int, channelID string, teamID string, unmuted, screenSharing, recording bool) {
 				username := fmt.Sprintf("%s%d", userPrefix, idx)
 				if unmuted {
 					log.Printf("%s: going to transmit voice", username)
@@ -226,10 +226,10 @@ func main() {
 				}
 
 				user := client.NewUser(cfg)
-				if err := user.Connect(stopCh, channelType); err != nil {
+				if err := user.Connect(stopCh); err != nil {
 					log.Printf("connectUser failed: %s", err.Error())
 				}
-			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, channels[j].Type, i < numUnmuted, i == 0 && j < numScreenSharing, j < numRecordings)
+			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, i < numUnmuted, i == 0 && j < numScreenSharing, j < numRecordings)
 		}
 	}
 
