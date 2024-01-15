@@ -17,6 +17,7 @@ jobs:
       golangci-lint-version: "v1.54.2"
       golang-version: "1.21"
     secrets: inherit
+
   lt:
     runs-on: ubuntu-latest
     with:
