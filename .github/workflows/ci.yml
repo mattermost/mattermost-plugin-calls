@@ -30,7 +30,7 @@ jobs:
           fetch-depth: 0
       - name: Install system dependencies
         shell: bash
-        run: apt-get update && apt-get install --no-install-recommends -y libopus-dev
+        run: "apt-get update && apt-get install --no-install-recommends -y libopus-dev"
       # - name: Install golangci-lint
       #   shell: bash
       #   run: |
