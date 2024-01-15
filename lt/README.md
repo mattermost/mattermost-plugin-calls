@@ -19,7 +19,7 @@ git clone https://github.com/mattermost/mattermost-plugin-calls.git && cd matter
 ### Run on a team
 
 ```sh
-go run ./lt/cmd/lt -url http://localhost:8065 \
+cd ./lt && go run ./cmd/lt -url http://localhost:8065 \
   -team 11o73u33upfuprysuifa17dn5e \
   -calls 2 \
   -users-per-call 5 \
@@ -46,7 +46,7 @@ go run ./lt/cmd/lt -url http://localhost:8065 \
 It's also possible to run the load-test on a single channel by providing its ID instead of the team.
 
 ```sh
-go run ./lt/cmd/lt -url http://localhost:8065 \
+cd ./lt && go run ./cmd/lt -url http://localhost:8065 \
   -channel ebjjdnozn3gs5n7ozooesaubua \
   -calls 1 \
   -users-per-call 5 \
