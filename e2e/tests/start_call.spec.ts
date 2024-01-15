@@ -1,13 +1,19 @@
-import {expect, test} from '@playwright/test';
+import {expect, Response, test} from '@playwright/test';
+import {readFile} from 'fs/promises';
 
-import {adminState} from '../constants';
+import {
+    apiGetChannelByName,
+} from '../channels';
+import {adminState, baseURL} from '../constants';
 import PlaywrightDevPage from '../page';
 import {
     getChannelNamesForTest,
     getChannelURL,
+    getUserIDsForTest,
     getUserIdxForTest,
     getUsernamesForTest,
     getUserStoragesForTest,
+    newUserPage,
 } from '../utils';
 
 const userStorages = getUserStoragesForTest();
@@ -427,5 +433,93 @@ test.describe('ux', () => {
         await expect(page.url()).toEqual(getChannelURL(getChannelNamesForTest()[0]));
 
         await devPage.leaveCall();
+    });
+});
+
+test.describe('call post', () => {
+    const userIdx = getUserIdxForTest();
+    test.use({storageState: userStorages[0]});
+
+    test('user starting call should not be allowed to edit the call post', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+
+        const postEl = page.locator('.post__body').last();
+        await postEl.hover();
+        const postID = (await postEl.getAttribute('id'))?.substr(0, 26);
+
+        await page.getByTestId('PostDotMenu-Button-' + postID).click();
+
+        await page.locator('#CENTER_dropdown_' + postID).locator('li', {hasText: 'Edit'}).click();
+
+        await page.keyboard.type('Edited');
+
+        const postPatch: Promise<Response> = new Promise((resolve) => {
+            page.on('response', (response) => {
+                if (response.url().endsWith(`/api/v4/posts/${postID}/patch`)) {
+                    resolve(response);
+                }
+            });
+        });
+
+        await page.keyboard.press('Enter');
+
+        expect((await postPatch).ok()).toBe(false);
+
+        await devPage.leaveCall();
+    });
+});
+
+test.describe('permissions', () => {
+    test.use({storageState: userStorages[0]});
+
+    test('leaving active call channel should disconnect from call', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+
+        // Leave channel
+        await page.locator('#post_textbox').fill('/leave');
+        await page.getByTestId('SendMessageButton').click();
+
+        // Verify user disconnected and error modal gets shown
+        await expect(page.locator('#call-error-modal')).toBeVisible();
+        await expect(page.locator('#call-error-modal')).toContainText('You have left the channel, and have been disconnected from the call.');
+        await expect(page.locator('#calls-widget')).toBeHidden();
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#call-error-modal')).toBeHidden();
+
+        // Re-join channel
+        await page.locator('#post_textbox').fill(`/join ~${getChannelNamesForTest()[0]}`);
+        await page.getByTestId('SendMessageButton').click();
+    });
+
+    test('should disconnect from call when removed from channel', async ({page}) => {
+        const channelName = getChannelNamesForTest()[1];
+        const devPage = new PlaywrightDevPage(page);
+        devPage.goToChannel(channelName);
+        await devPage.startCall();
+
+        // Remove user from channel
+        const adminContext = (await newUserPage(adminState.storageStatePath)).page.request;
+        const channel = await apiGetChannelByName(adminContext, getChannelNamesForTest()[1]);
+        let resp = await adminContext.delete(`${baseURL}/api/v4/channels/${channel.id}/members/${getUserIDsForTest()[0]}`, {
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+        });
+        await expect(resp.status()).toEqual(200);
+
+        // Verify user disconnected and error modal gets shown
+        await expect(page.locator('#call-error-modal')).toBeVisible();
+        await expect(page.locator('#call-error-modal')).toContainText('You have been removed from the channel, and have been disconnected from the call.');
+        await expect(page.locator('#calls-widget')).toBeHidden();
+
+        // Re-add user to channel
+        resp = await adminContext.post(`${baseURL}/api/v4/channels/${channel.id}/members`, {
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            data: {
+                channel_id: channel.id,
+                user_id: getUserIDsForTest()[0],
+            },
+        });
+        await expect(resp.status()).toEqual(201);
     });
 });

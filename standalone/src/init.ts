@@ -20,6 +20,7 @@ import {
     UserMutedUnmutedData,
     UserRaiseUnraiseHandData,
     UserReactionData,
+    UserRemovedData,
     UserScreenOnOffData,
     UserVoiceOnOffData,
     WebsocketEventData,
@@ -44,7 +45,7 @@ import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
 import RestClient from 'plugin/rest_client';
 import {callsConfig, iceServers, needsTURNCredentials} from 'plugin/selectors';
-import {DesktopNotificationArgs, Store} from 'plugin/types/mattermost-webapp';
+import {DesktopNotificationArgs, Store, WebAppUtils} from 'plugin/types/mattermost-webapp';
 import {
     getPluginPath,
     getWSConnectionURL,
@@ -61,6 +62,7 @@ import {
     handleUserMuted,
     handleUserRaisedHand,
     handleUserReaction,
+    handleUserRemovedFromChannel,
     handleUserScreenOff,
     handleUserScreenOn,
     handleUserUnmuted,
@@ -266,6 +268,9 @@ export default async function init(cfg: InitConfig) {
         case `custom_${pluginId}_call_state`:
             await handleCallState(store, ev as WebSocketMessage<CallStateData>);
             break;
+        case 'user_removed':
+            handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);
+            break;
         default:
         }
 
@@ -304,6 +309,7 @@ declare global {
         e2eNotificationsSoundedAt?: number[],
         e2eNotificationsSoundStoppedAt?: number[],
         e2eRingLength?: number,
+        WebappUtils: WebAppUtils,
     }
 
     interface HTMLVideoElement {

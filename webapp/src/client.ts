@@ -17,6 +17,8 @@ export const AudioInputMissingError = new Error('no audio input available');
 export const rtcPeerErr = new Error('rtc peer error');
 export const rtcPeerCloseErr = new Error('rtc peer close');
 export const insecureContextErr = new Error('insecure context');
+export const userRemovedFromChannelErr = new Error('user was removed from channel');
+export const userLeftChannelErr = new Error('user has left channel');
 
 const rtcMonitorInterval = 4000;
 

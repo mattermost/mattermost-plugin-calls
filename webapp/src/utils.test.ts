@@ -1,11 +1,19 @@
+import {Post} from '@mattermost/types/posts';
 import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
 
+import CallsClient from './client';
+import {pluginId} from './manifest';
 import {
     callStartedTimestampFn,
+    getCallPropsFromPost,
+    getCallRecordingPropsFromPost,
+    getCallsClient,
+    getWebappUtils,
     getWSConnectionURL,
     maxAttemptsReachedErr,
     runWithRetry,
+    shouldRenderCallsIncoming,
     shouldRenderDesktopWidget,
     sleep,
     toHuman,
@@ -238,6 +246,239 @@ describe('utils', () => {
 
         test('maximum attempts reached', async () => {
             await expect(runWithRetry(failsN(3), 10, 3)).rejects.toEqual(maxAttemptsReachedErr);
+        });
+    });
+
+    describe('getCallPropsFromPost', () => {
+        test('undefined props', () => {
+            const post = {} as Post;
+
+            const props = getCallPropsFromPost(post);
+
+            expect(props.start_at).toBeUndefined();
+            expect(props.end_at).toBeUndefined();
+            expect(props.recordings.length).toBe(0);
+            expect(props.recording_files.length).toBe(0);
+            expect(props.transcriptions.length).toBe(0);
+            expect(props.participants.length).toBe(0);
+        });
+
+        test('missing props', () => {
+            const post = {
+                props: {},
+            } as Post;
+
+            const props = getCallPropsFromPost(post);
+
+            expect(props.start_at).toBeUndefined();
+            expect(props.end_at).toBeUndefined();
+            expect(props.recordings.length).toBe(0);
+            expect(props.recording_files.length).toBe(0);
+            expect(props.transcriptions.length).toBe(0);
+            expect(props.participants.length).toBe(0);
+        });
+
+        test('full props', () => {
+            const callProps = {
+                title: 'call title',
+                start_at: 1000,
+                end_at: 1045,
+                recordings: {
+                    recA: {
+                        file_id: 'recAFileID',
+                        post_id: 'recAPostID',
+                        tr_id: 'trA',
+                    },
+                    recB: {
+                        file_id: 'recBFileID',
+                        post_id: 'recBPostID',
+                        tr_id: 'trB',
+                    },
+                },
+                recording_files: ['recAFileID', 'recBFileID'],
+                transcriptions: {
+                    trA: {
+                        file_id: 'trAFileID',
+                        post_id: 'trAPostID',
+                        rec_id: 'recA',
+                    },
+                    trB: {
+                        file_id: 'trBFileID',
+                        post_id: 'trBPostID',
+                        rec_id: 'recB',
+                    },
+                },
+                participants: ['userA', 'userB'],
+            };
+
+            const post = {
+                props: callProps as unknown,
+            } as Post;
+
+            const props = getCallPropsFromPost(post);
+
+            expect(props.title).toBe(post.props.title);
+            expect(props.start_at).toBe(post.props.start_at);
+            expect(props.end_at).toBe(post.props.end_at);
+            expect(props.recordings).toBe(post.props.recordings);
+            expect(props.recording_files).toBe(post.props.recording_files);
+            expect(props.transcriptions).toBe(post.props.transcriptions);
+            expect(props.participants).toBe(post.props.participants);
+        });
+    });
+
+    describe('getCallRecordingPropsFromPost', () => {
+        test('undefined props', () => {
+            const post = {} as Post;
+
+            const props = getCallRecordingPropsFromPost(post);
+
+            expect(props.call_post_id).toBeUndefined();
+            expect(props.recording_id).toBeUndefined();
+            expect(props.captions.length).toBe(0);
+        });
+
+        test('missing props', () => {
+            const post = {
+                props: {},
+            } as Post;
+
+            const props = getCallRecordingPropsFromPost(post);
+
+            expect(props.call_post_id).toBeUndefined();
+            expect(props.recording_id).toBeUndefined();
+            expect(props.captions.length).toBe(0);
+        });
+
+        test('full props', () => {
+            const recProps = {
+                call_post_id: 'callPostID',
+                recording_id: 'recA',
+                captions: [
+                    {
+                        file_id: 'trAFileID',
+                        language: 'en',
+                        title: 'en',
+                    },
+                ],
+            };
+
+            const post = {
+                props: recProps as unknown,
+            } as Post;
+
+            const props = getCallRecordingPropsFromPost(post);
+
+            expect(props.call_post_id).toBe(recProps.call_post_id);
+            expect(props.recording_id).toBe(recProps.recording_id);
+            expect(props.captions).toBe(recProps.captions);
+        });
+    });
+
+    describe('getCallsClient', () => {
+        test('undefined', () => {
+            const callsClient = getCallsClient();
+            expect(callsClient).toBeUndefined();
+        });
+
+        test('window.callsClient defined', () => {
+            window.callsClient = {
+                channelID: 'channelID',
+            } as CallsClient;
+            const callsClient = getCallsClient();
+            expect(callsClient).toEqual(window.callsClient);
+        });
+
+        test('window.opener.callsClient defined', () => {
+            global.window.opener = {
+                callsClient: {
+                    channelID: 'channelID',
+                } as CallsClient,
+            };
+            const callsClient = getCallsClient();
+            expect(callsClient).toEqual(window.opener.callsClient);
+            delete global.window.opener;
+        });
+
+        test('undefined window', () => {
+            const originalWindow = global.window;
+
+            // @ts-ignore
+            delete global.window;
+            const callsClient = getCallsClient();
+            expect(callsClient).toBeUndefined();
+            global.window = originalWindow;
+        });
+    });
+
+    describe('getWebappUtils', () => {
+        test('undefined', () => {
+            const utils = getWebappUtils();
+            expect(utils).toBeUndefined();
+        });
+
+        test('window.WebappUtils defined', () => {
+            // @ts-ignore
+            global.window.WebappUtils = {};
+            const utils = getWebappUtils();
+            expect(utils).toEqual(window.WebappUtils);
+        });
+
+        test('window.opener.WebappUtils defined', () => {
+            global.window.opener = {
+                WebappUtils: {},
+            };
+            const utils = getWebappUtils();
+            expect(utils).toEqual(window.opener.WebappUtils);
+            delete global.window.opener;
+        });
+
+        test('undefined window', () => {
+            const originalWindow = global.window;
+
+            // @ts-ignore
+            delete global.window;
+            const utils = getWebappUtils();
+            expect(utils).toBeUndefined();
+
+            global.window = originalWindow;
+        });
+    });
+
+    describe('shouldRenderCallsIncoming', () => {
+        test('should render', () => {
+            expect(shouldRenderCallsIncoming()).toBe(true);
+        });
+
+        test('window.opener', () => {
+            global.window.opener = {};
+            expect(shouldRenderCallsIncoming()).toBe(true);
+            delete global.window.opener;
+        });
+
+        test('desktop expanded view', () => {
+            const originalWindow = global.window;
+
+            // @ts-ignore
+            delete global.window;
+            global.window = {
+                location: {
+                    pathname: `/plugins/${pluginId}/expanded/channelID`,
+                } as Location,
+                desktop: {},
+            } as any;
+            expect(shouldRenderCallsIncoming()).toBe(false);
+            global.window = originalWindow;
+        });
+
+        test('undefined window', () => {
+            const originalWindow = global.window;
+
+            // @ts-ignore
+            delete global.window;
+            expect(shouldRenderCallsIncoming()).toBe(false);
+
+            global.window = originalWindow;
         });
     });
 });

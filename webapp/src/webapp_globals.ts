@@ -1,21 +1,15 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
-import {DispatchFunc, Thunk} from 'mattermost-redux/types/actions';
+import {Thunk} from 'mattermost-redux/types/actions';
+import {WebAppUtils} from 'src/types/mattermost-webapp';
 
 export const {
     modals,
     notificationSounds,
     sendDesktopNotificationToMe,
-}: {
-
-    // @ts-ignore
-    modals: { openModal, ModalIdentifiers },
-    notificationSounds: { ring: (sound: string) => void, stopRing: () => void },
-    sendDesktopNotificationToMe: (title: string, body: string, channel: Channel, teamId: string, silent: boolean, soundName: string, url: string) => (dispatch: DispatchFunc) => void,
-} =
+}: WebAppUtils =
 
 // @ts-ignore
 global.WebappUtils ?? {};
