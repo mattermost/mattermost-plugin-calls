@@ -20,6 +20,7 @@ import {
     UserMutedUnmutedData,
     UserRaiseUnraiseHandData,
     UserReactionData,
+    UserRemovedData,
     UserScreenOnOffData,
     UserVoiceOnOffData,
     WebsocketEventData,
@@ -60,6 +61,7 @@ import {
     handleUserMuted,
     handleUserRaisedHand,
     handleUserReaction,
+    handleUserRemovedFromChannel,
     handleUserScreenOff,
     handleUserScreenOn,
     handleUserUnmuted,
@@ -264,6 +266,9 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_call_state`:
             await handleCallState(store, ev as WebSocketMessage<CallStateData>);
+            break;
+        case 'user_removed':
+            handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);
             break;
         default:
         }

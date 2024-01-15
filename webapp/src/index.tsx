@@ -123,6 +123,7 @@ import {
     handleUserMuted,
     handleUserRaisedHand,
     handleUserReaction,
+    handleUserRemovedFromChannel,
     handleUserScreenOff,
     handleUserScreenOn,
     handleUserUnmuted,
@@ -224,6 +225,10 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_state`, (ev) => {
             handleCallState(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler('user_removed', (ev) => {
+            handleUserRemovedFromChannel(store, ev);
         });
     }
 
