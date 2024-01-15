@@ -5,6 +5,8 @@ import {
     insecureContextErr,
     rtcPeerCloseErr,
     rtcPeerErr,
+    userLeftChannelErr,
+    userRemovedFromChannelErr,
 } from 'src/client';
 import GenericModal from 'src/components/generic_modal';
 import LaptopAlertSVG from 'src/components/icons/laptop_alert_svg';
@@ -109,10 +111,12 @@ export const CallErrorModal = (props: Props) => {
     case insecureContextErr.message:
         headerMsg = (
             <ColumnContainer>
-                <LaptopAlertSVG
-                    width={150}
-                    height={150}
-                />
+                <LaptopAlertSVGContainer>
+                    <LaptopAlertSVG
+                        width={150}
+                        height={150}
+                    />
+                </LaptopAlertSVGContainer>
                 <span>{formatMessage({defaultMessage: 'Calls can\'t be initiated in an insecure context'})}</span>
             </ColumnContainer>
         );
@@ -125,6 +129,26 @@ export const CallErrorModal = (props: Props) => {
         modalProps.cancelButtonText = formatMessage({defaultMessage: 'Cancel'});
         confirmMsg = formatMessage({defaultMessage: 'Learn more'});
         break;
+    case userRemovedFromChannelErr.message:
+        headerMsg = (
+            <span>{formatMessage({defaultMessage: 'You were removed from the channel'})}</span>
+        );
+        msg = (
+            <span>
+                {formatMessage({defaultMessage: 'You have been removed from the channel, and have been disconnected from the call.'})}
+            </span>
+        );
+        break;
+    case userLeftChannelErr.message:
+        headerMsg = (
+            <span>{formatMessage({defaultMessage: 'You left the channel'})}</span>
+        );
+        msg = (
+            <span>
+                {formatMessage({defaultMessage: 'You have left the channel, and have been disconnected from the call.'})}
+            </span>
+        );
+        break;
     }
 
     return (
@@ -135,7 +159,7 @@ export const CallErrorModal = (props: Props) => {
             confirmButtonText={confirmMsg}
             onHide={() => null}
             handleConfirm={onConfirm}
-            contentPadding={'48px 32px'}
+            contentPadding={'24px 32px'}
             components={{
                 Header: Header as never,
                 FooterContainer,
@@ -150,27 +174,23 @@ export const CallErrorModal = (props: Props) => {
 
 const Header = styled(ModalHeader)`
     display: flex;
-    justify-content: center;
 `;
 
 const FooterContainer = styled.div`
     display: flex;
-    justify-content: center;
     gap: 8px;
 `;
 
 const StyledGenericModal = styled(GenericModal)`
-    width: 512px;
+    width: 600px;
 `;
 
 const ColumnContainer = styled.div`
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: center;
-    text-align: center;
+`;
 
-    span {
-        margin: 8px 0;
-    }
+const LaptopAlertSVGContainer = styled.div`
+    align-self: center;
 `;

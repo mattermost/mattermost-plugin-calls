@@ -160,7 +160,7 @@ export const StyledModal = styled(Modal)<{ $contentPadding: string}>`
         /* content-spacing */
 
         .modal-header {
-            margin-bottom: 8px;
+            padding: 0 0 24px 0;
         }
 
         .modal-body {
@@ -211,4 +211,5 @@ export const ModalHeading = styled.h1`
     font-size: 22px;
     line-height: 28px;
     color: var(--center-channel-color);
+    width: 100%;
 `;

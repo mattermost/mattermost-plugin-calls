@@ -390,3 +390,40 @@ func (p *Plugin) MessageWillBeUpdated(c *plugin.Context, newPost, oldPost *model
 
 	return newPost, ""
 }
+
+func (p *Plugin) UserHasLeftChannel(_ *plugin.Context, cm *model.ChannelMember, _ *model.User) {
+	if cm == nil {
+		p.LogWarn("UserHasLeftChannel: unexpected nil channel member")
+		return
+	}
+
+	state, err := p.kvGetChannelState(cm.ChannelId, false)
+	if err != nil {
+		p.LogError("UserHasLeftChannel: failed to get call state", "err", err.Error(), "channelID", cm.ChannelId)
+		return
+	} else if state == nil || state.Call == nil {
+		p.LogDebug("UserHasLeftChannel: no call ongoing", "channelID", cm.ChannelId)
+		return
+	}
+
+	// Closing the underlying RTC connection(s) for the user to stop
+	// communication.
+	for connID, session := range state.Call.Sessions {
+		if session.UserID == cm.UserId {
+			p.LogDebug("UserHasLeftChannel: closing RTC session for user who left channel",
+				"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
+			if err := p.closeRTCSession(session.UserID, connID, cm.ChannelId, state.NodeID); err != nil {
+				p.LogError("UserHasLeftChannel: failed to close RTC session", "err", err.Error(),
+					"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
+			}
+
+			// Sending user_left event to the user since they won't receive the channel
+			// wide broadcast.
+			p.publishWebSocketEvent(wsEventUserLeft, map[string]interface{}{
+				"user_id":    session.UserID,
+				"session_id": connID,
+				"channelID":  cm.ChannelId,
+			}, &model.WebsocketBroadcast{UserId: cm.UserId, ReliableClusterSend: true})
+		}
+	}
+}

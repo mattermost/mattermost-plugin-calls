@@ -12,6 +12,7 @@ import {
     UserMutedUnmutedData,
     UserRaiseUnraiseHandData,
     UserReactionData,
+    UserRemovedData,
     UserScreenOnOffData,
     UserVoiceOnOffData,
 } from '@calls/common/lib/types';
@@ -19,6 +20,10 @@ import {WebSocketMessage} from '@mattermost/client/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {incomingCallOnChannel, loadCallState, removeIncomingCallNotification, userLeft} from 'src/actions';
+import {
+    userLeftChannelErr,
+    userRemovedFromChannelErr,
+} from 'src/client';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 
 import {
@@ -362,4 +367,15 @@ export function handleUserDismissedNotification(store: Store, ev: WebSocketMessa
             callID: ev.data.callID,
         },
     });
+}
+
+export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<UserRemovedData>) {
+    const channelID = ev.data.channel_id || ev.broadcast.channel_id;
+    const currentUserID = getCurrentUserId(store.getState());
+    const removedUserID = ev.data.user_id || ev.broadcast.user_id;
+    const removerUserID = ev.data.remover_id;
+
+    if (removedUserID === currentUserID && channelID === channelIDForCurrentCall(store.getState())) {
+        getCallsClient()?.disconnect(removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr);
+    }
 }

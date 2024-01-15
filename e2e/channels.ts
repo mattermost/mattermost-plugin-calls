@@ -1,7 +1,7 @@
 import {expect} from '@playwright/test';
 import {APIRequestContext} from 'playwright-core';
 
-import {baseURL} from './constants';
+import {baseURL, defaultTeam} from './constants';
 import {headers} from './utils';
 
 export const apiCreateGroupChannel = async (request: APIRequestContext, userIDs: string[]) => {
@@ -39,5 +39,18 @@ export const apiChannelNotifyProps = async (request: APIRequestContext, channelI
         },
     });
     expect(resp.status()).toEqual(200);
+    return resp.json();
+};
+
+export const apiGetChannelByName = async (request: APIRequestContext, channelName: string) => {
+    let resp = await request.get(`${baseURL}/api/v4/teams/name/${defaultTeam}`);
+    expect(resp.status()).toEqual(200);
+
+    const teamID = (await resp.json()).id;
+    expect(teamID).toBeDefined();
+
+    resp = await request.get(`${baseURL}/api/v4/teams/${teamID}/channels/name/${channelName}`);
+    expect(resp.status()).toEqual(200);
+
     return resp.json();
 };
