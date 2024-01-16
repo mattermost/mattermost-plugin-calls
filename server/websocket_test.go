@@ -268,10 +268,8 @@ func TestWSReader(t *testing.T) {
 				p.wsReader(us, "authSessionID", "handlerID")
 			}()
 
-			go func() {
-				time.Sleep(time.Second)
-				close(us.wsCloseCh)
-			}()
+			time.Sleep(time.Second)
+			close(us.wsCloseCh)
 
 			wg.Wait()
 		})
@@ -301,10 +299,8 @@ func TestWSReader(t *testing.T) {
 				p.wsReader(us, "authSessionID", "handlerID")
 			}()
 
-			go func() {
-				time.Sleep(2 * time.Second)
-				close(us.wsCloseCh)
-			}()
+			time.Sleep(2 * time.Second)
+			close(us.wsCloseCh)
 
 			wg.Wait()
 		})
@@ -331,10 +327,8 @@ func TestWSReader(t *testing.T) {
 				p.wsReader(us, "authSessionID", "handlerID")
 			}()
 
-			go func() {
-				time.Sleep(time.Second * 2)
-				close(us.wsCloseCh)
-			}()
+			time.Sleep(time.Second * 2)
+			close(us.wsCloseCh)
 
 			wg.Wait()
 		})
