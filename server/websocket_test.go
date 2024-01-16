@@ -254,10 +254,44 @@ func TestWSReader(t *testing.T) {
 	t.Run("user session validation", func(t *testing.T) {
 		sessionAuthCheckInterval = time.Second
 
+		t.Run("empty session ID", func(t *testing.T) {
+			us := newUserSession("userID", "channelID", "connID", false)
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				p.wsReader(us, "", "handlerID")
+			}()
+
+			time.Sleep(time.Second)
+			close(us.wsCloseCh)
+
+			wg.Wait()
+		})
+
 		t.Run("valid session", func(t *testing.T) {
 			mockAPI.On("GetSession", "authSessionID").Return(&model.Session{
 				Id:        "authSessionID",
 				ExpiresAt: time.Now().UnixMilli() + 60000,
+			}, nil).Once()
+
+			us := newUserSession("userID", "channelID", "connID", false)
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				p.wsReader(us, "authSessionID", "handlerID")
+			}()
+
+			time.Sleep(time.Second)
+			close(us.wsCloseCh)
+
+			wg.Wait()
+		})
+
+		t.Run("valid session, no expiration", func(t *testing.T) {
+			mockAPI.On("GetSession", "authSessionID").Return(&model.Session{
+				Id: "authSessionID",
 			}, nil).Once()
 
 			us := newUserSession("userID", "channelID", "connID", false)

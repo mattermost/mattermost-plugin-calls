@@ -412,7 +412,7 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 				continue
 			}
 
-			if s, appErr := p.API.GetSession(authSessionID); appErr != nil || time.Now().UnixMilli() >= s.ExpiresAt {
+			if s, appErr := p.API.GetSession(authSessionID); appErr != nil || (s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt) {
 				fields := []any{
 					"channelID",
 					us.channelID,
