@@ -27,6 +27,7 @@ import {
 import {navigateToURL} from 'src/browser_routing';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
+import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
 import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
@@ -377,6 +378,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('TCPServerPort', TCPServerPort);
         registry.registerAdminConsoleCustomSetting('EnableIPv6', EnableIPv6);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
+        registry.registerAdminConsoleCustomSetting('ICEHostPortOverride', ICEHostPortOverride);
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
         registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
 
