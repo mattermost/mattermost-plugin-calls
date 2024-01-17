@@ -506,12 +506,12 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
 			"recState": state.Call.Recording.getClientState().toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 	} else {
 		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 			"callID":  callID,
 			"trState": state.Call.Transcription.getClientState().toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 	}
 
 	res.Code = http.StatusOK

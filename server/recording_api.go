@@ -64,7 +64,7 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
 			"recState": clientState.toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 	}
 }
 
@@ -91,7 +91,7 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 				"callID":   callID,
 				"recState": recState.getClientState().toMap(),
-			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 		}
 	}()
 
@@ -101,7 +101,7 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 		"callID":   callID,
 		"recState": recState.getClientState().toMap(),
-	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return. We lock again as soon as this returns.
@@ -152,7 +152,7 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 		"callID":   callID,
 		"recState": recState.getClientState().toMap(),
-	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 
 	go p.recJobTimeoutChecker(callID, recJobID)
 
@@ -182,7 +182,7 @@ func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobS
 			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 				"callID":   callID,
 				"recState": recState.getClientState().toMap(),
-			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 		}
 	}()
 
@@ -199,7 +199,7 @@ func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobS
 	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 		"callID":   callID,
 		"recState": recState.getClientState().toMap(),
-	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true}, state.Call)
 
 	return recState.getClientState(), http.StatusOK, nil
 }

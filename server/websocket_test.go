@@ -234,3 +234,133 @@ func TestHandleBotWSReconnect(t *testing.T) {
 		})
 	})
 }
+
+func TestPublishWebSocketEvent(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	mockMetrics := &serverMocks.MockMetrics{}
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		callsClusterLocks: map[string]*cluster.Mutex{},
+		metrics:           mockMetrics,
+	}
+
+	callChannelID := "callChannelID"
+
+	t.Run("bot", func(t *testing.T) {
+		p.botSession = &model.Session{
+			UserId: "botUserID",
+		}
+		defer func() { p.botSession = nil }()
+
+		t.Run("wsEventUserJoined/wsEventUserLeft", func(t *testing.T) {
+			p.publishWebSocketEvent(wsEventUserJoined, map[string]any{
+				"user_id": "botUserID",
+			}, nil, nil)
+
+			p.publishWebSocketEvent(wsEventUserLeft, map[string]any{
+				"user_id": "botUserID",
+			}, nil, nil)
+
+			mockMetrics.AssertNotCalled(t, "IncWebSocketEvent")
+			mockAPI.AssertNotCalled(t, "PublishWebSocketEvent")
+		})
+
+		t.Run("broadcast", func(t *testing.T) {
+			data := map[string]any{}
+			bc := &model.WebsocketBroadcast{
+				ChannelId: callChannelID,
+			}
+
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserMuted).Twice()
+
+			mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, map[string]any{
+				"channelID": callChannelID,
+			}, &model.WebsocketBroadcast{
+				UserId: "botUserID",
+			}).Once()
+
+			mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, map[string]any{
+				"channelID": callChannelID,
+			}, &model.WebsocketBroadcast{
+				ChannelId: callChannelID,
+				OmitUsers: map[string]bool{"botUserID": true},
+			}).Once()
+
+			p.publishWebSocketEvent(wsEventUserMuted, data, bc, nil)
+		})
+	})
+
+	t.Run("connection specific", func(t *testing.T) {
+		data := map[string]any{
+			"session_id": "userSessionID",
+		}
+		bc := &model.WebsocketBroadcast{
+			ConnectionId: "userConnID",
+		}
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserMuted).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, map[string]any{
+			"session_id": "userSessionID",
+		}, &model.WebsocketBroadcast{
+			ConnectionId: "userConnID",
+		}).Once()
+
+		p.publishWebSocketEvent(wsEventUserMuted, data, bc, nil)
+	})
+
+	t.Run("missing call state", func(t *testing.T) {
+		data := map[string]any{}
+		bc := &model.WebsocketBroadcast{
+			ChannelId: callChannelID,
+		}
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserMuted).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, data, &model.WebsocketBroadcast{
+			ChannelId: callChannelID,
+		}).Once()
+
+		p.publishWebSocketEvent(wsEventUserMuted, data, bc, nil)
+	})
+
+	t.Run("call participants", func(t *testing.T) {
+		data := map[string]any{}
+		bc := &model.WebsocketBroadcast{
+			ChannelId: callChannelID,
+		}
+		call := &callState{
+			Sessions: map[string]*userState{
+				"connA": {
+					UserID: "userA",
+				},
+				"connB": {
+					UserID: "userA",
+				},
+				"connC": {
+					UserID: "userB",
+				},
+				"connD": {
+					UserID: "userC",
+				},
+			},
+		}
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserMuted).Times(3)
+		mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, data, &model.WebsocketBroadcast{
+			ChannelId: callChannelID,
+			UserId:    "userA",
+		}).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, data, &model.WebsocketBroadcast{
+			ChannelId: callChannelID,
+			UserId:    "userB",
+		}).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, data, &model.WebsocketBroadcast{
+			ChannelId: callChannelID,
+			UserId:    "userC",
+		}).Once()
+
+		p.publishWebSocketEvent(wsEventUserMuted, data, bc, call)
+	})
+}

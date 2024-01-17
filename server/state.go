@@ -302,6 +302,15 @@ func (p *Plugin) kvGetChannelState(channelID string, fromMaster bool) (*channelS
 	return state, nil
 }
 
+func (p *Plugin) kvGetCallState(channelID string, fromMaster bool) (*callState, error) {
+	state, err := p.kvGetChannelState(channelID, fromMaster)
+	if err != nil || state == nil {
+		return nil, err
+	}
+
+	return state.Call, nil
+}
+
 func (p *Plugin) kvSetChannelState(channelID string, state *channelState) error {
 	p.metrics.IncStoreOp("KVSet")
 

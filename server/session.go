@@ -302,18 +302,19 @@ func (p *Plugin) removeSession(us *session) error {
 			// multi-sessions.
 			p.publishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
 				"userID": us.userID,
-			}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+			}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true}, nil)
 		}
 
 		p.publishWebSocketEvent(wsEventUserLeft, map[string]interface{}{
 			"user_id":    us.userID,
 			"session_id": us.originalConnID,
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true}, nil)
 
 		// If the removed user was sharing we should send out a screen off event.
 		if prevState.Call.ScreenSharingSessionID != "" && (currState.Call == nil || currState.Call.ScreenSharingSessionID == "") {
 			p.LogDebug("removed session was sharing, sending screen off event", "userID", us.userID, "connID", us.connID)
-			p.publishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+			p.publishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{},
+				&model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true}, currState.Call)
 		}
 	}
 
@@ -321,7 +322,7 @@ func (p *Plugin) removeSession(us *session) error {
 	if prevState.Call != nil && currState.Call != nil && currState.Call.HostID != prevState.Call.HostID {
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 			"hostID": currState.Call.HostID,
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true}, currState.Call)
 	}
 
 	// Checking if the recording has ended due to the bot leaving.
@@ -343,7 +344,7 @@ func (p *Plugin) removeSession(us *session) error {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   us.channelID,
 			"recState": currState.Call.Recording.getClientState().toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true}, currState.Call)
 	}
 
 	// Checking if the transcription has ended due to the bot leaving.
@@ -362,7 +363,7 @@ func (p *Plugin) removeSession(us *session) error {
 		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 			"callID":  us.channelID,
 			"trState": currState.Call.Transcription.getClientState().toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true}, currState.Call)
 	}
 
 	// If the bot is the only user left in the call we automatically stop any

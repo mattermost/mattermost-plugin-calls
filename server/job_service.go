@@ -245,7 +245,7 @@ func (s *jobService) StopJob(channelID, jobID, botUserID, botConnID string) erro
 	// the call. We do this implicitly by sending a fake call end event.
 	s.ctx.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{
 		"channelID": channelID,
-	}, &model.WebsocketBroadcast{ConnectionId: botConnID, ReliableClusterSend: true})
+	}, &model.WebsocketBroadcast{ConnectionId: botConnID, ReliableClusterSend: true}, nil)
 
 	return nil
 }
