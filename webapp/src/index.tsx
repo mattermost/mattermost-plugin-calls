@@ -44,7 +44,7 @@ import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_t
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
-import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, DisabledCallsErr} from 'src/constants';
+import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
@@ -71,6 +71,7 @@ import ChannelHeaderDropdownButton from './components/channel_header_dropdown_bu
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import ChannelLinkLabel from './components/channel_link_label';
 import PostType from './components/custom_post_types/post_type';
+import {PostTypeTranscription} from './components/custom_post_types/post_type_transcription';
 import EndCallModal from './components/end_call_modal';
 import ExpandedView from './components/expanded_view';
 import ScreenSourceModal from './components/screen_source_modal';
@@ -254,6 +255,7 @@ export default class Plugin {
         registry.registerChannelToastComponent(injectIntl(ChannelCallToast));
         registry.registerPostTypeComponent(CALL_START_POST_TYPE, PostType);
         registry.registerPostTypeComponent(CALL_RECORDING_POST_TYPE, PostTypeRecording);
+        registry.registerPostTypeComponent(CALL_TRANSCRIPTION_POST_TYPE, PostTypeTranscription);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
         registry.registerNeedsTeamRoute('/expanded', injectIntl(ExpandedView));
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
