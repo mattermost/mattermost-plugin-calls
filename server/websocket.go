@@ -48,6 +48,10 @@ const (
 	wsReconnectionTimeout            = 10 * time.Second
 )
 
+var (
+	sessionAuthCheckInterval = 10 * time.Second
+)
+
 type CallsClientJoinData struct {
 	ChannelID string
 	Title     string
@@ -379,7 +383,10 @@ func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 	}
 }
 
-func (p *Plugin) wsReader(us *session, handlerID string) {
+func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
+	sessionAuthTicker := time.NewTicker(sessionAuthCheckInterval)
+	defer sessionAuthTicker.Stop()
+
 	for {
 		select {
 		case msg, ok := <-us.wsMsgCh:
@@ -397,6 +404,39 @@ func (p *Plugin) wsReader(us *session, handlerID string) {
 			return
 		case <-us.rtcCloseCh:
 			return
+		case <-sessionAuthTicker.C:
+			// Server versions prior to MM v9.5 won't have the session ID set so we
+			// cannot go ahead with this check.
+			// Should be removed as soon as we bump the minimum supported version.
+			if authSessionID == "" {
+				continue
+			}
+
+			if s, appErr := p.API.GetSession(authSessionID); appErr != nil || (s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt) {
+				fields := []any{
+					"channelID",
+					us.channelID,
+					"userID",
+					us.userID,
+					"connID",
+					us.connID,
+				}
+
+				if appErr != nil {
+					fields = append(fields, "err", appErr.Error())
+				} else {
+					fields = append(fields, "sessionID", s.Id, "expiresAt", fmt.Sprintf("%d", s.ExpiresAt))
+				}
+
+				p.LogInfo("invalid or expired session, closing RTC session", fields...)
+
+				// We forcefully disconnect any session that has been revoked or expired.
+				if err := p.closeRTCSession(us.userID, us.connID, us.channelID, handlerID); err != nil {
+					p.LogError("failed to close RTC session", append(fields[:5], "err", err.Error()))
+				}
+
+				return
+			}
 		}
 	}
 }
@@ -507,7 +547,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 	return nil
 }
 
-func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData) (retErr error) {
+func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData CallsClientJoinData) (retErr error) {
 	channelID := joinData.ChannelID
 	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
 
@@ -715,12 +755,12 @@ func (p *Plugin) handleJoin(userID, connID string, joinData CallsClientJoinData)
 		"CallID":        state.Call.ID,
 	})
 
-	p.wsReader(us, handlerID)
+	p.wsReader(us, authSessionID, handlerID)
 
 	return nil
 }
 
-func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prevConnID string) error {
+func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prevConnID, authSessionID string) error {
 	p.LogDebug("handleReconnect", "userID", userID, "connID", connID, "channelID", channelID,
 		"originalConnID", originalConnID, "prevConnID", prevConnID)
 
@@ -814,7 +854,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		handlerID = state.NodeID
 	}
 
-	p.wsReader(us, handlerID)
+	p.wsReader(us, authSessionID, handlerID)
 
 	if err := p.handleLeave(us, userID, connID, channelID); err != nil {
 		p.LogError(err.Error())
@@ -870,7 +910,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		}
 
 		go func() {
-			if err := p.handleJoin(userID, connID, joinData); err != nil {
+			if err := p.handleJoin(userID, connID, req.Session.Id, joinData); err != nil {
 				p.LogWarn(err.Error(), "userID", userID, "connID", connID, "channelID", channelID)
 				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
@@ -898,7 +938,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		}
 
 		go func() {
-			if err := p.handleReconnect(userID, connID, channelID, originalConnID, prevConnID); err != nil {
+			if err := p.handleReconnect(userID, connID, channelID, originalConnID, prevConnID, req.Session.Id); err != nil {
 				p.LogWarn(err.Error(), "userID", userID, "connID", connID,
 					"originalConnID", originalConnID, "prevConnID", prevConnID, "channelID", channelID)
 			}
