@@ -347,7 +347,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	}
 	transcriptionPost.AddProp("call_post_id", info.PostID)
 	transcriptionPost.AddProp("transcription_id", info.JobID)
-	transcriptionPost.AddProp("web_vtt_file_id", info.Transcriptions[0].FileIDs[0])
+	transcriptionPost.AddProp("captions", info.Transcriptions.ToClientCaptions())
 	trPost, appErr := p.API.CreatePost(transcriptionPost)
 	if appErr != nil {
 		res.Err = "failed to create post: " + appErr.Error()
