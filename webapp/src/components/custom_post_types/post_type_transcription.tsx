@@ -64,7 +64,7 @@ export const PostTypeTranscription = (props: Props) => {
     const msg = props.post.message;
 
     return (
-        <>
+        <div data-testid={'calls-post-transcription-body'}>
             {msg}
             {aiAvailable && callsPostButtonClicked &&
             <CreateMeetingSummaryButton
@@ -74,6 +74,6 @@ export const PostTypeTranscription = (props: Props) => {
                 <FormattedMessage defaultMessage={'Create meeting summary?'}/>
             </CreateMeetingSummaryButton>
             }
-        </>
+        </div>
     );
 };

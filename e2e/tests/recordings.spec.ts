@@ -94,7 +94,7 @@ test.describe('call recordings and transcriptions', () => {
         await page.locator('.post__body').last().locator('.ThreadFooter button.ReplyButton').click();
         await expect(page.locator('.ThreadViewer').locator('.post__header').last()).toContainText('calls');
         await expect(page.locator('.ThreadViewer').locator('.post__header').last()).toContainText('BOT');
-        await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.locator('.post-message__text')})).toContainText('Here\'s the call transcription');
+        await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('calls-post-transcription-body')})).toContainText('Here\'s the call transcription');
         await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
 
         // open recording's preview
