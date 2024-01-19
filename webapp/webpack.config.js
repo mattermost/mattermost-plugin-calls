@@ -59,6 +59,7 @@ module.exports = {
             'node_modules',
         ],
         extensions: ['*', '.js', '.jsx', '.ts', '.tsx'],
+        symlinks: false,
     },
     module: {
         rules: [
