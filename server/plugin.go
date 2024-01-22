@@ -29,6 +29,7 @@ import (
 const (
 	callStartPostType     = "custom_calls"
 	callRecordingPostType = "custom_calls_recording"
+	callTranscriptionType = "custom_calls_transcription"
 )
 
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
