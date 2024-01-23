@@ -216,9 +216,17 @@ func (p *Plugin) getJobService() *jobService {
 	return p.jobService
 }
 
-func (s *jobService) StopJob(channelID, botConnID string) error {
+func (s *jobService) StopJob(channelID, jobID, botUserID, botConnID string) error {
 	if channelID == "" {
 		return fmt.Errorf("channelID should not be empty")
+	}
+
+	if jobID == "" {
+		return fmt.Errorf("jobID should not be empty")
+	}
+
+	if botUserID == "" {
+		return fmt.Errorf("botUserID should not be empty")
 	}
 
 	// A job can be stopped before the bot is able to join. In such case there's
@@ -228,6 +236,11 @@ func (s *jobService) StopJob(channelID, botConnID string) error {
 		return nil
 	}
 
+	s.ctx.publishWebSocketEvent(wsEventJobStop, map[string]interface{}{
+		"job_id": jobID,
+	}, &model.WebsocketBroadcast{UserId: botUserID, ReliableClusterSend: true})
+
+	// DEPRECATED in favor of the new wsEventJobStop event.
 	// Since MM-52346, stopping a job really means signaling the bot it's time to leave
 	// the call. We do this implicitly by sending a fake call end event.
 	s.ctx.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{

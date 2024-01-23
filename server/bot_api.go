@@ -341,12 +341,13 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 		UserId:    p.getBotID(),
 		ChannelId: callID,
 		Message:   postMsg,
-		Type:      "custom_calls_transcription",
+		Type:      callTranscriptionType,
 		RootId:    threadID,
 		FileIds:   []string{info.Transcriptions[0].FileIDs[1]},
 	}
 	transcriptionPost.AddProp("call_post_id", info.PostID)
 	transcriptionPost.AddProp("transcription_id", info.JobID)
+	transcriptionPost.AddProp("captions", info.Transcriptions.ToClientCaptions())
 	trPost, appErr := p.API.CreatePost(transcriptionPost)
 	if appErr != nil {
 		res.Err = "failed to create post: " + appErr.Error()

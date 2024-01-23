@@ -18,10 +18,12 @@ import Timestamp from 'src/components/timestamp';
 import {idForCallInChannel} from 'src/selectors';
 import {
     callStartedTimestampFn,
+    getCallPropsFromPost,
     getUserDisplayName,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
-    toHuman, untranslatable,
+    toHuman,
+    untranslatable,
 } from 'src/utils';
 import styled from 'styled-components';
 
@@ -51,13 +53,15 @@ const PostType = ({
     const hourCycle: 'h23' | 'h12' = militaryTime ? 'h23' : 'h12';
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
+    const callProps = getCallPropsFromPost(post);
+
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
     const callID = useSelector((state: GlobalState) => idForCallInChannel(state, post.channel_id)) || '';
     const [, onJoin] = useDismissJoin(post.channel_id, callID);
 
     const timestampFn = useCallback(() => {
-        return callStartedTimestampFn(intl, post.props.start_at);
-    }, [intl, post.props.start_at]);
+        return callStartedTimestampFn(intl, callProps.start_at);
+    }, [intl, callProps.start_at]);
 
     const onLeaveButtonClick = () => {
         if (window.callsClient) {
@@ -67,7 +71,7 @@ const PostType = ({
         }
     };
 
-    const recordings = post.props.recording_files?.length || 0;
+    const recordings = callProps.recording_files?.length || 0;
 
     const recordingsSubMessage = recordings > 0 ? (
         <>
@@ -80,19 +84,19 @@ const PostType = ({
         </>
     ) : null;
 
-    const subMessage = post.props.end_at ? (
+    const subMessage = callProps.start_at && callProps.end_at ? (
         <>
             <Duration>
                 {formatMessage(
                     {defaultMessage: 'Ended at {endTime}'},
-                    {endTime: DateTime.fromMillis(post.props.end_at).toLocaleString(timeFormat)},
+                    {endTime: DateTime.fromMillis(callProps.end_at).toLocaleString(timeFormat)},
                 )}
             </Duration>
             <Divider>{untranslatable('•')}</Divider>
             <Duration>
                 {formatMessage(
                     {defaultMessage: 'Lasted {callDuration}'},
-                    {callDuration: toHuman(intl, LuxonDuration.fromMillis(post.props.end_at - post.props.start_at), 'minutes', {unitDisplay: 'long'})},
+                    {callDuration: toHuman(intl, LuxonDuration.fromMillis(callProps.end_at - callProps.start_at), 'minutes', {unitDisplay: 'long'})},
                 )}
             </Duration>
             {recordingsSubMessage}
@@ -140,8 +144,8 @@ const PostType = ({
     }
 
     const compactTitle = compactDisplay && !isRHS ? <br/> : <></>;
-    const title = post.props.title ? <h3 className='markdown__heading'>{post.props.title}</h3> : compactTitle;
-    const callActive = !post.props.end_at;
+    const title = callProps.title ? <h3 className='markdown__heading'>{callProps.title}</h3> : compactTitle;
+    const callActive = !callProps.end_at;
     const inCall = connectedID === post.channel_id;
     const button = inCall ? (
         <LeaveButton onClick={onLeaveButtonClick}>
@@ -157,16 +161,16 @@ const PostType = ({
         <>
             {title}
             <Main data-testid={'call-thread'}>
-                <SubMain ended={Boolean(post.props.end_at)}>
+                <SubMain ended={Boolean(callProps.end_at)}>
                     <Left>
-                        <CallIndicator ended={Boolean(post.props.end_at)}>
-                            {!post.props.end_at &&
+                        <CallIndicator ended={Boolean(callProps.end_at)}>
+                            {!callProps.end_at &&
                                 <ActiveCallIcon
                                     fill='var(--center-channel-bg)'
                                     style={{width: '100%', height: '100%'}}
                                 />
                             }
-                            {post.props.end_at &&
+                            {callProps.end_at &&
                                 <LeaveCallIcon
                                     fill={'rgba(var(--center-channel-color-rgb), 0.56)'}
                                     style={{width: '100%', height: '100%'}}
@@ -175,10 +179,10 @@ const PostType = ({
                         </CallIndicator>
                         <MessageWrapper>
                             <Message>
-                                {!post.props.end_at &&
+                                {!callProps.end_at &&
                                     formatMessage({defaultMessage: '{user} started a call'}, {user: getUserDisplayName(user)})
                                 }
-                                {post.props.end_at &&
+                                {callProps.end_at &&
                                     formatMessage({defaultMessage: 'Call ended'})
                                 }
                             </Message>

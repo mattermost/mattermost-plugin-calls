@@ -99,3 +99,11 @@ export type Store = BaseStore<GlobalState> & { dispatch: Dispatch }
 
 // eslint-disable-next-line
 export type Dispatch = ThunkDispatch<GlobalState, any, any>
+
+export type WebAppUtils = {
+
+    // @ts-ignore
+    modals: { openModal, ModalIdentifiers },
+    notificationSounds: { ring: (sound: string) => void, stopRing: () => void },
+    sendDesktopNotificationToMe: (title: string, body: string, channel: Channel, teamId: string, silent: boolean, soundName: string, url: string) => (dispatch: DispatchFunc) => void,
+};

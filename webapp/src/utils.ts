@@ -1,7 +1,8 @@
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@calls/common';
-import {SessionState, UserSessionState} from '@calls/common/lib/types';
+import {CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
+import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
@@ -77,18 +78,41 @@ export function getChannelURL(state: GlobalState, channel: Channel, teamId: stri
 }
 
 export function getCallsClient(): CallsClient | undefined {
-    return window.opener ? window.opener.callsClient : window.callsClient;
+    let callsClient;
+    try {
+        callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+    } catch (err) {
+        logErr(err);
+    }
+    return callsClient;
+}
+
+export function getCallsClientChannelID(): string {
+    return getCallsClient()?.channelID || '';
+}
+
+export function getCallsClientSessionID(): string {
+    return getCallsClient()?.getSessionID() || '';
+}
+
+export function getCallsClientInitTime(): number {
+    return getCallsClient()?.initTime || 0;
 }
 
 export function shouldRenderCallsIncoming() {
-    const win = window.opener ? window.opener : window;
-    const nonChannels = window.location.pathname.startsWith('/boards') || window.location.pathname.startsWith('/playbooks') || window.location.pathname.includes(`${pluginId}/expanded/`);
-    if (win.desktop && nonChannels) {
+    try {
+        const win = window.opener ? window.opener : window;
+        const nonChannels = window.location.pathname.startsWith('/boards') || window.location.pathname.startsWith('/playbooks') || window.location.pathname.includes(`${pluginId}/expanded/`);
+        if (win.desktop && nonChannels) {
         // don't render when we're in desktop, or in boards or playbooks, or in the expanded view.
         // (can be simplified, but this is clearer)
+            return false;
+        }
+        return true;
+    } catch (err) {
+        logErr(err);
         return false;
     }
-    return true;
 }
 
 export function getUserDisplayName(user: UserProfile | undefined, shortForm?: boolean) {
@@ -509,4 +533,37 @@ export function notificationsStopRinging() {
     if (window.e2eNotificationsSoundStoppedAt) {
         window.e2eNotificationsSoundStoppedAt.push(Date.now());
     }
+}
+
+export function getCallPropsFromPost(post: Post): CallPostProps {
+    return {
+        title: post.props?.title,
+        start_at: post.props?.start_at,
+        end_at: post.props?.end_at,
+        recordings: post.props?.recordings || [],
+        transcriptions: post.props?.transcriptions || [],
+        participants: post.props?.participants || [],
+
+        // DEPRECATED
+        recording_files: post.props?.recording_files || [],
+    };
+}
+
+export function getCallRecordingPropsFromPost(post: Post): CallRecordingPostProps {
+    return {
+        call_post_id: post.props?.call_post_id,
+        recording_id: post.props?.recording_id,
+        captions: post.props?.captions || [],
+    };
+}
+
+export function getWebappUtils() {
+    let utils;
+    try {
+        utils = window.opener ? window.opener.WebappUtils : window.WebappUtils;
+    } catch (err) {
+        logErr(err);
+    }
+
+    return utils;
 }

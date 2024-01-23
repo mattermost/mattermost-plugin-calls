@@ -1,10 +1,10 @@
-import {CallStateData, UserConnectedData, WebsocketEventData} from '@calls/common/lib/types';
+import {CallStateData, JobStopData, UserConnectedData, WebsocketEventData} from '@calls/common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {UserProfile} from '@mattermost/types/users';
 import {ChannelTypes} from 'mattermost-redux/action_types';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
-import {logErr} from 'plugin/log';
+import {logErr, logInfo} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {profilesInCallInChannel} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
@@ -13,6 +13,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
+import {getJobID} from 'src/common';
 import recordingReducer from 'src/recording/reducers';
 import RestClient from 'src/rest_client';
 
@@ -127,6 +128,16 @@ async function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEv
                     profileImages: await fetchProfileImages(profiles),
                 },
             });
+        }
+
+        break;
+    }
+    case `custom_${pluginId}_job_stop`: {
+        const data = ev.data as JobStopData;
+
+        if (getJobID() === data.job_id) {
+            logInfo('received job stop event, disconnecting');
+            window.callsClient?.disconnect();
         }
 
         break;
