@@ -181,6 +181,9 @@ func (p *Plugin) OnActivate() error {
 	if *cfg.ServerSideTURN {
 		rtcServerConfig.TURNConfig.StaticAuthSecret = cfg.TURNStaticAuthSecret
 	}
+	if cfg.ICEHostPortOverride != nil {
+		rtcServerConfig.ICEHostPortOverride = *cfg.ICEHostPortOverride
+	}
 	rtcServer, err := rtc.NewServer(rtcServerConfig, newLogger(p), p.metrics.RTCMetrics())
 	if err != nil {
 		p.LogError(err.Error())

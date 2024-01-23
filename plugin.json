@@ -72,6 +72,13 @@
         "hosting": "on-prem"
       },
       {
+        "key": "ICEHostPortOverride",
+        "display_name": "ICE Host Port Override",
+        "type": "number",
+        "help_text": "(Optional) A port number to be used as an override for host candidates in place of the one used to listen on.\nNote: this port will apply to both UDP and TCP host candidates",
+        "hosting": "on-prem"
+      },
+      {
         "key": "RTCDServiceURL",
         "display_name": "RTCD service URL",
         "type": "text",
