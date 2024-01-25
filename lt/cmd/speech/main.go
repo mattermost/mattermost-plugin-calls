@@ -1,6 +1,10 @@
 package main
 
 import (
+	"flag"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/polly"
 	"log"
 	"os"
 	"os/signal"
@@ -11,16 +15,29 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/lt/client"
 )
 
+const (
+	siteURL      = "http://localhost:8065"
+	channelID    = "4iofmsdo9bfs5jidgmdb9zhjsy"
+	wsURL        = "ws://localhost:8065"
+	userPassword = "testPass123$"
+	duration     = 10 * time.Minute
+)
+
 func main() {
+	var script string
+	flag.StringVar(&script, "script", "", "Script for the tts")
+	flag.Parse()
+
+	if script != "" {
+		if err := performScript(script); err != nil {
+			log.Fatalf("error performing script: %v", err)
+		}
+		return
+	}
+
 	stopCh := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(2)
-
-	siteURL := "http://localhost:8065"
-	channelID := "kc6yoe75btbapqtsp6wcarucpe"
-	wsURL := "ws://localhost:8065"
-	userPassword := "testPass123$"
-	duration := 10 * time.Minute
 
 	userA := client.NewUser(client.Config{
 		Username:  "testuser-0",
@@ -59,18 +76,18 @@ func main() {
 		time.Sleep(2 * time.Second)
 
 		userA.Unmute()
-		userA.Speak("Hi, this is user A")
-		time.Sleep(4 * time.Second)
+		doneCh := userA.Speak("Hi, this is user A")
+		<-doneCh
 		userA.Mute()
 
 		userB.Unmute()
-		userB.Speak("Hi user A, this is user B responding")
-		time.Sleep(4 * time.Second)
+		doneCh = userB.Speak("Hi user A, this is user B responding")
+		<-doneCh
 		userB.Mute()
 
 		userA.Unmute()
-		userA.Speak("Nice to meet you user B!")
-		time.Sleep(4 * time.Second)
+		doneCh = userA.Speak("Nice to meet you user B!")
+		<-doneCh
 		userA.Mute()
 	}()
 
@@ -82,4 +99,85 @@ func main() {
 	}()
 
 	wg.Wait()
+}
+
+func performScript(filename string) error {
+	awsSess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	svc := polly.New(awsSess)
+
+	f, err := os.Open(filename)
+	if err != nil {
+		log.Fatalf("open script %s failed: %v", filename, err)
+	}
+
+	script, err := importScript(f)
+	if err != nil {
+		log.Fatalf("parsing script %s failed: %v", filename, err)
+	}
+
+	stopCh := make(chan struct{})
+	var userWg sync.WaitGroup
+
+	var userClients []*client.User
+	for i, name := range script.users {
+		user := client.NewUser(client.Config{
+			Username:     name,
+			Password:     userPassword,
+			ChannelID:    channelID,
+			SiteURL:      siteURL,
+			WsURL:        wsURL,
+			Duration:     duration,
+			Speak:        true,
+			Setup:        true,
+			TeamID:       "68fku8rqajymxdyehczd5ep4zr",
+			PollySession: svc,
+			PollyVoiceId: aws.String(script.voiceIds[i]),
+		})
+		userClients = append(userClients, user)
+
+		userWg.Add(1)
+		go func() {
+			defer userWg.Done()
+			if err := user.Connect(stopCh); err != nil {
+				log.Fatalf("connectUser failed: %s", err.Error())
+			}
+		}()
+	}
+
+	// "Conversation" logic
+	go func() {
+		time.Sleep(2 * time.Second) // time to take a sip of coffee before we talk talk talk
+
+		for _, block := range script.blocks {
+			time.Sleep(block.delay)
+
+			var blockWg sync.WaitGroup
+			for i, userIdx := range block.speakers {
+				blockWg.Add(1)
+				doneCh := userClients[userIdx].Speak(block.text[i])
+				go func(idx int) {
+					<-doneCh
+					log.Printf("<><> user %s finished\n", script.users[idx])
+					blockWg.Done()
+				}(userIdx)
+			}
+
+			blockWg.Wait()
+		}
+
+		close(stopCh)
+	}()
+
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+		<-sig
+		close(stopCh)
+	}()
+
+	userWg.Wait()
+
+	return nil
 }
