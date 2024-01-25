@@ -27,6 +27,7 @@ import {
 import {navigateToURL} from 'src/browser_routing';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
+import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
 import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
@@ -44,7 +45,7 @@ import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_t
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
-import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, DisabledCallsErr} from 'src/constants';
+import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
@@ -71,6 +72,7 @@ import ChannelHeaderDropdownButton from './components/channel_header_dropdown_bu
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import ChannelLinkLabel from './components/channel_link_label';
 import PostType from './components/custom_post_types/post_type';
+import {PostTypeTranscription} from './components/custom_post_types/post_type_transcription';
 import EndCallModal from './components/end_call_modal';
 import ExpandedView from './components/expanded_view';
 import ScreenSourceModal from './components/screen_source_modal';
@@ -123,6 +125,7 @@ import {
     handleUserMuted,
     handleUserRaisedHand,
     handleUserReaction,
+    handleUserRemovedFromChannel,
     handleUserScreenOff,
     handleUserScreenOn,
     handleUserUnmuted,
@@ -225,6 +228,10 @@ export default class Plugin {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_state`, (ev) => {
             handleCallState(store, ev);
         });
+
+        registry.registerWebSocketEventHandler('user_removed', (ev) => {
+            handleUserRemovedFromChannel(store, ev);
+        });
     }
 
     private initialize(registry: PluginRegistry, store: Store) {
@@ -249,6 +256,7 @@ export default class Plugin {
         registry.registerChannelToastComponent(injectIntl(ChannelCallToast));
         registry.registerPostTypeComponent(CALL_START_POST_TYPE, PostType);
         registry.registerPostTypeComponent(CALL_RECORDING_POST_TYPE, PostTypeRecording);
+        registry.registerPostTypeComponent(CALL_TRANSCRIPTION_POST_TYPE, PostTypeTranscription);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
         registry.registerNeedsTeamRoute('/expanded', injectIntl(ExpandedView));
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
@@ -372,6 +380,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('TCPServerPort', TCPServerPort);
         registry.registerAdminConsoleCustomSetting('EnableIPv6', EnableIPv6);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
+        registry.registerAdminConsoleCustomSetting('ICEHostPortOverride', ICEHostPortOverride);
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
         registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
 

@@ -34,6 +34,9 @@ import (
 type configuration struct {
 	// The IP (or hostname) to be used as the host ICE candidate.
 	ICEHostOverride string
+	// An optional port number to override the one used in ICE host candidates
+	// in place of the one used to listen on.
+	ICEHostPortOverride *int
 	// The local IP address used by the RTC server to listen on for UDP
 	// connections.
 	UDPServerAddress string
@@ -263,6 +266,10 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("TranscriberModelSize is not valid")
 	}
 
+	if c.ICEHostPortOverride != nil && *c.ICEHostPortOverride != 0 && (*c.ICEHostPortOverride < minAllowedPort || *c.ICEHostPortOverride > maxAllowedPort) {
+		return fmt.Errorf("ICEHostPortOverride is not valid: %d is not in allowed range [%d, %d]", *c.ICEHostPortOverride, minAllowedPort, maxAllowedPort)
+	}
+
 	return nil
 }
 
@@ -342,6 +349,10 @@ func (c *configuration) Clone() *configuration {
 
 	if c.EnableRinging != nil {
 		cfg.EnableRinging = model.NewBool(*c.EnableRinging)
+	}
+
+	if c.ICEHostPortOverride != nil {
+		cfg.ICEHostPortOverride = model.NewInt(*c.ICEHostPortOverride)
 	}
 
 	return &cfg

@@ -9,6 +9,7 @@ export const RING_LENGTH = 30000;
 export const DEFAULT_RING_SOUND = 'Calm';
 export const CALL_START_POST_TYPE = 'custom_calls';
 export const CALL_RECORDING_POST_TYPE = 'custom_calls_recording';
+export const CALL_TRANSCRIPTION_POST_TYPE = 'custom_calls_transcription';
 
 // From mattermost-webapp/webapp/channels/src/utils/constants.tsx, importing causes tsc to throw fits.
 export const MESSAGE_DISPLAY = 'message_display';

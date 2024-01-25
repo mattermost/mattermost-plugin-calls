@@ -104,6 +104,16 @@ func TestConfigurationIsValid(t *testing.T) {
 			err: "RecordingQuality is not valid",
 		},
 		{
+			name: "invalid ICEHostPortOverride",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.ICEHostPortOverride = model.NewInt(45)
+				return cfg
+			}(),
+			err: "ICEHostPortOverride is not valid: 45 is not in allowed range [80, 49151]",
+		},
+		{
 			name:  "defaults",
 			input: defaultConfig,
 		},

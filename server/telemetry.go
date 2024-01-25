@@ -33,6 +33,9 @@ var (
 		"user_open_channel_link",
 		"user_start_recording",
 		"user_stop_recording",
+		"notification_join",
+		"notification_dismiss",
+		"notification_click_goto_channel",
 	}
 	telemetryClientTypesMap  map[string]struct{}
 	telemetryClientEventsMap map[string]struct{}
