@@ -6,7 +6,10 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/polly"
+	"github.com/pion/webrtc/v3"
 	"io"
 	"log"
 	"net/http"
@@ -23,7 +26,6 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
-	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 	"github.com/pion/webrtc/v3/pkg/media/ivfreader"
 	"github.com/pion/webrtc/v3/pkg/media/oggreader"
@@ -81,20 +83,26 @@ type Config struct {
 	Simulcast     bool
 	Setup         bool
 	SpeechFile    string
+	PollySession  *polly.Polly
+	PollyVoiceId  *string
 }
 
 type User struct {
-	userID       string
-	cfg          Config
-	client       *model.Client4
-	pc           *webrtc.PeerConnection
-	dc           *webrtc.DataChannel
-	connectedCh  chan struct{}
-	doneCh       chan struct{}
-	iceCh        chan webrtc.ICECandidateInit
-	initCh       chan struct{}
-	isHost       bool
-	speechTextCh chan string
+	userID      string
+	cfg         Config
+	client      *model.Client4
+	pc          *webrtc.PeerConnection
+	dc          *webrtc.DataChannel
+	connectedCh chan struct{}
+	doneCh      chan struct{}
+	iceCh       chan webrtc.ICECandidateInit
+	initCh      chan struct{}
+	isHost      bool
+
+	pollySession   *polly.Polly
+	pollyVoiceId   *string
+	speechTextCh   chan string
+	doneSpeakingCh chan struct{}
 
 	// WebSocket
 	wsCloseCh chan struct{}
@@ -109,14 +117,17 @@ type wsMsg struct {
 
 func NewUser(cfg Config) *User {
 	return &User{
-		cfg:          cfg,
-		connectedCh:  make(chan struct{}),
-		doneCh:       make(chan struct{}),
-		iceCh:        make(chan webrtc.ICECandidateInit, 10),
-		wsCloseCh:    make(chan struct{}),
-		wsSendCh:     make(chan wsMsg, 256),
-		initCh:       make(chan struct{}),
-		speechTextCh: make(chan string, 8),
+		cfg:            cfg,
+		connectedCh:    make(chan struct{}),
+		doneCh:         make(chan struct{}),
+		iceCh:          make(chan webrtc.ICECandidateInit, 10),
+		wsCloseCh:      make(chan struct{}),
+		wsSendCh:       make(chan wsMsg, 256),
+		initCh:         make(chan struct{}),
+		speechTextCh:   make(chan string, 8),
+		doneSpeakingCh: make(chan struct{}),
+		pollySession:   cfg.PollySession,
+		pollyVoiceId:   cfg.PollyVoiceId,
 	}
 }
 
@@ -423,57 +434,72 @@ func (u *User) transmitSpeech() {
 		}
 
 		for text := range u.speechTextCh {
-			log.Printf("%s: received text to speak: %q", u.cfg.Username, text)
+			func() {
+				defer func() {
+					u.doneSpeakingCh <- struct{}{}
+				}()
+				log.Printf("%s: received text to speak: %q", u.cfg.Username, text)
 
-			rd, rate, err := textToSpeech(text)
-			if err != nil {
-				log.Printf("%s: textToSpeech failed: %s", u.cfg.Username, err.Error())
-				continue
-			}
-
-			log.Printf("%s: raw speech samples decoded (%d)", u.cfg.Username, rate)
-
-			audioSamplesDataBuf := bytes.NewBuffer([]byte{})
-			if _, err := audioSamplesDataBuf.ReadFrom(rd); err != nil {
-				log.Printf("%s: failed to read samples data: %s", u.cfg.Username, err.Error())
-				continue
-			}
-
-			log.Printf("read %d samples bytes", audioSamplesDataBuf.Len())
-
-			sampleDuration := time.Millisecond * 20
-			ticker := time.NewTicker(sampleDuration)
-			audioSamplesData := make([]byte, 480*4)
-			audioSamples := make([]int16, 480)
-			opusData := make([]byte, 8192)
-			for ; true; <-ticker.C {
-				n, err := audioSamplesDataBuf.Read(audioSamplesData)
+				var rd io.Reader
+				var rate int
+				var err error
+				if u.pollySession != nil {
+					rd, rate, err = u.pollyToSpeech(text)
+				} else {
+					rd, rate, err = textToSpeech(text)
+				}
 				if err != nil {
-					log.Printf("%s: failed to read audio samples: %s", u.cfg.Username, err.Error())
-					break
+					log.Printf("%s: textToSpeech failed: %s", u.cfg.Username, err.Error())
+					return
 				}
 
-				// Convert []byte to []int16
-				for i := 0; i < n; i += 4 {
-					audioSamples[i/4] = int16(binary.LittleEndian.Uint16(audioSamplesData[i : i+4]))
+				log.Printf("%s: raw speech samples decoded (%d)", u.cfg.Username, rate)
+
+				audioSamplesDataBuf := bytes.NewBuffer([]byte{})
+				if _, err := audioSamplesDataBuf.ReadFrom(rd); err != nil {
+					log.Printf("%s: failed to read samples data: %s", u.cfg.Username, err.Error())
+					return
 				}
 
-				n, err = enc.Encode(audioSamples, opusData)
-				if err != nil {
-					log.Printf("%s: failed to encode: %s", u.cfg.Username, err.Error())
-					continue
-				}
+				log.Printf("read %d samples bytes", audioSamplesDataBuf.Len())
 
-				if err := track.WriteSample(media.Sample{Data: opusData[:n], Duration: sampleDuration}); err != nil {
-					log.Printf("%s: failed to write audio sample: %s", u.cfg.Username, err.Error())
+				sampleDuration := time.Millisecond * 20
+				ticker := time.NewTicker(sampleDuration)
+				audioSamplesData := make([]byte, 480*4)
+				audioSamples := make([]int16, 480)
+				opusData := make([]byte, 8192)
+				for ; true; <-ticker.C {
+					n, err := audioSamplesDataBuf.Read(audioSamplesData)
+					if err != nil {
+						if !errors.Is(err, io.EOF) {
+							log.Printf("%s: failed to read audio samples: %s", u.cfg.Username, err.Error())
+						}
+						break
+					}
+
+					// Convert []byte to []int16
+					for i := 0; i < n; i += 4 {
+						audioSamples[i/4] = int16(binary.LittleEndian.Uint16(audioSamplesData[i : i+4]))
+					}
+
+					n, err = enc.Encode(audioSamples, opusData)
+					if err != nil {
+						log.Printf("%s: failed to encode: %s", u.cfg.Username, err.Error())
+						continue
+					}
+
+					if err := track.WriteSample(media.Sample{Data: opusData[:n], Duration: sampleDuration}); err != nil {
+						log.Printf("%s: failed to write audio sample: %s", u.cfg.Username, err.Error())
+					}
 				}
-			}
+			}()
 		}
 	}()
 }
 
-func (u *User) Speak(text string) {
+func (u *User) Speak(text string) chan struct{} {
 	u.speechTextCh <- text
+	return u.doneSpeakingCh
 }
 
 func (u *User) initRTC() error {
