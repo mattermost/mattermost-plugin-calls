@@ -182,5 +182,5 @@ export type RealNewPostMessageProps = {
 }
 
 export type LiveCaptions = {
-    [sesionID: string]: LiveCaption;
+    [sessionID: string]: LiveCaption;
 }

@@ -76,7 +76,6 @@
   },
   "dependencies": {
     "@calls/common": "github:mattermost/calls-common#25619914bcfe6347101b29204b2976518742e81e",
-    "@mattermost/compass-icons": "0.1.40",
     "@msgpack/msgpack": "2.7.1",
     "@redux-devtools/extension": "3.2.3",
     "core-js": "3.26.1",
