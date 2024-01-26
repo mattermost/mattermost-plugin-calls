@@ -33,7 +33,7 @@ func (u *User) pollyToSpeech(text string) (io.Reader, int, error) {
 		LanguageCode: aws.String(polly.LanguageCodeEnUs),
 		OutputFormat: aws.String("mp3"),
 		SampleRate:   aws.String("24000"),
-		VoiceId:      u.pollyVoiceId,
+		VoiceId:      u.pollyVoiceID,
 		Text:         aws.String(text),
 	}
 	output, err := u.pollySession.SynthesizeSpeech(input)
@@ -43,7 +43,7 @@ func (u *User) pollyToSpeech(text string) (io.Reader, int, error) {
 
 	dec, err := mp3.NewDecoder(output.AudioStream)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to create decoder: %w, resp code: %v, resp status: %v", err)
+		return nil, 0, fmt.Errorf("failed to create decoder: %w", err)
 	}
 
 	return dec, dec.SampleRate(), nil

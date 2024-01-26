@@ -133,7 +133,7 @@ func performScript(filename string) error {
 			Setup:        true,
 			TeamID:       "68fku8rqajymxdyehczd5ep4zr",
 			PollySession: svc,
-			PollyVoiceId: aws.String(script.voiceIds[i]),
+			PollyVoiceID: aws.String(script.voiceIds[i]),
 		})
 		userClients = append(userClients, user)
 
