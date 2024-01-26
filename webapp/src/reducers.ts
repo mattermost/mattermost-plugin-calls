@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import {CallRecordingState, CallsConfig, Reaction, UserSessionState} from '@calls/common/lib/types';
+import {CallRecordingState, CallsConfig, LiveCaption, Reaction, UserSessionState} from '@calls/common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
@@ -10,6 +10,7 @@ import {
     ChannelState,
     ChannelType,
     IncomingCallNotification,
+    LiveCaptions,
 } from 'src/types/types';
 
 import {
@@ -26,7 +27,7 @@ import {
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
-    HIDE_SWITCH_CALL_MODAL,
+    HIDE_SWITCH_CALL_MODAL, LIVE_CAPTION, LIVE_CAPTION_TIMEOUT_EVENT,
     PROFILE_JOINED,
     PROFILES_JOINED,
     RECEIVED_CALLS_CONFIG,
@@ -509,6 +510,67 @@ const reactions = (state: usersReactionsState = {}, action: sessionsAction) => {
     }
 };
 
+export type liveCaptionState = {
+    [channelID: string]: LiveCaptions;
+}
+
+type liveCaptionData = LiveCaption & {
+    caption_id: string;
+}
+
+type liveCaptionAction = {
+    type: string;
+    data: liveCaptionData;
+}
+
+type liveCaptionTimeoutData = {
+    channelID: string;
+    session_id: string;
+    caption_id: string;
+}
+
+type liveCaptionTimeoutAction = {
+    type: string;
+    data: liveCaptionTimeoutData;
+}
+
+// Add caption to channel, overwriting session's current caption (if any).
+const addCaption = (channelState: LiveCaptions, data: liveCaptionData) => {
+    const state = {...(channelState || {})};
+    state[data.session_id] = data;
+    return state;
+};
+
+// Remove expired caption if it is still active.
+const captionTimeout = (channelState: LiveCaptions, data: liveCaptionTimeoutData) => {
+    const state = {...(channelState || {})};
+    if (state[data.session_id] && state[data.session_id].caption_id === data.caption_id) {
+        delete state[data.session_id];
+    }
+    return state;
+};
+
+const liveCaptions = (state: liveCaptionState = {}, action: liveCaptionAction | liveCaptionTimeoutAction) => {
+    switch (action.type) {
+    case LIVE_CAPTION: {
+        const data = action.data as liveCaptionData;
+        return {
+            ...state,
+            [data.channelID]: addCaption(state[data.channelID], data),
+        };
+    }
+    case LIVE_CAPTION_TIMEOUT_EVENT: {
+        const data = action.data as liveCaptionTimeoutData;
+        return {
+            ...state,
+            [data.channelID]: captionTimeout(state[data.channelID], data),
+        };
+    }
+    default:
+        return state;
+    }
+};
+
 export type callsRecordingsState = {
     [callID: string]: CallRecordingState;
 }
@@ -935,4 +997,5 @@ export default combineReducers({
     didRingForCalls,
     didNotifyForCalls,
     dismissedCalls,
+    liveCaptions,
 });

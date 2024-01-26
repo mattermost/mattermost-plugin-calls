@@ -16,11 +16,11 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattermost/calls-offloader v0.6.0
 	github.com/mattermost/calls-recorder v0.6.2
-	github.com/mattermost/calls-transcriber v0.1.8
+	github.com/mattermost/calls-transcriber v0.1.9-0.20240125233210-3d7613345c43
 	github.com/mattermost/logr/v2 v2.0.21
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.0.12
-	github.com/mattermost/rtcd v0.13.1-0.20240123225600-e6976e37e812
+	github.com/mattermost/rtcd v0.13.1-0.20240125215822-d815c24785b7
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pion/interceptor v0.1.25
 	github.com/pion/rtp v1.8.3

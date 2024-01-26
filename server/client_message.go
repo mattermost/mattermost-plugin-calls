@@ -8,8 +8,9 @@ import (
 )
 
 type clientMessage struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data,omitempty"`
+	Type    string          `json:"type"`
+	Data    json.RawMessage `json:"data,omitempty"`
+	mapData map[string]any
 }
 
 const (
@@ -27,6 +28,7 @@ const (
 	clientMessageTypeRaiseHand   = "raise_hand"
 	clientMessageTypeUnraiseHand = "unraise_hand"
 	clientMessageTypeReact       = "react"
+	clientMessageTypeCaption     = "caption"
 )
 
 func (m *clientMessage) ToJSON() ([]byte, error) {

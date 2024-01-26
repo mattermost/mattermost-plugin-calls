@@ -5,6 +5,8 @@ import {
     CallState,
     CallStateData,
     EmptyData,
+    LiveCaption,
+    LiveCaptionData,
     Reaction,
     UserDismissedNotification,
     UserJoinedData,
@@ -14,17 +16,21 @@ import {
     UserReactionData,
     UserRemovedData,
     UserScreenOnOffData,
-    UserVoiceOnOffData,
-} from '@calls/common/lib/types';
+    UserVoiceOnOffData} from '@calls/common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {generateId} from 'mattermost-redux/utils/helpers';
 import {incomingCallOnChannel, loadCallState, removeIncomingCallNotification, userLeft} from 'src/actions';
 import {
     userLeftChannelErr,
     userRemovedFromChannelErr,
 } from 'src/client';
-import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
+import {
+    JOINED_USER_NOTIFICATION_TIMEOUT,
+    LIVE_CAPTION_TIMEOUT,
+    REACTION_TIMEOUT_IN_REACTION_STREAM,
+} from 'src/constants';
 
 import {
     CALL_END,
@@ -32,6 +38,8 @@ import {
     CALL_RECORDING_STATE,
     CALL_STATE,
     DISMISS_CALL,
+    LIVE_CAPTION,
+    LIVE_CAPTION_TIMEOUT_EVENT,
     PROFILE_JOINED,
     USER_JOINED,
     USER_JOINED_TIMEOUT,
@@ -379,3 +387,34 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
         getCallsClient()?.disconnect(removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr);
     }
 }
+
+export function handleCaption(store: Store, ev: WebSocketMessage<LiveCaptionData>) {
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
+
+    if (channelIDForCurrentCall(store.getState()) !== channelID) {
+        return;
+    }
+
+    const profiles = profilesInCurrentCallMap(store.getState());
+    const display_name = getUserDisplayName(profiles[ev.data.user_id]);
+    const caption: LiveCaption = {
+        ...ev.data,
+        display_name,
+        caption_id: generateId(),
+    };
+    store.dispatch({
+        type: LIVE_CAPTION,
+        data: caption,
+    });
+    setTimeout(() => {
+        store.dispatch({
+            type: LIVE_CAPTION_TIMEOUT_EVENT,
+            data: {
+                channelID,
+                session_id: caption.session_id,
+                caption_id: caption.caption_id,
+            },
+        });
+    }, LIVE_CAPTION_TIMEOUT);
+}
+

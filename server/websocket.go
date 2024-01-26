@@ -987,6 +987,24 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 		msg.Data = []byte(msgData)
+	case clientMessageTypeCaption:
+		sessionID, ok := req.Data["session_id"].(string)
+		if !ok {
+			p.LogError("invalid or missing session_id in caption ws message")
+			return
+		}
+		userID, ok := req.Data["user_id"].(string)
+		if !ok {
+			p.LogError("invalid or missing user_id in caption ws message")
+			return
+		}
+		text, ok := req.Data["text"].(string)
+		if !ok {
+			p.LogError("invalid or missing text in caption ws message")
+			return
+		}
+		p.handleCaptionMessage(us.channelID, sessionID, userID, text)
+		return
 	}
 
 	select {
@@ -1061,4 +1079,14 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 	}
 
 	return nil
+}
+
+func (p *Plugin) handleCaptionMessage(channelID, captionFromSessionID, captionFromUserID, text string) {
+	// TODO: broadcast to participants only, https://github.com/mattermost/mattermost-plugin-calls/pull/609
+	p.publishWebSocketEvent(clientMessageTypeCaption, map[string]interface{}{
+		"user_id":    captionFromUserID,
+		"session_id": captionFromSessionID,
+		"text":       text,
+	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
 }

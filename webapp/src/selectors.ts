@@ -28,12 +28,19 @@ import {
     callsRecordingsState,
     callState,
     hostsState,
+    liveCaptionState,
     recentlyJoinedUsersState,
     screenSharingIDsState,
     sessionsState,
     usersReactionsState,
 } from 'src/reducers';
-import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
+import {
+    CallRecordingReduxState,
+    CallsUserPreferences,
+    ChannelState,
+    IncomingCallNotification,
+    LiveCaptions,
+} from 'src/types/types';
 import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL} from 'src/utils';
 
 import {pluginId} from './manifest';
@@ -156,6 +163,18 @@ export const reactionsInCurrentCall: (state: GlobalState) => Reaction[] =
         reactionsInCalls,
         channelIDForCurrentCall,
         (reactions, channelID) => reactions[channelID]?.reactions || [],
+    );
+
+const liveCaptionsInCalls = (state: GlobalState): liveCaptionState => {
+    return pluginState(state).liveCaptions;
+};
+
+export const liveCaptionsInCurrentCall: (state: GlobalState) => LiveCaptions =
+    createSelector(
+        'liveCaptionsInCurrentCall',
+        liveCaptionsInCalls,
+        channelIDForCurrentCall,
+        (liveCaptions, channelID) => liveCaptions[channelID] || {},
     );
 
 export const callStartAtForCallInChannel = (state: GlobalState, channelID: string): number => {

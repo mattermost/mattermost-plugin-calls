@@ -119,6 +119,7 @@ import {
     handleCallRecordingState,
     handleCallStart,
     handleCallState,
+    handleCaption,
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
@@ -231,6 +232,10 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler('user_removed', (ev) => {
             handleUserRemovedFromChannel(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_caption`, (ev) => {
+            handleCaption(store, ev);
         });
     }
 

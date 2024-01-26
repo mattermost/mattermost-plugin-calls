@@ -27,6 +27,8 @@ import Avatar from 'src/components/avatar/avatar';
 import {Badge, HostBadge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import {Emoji} from 'src/components/emoji/emoji';
+import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
+import CCIcon from 'src/components/icons/cc_icon';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CollapseIcon from 'src/components/icons/collapse';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -127,6 +129,7 @@ interface Props extends RouteComponentProps {
 interface State {
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
+    showLiveCaptions: boolean,
     alerts: CallAlertStates,
 }
 
@@ -288,6 +291,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.state = {
             screenStream: null,
             showParticipantsList: false,
+            showLiveCaptions: false,
             alerts: CallAlertStatesDefault,
         };
 
@@ -523,6 +527,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.props.trackEvent(event, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
+        });
+    };
+
+    onLiveCaptionsToggle = (fromShortcut?: boolean) => {
+        const event = this.state.showLiveCaptions ? Telemetry.Event.LiveCaptionsOff : Telemetry.Event.LiveCaptionsOn;
+        this.props.trackEvent(event, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
+        this.setState({
+            showLiveCaptions: !this.state.showLiveCaptions,
         });
     };
 
@@ -1017,6 +1029,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         }
 
+        const liveCaptionsText = this.state.showLiveCaptions ? formatMessage({defaultMessage: 'Turn off live captions'}) : formatMessage({defaultMessage: 'Turn on live captions'});
+
         const globalRhsSupported = Boolean(this.props.selectRhsPost);
 
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
@@ -1181,6 +1195,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 isHandRaised={this.isHandRaised()}
                             />
 
+                            {this.props.transcriptionsEnabled &&
+                                <ControlsButton
+                                    id='calls-popout-cc-button'
+                                    onToggle={this.onLiveCaptionsToggle}
+                                    icon={<CCIcon/>}
+                                    tooltipText={liveCaptionsText}
+                                    bgColor={this.state.showLiveCaptions ? 'white' : ''}
+                                    bgColorHover={this.state.showLiveCaptions ? 'rgba(255, 255, 255, 0.92)' : ''}
+                                    iconFill={this.state.showLiveCaptions ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
+                                    iconFillHover={this.state.showLiveCaptions ? 'var(--calls-bg)' : ''}
+                                />
+                            }
+
                             {globalRhsSupported && (
                                 <ControlsButton
                                     id='calls-popout-chat-button'
@@ -1247,7 +1274,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     />
                 }
 
-                <Overlay>
+                <ReactionOverlay>
                     <ReactionStream/>
                     <RecordingInfoPrompt
                         isHost={this.props.callHostID === this.props.currentUserID}
@@ -1258,7 +1285,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         promptDismissed={this.dismissRecordingPrompt}
                         transcriptionsEnabled={this.props.transcriptionsEnabled}
                     />
-                </Overlay>
+                </ReactionOverlay>
+
+                {this.state.showLiveCaptions &&
+                    <LiveCaptionsOverlay>
+                        <LiveCaptionsStream/>
+                    </LiveCaptionsOverlay>
+                }
             </div>
         );
     }
@@ -1355,10 +1388,18 @@ const CloseButton = styled.button`
     }
 `;
 
-const Overlay = styled.div`
+const ReactionOverlay = styled.div`
     position: absolute;
     bottom: 96px;
     display: flex;
     flex-direction: column;
     gap: 12px;
+`;
+
+const LiveCaptionsOverlay = styled.div`
+    position: absolute;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    bottom: 96px;
 `;

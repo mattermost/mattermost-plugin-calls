@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallsConfig, RTCStats} from '@calls/common/lib/types';
+import {CallsConfig, LiveCaption, RTCStats} from '@calls/common/lib/types';
 import {MessageDescriptor} from 'react-intl';
 
 export const CallsConfigDefault: CallsConfig = {
@@ -179,4 +179,8 @@ export type RealNewPostMessageProps = {
     sender_name: string; // @username
     set_online: boolean;
     team_id: string;
+}
+
+export type LiveCaptions = {
+    [sesionID: string]: LiveCaption;
 }
