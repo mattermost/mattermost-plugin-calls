@@ -84,7 +84,7 @@ type Config struct {
 	Setup         bool
 	SpeechFile    string
 	PollySession  *polly.Polly
-	PollyVoiceId  *string
+	PollyVoiceID  *string
 }
 
 type User struct {
@@ -100,7 +100,7 @@ type User struct {
 	isHost      bool
 
 	pollySession   *polly.Polly
-	pollyVoiceId   *string
+	pollyVoiceID   *string
 	speechTextCh   chan string
 	doneSpeakingCh chan struct{}
 
@@ -127,7 +127,7 @@ func NewUser(cfg Config) *User {
 		speechTextCh:   make(chan string, 8),
 		doneSpeakingCh: make(chan struct{}),
 		pollySession:   cfg.PollySession,
-		pollyVoiceId:   cfg.PollyVoiceId,
+		pollyVoiceID:   cfg.PollyVoiceID,
 	}
 }
 
