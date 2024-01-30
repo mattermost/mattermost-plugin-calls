@@ -265,7 +265,7 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
 
         registry.registerFilePreviewComponent((fi, post) => {
-            return String(post.type) === CALL_RECORDING_POST_TYPE;
+            return String(post?.type) === CALL_RECORDING_POST_TYPE;
         }, RecordingsFilePreview);
 
         registry.registerTranslations((locale: string) => {
