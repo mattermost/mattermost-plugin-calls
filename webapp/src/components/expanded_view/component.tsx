@@ -42,7 +42,7 @@ import ScreenIcon from 'src/components/icons/screen_icon';
 import ShareScreenIcon from 'src/components/icons/share_screen';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
-import {ExpandedCallContainer} from 'src/components/incoming_calls/expanded_call_container';
+import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import {
     CallAlertConfigs,
@@ -1069,7 +1069,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </span>
 
                         <div style={this.style.headerSpreader}/>
-                        <ExpandedCallContainer/>
+                        <ExpandedIncomingCallContainer/>
                         <button
                             className='button-close'
                             style={this.style.closeViewButton}
