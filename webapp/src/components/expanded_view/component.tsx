@@ -176,6 +176,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 overflow: 'auto',
             },
             main: {
+                position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
                 flex: '1',
@@ -1099,6 +1100,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
                     }
                     {this.props.screenSharingSession && this.renderScreenSharingPlayer()}
+
+                    {this.state.showLiveCaptions &&
+                        <LiveCaptionsOverlay>
+                            <LiveCaptionsStream/>
+                        </LiveCaptionsOverlay>
+                    }
                     <div
                         id='calls-expanded-view-controls'
                         style={this.style.controls}
@@ -1286,12 +1293,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         transcriptionsEnabled={this.props.transcriptionsEnabled}
                     />
                 </ReactionOverlay>
-
-                {this.state.showLiveCaptions &&
-                    <LiveCaptionsOverlay>
-                        <LiveCaptionsStream/>
-                    </LiveCaptionsOverlay>
-                }
             </div>
         );
     }
@@ -1398,7 +1399,7 @@ const ReactionOverlay = styled.div`
 
 const LiveCaptionsOverlay = styled.div`
     position: absolute;
-    width: 100vw;
+    width: calc(100%);
     display: flex;
     justify-content: center;
     bottom: 96px;

@@ -29,7 +29,7 @@ export const LiveCaptionsStream = () => {
 };
 
 const CaptionContainer = styled.div`
-    width: 75vw;
+    width: 50vw;
     display: flex;
     flex-direction: column;
     align-items: center;
