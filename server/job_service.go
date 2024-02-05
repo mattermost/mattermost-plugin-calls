@@ -317,8 +317,13 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		transcriberConfig.TranscriptionID = jobID
 		transcriberConfig.AuthToken = authToken
 		transcriberConfig.ModelSize = cfg.TranscriberModelSize
+		transcriberConfig.LiveCaptionsOn = cfg.liveCaptionsEnabled()
+		transcriberConfig.LiveCaptionsNumTranscribers = *cfg.LiveCaptionsNumTranscribers
 		if val := os.Getenv("MM_CALLS_TRANSCRIBER_NUM_THREADS"); val != "" {
 			transcriberConfig.NumThreads, _ = strconv.Atoi(val)
+		}
+		if val := os.Getenv("MM_CALLS_LIVE_CAPTIONS_NUM_THREADS_PER_TRANSCRIBER"); val != "" {
+			transcriberConfig.LiveCaptionsNumThreadsPerTranscriber, _ = strconv.Atoi(val)
 		}
 
 		jobCfg.Runner = transcriberJobRunner

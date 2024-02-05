@@ -114,6 +114,32 @@ func TestConfigurationIsValid(t *testing.T) {
 			err: "ICEHostPortOverride is not valid: 45 is not in allowed range [80, 49151]",
 		},
 		{
+			name: "invalid LiveCaptionsModelSize",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.LiveCaptionsModelSize = ""
+				return cfg
+			}(),
+			err: "LiveCaptionsModelSize is not valid",
+		},
+		{
+			name: "invalid LiveCaptionsNumTranscribers",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.LiveCaptionsNumTranscribers = model.NewInt(0)
+				return cfg
+			}(),
+			err: "LiveCaptionsNumTranscribers is not valid: should be greater than 0",
+		},
+		{
 			name:  "defaults",
 			input: defaultConfig,
 		},

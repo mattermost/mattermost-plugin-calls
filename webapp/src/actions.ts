@@ -51,7 +51,7 @@ import {
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
-    HIDE_SWITCH_CALL_MODAL,
+    HIDE_SWITCH_CALL_MODAL, LIVE_CAPTIONS_ENABLED,
     PROFILES_JOINED,
     RECEIVED_CALLS_CONFIG,
     RECORDINGS_ENABLED,
@@ -139,6 +139,13 @@ export const setRTCDEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericA
 export const setTranscriptionsEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
     dispatch({
         type: TRANSCRIPTIONS_ENABLED,
+        data: enabled,
+    });
+};
+
+export const setLiveCaptionsEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: LIVE_CAPTIONS_ENABLED,
         data: enabled,
     });
 };

@@ -28,9 +28,13 @@ import {navigateToURL} from 'src/browser_routing';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
+import EnableLiveCaptions from 'src/components/admin_console_settings/recordings/enable_live_captions';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
 import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
+import LiveCaptionsModelSize from 'src/components/admin_console_settings/recordings/live_captions_model_size';
+import LiveCaptionsNumTranscribers
+    from 'src/components/admin_console_settings/recordings/live_captions_num_transcribers';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
 import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
 import TranscriberModelSize from 'src/components/admin_console_settings/recordings/transcriber_model_size';
@@ -376,6 +380,9 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('RecordingQuality', RecordingQuality);
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
         registry.registerAdminConsoleCustomSetting('EnableTranscriptions', EnableTranscriptions);
+        registry.registerAdminConsoleCustomSetting('EnableLiveCaptions', EnableLiveCaptions);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsModelSize', LiveCaptionsModelSize);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsNumTranscribers', LiveCaptionsNumTranscribers);
 
         // RTCD server turns on/off the following:
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);

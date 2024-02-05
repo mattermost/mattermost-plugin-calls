@@ -988,6 +988,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		}
 		msg.Data = []byte(msgData)
 	case clientMessageTypeCaption:
+		// Sent from the transcriber.
 		sessionID, ok := req.Data["session_id"].(string)
 		if !ok {
 			p.LogError("invalid or missing session_id in caption ws message")

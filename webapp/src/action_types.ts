@@ -45,6 +45,7 @@ export const CALL_END = pluginId + '_call_end';
 export const RECEIVED_CALLS_CONFIG = pluginId + '_received_calls_config';
 export const RECORDINGS_ENABLED = pluginId + '_recordings_enabled';
 export const TRANSCRIPTIONS_ENABLED = pluginId + '_transcriptions_enabled';
+export const LIVE_CAPTIONS_ENABLED = pluginId + '_live_captions_enabled';
 export const RTCD_ENABLED = pluginId + '_rtcd_enabled';
 export const RECEIVED_CHANNEL_STATE = pluginId + 'received_channel_state';
 export const RECEIVED_CALLS_USER_PREFERENCES = pluginId + '_received_calls_user_preferences';

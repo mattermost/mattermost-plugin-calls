@@ -361,6 +361,9 @@ export const recordingsEnabled = (state: GlobalState) =>
 export const transcriptionsEnabled = (state: GlobalState) =>
     callsConfig(state).EnableTranscriptions;
 
+export const liveCaptionsEnabled = (state: GlobalState) =>
+    callsConfig(state).EnableLiveCaptions;
+
 export const recordingMaxDuration = (state: GlobalState) =>
     callsConfig(state).MaxRecordingDuration;
 

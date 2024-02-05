@@ -214,6 +214,41 @@
         "hosting": "on-prem"
       },
       {
+        "key": "EnableLiveCaptions",
+        "display_name": "Enable live captions (Experimental)",
+        "type": "bool",
+        "default": false,
+        "help_text": "(Optional) When set to true, live captions are enabled."
+      },
+      {
+        "key": "LiveCaptionsModelSize",
+        "display_name": "Live captions: Model size",
+        "type": "dropdown",
+        "default": "base",
+        "help_text": "The speech-to-text model size to use for live captions. Heavier models will produce more accurate results at the expense of processing time and resources usage.",
+        "options": [
+          {
+            "display_name": "Tiny",
+            "value": "tiny"
+          },
+          {
+            "display_name": "Base",
+            "value": "base"
+          },
+          {
+            "display_name": "Small",
+            "value": "small"
+          }
+        ],
+        "hosting": "on-prem"
+      },
+      {
+        "key": "LiveCaptionsNumTranscribers",
+        "display_name": "Live captions: Number of transcribers used per call",
+        "type": "number",
+        "help_text": "The number of separate transcribers for each call. Each transcribes one audio stream at a time. Ideally, there should be as many transcribers as the number of simultaneous speakers in a call. Fewer transcribers than simultaneous speakers will delay the production of live captions. The product of LiveCaptionsNumTranscribers * LiveCaptionsNumThreadsPerTranscriber must be in the range [1, numCPUs]. By default, LiveCaptionsNumThreadsPerTranscriber is set to 1."
+      },
+      {
         "key": "EnableIPv6",
         "display_name": "(Experimental) Enable IPv6 support",
         "type": "bool",

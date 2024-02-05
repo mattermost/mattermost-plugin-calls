@@ -69,6 +69,12 @@ type configuration struct {
 	EnableRinging *bool
 	// The speech-to-text model size to use to transcribe calls.
 	TranscriberModelSize transcriber.ModelSize
+	// When set to true live captions will be enabled when starting transcription jobs.
+	EnableLiveCaptions *bool
+	// The speech-to-text model size to use to transcribe live captions.
+	LiveCaptionsModelSize transcriber.ModelSize
+	// The number of transcribers to use for processing audio tracks into live captions.
+	LiveCaptionsNumTranscribers *int
 
 	clientConfig
 }
@@ -99,6 +105,8 @@ type clientConfig struct {
 	EnableRecordings *bool
 	// When set to true it enables the call transcriptions functionality
 	EnableTranscriptions *bool
+	// When set to true it enables the live captions functionality
+	EnableLiveCaptions *bool
 	// The maximum duration (in minutes) for call recordings.
 	MaxRecordingDuration *int
 	// When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.
@@ -164,6 +172,7 @@ func (c *configuration) getClientConfig() clientConfig {
 		AllowScreenSharing:   c.AllowScreenSharing,
 		EnableRecordings:     c.EnableRecordings,
 		EnableTranscriptions: c.EnableTranscriptions,
+		EnableLiveCaptions:   c.EnableLiveCaptions,
 		MaxRecordingDuration: c.MaxRecordingDuration,
 		EnableSimulcast:      c.EnableSimulcast,
 		EnableRinging:        c.EnableRinging,
@@ -219,6 +228,15 @@ func (c *configuration) SetDefaults() {
 	if c.TranscriberModelSize == "" {
 		c.TranscriberModelSize = transcriber.ModelSizeDefault
 	}
+	if c.EnableLiveCaptions == nil {
+		c.EnableLiveCaptions = model.NewBool(false)
+	}
+	if c.LiveCaptionsModelSize == "" {
+		c.LiveCaptionsModelSize = transcriber.ModelSizeDefault
+	}
+	if c.LiveCaptionsNumTranscribers == nil {
+		c.LiveCaptionsNumTranscribers = model.NewInt(transcriber.LiveCaptionsNumTranscribersDefault)
+	}
 }
 
 func (c *configuration) IsValid() error {
@@ -270,6 +288,16 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("ICEHostPortOverride is not valid: %d is not in allowed range [%d, %d]", *c.ICEHostPortOverride, minAllowedPort, maxAllowedPort)
 	}
 
+	if c.liveCaptionsEnabled() {
+		if ok := c.LiveCaptionsModelSize.IsValid(); !ok {
+			return fmt.Errorf("LiveCaptionsModelSize is not valid")
+		}
+		// Note: we're only testing for gross validity here; actual validity of threads vs. cpus is done
+		// in the transcriber's validity checks (when it has this + LiveCaptionsNumThreadsPerTranscriber)
+		if c.LiveCaptionsNumTranscribers == nil || *c.LiveCaptionsNumTranscribers <= 0 {
+			return fmt.Errorf("LiveCaptionsNumTranscribers is not valid: should be greater than 0")
+		}
+	}
 	return nil
 }
 
@@ -335,6 +363,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.EnableTranscriptions = model.NewBool(*c.EnableTranscriptions)
 	}
 
+	if c.EnableLiveCaptions != nil {
+		cfg.EnableLiveCaptions = model.NewBool(*c.EnableLiveCaptions)
+	}
+
 	if c.MaxRecordingDuration != nil {
 		cfg.MaxRecordingDuration = model.NewInt(*c.MaxRecordingDuration)
 	}
@@ -381,6 +413,14 @@ func (c *configuration) recordingsEnabled() bool {
 
 func (c *configuration) transcriptionsEnabled() bool {
 	if c.recordingsEnabled() && c.EnableTranscriptions != nil && *c.EnableTranscriptions {
+		return true
+	}
+	return false
+}
+
+func (c *configuration) liveCaptionsEnabled() bool {
+	if c.recordingsEnabled() && c.transcriptionsEnabled() &&
+		c.EnableLiveCaptions != nil && *c.EnableLiveCaptions {
 		return true
 	}
 	return false

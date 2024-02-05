@@ -27,7 +27,10 @@ import {
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
-    HIDE_SWITCH_CALL_MODAL, LIVE_CAPTION, LIVE_CAPTION_TIMEOUT_EVENT,
+    HIDE_SWITCH_CALL_MODAL,
+    LIVE_CAPTION,
+    LIVE_CAPTION_TIMEOUT_EVENT,
+    LIVE_CAPTIONS_ENABLED,
     PROFILE_JOINED,
     PROFILES_JOINED,
     RECEIVED_CALLS_CONFIG,
@@ -813,6 +816,8 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
         return {...state, EnableRecordings: action.data};
     case TRANSCRIPTIONS_ENABLED:
         return {...state, EnableTranscriptions: action.data};
+    case LIVE_CAPTIONS_ENABLED:
+        return {...state, EnableLiveCaptions: action.data};
     default:
         return state;
     }
