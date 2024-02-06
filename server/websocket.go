@@ -1004,7 +1004,12 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("invalid or missing text in caption ws message")
 			return
 		}
-		p.handleCaptionMessage(us.channelID, sessionID, userID, text)
+		newAudioLenMs, ok := req.Data["new_audio_len_ms"].(float64)
+		if !ok {
+			p.LogError("invalid or missing new_audio_len_ms in caption ws message")
+			return
+		}
+		p.handleCaptionMessage(us.channelID, sessionID, userID, text, newAudioLenMs)
 		return
 	}
 
@@ -1082,7 +1087,7 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 	return nil
 }
 
-func (p *Plugin) handleCaptionMessage(channelID, captionFromSessionID, captionFromUserID, text string) {
+func (p *Plugin) handleCaptionMessage(channelID, captionFromSessionID, captionFromUserID, text string, newAudioLenMs float64) {
 	// TODO: broadcast to participants only, https://github.com/mattermost/mattermost-plugin-calls/pull/609
 	p.publishWebSocketEvent(clientMessageTypeCaption, map[string]interface{}{
 		"user_id":    captionFromUserID,
@@ -1090,4 +1095,5 @@ func (p *Plugin) handleCaptionMessage(channelID, captionFromSessionID, captionFr
 		"text":       text,
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
+	p.metrics.ObserveLiveCaptionsAudioLen(newAudioLenMs)
 }

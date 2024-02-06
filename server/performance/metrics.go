@@ -32,6 +32,7 @@ type Metrics struct {
 	ClusterMutexGrabTimeHistograms   *prometheus.HistogramVec
 	ClusterMutexLockedTimeHistograms *prometheus.HistogramVec
 	ClusterMutexLockRetriesCounters  *prometheus.CounterVec
+	LiveCaptionsNewAudioLenHistogram prometheus.Histogram
 }
 
 func NewMetrics() *Metrics {
@@ -117,6 +118,16 @@ func NewMetrics() *Metrics {
 	)
 	m.registry.MustRegister(m.ClusterMutexLockRetriesCounters)
 
+	m.LiveCaptionsNewAudioLenHistogram = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemCluster,
+			Name:      "live_captions_new_audio_len_ms",
+			Help:      "Length (in ms) of new audio transcribed for live captions",
+		},
+	)
+	m.registry.MustRegister(m.LiveCaptionsNewAudioLenHistogram)
+
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
@@ -160,4 +171,8 @@ func (m *Metrics) ObserveClusterMutexLockedTime(group string, elapsed float64) {
 
 func (m *Metrics) IncClusterMutexLockRetries(group string) {
 	m.ClusterMutexLockRetriesCounters.With(prometheus.Labels{"group": group}).Inc()
+}
+
+func (m *Metrics) ObserveLiveCaptionsAudioLen(elapsed float64) {
+	m.LiveCaptionsNewAudioLenHistogram.Observe(elapsed)
 }

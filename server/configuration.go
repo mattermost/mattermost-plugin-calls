@@ -290,7 +290,7 @@ func (c *configuration) IsValid() error {
 
 	if c.liveCaptionsEnabled() {
 		if ok := c.LiveCaptionsModelSize.IsValid(); !ok {
-			return fmt.Errorf("LiveCaptionsModelSize is not valid")
+			return fmt.Errorf("LiveCaptionsModelSize is not valid, it is set to: %v", c.LiveCaptionsModelSize)
 		}
 		// Note: we're only testing for gross validity here; actual validity of threads vs. cpus is done
 		// in the transcriber's validity checks (when it has this + LiveCaptionsNumThreadsPerTranscriber)
@@ -313,6 +313,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 	cfg.RecordingQuality = c.RecordingQuality
 	cfg.TranscriberModelSize = c.TranscriberModelSize
+	cfg.LiveCaptionsModelSize = c.LiveCaptionsModelSize
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = model.NewInt(*c.UDPServerPort)
@@ -385,6 +386,10 @@ func (c *configuration) Clone() *configuration {
 
 	if c.ICEHostPortOverride != nil {
 		cfg.ICEHostPortOverride = model.NewInt(*c.ICEHostPortOverride)
+	}
+
+	if c.LiveCaptionsNumTranscribers != nil {
+		cfg.LiveCaptionsNumTranscribers = model.NewInt(*c.LiveCaptionsNumTranscribers)
 	}
 
 	return &cfg

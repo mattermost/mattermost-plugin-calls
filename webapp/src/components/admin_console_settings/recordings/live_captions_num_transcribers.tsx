@@ -1,6 +1,7 @@
 import React, {ChangeEvent} from 'react';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
+import manifest from 'src/manifest';
 import {isCloud, isOnPremNotEnterprise, liveCaptionsEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
@@ -12,6 +13,9 @@ const LiveCaptionsNumTranscribers = (props: CustomComponentProps) => {
     if (cloud || restricted || !liveCaptionEnabled) {
         return null;
     }
+
+    // Webapp doesn't pass the default setting.
+    const theDefault = manifest.settings_schema?.settings.find((e) => e.key === 'LiveCaptionsNumTranscribers')?.default || 4;
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, parseInt(e.target.value, 10));
@@ -38,6 +42,7 @@ const LiveCaptionsNumTranscribers = (props: CustomComponentProps) => {
                     id={props.id}
                     className='form-control'
                     type={'number'}
+                    placeholder={theDefault}
                     value={props.value}
                     onChange={handleChange}
                     disabled={props.disabled}
