@@ -290,7 +290,7 @@ func (c *configuration) IsValid() error {
 
 	if c.liveCaptionsEnabled() {
 		if ok := c.LiveCaptionsModelSize.IsValid(); !ok {
-			return fmt.Errorf("LiveCaptionsModelSize is not valid, it is set to: %v", c.LiveCaptionsModelSize)
+			return fmt.Errorf("LiveCaptionsModelSize is not valid")
 		}
 		// Note: we're only testing for gross validity here; actual validity of threads vs. cpus is done
 		// in the transcriber's validity checks (when it has this + LiveCaptionsNumThreadsPerTranscriber)

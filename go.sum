@@ -301,10 +301,6 @@ github.com/mattermost/calls-offloader v0.6.0 h1:0DlkX9gR9Eiw7Dv3Z+W7DuBzOgMD9aBE
 github.com/mattermost/calls-offloader v0.6.0/go.mod h1:/xyDQiBZ0XNKNC/ALGp7pkGNApfC6v94CD7tPWGcFvM=
 github.com/mattermost/calls-recorder v0.6.2 h1:tTEoSkXJ9UEfoW7Lr9YQW3YtsHoQ0ycGeStyQrm/5aw=
 github.com/mattermost/calls-recorder v0.6.2/go.mod h1:v/52mE+wIXGJE7ZflpAkoyGd56hbVgC9ZuEBBaRd8KU=
-github.com/mattermost/calls-transcriber v0.1.9-0.20240205154012-985c9f8bf53a h1:6NC3RI09ohbQLU9Y3ScFAlXAA4Eg0Qlvu2CAlEfURuM=
-github.com/mattermost/calls-transcriber v0.1.9-0.20240205154012-985c9f8bf53a/go.mod h1:FHCpAazodwWFT8da1Z3Sg/TOJu5M0h5ShWomMAamVmA=
-github.com/mattermost/calls-transcriber v0.1.9-0.20240206010459-783d5e8e255c h1:pKQn1SGVTnO5GSY7F0MsQtCnsMAzBw2VyjnF/lwK3NM=
-github.com/mattermost/calls-transcriber v0.1.9-0.20240206010459-783d5e8e255c/go.mod h1:FHCpAazodwWFT8da1Z3Sg/TOJu5M0h5ShWomMAamVmA=
 github.com/mattermost/calls-transcriber v0.1.9-0.20240206014500-17ed4f59b20c h1:9GdkSAlq+aRXRAfipOQbXDDGmioJTt9BmeBir/9Qt1U=
 github.com/mattermost/calls-transcriber v0.1.9-0.20240206014500-17ed4f59b20c/go.mod h1:FHCpAazodwWFT8da1Z3Sg/TOJu5M0h5ShWomMAamVmA=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 h1:Khvh6waxG1cHc4Cz5ef9n3XVCxRWpAKUtqg9PJl5+y8=
