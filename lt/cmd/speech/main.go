@@ -24,8 +24,8 @@ var script, siteURL, wsURL, channelID, teamID string
 
 func main() {
 	flag.StringVar(&script, "script", "script.txt", "Script for the tts")
-	flag.StringVar(&siteURL, "siteUrl", "http://localhost:8065", "Mattermost SiteURL")
-	flag.StringVar(&wsURL, "wsUrl", "ws://localhost:8065", "Mattermost wsURL")
+	flag.StringVar(&siteURL, "siteURL", "http://localhost:8065", "Mattermost SiteURL")
+	flag.StringVar(&wsURL, "wsURL", "ws://localhost:8065", "Mattermost wsURL")
 	flag.StringVar(&channelID, "channelID", "", "ChannelID of the call")
 	flag.StringVar(&teamID, "teamID", "", "TeamID of the call")
 	flag.Parse()
