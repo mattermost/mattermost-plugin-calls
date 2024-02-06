@@ -16,19 +16,29 @@ import (
 )
 
 const (
-	siteURL      = "http://localhost:8065"
-	channelID    = "4iofmsdo9bfs5jidgmdb9zhjsy"
-	wsURL        = "ws://localhost:8065"
 	userPassword = "testPass123$"
 	duration     = 10 * time.Minute
 )
 
+var script, siteURL, wsURL, channelID, teamID string
+
 func main() {
-	var script string
-	flag.StringVar(&script, "script", "", "Script for the tts")
+	flag.StringVar(&script, "script", "script.txt", "Script for the tts")
+	flag.StringVar(&siteURL, "siteUrl", "http://localhost:8065", "Mattermost SiteURL")
+	flag.StringVar(&wsURL, "wsUrl", "ws://localhost:8065", "Mattermost wsURL")
+	flag.StringVar(&channelID, "channelID", "", "ChannelID of the call")
+	flag.StringVar(&teamID, "teamID", "", "TeamID of the call")
 	flag.Parse()
 
+	if channelID == "" {
+		log.Fatalf("need a --channelID flag")
+	}
+
 	if script != "" {
+		if teamID == "" {
+			log.Fatalf("need a --teamID flag")
+		}
+
 		if err := performScript(script); err != nil {
 			log.Fatalf("error performing script: %v", err)
 		}
@@ -131,7 +141,7 @@ func performScript(filename string) error {
 			Duration:     duration,
 			Speak:        true,
 			Setup:        true,
-			TeamID:       "68fku8rqajymxdyehczd5ep4zr",
+			TeamID:       teamID,
 			PollySession: svc,
 			PollyVoiceID: aws.String(script.voiceIds[i]),
 		})
