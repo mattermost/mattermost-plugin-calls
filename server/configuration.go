@@ -232,7 +232,7 @@ func (c *configuration) SetDefaults() {
 		c.EnableLiveCaptions = model.NewBool(false)
 	}
 	if c.LiveCaptionsModelSize == "" {
-		c.LiveCaptionsModelSize = transcriber.ModelSizeDefault
+		c.LiveCaptionsModelSize = transcriber.LiveCaptionsModelSizeDefault
 	}
 	if c.LiveCaptionsNumTranscribers == nil {
 		c.LiveCaptionsNumTranscribers = model.NewInt(transcriber.LiveCaptionsNumTranscribersDefault)

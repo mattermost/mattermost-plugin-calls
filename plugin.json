@@ -224,7 +224,7 @@
         "key": "LiveCaptionsModelSize",
         "display_name": "Live captions: Model size",
         "type": "dropdown",
-        "default": "base",
+        "default": "tiny",
         "help_text": "The speech-to-text model size to use for live captions. Heavier models will produce more accurate results at the expense of processing time and resources usage.",
         "options": [
           {
@@ -246,8 +246,8 @@
         "key": "LiveCaptionsNumTranscribers",
         "display_name": "Live captions: Number of transcribers used per call",
         "type": "number",
-        "default": 4,
-        "help_text": "The number of separate transcribers for each call. Each transcribes one audio stream at a time. Ideally, there should be as many transcribers as the number of simultaneous speakers in a call. Fewer transcribers than simultaneous speakers will delay the production of live captions. The product of LiveCaptionsNumTranscribers * LiveCaptionsNumThreadsPerTranscriber must be in the range [1, numCPUs]. By default, LiveCaptionsNumThreadsPerTranscriber is set to 1."
+        "default": 2,
+        "help_text": "The number of separate transcribers for each call. Each transcribes one audio stream at a time. Fewer transcribers than simultaneous speakers may delay the live captions. The product of LiveCaptionsNumTranscribers * LiveCaptionsNumThreadsPerTranscriber must be in the range [1, numCPUs]. By default, LiveCaptionsNumThreadsPerTranscriber is set to 2."
       },
       {
         "key": "EnableIPv6",

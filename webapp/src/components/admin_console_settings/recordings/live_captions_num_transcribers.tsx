@@ -15,7 +15,7 @@ const LiveCaptionsNumTranscribers = (props: CustomComponentProps) => {
     }
 
     // Webapp doesn't pass the default setting.
-    const theDefault = manifest.settings_schema?.settings.find((e) => e.key === 'LiveCaptionsNumTranscribers')?.default || 4;
+    const theDefault = manifest.settings_schema?.settings.find((e) => e.key === 'LiveCaptionsNumTranscribers')?.default || '';
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, parseInt(e.target.value, 10));
