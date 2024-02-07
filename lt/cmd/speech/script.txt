@@ -12,6 +12,66 @@ But basically, there's been a couple of times recently where I've merged people'
 Dartagnan
 I do have a couple of thoughts, but I also don't want to buy us the discussion, so there's anyone else.
 
+1s
+Bilbo
+Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+Dartagnan
+Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+Alice
+Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
+
+1s
+Alice
+That was nuts.
+
+1s
+Alice
+Let's do it again.
+
+10ms
+Alice
+After these quick sentences.
+
+10ms
+Alice
+To see how well the transcriber.
+
+10ms
+Alice
+Handles short breaks.
+
+10ms
+Alice
+If we can do that.
+
+10ms
+Alice
+Not sure how quick it will be.
+
+10ms
+Alice
+Let's do it again.
+
+1s
+Bilbo
+Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+Dartagnan
+Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+Alice
+Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
+
+2s
+Alice
+Let's do it again. This time with longer sentences.
+
+3s
+Bilbo
+Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure. Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+Dartagnan
+Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me. That could be solved with a merge queue, but that's a whole other thing we need to configure. Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+Alice
+Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable. Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable. Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
+
 2s
 Cercei
 Okay, well, I tend to think that way as well.
