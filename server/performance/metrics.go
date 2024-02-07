@@ -15,10 +15,11 @@ import (
 )
 
 const (
-	metricsNamespace        = "mattermost_plugin_calls"
-	metricsSubSystemWS      = "websocket"
-	metricsSubSystemCluster = "cluster"
-	metricsSubSystemStore   = "store"
+	metricsNamespace             = "mattermost_plugin_calls"
+	metricsSubSystemWS           = "websocket"
+	metricsSubSystemCluster      = "cluster"
+	metricsSubSystemStore        = "store"
+	metricsSubSystemLiveCaptions = "live_captions"
 )
 
 type Metrics struct {
@@ -121,8 +122,8 @@ func NewMetrics() *Metrics {
 	m.LiveCaptionsNewAudioLenHistogram = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: metricsNamespace,
-			Subsystem: metricsSubSystemCluster,
-			Name:      "live_captions_new_audio_len_ms",
+			Subsystem: metricsSubSystemLiveCaptions,
+			Name:      "new_audio_len_ms",
 			Help:      "Length (in ms) of new audio transcribed for live captions",
 		},
 	)
