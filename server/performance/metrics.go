@@ -125,7 +125,7 @@ func NewMetrics() *Metrics {
 			Subsystem: metricsSubSystemLiveCaptions,
 			Name:      "new_audio_len_ms",
 			Help:      "Length (in ms) of new audio transcribed for live captions",
-			Buckets:   prometheus.LinearBuckets(1000, 250, 20),
+			Buckets:   prometheus.LinearBuckets(1000, 250, 25),
 		},
 	)
 	m.registry.MustRegister(m.LiveCaptionsNewAudioLenHistogram)
