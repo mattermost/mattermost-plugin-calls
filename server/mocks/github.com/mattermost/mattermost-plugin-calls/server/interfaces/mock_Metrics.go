@@ -200,6 +200,38 @@ func (_c *MockMetrics_IncLiveCaptionsPressureReleased_Call) RunAndReturn(run fun
 	return _c
 }
 
+// IncLiveCaptionsTranscriberBufFull provides a mock function with given fields:
+func (_m *MockMetrics) IncLiveCaptionsTranscriberBufFull() {
+	_m.Called()
+}
+
+// MockMetrics_IncLiveCaptionsTranscriberBufFull_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncLiveCaptionsTranscriberBufFull'
+type MockMetrics_IncLiveCaptionsTranscriberBufFull_Call struct {
+	*mock.Call
+}
+
+// IncLiveCaptionsTranscriberBufFull is a helper method to define mock.On call
+func (_e *MockMetrics_Expecter) IncLiveCaptionsTranscriberBufFull() *MockMetrics_IncLiveCaptionsTranscriberBufFull_Call {
+	return &MockMetrics_IncLiveCaptionsTranscriberBufFull_Call{Call: _e.mock.On("IncLiveCaptionsTranscriberBufFull")}
+}
+
+func (_c *MockMetrics_IncLiveCaptionsTranscriberBufFull_Call) Run(run func()) *MockMetrics_IncLiveCaptionsTranscriberBufFull_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockMetrics_IncLiveCaptionsTranscriberBufFull_Call) Return() *MockMetrics_IncLiveCaptionsTranscriberBufFull_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockMetrics_IncLiveCaptionsTranscriberBufFull_Call) RunAndReturn(run func()) *MockMetrics_IncLiveCaptionsTranscriberBufFull_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IncStoreOp provides a mock function with given fields: op
 func (_m *MockMetrics) IncStoreOp(op string) {
 	_m.Called(op)

@@ -26,15 +26,16 @@ type Metrics struct {
 	registry   *prometheus.Registry
 	rtcMetrics *perf.Metrics
 
-	WebSocketConnections                prometheus.Gauge
-	WebSocketEventCounters              *prometheus.CounterVec
-	ClusterEventCounters                *prometheus.CounterVec
-	StoreOpCounters                     *prometheus.CounterVec
-	ClusterMutexGrabTimeHistograms      *prometheus.HistogramVec
-	ClusterMutexLockedTimeHistograms    *prometheus.HistogramVec
-	ClusterMutexLockRetriesCounters     *prometheus.CounterVec
-	LiveCaptionsNewAudioLenHistogram    prometheus.Histogram
-	LiveCaptionsPressureReleasedCounter prometheus.Counter
+	WebSocketConnections                  prometheus.Gauge
+	WebSocketEventCounters                *prometheus.CounterVec
+	ClusterEventCounters                  *prometheus.CounterVec
+	StoreOpCounters                       *prometheus.CounterVec
+	ClusterMutexGrabTimeHistograms        *prometheus.HistogramVec
+	ClusterMutexLockedTimeHistograms      *prometheus.HistogramVec
+	ClusterMutexLockRetriesCounters       *prometheus.CounterVec
+	LiveCaptionsNewAudioLenHistogram      prometheus.Histogram
+	LiveCaptionsPressureReleasedCounter   prometheus.Counter
+	LiveCaptionsTranscriberBufFullCounter prometheus.Counter
 }
 
 func NewMetrics() *Metrics {
@@ -140,6 +141,15 @@ func NewMetrics() *Metrics {
 		})
 	m.registry.MustRegister(m.LiveCaptionsPressureReleasedCounter)
 
+	m.LiveCaptionsTranscriberBufFullCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemLiveCaptions,
+			Name:      "transcriber_buf_full",
+			Help:      "Discarded a package of audio data due to the transcriber buffer full",
+		})
+	m.registry.MustRegister(m.LiveCaptionsTranscriberBufFullCounter)
+
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
@@ -191,4 +201,8 @@ func (m *Metrics) ObserveLiveCaptionsAudioLen(elapsed float64) {
 
 func (m *Metrics) IncLiveCaptionsPressureReleased() {
 	m.LiveCaptionsPressureReleasedCounter.Inc()
+}
+
+func (m *Metrics) IncLiveCaptionsTranscriberBufFull() {
+	m.LiveCaptionsTranscriberBufFullCounter.Inc()
 }

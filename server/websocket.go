@@ -1112,5 +1112,7 @@ func (p *Plugin) handleMetricMessage(metricName public.MetricName) {
 	switch metricName {
 	case public.MetricPressureReleased:
 		p.metrics.IncLiveCaptionsPressureReleased()
+	case public.MetricTranscriberBufFull:
+		p.metrics.IncLiveCaptionsTranscriberBufFull()
 	}
 }
