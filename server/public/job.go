@@ -42,6 +42,24 @@ type Transcription struct {
 
 type Transcriptions []Transcription
 
+type CaptionMsg struct {
+	SessionID     string  `json:"session_id"`
+	UserID        string  `json:"user_id"`
+	Text          string  `json:"text"`
+	NewAudioLenMs float64 `json:"new_audio_len_ms"`
+}
+
+type MetricName string
+
+const (
+	MetricPressureReleased MetricName = "pressure_released"
+)
+
+type MetricMsg struct {
+	SessionID  string     `json:"session_id"`
+	MetricName MetricName `json:"metric_name"`
+}
+
 type TranscribingJobInfo struct {
 	// Transcribing job ID
 	JobID string

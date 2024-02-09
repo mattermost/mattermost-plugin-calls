@@ -168,6 +168,38 @@ func (_c *MockMetrics_IncClusterMutexLockRetries_Call) RunAndReturn(run func(str
 	return _c
 }
 
+// IncLiveCaptionsPressureReleased provides a mock function with given fields:
+func (_m *MockMetrics) IncLiveCaptionsPressureReleased() {
+	_m.Called()
+}
+
+// MockMetrics_IncLiveCaptionsPressureReleased_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncLiveCaptionsPressureReleased'
+type MockMetrics_IncLiveCaptionsPressureReleased_Call struct {
+	*mock.Call
+}
+
+// IncLiveCaptionsPressureReleased is a helper method to define mock.On call
+func (_e *MockMetrics_Expecter) IncLiveCaptionsPressureReleased() *MockMetrics_IncLiveCaptionsPressureReleased_Call {
+	return &MockMetrics_IncLiveCaptionsPressureReleased_Call{Call: _e.mock.On("IncLiveCaptionsPressureReleased")}
+}
+
+func (_c *MockMetrics_IncLiveCaptionsPressureReleased_Call) Run(run func()) *MockMetrics_IncLiveCaptionsPressureReleased_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockMetrics_IncLiveCaptionsPressureReleased_Call) Return() *MockMetrics_IncLiveCaptionsPressureReleased_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockMetrics_IncLiveCaptionsPressureReleased_Call) RunAndReturn(run func()) *MockMetrics_IncLiveCaptionsPressureReleased_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IncStoreOp provides a mock function with given fields: op
 func (_m *MockMetrics) IncStoreOp(op string) {
 	_m.Called(op)

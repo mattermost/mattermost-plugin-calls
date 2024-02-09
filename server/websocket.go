@@ -6,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -1011,6 +1012,15 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		}
 		p.handleCaptionMessage(us.channelID, sessionID, userID, text, newAudioLenMs)
 		return
+	case clientMessageTypeMetric:
+		// Sent from the transcriber.
+		metricName, ok := req.Data["metric_name"].(string)
+		if !ok {
+			p.LogError("invalid or missing metric_name in metric ws message")
+			return
+		}
+		p.handleMetricMessage(public.MetricName(metricName))
+		return
 	}
 
 	select {
@@ -1096,4 +1106,11 @@ func (p *Plugin) handleCaptionMessage(channelID, captionFromSessionID, captionFr
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	p.metrics.ObserveLiveCaptionsAudioLen(newAudioLenMs)
+}
+
+func (p *Plugin) handleMetricMessage(metricName public.MetricName) {
+	switch metricName {
+	case public.MetricPressureReleased:
+		p.metrics.IncLiveCaptionsPressureReleased()
+	}
 }

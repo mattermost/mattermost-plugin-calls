@@ -26,14 +26,15 @@ type Metrics struct {
 	registry   *prometheus.Registry
 	rtcMetrics *perf.Metrics
 
-	WebSocketConnections             prometheus.Gauge
-	WebSocketEventCounters           *prometheus.CounterVec
-	ClusterEventCounters             *prometheus.CounterVec
-	StoreOpCounters                  *prometheus.CounterVec
-	ClusterMutexGrabTimeHistograms   *prometheus.HistogramVec
-	ClusterMutexLockedTimeHistograms *prometheus.HistogramVec
-	ClusterMutexLockRetriesCounters  *prometheus.CounterVec
-	LiveCaptionsNewAudioLenHistogram prometheus.Histogram
+	WebSocketConnections                prometheus.Gauge
+	WebSocketEventCounters              *prometheus.CounterVec
+	ClusterEventCounters                *prometheus.CounterVec
+	StoreOpCounters                     *prometheus.CounterVec
+	ClusterMutexGrabTimeHistograms      *prometheus.HistogramVec
+	ClusterMutexLockedTimeHistograms    *prometheus.HistogramVec
+	ClusterMutexLockRetriesCounters     *prometheus.CounterVec
+	LiveCaptionsNewAudioLenHistogram    prometheus.Histogram
+	LiveCaptionsPressureReleasedCounter prometheus.Counter
 }
 
 func NewMetrics() *Metrics {
@@ -130,6 +131,15 @@ func NewMetrics() *Metrics {
 	)
 	m.registry.MustRegister(m.LiveCaptionsNewAudioLenHistogram)
 
+	m.LiveCaptionsPressureReleasedCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemLiveCaptions,
+			Name:      "pressure_released",
+			Help:      "Discarded an entire window of audio data due to pressure on the transcriber",
+		})
+	m.registry.MustRegister(m.LiveCaptionsPressureReleasedCounter)
+
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
@@ -177,4 +187,8 @@ func (m *Metrics) IncClusterMutexLockRetries(group string) {
 
 func (m *Metrics) ObserveLiveCaptionsAudioLen(elapsed float64) {
 	m.LiveCaptionsNewAudioLenHistogram.Observe(elapsed)
+}
+
+func (m *Metrics) IncLiveCaptionsPressureReleased() {
+	m.LiveCaptionsPressureReleasedCounter.Inc()
 }
