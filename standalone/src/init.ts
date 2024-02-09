@@ -26,6 +26,7 @@ import {
     WebsocketEventData,
 } from '@calls/common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
+import type {DesktopAPI} from '@mattermost/desktop-api';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
 import {getMyTeamMembers, getMyTeams} from 'mattermost-redux/actions/teams';
@@ -299,6 +300,7 @@ declare global {
         desktop: {
             version?: string | null;
         },
+        desktopAPI?: DesktopAPI;
         screenSharingTrackId: string,
         currentCallData?: CurrentCallData,
         callActions?: CallActions,

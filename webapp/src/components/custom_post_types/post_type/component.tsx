@@ -64,9 +64,14 @@ const PostType = ({
     }, [intl, callProps.start_at]);
 
     const onLeaveButtonClick = () => {
-        if (window.callsClient) {
-            window.callsClient.disconnect();
+        const win = window.opener || window;
+        const callsClient = win.callsClient;
+        if (callsClient) {
+            // NOTE: this also handles the desktop global widget case since the opener window
+            // will have the client.
+            callsClient.disconnect();
         } else if (shouldRenderDesktopWidget()) {
+            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
             sendDesktopEvent('calls-leave-call', {callID: post.channel_id});
         }
     };

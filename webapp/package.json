@@ -30,6 +30,7 @@
     "@babel/preset-typescript": "7.16.0",
     "@formatjs/cli": "5.0.7",
     "@mattermost/client": "file:mattermost-webapp/webapp/platform/client",
+    "@mattermost/desktop-api": "5.7.0-3",
     "@mattermost/types": "file:mattermost-webapp/webapp/platform/types",
     "@types/jest": "27.0.2",
     "@types/lodash": "4.14.182",
@@ -75,7 +76,7 @@
     "webpack-cli": "4.10.0"
   },
   "dependencies": {
-    "@calls/common": "github:mattermost/calls-common#25619914bcfe6347101b29204b2976518742e81e",
+    "@calls/common": "github:mattermost/calls-common#70e226f00822a23189c1577d02b711514cdaf2b6",
     "@msgpack/msgpack": "2.7.1",
     "@redux-devtools/extension": "3.2.3",
     "core-js": "3.26.1",
