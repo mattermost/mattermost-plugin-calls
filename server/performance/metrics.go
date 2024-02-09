@@ -36,6 +36,7 @@ type Metrics struct {
 	LiveCaptionsNewAudioLenHistogram      prometheus.Histogram
 	LiveCaptionsPressureReleasedCounter   prometheus.Counter
 	LiveCaptionsTranscriberBufFullCounter prometheus.Counter
+	LiveCaptionsTickRateGauge             *prometheus.GaugeVec
 }
 
 func NewMetrics() *Metrics {
@@ -150,6 +151,17 @@ func NewMetrics() *Metrics {
 		})
 	m.registry.MustRegister(m.LiveCaptionsTranscriberBufFullCounter)
 
+	m.LiveCaptionsTickRateGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemLiveCaptions,
+			Name:      "tick_rate_ms",
+			Help:      "The current tick rate (number of ms between processing new audio)",
+		},
+		[]string{"transcriber_id"},
+	)
+	m.registry.MustRegister(m.LiveCaptionsTickRateGauge)
+
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
@@ -205,4 +217,8 @@ func (m *Metrics) IncLiveCaptionsPressureReleased() {
 
 func (m *Metrics) IncLiveCaptionsTranscriberBufFull() {
 	m.LiveCaptionsTranscriberBufFullCounter.Inc()
+}
+
+func (m *Metrics) SetLiveCaptionsTickRate(transcriberID string, newRate float64) {
+	m.LiveCaptionsTickRateGauge.With(prometheus.Labels{"transcriber_id": transcriberID}).Set(newRate)
 }

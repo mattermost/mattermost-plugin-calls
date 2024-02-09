@@ -479,6 +479,40 @@ func (_c *MockMetrics_RTCMetrics_Call) RunAndReturn(run func() rtc.Metrics) *Moc
 	return _c
 }
 
+// SetLiveCaptionsTickRate provides a mock function with given fields: transcriberID, tickRate
+func (_m *MockMetrics) SetLiveCaptionsTickRate(transcriberID string, tickRate float64) {
+	_m.Called(transcriberID, tickRate)
+}
+
+// MockMetrics_SetLiveCaptionsTickRate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetLiveCaptionsTickRate'
+type MockMetrics_SetLiveCaptionsTickRate_Call struct {
+	*mock.Call
+}
+
+// SetLiveCaptionsTickRate is a helper method to define mock.On call
+//   - transcriberID string
+//   - tickRate float64
+func (_e *MockMetrics_Expecter) SetLiveCaptionsTickRate(transcriberID interface{}, tickRate interface{}) *MockMetrics_SetLiveCaptionsTickRate_Call {
+	return &MockMetrics_SetLiveCaptionsTickRate_Call{Call: _e.mock.On("SetLiveCaptionsTickRate", transcriberID, tickRate)}
+}
+
+func (_c *MockMetrics_SetLiveCaptionsTickRate_Call) Run(run func(transcriberID string, tickRate float64)) *MockMetrics_SetLiveCaptionsTickRate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(float64))
+	})
+	return _c
+}
+
+func (_c *MockMetrics_SetLiveCaptionsTickRate_Call) Return() *MockMetrics_SetLiveCaptionsTickRate_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockMetrics_SetLiveCaptionsTickRate_Call) RunAndReturn(run func(string, float64)) *MockMetrics_SetLiveCaptionsTickRate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockMetrics creates a new instance of MockMetrics. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockMetrics(t interface {

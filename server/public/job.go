@@ -54,11 +54,13 @@ type MetricName string
 const (
 	MetricPressureReleased   MetricName = "pressure_released"
 	MetricTranscriberBufFull MetricName = "transcriber_buf_full"
+	MetricTickRate           MetricName = "tick_rate"
 )
 
 type MetricMsg struct {
-	SessionID  string     `json:"session_id"`
-	MetricName MetricName `json:"metric_name"`
+	TranscriptionID string     `json:"transcription_id"`
+	MetricName      MetricName `json:"metric_name"`
+	TickRateMs      float64    `json:"tick_rate_ms,omitempty"`
 }
 
 type TranscribingJobInfo struct {
