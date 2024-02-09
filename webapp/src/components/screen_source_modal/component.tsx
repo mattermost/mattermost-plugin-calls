@@ -1,9 +1,10 @@
 import './component.scss';
 
+import {DesktopCaptureSource} from '@mattermost/desktop-api';
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
-import {CapturerSource} from 'src/types/types';
+import {logDebug, logErr} from 'src/log';
 import {hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
 }
 
 interface State {
-    sources: CapturerSource[],
+    sources: DesktopCaptureSource[],
     selected: string,
 }
 
@@ -147,7 +148,11 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
     };
 
     private shareScreen = () => {
-        if (shouldRenderDesktopWidget()) {
+        if (window.desktopAPI?.shareScreen) {
+            logDebug('desktopAPI.shareScreen');
+            window.desktopAPI.shareScreen(this.state.selected, hasExperimentalFlag());
+        } else if (shouldRenderDesktopWidget()) {
+            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
             sendDesktopEvent('calls-widget-share-screen', {
                 sourceID: this.state.selected,
                 withAudio: hasExperimentalFlag(),
@@ -162,29 +167,57 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
         document.addEventListener('keyup', this.keyboardClose, true);
         document.addEventListener('click', this.closeOnBlur, true);
 
-        window.addEventListener('message', this.handleDesktopEvents);
+        if (!window.desktopAPI?.getDesktopSources) {
+            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+            window.addEventListener('message', this.handleDesktopEvents);
+        }
     }
 
     componentWillUnmount() {
         document.removeEventListener('keyup', this.keyboardClose, true);
         document.removeEventListener('click', this.closeOnBlur, true);
 
-        window.removeEventListener('message', this.handleDesktopEvents);
+        if (!window.desktopAPI?.getDesktopSources) {
+            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+            window.removeEventListener('message', this.handleDesktopEvents);
+        }
     }
 
     componentDidUpdate(prevProps: Props) {
         if (!prevProps.show && this.props.show) {
-            // Send a message to the desktop app to get the sources needed
-            sendDesktopEvent('get-desktop-sources', {
-                types: ['window', 'screen'],
+            const payload = {
+                types: ['window', 'screen'] as Array<'screen' | 'window'>,
                 thumbnailSize: {
                     width: 400,
                     height: 400,
                 },
-            });
+            };
+
+            if (window.desktopAPI?.getDesktopSources) {
+                logDebug('desktopAPI.getDesktopSources');
+                window.desktopAPI.getDesktopSources(payload).then((sources) => {
+                    if (sources.length === 0) {
+                        logErr('desktopAPI.getDesktopSources returned empty');
+                        this.props.hideScreenSourceModal();
+                        return;
+                    }
+                    this.setState({
+                        sources,
+                        selected: sources[0]?.id || '',
+                    });
+                }).catch((err) => {
+                    logErr('desktopAPI.getDesktopSources failed', err);
+                    this.props.hideScreenSourceModal();
+                });
+            } else {
+                // Send a message to the desktop app to get the sources needed
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                sendDesktopEvent('get-desktop-sources', payload);
+            }
         }
     }
 
+    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
     handleDesktopEvents = (ev: MessageEvent) => {
         if (ev.origin !== window.origin) {
             return;

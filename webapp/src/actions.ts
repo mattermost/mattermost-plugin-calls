@@ -210,7 +210,7 @@ export const endCall = (channelID: string) => {
     );
 };
 
-export const displayCallErrorModal = (channelID: string, err: Error) => (dispatch: Dispatch<GenericAction>) => {
+export const displayCallErrorModal = (err: Error, channelID?: string) => (dispatch: Dispatch<GenericAction>) => {
     dispatch(modals.openModal({
         modalId: CallErrorModalID,
         dialogType: CallErrorModal,

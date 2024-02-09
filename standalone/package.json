@@ -25,6 +25,7 @@
     "@babel/preset-typescript": "7.16.0",
     "@formatjs/cli": "6.0.4",
     "@mattermost/client": "file:../webapp/mattermost-webapp/webapp/platform/client",
+    "@mattermost/desktop-api": "5.7.0-3",
     "@mattermost/types": "file:../webapp/mattermost-webapp/webapp/platform/types",
     "@types/jest": "27.0.2",
     "@types/lodash": "4.14.182",
@@ -70,7 +71,7 @@
     "webpack-cli": "4.10.0"
   },
   "dependencies": {
-    "@calls/common": "github:mattermost/calls-common#25619914bcfe6347101b29204b2976518742e81e",
+    "@calls/common": "github:mattermost/calls-common#70e226f00822a23189c1577d02b711514cdaf2b6",
     "@mattermost/compass-icons": "0.1.31",
     "@msgpack/msgpack": "2.7.1",
     "bootstrap": "3.4.1",
