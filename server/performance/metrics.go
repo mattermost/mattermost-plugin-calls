@@ -222,3 +222,7 @@ func (m *Metrics) IncLiveCaptionsTranscriberBufFull() {
 func (m *Metrics) SetLiveCaptionsTickRate(transcriberID string, newRate float64) {
 	m.LiveCaptionsTickRateGauge.With(prometheus.Labels{"transcriber_id": transcriberID}).Set(newRate)
 }
+
+func (m *Metrics) RemoveLiveCaptionsTickRateGauge(transcriberID string) {
+	m.LiveCaptionsTickRateGauge.Delete(prometheus.Labels{"transcriber_id": transcriberID})
+}
