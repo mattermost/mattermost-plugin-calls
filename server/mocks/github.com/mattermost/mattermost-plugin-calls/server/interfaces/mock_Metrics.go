@@ -479,39 +479,6 @@ func (_c *MockMetrics_RTCMetrics_Call) RunAndReturn(run func() rtc.Metrics) *Moc
 	return _c
 }
 
-// RemoveLiveCaptionsTickRateGauge provides a mock function with given fields: transcriberID
-func (_m *MockMetrics) RemoveLiveCaptionsTickRateGauge(transcriberID string) {
-	_m.Called(transcriberID)
-}
-
-// MockMetrics_RemoveLiveCaptionsTickRateGauge_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveLiveCaptionsTickRateGauge'
-type MockMetrics_RemoveLiveCaptionsTickRateGauge_Call struct {
-	*mock.Call
-}
-
-// RemoveLiveCaptionsTickRateGauge is a helper method to define mock.On call
-//   - transcriberID string
-func (_e *MockMetrics_Expecter) RemoveLiveCaptionsTickRateGauge(transcriberID interface{}) *MockMetrics_RemoveLiveCaptionsTickRateGauge_Call {
-	return &MockMetrics_RemoveLiveCaptionsTickRateGauge_Call{Call: _e.mock.On("RemoveLiveCaptionsTickRateGauge", transcriberID)}
-}
-
-func (_c *MockMetrics_RemoveLiveCaptionsTickRateGauge_Call) Run(run func(transcriberID string)) *MockMetrics_RemoveLiveCaptionsTickRateGauge_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *MockMetrics_RemoveLiveCaptionsTickRateGauge_Call) Return() *MockMetrics_RemoveLiveCaptionsTickRateGauge_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockMetrics_RemoveLiveCaptionsTickRateGauge_Call) RunAndReturn(run func(string)) *MockMetrics_RemoveLiveCaptionsTickRateGauge_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // SetLiveCaptionsTickRate provides a mock function with given fields: transcriberID, tickRate
 func (_m *MockMetrics) SetLiveCaptionsTickRate(transcriberID string, tickRate float64) {
 	_m.Called(transcriberID, tickRate)

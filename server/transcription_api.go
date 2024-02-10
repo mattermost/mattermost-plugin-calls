@@ -158,9 +158,6 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 	trState.EndAt = time.Now().UnixMilli()
 	state.Call.Transcription = nil
 
-	// Clean up metrics
-	p.metrics.RemoveLiveCaptionsTickRateGauge(trState.ID)
-
 	if err := p.kvSetChannelState(callID, state); err != nil {
 		return fmt.Errorf("failed to set channel state: %w", err)
 	}

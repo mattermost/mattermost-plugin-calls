@@ -24,5 +24,4 @@ type Metrics interface {
 	IncLiveCaptionsPressureReleased()
 	IncLiveCaptionsTranscriberBufFull()
 	SetLiveCaptionsTickRate(transcriberID string, tickRate float64)
-	RemoveLiveCaptionsTickRateGauge(transcriberID string)
 }
