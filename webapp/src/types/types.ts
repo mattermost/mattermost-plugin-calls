@@ -185,3 +185,13 @@ export type RealNewPostMessageProps = {
 export type LiveCaptions = {
     [sessionID: string]: LiveCaption;
 }
+
+// Desktop types
+
+export type CallsDesktopJoinResponse = {
+    callID: string;
+    sessionID: string;
+
+    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+    type?: string;
+}

@@ -299,8 +299,8 @@ github.com/magiconair/properties v1.8.5/go.mod h1:y3VJvCyxH9uVvJTWEGAELF3aiYNyPK
 github.com/mailru/easyjson v0.0.0-20190312143242-1de009706dbe/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mattermost/calls-offloader v0.6.0 h1:0DlkX9gR9Eiw7Dv3Z+W7DuBzOgMD9aBEnGkAVIOKS74=
 github.com/mattermost/calls-offloader v0.6.0/go.mod h1:/xyDQiBZ0XNKNC/ALGp7pkGNApfC6v94CD7tPWGcFvM=
-github.com/mattermost/calls-recorder v0.6.2 h1:tTEoSkXJ9UEfoW7Lr9YQW3YtsHoQ0ycGeStyQrm/5aw=
-github.com/mattermost/calls-recorder v0.6.2/go.mod h1:v/52mE+wIXGJE7ZflpAkoyGd56hbVgC9ZuEBBaRd8KU=
+github.com/mattermost/calls-recorder v0.6.4 h1:LCS7a8Q4eGUbZmBkgARTwNLOUyJyxkDfrIpx/Gv26Uo=
+github.com/mattermost/calls-recorder v0.6.4/go.mod h1:v/52mE+wIXGJE7ZflpAkoyGd56hbVgC9ZuEBBaRd8KU=
 github.com/mattermost/calls-transcriber v0.1.9-0.20240207194334-08da0425a491 h1:Q4zYNzCfg5VFlMHHYKarDAQRGnVwjOpkd2SEJ3Sj+XU=
 github.com/mattermost/calls-transcriber v0.1.9-0.20240207194334-08da0425a491/go.mod h1:FHCpAazodwWFT8da1Z3Sg/TOJu5M0h5ShWomMAamVmA=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 h1:Khvh6waxG1cHc4Cz5ef9n3XVCxRWpAKUtqg9PJl5+y8=

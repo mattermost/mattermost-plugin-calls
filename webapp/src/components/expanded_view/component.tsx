@@ -47,7 +47,7 @@ import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import {
     CallAlertConfigs,
 } from 'src/constants';
-import {logErr} from 'src/log';
+import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
     LEAVE_CALL,
@@ -302,7 +302,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
             // don't allow navigation in expanded window e.g. permalinks in rhs
             this.#unlockNavigation = props.history.block((tx) => {
-                sendDesktopEvent('calls-link-click', {link: tx.pathname});
+                if (window.desktopAPI?.openLinkFromCalls) {
+                    logDebug('desktopAPI.openLinkFromCalls');
+                    window.desktopAPI.openLinkFromCalls(tx.pathname);
+                } else {
+                    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                    sendDesktopEvent('calls-link-click', {link: tx.pathname});
+                }
                 return false;
             });
 
@@ -475,7 +481,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         } else if (!this.props.screenSharingSession) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 this.props.showScreenSourceModal();
+            } else if (window.desktopAPI?.openScreenShareModal) {
+                logDebug('desktopAPI.openScreenShareModal');
+                window.desktopAPI.openScreenShareModal();
             } else if (shouldRenderDesktopWidget()) {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 sendDesktopEvent('desktop-sources-modal-request');
             } else {
                 const state = {} as State;

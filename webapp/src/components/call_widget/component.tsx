@@ -131,6 +131,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private audioMenuResizeObserver: ResizeObserver | null = null;
     private screenPlayer: HTMLVideoElement | null = null;
     private prevDevicePixelRatio = 0;
+    private unsubscribers: (() => void)[] = [];
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
         return {
@@ -310,6 +311,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.sendGlobalWidgetBounds();
     };
 
+    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
     private handleDesktopEvents = (ev: MessageEvent) => {
         if (ev.origin !== window.origin) {
             return;
@@ -371,18 +373,65 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (this.props.global) {
             window.visualViewport?.addEventListener('resize', this.onViewportResize);
+            this.unsubscribers.push(() => {
+                window.visualViewport?.removeEventListener('resize', this.onViewportResize);
+            });
+
             this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
             this.menuResizeObserver.observe(this.menuNode.current!);
-            window.addEventListener('message', this.handleDesktopEvents);
+
+            if (window.desktopAPI?.onScreenShared && window.desktopAPI?.onCallsError) {
+                logDebug('registering desktopAPI.onScreenShared');
+                this.unsubscribers.push(window.desktopAPI.onScreenShared((sourceID: string, withAudio: boolean) => {
+                    logDebug('desktopAPI.onScreenShared');
+                    this.shareScreen(sourceID, withAudio);
+                }));
+
+                logDebug('registering desktopAPI.onCallsError');
+                this.unsubscribers.push(window.desktopAPI.onCallsError((err: string) => {
+                    logDebug('desktopAPI.onCallsError', err);
+                    if (err === 'screen-permissions') {
+                        logDebug('screen permissions error');
+                        this.setState({
+                            alerts: {
+                                ...this.state.alerts,
+                                missingScreenPermissions: {
+                                    ...this.state.alerts.missingScreenPermissions,
+                                    active: true,
+                                    show: true,
+                                },
+                            },
+                        });
+                    }
+                }));
+            } else {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                window.addEventListener('message', this.handleDesktopEvents);
+                this.unsubscribers.push(() => {
+                    window.removeEventListener('message', this.handleDesktopEvents);
+                });
+            }
         } else {
             document.addEventListener('mouseup', this.onMouseUp, false);
+            this.unsubscribers.push(() => {
+                document.removeEventListener('mouseup', this.onMouseUp, false);
+            });
         }
 
         document.addEventListener('click', this.closeOnBlur, true);
+        this.unsubscribers.push(() => {
+            document.removeEventListener('click', this.closeOnBlur, true);
+        });
         document.addEventListener('keyup', this.keyboardClose, true);
+        this.unsubscribers.push(() => {
+            document.removeEventListener('keyup', this.keyboardClose, true);
+        });
 
         // keyboard shortcuts
         document.addEventListener('keydown', this.handleKBShortcuts, true);
+        this.unsubscribers.push(() => {
+            document.removeEventListener('keydown', this.handleKBShortcuts, true);
+        });
 
         // set cross-window actions
         window.callActions = {
@@ -432,19 +481,27 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         window.callsClient.on('connect', () => {
             this.setState({connecting: false});
 
-            if (this.props.global) {
-                sendDesktopEvent('calls-joined-call', {
-                    callID: window.callsClient?.channelID,
-                    sessionID: window.callsClient?.getSessionID(),
-                });
+            const callsClient = window.callsClient;
+
+            if (this.props.global && callsClient) {
+                if (window.desktopAPI?.callsWidgetConnected) {
+                    logDebug('desktopAPI.callsWidgetConnected');
+                    window.desktopAPI.callsWidgetConnected(callsClient.channelID, callsClient.getSessionID() || '');
+                } else {
+                    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                    sendDesktopEvent('calls-joined-call', {
+                        callID: callsClient.channelID,
+                        sessionID: callsClient.getSessionID(),
+                    });
+                }
             }
 
             if (isDirectChannel(this.props.channel) || isGroupChannel(this.props.channel)) {
-                window.callsClient?.unmute();
+                callsClient?.unmute();
             }
 
-            this.setState({currentAudioInputDevice: window.callsClient?.currentAudioInputDevice});
-            this.setState({currentAudioOutputDevice: window.callsClient?.currentAudioOutputDevice});
+            this.setState({currentAudioInputDevice: callsClient?.currentAudioInputDevice});
+            this.setState({currentAudioOutputDevice: callsClient?.currentAudioOutputDevice});
         });
 
         window.callsClient.on('error', (err: Error) => {
@@ -500,20 +557,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     public componentWillUnmount() {
-        if (this.props.global) {
-            window.visualViewport?.removeEventListener('resize', this.onViewportResize);
-            window.removeEventListener('message', this.handleDesktopEvents);
-        } else {
-            document.removeEventListener('mouseup', this.onMouseUp, false);
-        }
+        this.unsubscribers.forEach((unsubscribe) => unsubscribe());
+        this.unsubscribers = [];
 
         if (this.menuResizeObserver) {
             this.menuResizeObserver.disconnect();
         }
-
-        document.removeEventListener('click', this.closeOnBlur, true);
-        document.removeEventListener('keyup', this.keyboardClose, true);
-        document.removeEventListener('keydown', this.handleKBShortcuts, true);
     }
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
@@ -561,11 +610,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     private sendGlobalWidgetBounds = () => {
         const bounds = this.getGlobalWidgetBounds();
-        sendDesktopEvent('calls-widget-resize', {
-            element: 'calls-widget',
-            width: Math.ceil(bounds.width),
-            height: Math.ceil(bounds.height),
-        });
+
+        if (window.desktopAPI?.resizeCallsWidget) {
+            logDebug('desktopAPI.resizeCallsWidget');
+            window.desktopAPI.resizeCallsWidget(Math.ceil(bounds.width), Math.ceil(bounds.height));
+        } else {
+            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+            sendDesktopEvent('calls-widget-resize', {
+                element: 'calls-widget',
+                width: Math.ceil(bounds.width),
+                height: Math.ceil(bounds.height),
+            });
+        }
     };
 
     private keyboardClose = (e: KeyboardEvent) => {
@@ -631,7 +687,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         } else if (!this.props.screenSharingSession) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 if (this.props.global) {
-                    sendDesktopEvent('desktop-sources-modal-request');
+                    if (window.desktopAPI?.openScreenShareModal) {
+                        logDebug('desktopAPI.openScreenShareModal');
+                        window.desktopAPI.openScreenShareModal();
+                    } else {
+                        // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                        sendDesktopEvent('desktop-sources-modal-request');
+                    }
                 } else {
                     this.props.showScreenSourceModal();
                 }
@@ -1718,7 +1780,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     onExpandClick = () => {
         if (this.state.expandedViewWindow && !this.state.expandedViewWindow.closed) {
             if (this.props.global) {
-                sendDesktopEvent('calls-popout-focus');
+                if (window.desktopAPI?.focusPopout) {
+                    logDebug('desktopAPI.focusPopout');
+                    window.desktopAPI.focusPopout();
+                } else {
+                    // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                    sendDesktopEvent('calls-popout-focus');
+                }
             } else {
                 this.state.expandedViewWindow.focus();
             }
@@ -1779,7 +1847,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         ev.preventDefault();
         const message = {pathName: this.props.channelURL};
         if (this.props.global) {
-            sendDesktopEvent('calls-widget-channel-link-click', message);
+            if (window.desktopAPI?.openLinkFromCalls) {
+                logDebug('desktopAPI.openLinkFromCalls');
+                window.desktopAPI.openLinkFromCalls(this.props.channelURL);
+            } else {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                sendDesktopEvent('calls-widget-channel-link-click', message);
+            }
         } else {
             navigateToURL(this.props.channelURL);
         }

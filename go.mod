@@ -15,7 +15,7 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattermost/calls-offloader v0.6.0
-	github.com/mattermost/calls-recorder v0.6.2
+	github.com/mattermost/calls-recorder v0.6.4
 	github.com/mattermost/calls-transcriber v0.1.9-0.20240207194334-08da0425a491
 	github.com/mattermost/logr/v2 v2.0.21
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
