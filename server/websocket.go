@@ -1014,17 +1014,12 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		return
 	case clientMessageTypeMetric:
 		// Sent from the transcriber.
-		transcriptionID, ok := req.Data["transcription_id"].(string)
-		if !ok {
-			p.LogError("invalid or missing transcription_id in metric ws message")
-			return
-		}
 		metricName, ok := req.Data["metric_name"].(string)
 		if !ok {
 			p.LogError("invalid or missing metric_name in metric ws message")
 			return
 		}
-		p.handleMetricMessage(transcriptionID, public.MetricName(metricName), req.Data)
+		p.handleMetricMessage(public.MetricName(metricName))
 		return
 	}
 
@@ -1113,18 +1108,11 @@ func (p *Plugin) handleCaptionMessage(channelID, captionFromSessionID, captionFr
 	p.metrics.ObserveLiveCaptionsAudioLen(newAudioLenMs)
 }
 
-func (p *Plugin) handleMetricMessage(transcriptionID string, metricName public.MetricName, data map[string]any) {
+func (p *Plugin) handleMetricMessage(metricName public.MetricName) {
 	switch metricName {
 	case public.MetricPressureReleased:
 		p.metrics.IncLiveCaptionsPressureReleased()
 	case public.MetricTranscriberBufFull:
 		p.metrics.IncLiveCaptionsTranscriberBufFull()
-	case public.MetricTickRate:
-		tickRate, ok := data["tick_rate_ms"].(float64)
-		if !ok {
-			p.LogError("invalid or missing session_id in caption ws message")
-			return
-		}
-		p.metrics.SetLiveCaptionsTickRate(transcriptionID, tickRate)
 	}
 }
