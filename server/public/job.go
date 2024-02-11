@@ -52,8 +52,8 @@ type CaptionMsg struct {
 type MetricName string
 
 const (
-	MetricPressureReleased   MetricName = "pressure_released"
-	MetricTranscriberBufFull MetricName = "transcriber_buf_full"
+	MetricLiveCaptionsWindowDropped      MetricName = "live_captions_window_dropped"
+	MetricLiveCaptionsTranscriberBufFull MetricName = "live_captions_transcriber_buf_full"
 )
 
 type MetricMsg struct {

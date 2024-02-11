@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	metricsNamespace             = "mattermost_plugin_calls"
-	metricsSubSystemWS           = "websocket"
-	metricsSubSystemCluster      = "cluster"
-	metricsSubSystemStore        = "store"
-	metricsSubSystemLiveCaptions = "live_captions"
+	metricsNamespace        = "mattermost_plugin_calls"
+	metricsSubSystemWS      = "websocket"
+	metricsSubSystemCluster = "cluster"
+	metricsSubSystemStore   = "store"
+	metricsSubSystemJobs    = "jobs"
 )
 
 type Metrics struct {
@@ -34,7 +34,7 @@ type Metrics struct {
 	ClusterMutexLockedTimeHistograms      *prometheus.HistogramVec
 	ClusterMutexLockRetriesCounters       *prometheus.CounterVec
 	LiveCaptionsNewAudioLenHistogram      prometheus.Histogram
-	LiveCaptionsPressureReleasedCounter   prometheus.Counter
+	LiveCaptionsWindowDroppedCounter      prometheus.Counter
 	LiveCaptionsTranscriberBufFullCounter prometheus.Counter
 }
 
@@ -124,29 +124,29 @@ func NewMetrics() *Metrics {
 	m.LiveCaptionsNewAudioLenHistogram = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: metricsNamespace,
-			Subsystem: metricsSubSystemLiveCaptions,
-			Name:      "new_audio_len_ms",
+			Subsystem: metricsSubSystemJobs,
+			Name:      "live_captions_new_audio_len_ms",
 			Help:      "Length (in ms) of new audio transcribed for live captions",
 			Buckets:   prometheus.LinearBuckets(1000, 250, 25),
 		},
 	)
 	m.registry.MustRegister(m.LiveCaptionsNewAudioLenHistogram)
 
-	m.LiveCaptionsPressureReleasedCounter = prometheus.NewCounter(
+	m.LiveCaptionsWindowDroppedCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: metricsNamespace,
-			Subsystem: metricsSubSystemLiveCaptions,
-			Name:      "pressure_released",
-			Help:      "Discarded an entire window of audio data due to pressure on the transcriber",
+			Subsystem: metricsSubSystemJobs,
+			Name:      "live_captions_window_dropped",
+			Help:      "Dropped a window of audio data due to pressure on the transcriber",
 		})
-	m.registry.MustRegister(m.LiveCaptionsPressureReleasedCounter)
+	m.registry.MustRegister(m.LiveCaptionsWindowDroppedCounter)
 
 	m.LiveCaptionsTranscriberBufFullCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: metricsNamespace,
-			Subsystem: metricsSubSystemLiveCaptions,
-			Name:      "transcriber_buf_full",
-			Help:      "Discarded a package of audio data due to the transcriber buffer full",
+			Subsystem: metricsSubSystemJobs,
+			Name:      "live_captions_transcriber_buf_full",
+			Help:      "Dropped a package of audio data due to the transcriber buffer full",
 		})
 	m.registry.MustRegister(m.LiveCaptionsTranscriberBufFullCounter)
 
@@ -199,8 +199,8 @@ func (m *Metrics) ObserveLiveCaptionsAudioLen(elapsed float64) {
 	m.LiveCaptionsNewAudioLenHistogram.Observe(elapsed)
 }
 
-func (m *Metrics) IncLiveCaptionsPressureReleased() {
-	m.LiveCaptionsPressureReleasedCounter.Inc()
+func (m *Metrics) IncLiveCaptionsWindowDropped() {
+	m.LiveCaptionsWindowDroppedCounter.Inc()
 }
 
 func (m *Metrics) IncLiveCaptionsTranscriberBufFull() {

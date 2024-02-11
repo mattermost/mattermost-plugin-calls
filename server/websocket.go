@@ -990,6 +990,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		msg.Data = []byte(msgData)
 	case clientMessageTypeCaption:
 		// Sent from the transcriber.
+		p.metrics.IncWebSocketEvent("in", msg.Type)
 		sessionID, ok := req.Data["session_id"].(string)
 		if !ok {
 			p.LogError("invalid or missing session_id in caption ws message")
@@ -1014,6 +1015,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		return
 	case clientMessageTypeMetric:
 		// Sent from the transcriber.
+		p.metrics.IncWebSocketEvent("in", msg.Type)
 		metricName, ok := req.Data["metric_name"].(string)
 		if !ok {
 			p.LogError("invalid or missing metric_name in metric ws message")
@@ -1110,9 +1112,9 @@ func (p *Plugin) handleCaptionMessage(channelID, captionFromSessionID, captionFr
 
 func (p *Plugin) handleMetricMessage(metricName public.MetricName) {
 	switch metricName {
-	case public.MetricPressureReleased:
-		p.metrics.IncLiveCaptionsPressureReleased()
-	case public.MetricTranscriberBufFull:
+	case public.MetricLiveCaptionsWindowDropped:
+		p.metrics.IncLiveCaptionsWindowDropped()
+	case public.MetricLiveCaptionsTranscriberBufFull:
 		p.metrics.IncLiveCaptionsTranscriberBufFull()
 	}
 }

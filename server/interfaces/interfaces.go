@@ -21,6 +21,6 @@ type Metrics interface {
 	ObserveClusterMutexLockedTime(group string, elapsed float64)
 	IncClusterMutexLockRetries(group string)
 	ObserveLiveCaptionsAudioLen(elapsed float64)
-	IncLiveCaptionsPressureReleased()
+	IncLiveCaptionsWindowDropped()
 	IncLiveCaptionsTranscriberBufFull()
 }
