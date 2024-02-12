@@ -1049,6 +1049,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isHost = this.props.callHostID === this.props.currentUserID;
 
         const isRecording = isHost && this.props.isRecording;
+        const showCCButton = this.props.transcriptionsEnabled && this.props.isRecording && Boolean(this.props.callRecording?.start_at);
 
         const recordTooltipText = isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
         const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
@@ -1212,7 +1213,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 isHandRaised={this.isHandRaised()}
                             />
 
-                            {this.props.transcriptionsEnabled &&
+                            {showCCButton &&
                                 <ControlsButton
                                     id='calls-popout-cc-button'
                                     onToggle={this.onLiveCaptionsToggle}
