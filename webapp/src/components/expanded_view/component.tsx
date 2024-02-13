@@ -1207,12 +1207,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 />
                             }
 
-                            <ReactionButton
-                                ref={this.emojiButtonRef}
-                                trackEvent={this.props.trackEvent}
-                                isHandRaised={this.isHandRaised()}
-                            />
-
                             {showCCButton &&
                                 <ControlsButton
                                     id='calls-popout-cc-button'
@@ -1225,6 +1219,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     iconFillHover={this.state.showLiveCaptions ? 'var(--calls-bg)' : ''}
                                 />
                             }
+
+                            <ReactionButton
+                                ref={this.emojiButtonRef}
+                                trackEvent={this.props.trackEvent}
+                                isHandRaised={this.isHandRaised()}
+                            />
 
                             {globalRhsSupported && (
                                 <ControlsButton
