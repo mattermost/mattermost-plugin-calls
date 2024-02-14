@@ -246,7 +246,7 @@
         "key": "LiveCaptionsNumTranscribers",
         "display_name": "Live captions: Number of transcribers used per call",
         "type": "number",
-        "default": 2,
+        "default": 1,
         "help_text": "The number of separate transcribers for each call. Each transcribes one audio stream at a time. Fewer transcribers than simultaneous speakers may delay the live captions. The product of LiveCaptionsNumTranscribers * LiveCaptionsNumThreadsPerTranscriber must be in the range [1, numCPUs]. By default, LiveCaptionsNumThreadsPerTranscriber is set to 2."
       },
       {
