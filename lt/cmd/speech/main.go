@@ -21,6 +21,7 @@ const (
 )
 
 var script, siteURL, wsURL, channelID, teamID string
+var setup bool
 
 func main() {
 	flag.StringVar(&script, "script", "script.txt", "Script for the tts")
@@ -28,6 +29,7 @@ func main() {
 	flag.StringVar(&wsURL, "wsURL", "ws://localhost:8065", "Mattermost wsURL")
 	flag.StringVar(&channelID, "channelID", "", "ChannelID of the call")
 	flag.StringVar(&teamID, "teamID", "", "TeamID of the call")
+	flag.BoolVar(&setup, "setup", false, "setup users (needs teamID and valid sysadmin login)")
 	flag.Parse()
 
 	if channelID == "" {
@@ -35,7 +37,7 @@ func main() {
 	}
 
 	if script != "" {
-		if teamID == "" {
+		if setup && teamID == "" {
 			log.Fatalf("need a --teamID flag")
 		}
 
@@ -140,7 +142,7 @@ func performScript(filename string) error {
 			WsURL:        wsURL,
 			Duration:     duration,
 			Speak:        true,
-			Setup:        true,
+			Setup:        setup,
 			TeamID:       teamID,
 			PollySession: svc,
 			PollyVoiceID: aws.String(script.voiceIds[i]),
