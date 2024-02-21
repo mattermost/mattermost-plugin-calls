@@ -1,5 +1,7 @@
 import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redux/actions/channels';
-import {getTeam as getTeamAction, selectTeam} from 'mattermost-redux/actions/teams';
+import {getMyPreferences} from 'mattermost-redux/actions/preferences';
+import {getMyTeamMembers, getMyTeams, getTeam as getTeamAction, selectTeam} from 'mattermost-redux/actions/teams';
+import {getMe} from 'mattermost-redux/actions/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTeams} from 'mattermost-redux/selectors/entities/teams';
@@ -73,7 +75,14 @@ async function initWidget(store: Store) {
 }
 
 async function initStoreWidget(store: Store, channelID: string) {
-    await store.dispatch(getChannelAction(channelID));
+    // initialize some basic state.
+    await Promise.all([
+        getMe()(store.dispatch, store.getState),
+        getMyPreferences()(store.dispatch, store.getState),
+        getMyTeams()(store.dispatch, store.getState),
+        getMyTeamMembers()(store.dispatch, store.getState),
+        store.dispatch(getChannelAction(channelID)),
+    ]);
 
     const channel = getChannel(store.getState(), channelID);
     if (!channel) {
