@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -320,12 +319,8 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		transcriberConfig.LiveCaptionsOn = cfg.liveCaptionsEnabled()
 		transcriberConfig.LiveCaptionsModelSize = cfg.LiveCaptionsModelSize
 		transcriberConfig.LiveCaptionsNumTranscribers = *cfg.LiveCaptionsNumTranscribers
-		if val := os.Getenv("MM_CALLS_TRANSCRIBER_NUM_THREADS"); val != "" {
-			transcriberConfig.NumThreads, _ = strconv.Atoi(val)
-		}
-		if val := os.Getenv("MM_CALLS_LIVE_CAPTIONS_NUM_THREADS_PER_TRANSCRIBER"); val != "" {
-			transcriberConfig.LiveCaptionsNumThreadsPerTranscriber, _ = strconv.Atoi(val)
-		}
+		transcriberConfig.NumThreads = *cfg.TranscriberNumThreads
+		transcriberConfig.LiveCaptionsNumThreadsPerTranscriber = *cfg.LiveCaptionsNumThreadsPerTranscriber
 
 		jobCfg.Runner = transcriberJobRunner
 		// Setting the max duration to double the value of the recording's setting as

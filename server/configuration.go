@@ -69,12 +69,16 @@ type configuration struct {
 	EnableRinging *bool
 	// The speech-to-text model size to use to transcribe calls.
 	TranscriberModelSize transcriber.ModelSize
+	// The number of threads to use to transcriber calls.
+	TranscriberNumThreads *int
 	// When set to true live captions will be enabled when starting transcription jobs.
 	EnableLiveCaptions *bool
 	// The speech-to-text model size to use to transcribe live captions.
 	LiveCaptionsModelSize transcriber.ModelSize
 	// The number of transcribers to use for processing audio tracks into live captions.
 	LiveCaptionsNumTranscribers *int
+	// The number of threads per transcriber to use for processing audio tracks into live captions.
+	LiveCaptionsNumThreadsPerTranscriber *int
 
 	clientConfig
 }
@@ -210,6 +214,9 @@ func (c *configuration) SetDefaults() {
 	if c.EnableTranscriptions == nil {
 		c.EnableTranscriptions = model.NewBool(false)
 	}
+	if c.TranscriberNumThreads == nil {
+		c.TranscriberNumThreads = model.NewInt(transcriber.NumThreadsDefault)
+	}
 	if c.MaxRecordingDuration == nil {
 		c.MaxRecordingDuration = model.NewInt(defaultRecDurationMinutes)
 	}
@@ -236,6 +243,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.LiveCaptionsNumTranscribers == nil {
 		c.LiveCaptionsNumTranscribers = model.NewInt(transcriber.LiveCaptionsNumTranscribersDefault)
+	}
+	if c.LiveCaptionsNumThreadsPerTranscriber == nil {
+		c.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(transcriber.LiveCaptionsNumThreadsPerTranscriberDefault)
 	}
 }
 
@@ -280,8 +290,14 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("RecordingQuality is not valid")
 	}
 
-	if ok := c.TranscriberModelSize.IsValid(); !ok {
-		return fmt.Errorf("TranscriberModelSize is not valid")
+	if c.transcriptionsEnabled() {
+		if ok := c.TranscriberModelSize.IsValid(); !ok {
+			return fmt.Errorf("TranscriberModelSize is not valid")
+		}
+
+		if c.TranscriberNumThreads == nil || *c.TranscriberNumThreads <= 0 {
+			return fmt.Errorf("TranscriberNumThreads is not valid: should be greater than 0")
+		}
 	}
 
 	if c.ICEHostPortOverride != nil && *c.ICEHostPortOverride != 0 && (*c.ICEHostPortOverride < minAllowedPort || *c.ICEHostPortOverride > maxAllowedPort) {
@@ -293,9 +309,13 @@ func (c *configuration) IsValid() error {
 			return fmt.Errorf("LiveCaptionsModelSize is not valid")
 		}
 		// Note: we're only testing for gross validity here; actual validity of threads vs. cpus is done
-		// in the transcriber's validity checks (when it has this + LiveCaptionsNumThreadsPerTranscriber)
+		// in the transcriber's validity checks (when it has numCPUs)
 		if c.LiveCaptionsNumTranscribers == nil || *c.LiveCaptionsNumTranscribers <= 0 {
 			return fmt.Errorf("LiveCaptionsNumTranscribers is not valid: should be greater than 0")
+		}
+
+		if c.LiveCaptionsNumThreadsPerTranscriber == nil || *c.LiveCaptionsNumThreadsPerTranscriber <= 0 {
+			return fmt.Errorf("LiveCaptionsNumThreadsPerTranscriber is not valid: should be greater than 0")
 		}
 	}
 	return nil
@@ -364,6 +384,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.EnableTranscriptions = model.NewBool(*c.EnableTranscriptions)
 	}
 
+	if c.TranscriberNumThreads != nil {
+		cfg.TranscriberNumThreads = model.NewInt(*c.TranscriberNumThreads)
+	}
+
 	if c.EnableLiveCaptions != nil {
 		cfg.EnableLiveCaptions = model.NewBool(*c.EnableLiveCaptions)
 	}
@@ -390,6 +414,10 @@ func (c *configuration) Clone() *configuration {
 
 	if c.LiveCaptionsNumTranscribers != nil {
 		cfg.LiveCaptionsNumTranscribers = model.NewInt(*c.LiveCaptionsNumTranscribers)
+	}
+
+	if c.LiveCaptionsNumThreadsPerTranscriber != nil {
+		cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(*c.LiveCaptionsNumThreadsPerTranscriber)
 	}
 
 	return &cfg

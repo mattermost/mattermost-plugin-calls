@@ -20,7 +20,7 @@ import {
     getChannelUrlAndDisplayName,
     hostChangeAtForCurrentCall,
     hostIDForCurrentCall,
-    isRecordingInCurrentCall,
+    isRecordingInCurrentCall, liveCaptionsEnabled,
     profilesInCurrentCallMap,
     recordingForCurrentCall,
     recordingMaxDuration,
@@ -85,6 +85,7 @@ const mapStateToProps = (state: GlobalState) => {
         recordingsEnabled: recordingsEnabled(state),
         recordingMaxDuration: recordingMaxDuration(state),
         transcriptionsEnabled: transcriptionsEnabled(state),
+        liveCaptionsEnabled: liveCaptionsEnabled(state),
     };
 };
 

@@ -34,11 +34,14 @@ import EnableRecordings from 'src/components/admin_console_settings/recordings/e
 import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
 import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
 import LiveCaptionsModelSize from 'src/components/admin_console_settings/recordings/live_captions_model_size';
+import LiveCaptionsNumThreadsPerTranscriber
+    from 'src/components/admin_console_settings/recordings/live_captions_num_threads_per_transcriber';
 import LiveCaptionsNumTranscribers
     from 'src/components/admin_console_settings/recordings/live_captions_num_transcribers';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
 import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
 import TranscriberModelSize from 'src/components/admin_console_settings/recordings/transcriber_model_size';
+import TranscriberNumThreads from 'src/components/admin_console_settings/recordings/transcriber_num_threads';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
 import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
@@ -379,9 +382,12 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('RecordingQuality', RecordingQuality);
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
         registry.registerAdminConsoleCustomSetting('EnableTranscriptions', EnableTranscriptions);
+        registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
+        registry.registerAdminConsoleCustomSetting('TranscriberNumThreads', TranscriberNumThreads);
         registry.registerAdminConsoleCustomSetting('EnableLiveCaptions', EnableLiveCaptions);
         registry.registerAdminConsoleCustomSetting('LiveCaptionsModelSize', LiveCaptionsModelSize);
         registry.registerAdminConsoleCustomSetting('LiveCaptionsNumTranscribers', LiveCaptionsNumTranscribers);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsNumThreadsPerTranscriber', LiveCaptionsNumThreadsPerTranscriber);
 
         // RTCD server turns on/off the following:
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
@@ -393,7 +399,6 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
         registry.registerAdminConsoleCustomSetting('ICEHostPortOverride', ICEHostPortOverride);
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
-        registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
 
         // Desktop API handlers
         if (window.desktopAPI?.onOpenScreenShareModal) {

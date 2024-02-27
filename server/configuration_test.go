@@ -140,6 +140,31 @@ func TestConfigurationIsValid(t *testing.T) {
 			err: "LiveCaptionsNumTranscribers is not valid: should be greater than 0",
 		},
 		{
+			name: "invalid LiveCaptionsNumThreadsPerTranscriber",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(0)
+				return cfg
+			}(),
+			err: "LiveCaptionsNumThreadsPerTranscriber is not valid: should be greater than 0",
+		},
+		{
+			name: "invalid TranscriberNumThreads",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.TranscriberNumThreads = model.NewInt(0)
+				return cfg
+			}(),
+			err: "TranscriberNumThreads is not valid: should be greater than 0",
+		},
+		{
 			name:  "defaults",
 			input: defaultConfig,
 		},

@@ -124,6 +124,7 @@ interface Props extends RouteComponentProps {
     startCallRecording: (callID: string) => void,
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     transcriptionsEnabled: boolean,
+    liveCaptionsEnabled: boolean,
 }
 
 interface State {
@@ -1049,7 +1050,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isHost = this.props.callHostID === this.props.currentUserID;
 
         const isRecording = isHost && this.props.isRecording;
-        const showCCButton = this.props.transcriptionsEnabled && this.props.isRecording && Boolean(this.props.callRecording?.start_at);
+        const showCCButton = this.props.liveCaptionsEnabled && this.props.isRecording && Boolean(this.props.callRecording?.start_at);
 
         const recordTooltipText = isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
         const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
