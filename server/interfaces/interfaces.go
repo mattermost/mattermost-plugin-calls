@@ -21,3 +21,7 @@ type Metrics interface {
 	ObserveClusterMutexLockedTime(group string, elapsed float64)
 	IncClusterMutexLockRetries(group string)
 }
+
+type StoreMetrics interface {
+	IncStoreOp(op string)
+}

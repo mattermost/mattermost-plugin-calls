@@ -4,7 +4,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"sync"
@@ -14,6 +13,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
@@ -22,8 +22,6 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
-
-	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -69,10 +67,8 @@ type Plugin struct {
 	callsClusterLocks    map[string]*cluster.Mutex
 	callsClusterLocksMut sync.RWMutex
 
-	// Database handle to the writer DB node
-	wDB        *sql.DB
-	wDBx       *sqlx.DB
-	driverName string
+	// Database
+	store *db.Store
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
@@ -343,7 +339,7 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 		return 0, fmt.Errorf("postID should not be empty")
 	}
 
-	post, err := p.GetPost(postID)
+	post, err := p.store.GetPost(postID)
 	if err != nil {
 		return 0, err
 	}
