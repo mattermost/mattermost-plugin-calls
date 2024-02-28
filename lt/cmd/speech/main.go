@@ -16,11 +16,10 @@ import (
 )
 
 const (
-	userPassword = "testPass123$"
-	duration     = 10 * time.Minute
+	duration = 10 * time.Minute
 )
 
-var script, siteURL, wsURL, channelID, teamID string
+var script, siteURL, wsURL, channelID, teamID, userPassword string
 var setup bool
 
 func main() {
@@ -30,6 +29,7 @@ func main() {
 	flag.StringVar(&channelID, "channelID", "", "ChannelID of the call")
 	flag.StringVar(&teamID, "teamID", "", "TeamID of the call")
 	flag.BoolVar(&setup, "setup", false, "setup users (needs teamID and valid sysadmin login)")
+	flag.StringVar(&userPassword, "userPassword", "testPass123$", "password for users (default testPass123$)")
 	flag.Parse()
 
 	if channelID == "" {
