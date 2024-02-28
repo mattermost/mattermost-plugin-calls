@@ -16,7 +16,9 @@ I do have a couple of thoughts, but I also don't want to buy us the discussion, 
 Bilbo
 Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure.
 Dartagnan
-Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me.
+
+1s
 Alice
 Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
 
@@ -56,7 +58,9 @@ Let's do it again.
 Bilbo
 Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure.
 Dartagnan
-Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+Usually you wouldn't have three people talking over one another like this.
+
+1s
 Alice
 Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
 
@@ -68,7 +72,9 @@ Let's do it again. This time with longer sentences.
 Bilbo
 Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure. Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure.
 Dartagnan
-Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me. That could be solved with a merge queue, but that's a whole other thing we need to configure. Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me.
+
+1s
 Alice
 Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable. Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable. Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
 
@@ -91,6 +97,8 @@ Bilbo
 Or then it might merge in and then fail.
 Dartagnan
 That could be solved with a merge queue, but that's a whole other thing we need to configure.
+
+1s
 Alice
 Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
 
@@ -146,7 +154,9 @@ having to go into the closed source repository. And maybe someday, far into the 
 Bilbo
 Was because I had written some end-to-end tests that were failing in CI and not failing locally. There's some weird flakiness around, you know, loading and unloading a license and, you know.
 Alice
-I figured maybe it was just bad, um, a code path that we hadn't fully tested. But I was, it was, like my test should have worked. It should have been fine. Like I couldn't understand. Long story short,
+I figured maybe it was just bad, um, a code path that we hadn't fully tested.
+
+500ms
 Cercei
 It turns out that in CI, at least as before I merged, the way we do license-based testing is there's an mm_license environment variable that, um, just, you know, exposure to the license to the.
 
@@ -201,8 +211,13 @@ it kind of originated three years ago, to continue to develop in that single rep
 300ms
 Cercei
 On the entire repo, that's one way of deploying it to a plugin or to a code base, but you can also apply it to a single folder. And in the playbooks case, like total transparency, the code inside the enterprise folder is nothing more than if it is licensed than do something
+
+1s
 Dartagnan
 Sort of thing, there's like no logic, no business logic there whatsoever. And as we all kind of understand that the purpose of these licenses isn't to prevent somebody from overriding it and then just using it as they see fit. It has much more to do with business and how
 Alice
-Businesses are willing to use products and code in various environments. And so the goal is not to make a bullet proof, can't be cracked, kind of modeled, but to more create a, frankly,
+Businesses are willing to use products and code in various environments.
 
+1s
+Bilbo
+And so the goal is not to make a bullet proof, can't be cracked, kind of modeled, but to more create a, frankly,
