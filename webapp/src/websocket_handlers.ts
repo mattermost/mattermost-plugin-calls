@@ -389,9 +389,9 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
 }
 
 export function handleCaption(store: Store, ev: WebSocketMessage<LiveCaptionData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
+    const channel_id = ev.data.channelID || ev.broadcast.channel_id;
 
-    if (channelIDForCurrentCall(store.getState()) !== channelID) {
+    if (channelIDForCurrentCall(store.getState()) !== channel_id) {
         return;
     }
 
@@ -399,6 +399,7 @@ export function handleCaption(store: Store, ev: WebSocketMessage<LiveCaptionData
     const display_name = getUserDisplayName(profiles[ev.data.user_id]);
     const caption: LiveCaption = {
         ...ev.data,
+        channel_id,
         display_name,
         caption_id: generateId(),
     };
@@ -410,7 +411,7 @@ export function handleCaption(store: Store, ev: WebSocketMessage<LiveCaptionData
         store.dispatch({
             type: LIVE_CAPTION_TIMEOUT_EVENT,
             data: {
-                channelID,
+                channel_id,
                 session_id: caption.session_id,
                 caption_id: caption.caption_id,
             },

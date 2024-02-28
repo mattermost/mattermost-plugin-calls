@@ -527,7 +527,7 @@ type liveCaptionAction = {
 }
 
 type liveCaptionTimeoutData = {
-    channelID: string;
+    channel_id: string;
     session_id: string;
     caption_id: string;
 }
@@ -559,14 +559,14 @@ const liveCaptions = (state: liveCaptionState = {}, action: liveCaptionAction | 
         const data = action.data as liveCaptionData;
         return {
             ...state,
-            [data.channelID]: addCaption(state[data.channelID], data),
+            [data.channel_id]: addCaption(state[data.channel_id], data),
         };
     }
     case LIVE_CAPTION_TIMEOUT_EVENT: {
         const data = action.data as liveCaptionTimeoutData;
         return {
             ...state,
-            [data.channelID]: captionTimeout(state[data.channelID], data),
+            [data.channel_id]: captionTimeout(state[data.channel_id], data),
         };
     }
     default:
