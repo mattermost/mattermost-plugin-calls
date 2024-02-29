@@ -389,7 +389,7 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
 }
 
 export function handleCaption(store: Store, ev: WebSocketMessage<LiveCaptionData>) {
-    const channel_id = ev.data.channelID || ev.broadcast.channel_id;
+    const channel_id = ev.data.channel_id;
 
     if (channelIDForCurrentCall(store.getState()) !== channel_id) {
         return;
