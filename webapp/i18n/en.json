@@ -86,6 +86,7 @@
   "Thxdph": "This call is at its maximum capacity of {count, plural, =1 {# participant} other {# participants}}.",
   "TyskrG": "Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. You now have access to <recordingsDocsLink>Call recordings</recordingsDocsLink>,<rtcdDocsLink>RTCD services</rtcdDocsLink>, <guestAccountsLink>guest accounts</guestAccountsLink>, <autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and <mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, among many other features. View all features in our <documentationLink>documentation</documentationLink>.",
   "UcFeI7": "Show participants list",
+  "Ug/N7H": "Calls are not available in a DM with a deactivated user.",
   "UxatAw": "{count, plural, =1 {# participant} other {# participants}}",
   "Uys4Mj": "Close reactions",
   "W9355R": "Unmute",
