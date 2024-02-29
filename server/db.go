@@ -10,21 +10,25 @@ import (
 )
 
 func (p *Plugin) initDB() error {
-	serverCfg := p.API.GetConfig()
+	serverCfg := p.API.GetUnsanitizedConfig()
 	if serverCfg == nil {
 		return fmt.Errorf("server config should not be nil")
 	}
 
-	if serverCfg.SqlSettings.DriverName == nil {
-		return fmt.Errorf("SqlSettings.DriverName should not be nil")
-	}
-
-	store, err := db.NewStore(*serverCfg.SqlSettings.DriverName, p.Driver, p.metrics)
+	store, err := db.NewStore(serverCfg.SqlSettings, p.Driver, newLogger(p), p.metrics)
 	if err != nil {
 		p.LogError(err.Error())
 		return fmt.Errorf("failed to create db store: %w", err)
 	}
 	p.store = store
+
+	return nil
+}
+
+func (p *Plugin) runDBMigrations() error {
+	if err := p.store.Migrate(db.MigrationsDirectionUp, false); err != nil {
+		return fmt.Errorf("migration failed: %w", err)
+	}
 
 	return nil
 }
