@@ -109,8 +109,9 @@ func (p *Plugin) GetPost(postID string) (*model.Post, error) {
 	return &post, nil
 }
 
-func (p *Plugin) updateFileInfoPostID(fileID, postID string) error {
+func (p *Plugin) updateFileInfoPostID(fileID, channelID, postID string) error {
 	qb := getQueryBuilder(p.driverName).Update("FileInfo").
+		Set("ChannelId", channelID).
 		Set("PostId", postID).
 		Where(sq.Eq{"Id": fileID})
 	q, args, err := qb.ToSql()
