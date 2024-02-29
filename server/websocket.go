@@ -1102,6 +1102,7 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 func (p *Plugin) handleCaptionMessage(channelID, captionFromSessionID, captionFromUserID, text string, newAudioLenMs float64) {
 	// TODO: broadcast to participants only, https://github.com/mattermost/mattermost-plugin-calls/pull/609
 	p.publishWebSocketEvent(clientMessageTypeCaption, map[string]interface{}{
+		"channel_id": channelID,
 		"user_id":    captionFromUserID,
 		"session_id": captionFromSessionID,
 		"text":       text,
