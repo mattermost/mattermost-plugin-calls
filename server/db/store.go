@@ -5,12 +5,11 @@ package db
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	"github.com/mattermost/mattermost/server/public/model"
-	"github.com/mattermost/mattermost/server/public/plugin"
-	"github.com/mattermost/mattermost/server/public/shared/driver"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	"github.com/jmoiron/sqlx"
@@ -31,7 +30,7 @@ type Store struct {
 	rDBx *sqlx.DB
 }
 
-func NewStore(settings model.SqlSettings, drv plugin.Driver, logger mlog.LoggerIFace, metrics interfaces.StoreMetrics) (*Store, error) {
+func NewStore(settings model.SqlSettings, wConnector, rConnector driver.Connector, log mlog.LoggerIFace, metrics interfaces.StoreMetrics) (*Store, error) {
 	if settings.DriverName == nil {
 		return nil, fmt.Errorf("invalid nil DriverName")
 	}
@@ -44,26 +43,31 @@ func NewStore(settings model.SqlSettings, drv plugin.Driver, logger mlog.LoggerI
 		return nil, fmt.Errorf("invalid nil MigrationsStatementTimeoutSeconds")
 	}
 
-	if drv == nil {
-		return nil, fmt.Errorf("invalid nil driver")
+	if wConnector == nil {
+		return nil, fmt.Errorf("invalid nil writer connector")
+	}
+
+	if rConnector == nil {
+		log.Info("store: no reader connector passed, using writer")
+		rConnector = wConnector
+	}
+
+	if log == nil {
+		return nil, fmt.Errorf("invalid nil logger")
 	}
 
 	if metrics == nil {
 		return nil, fmt.Errorf("invalid nil metrics")
 	}
 
-	if logger == nil {
-		return nil, fmt.Errorf("invalid nil logger")
-	}
-
 	st := &Store{
 		settings:   settings,
 		driverName: *settings.DriverName,
 		metrics:    metrics,
-		log:        logger,
+		log:        log,
 	}
 
-	st.wDB = sql.OpenDB(driver.NewConnector(drv, true))
+	st.wDB = sql.OpenDB(wConnector)
 	if err := st.wDB.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping writer DB: %w", err)
 	}
@@ -72,7 +76,7 @@ func NewStore(settings model.SqlSettings, drv plugin.Driver, logger mlog.LoggerI
 		st.wDBx.MapperFunc(func(s string) string { return s })
 	}
 
-	st.rDB = sql.OpenDB(driver.NewConnector(drv, false))
+	st.rDB = sql.OpenDB(rConnector)
 	if err := st.rDB.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping reader DB: %w", err)
 	}

@@ -17,6 +17,10 @@ func (s *Store) setupConnForMigrations(dsn string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to open sql connection: %w", err)
 	}
 
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping DB: %w", err)
+	}
+
 	db.SetMaxIdleConns(*s.settings.MaxIdleConns)
 	db.SetMaxOpenConns(*s.settings.MaxOpenConns)
 	db.SetConnMaxLifetime(time.Duration(*s.settings.ConnMaxLifetimeMilliseconds) * time.Millisecond)
