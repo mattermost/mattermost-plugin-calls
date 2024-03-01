@@ -28,9 +28,6 @@ import {
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import {setServerVersion} from 'mattermost-redux/actions/general';
-import {getMyPreferences} from 'mattermost-redux/actions/preferences';
-import {getMyTeamMembers, getMyTeams} from 'mattermost-redux/actions/teams';
-import {getMe} from 'mattermost-redux/actions/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
@@ -168,14 +165,6 @@ export default async function init(cfg: InitConfig) {
         RestClient.setUrl(window.basename);
     }
     RestClient.setToken(getToken());
-
-    // initialize some basic state.
-    await Promise.all([
-        getMe()(store.dispatch, store.getState),
-        getMyPreferences()(store.dispatch, store.getState),
-        getMyTeams()(store.dispatch, store.getState),
-        getMyTeamMembers()(store.dispatch, store.getState),
-    ]);
 
     if (cfg.initStore) {
         await cfg.initStore(store, channelID);
