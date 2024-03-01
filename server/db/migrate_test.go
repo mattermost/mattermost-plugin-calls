@@ -64,19 +64,19 @@ func TestMigrate(t *testing.T) {
 				require.NoError(t, err)
 				require.ElementsMatch(t, []public.CallsChannel{
 					{
-						ChannelId: "00000000000000000000000004",
+						ChannelID: "00000000000000000000000004",
 						Enabled:   true,
 					},
 					{
-						ChannelId: "00000000000000000000000005",
+						ChannelID: "00000000000000000000000005",
 						Enabled:   false,
 					},
 					{
-						ChannelId: "00000000000000000000000006",
+						ChannelID: "00000000000000000000000006",
 						Enabled:   false,
 					},
 					{
-						ChannelId: "00000000000000000000000007",
+						ChannelID: "00000000000000000000000007",
 						Enabled:   true,
 					},
 				}, callsChannels)
@@ -140,23 +140,23 @@ func TestMigrate(t *testing.T) {
 				require.NoError(t, err)
 
 				var callsChannels []public.CallsChannel
-				err = store.wDBx.Select(&callsChannels, `SELECT ChannelId, Enabled FROM CallsChannels`)
+				err = store.wDBx.Select(&callsChannels, `SELECT ChannelID, Enabled FROM CallsChannels`)
 				require.NoError(t, err)
 				require.ElementsMatch(t, []public.CallsChannel{
 					{
-						ChannelId: "00000000000000000000000004",
+						ChannelID: "00000000000000000000000004",
 						Enabled:   true,
 					},
 					{
-						ChannelId: "00000000000000000000000005",
+						ChannelID: "00000000000000000000000005",
 						Enabled:   false,
 					},
 					{
-						ChannelId: "00000000000000000000000006",
+						ChannelID: "00000000000000000000000006",
 						Enabled:   false,
 					},
 					{
-						ChannelId: "00000000000000000000000007",
+						ChannelID: "00000000000000000000000007",
 						Enabled:   true,
 					},
 				}, callsChannels)

@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS CallsChannels (
-    ChannelId varchar(26) NOT NULL,
+    ChannelID varchar(26) NOT NULL,
     Enabled BOOLEAN,
 		Props JSON,
     PRIMARY KEY (ChannelId)
