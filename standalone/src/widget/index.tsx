@@ -77,10 +77,10 @@ async function initWidget(store: Store) {
 async function initStoreWidget(store: Store, channelID: string) {
     // initialize some basic state.
     await Promise.all([
-        getMe()(store.dispatch, store.getState),
-        getMyPreferences()(store.dispatch, store.getState),
-        getMyTeams()(store.dispatch, store.getState),
-        getMyTeamMembers()(store.dispatch, store.getState),
+        store.dispatch(getMe()),
+        store.dispatch(getMyPreferences()),
+        store.dispatch(getMyTeams()),
+        store.dispatch(getMyTeamMembers()),
         store.dispatch(getChannelAction(channelID)),
     ]);
 
@@ -90,9 +90,9 @@ async function initStoreWidget(store: Store, channelID: string) {
     }
 
     if (isOpenChannel(channel) || isPrivateChannel(channel)) {
-        await getTeamAction(channel.team_id)(store.dispatch, store.getState);
+        await store.dispatch(getTeamAction(channel.team_id));
     } else {
-        await getChannelMembers(channel.id)(store.dispatch, store.getState);
+        await store.dispatch(getChannelMembers(channel.id));
         const teams = getTeams(store.getState());
         store.dispatch(selectTeam(Object.values(teams)[0]));
     }
