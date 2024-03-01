@@ -41,7 +41,7 @@ func TestHandleBotWSReconnect(t *testing.T) {
 	// Boilerplate mocking
 	var mockConfig model.Config
 	mockConfig.SetDefaults()
-	mockAPI.On("GetConfig").Return(&mockConfig).Once()
+	mockAPI.On("GetUnsanitizedConfig").Return(&mockConfig).Once()
 	mockDriver.On("Conn", true).Return("wdbConnID", nil).Once()
 	mockDriver.On("Conn", false).Return("rdbConnID", nil).Once()
 	mockDriver.On("ConnPing", "wdbConnID").Return(nil).Once()
