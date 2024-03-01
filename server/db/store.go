@@ -171,8 +171,9 @@ func (s *Store) GetPost(postID string) (*model.Post, error) {
 	return &post, nil
 }
 
-func (s *Store) UpdateFileInfoPostID(fileID, postID string) error {
+func (s *Store) UpdateFileInfoPostID(fileID, channelID, postID string) error {
 	qb := getQueryBuilder(s.driverName).Update("FileInfo").
+		Set("ChannelId", channelID).
 		Set("PostId", postID).
 		Where(sq.Eq{"Id": fileID})
 	q, args, err := qb.ToSql()
