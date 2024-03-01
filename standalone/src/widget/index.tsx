@@ -1,5 +1,7 @@
 import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redux/actions/channels';
-import {getTeam as getTeamAction, selectTeam} from 'mattermost-redux/actions/teams';
+import {getMyPreferences} from 'mattermost-redux/actions/preferences';
+import {getMyTeamMembers, getMyTeams, getTeam as getTeamAction, selectTeam} from 'mattermost-redux/actions/teams';
+import {getMe} from 'mattermost-redux/actions/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTeams} from 'mattermost-redux/selectors/entities/teams';
@@ -73,7 +75,14 @@ async function initWidget(store: Store) {
 }
 
 async function initStoreWidget(store: Store, channelID: string) {
-    await store.dispatch(getChannelAction(channelID));
+    // initialize some basic state.
+    await Promise.all([
+        store.dispatch(getMe()),
+        store.dispatch(getMyPreferences()),
+        store.dispatch(getMyTeams()),
+        store.dispatch(getMyTeamMembers()),
+        store.dispatch(getChannelAction(channelID)),
+    ]);
 
     const channel = getChannel(store.getState(), channelID);
     if (!channel) {
@@ -81,9 +90,9 @@ async function initStoreWidget(store: Store, channelID: string) {
     }
 
     if (isOpenChannel(channel) || isPrivateChannel(channel)) {
-        await getTeamAction(channel.team_id)(store.dispatch, store.getState);
+        await store.dispatch(getTeamAction(channel.team_id));
     } else {
-        await getChannelMembers(channel.id)(store.dispatch, store.getState);
+        await store.dispatch(getChannelMembers(channel.id));
         const teams = getTeams(store.getState());
         store.dispatch(selectTeam(Object.values(teams)[0]));
     }
