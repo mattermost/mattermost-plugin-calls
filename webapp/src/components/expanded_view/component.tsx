@@ -17,6 +17,7 @@ import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 import React, {CSSProperties} from 'react';
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
@@ -1066,19 +1067,29 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                         <div style={this.style.headerSpreader}/>
                         <ExpandedCallContainer/>
-                        <button
-                            className='button-close'
-                            style={this.style.closeViewButton}
-                            onClick={this.onCloseViewClick}
+                        <OverlayTrigger
+                            placement='bottom'
+                            key={'close-window'}
+                            overlay={
+                                <Tooltip id='tooltip-close-window'>
+                                    {formatMessage({defaultMessage: 'Close window'})}
+                                </Tooltip>
+                            }
                         >
-                            <CollapseIcon
-                                style={{
-                                    width: '24px',
-                                    height: '24px',
-                                    fill: 'white',
-                                }}
-                            />
-                        </button>
+                            <button
+                                className='button-close'
+                                style={this.style.closeViewButton}
+                                onClick={this.onCloseViewClick}
+                            >
+                                <CollapseIcon
+                                    style={{
+                                        width: '24px',
+                                        height: '24px',
+                                        fill: 'white',
+                                    }}
+                                />
+                            </button>
+                        </OverlayTrigger>
                     </div>
 
                     {!this.props.screenSharingSession &&

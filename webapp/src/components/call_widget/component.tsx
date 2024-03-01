@@ -1973,6 +1973,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <WidgetButton
                             id='calls-widget-expand-button'
                             onToggle={this.onExpandClick}
+                            tooltipText={formatMessage({defaultMessage: 'Open in new window'})}
                             bgColor=''
                             icon={
                                 <ShowIcon
@@ -2052,6 +2053,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <WidgetButton
                             id='calls-widget-toggle-menu-button'
                             onToggle={this.onMenuClick}
+                            tooltipText={formatMessage({defaultMessage: 'Settings'})}
                             icon={
                                 <MenuIcon
                                     style={{
