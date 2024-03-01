@@ -15,7 +15,6 @@ import (
 	"github.com/mattermost/morph/drivers"
 	ms "github.com/mattermost/morph/drivers/mysql"
 	ps "github.com/mattermost/morph/drivers/postgres"
-	// "github.com/mattermost/morph/models"
 	mbindata "github.com/mattermost/morph/sources/embedded"
 )
 
