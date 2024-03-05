@@ -4,7 +4,7 @@
   "description": "Integrates real-time voice communication in Mattermost",
   "homepage_url": "https://github.com/mattermost/mattermost-plugin-calls/",
   "support_url": "https://github.com/mattermost/mattermost-plugin-calls/issues",
-  "min_server_version": "9.2.0",
+  "min_server_version": "9.5.0",
   "server": {
     "executables": {
       "linux-amd64": "server/dist/plugin-linux-amd64",
