@@ -19,7 +19,7 @@ git clone https://github.com/mattermost/mattermost-plugin-calls.git && cd matter
 ### Run on a team
 
 ```sh
-go run ./lt -url http://localhost:8065 \
+cd ./lt && go run ./cmd/lt -url http://localhost:8065 \
   -team 11o73u33upfuprysuifa17dn5e \
   -calls 2 \
   -users-per-call 5 \
@@ -46,7 +46,7 @@ go run ./lt -url http://localhost:8065 \
 It's also possible to run the load-test on a single channel by providing its ID instead of the team.
 
 ```sh
-go run ./lt -url http://localhost:8065 \
+cd ./lt && go run ./cmd/lt -url http://localhost:8065 \
   -channel ebjjdnozn3gs5n7ozooesaubua \
   -calls 1 \
   -users-per-call 5 \
@@ -73,8 +73,16 @@ go run ./lt -url http://localhost:8065 \
     	The amount of time it takes for all participants to join their calls (default "30s")
   -offset int
     	The user offset
+  -recordings int
+    	The number of calls to record
   -screen-sharing int
     	The number of users screen-sharing
+  -setup
+    	Whether or not setup actions like creating users, channels, teams and/or members should be executed. (default true)
+  -simulcast
+    	Whether or not to enable simulcast for screen
+  -speech-file string
+    	The path to a speech OGG file to read to simulate real voice samples (default "./lt/samples/speech_0.ogg")
   -team string
     	The team ID to start calls in
   -unmuted int
