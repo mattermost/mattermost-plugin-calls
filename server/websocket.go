@@ -1117,5 +1117,7 @@ func (p *Plugin) handleMetricMessage(metricName public.MetricName) {
 		p.metrics.IncLiveCaptionsWindowDropped()
 	case public.MetricLiveCaptionsTranscriberBufFull:
 		p.metrics.IncLiveCaptionsTranscriberBufFull()
+	case public.MetricLiveCaptionsPktPayloadChBufFull:
+		p.metrics.IncLiveCaptionsPktPayloadChBufFull()
 	}
 }

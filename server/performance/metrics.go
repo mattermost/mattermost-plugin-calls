@@ -26,16 +26,17 @@ type Metrics struct {
 	registry   *prometheus.Registry
 	rtcMetrics *perf.Metrics
 
-	WebSocketConnections                  prometheus.Gauge
-	WebSocketEventCounters                *prometheus.CounterVec
-	ClusterEventCounters                  *prometheus.CounterVec
-	StoreOpCounters                       *prometheus.CounterVec
-	ClusterMutexGrabTimeHistograms        *prometheus.HistogramVec
-	ClusterMutexLockedTimeHistograms      *prometheus.HistogramVec
-	ClusterMutexLockRetriesCounters       *prometheus.CounterVec
-	LiveCaptionsNewAudioLenHistogram      prometheus.Histogram
-	LiveCaptionsWindowDroppedCounter      prometheus.Counter
-	LiveCaptionsTranscriberBufFullCounter prometheus.Counter
+	WebSocketConnections                   prometheus.Gauge
+	WebSocketEventCounters                 *prometheus.CounterVec
+	ClusterEventCounters                   *prometheus.CounterVec
+	StoreOpCounters                        *prometheus.CounterVec
+	ClusterMutexGrabTimeHistograms         *prometheus.HistogramVec
+	ClusterMutexLockedTimeHistograms       *prometheus.HistogramVec
+	ClusterMutexLockRetriesCounters        *prometheus.CounterVec
+	LiveCaptionsNewAudioLenHistogram       prometheus.Histogram
+	LiveCaptionsWindowDroppedCounter       prometheus.Counter
+	LiveCaptionsTranscriberBufFullCounter  prometheus.Counter
+	LiveCaptionsPktPayloadChBufFullCounter prometheus.Counter
 }
 
 func NewMetrics() *Metrics {
@@ -150,6 +151,15 @@ func NewMetrics() *Metrics {
 		})
 	m.registry.MustRegister(m.LiveCaptionsTranscriberBufFullCounter)
 
+	m.LiveCaptionsPktPayloadChBufFullCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemJobs,
+			Name:      "live_captions_pktPayloadCh_buf_full",
+			Help:      "Dropped a package of audio data due to the pktPayloadCh buffer full",
+		})
+	m.registry.MustRegister(m.LiveCaptionsPktPayloadChBufFullCounter)
+
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
@@ -205,4 +215,8 @@ func (m *Metrics) IncLiveCaptionsWindowDropped() {
 
 func (m *Metrics) IncLiveCaptionsTranscriberBufFull() {
 	m.LiveCaptionsTranscriberBufFullCounter.Inc()
+}
+
+func (m *Metrics) IncLiveCaptionsPktPayloadChBufFull() {
+	m.LiveCaptionsPktPayloadChBufFullCounter.Inc()
 }

@@ -168,6 +168,38 @@ func (_c *MockMetrics_IncClusterMutexLockRetries_Call) RunAndReturn(run func(str
 	return _c
 }
 
+// IncLiveCaptionsPktPayloadChBufFull provides a mock function with given fields:
+func (_m *MockMetrics) IncLiveCaptionsPktPayloadChBufFull() {
+	_m.Called()
+}
+
+// MockMetrics_IncLiveCaptionsPktPayloadChBufFull_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncLiveCaptionsPktPayloadChBufFull'
+type MockMetrics_IncLiveCaptionsPktPayloadChBufFull_Call struct {
+	*mock.Call
+}
+
+// IncLiveCaptionsPktPayloadChBufFull is a helper method to define mock.On call
+func (_e *MockMetrics_Expecter) IncLiveCaptionsPktPayloadChBufFull() *MockMetrics_IncLiveCaptionsPktPayloadChBufFull_Call {
+	return &MockMetrics_IncLiveCaptionsPktPayloadChBufFull_Call{Call: _e.mock.On("IncLiveCaptionsPktPayloadChBufFull")}
+}
+
+func (_c *MockMetrics_IncLiveCaptionsPktPayloadChBufFull_Call) Run(run func()) *MockMetrics_IncLiveCaptionsPktPayloadChBufFull_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockMetrics_IncLiveCaptionsPktPayloadChBufFull_Call) Return() *MockMetrics_IncLiveCaptionsPktPayloadChBufFull_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockMetrics_IncLiveCaptionsPktPayloadChBufFull_Call) RunAndReturn(run func()) *MockMetrics_IncLiveCaptionsPktPayloadChBufFull_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IncLiveCaptionsTranscriberBufFull provides a mock function with given fields:
 func (_m *MockMetrics) IncLiveCaptionsTranscriberBufFull() {
 	_m.Called()

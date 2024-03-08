@@ -23,4 +23,5 @@ type Metrics interface {
 	ObserveLiveCaptionsAudioLen(elapsed float64)
 	IncLiveCaptionsWindowDropped()
 	IncLiveCaptionsTranscriberBufFull()
+	IncLiveCaptionsPktPayloadChBufFull()
 }
