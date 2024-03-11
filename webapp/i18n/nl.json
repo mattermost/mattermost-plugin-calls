@@ -169,7 +169,7 @@
   "sQHg4y": "Weet je zeker dat je een gesprek wilt beëindigen met {count, plural, =1 {# deelnemer} other {# deelnemers}} in {channelName}?",
   "sb3k8n": "Duurde {callDuration}",
   "tcxpLX": "Niemand",
-  "tjqBPU": "Je werd **verwijderd uit het kanaal**.",
+  "tjqBPU": "Je werd verwijderd uit het kanaal",
   "tkrJyM": "Er is al een opname bezig.",
   "ul0LrL": "{num, plural, one {# andere} other {# anderen}}",
   "v5GPHS": "Verberg deelnemerslijst",
