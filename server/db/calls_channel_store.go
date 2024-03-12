@@ -21,7 +21,7 @@ func (s *Store) CreateCallsChannel(channel *public.CallsChannel) (*public.CallsC
 	}
 
 	qb := getQueryBuilder(s.driverName).
-		Insert("CallsChannels").
+		Insert("calls_channels").
 		Columns("ChannelID", "Enabled", "Props").
 		Values(channel.ChannelID, channel.Enabled, channel.Props)
 
@@ -42,7 +42,7 @@ func (s *Store) GetCallsChannel(channelID string, opts GetCallsChannelOpts) (*pu
 	s.metrics.IncStoreOp("GetCallsChannel")
 
 	qb := getQueryBuilder(s.driverName).Select("*").
-		From("CallsChannels").
+		From("calls_channels").
 		Where(sq.Eq{"ChannelID": channelID})
 
 	q, args, err := qb.ToSql()
@@ -68,7 +68,7 @@ func (s *Store) UpdateCallsChannel(channel *public.CallsChannel) error {
 	}
 
 	qb := getQueryBuilder(s.driverName).
-		Update("CallsChannels").
+		Update("calls_channels").
 		Set("Enabled", channel.Enabled).
 		Set("Props", channel.Props).
 		Where(sq.Eq{"ChannelID": channel.ChannelID})

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS Calls (
+CREATE TABLE IF NOT EXISTS calls (
     ID VARCHAR(26) PRIMARY KEY,
     ChannelID VARCHAR(26),
     StartAt BIGINT,
@@ -17,12 +17,12 @@ CREATE TABLE IF NOT EXISTS Calls (
 SET @preparedStatement = (SELECT IF(
     (
         SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
-        WHERE table_name = 'Calls'
+        WHERE table_name = 'calls'
         AND table_schema = DATABASE()
         AND index_name = 'idx_calls_channel_id'
     ) > 0,
     'SELECT 1',
-    'CREATE INDEX idx_calls_channel_id ON Calls(ChannelID);'
+    'CREATE INDEX idx_calls_channel_id ON calls(ChannelID);'
 ));
 
 PREPARE createIndexIfNotExists FROM @preparedStatement;

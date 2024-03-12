@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS callschannels (
+CREATE TABLE IF NOT EXISTS calls_channels (
     channelid VARCHAR(26) PRIMARY KEY,
     enabled boolean,
     props jsonb
@@ -8,7 +8,7 @@ DO $$
 <<migrate_calls_channels>>
 BEGIN
     INSERT INTO
-        callschannels(channelid, enabled)
+        calls_channels(channelid, enabled)
     SELECT
         pkey, (encode(pvalue, 'escape')::json->>'enabled')::boolean
     FROM

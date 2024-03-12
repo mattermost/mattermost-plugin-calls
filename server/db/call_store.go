@@ -71,7 +71,7 @@ func (s *Store) CreateCall(call *public.Call) (*public.Call, error) {
 	call.CreateAt = time.Now().UnixMilli()
 
 	qb := getQueryBuilder(s.driverName).
-		Insert("Calls").
+		Insert("calls").
 		Columns(callsColumns...).
 		Values(call.ID, call.ChannelID, call.StartAt, call.EndAt, call.CreateAt, call.DeleteAt,
 			call.Title, call.PostID, call.ThreadID, call.OwnerID,
@@ -98,7 +98,7 @@ func (s *Store) UpdateCall(call *public.Call) error {
 	}
 
 	qb := getQueryBuilder(s.driverName).
-		Update("Calls").
+		Update("calls").
 		Set("EndAt", call.EndAt).
 		Set("DeleteAt", call.DeleteAt).
 		Set("Participants", call.Participants).
@@ -135,7 +135,7 @@ func (s *Store) DeleteCall(callID string) error {
 	s.metrics.IncStoreOp("DeleteCall")
 
 	qb := getQueryBuilder(s.driverName).
-		Update("Calls").
+		Update("calls").
 		Set("DeleteAt", time.Now().UnixMilli()).
 		Where(sq.Eq{"ID": callID})
 
@@ -165,7 +165,7 @@ func (s *Store) DeleteCallByChannelID(channelID string) error {
 	s.metrics.IncStoreOp("DeleteCallByChannelID")
 
 	qb := getQueryBuilder(s.driverName).
-		Update("Calls").
+		Update("calls").
 		Set("DeleteAt", time.Now().UnixMilli()).
 		Where(sq.Eq{"ChannelID": channelID})
 
@@ -186,7 +186,7 @@ func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 	s.metrics.IncStoreOp("GetCall")
 
 	qb := getQueryBuilder(s.driverName).Select("*").
-		From("Calls").
+		From("calls").
 		Where(sq.Eq{"ID": callID})
 
 	q, args, err := qb.ToSql()
@@ -208,7 +208,7 @@ func (s *Store) GetCallByChannelID(channelID string, opts GetCallOpts) (*public.
 	s.metrics.IncStoreOp("GetCallByChannelID")
 
 	qb := getQueryBuilder(s.driverName).Select("*").
-		From("Calls").
+		From("calls").
 		Where(sq.Eq{"ChannelID": channelID})
 
 	q, args, err := qb.ToSql()
