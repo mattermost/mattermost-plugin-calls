@@ -17,21 +17,21 @@ import (
 
 var callRecordingActionRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)/recording/(start|stop|publish)$`)
 
-const recordingJobStartTimeout = 2 * time.Minute
+const recordingJobStartTimeout = time.Minute
 
 func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	time.Sleep(recordingJobStartTimeout)
 
 	state, err := p.lockCall(callID)
 	if err != nil {
-		p.LogError("failed to lock call", "err", err.Error())
+		p.LogError("failed to lock call", "err", err.Error(), "callID", callID, "jobID", jobID)
 		return
 	}
 	defer p.unlockCall(callID)
 
 	recState, err := state.getRecording()
 	if err != nil {
-		p.LogError("failed to get recording state", "error", err.Error())
+		p.LogWarn("failed to get recording state", "err", err.Error(), "callID", callID, "jobID", jobID)
 		return
 	}
 
@@ -53,7 +53,7 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 
 		if state.Call.Transcription != nil && state.Call.Transcription.EndAt == 0 {
 			if err := p.stopTranscribingJob(state, callID); err != nil {
-				p.LogError("failed to stop transcribing job", "callID", callID, "err", err.Error())
+				p.LogError("failed to stop transcribing job", "err", err.Error(), "callID", callID, "jobID", jobID)
 			}
 		}
 
