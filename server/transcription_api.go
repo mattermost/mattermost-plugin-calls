@@ -12,7 +12,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
-const transcriptionJobStartTimeout = 30 * time.Second
+const transcriptionJobStartTimeout = time.Minute
 
 func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 	time.Sleep(transcriptionJobStartTimeout)
@@ -26,7 +26,7 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 
 	trState, err := state.getTranscription()
 	if err != nil {
-		p.LogError("failed to get transcription state", "error", err.Error())
+		p.LogWarn("failed to get transcription state", "err", err.Error(), "callID", callID, "jobID", jobID)
 		return
 	}
 
@@ -51,9 +51,18 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 		clientState.EndAt = time.Now().UnixMilli()
 
 		if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
+			recClientState := state.Call.Recording.getClientState()
 			if _, _, err := p.stopRecordingJob(state, callID); err != nil {
-				p.LogError("failed to stop recording job", "callID", callID, "err", err.Error())
+				p.LogError("failed to stop recording job", "err", err.Error(), "callID", callID, "jobID", jobID)
 			}
+
+			// This is needed as we don't yet handle wsEventCallTranscriptionState on
+			// the client since jobs are coupled.
+			recClientState.Err = "failed to start transcriber job: timed out waiting for bot to join call"
+			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+				"callID":   callID,
+				"recState": clientState.toMap(),
+			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 
 		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
