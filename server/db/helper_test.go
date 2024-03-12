@@ -70,6 +70,7 @@ func newPostgresStore(t *testing.T) (*Store, func()) {
 	mockLogger.On("Debug", mock.Anything).Run(func(args mock.Arguments) {
 		log.Printf(args.Get(0).(string))
 	})
+	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
 
 	store, err := NewStore(settings, conn, nil, mockLogger, mockMetrics)
 	require.NoError(t, err)
@@ -108,6 +109,7 @@ func newMySQLStore(t *testing.T) (*Store, func()) {
 	mockLogger.On("Debug", mock.Anything).Run(func(args mock.Arguments) {
 		log.Printf(args.Get(0).(string))
 	})
+	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
 
 	store, err := NewStore(settings, conn, nil, mockLogger, mockMetrics)
 	require.NoError(t, err)
@@ -116,5 +118,38 @@ func newMySQLStore(t *testing.T) (*Store, func()) {
 	return store, func() {
 		require.NoError(t, store.Close())
 		tearDown()
+	}
+}
+
+func newStore(t *testing.T, driverName string) (*Store, func()) {
+	t.Helper()
+
+	if driverName == model.DatabaseDriverMysql {
+		return newMySQLStore(t)
+	}
+
+	return newPostgresStore(t)
+}
+
+func testStore(t *testing.T, tests map[string]func(t *testing.T, store *Store)) {
+	t.Helper()
+
+	for _, driverName := range []string{model.DatabaseDriverPostgres, model.DatabaseDriverMysql} {
+		t.Run(driverName, func(t *testing.T) {
+			store, tearDown := newStore(t, driverName)
+			require.NotNil(t, store)
+			t.Cleanup(tearDown)
+
+			initMMSchema(t, store)
+
+			err := store.Migrate(MigrationsDirectionUp, false)
+			require.NoError(t, err)
+
+			for testName, testFn := range tests {
+				t.Run(testName, func(t *testing.T) {
+					testFn(t, store)
+				})
+			}
+		})
 	}
 }

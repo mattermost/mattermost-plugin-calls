@@ -19,6 +19,8 @@ import (
 )
 
 func TestNewStore(t *testing.T) {
+	t.Parallel()
+
 	mockMetrics := &serverMocks.MockMetrics{}
 	mockLogger := &mlogMocks.MockLoggerIFace{}
 

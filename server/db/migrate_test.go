@@ -13,6 +13,8 @@ import (
 
 func TestMigrate(t *testing.T) {
 	t.Run("postgres", func(t *testing.T) {
+		t.Parallel()
+
 		store, tearDown := newPostgresStore(t)
 		require.NotNil(t, store)
 		t.Cleanup(tearDown)
@@ -22,15 +24,22 @@ func TestMigrate(t *testing.T) {
 		_, err := store.wDB.Exec(`SELECT COUNT(*) FROM callschannels`)
 		require.EqualError(t, err, `pq: relation "callschannels" does not exist`)
 
+		_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls`)
+		require.EqualError(t, err, `pq: relation "calls" does not exist`)
+
 		t.Run("empty pluginkeyvaluestore", func(t *testing.T) {
 			t.Run("up", func(t *testing.T) {
 				err := store.Migrate(MigrationsDirectionUp, false)
 				require.NoError(t, err)
 
-				var channelsCount int
-				err = store.wDBx.Get(&channelsCount, `SELECT COUNT(*) FROM callschannels`)
+				var count int
+				err = store.wDBx.Get(&count, `SELECT COUNT(*) FROM callschannels`)
 				require.NoError(t, err)
-				require.Zero(t, channelsCount)
+				require.Zero(t, count)
+
+				err = store.wDBx.Get(&count, `SELECT COUNT(*) FROM calls`)
+				require.NoError(t, err)
+				require.Zero(t, count)
 			})
 
 			t.Run("down", func(t *testing.T) {
@@ -39,6 +48,9 @@ func TestMigrate(t *testing.T) {
 
 				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM callschannels`)
 				require.EqualError(t, err, `pq: relation "callschannels" does not exist`)
+
+				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls`)
+				require.EqualError(t, err, `pq: relation "calls" does not exist`)
 			})
 		})
 
@@ -88,11 +100,16 @@ func TestMigrate(t *testing.T) {
 
 				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM callschannels`)
 				require.EqualError(t, err, `pq: relation "callschannels" does not exist`)
+
+				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls`)
+				require.EqualError(t, err, `pq: relation "calls" does not exist`)
 			})
 		})
 	})
 
 	t.Run("mysql", func(t *testing.T) {
+		t.Parallel()
+
 		store, tearDown := newMySQLStore(t)
 		require.NotNil(t, store)
 		t.Cleanup(tearDown)
@@ -107,10 +124,14 @@ func TestMigrate(t *testing.T) {
 				err := store.Migrate(MigrationsDirectionUp, false)
 				require.NoError(t, err)
 
-				var channelsCount int
-				err = store.wDBx.Get(&channelsCount, `SELECT COUNT(*) FROM CallsChannels`)
+				var count int
+				err = store.wDBx.Get(&count, `SELECT COUNT(*) FROM CallsChannels`)
 				require.NoError(t, err)
-				require.Zero(t, channelsCount)
+				require.Zero(t, count)
+
+				err = store.wDBx.Get(&count, `SELECT COUNT(*) FROM Calls`)
+				require.NoError(t, err)
+				require.Zero(t, count)
 			})
 
 			t.Run("down", func(t *testing.T) {
@@ -119,6 +140,9 @@ func TestMigrate(t *testing.T) {
 
 				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM CallsChannels`)
 				require.EqualError(t, err, `Error 1146 (42S02): Table 'mattermost_test.CallsChannels' doesn't exist`)
+
+				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM Calls`)
+				require.EqualError(t, err, `Error 1146 (42S02): Table 'mattermost_test.Calls' doesn't exist`)
 			})
 		})
 
@@ -168,6 +192,9 @@ func TestMigrate(t *testing.T) {
 
 				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM CallsChannels`)
 				require.EqualError(t, err, `Error 1146 (42S02): Table 'mattermost_test.CallsChannels' doesn't exist`)
+
+				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM Calls`)
+				require.EqualError(t, err, `Error 1146 (42S02): Table 'mattermost_test.Calls' doesn't exist`)
 			})
 		})
 	})

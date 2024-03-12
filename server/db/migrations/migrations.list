@@ -2,5 +2,9 @@
 #
 server/db/migrations/mysql/000001_create_calls_channels.down.sql
 server/db/migrations/mysql/000001_create_calls_channels.up.sql
+server/db/migrations/mysql/000002_create_calls.down.sql
+server/db/migrations/mysql/000002_create_calls.up.sql
 server/db/migrations/postgres/000001_create_calls_channels.down.sql
 server/db/migrations/postgres/000001_create_calls_channels.up.sql
+server/db/migrations/postgres/000002_create_calls.down.sql
+server/db/migrations/postgres/000002_create_calls.up.sql
