@@ -8,6 +8,8 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
+	"github.com/mattermost/morph/models"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +31,7 @@ func TestMigrate(t *testing.T) {
 
 		t.Run("empty pluginkeyvaluestore", func(t *testing.T) {
 			t.Run("up", func(t *testing.T) {
-				err := store.Migrate(MigrationsDirectionUp, false)
+				err := store.Migrate(models.Up, false)
 				require.NoError(t, err)
 
 				var count int
@@ -43,7 +45,7 @@ func TestMigrate(t *testing.T) {
 			})
 
 			t.Run("down", func(t *testing.T) {
-				err := store.Migrate(MigrationsDirectionDown, false)
+				err := store.Migrate(models.Down, false)
 				require.NoError(t, err)
 
 				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM callschannels`)
@@ -68,7 +70,7 @@ func TestMigrate(t *testing.T) {
 			require.NoError(t, err)
 
 			t.Run("up", func(t *testing.T) {
-				err = store.Migrate(MigrationsDirectionUp, false)
+				err = store.Migrate(models.Up, false)
 				require.NoError(t, err)
 
 				var callsChannels []public.CallsChannel
@@ -95,7 +97,7 @@ func TestMigrate(t *testing.T) {
 			})
 
 			t.Run("down", func(t *testing.T) {
-				err := store.Migrate(MigrationsDirectionDown, false)
+				err := store.Migrate(models.Down, false)
 				require.NoError(t, err)
 
 				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM callschannels`)
@@ -121,7 +123,7 @@ func TestMigrate(t *testing.T) {
 
 		t.Run("empty PluginKeyValueStore", func(t *testing.T) {
 			t.Run("up", func(t *testing.T) {
-				err := store.Migrate(MigrationsDirectionUp, false)
+				err := store.Migrate(models.Up, false)
 				require.NoError(t, err)
 
 				var count int
@@ -135,7 +137,7 @@ func TestMigrate(t *testing.T) {
 			})
 
 			t.Run("down", func(t *testing.T) {
-				err := store.Migrate(MigrationsDirectionDown, false)
+				err := store.Migrate(models.Down, false)
 				require.NoError(t, err)
 
 				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM CallsChannels`)
@@ -160,7 +162,7 @@ func TestMigrate(t *testing.T) {
 			require.NoError(t, err)
 
 			t.Run("up", func(t *testing.T) {
-				err = store.Migrate(MigrationsDirectionUp, false)
+				err = store.Migrate(models.Up, false)
 				require.NoError(t, err)
 
 				var callsChannels []public.CallsChannel
@@ -187,7 +189,7 @@ func TestMigrate(t *testing.T) {
 			})
 
 			t.Run("down", func(t *testing.T) {
-				err := store.Migrate(MigrationsDirectionDown, false)
+				err := store.Migrate(models.Down, false)
 				require.NoError(t, err)
 
 				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM CallsChannels`)

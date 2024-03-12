@@ -12,6 +12,8 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 
+	"github.com/mattermost/morph/models"
+
 	"github.com/go-sql-driver/mysql"
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/mock"
@@ -142,7 +144,7 @@ func testStore(t *testing.T, tests map[string]func(t *testing.T, store *Store)) 
 
 			initMMSchema(t, store)
 
-			err := store.Migrate(MigrationsDirectionUp, false)
+			err := store.Migrate(models.Up, false)
 			require.NoError(t, err)
 
 			for testName, testFn := range tests {

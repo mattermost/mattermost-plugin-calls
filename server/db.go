@@ -8,6 +8,8 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost/server/public/shared/driver"
+
+	"github.com/mattermost/morph/models"
 )
 
 func (p *Plugin) initDB() error {
@@ -22,15 +24,12 @@ func (p *Plugin) initDB() error {
 		p.LogError(err.Error())
 		return fmt.Errorf("failed to create db store: %w", err)
 	}
-	p.store = store
 
-	return nil
-}
-
-func (p *Plugin) runDBMigrations() error {
-	if err := p.store.Migrate(db.MigrationsDirectionUp, false); err != nil {
+	if err := p.store.Migrate(models.Up, false); err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
+
+	p.store = store
 
 	return nil
 }

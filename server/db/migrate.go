@@ -15,15 +15,11 @@ import (
 	"github.com/mattermost/morph/drivers"
 	ms "github.com/mattermost/morph/drivers/mysql"
 	ps "github.com/mattermost/morph/drivers/postgres"
+	"github.com/mattermost/morph/models"
 	mbindata "github.com/mattermost/morph/sources/embedded"
 )
 
-type MigrationDirection string
-
 const (
-	MigrationsDirectionUp   MigrationDirection = "up"
-	MigrationsDirectionDown MigrationDirection = "down"
-
 	migrationsTableName = "db_migrations_calls"
 )
 
@@ -109,7 +105,7 @@ func (s *Store) initMorph(dryRun bool, timeoutSecs int) (*morph.Morph, error) {
 	return engine, nil
 }
 
-func (s *Store) Migrate(direction MigrationDirection, dryRun bool) error {
+func (s *Store) Migrate(direction models.Direction, dryRun bool) error {
 	engine, err := s.initMorph(dryRun, *s.settings.MigrationsStatementTimeoutSeconds)
 	if err != nil {
 		return fmt.Errorf("failed to initialize morph: %w", err)
@@ -117,7 +113,7 @@ func (s *Store) Migrate(direction MigrationDirection, dryRun bool) error {
 	defer engine.Close()
 
 	switch direction {
-	case MigrationsDirectionDown:
+	case models.Down:
 		_, err = engine.ApplyDown(-1)
 		return err
 	default:
