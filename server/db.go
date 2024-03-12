@@ -25,7 +25,7 @@ func (p *Plugin) initDB() error {
 		return fmt.Errorf("failed to create db store: %w", err)
 	}
 
-	if err := p.store.Migrate(models.Up, false); err != nil {
+	if err := store.Migrate(models.Up, false); err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 
