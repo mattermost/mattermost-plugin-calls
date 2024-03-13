@@ -9,7 +9,7 @@ import '@mattermost/compass-icons/css/compass-icons.css';
 
 import {
     CallHostChangedData,
-    CallRecordingStateData,
+    CallJobStateData,
     CallStartData,
     CallStateData,
     EmptyData,
@@ -249,7 +249,7 @@ export default async function init(cfg: InitConfig) {
             handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);
             break;
         case `custom_${pluginId}_call_recording_state`:
-            handleCallRecordingState(store, ev as WebSocketMessage<CallRecordingStateData>);
+            handleCallRecordingState(store, ev as WebSocketMessage<CallJobStateData>);
             break;
         case `custom_${pluginId}_user_dismissed_notification`:
             handleUserDismissedNotification(store, ev as WebSocketMessage<UserDismissedNotification>);

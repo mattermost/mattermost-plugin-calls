@@ -114,7 +114,7 @@ export const CallAlertStatesDefault = {
     },
 };
 
-export type CallRecordingReduxState = {
+export type CallJobReduxState = {
     init_at: number;
     start_at: number;
     end_at: number;

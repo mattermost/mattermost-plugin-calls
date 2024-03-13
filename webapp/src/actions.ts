@@ -43,6 +43,7 @@ import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 import {
     ADD_INCOMING_CALL,
     CALL_HOST,
+    CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
     CALL_STATE,
@@ -484,6 +485,14 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
         data: {
             callID: channelID,
             recState: call.recording,
+        },
+    });
+
+    actions.push({
+        type: CALL_LIVE_CAPTIONS_STATE,
+        data: {
+            callID: channelID,
+            jobState: call.live_captions,
         },
     });
 

@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import {CallRecordingState, CallsConfig, LiveCaption, Reaction, UserSessionState} from '@calls/common/lib/types';
+import {CallJobState, CallsConfig, LiveCaption, Reaction, UserSessionState} from '@calls/common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
@@ -17,6 +17,7 @@ import {
     ADD_INCOMING_CALL,
     CALL_END,
     CALL_HOST,
+    CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
     CALL_STATE,
@@ -574,8 +575,8 @@ const liveCaptions = (state: liveCaptionState = {}, action: liveCaptionAction | 
     }
 };
 
-export type callsRecordingsState = {
-    [callID: string]: CallRecordingState;
+export type callsJobState = {
+    [callID: string]: CallJobState;
 }
 
 type userDisconnectedAction = {
@@ -591,7 +592,7 @@ type recordingStateAction = {
     type: string;
     data: {
         callID: string;
-        recState: CallRecordingState | null;
+        recState: CallJobState | null;
     };
 }
 
@@ -603,7 +604,7 @@ type disclaimerDismissedAction = {
     };
 }
 
-const recordings = (state: callsRecordingsState = {}, action: recordingStateAction | userDisconnectedAction | disclaimerDismissedAction) => {
+const recordings = (state: callsJobState = {}, action: recordingStateAction | userDisconnectedAction | disclaimerDismissedAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
@@ -633,6 +634,30 @@ const recordings = (state: callsRecordingsState = {}, action: recordingStateActi
             [theAction.data.callID]: {
                 ...state[theAction.data.callID],
                 prompt_dismissed_at: theAction.data.dismissedAt,
+            },
+        };
+    }
+    default:
+        return state;
+    }
+};
+
+type callLiveCaptionsStateAction = {
+    type: string;
+    data: {
+        callID: string;
+        jobState: CallJobState | null;
+    };
+}
+
+const callLiveCaptionsState = (state: callsJobState = {}, action: callLiveCaptionsStateAction) => {
+    switch (action.type) {
+    case CALL_LIVE_CAPTIONS_STATE: {
+        return {
+            ...state,
+            [action.data.callID]: {
+                ...state[action.data.callID],
+                ...action.data.jobState,
             },
         };
     }
@@ -996,6 +1021,7 @@ export default combineReducers({
     rtcdEnabled,
     callsUserPreferences,
     recordings,
+    callLiveCaptionsState,
     recentlyJoinedUsers,
     incomingCalls,
     ringingForCalls,

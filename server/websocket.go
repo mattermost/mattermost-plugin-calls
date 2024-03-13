@@ -44,6 +44,7 @@ const (
 	wsEventCallHostChanged           = "call_host_changed"
 	wsEventCallRecordingState        = "call_recording_state"
 	wsEventCallTranscriptionState    = "call_transcription_state"
+	wsEventCallLiveCaptionsState     = "call_live_captions_state"
 	wsEventUserDismissedNotification = "user_dismissed_notification"
 	wsEventJobStop                   = "job_stop"
 	wsReconnectionTimeout            = 10 * time.Second
@@ -732,7 +733,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 	if userID == p.getBotID() && state.Call.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   channelID,
-			"recState": state.Call.Recording.getClientState().toMap(),
+			"jobState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
@@ -1090,6 +1091,9 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 			"botConnID", connID,
 		)
 		state.Call.Transcription.BotConnID = connID
+		if cfg := p.getConfiguration(); cfg != nil && cfg.liveCaptionsEnabled() {
+			state.Call.LiveCaptions.BotConnID = connID
+		}
 	}
 
 	if err := p.kvSetChannelState(channelID, state); err != nil {

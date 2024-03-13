@@ -30,6 +30,15 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 		return
 	}
 
+	var lcState *jobState
+	if cfg := p.getConfiguration(); cfg != nil && cfg.liveCaptionsEnabled() {
+		var err error
+		if lcState, err = state.getLiveCaptions(); err != nil {
+			p.LogError("failed to get live captions state", "error", err.Error())
+			// Note: not returning because we still want to finish ending the transcriber
+		}
+	}
+
 	// If the transcription hasn't started (bot hasn't joined yet) we notify the
 	// client.
 	if trState.StartAt == 0 {
@@ -41,6 +50,9 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 		p.LogError("timed out waiting for transcriber bot to join", "callID", callID, "jobID", jobID)
 
 		state.Call.Transcription = nil
+		if lcState != nil {
+			state.Call.LiveCaptions = nil
+		}
 		if err := p.kvSetChannelState(callID, state); err != nil {
 			p.LogError("failed to set channel state", "err", err.Error())
 			return
@@ -61,13 +73,13 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 			recClientState.Err = "failed to start transcriber job: timed out waiting for bot to join call"
 			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 				"callID":   callID,
-				"recState": clientState.toMap(),
+				"jobState": clientState.toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 
 		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-			"callID":  callID,
-			"trState": clientState.toMap(),
+			"callID":   callID,
+			"jobState": clientState.toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	}
 }
@@ -87,6 +99,16 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	trState.InitAt = time.Now().UnixMilli()
 	state.Call.Transcription = trState
 
+	liveCaptionsOn := false
+	if cfg := p.getConfiguration(); cfg != nil && cfg.liveCaptionsEnabled() {
+		liveCaptionsOn = true
+		lcState := new(jobState)
+		lcState.ID = trID
+		lcState.CreatorID = userID
+		lcState.InitAt = time.Now().UnixMilli()
+		state.Call.LiveCaptions = lcState
+	}
+
 	if err := p.kvSetChannelState(callID, state); err != nil {
 		return fmt.Errorf("failed to set channel state: %w", err)
 	}
@@ -97,8 +119,8 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 			trState.EndAt = time.Now().UnixMilli()
 			trState.Err = rerr.Error()
 			p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-				"callID":  callID,
-				"trState": trState.getClientState().toMap(),
+				"callID":   callID,
+				"jobState": trState.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 	}()
@@ -107,9 +129,12 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	// since it could take a few seconds to complete and we want clients
 	// to get their local state updated as soon as it changes on the server.
 	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-		"callID":  callID,
-		"trState": trState.getClientState().toMap(),
+		"callID":   callID,
+		"jobState": trState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+	// Note: We don't need to send the live captions event until we get the StartAt in the
+	// bot_api handleBotPostJobsStatus
 
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return. We lock again as soon as this returns.
@@ -124,9 +149,20 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	if err != nil {
 		return fmt.Errorf("failed to get transcription state: %w", err)
 	}
+	var lcState *jobState
+	if liveCaptionsOn {
+		lcState, err = state.getLiveCaptions()
+		if err != nil {
+			p.LogError("failed to get live captions state", "callID", callID,
+				"error", err)
+		}
+	}
 
 	if jobErr != nil {
 		state.Call.Transcription = nil
+		if lcState != nil {
+			state.Call.LiveCaptions = nil
+		}
 		if err := p.kvSetChannelState(callID, state); err != nil {
 			return fmt.Errorf("failed to set channel state: %w", err)
 		}
@@ -137,6 +173,9 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 		return fmt.Errorf("transcription job already in progress")
 	}
 	trState.JobID = trJobID
+	if lcState != nil {
+		lcState.JobID = trJobID
+	}
 	if err := p.kvSetChannelState(callID, state); err != nil {
 		return fmt.Errorf("failed to set channel state: %w", err)
 	}
@@ -144,8 +183,8 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	p.LogDebug("transcription job started successfully", "jobID", trJobID, "callID", callID)
 
 	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-		"callID":  callID,
-		"trState": trState.getClientState().toMap(),
+		"callID":   callID,
+		"jobState": trState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 	go p.transcriptionJobTimeoutChecker(callID, trJobID)
@@ -167,6 +206,12 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 	trState.EndAt = time.Now().UnixMilli()
 	state.Call.Transcription = nil
 
+	lcState, err := state.getLiveCaptions()
+	if err == nil {
+		lcState.EndAt = time.Now().UnixMilli()
+		state.Call.LiveCaptions = nil
+	}
+
 	if err := p.kvSetChannelState(callID, state); err != nil {
 		return fmt.Errorf("failed to set channel state: %w", err)
 	}
@@ -176,8 +221,8 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 		if rerr != nil {
 			trState.Err = rerr.Error()
 			p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-				"callID":  callID,
-				"trState": trState.getClientState().toMap(),
+				"callID":   callID,
+				"jobState": trState.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 	}()
@@ -193,9 +238,16 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 	}
 
 	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-		"callID":  callID,
-		"trState": trState.getClientState().toMap(),
+		"callID":   callID,
+		"jobState": trState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+	if lcState != nil {
+		p.publishWebSocketEvent(wsEventCallLiveCaptionsState, map[string]interface{}{
+			"callID":   callID,
+			"jobState": lcState.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}
 
 	return nil
 }

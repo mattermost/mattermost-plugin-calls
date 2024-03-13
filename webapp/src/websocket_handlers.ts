@@ -1,6 +1,6 @@
 import {
     CallHostChangedData,
-    CallRecordingStateData,
+    CallJobStateData,
     CallStartData,
     CallState,
     CallStateData,
@@ -35,6 +35,7 @@ import {
 import {
     CALL_END,
     CALL_HOST,
+    CALL_LIVE_CAPTIONS_STATE,
     CALL_RECORDING_STATE,
     CALL_STATE,
     DISMISS_CALL,
@@ -348,16 +349,26 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
     });
 }
 
-export function handleCallRecordingState(store: Store, ev: WebSocketMessage<CallRecordingStateData>) {
-    if (ev.data.recState.err) {
-        ev.data.recState.error_at = Date.now();
+export function handleCallRecordingState(store: Store, ev: WebSocketMessage<CallJobStateData>) {
+    if (ev.data.jobState.err) {
+        ev.data.jobState.error_at = Date.now();
     }
 
     store.dispatch({
         type: CALL_RECORDING_STATE,
         data: {
             callID: ev.data.callID,
-            recState: ev.data.recState,
+            recState: ev.data.jobState,
+        },
+    });
+}
+
+export function handleCallLiveCaptionsState(store: Store, ev: WebSocketMessage<CallJobStateData>) {
+    store.dispatch({
+        type: CALL_LIVE_CAPTIONS_STATE,
+        data: {
+            callID: ev.data.callID,
+            jobState: ev.data.jobState,
         },
     });
 }

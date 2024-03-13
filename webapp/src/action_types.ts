@@ -19,6 +19,7 @@ export const USER_REACTED = pluginId + '_user_reacted';
 export const USER_REACTED_TIMEOUT = pluginId + '_user_reacted_timeout';
 export const CALL_HOST = pluginId + '_call_host';
 export const CALL_RECORDING_STATE = pluginId + '_call_recording_state';
+export const CALL_LIVE_CAPTIONS_STATE = pluginId + '_call_live_captions_state';
 export const CALL_REC_PROMPT_DISMISSED = pluginId + '_call_rec_prompt_dismissed';
 export const USER_JOINED_TIMEOUT = pluginId + '_user_joined_timeout';
 export const LIVE_CAPTION = pluginId + '_live_caption';

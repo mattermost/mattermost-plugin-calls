@@ -25,7 +25,7 @@ import {
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
 import {
-    callsRecordingsState,
+    callsJobState,
     callState,
     hostsState,
     liveCaptionState,
@@ -35,7 +35,7 @@ import {
     usersReactionsState,
 } from 'src/reducers';
 import {
-    CallRecordingReduxState,
+    CallJobReduxState,
     CallsUserPreferences,
     ChannelState,
     IncomingCallNotification,
@@ -247,16 +247,40 @@ export const threadIDForCallInChannel = (state: GlobalState, channelID: string) 
     return pluginState(state).calls[channelID]?.threadID || '';
 };
 
-const recordingsForCalls = (state: GlobalState): callsRecordingsState => {
+const recordingsForCalls = (state: GlobalState): callsJobState => {
     return pluginState(state).recordings;
 };
 
-export const recordingForCurrentCall: (state: GlobalState) => CallRecordingReduxState =
+export const recordingForCurrentCall: (state: GlobalState) => CallJobReduxState =
     createSelector(
         'recordingForCurrentCall',
         recordingsForCalls,
         channelIDForCurrentCall,
         (recordings, channelID) => recordings[channelID] || {},
+    );
+
+const liveCaptionsStateForCalls = (state: GlobalState): callsJobState => {
+    return pluginState(state).callLiveCaptionsState;
+};
+
+export const liveCaptionsStateForCurrentCall: (state: GlobalState) => CallJobReduxState =
+    createSelector(
+        'liveCaptionsStateForCurrentCall',
+        liveCaptionsStateForCalls,
+        channelIDForCurrentCall,
+        (liveCaptions, channelID) => liveCaptions[channelID] || {},
+    );
+
+export const areLiveCaptionsAvailableInCurrentCall: (state: GlobalState) => boolean =
+    createSelector(
+        'areLiveCaptionsAvailableInCurrentCall',
+        liveCaptionsStateForCurrentCall,
+        (liveCaptions) => {
+            if (!liveCaptions?.start_at) {
+                return false;
+            }
+            return liveCaptions.start_at > liveCaptions.end_at;
+        },
     );
 
 const recentlyJoinedUsersInCalls = (state: GlobalState): recentlyJoinedUsersState => {

@@ -130,6 +130,10 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		} else if state.Call.Transcription != nil && state.Call.Transcription.ID == jobID && state.Call.Transcription.StartAt == 0 {
 			p.LogDebug("bot joined, transcribing job is starting", "jobID", jobID)
 			state.Call.Transcription.BotConnID = connID
+			if state.Call.LiveCaptions != nil && state.Call.LiveCaptions.ID == jobID && state.Call.LiveCaptions.StartAt == 0 {
+				p.LogDebug("bot joined, live captions job is starting", "jobID", jobID)
+				state.Call.LiveCaptions.BotConnID = connID
+			}
 		} else {
 			// In this case we should fail to prevent the bot from joining
 			// without consent.
@@ -229,6 +233,10 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 
 	if state.Call.Transcription != nil && state.Call.Transcription.EndAt == 0 && connID == state.Call.Transcription.BotConnID {
 		state.Call.Transcription.EndAt = time.Now().UnixMilli()
+	}
+
+	if state.Call.LiveCaptions != nil && state.Call.LiveCaptions.EndAt == 0 && connID == state.Call.LiveCaptions.BotConnID {
+		state.Call.LiveCaptions.EndAt = time.Now().UnixMilli()
 	}
 
 	if len(state.Call.Sessions) == 0 {
@@ -342,7 +350,7 @@ func (p *Plugin) removeSession(us *session) error {
 
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   us.channelID,
-			"recState": currState.Call.Recording.getClientState().toMap(),
+			"jobState": currState.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	}
 
@@ -360,8 +368,8 @@ func (p *Plugin) removeSession(us *session) error {
 		}
 
 		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-			"callID":  us.channelID,
-			"trState": currState.Call.Transcription.getClientState().toMap(),
+			"callID":   us.channelID,
+			"jobState": currState.Call.Transcription.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	}
 
@@ -383,7 +391,7 @@ func (p *Plugin) removeSession(us *session) error {
 		if currState.Call.Transcription != nil {
 			p.LogDebug("stopping ongoing transcription", "jobID", currState.Call.Transcription.JobID, "botConnID", currState.Call.Transcription.BotConnID)
 			if err := p.getJobService().StopJob(us.channelID, currState.Call.Transcription.ID, p.getBotID(), currState.Call.Transcription.BotConnID); err != nil {
-				p.LogError("failed to stop recording job", "error", err.Error(),
+				p.LogError("failed to stop transcription job", "error", err.Error(),
 					"channelID", us.channelID,
 					"jobID", currState.Call.Transcription.JobID,
 					"botConnID", currState.Call.Transcription.BotConnID)

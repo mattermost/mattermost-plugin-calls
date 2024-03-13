@@ -14,13 +14,14 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
+    areLiveCaptionsAvailableInCurrentCall,
     callStartAtForCurrentCall,
     channelForCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
     hostChangeAtForCurrentCall,
     hostIDForCurrentCall,
-    isRecordingInCurrentCall, liveCaptionsEnabled,
+    isRecordingInCurrentCall,
     profilesInCurrentCallMap,
     recordingForCurrentCall,
     recordingMaxDuration,
@@ -85,7 +86,7 @@ const mapStateToProps = (state: GlobalState) => {
         recordingsEnabled: recordingsEnabled(state),
         recordingMaxDuration: recordingMaxDuration(state),
         transcriptionsEnabled: transcriptionsEnabled(state),
-        liveCaptionsEnabled: liveCaptionsEnabled(state),
+        liveCaptionsAvailable: areLiveCaptionsAvailableInCurrentCall(state),
     };
 };
 
