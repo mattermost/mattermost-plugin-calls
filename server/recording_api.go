@@ -61,9 +61,16 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 		clientState.Err = "failed to start recording job: timed out waiting for bot to join call"
 		clientState.EndAt = time.Now().UnixMilli()
 
-		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"type":     JobStateRecording,
 			"callID":   callID,
 			"jobState": clientState.toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			"callID":   callID,
+			"recState": clientState.toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	}
 }
@@ -88,9 +95,16 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 		if rerr != nil && recState != nil {
 			recState.EndAt = time.Now().UnixMilli()
 			recState.Err = rerr.Error()
-			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"type":     JobStateRecording,
 				"callID":   callID,
 				"jobState": recState.getClientState().toMap(),
+			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+			// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+				"callID":   callID,
+				"recState": recState.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 	}()
@@ -98,9 +112,16 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	// Sending the event prior to making the API call to the job service
 	// since it could take a few seconds to complete and we want clients
 	// to get their local state updated as soon as it changes on the server.
-	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+		"type":     JobStateRecording,
 		"callID":   callID,
 		"jobState": recState.getClientState().toMap(),
+	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+		"callID":   callID,
+		"recState": recState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 	// We don't want to keep the lock while making the API call to the service since it
@@ -149,9 +170,16 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 		p.LogError("failed to save recording metadata", "err", err.Error())
 	}
 
-	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+		"type":     JobStateRecording,
 		"callID":   callID,
 		"jobState": recState.getClientState().toMap(),
+	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+		"callID":   callID,
+		"recState": recState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 	go p.recJobTimeoutChecker(callID, recJobID)
@@ -179,9 +207,16 @@ func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobS
 		// In case of any error we relay it to the client.
 		if rerr != nil {
 			recState.Err = rerr.Error()
-			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"type":     JobStateRecording,
 				"callID":   callID,
 				"jobState": recState.getClientState().toMap(),
+			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+			// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+				"callID":   callID,
+				"recState": recState.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 	}()
@@ -196,9 +231,16 @@ func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobS
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to stop recording job: %w", err)
 	}
 
-	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+		"type":     JobStateRecording,
 		"callID":   callID,
 		"jobState": recState.getClientState().toMap(),
+	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+		"callID":   callID,
+		"recState": recState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 	return recState.getClientState(), http.StatusOK, nil

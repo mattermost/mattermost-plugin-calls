@@ -274,7 +274,7 @@ export const startCallRecording = (callID: string) => (dispatch: Dispatch<Generi
             type: CALL_RECORDING_STATE,
             data: {
                 callID,
-                recState: {
+                jobState: {
                     init_at: 0,
                     start_at: 0,
                     end_at: 0,
@@ -484,7 +484,7 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
         type: CALL_RECORDING_STATE,
         data: {
             callID: channelID,
-            recState: call.recording,
+            jobState: call.recording,
         },
     });
 

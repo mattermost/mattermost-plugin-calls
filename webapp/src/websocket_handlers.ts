@@ -16,7 +16,8 @@ import {
     UserReactionData,
     UserRemovedData,
     UserScreenOnOffData,
-    UserVoiceOnOffData} from '@calls/common/lib/types';
+    UserVoiceOnOffData,
+} from '@calls/common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
@@ -104,14 +105,22 @@ export async function handleCallState(store: Store, ev: WebSocketMessage<CallSta
 export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
-    // Clear the old recording state (if any).
+    // Clear the old recording and live captions state (if any).
     store.dispatch({
         type: CALL_RECORDING_STATE,
         data: {
             callID: channelID,
-            recState: null,
+            jobState: null,
         },
     });
+    store.dispatch({
+        type: CALL_LIVE_CAPTIONS_STATE,
+        data: {
+            callID: channelID,
+            jobState: null,
+        },
+    });
+
     store.dispatch({
         type: CALL_STATE,
         data: {
@@ -349,23 +358,23 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
     });
 }
 
-export function handleCallRecordingState(store: Store, ev: WebSocketMessage<CallJobStateData>) {
+export function handleCallJobState(store: Store, ev: WebSocketMessage<CallJobStateData>) {
     if (ev.data.jobState.err) {
         ev.data.jobState.error_at = Date.now();
     }
 
-    store.dispatch({
-        type: CALL_RECORDING_STATE,
-        data: {
-            callID: ev.data.callID,
-            recState: ev.data.jobState,
-        },
-    });
-}
+    let type = '';
+    switch (ev.data.type) {
+    case 'job_state_recording':
+        type = CALL_RECORDING_STATE;
+        break;
+    case 'job_state_live_captions':
+        type = CALL_LIVE_CAPTIONS_STATE;
+        break;
+    }
 
-export function handleCallLiveCaptionsState(store: Store, ev: WebSocketMessage<CallJobStateData>) {
     store.dispatch({
-        type: CALL_LIVE_CAPTIONS_STATE,
+        type,
         data: {
             callID: ev.data.callID,
             jobState: ev.data.jobState,

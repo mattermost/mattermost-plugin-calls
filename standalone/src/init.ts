@@ -50,7 +50,7 @@ import {
 import {
     handleCallEnd,
     handleCallHostChanged,
-    handleCallRecordingState,
+    handleCallJobState,
     handleCallStart,
     handleCallState,
     handleUserDismissedNotification,
@@ -248,8 +248,8 @@ export default async function init(cfg: InitConfig) {
         case `custom_${pluginId}_user_reacted`:
             handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);
             break;
-        case `custom_${pluginId}_call_recording_state`:
-            handleCallRecordingState(store, ev as WebSocketMessage<CallJobStateData>);
+        case `custom_${pluginId}_call_job_state`:
+            handleCallJobState(store, ev as WebSocketMessage<CallJobStateData>);
             break;
         case `custom_${pluginId}_user_dismissed_notification`:
             handleUserDismissedNotification(store, ev as WebSocketMessage<UserDismissedNotification>);

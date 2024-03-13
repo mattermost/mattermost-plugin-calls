@@ -348,9 +348,16 @@ func (p *Plugin) removeSession(us *session) error {
 			}
 		}
 
-		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"type":     JobStateRecording,
 			"callID":   us.channelID,
 			"jobState": currState.Call.Recording.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+
+		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			"callID":   us.channelID,
+			"recState": currState.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	}
 
@@ -367,10 +374,19 @@ func (p *Plugin) removeSession(us *session) error {
 			}
 		}
 
-		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"type":     JobStateTranscription,
 			"callID":   us.channelID,
 			"jobState": currState.Call.Transcription.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+
+		if currState.Call.LiveCaptions != nil {
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"type":     JobStateLiveCaptions,
+				"callID":   us.channelID,
+				"jobState": currState.Call.LiveCaptions.getClientState().toMap(),
+			}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+		}
 	}
 
 	// If the bot is the only user left in the call we automatically stop any

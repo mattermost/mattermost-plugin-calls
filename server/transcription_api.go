@@ -71,13 +71,21 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 			// This is needed as we don't yet handle wsEventCallTranscriptionState on
 			// the client since jobs are coupled.
 			recClientState.Err = "failed to start transcriber job: timed out waiting for bot to join call"
-			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"type":     JobStateRecording,
 				"callID":   callID,
 				"jobState": clientState.toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+			// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+				"callID":   callID,
+				"recState": clientState.toMap(),
+			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 
-		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"type":     JobStateTranscription,
 			"callID":   callID,
 			"jobState": clientState.toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
@@ -118,7 +126,8 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 		if rerr != nil && trState != nil {
 			trState.EndAt = time.Now().UnixMilli()
 			trState.Err = rerr.Error()
-			p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"type":     JobStateTranscription,
 				"callID":   callID,
 				"jobState": trState.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
@@ -128,7 +137,8 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	// Sending the event prior to making the API call to the job service
 	// since it could take a few seconds to complete and we want clients
 	// to get their local state updated as soon as it changes on the server.
-	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
+	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+		"type":     JobStateTranscription,
 		"callID":   callID,
 		"jobState": trState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
@@ -182,7 +192,8 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 
 	p.LogDebug("transcription job started successfully", "jobID", trJobID, "callID", callID)
 
-	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
+	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+		"type":     JobStateTranscription,
 		"callID":   callID,
 		"jobState": trState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
@@ -220,7 +231,8 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 		// In case of any error we relay it to the client.
 		if rerr != nil {
 			trState.Err = rerr.Error()
-			p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"type":     JobStateTranscription,
 				"callID":   callID,
 				"jobState": trState.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
@@ -237,13 +249,15 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 		}
 	}
 
-	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
+	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+		"type":     JobStateTranscription,
 		"callID":   callID,
 		"jobState": trState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 	if lcState != nil {
-		p.publishWebSocketEvent(wsEventCallLiveCaptionsState, map[string]interface{}{
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"type":     JobStateLiveCaptions,
 			"callID":   callID,
 			"jobState": lcState.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})

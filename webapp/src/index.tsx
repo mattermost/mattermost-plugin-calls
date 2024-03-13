@@ -124,8 +124,7 @@ import {
 import {
     handleCallEnd,
     handleCallHostChanged,
-    handleCallLiveCaptionsState,
-    handleCallRecordingState,
+    handleCallJobState,
     handleCallStart,
     handleCallState,
     handleCaption,
@@ -227,12 +226,8 @@ export default class Plugin {
             handleCallHostChanged(store, ev);
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_state`, (ev) => {
-            handleCallRecordingState(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_live_captions_state`, (ev) => {
-            handleCallLiveCaptionsState(store, ev);
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_job_state`, (ev) => {
+            handleCallJobState(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_dismissed_notification`, (ev) => {

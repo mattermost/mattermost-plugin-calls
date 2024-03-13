@@ -42,12 +42,17 @@ const (
 	wsEventJoin                      = "join"
 	wsEventError                     = "error"
 	wsEventCallHostChanged           = "call_host_changed"
-	wsEventCallRecordingState        = "call_recording_state"
-	wsEventCallTranscriptionState    = "call_transcription_state"
-	wsEventCallLiveCaptionsState     = "call_live_captions_state"
+	wsEventCallJobState              = "call_job_state"
 	wsEventUserDismissedNotification = "user_dismissed_notification"
 	wsEventJobStop                   = "job_stop"
 	wsReconnectionTimeout            = 10 * time.Second
+
+	JobStateRecording     = "job_state_recording"
+	JobStateTranscription = "job_state_transcription"
+	JobStateLiveCaptions  = "job_state_live_captions"
+
+	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+	wsEventCallRecordingState = "call_recording_state"
 )
 
 var (
@@ -731,9 +736,16 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
-		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"type":     JobStateRecording,
 			"callID":   channelID,
 			"jobState": state.Call.Recording.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+			"callID":   channelID,
+			"recState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 

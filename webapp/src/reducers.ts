@@ -588,11 +588,11 @@ type userDisconnectedAction = {
     };
 }
 
-type recordingStateAction = {
+type jobStateAction = {
     type: string;
     data: {
         callID: string;
-        recState: CallJobState | null;
+        jobState: CallJobState | null;
     };
 }
 
@@ -604,7 +604,7 @@ type disclaimerDismissedAction = {
     };
 }
 
-const recordings = (state: callsJobState = {}, action: recordingStateAction | userDisconnectedAction | disclaimerDismissedAction) => {
+const recordings = (state: callsJobState = {}, action: jobStateAction | userDisconnectedAction | disclaimerDismissedAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
@@ -618,12 +618,12 @@ const recordings = (state: callsJobState = {}, action: recordingStateAction | us
         return state;
     }
     case CALL_RECORDING_STATE: {
-        const theAction = action as recordingStateAction;
+        const theAction = action as jobStateAction;
         return {
             ...state,
             [theAction.data.callID]: {
                 ...state[theAction.data.callID],
-                ...theAction.data.recState,
+                ...theAction.data.jobState,
             },
         };
     }
@@ -642,15 +642,7 @@ const recordings = (state: callsJobState = {}, action: recordingStateAction | us
     }
 };
 
-type callLiveCaptionsStateAction = {
-    type: string;
-    data: {
-        callID: string;
-        jobState: CallJobState | null;
-    };
-}
-
-const callLiveCaptionsState = (state: callsJobState = {}, action: callLiveCaptionsStateAction) => {
+const callLiveCaptionsState = (state: callsJobState = {}, action: jobStateAction) => {
     switch (action.type) {
     case CALL_LIVE_CAPTIONS_STATE: {
         return {
