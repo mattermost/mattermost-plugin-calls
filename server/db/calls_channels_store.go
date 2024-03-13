@@ -9,15 +9,11 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
-func (s *Store) CreateCallsChannel(channel *public.CallsChannel) (*public.CallsChannel, error) {
+func (s *Store) CreateCallsChannel(channel *public.CallsChannel) error {
 	s.metrics.IncStoreOp("CreateCallsChannel")
 
-	if channel == nil {
-		return nil, fmt.Errorf("channel should not be nil")
-	}
-
-	if channel.ChannelID == "" {
-		return nil, fmt.Errorf("invalid ChannelID: should not be empty")
+	if err := channel.IsValid(); err != nil {
+		return fmt.Errorf("invalid channel: %w", err)
 	}
 
 	qb := getQueryBuilder(s.driverName).
@@ -27,15 +23,15 @@ func (s *Store) CreateCallsChannel(channel *public.CallsChannel) (*public.CallsC
 
 	q, args, err := qb.ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
 	_, err = s.wDB.Exec(q, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to run query: %w", err)
+		return fmt.Errorf("failed to run query: %w", err)
 	}
 
-	return channel, nil
+	return nil
 }
 
 func (s *Store) GetCallsChannel(channelID string, opts GetCallsChannelOpts) (*public.CallsChannel, error) {
@@ -63,8 +59,8 @@ func (s *Store) GetCallsChannel(channelID string, opts GetCallsChannelOpts) (*pu
 func (s *Store) UpdateCallsChannel(channel *public.CallsChannel) error {
 	s.metrics.IncStoreOp("UpdateCallsChannel")
 
-	if channel == nil {
-		return fmt.Errorf("channel should not be nil")
+	if err := channel.IsValid(); err != nil {
+		return fmt.Errorf("invalid channel: %w", err)
 	}
 
 	qb := getQueryBuilder(s.driverName).

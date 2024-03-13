@@ -15,10 +15,6 @@ import (
 func (s *Store) CreateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("CreateCallSession")
 
-	if session == nil {
-		return fmt.Errorf("session should not be nil")
-	}
-
 	if err := session.IsValid(); err != nil {
 		return fmt.Errorf("invalid call session: %w", err)
 	}
@@ -44,8 +40,8 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 func (s *Store) UpdateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("UpdateCallSession")
 
-	if session == nil {
-		return fmt.Errorf("session should not be nil")
+	if err := session.IsValid(); err != nil {
+		return fmt.Errorf("invalid call session: %w", err)
 	}
 
 	qb := getQueryBuilder(s.driverName).

@@ -7,8 +7,6 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
-	"github.com/mattermost/mattermost/server/public/model"
-
 	sq "github.com/mattermost/squirrel"
 )
 
@@ -28,47 +26,12 @@ var callsColumns = []string{
 	"Props",
 }
 
-func (s *Store) CreateCall(call *public.Call) (*public.Call, error) {
+func (s *Store) CreateCall(call *public.Call) error {
 	s.metrics.IncStoreOp("CreateCall")
 
-	if call == nil {
-		return nil, fmt.Errorf("call should not be nil")
+	if err := call.IsValid(); err != nil {
+		return fmt.Errorf("invalid call: %w", err)
 	}
-
-	if call.ID != "" {
-		return nil, fmt.Errorf("invalid ID: should be empty")
-	}
-
-	if call.ChannelID == "" {
-		return nil, fmt.Errorf("invalid ChannelID: should not be empty")
-	}
-
-	if call.StartAt == 0 {
-		return nil, fmt.Errorf("invalid StartAt: should be > 0")
-	}
-
-	if call.CreateAt != 0 {
-		return nil, fmt.Errorf("invalid CreateAt: should be zero")
-	}
-
-	if call.DeleteAt != 0 {
-		return nil, fmt.Errorf("invalid DeleteAt: should be zero")
-	}
-
-	if call.PostID == "" {
-		return nil, fmt.Errorf("invalid PostID: should not be empty")
-	}
-
-	if call.ThreadID == "" {
-		return nil, fmt.Errorf("invalid ThreadID: should not be empty")
-	}
-
-	if call.OwnerID == "" {
-		return nil, fmt.Errorf("invalid OwnerID: should not be empty")
-	}
-
-	call.ID = model.NewId()
-	call.CreateAt = time.Now().UnixMilli()
 
 	qb := getQueryBuilder(s.driverName).
 		Insert("calls").
@@ -79,22 +42,22 @@ func (s *Store) CreateCall(call *public.Call) (*public.Call, error) {
 
 	q, args, err := qb.ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
 	_, err = s.wDB.Exec(q, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to run query: %w", err)
+		return fmt.Errorf("failed to run query: %w", err)
 	}
 
-	return call, nil
+	return nil
 }
 
 func (s *Store) UpdateCall(call *public.Call) error {
 	s.metrics.IncStoreOp("UpdateCall")
 
-	if call == nil {
-		return fmt.Errorf("call should not be nil")
+	if err := call.IsValid(); err != nil {
+		return fmt.Errorf("invalid call: %w", err)
 	}
 
 	qb := getQueryBuilder(s.driverName).

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCallSessionStore(t *testing.T) {
+func TestCallsSessionsStore(t *testing.T) {
 	t.Parallel()
 	testStore(t, map[string]func(t *testing.T, store *Store){
 		"TestCreateCallSession": testCreateCallSession,
@@ -28,7 +28,7 @@ func TestCallSessionStore(t *testing.T) {
 func testCreateCallSession(t *testing.T, store *Store) {
 	t.Run("invalid", func(t *testing.T) {
 		err := store.CreateCallSession(nil)
-		require.EqualError(t, err, "session should not be nil")
+		require.EqualError(t, err, "invalid call session: should not be nil")
 
 		err = store.CreateCallSession(&public.CallSession{})
 		require.EqualError(t, err, "invalid call session: invalid ID: should not be empty")
@@ -77,12 +77,15 @@ func testUpdateCallSession(t *testing.T, store *Store) {
 	t.Run("nil", func(t *testing.T) {
 		var session *public.CallSession
 		err := store.UpdateCallSession(session)
-		require.EqualError(t, err, "session should not be nil")
+		require.EqualError(t, err, "invalid call session: should not be nil")
 	})
 
 	t.Run("missing", func(t *testing.T) {
 		err := store.UpdateCallSession(&public.CallSession{
-			ID: "sessionID",
+			ID:     model.NewId(),
+			CallID: model.NewId(),
+			UserID: model.NewId(),
+			JoinAt: time.Now().UnixMilli(),
 		})
 		require.EqualError(t, err, "failed to update call session")
 	})
