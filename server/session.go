@@ -342,7 +342,7 @@ func (p *Plugin) removeSession(us *session) error {
 
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   us.channelID,
-			"recState": currState.Call.Recording.getClientState().toMap(),
+			"jobState": currState.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	}
 

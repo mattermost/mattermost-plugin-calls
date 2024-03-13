@@ -731,7 +731,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 	if userID == p.getBotID() && state.Call.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   channelID,
-			"recState": state.Call.Recording.getClientState().toMap(),
+			"jobState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
