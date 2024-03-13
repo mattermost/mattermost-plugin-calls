@@ -300,6 +300,10 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 	case job.TypeRecording:
 		baseRecorderCfg := recorderBaseConfigs[cfg.RecordingQuality]
 		baseRecorderCfg.SiteURL = siteURL
+		if siteURLOverride := os.Getenv("MM_CALLS_RECORDER_SITE_URL"); siteURLOverride != "" {
+			s.ctx.LogInfo("using SiteURL override for recorder job", "siteURL", siteURL, "siteURLOverride", siteURLOverride)
+			baseRecorderCfg.SiteURL = siteURLOverride
+		}
 		baseRecorderCfg.CallID = callID
 		baseRecorderCfg.PostID = postID
 		baseRecorderCfg.RecordingID = jobID
@@ -311,6 +315,10 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 	case job.TypeTranscribing:
 		var transcriberConfig transcriber.CallTranscriberConfig
 		transcriberConfig.SiteURL = siteURL
+		if siteURLOverride := os.Getenv("MM_CALLS_TRANSCRIBER_SITE_URL"); siteURLOverride != "" {
+			s.ctx.LogInfo("using SiteURL override for transcriber job", "siteURL", siteURL, "siteURLOverride", siteURLOverride)
+			transcriberConfig.SiteURL = siteURLOverride
+		}
 		transcriberConfig.CallID = callID
 		transcriberConfig.PostID = postID
 		transcriberConfig.TranscriptionID = jobID

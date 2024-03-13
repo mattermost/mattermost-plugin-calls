@@ -327,7 +327,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	// Updating the file to point to the existing call post solves this problem
 	// without requiring us to expose a dedicated API nor attach the file which
 	// we don't want to show.
-	if err := p.updateFileInfoPostID(info.Transcriptions[0].FileIDs[0], info.PostID); err != nil {
+	if err := p.updateFileInfoPostID(info.Transcriptions[0].FileIDs[0], callID, info.PostID); err != nil {
 		res.Err = "failed to update fileinfo post id: " + err.Error()
 		res.Code = http.StatusInternalServerError
 	}

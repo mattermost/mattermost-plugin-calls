@@ -69,7 +69,7 @@ export interface PluginRegistry {
 
     registerTranslations(handler: (locale: string) => Translations | Promise<Translations>);
 
-    registerFilePreviewComponent(overrideFn: (fi: FileInfo, post: Post) => boolean, component: React.ElementType);
+    registerFilePreviewComponent(overrideFn: (fi: FileInfo, post?: Post) => boolean, component: React.ElementType);
 }
 
 export type SlashCommandWillBePostedReturn = { error: string } | { message: string, args: CommandArgs } | unknown;
