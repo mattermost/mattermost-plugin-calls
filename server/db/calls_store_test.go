@@ -28,17 +28,74 @@ func TestCallsStore(t *testing.T) {
 
 func testCreateCall(t *testing.T, store *Store) {
 	t.Run("empty", func(t *testing.T) {
-		call, err := store.CreateCall(nil)
-		require.EqualError(t, err, "call should not be nil")
-		require.Nil(t, call)
+		err := store.CreateCall(nil)
+		require.EqualError(t, err, "invalid call: should not be nil")
 
-		call, err = store.CreateCall(&public.Call{})
-		require.EqualError(t, err, "invalid ChannelID: should not be empty")
-		require.Nil(t, call)
+		err = store.CreateCall(&public.Call{})
+		require.EqualError(t, err, "invalid call: invalid ID: should not be empty")
+
+		err = store.CreateCall(&public.Call{
+			ID: model.NewId(),
+		})
+		require.EqualError(t, err, "invalid call: invalid ChannelID: should not be empty")
+
+		err = store.CreateCall(&public.Call{
+			ID:        model.NewId(),
+			ChannelID: model.NewId(),
+		})
+		require.EqualError(t, err, "invalid call: invalid StartAt: should be > 0")
+
+		err = store.CreateCall(&public.Call{
+			ID:        model.NewId(),
+			ChannelID: model.NewId(),
+			StartAt:   time.Now().UnixMilli(),
+		})
+		require.EqualError(t, err, "invalid call: invalid CreateAt: should be > 0")
+
+		err = store.CreateCall(&public.Call{
+			ID:        model.NewId(),
+			ChannelID: model.NewId(),
+			StartAt:   time.Now().UnixMilli(),
+			CreateAt:  time.Now().UnixMilli(),
+		})
+		require.EqualError(t, err, "invalid call: invalid PostID: should not be empty")
+
+		err = store.CreateCall(&public.Call{
+			ID:        model.NewId(),
+			ChannelID: model.NewId(),
+			StartAt:   time.Now().UnixMilli(),
+			CreateAt:  time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+		})
+		require.EqualError(t, err, "invalid call: invalid ThreadID: should not be empty")
+
+		err = store.CreateCall(&public.Call{
+			ID:        model.NewId(),
+			ChannelID: model.NewId(),
+			StartAt:   time.Now().UnixMilli(),
+			CreateAt:  time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  model.NewId(),
+		})
+		require.EqualError(t, err, "invalid call: invalid OwnerID: should not be empty")
+
+		err = store.CreateCall(&public.Call{
+			ID:        model.NewId(),
+			ChannelID: model.NewId(),
+			StartAt:   time.Now().UnixMilli(),
+			CreateAt:  time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  model.NewId(),
+			OwnerID:   model.NewId(),
+			DeleteAt:  1000,
+		})
+		require.EqualError(t, err, "invalid call: invalid DeleteAt: should be zero")
 	})
 
 	t.Run("valid", func(t *testing.T) {
 		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
 			ChannelID:    model.NewId(),
 			StartAt:      time.Now().UnixMilli(),
 			PostID:       model.NewId(),
@@ -53,9 +110,8 @@ func testCreateCall(t *testing.T, store *Store) {
 			},
 		}
 
-		call, err := store.CreateCall(call)
+		err := store.CreateCall(call)
 		require.NoError(t, err)
-		require.NotNil(t, call)
 
 		gotCall, err := store.GetCall(call.ID, GetCallOpts{
 			FromWriter: true,
@@ -73,6 +129,8 @@ func testDeleteCall(t *testing.T, store *Store) {
 
 	t.Run("existing", func(t *testing.T) {
 		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
 			ChannelID:    model.NewId(),
 			StartAt:      time.Now().UnixMilli(),
 			PostID:       model.NewId(),
@@ -87,10 +145,8 @@ func testDeleteCall(t *testing.T, store *Store) {
 			},
 		}
 
-		call, err := store.CreateCall(call)
+		err := store.CreateCall(call)
 		require.NoError(t, err)
-		require.NotNil(t, call)
-		require.Zero(t, call.DeleteAt)
 
 		now := time.Now().UnixMilli()
 
@@ -111,6 +167,8 @@ func testDeleteCallByChannelID(t *testing.T, store *Store) {
 
 	t.Run("existing", func(t *testing.T) {
 		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
 			ChannelID:    model.NewId(),
 			StartAt:      time.Now().UnixMilli(),
 			PostID:       model.NewId(),
@@ -125,10 +183,8 @@ func testDeleteCallByChannelID(t *testing.T, store *Store) {
 			},
 		}
 
-		call, err := store.CreateCall(call)
+		err := store.CreateCall(call)
 		require.NoError(t, err)
-		require.NotNil(t, call)
-		require.Zero(t, call.DeleteAt)
 
 		now := time.Now().UnixMilli()
 
@@ -145,18 +201,26 @@ func testUpdateCall(t *testing.T, store *Store) {
 	t.Run("nil", func(t *testing.T) {
 		var call *public.Call
 		err := store.UpdateCall(call)
-		require.EqualError(t, err, "call should not be nil")
+		require.EqualError(t, err, "invalid call: should not be nil")
 	})
 
 	t.Run("missing", func(t *testing.T) {
 		err := store.UpdateCall(&public.Call{
-			ID: "callID",
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			ChannelID: model.NewId(),
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  model.NewId(),
+			OwnerID:   model.NewId(),
 		})
 		require.EqualError(t, err, "failed to update call")
 	})
 
 	t.Run("existing", func(t *testing.T) {
 		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
 			ChannelID:    model.NewId(),
 			StartAt:      time.Now().UnixMilli(),
 			PostID:       model.NewId(),
@@ -171,9 +235,8 @@ func testUpdateCall(t *testing.T, store *Store) {
 			},
 		}
 
-		call, err := store.CreateCall(call)
+		err := store.CreateCall(call)
 		require.NoError(t, err)
-		require.NotNil(t, call)
 
 		call.Participants = append(call.Participants, model.NewId())
 		call.Stats.ScreenDuration = 4545
@@ -199,6 +262,8 @@ func testGetCall(t *testing.T, store *Store) {
 
 	t.Run("existing", func(t *testing.T) {
 		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
 			ChannelID:    model.NewId(),
 			StartAt:      time.Now().UnixMilli(),
 			PostID:       model.NewId(),
@@ -213,9 +278,8 @@ func testGetCall(t *testing.T, store *Store) {
 			},
 		}
 
-		call, err := store.CreateCall(call)
+		err := store.CreateCall(call)
 		require.NoError(t, err)
-		require.NotNil(t, call)
 
 		gotCall, err := store.GetCall(call.ID, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
@@ -233,6 +297,8 @@ func testGetCallByChannelID(t *testing.T, store *Store) {
 
 	t.Run("existing", func(t *testing.T) {
 		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
 			ChannelID:    model.NewId(),
 			StartAt:      time.Now().UnixMilli(),
 			PostID:       model.NewId(),
@@ -247,9 +313,8 @@ func testGetCallByChannelID(t *testing.T, store *Store) {
 			},
 		}
 
-		call, err := store.CreateCall(call)
+		err := store.CreateCall(call)
 		require.NoError(t, err)
-		require.NotNil(t, call)
 
 		gotCall, err := store.GetCallByChannelID(call.ChannelID, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)

@@ -24,13 +24,11 @@ func TestCallsChannelsStore(t *testing.T) {
 
 func testCreateCallsChannel(t *testing.T, store *Store) {
 	t.Run("empty", func(t *testing.T) {
-		channel, err := store.CreateCallsChannel(nil)
-		require.EqualError(t, err, "channel should not be nil")
-		require.Nil(t, channel)
+		err := store.CreateCallsChannel(nil)
+		require.EqualError(t, err, "invalid channel: should not be nil")
 
-		channel, err = store.CreateCallsChannel(&public.CallsChannel{})
-		require.EqualError(t, err, "invalid ChannelID: should not be empty")
-		require.Nil(t, channel)
+		err = store.CreateCallsChannel(&public.CallsChannel{})
+		require.EqualError(t, err, "invalid channel: invalid ChannelID: should not be empty")
 	})
 
 	t.Run("valid", func(t *testing.T) {
@@ -47,9 +45,8 @@ func testCreateCallsChannel(t *testing.T, store *Store) {
 			},
 		}
 
-		channel, err := store.CreateCallsChannel(channel)
+		err := store.CreateCallsChannel(channel)
 		require.NoError(t, err)
-		require.NotNil(t, channel)
 
 		gotChannel, err := store.GetCallsChannel(channel.ChannelID, GetCallsChannelOpts{
 			FromWriter: true,
@@ -63,7 +60,7 @@ func testUpdateCallsChannel(t *testing.T, store *Store) {
 	t.Run("nil", func(t *testing.T) {
 		var channel *public.CallsChannel
 		err := store.UpdateCallsChannel(channel)
-		require.EqualError(t, err, "channel should not be nil")
+		require.EqualError(t, err, "invalid channel: should not be nil")
 	})
 
 	t.Run("missing", func(t *testing.T) {
@@ -82,9 +79,8 @@ func testUpdateCallsChannel(t *testing.T, store *Store) {
 			},
 		}
 
-		channel, err := store.CreateCallsChannel(channel)
+		err := store.CreateCallsChannel(channel)
 		require.NoError(t, err)
-		require.NotNil(t, channel)
 
 		channel.Enabled = false
 		channel.Props["new_prop"] = float64(45)
@@ -116,9 +112,8 @@ func testGetCallsChannel(t *testing.T, store *Store) {
 			},
 		}
 
-		channel, err := store.CreateCallsChannel(channel)
+		err := store.CreateCallsChannel(channel)
 		require.NoError(t, err)
-		require.NotNil(t, channel)
 
 		gotChannel, err := store.GetCallsChannel(channel.ChannelID, GetCallsChannelOpts{FromWriter: true})
 		require.NoError(t, err)
