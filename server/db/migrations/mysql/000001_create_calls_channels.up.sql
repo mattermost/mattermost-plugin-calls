@@ -1,8 +1,7 @@
 CREATE TABLE IF NOT EXISTS calls_channels (
-    ChannelID varchar(26) NOT NULL,
+    ChannelID varchar(26) PRIMARY KEY,
     Enabled BOOLEAN,
-		Props JSON,
-    PRIMARY KEY (ChannelId)
+    Props JSON
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE PROCEDURE migrate_calls_channels ()
