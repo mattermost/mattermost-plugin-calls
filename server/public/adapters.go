@@ -48,3 +48,16 @@ func (cs *CallStats) Scan(src any) error {
 
 	return json.Unmarshal(data, cs)
 }
+
+func (cp CallProps) Value() (driver.Value, error) {
+	return json.Marshal(cp)
+}
+
+func (cp *CallProps) Scan(src any) error {
+	data, ok := src.([]byte)
+	if !ok {
+		return fmt.Errorf("unsupported source type %T", src)
+	}
+
+	return json.Unmarshal(data, cp)
+}

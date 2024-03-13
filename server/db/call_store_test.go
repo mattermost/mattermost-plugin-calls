@@ -48,8 +48,8 @@ func testCreateCall(t *testing.T, store *Store) {
 			Stats: public.CallStats{
 				ScreenDuration: 45,
 			},
-			Props: map[string]any{
-				"test_prop": "test",
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
 			},
 		}
 
@@ -82,8 +82,8 @@ func testDeleteCall(t *testing.T, store *Store) {
 			Stats: public.CallStats{
 				ScreenDuration: 45,
 			},
-			Props: map[string]any{
-				"test_prop": "test",
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
 			},
 		}
 
@@ -120,8 +120,8 @@ func testDeleteCallByChannelID(t *testing.T, store *Store) {
 			Stats: public.CallStats{
 				ScreenDuration: 45,
 			},
-			Props: map[string]any{
-				"test_prop": "test",
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
 			},
 		}
 
@@ -166,8 +166,8 @@ func testUpdateCall(t *testing.T, store *Store) {
 			Stats: public.CallStats{
 				ScreenDuration: 45,
 			},
-			Props: map[string]any{
-				"test_prop": "test",
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
 			},
 		}
 
@@ -177,8 +177,7 @@ func testUpdateCall(t *testing.T, store *Store) {
 
 		call.Participants = append(call.Participants, model.NewId())
 		call.Stats.ScreenDuration = 4545
-		call.Props["new_prop"] = float64(45)
-		call.Props["test_prop"] = "updated"
+		call.Props.ScreenSharingSessionID = "sessionA"
 
 		err = store.UpdateCall(call)
 		require.NoError(t, err)
@@ -209,8 +208,8 @@ func testGetCall(t *testing.T, store *Store) {
 			Stats: public.CallStats{
 				ScreenDuration: 45,
 			},
-			Props: map[string]any{
-				"test_prop": "test",
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
 			},
 		}
 
@@ -243,8 +242,8 @@ func testGetCallByChannelID(t *testing.T, store *Store) {
 			Stats: public.CallStats{
 				ScreenDuration: 45,
 			},
-			Props: map[string]any{
-				"test_prop": "test",
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
 			},
 		}
 
