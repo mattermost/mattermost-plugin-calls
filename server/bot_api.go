@@ -506,7 +506,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 	if status.JobType == public.JobTypeRecording {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
-			"recState": state.Call.Recording.getClientState().toMap(),
+			"jobState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	} else {
 		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
