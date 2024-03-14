@@ -21,6 +21,8 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
+
+	"github.com/gorilla/mux"
 )
 
 const (
@@ -39,6 +41,8 @@ type Plugin struct {
 	// configuration is the active plugin configuration. Consult getConfiguration and
 	// setConfiguration for usage.
 	configuration *configuration
+
+	apiRouter *mux.Router
 
 	metrics   interfaces.Metrics
 	telemetry *telemetry.Client

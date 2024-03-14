@@ -7,10 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/pprof"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -19,15 +16,13 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
-)
 
-var chRE = regexp.MustCompile(`^/([a-z0-9]+)$`)
-var callEndRE = regexp.MustCompile(`^/calls/([a-z0-9]+)/end$`)
-var callDismissNotificationRE = regexp.MustCompile(`^/calls/([a-z0-9]+)/dismiss-notification$`)
+	"github.com/gorilla/mux"
+)
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
-func (p *Plugin) handleGetVersion(w http.ResponseWriter) {
+func (p *Plugin) handleGetVersion(w http.ResponseWriter, _ *http.Request) {
 	info := map[string]interface{}{
 		"version": manifest.Version,
 		"build":   buildHash,
@@ -38,8 +33,10 @@ func (p *Plugin) handleGetVersion(w http.ResponseWriter) {
 	}
 }
 
-func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
+func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
+
 	// We should go through only if the user has permissions to the requested channel
 	// or if the user is the Calls bot.
 	if !(p.isBotSession(r) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
@@ -171,11 +168,12 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID string) {
+func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleEndCall", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
 
 	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 
@@ -246,11 +244,12 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Request, channelID string) {
+func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleDismissNotification", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
 
 	state, err := p.lockCall(channelID)
 	if err != nil {
@@ -346,11 +345,12 @@ func (p *Plugin) permissionToEnableDisableChannel(userID, channelID string) (boo
 	return false, nil
 }
 
-func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
+func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handlePostChannel", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
 
 	if permission, appErr := p.permissionToEnableDisableChannel(userID, channelID); appErr != nil || !permission {
 		res.Err = "Forbidden"
@@ -401,30 +401,6 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 	}
 
 	p.publishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-}
-
-func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
-	var res httpResponse
-	defer p.httpAudit("handleDebug", &res, w, r)
-
-	userID := r.Header.Get("Mattermost-User-Id")
-	if !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-		res.Err = "Forbidden"
-		res.Code = http.StatusForbidden
-		return
-	}
-	if strings.HasPrefix(r.URL.Path, "/debug/pprof/profile") {
-		pprof.Profile(w, r)
-		return
-	} else if strings.HasPrefix(r.URL.Path, "/debug/pprof/trace") {
-		pprof.Trace(w, r)
-		return
-	} else if strings.HasPrefix(r.URL.Path, "/debug/pprof") {
-		pprof.Index(w, r)
-		return
-	}
-	res.Err = "Not found"
-	res.Code = http.StatusNotFound
 }
 
 func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request) {
@@ -516,101 +492,5 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 		}
 	}()
 
-	if strings.HasPrefix(r.URL.Path, "/version") {
-		p.handleGetVersion(w)
-		return
-	}
-
-	// NOTE: deprecated in favor of the ServeMetrics hook. Consider removing in v1.0.
-	if strings.HasPrefix(r.URL.Path, "/metrics") && p.metrics != nil {
-		p.metrics.Handler().ServeHTTP(w, r)
-		return
-	}
-
-	if strings.HasPrefix(r.URL.Path, "/standalone/") {
-		p.handleServeStandalone(w, r)
-		return
-	}
-
-	userID := r.Header.Get("Mattermost-User-Id")
-	if userID == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	if strings.HasPrefix(r.URL.Path, "/bot") {
-		p.handleBotAPI(w, r)
-		return
-	}
-
-	if err := p.checkAPIRateLimits(userID); err != nil {
-		http.Error(w, err.Error(), http.StatusTooManyRequests)
-		return
-	}
-
-	if strings.HasPrefix(r.URL.Path, "/debug") {
-		p.handleDebug(w, r)
-		return
-	}
-
-	if r.Method == http.MethodGet {
-		if r.URL.Path == "/config" {
-			if err := p.handleConfig(w); err != nil {
-				p.handleError(w, err)
-			}
-			return
-		}
-
-		if r.URL.Path == "/channels" {
-			p.handleGetAllChannels(w, r)
-			return
-		}
-
-		if r.URL.Path == "/turn-credentials" {
-			p.handleGetTURNCredentials(w, r)
-			return
-		}
-
-		if matches := chRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleGetChannel(w, r, matches[1])
-			return
-		}
-	}
-
-	if r.Method == http.MethodPost {
-		// End user has requested to notify their admin about upgrading for calls
-		if r.URL.Path == "/cloud-notify-admins" {
-			if err := p.handleCloudNotifyAdmins(w, r); err != nil {
-				p.handleError(w, err)
-			}
-			return
-		}
-
-		if matches := chRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handlePostChannel(w, r, matches[1])
-			return
-		}
-
-		if matches := callEndRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleEndCall(w, r, matches[1])
-			return
-		}
-
-		if matches := callDismissNotificationRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleDismissNotification(w, r, matches[1])
-			return
-		}
-
-		if r.URL.Path == "/telemetry/track" {
-			p.handleTrackEvent(w, r)
-			return
-		}
-
-		if matches := callRecordingActionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
-			p.handleRecordingAction(w, r, matches[1], matches[2])
-			return
-		}
-	}
-
-	http.NotFound(w, r)
+	p.apiRouter.ServeHTTP(w, r)
 }

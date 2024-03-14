@@ -7,15 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	"time"
 
 	"github.com/mattermost/calls-offloader/public/job"
 
 	"github.com/mattermost/mattermost/server/public/model"
-)
 
-var callRecordingActionRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)/recording/(start|stop|publish)$`)
+	"github.com/gorilla/mux"
+)
 
 const recordingJobStartTimeout = 2 * time.Minute
 
@@ -204,11 +203,13 @@ func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobS
 	return recState.getClientState(), http.StatusOK, nil
 }
 
-func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, callID, action string) {
+func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleRecordingAction", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
+	callID := mux.Vars(r)["call_id"]
+	action := mux.Vars(r)["action"]
 
 	if !p.API.HasPermissionToChannel(userID, callID, model.PermissionReadChannel) {
 		res.Err = "Forbidden"
