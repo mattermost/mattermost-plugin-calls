@@ -17,7 +17,7 @@ export const MESSAGE_DISPLAY = 'message_display';
 export const MESSAGE_DISPLAY_COMPACT = 'compact';
 export const MESSAGE_DISPLAY_DEFAULT = 'clean';
 
-// The JobTypes
+// The JobTypes from server/public/job.go
 export const JOB_TYPE_RECORDING = 'recording';
 export const JOB_TYPE_TRANSCRIBING = 'transcribing';
 export const JOB_TYPE_CAPTIONING = 'captioning';
