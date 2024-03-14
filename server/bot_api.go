@@ -8,23 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost/server/public/model"
-)
 
-var (
-	botChRE                = regexp.MustCompile(`^\/bot\/channels\/([a-z0-9]+)$`)
-	botUserImageRE         = regexp.MustCompile(`^\/bot\/users\/([a-z0-9]+)\/image$`)
-	botUploadsRE           = regexp.MustCompile(`^\/bot\/uploads\/?([a-z0-9]+)?$`)
-	botRecordingsRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/recordings$`)
-	botJobsStatusRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/jobs\/([a-z0-9]+)\/status$`)
-	botProfileForSessionRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/sessions\/([a-z0-9]+)\/profile$`)
-	botTranscriptionsRE    = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/transcriptions$`)
-	botFilenameRE          = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/filename$`)
+	"github.com/gorilla/mux"
 )
 
 func (p *Plugin) getBotID() string {
@@ -45,7 +35,9 @@ func (p *Plugin) isBotSession(r *http.Request) bool {
 	return p.isBot(r.Header.Get("Mattermost-User-Id"))
 }
 
-func (p *Plugin) handleBotGetChannel(w http.ResponseWriter, _ *http.Request, channelID string) {
+func (p *Plugin) handleBotGetChannel(w http.ResponseWriter, r *http.Request) {
+	channelID := mux.Vars(r)["channel_id"]
+
 	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
 		p.LogError(appErr.Error())
@@ -57,7 +49,9 @@ func (p *Plugin) handleBotGetChannel(w http.ResponseWriter, _ *http.Request, cha
 	}
 }
 
-func (p *Plugin) handleBotGetUserImage(w http.ResponseWriter, r *http.Request, userID string) {
+func (p *Plugin) handleBotGetUserImage(w http.ResponseWriter, r *http.Request) {
+	userID := mux.Vars(r)["user_id"]
+
 	data, appErr := p.API.GetProfileImage(userID)
 	if appErr != nil {
 		p.LogError(appErr.Error())
@@ -67,9 +61,11 @@ func (p *Plugin) handleBotGetUserImage(w http.ResponseWriter, r *http.Request, u
 	http.ServeContent(w, r, userID, time.Now(), bytes.NewReader(data))
 }
 
-func (p *Plugin) handleBotGetUpload(w http.ResponseWriter, _ *http.Request, uploadID string) {
+func (p *Plugin) handleBotGetUpload(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpResponseHandler(&res, w)
+
+	uploadID := mux.Vars(r)["upload_id"]
 
 	us, err := p.API.GetUploadSession(uploadID)
 	if err != nil {
@@ -89,9 +85,11 @@ func (p *Plugin) handleBotGetUpload(w http.ResponseWriter, _ *http.Request, uplo
 	}
 }
 
-func (p *Plugin) handleBotUploadData(w http.ResponseWriter, r *http.Request, uploadID string) {
+func (p *Plugin) handleBotUploadData(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleBotUploadData", &res, w, r)
+
+	uploadID := mux.Vars(r)["upload_id"]
 
 	us, err := p.API.GetUploadSession(uploadID)
 	if err != nil {
@@ -172,9 +170,11 @@ func (p *Plugin) handleBotCreateUpload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request, callID string) {
+func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleBotPostRecordings", &res, w, r)
+
+	callID := mux.Vars(r)["call_id"]
 
 	var info public.RecordingJobInfo
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
@@ -278,9 +278,11 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Request, callID string) {
+func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleBotPostTranscription", &res, w, r)
+
+	callID := mux.Vars(r)["call_id"]
 
 	var info public.TranscribingJobInfo
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
@@ -413,9 +415,12 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request, callID, jobID string) {
+func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleBotPostJobsStatus", &res, w, r)
+
+	callID := mux.Vars(r)["call_id"]
+	jobID := mux.Vars(r)["job_id"]
 
 	var status public.JobStatus
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&status); err != nil {
@@ -519,9 +524,12 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, callID, sessionID string) {
+func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpResponseHandler(&res, w)
+
+	callID := mux.Vars(r)["call_id"]
+	sessionID := mux.Vars(r)["session_id"]
 
 	state, err := p.lockCall(callID)
 	if err != nil {
@@ -560,9 +568,11 @@ func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, callID, se
 	}
 }
 
-func (p *Plugin) handleBotGetFilenameForCall(w http.ResponseWriter, callID string) {
+func (p *Plugin) handleBotGetFilenameForCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpResponseHandler(&res, w)
+
+	callID := mux.Vars(r)["call_id"]
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
@@ -570,70 +580,4 @@ func (p *Plugin) handleBotGetFilenameForCall(w http.ResponseWriter, callID strin
 	}); err != nil {
 		p.LogError(err.Error())
 	}
-}
-
-func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
-	if !p.licenseChecker.RecordingsAllowed() {
-		http.Error(w, "Forbidden", http.StatusForbidden)
-		return
-	}
-
-	if !p.isBotSession(r) {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	if r.Method == http.MethodGet {
-		if matches := botChRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleBotGetChannel(w, r, matches[1])
-			return
-		}
-
-		if matches := botUserImageRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleBotGetUserImage(w, r, matches[1])
-			return
-		}
-
-		if matches := botUploadsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 && matches[1] != "" {
-			p.handleBotGetUpload(w, r, matches[1])
-			return
-		}
-
-		if matches := botProfileForSessionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
-			p.handleBotGetProfileForSession(w, matches[1], matches[2])
-			return
-		}
-
-		if matches := botFilenameRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleBotGetFilenameForCall(w, matches[1])
-			return
-		}
-	}
-
-	if r.Method == http.MethodPost {
-		if r.URL.Path == "/bot/uploads" {
-			p.handleBotCreateUpload(w, r)
-			return
-		} else if matches := botUploadsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 && matches[1] != "" {
-			p.handleBotUploadData(w, r, matches[1])
-			return
-		}
-
-		if matches := botRecordingsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleBotPostRecordings(w, r, matches[1])
-			return
-		}
-
-		if matches := botJobsStatusRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
-			p.handleBotPostJobsStatus(w, r, matches[1], matches[2])
-			return
-		}
-
-		if matches := botTranscriptionsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleBotPostTranscriptions(w, r, matches[1])
-			return
-		}
-	}
-
-	http.NotFound(w, r)
 }
