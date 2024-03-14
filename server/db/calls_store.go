@@ -38,7 +38,7 @@ func (s *Store) CreateCall(call *public.Call) error {
 		Columns(callsColumns...).
 		Values(call.ID, call.ChannelID, call.StartAt, call.EndAt, call.CreateAt, call.DeleteAt,
 			call.Title, call.PostID, call.ThreadID, call.OwnerID,
-			call.Participants, call.Stats, call.Props)
+			s.newJSONValueWrapper(call.Participants), s.newJSONValueWrapper(call.Stats), s.newJSONValueWrapper(call.Props))
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -64,9 +64,9 @@ func (s *Store) UpdateCall(call *public.Call) error {
 		Update("calls").
 		Set("EndAt", call.EndAt).
 		Set("DeleteAt", call.DeleteAt).
-		Set("Participants", call.Participants).
-		Set("Stats", call.Stats).
-		Set("Props", call.Props).
+		Set("Participants", s.newJSONValueWrapper(call.Participants)).
+		Set("Stats", s.newJSONValueWrapper(call.Stats)).
+		Set("Props", s.newJSONValueWrapper(call.Props)).
 		Where(
 			sq.Eq{"ID": call.ID},
 			sq.Eq{"ChannelID": call.ChannelID},

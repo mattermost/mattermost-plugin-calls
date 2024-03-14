@@ -6,6 +6,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -55,6 +56,14 @@ func resetReadTimeout(dsn string) (string, error) {
 	}
 	config.ReadTimeout = 0
 	return config.FormatDSN(), nil
+}
+
+func hasBinaryParams(dsn string) (bool, error) {
+	url, err := url.Parse(dsn)
+	if err != nil {
+		return false, err
+	}
+	return url.Query().Get("binary_parameters") == "yes", nil
 }
 
 func getQueryBuilder(driverName string) sq.StatementBuilderType {

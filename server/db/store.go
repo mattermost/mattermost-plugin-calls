@@ -6,6 +6,7 @@ package db
 import (
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
@@ -16,10 +17,11 @@ import (
 )
 
 type Store struct {
-	settings   model.SqlSettings
-	driverName string
-	log        mlog.LoggerIFace
-	metrics    interfaces.StoreMetrics
+	settings     model.SqlSettings
+	driverName   string
+	log          mlog.LoggerIFace
+	metrics      interfaces.StoreMetrics
+	binaryParams bool
 
 	// Writer
 	wDB  *sql.DB
@@ -29,9 +31,15 @@ type Store struct {
 	rDBx *sqlx.DB
 }
 
+var ErrNotFound = errors.New("not found")
+
 func NewStore(settings model.SqlSettings, wConnector, rConnector driver.Connector, log mlog.LoggerIFace, metrics interfaces.StoreMetrics) (*Store, error) {
 	if settings.DriverName == nil {
 		return nil, fmt.Errorf("invalid nil DriverName")
+	}
+
+	if settings.DataSource == nil {
+		return nil, fmt.Errorf("invalid nil DataSource")
 	}
 
 	if *settings.DriverName != model.DatabaseDriverMysql && *settings.DriverName != model.DatabaseDriverPostgres {
@@ -64,6 +72,14 @@ func NewStore(settings model.SqlSettings, wConnector, rConnector driver.Connecto
 		driverName: *settings.DriverName,
 		metrics:    metrics,
 		log:        log,
+	}
+
+	if *settings.DriverName == model.DatabaseDriverPostgres {
+		binaryParams, err := hasBinaryParams(*settings.DataSource)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check binary parameters")
+		}
+		st.binaryParams = binaryParams
 	}
 
 	st.wDB = sql.OpenDB(wConnector)

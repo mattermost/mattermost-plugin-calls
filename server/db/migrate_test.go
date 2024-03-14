@@ -14,60 +14,63 @@ import (
 )
 
 func TestMigrate(t *testing.T) {
-	t.Run("postgres", func(t *testing.T) {
-		t.Parallel()
+	for _, name := range []string{"postgres", "postgres_binary_params"} {
+		binaryParams := name == "postgres_binary_params"
 
-		store, tearDown := newPostgresStore(t)
-		require.NotNil(t, store)
-		t.Cleanup(tearDown)
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-		initMMSchema(t, store)
+			store, tearDown := newPostgresStore(t, binaryParams)
+			require.NotNil(t, store)
+			t.Cleanup(tearDown)
 
-		_, err := store.wDB.Exec(`SELECT COUNT(*) FROM calls_channels`)
-		require.EqualError(t, err, `pq: relation "calls_channels" does not exist`)
+			initMMSchema(t, store)
 
-		_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls`)
-		require.EqualError(t, err, `pq: relation "calls" does not exist`)
+			_, err := store.wDB.Exec(`SELECT COUNT(*) FROM calls_channels`)
+			require.EqualError(t, err, `pq: relation "calls_channels" does not exist`)
 
-		_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_sessions`)
-		require.EqualError(t, err, `pq: relation "calls_sessions" does not exist`)
+			_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls`)
+			require.EqualError(t, err, `pq: relation "calls" does not exist`)
 
-		t.Run("empty pluginkeyvaluestore", func(t *testing.T) {
-			t.Run("up", func(t *testing.T) {
-				err := store.Migrate(models.Up, false)
-				require.NoError(t, err)
+			_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_sessions`)
+			require.EqualError(t, err, `pq: relation "calls_sessions" does not exist`)
 
-				var count int
-				err = store.wDBx.Get(&count, `SELECT COUNT(*) FROM calls_channels`)
-				require.NoError(t, err)
-				require.Zero(t, count)
+			t.Run("empty pluginkeyvaluestore", func(t *testing.T) {
+				t.Run("up", func(t *testing.T) {
+					err := store.Migrate(models.Up, false)
+					require.NoError(t, err)
 
-				err = store.wDBx.Get(&count, `SELECT COUNT(*) FROM calls`)
-				require.NoError(t, err)
-				require.Zero(t, count)
+					var count int
+					err = store.wDBx.Get(&count, `SELECT COUNT(*) FROM calls_channels`)
+					require.NoError(t, err)
+					require.Zero(t, count)
 
-				err = store.wDBx.Get(&count, `SELECT COUNT(*) FROM calls_sessions`)
-				require.NoError(t, err)
-				require.Zero(t, count)
+					err = store.wDBx.Get(&count, `SELECT COUNT(*) FROM calls`)
+					require.NoError(t, err)
+					require.Zero(t, count)
+
+					err = store.wDBx.Get(&count, `SELECT COUNT(*) FROM calls_sessions`)
+					require.NoError(t, err)
+					require.Zero(t, count)
+				})
+
+				t.Run("down", func(t *testing.T) {
+					err := store.Migrate(models.Down, false)
+					require.NoError(t, err)
+
+					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_channels`)
+					require.EqualError(t, err, `pq: relation "calls_channels" does not exist`)
+
+					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls`)
+					require.EqualError(t, err, `pq: relation "calls" does not exist`)
+
+					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_sessions`)
+					require.EqualError(t, err, `pq: relation "calls_sessions" does not exist`)
+				})
 			})
 
-			t.Run("down", func(t *testing.T) {
-				err := store.Migrate(models.Down, false)
-				require.NoError(t, err)
-
-				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_channels`)
-				require.EqualError(t, err, `pq: relation "calls_channels" does not exist`)
-
-				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls`)
-				require.EqualError(t, err, `pq: relation "calls" does not exist`)
-
-				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_sessions`)
-				require.EqualError(t, err, `pq: relation "calls_sessions" does not exist`)
-			})
-		})
-
-		t.Run("non-empty pluginkeyvaluestore", func(t *testing.T) {
-			_, err := store.wDB.Exec(`INSERT INTO pluginkeyvaluestore (pluginid, pkey, pvalue) VALUES 
+			t.Run("non-empty pluginkeyvaluestore", func(t *testing.T) {
+				_, err := store.wDB.Exec(`INSERT INTO pluginkeyvaluestore (pluginid, pkey, pvalue) VALUES 
 				('com.mattermost.calls', 'config', '{}'),
 				('com.mattermost.calls', '00000000000000000000000001', NULL),
 				('com.mattermost.calls', '00000000000000000000000002', '{}'),
@@ -77,50 +80,51 @@ func TestMigrate(t *testing.T) {
 				('com.mattermost.calls', '00000000000000000000000006', '{"enabled": false}'),
 				('com.mattermost.calls', '00000000000000000000000007', '{"enabled": true}')
 				`)
-			require.NoError(t, err)
-
-			t.Run("up", func(t *testing.T) {
-				err = store.Migrate(models.Up, false)
 				require.NoError(t, err)
 
-				var callsChannels []public.CallsChannel
-				err = store.wDBx.Select(&callsChannels, `SELECT channelid, enabled FROM calls_channels`)
-				require.NoError(t, err)
-				require.ElementsMatch(t, []public.CallsChannel{
-					{
-						ChannelID: "00000000000000000000000004",
-						Enabled:   true,
-					},
-					{
-						ChannelID: "00000000000000000000000005",
-						Enabled:   false,
-					},
-					{
-						ChannelID: "00000000000000000000000006",
-						Enabled:   false,
-					},
-					{
-						ChannelID: "00000000000000000000000007",
-						Enabled:   true,
-					},
-				}, callsChannels)
-			})
+				t.Run("up", func(t *testing.T) {
+					err = store.Migrate(models.Up, false)
+					require.NoError(t, err)
 
-			t.Run("down", func(t *testing.T) {
-				err := store.Migrate(models.Down, false)
-				require.NoError(t, err)
+					var callsChannels []public.CallsChannel
+					err = store.wDBx.Select(&callsChannels, `SELECT channelid, enabled FROM calls_channels`)
+					require.NoError(t, err)
+					require.ElementsMatch(t, []public.CallsChannel{
+						{
+							ChannelID: "00000000000000000000000004",
+							Enabled:   true,
+						},
+						{
+							ChannelID: "00000000000000000000000005",
+							Enabled:   false,
+						},
+						{
+							ChannelID: "00000000000000000000000006",
+							Enabled:   false,
+						},
+						{
+							ChannelID: "00000000000000000000000007",
+							Enabled:   true,
+						},
+					}, callsChannels)
+				})
 
-				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_channels`)
-				require.EqualError(t, err, `pq: relation "calls_channels" does not exist`)
+				t.Run("down", func(t *testing.T) {
+					err := store.Migrate(models.Down, false)
+					require.NoError(t, err)
 
-				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls`)
-				require.EqualError(t, err, `pq: relation "calls" does not exist`)
+					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_channels`)
+					require.EqualError(t, err, `pq: relation "calls_channels" does not exist`)
 
-				_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_sessions`)
-				require.EqualError(t, err, `pq: relation "calls_sessions" does not exist`)
+					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls`)
+					require.EqualError(t, err, `pq: relation "calls" does not exist`)
+
+					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_sessions`)
+					require.EqualError(t, err, `pq: relation "calls_sessions" does not exist`)
+				})
 			})
 		})
-	})
+	}
 
 	t.Run("mysql", func(t *testing.T) {
 		t.Parallel()

@@ -1,16 +1,11 @@
 package public
 
 import (
-	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 )
 
 type StringArray []string
-
-func (js StringArray) Value() (driver.Value, error) {
-	return json.Marshal(js)
-}
 
 func (js *StringArray) Scan(src any) error {
 	data, ok := src.([]byte)
@@ -23,10 +18,6 @@ func (js *StringArray) Scan(src any) error {
 
 type StringMap map[string]any
 
-func (js StringMap) Value() (driver.Value, error) {
-	return json.Marshal(js)
-}
-
 func (js *StringMap) Scan(src any) error {
 	data, ok := src.([]byte)
 	if !ok {
@@ -36,10 +27,6 @@ func (js *StringMap) Scan(src any) error {
 	return json.Unmarshal(data, js)
 }
 
-func (cs CallStats) Value() (driver.Value, error) {
-	return json.Marshal(cs)
-}
-
 func (cs *CallStats) Scan(src any) error {
 	data, ok := src.([]byte)
 	if !ok {
@@ -47,10 +34,6 @@ func (cs *CallStats) Scan(src any) error {
 	}
 
 	return json.Unmarshal(data, cs)
-}
-
-func (cp CallProps) Value() (driver.Value, error) {
-	return json.Marshal(cp)
 }
 
 func (cp *CallProps) Scan(src any) error {

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"log"
+	"net/url"
 	"testing"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/testutils"
@@ -48,7 +49,7 @@ CREATE TABLE IF NOT EXISTS PluginKeyValueStore (
 	}
 }
 
-func newPostgresStore(t *testing.T) (*Store, func()) {
+func newPostgresStore(t *testing.T, binaryParams bool) (*Store, func()) {
 	t.Helper()
 
 	mockMetrics := &serverMocks.MockMetrics{}
@@ -59,6 +60,14 @@ func newPostgresStore(t *testing.T) (*Store, func()) {
 
 	var settings model.SqlSettings
 	settings.SetDefaults(false)
+	if binaryParams {
+		u, err := url.Parse(dsn)
+		require.NoError(t, err)
+		values := u.Query()
+		values.Set("binary_parameters", "yes")
+		u.RawQuery = values.Encode()
+		dsn = u.String()
+	}
 	settings.DataSource = model.NewString(dsn)
 	settings.DriverName = model.NewString(model.DatabaseDriverPostgres)
 
@@ -123,22 +132,27 @@ func newMySQLStore(t *testing.T) (*Store, func()) {
 	}
 }
 
-func newStore(t *testing.T, driverName string) (*Store, func()) {
+func newStore(t *testing.T, driverName string, binaryParams bool) (*Store, func()) {
 	t.Helper()
 
 	if driverName == model.DatabaseDriverMysql {
 		return newMySQLStore(t)
 	}
 
-	return newPostgresStore(t)
+	return newPostgresStore(t, binaryParams)
 }
 
 func testStore(t *testing.T, tests map[string]func(t *testing.T, store *Store)) {
 	t.Helper()
 
-	for _, driverName := range []string{model.DatabaseDriverPostgres, model.DatabaseDriverMysql} {
-		t.Run(driverName, func(t *testing.T) {
-			store, tearDown := newStore(t, driverName)
+	for _, name := range []string{model.DatabaseDriverPostgres, "postgres_binary_params", model.DatabaseDriverMysql} {
+		t.Run(name, func(t *testing.T) {
+			driverName := name
+			if name == "postgres_binary_params" {
+				driverName = model.DatabaseDriverPostgres
+			}
+
+			store, tearDown := newStore(t, driverName, name == "postgres_binary_params")
 			require.NotNil(t, store)
 			t.Cleanup(tearDown)
 

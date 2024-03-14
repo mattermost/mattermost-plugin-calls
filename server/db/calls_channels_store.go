@@ -19,7 +19,7 @@ func (s *Store) CreateCallsChannel(channel *public.CallsChannel) error {
 	qb := getQueryBuilder(s.driverName).
 		Insert("calls_channels").
 		Columns("ChannelID", "Enabled", "Props").
-		Values(channel.ChannelID, channel.Enabled, channel.Props)
+		Values(channel.ChannelID, channel.Enabled, s.newJSONValueWrapper(channel.Props))
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -48,7 +48,7 @@ func (s *Store) GetCallsChannel(channelID string, opts GetCallsChannelOpts) (*pu
 
 	var channel public.CallsChannel
 	if err := s.dbXFromGetOpts(opts).Get(&channel, q, args...); err == sql.ErrNoRows {
-		return nil, fmt.Errorf("calls channel not found")
+		return nil, fmt.Errorf("calls channel %w", ErrNotFound)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get calls channel: %w", err)
 	}
@@ -66,7 +66,7 @@ func (s *Store) UpdateCallsChannel(channel *public.CallsChannel) error {
 	qb := getQueryBuilder(s.driverName).
 		Update("calls_channels").
 		Set("Enabled", channel.Enabled).
-		Set("Props", channel.Props).
+		Set("Props", s.newJSONValueWrapper(channel.Props)).
 		Where(sq.Eq{"ChannelID": channel.ChannelID})
 
 	q, args, err := qb.ToSql()
