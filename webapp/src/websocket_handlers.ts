@@ -28,6 +28,8 @@ import {
     userRemovedFromChannelErr,
 } from 'src/client';
 import {
+    JOB_TYPE_CAPTIONING,
+    JOB_TYPE_RECORDING,
     JOINED_USER_NOTIFICATION_TIMEOUT,
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
@@ -365,10 +367,10 @@ export function handleCallJobState(store: Store, ev: WebSocketMessage<CallJobSta
 
     let type = '';
     switch (ev.data.jobState.type) {
-    case 'recording':
+    case JOB_TYPE_RECORDING:
         type = CALL_RECORDING_STATE;
         break;
-    case 'live_captions':
+    case JOB_TYPE_CAPTIONING:
         type = CALL_LIVE_CAPTIONS_STATE;
         break;
     }

@@ -6,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 )
 
 type jobState struct {
@@ -87,20 +88,12 @@ type CallStateClient struct {
 	DismissedNotification  map[string]bool `json:"dismissed_notification,omitempty"`
 }
 
-type JobStateType string
-
-const (
-	JobStateRecording     JobStateType = "recording"
-	JobStateTranscription              = "transcription"
-	JobStateLiveCaptions               = "live_captions"
-)
-
 type JobStateClient struct {
-	Type    JobStateType `json:"type"`
-	InitAt  int64        `json:"init_at"`
-	StartAt int64        `json:"start_at"`
-	EndAt   int64        `json:"end_at"`
-	Err     string       `json:"err,omitempty"`
+	Type    public.JobType `json:"type"`
+	InitAt  int64          `json:"init_at"`
+	StartAt int64          `json:"start_at"`
+	EndAt   int64          `json:"end_at"`
+	Err     string         `json:"err,omitempty"`
 }
 
 type ChannelStateClient struct {

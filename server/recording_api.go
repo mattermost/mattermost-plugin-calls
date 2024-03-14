@@ -6,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 	"net/http"
 	"regexp"
 	"time"
@@ -80,7 +81,7 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	}
 
 	recState := new(jobState)
-	recState.Type = JobStateRecording
+	recState.Type = public.JobTypeRecording
 	recState.ID = model.NewId()
 	recState.CreatorID = userID
 	recState.InitAt = time.Now().UnixMilli()

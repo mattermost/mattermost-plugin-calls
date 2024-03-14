@@ -9,6 +9,7 @@ type JobType string
 const (
 	JobTypeRecording    JobType = "recording"
 	JobTypeTranscribing         = "transcribing"
+	JobTypeCaptioning           = "captioning"
 )
 
 type JobStatusType string

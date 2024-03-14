@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 	"time"
 
 	"github.com/mattermost/calls-offloader/public/job"
@@ -86,7 +87,7 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 		// We need to send it as a "recording" because we don't handle the "transcription" type on the client.
 		// MM-57265: However, we don't show this message yet.
 		jobState := clientState.toMap()
-		jobState["type"] = JobStateTranscription
+		jobState["type"] = public.JobTypeTranscribing
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   callID,
 			"jobState": jobState,
@@ -104,7 +105,7 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	}
 
 	trState := new(jobState)
-	trState.Type = JobStateTranscription
+	trState.Type = public.JobTypeTranscribing
 	trState.ID = trID
 	trState.CreatorID = userID
 	trState.InitAt = time.Now().UnixMilli()
@@ -114,7 +115,7 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	if cfg := p.getConfiguration(); cfg != nil && cfg.liveCaptionsEnabled() {
 		liveCaptionsOn = true
 		lcState := new(jobState)
-		lcState.Type = JobStateLiveCaptions
+		lcState.Type = public.JobTypeCaptioning
 		lcState.ID = trID
 		lcState.CreatorID = userID
 		lcState.InitAt = time.Now().UnixMilli()
