@@ -342,6 +342,7 @@ func TestChannelStateClone(t *testing.T) {
 				},
 				Recording: &jobState{
 					JobStateClient: JobStateClient{
+						Type:    JobStateRecording,
 						InitAt:  1100,
 						StartAt: 1200,
 					},
@@ -382,6 +383,7 @@ func TestJobStateGetClientState(t *testing.T) {
 			ID:        "recID",
 			CreatorID: "creatorID",
 			JobStateClient: JobStateClient{
+				Type:    JobStateRecording,
 				InitAt:  100,
 				StartAt: 200,
 				EndAt:   300,
@@ -389,6 +391,7 @@ func TestJobStateGetClientState(t *testing.T) {
 		}
 
 		recState := &JobStateClient{
+			Type:    JobStateRecording,
 			InitAt:  100,
 			StartAt: 200,
 			EndAt:   300,

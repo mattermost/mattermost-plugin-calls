@@ -521,7 +521,6 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 
 	if status.JobType == public.JobTypeRecording {
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-			"type":     JobStateRecording,
 			"callID":   callID,
 			"jobState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
@@ -533,14 +532,12 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	} else {
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-			"type":     JobStateTranscription,
 			"callID":   callID,
 			"jobState": state.Call.Transcription.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 		if lcState != nil {
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-				"type":     JobStateLiveCaptions,
 				"callID":   callID,
 				"jobState": state.Call.LiveCaptions.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})

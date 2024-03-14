@@ -349,7 +349,6 @@ func (p *Plugin) removeSession(us *session) error {
 		}
 
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-			"type":     JobStateRecording,
 			"callID":   us.channelID,
 			"jobState": currState.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
@@ -375,14 +374,12 @@ func (p *Plugin) removeSession(us *session) error {
 		}
 
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-			"type":     JobStateTranscription,
 			"callID":   us.channelID,
 			"jobState": currState.Call.Transcription.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 
 		if currState.Call.LiveCaptions != nil {
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-				"type":     JobStateLiveCaptions,
 				"callID":   us.channelID,
 				"jobState": currState.Call.LiveCaptions.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})

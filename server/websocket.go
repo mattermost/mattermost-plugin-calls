@@ -47,10 +47,6 @@ const (
 	wsEventJobStop                   = "job_stop"
 	wsReconnectionTimeout            = 10 * time.Second
 
-	JobStateRecording     = "job_state_recording"
-	JobStateTranscription = "job_state_transcription"
-	JobStateLiveCaptions  = "job_state_live_captions"
-
 	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 	wsEventCallRecordingState = "call_recording_state"
 )
@@ -737,7 +733,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 
 	if userID == p.getBotID() && state.Call.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-			"type":     JobStateRecording,
 			"callID":   channelID,
 			"jobState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})

@@ -364,11 +364,11 @@ export function handleCallJobState(store: Store, ev: WebSocketMessage<CallJobSta
     }
 
     let type = '';
-    switch (ev.data.type) {
-    case 'job_state_recording':
+    switch (ev.data.jobState.type) {
+    case 'recording':
         type = CALL_RECORDING_STATE;
         break;
-    case 'job_state_live_captions':
+    case 'live_captions':
         type = CALL_LIVE_CAPTIONS_STATE;
         break;
     }

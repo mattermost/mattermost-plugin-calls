@@ -62,7 +62,6 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 		clientState.EndAt = time.Now().UnixMilli()
 
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-			"type":     JobStateRecording,
 			"callID":   callID,
 			"jobState": clientState.toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
@@ -81,6 +80,7 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	}
 
 	recState := new(jobState)
+	recState.Type = JobStateRecording
 	recState.ID = model.NewId()
 	recState.CreatorID = userID
 	recState.InitAt = time.Now().UnixMilli()
@@ -96,7 +96,6 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 			recState.EndAt = time.Now().UnixMilli()
 			recState.Err = rerr.Error()
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-				"type":     JobStateRecording,
 				"callID":   callID,
 				"jobState": recState.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
@@ -113,7 +112,6 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	// since it could take a few seconds to complete and we want clients
 	// to get their local state updated as soon as it changes on the server.
 	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-		"type":     JobStateRecording,
 		"callID":   callID,
 		"jobState": recState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
@@ -171,7 +169,6 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	}
 
 	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-		"type":     JobStateRecording,
 		"callID":   callID,
 		"jobState": recState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
@@ -208,7 +205,6 @@ func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobS
 		if rerr != nil {
 			recState.Err = rerr.Error()
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-				"type":     JobStateRecording,
 				"callID":   callID,
 				"jobState": recState.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
@@ -232,7 +228,6 @@ func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobS
 	}
 
 	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-		"type":     JobStateRecording,
 		"callID":   callID,
 		"jobState": recState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})

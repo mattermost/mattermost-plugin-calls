@@ -87,11 +87,20 @@ type CallStateClient struct {
 	DismissedNotification  map[string]bool `json:"dismissed_notification,omitempty"`
 }
 
+type JobStateType string
+
+const (
+	JobStateRecording     JobStateType = "recording"
+	JobStateTranscription              = "transcription"
+	JobStateLiveCaptions               = "live_captions"
+)
+
 type JobStateClient struct {
-	InitAt  int64  `json:"init_at"`
-	StartAt int64  `json:"start_at"`
-	EndAt   int64  `json:"end_at"`
-	Err     string `json:"err,omitempty"`
+	Type    JobStateType `json:"type"`
+	InitAt  int64        `json:"init_at"`
+	StartAt int64        `json:"start_at"`
+	EndAt   int64        `json:"end_at"`
+	Err     string       `json:"err,omitempty"`
 }
 
 type ChannelStateClient struct {
@@ -105,6 +114,7 @@ func (js *JobStateClient) toMap() map[string]interface{} {
 		return nil
 	}
 	return map[string]interface{}{
+		"type":     string(js.Type),
 		"init_at":  js.InitAt,
 		"start_at": js.StartAt,
 		"end_at":   js.EndAt,
