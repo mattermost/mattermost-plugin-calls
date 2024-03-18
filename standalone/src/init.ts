@@ -28,6 +28,7 @@ import {
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import {setServerVersion} from 'mattermost-redux/actions/general';
+import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
@@ -41,7 +42,6 @@ import {
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
 import RestClient from 'plugin/rest_client';
-import {Client4} from 'mattermost-redux/client';
 import {callsConfig, iceServers, needsTURNCredentials} from 'plugin/selectors';
 import {DesktopNotificationArgs, Store, WebAppUtils} from 'plugin/types/mattermost-webapp';
 import {
