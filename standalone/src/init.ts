@@ -41,6 +41,7 @@ import {
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
 import RestClient from 'plugin/rest_client';
+import {Client4} from 'mattermost-redux/client';
 import {callsConfig, iceServers, needsTURNCredentials} from 'plugin/selectors';
 import {DesktopNotificationArgs, Store, WebAppUtils} from 'plugin/types/mattermost-webapp';
 import {
@@ -162,7 +163,11 @@ export default async function init(cfg: InitConfig) {
 
     // Setting the base URL if present, in case MM is running under a subpath.
     if (window.basename) {
+        // If present, we need to set the basename on both the client we use (RestClient)
+        // and the default one (Client4) used by internal Redux actions. Not doing so
+        // would break Calls widget on installations served under a subpath.
         RestClient.setUrl(window.basename);
+        Client4.setUrl(window.basename);
     }
     RestClient.setToken(getToken());
 
