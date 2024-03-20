@@ -142,10 +142,12 @@ const StyledMediaController = styled(MediaController)`
 `;
 
 const StyledMediaControlBar = styled(MediaControlBar)`
+    position: relative;
     display: flex;
     flex-direction: row;
     justify-content: flex-end;
     background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1;
 `;
 
 const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
@@ -1426,4 +1428,5 @@ const LiveCaptionsOverlay = styled.div`
     display: flex;
     justify-content: center;
     bottom: 96px;
+    z-index: auto;
 `;
