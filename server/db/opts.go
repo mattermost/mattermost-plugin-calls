@@ -23,6 +23,14 @@ func (o GetCallsChannelOpts) UseWriter() bool {
 	return o.FromWriter
 }
 
+type GetCallSessionOpts struct {
+	FromWriter bool
+}
+
+func (o GetCallSessionOpts) UseWriter() bool {
+	return o.FromWriter
+}
+
 type getOpts interface {
 	UseWriter() bool
 }

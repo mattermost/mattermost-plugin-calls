@@ -13,9 +13,16 @@ type Call struct {
 	OwnerID      string      `json:"owner_id"`
 	Participants StringArray `json:"participants"`
 	Stats        CallStats   `json:"stats"`
-	Props        StringMap   `json:"props"`
+	Props        CallProps   `json:"props"`
+}
+
+type CallProps struct {
+	Hosts                  []string        `json:"hosts,omitempty"`
+	RTCDHost               string          `json:"rtcd_host,omitempty"`
+	ScreenSharingSessionID string          `json:"screen_sharing_session_id,omitempty"`
+	DismissedNotification  map[string]bool `json:"dismissed_notification,omitempty"`
 }
 
 type CallStats struct {
-	ScreenDuration int `json:"screen_duration"`
+	ScreenDuration int `json:"screen_duration,omitempty"`
 }
