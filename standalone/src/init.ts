@@ -28,6 +28,7 @@ import {
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import {setServerVersion} from 'mattermost-redux/actions/general';
+import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
@@ -162,7 +163,11 @@ export default async function init(cfg: InitConfig) {
 
     // Setting the base URL if present, in case MM is running under a subpath.
     if (window.basename) {
+        // If present, we need to set the basename on both the client we use (RestClient)
+        // and the default one (Client4) used by internal Redux actions. Not doing so
+        // would break Calls widget on installations served under a subpath.
         RestClient.setUrl(window.basename);
+        Client4.setUrl(window.basename);
     }
     RestClient.setToken(getToken());
 
