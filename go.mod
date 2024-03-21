@@ -7,7 +7,7 @@ require (
 	github.com/pion/rtcp v1.2.12
 	github.com/pion/webrtc/v3 v3.2.21
 	github.com/prometheus/client_golang v1.16.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
@@ -23,15 +23,15 @@ require (
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.0.12
 	github.com/mattermost/morph v1.1.0
-	github.com/mattermost/rtcd v0.13.1-0.20240123225600-e6976e37e812
+	github.com/mattermost/rtcd v0.13.1-0.20240311212157-7a6415db7b1d
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pion/interceptor v0.1.25
 	github.com/pion/rtp v1.8.3
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
-	github.com/testcontainers/testcontainers-go v0.28.0
-	github.com/testcontainers/testcontainers-go/modules/mysql v0.28.0
-	github.com/testcontainers/testcontainers-go/modules/postgres v0.28.0
+	github.com/testcontainers/testcontainers-go v0.29.1
+	github.com/testcontainers/testcontainers-go/modules/mysql v0.29.1
+	github.com/testcontainers/testcontainers-go/modules/postgres v0.29.1
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 	golang.org/x/time v0.3.0
 )
@@ -56,7 +56,7 @@ require (
 	github.com/cpuguy83/dockercfg v0.3.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
-	github.com/docker/docker v25.0.2+incompatible // indirect
+	github.com/docker/docker v25.0.3+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dyatlov/go-opengraph/opengraph v0.0.0-20220524092352-606d7b1e5f8a // indirect
@@ -93,7 +93,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.1.0-rc5 // indirect
+	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/philhofer/fwd v1.1.2 // indirect
@@ -119,7 +119,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.12 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/stretchr/objx v0.5.1 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tidwall/gjson v1.17.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -137,7 +137,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.19.0 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea // indirect
-	golang.org/x/mod v0.14.0 // indirect
+	golang.org/x/mod v0.16.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

@@ -441,6 +441,18 @@ export function getTranslations(locale: string) {
     try {
         logDebug(`loading translations file for locale '${locale}'`);
 
+        // Remapping some language codes to their actual file.
+        // This is needed as Mattermost product uses different codes for
+        // certain languages such as simplified and traditional Chinese.
+        switch (locale) {
+        case 'zh-CN':
+            locale = 'zh_Hans';
+            break;
+        case 'zh-TW':
+            locale = 'zh_Hant';
+            break;
+        }
+
         // synchronously loading all translation files from bundle (MM-50811).
         // eslint-disable-next-line global-require
         return require(`../i18n/${locale}.json`);

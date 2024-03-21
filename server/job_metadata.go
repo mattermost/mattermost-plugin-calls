@@ -109,7 +109,7 @@ func (p *Plugin) saveRecordingMetadata(postID, recID, trID string) error {
 				trID: tm.toMap(),
 			}
 		} else {
-			recordings[trID] = tm.toMap()
+			transcriptions[trID] = tm.toMap()
 		}
 		post.AddProp("transcriptions", transcriptions)
 	}

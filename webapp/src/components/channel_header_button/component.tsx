@@ -47,7 +47,7 @@ const ChannelHeaderButton = ({
             disabled={isChannelArchived || isDeactivatedDM}
             isCloudPaid={isCloudPaid}
         >
-            <CompassIcon icon='phone-outline'/>
+            <CompassIcon icon='phone'/>
             <div>
                 <span className='call-button-label'>
                     {hasCall ? formatMessage({defaultMessage: 'Join call'}) : formatMessage({defaultMessage: 'Start call'})}
