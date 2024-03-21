@@ -56,6 +56,27 @@ func (s *Store) GetCallsChannel(channelID string, opts GetCallsChannelOpts) (*pu
 	return &channel, nil
 }
 
+func (s *Store) GetAllCallsChannels(opts GetCallsChannelOpts) ([]*public.CallsChannel, error) {
+	s.metrics.IncStoreOp("GetAllCallsChannels")
+
+	// TODO: consider implementing paging
+	// This should be fine for now as we wouldn't expect to have more than a few
+	// channels with calls explicitly enabled/disabled.
+	qb := getQueryBuilder(s.driverName).Select("*").From("calls_channels")
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	channels := []*public.CallsChannel{}
+	if err := s.dbXFromGetOpts(opts).Select(&channels, q, args...); err != nil {
+		return nil, fmt.Errorf("failed to get calls channels: %w", err)
+	}
+
+	return channels, nil
+}
+
 func (s *Store) UpdateCallsChannel(channel *public.CallsChannel) error {
 	s.metrics.IncStoreOp("UpdateCallsChannel")
 

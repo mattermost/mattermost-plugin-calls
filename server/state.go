@@ -45,10 +45,10 @@ type callState struct {
 	Recording              *jobState             `json:"recording,omitempty"`
 	Transcription          *jobState             `json:"transcription,omitempty"`
 	DismissedNotification  map[string]bool       `json:"dismissed_notification,omitempty"`
+	NodeID                 string                `json:"node_id,omitempty"`
 }
 
 type channelState struct {
-	NodeID  string     `json:"node_id,omitempty"`
 	Enabled *bool      `json:"enabled"`
 	Call    *callState `json:"call,omitempty"`
 }
@@ -373,8 +373,6 @@ func (p *Plugin) cleanCallState(channelID string, state *channelState) error {
 	if state == nil {
 		return nil
 	}
-
-	state.NodeID = ""
 
 	if state.Call != nil {
 		if _, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Stats.Participants)); err != nil {

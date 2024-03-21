@@ -80,9 +80,12 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	}).Methods("GET")
 
 	// CallsChannels
-	router.HandleFunc("/{channel_id:[a-z0-9]{26}}", p.handleGetChannel).Methods("GET")
-	router.HandleFunc("/{channel_id:[a-z0-9]{26}}", p.handlePostChannel).Methods("POST")
-	router.HandleFunc("/channels", p.handleGetAllChannels).Methods("GET")
+	router.HandleFunc("/{channel_id:[a-z0-9]{26}}", p.handleGetCallChannelState).Methods("GET") // DEPRECATED as of v1
+	router.HandleFunc("/{channel_id:[a-z0-9]{26}}", p.handlePostCallsChannel).Methods("POST")   // DEPRECATED as of v1
+	router.HandleFunc("/channels", p.handleGetAllCallChannelStates).Methods("GET")              // DEPRECATED as of v1
+
+	// router.HandleFunc("/channels/{channel_id:[a-z0-9]{26}}", p.handleGetCallsChannel).Methods("GET")
+	// router.HandleFunc("/channels/{channel_id:[a-z0-9]{26}}", p.handlePostCallsChannel).Methods("POST")
 
 	// Calls
 	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/end", p.handleEndCall).Methods("POST")

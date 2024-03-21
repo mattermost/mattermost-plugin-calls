@@ -88,8 +88,8 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 			StartAt:  time.Now().UnixMilli(),
 			Sessions: make(map[string]*userState),
 			OwnerID:  userID,
+			NodeID:   p.nodeID,
 		}
-		state.NodeID = p.nodeID
 
 		if p.rtcdManager != nil {
 			host, err := p.rtcdManager.GetHostForNewCall()
@@ -236,7 +236,6 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
 		}
 		state.Call = nil
-		state.NodeID = ""
 	}
 
 	if err := p.kvSetChannelState(channelID, state); err != nil {

@@ -13,6 +13,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
@@ -71,7 +72,7 @@ type Plugin struct {
 	callsClusterLocksMut sync.RWMutex
 
 	// Database
-	store interfaces.Store
+	store *db.Store
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
@@ -412,7 +413,7 @@ func (p *Plugin) UserHasLeftChannel(_ *plugin.Context, cm *model.ChannelMember, 
 		if session.UserID == cm.UserId {
 			p.LogDebug("UserHasLeftChannel: closing RTC session for user who left channel",
 				"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
-			if err := p.closeRTCSession(session.UserID, connID, cm.ChannelId, state.NodeID); err != nil {
+			if err := p.closeRTCSession(session.UserID, connID, cm.ChannelId, state.Call.NodeID); err != nil {
 				p.LogError("UserHasLeftChannel: failed to close RTC session", "err", err.Error(),
 					"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
 			}

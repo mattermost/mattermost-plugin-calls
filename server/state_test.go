@@ -298,7 +298,6 @@ func TestChannelStateClone(t *testing.T) {
 
 	t.Run("nil call", func(t *testing.T) {
 		cs := channelState{
-			NodeID:  "nodeID",
 			Enabled: model.NewBool(true),
 		}
 		cloned := cs.Clone()
@@ -308,9 +307,10 @@ func TestChannelStateClone(t *testing.T) {
 
 	t.Run("with empty call", func(t *testing.T) {
 		cs := channelState{
-			NodeID:  "nodeID",
 			Enabled: model.NewBool(true),
-			Call:    &callState{},
+			Call: &callState{
+				NodeID: "nodeID",
+			},
 		}
 		cloned := cs.Clone()
 		require.Equal(t, cs, *cloned)
@@ -320,9 +320,9 @@ func TestChannelStateClone(t *testing.T) {
 
 	t.Run("with non-empty call", func(t *testing.T) {
 		cs := &channelState{
-			NodeID:  "nodeID",
 			Enabled: model.NewBool(true),
 			Call: &callState{
+				NodeID: "nodeID",
 				Sessions: map[string]*userState{
 					"sessionA": {
 						UserID:  "userA",

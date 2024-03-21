@@ -142,6 +142,17 @@ func newStore(t *testing.T, driverName string, binaryParams bool) (*Store, func(
 	return newPostgresStore(t, binaryParams)
 }
 
+func resetStore(t *testing.T, store *Store) {
+	t.Helper()
+
+	_, err := store.wDB.Exec(`TRUNCATE TABLE calls`)
+	require.NoError(t, err)
+	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_channels`)
+	require.NoError(t, err)
+	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_sessions`)
+	require.NoError(t, err)
+}
+
 func testStore(t *testing.T, tests map[string]func(t *testing.T, store *Store)) {
 	t.Helper()
 
@@ -163,6 +174,7 @@ func testStore(t *testing.T, tests map[string]func(t *testing.T, store *Store)) 
 
 			for testName, testFn := range tests {
 				t.Run(testName, func(t *testing.T) {
+					resetStore(t, store)
 					testFn(t, store)
 				})
 			}

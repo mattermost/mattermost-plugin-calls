@@ -16,9 +16,10 @@ import (
 func TestCallsChannelsStore(t *testing.T) {
 	t.Parallel()
 	testStore(t, map[string]func(t *testing.T, store *Store){
-		"TestCreateCallsChannel": testCreateCallsChannel,
-		"TestUpdateCallsChannel": testUpdateCallsChannel,
-		"TestGetCallsChannel":    testGetCallsChannel,
+		"TestCreateCallsChannel":  testCreateCallsChannel,
+		"TestUpdateCallsChannel":  testUpdateCallsChannel,
+		"TestGetCallsChannel":     testGetCallsChannel,
+		"TestGetAllCallsChannels": testGetAllCallsChannels,
 	})
 }
 
@@ -119,5 +120,40 @@ func testGetCallsChannel(t *testing.T, store *Store) {
 		require.NoError(t, err)
 		require.NotNil(t, gotChannel)
 		require.Equal(t, channel, gotChannel)
+	})
+}
+
+func testGetAllCallsChannels(t *testing.T, store *Store) {
+	t.Run("no channels", func(t *testing.T) {
+		channels, err := store.GetAllCallsChannels(GetCallsChannelOpts{})
+		require.NoError(t, err)
+		require.Empty(t, channels)
+	})
+
+	t.Run("all channels", func(t *testing.T) {
+		var createdChannels []*public.CallsChannel
+		for i := 0; i < 10; i++ {
+			channel := &public.CallsChannel{
+				ChannelID: model.NewId(),
+				Enabled:   i%2 == 0,
+				Props: map[string]any{
+					"string_prop": "test",
+					"number_prop": float64(45),
+					"slice_prop":  []any{"1", "2"},
+					"map_prop": map[string]any{
+						"key": "value",
+					},
+				},
+			}
+
+			err := store.CreateCallsChannel(channel)
+			require.NoError(t, err)
+
+			createdChannels = append(createdChannels, channel)
+		}
+
+		channels, err := store.GetAllCallsChannels(GetCallsChannelOpts{})
+		require.NoError(t, err)
+		require.ElementsMatch(t, createdChannels, channels)
 	})
 }

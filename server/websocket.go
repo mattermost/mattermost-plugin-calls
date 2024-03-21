@@ -524,8 +524,8 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 	if err != nil {
 		p.LogError(err.Error())
 	}
-	if handlerID == "" && state != nil {
-		handlerID = state.NodeID
+	if handlerID == "" && state != nil && state.Call != nil {
+		handlerID = state.Call.NodeID
 	}
 
 	if err := p.closeRTCSession(userID, us.originalConnID, channelID, handlerID); err != nil {
@@ -650,7 +650,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		p.LogError(err.Error())
 	}
 	if handlerID == "" {
-		handlerID = state.NodeID
+		handlerID = state.Call.NodeID
 	}
 	p.LogDebug("got handlerID", "handlerID", handlerID)
 
@@ -851,7 +851,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		p.LogError(err.Error())
 	}
 	if handlerID == "" && state != nil {
-		handlerID = state.NodeID
+		handlerID = state.Call.NodeID
 	}
 
 	p.wsReader(us, authSessionID, handlerID)

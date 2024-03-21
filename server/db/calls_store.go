@@ -159,7 +159,7 @@ func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 
 	var call public.Call
 	if err := s.dbXFromGetOpts(opts).Get(&call, q, args...); err == sql.ErrNoRows {
-		return nil, fmt.Errorf("call not found")
+		return nil, fmt.Errorf("call %w", ErrNotFound)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get call: %w", err)
 	}
@@ -172,7 +172,11 @@ func (s *Store) GetCallByChannelID(channelID string, opts GetCallOpts) (*public.
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls").
-		Where(sq.Eq{"ChannelID": channelID})
+		Where(
+			sq.Eq{"ChannelID": channelID},
+			sq.Eq{"EndAt": 0},
+			sq.Eq{"DeleteAt": 0},
+		).OrderBy("StartAt, ID DESC").Limit(1)
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -181,7 +185,7 @@ func (s *Store) GetCallByChannelID(channelID string, opts GetCallOpts) (*public.
 
 	var call public.Call
 	if err := s.dbXFromGetOpts(opts).Get(&call, q, args...); err == sql.ErrNoRows {
-		return nil, fmt.Errorf("call not found")
+		return nil, fmt.Errorf("call %w", ErrNotFound)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get call: %w", err)
 	}
