@@ -13,7 +13,6 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
-	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
@@ -68,7 +67,7 @@ type Plugin struct {
 	callsClusterLocksMut sync.RWMutex
 
 	// Database
-	store *db.Store
+	store interfaces.Store
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {

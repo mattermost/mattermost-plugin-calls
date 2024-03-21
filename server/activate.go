@@ -63,11 +63,6 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
-	if err := p.runDBMigrations(); err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
 
 	if p.isSingleHandler() {

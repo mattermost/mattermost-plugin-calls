@@ -1,19 +1,18 @@
-CREATE TABLE IF NOT EXISTS CallsChannels (
-    ChannelID varchar(26) NOT NULL,
+CREATE TABLE IF NOT EXISTS calls_channels (
+    ChannelID varchar(26) PRIMARY KEY,
     Enabled BOOLEAN,
-		Props JSON,
-    PRIMARY KEY (ChannelId)
+    Props JSON
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE PROCEDURE MigrateCallsChannels ()
+CREATE PROCEDURE migrate_calls_channels ()
 BEGIN DECLARE
-	CallsChannels_Count INT;
+	calls_channels_count INT;
 	SELECT
 		COUNT(*)
 	FROM
-		CallsChannels INTO CallsChannels_Count;
-	IF(CallsChannels_Count = 0) THEN
-		INSERT INTO CallsChannels (ChannelId, Enabled)
+		calls_channels INTO calls_channels_count;
+	IF(calls_channels_count = 0) THEN
+		INSERT INTO calls_channels (ChannelId, Enabled)
 		SELECT
 			PKey, JSON_EXTRACT(CONVERT(PValue using utf8mb4), "$.enabled") = true 
 		FROM
@@ -27,7 +26,7 @@ BEGIN DECLARE
 	END IF;
 END;
 
-CALL MigrateCallsChannels();
+CALL migrate_calls_channels();
 
-DROP PROCEDURE IF EXISTS MigrateCallsChannels;
+DROP PROCEDURE IF EXISTS migrate_calls_channels;
 

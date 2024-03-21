@@ -6,6 +6,8 @@ package interfaces
 import (
 	"net/http"
 
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/morph/models"
 	"github.com/mattermost/rtcd/service/rtc"
 )
 
@@ -24,4 +26,12 @@ type Metrics interface {
 
 type StoreMetrics interface {
 	IncStoreOp(op string)
+}
+
+type Store interface {
+	Migrate(direction models.Direction, dryRun bool) error
+	Close() error
+	GetPost(postID string) (*model.Post, error)
+	UpdateFileInfoPostID(fileID, channelID, postID string) error
+	KVGet(pluginID, key string, fromWriter bool) ([]byte, error)
 }

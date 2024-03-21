@@ -61,11 +61,6 @@ func RunPostgresContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
 				WithStartupTimeout(5 * time.Second)),
-		tc.CustomizeRequest(tc.GenericContainerRequest{
-			ContainerRequest: tc.ContainerRequest{
-				SkipReaper: true,
-			},
-		}),
 	}, opts...)
 
 	cnt, err := postgres.RunContainer(ctx, opts...)
@@ -87,11 +82,6 @@ func RunMySQLContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (*my
 		mysql.WithDatabase(DBName),
 		mysql.WithUsername(DBUser),
 		mysql.WithPassword(DBPass),
-		tc.CustomizeRequest(tc.GenericContainerRequest{
-			ContainerRequest: tc.ContainerRequest{
-				SkipReaper: true,
-			},
-		}),
 	}, opts...)
 
 	cnt, err := mysql.RunContainer(ctx, opts...)

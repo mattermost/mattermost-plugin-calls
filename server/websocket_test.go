@@ -4,7 +4,6 @@
 package main
 
 import (
-	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,41 +23,20 @@ import (
 
 func TestHandleBotWSReconnect(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
-	mockDriver := &pluginMocks.MockDriver{}
 	mockMetrics := &serverMocks.MockMetrics{}
+	mockStore := &serverMocks.MockStore{}
 
 	p := Plugin{
 		MattermostPlugin: plugin.MattermostPlugin{
-			API:    mockAPI,
-			Driver: mockDriver,
+			API: mockAPI,
 		},
 		callsClusterLocks: map[string]*cluster.Mutex{},
 		metrics:           mockMetrics,
+		store:             mockStore,
 	}
 
 	channelID := "channelID"
 
-	// Boilerplate mocking
-	var mockConfig model.Config
-	mockConfig.SetDefaults()
-	mockAPI.On("GetUnsanitizedConfig").Return(&mockConfig).Once()
-	mockDriver.On("Conn", true).Return("wdbConnID", nil).Once()
-	mockDriver.On("Conn", false).Return("rdbConnID", nil).Once()
-	mockDriver.On("ConnPing", "wdbConnID").Return(nil).Once()
-	mockDriver.On("ConnPing", "rdbConnID").Return(nil).Once()
-	mockDriver.On("ConnQuery", "wdbConnID", mock.AnythingOfType("string"), mock.AnythingOfType("[]driver.NamedValue")).Return("rowsID", nil)
-	mockDriver.On("RowsColumns", "rowsID").Return([]string{"PValue"})
-	mockDriver.On("RowsClose", "rowsID").Return(nil)
-	mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil)
-	mockAPI.On("LogInfo",
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string"),
-	).Once()
-	err := p.initDB()
-	require.NoError(t, err)
 	mockAPI.On("LogDebug", mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
@@ -73,11 +51,8 @@ func TestHandleBotWSReconnect(t *testing.T) {
 		require.NoError(t, err)
 
 		// Here we define what data p.kvGetChannelState would return.
-		mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
-			require.Equal(t, "rowsID", rowsID)
-			dest[0] = stateJSON
-			return nil
-		}).Once()
+		mockStore.On("KVGet", "com.mattermost.calls", "channelID", true).Return(stateJSON, nil).Once()
+		mockAPI.On("KVDelete", "mutex_call_channelID").Return(nil).Once()
 
 		// Here we assert that KVSet gets called with the expected serialized state.
 		mockAPI.On("KVSet", "channelID", stateJSON).Return(nil).Once()
@@ -95,11 +70,8 @@ func TestHandleBotWSReconnect(t *testing.T) {
 		require.NoError(t, err)
 
 		// Here we define what data p.kvGetChannelState would return.
-		mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
-			require.Equal(t, "rowsID", rowsID)
-			dest[0] = stateJSON
-			return nil
-		}).Once()
+		mockStore.On("KVGet", "com.mattermost.calls", "channelID", true).Return(stateJSON, nil).Once()
+		mockAPI.On("KVDelete", "mutex_call_channelID").Return(nil).Once()
 
 		// Here we assert that KVSet gets called with the expected serialized state.
 		mockAPI.On("KVSet", "channelID", stateJSON).Return(nil).Once()
@@ -121,11 +93,8 @@ func TestHandleBotWSReconnect(t *testing.T) {
 		require.NoError(t, err)
 
 		// Here we define what data p.kvGetChannelState would return.
-		mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
-			require.Equal(t, "rowsID", rowsID)
-			dest[0] = stateJSON
-			return nil
-		}).Once()
+		mockStore.On("KVGet", "com.mattermost.calls", "channelID", true).Return(stateJSON, nil).Once()
+		mockAPI.On("KVDelete", "mutex_call_channelID").Return(nil).Once()
 
 		// We do the expected mutation.
 		state.Call.Recording.BotConnID = "connID"
@@ -152,11 +121,8 @@ func TestHandleBotWSReconnect(t *testing.T) {
 		require.NoError(t, err)
 
 		// Here we define what data p.kvGetChannelState would return.
-		mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
-			require.Equal(t, "rowsID", rowsID)
-			dest[0] = stateJSON
-			return nil
-		}).Once()
+		mockStore.On("KVGet", "com.mattermost.calls", "channelID", true).Return(stateJSON, nil).Once()
+		mockAPI.On("KVDelete", "mutex_call_channelID").Return(nil).Once()
 
 		// We do the expected mutation.
 		state.Call.Transcription.BotConnID = "connID"
@@ -187,11 +153,8 @@ func TestHandleBotWSReconnect(t *testing.T) {
 			require.NoError(t, err)
 
 			// Here we define what data p.kvGetChannelState would return.
-			mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
-				require.Equal(t, "rowsID", rowsID)
-				dest[0] = stateJSON
-				return nil
-			}).Once()
+			mockStore.On("KVGet", "com.mattermost.calls", "channelID", true).Return(stateJSON, nil).Once()
+			mockAPI.On("KVDelete", "mutex_call_channelID").Return(nil).Once()
 
 			// We do the expected mutation.
 			state.Call.Recording.BotConnID = "newRecordingBotConnID"
@@ -221,11 +184,8 @@ func TestHandleBotWSReconnect(t *testing.T) {
 			require.NoError(t, err)
 
 			// Here we define what data p.kvGetChannelState would return.
-			mockDriver.On("RowsNext", "rowsID", mock.AnythingOfType("[]driver.Value")).Return(func(rowsID string, dest []driver.Value) error {
-				require.Equal(t, "rowsID", rowsID)
-				dest[0] = stateJSON
-				return nil
-			}).Once()
+			mockStore.On("KVGet", "com.mattermost.calls", "channelID", true).Return(stateJSON, nil).Once()
+			mockAPI.On("KVDelete", "mutex_call_channelID").Return(nil).Once()
 
 			// We do the expected mutation.
 			state.Call.Transcription.BotConnID = "newTranscribingBotConnID"

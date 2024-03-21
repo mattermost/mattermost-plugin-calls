@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS callschannels;
+DROP TABLE IF EXISTS calls_channels;

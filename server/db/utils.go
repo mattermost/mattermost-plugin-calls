@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mattermost/mattermost/server/public/model"
+
 	"github.com/go-sql-driver/mysql"
+	sq "github.com/mattermost/squirrel"
 )
 
 func (s *Store) setupConnForMigrations(dsn string) (*sql.DB, error) {
@@ -52,4 +55,15 @@ func resetReadTimeout(dsn string) (string, error) {
 	}
 	config.ReadTimeout = 0
 	return config.FormatDSN(), nil
+}
+
+func getQueryBuilder(driverName string) sq.StatementBuilderType {
+	return sq.StatementBuilder.PlaceholderFormat(getQueryPlaceholder(driverName))
+}
+
+func getQueryPlaceholder(driverName string) sq.PlaceholderFormat {
+	if driverName == model.DatabaseDriverPostgres {
+		return sq.Dollar
+	}
+	return sq.Question
 }
