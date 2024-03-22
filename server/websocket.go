@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
+
 	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 
@@ -126,21 +128,26 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingSessionID)
 		}
 		state.Call.ScreenSharingSessionID = us.originalConnID
-		state.Call.ScreenStreamID = data["screenStreamID"]
 		state.Call.ScreenStartAt = time.Now().Unix()
+
+		state.Call.call.Props.ScreenSharingSessionID = us.originalConnID
+		state.Call.call.Props.ScreenStartAt = state.Call.ScreenStartAt
 	} else {
 		if state.Call.ScreenSharingSessionID != us.originalConnID {
 			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingSessionID)
 		}
 		state.Call.ScreenSharingSessionID = ""
-		state.Call.ScreenStreamID = ""
+		state.Call.call.Props.ScreenSharingSessionID = ""
 		if state.Call.ScreenStartAt > 0 {
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
+			state.Call.call.Stats.ScreenDuration = state.Call.Stats.ScreenDuration
 			state.Call.ScreenStartAt = 0
+			state.Call.call.Props.ScreenStartAt = 0
 		}
 	}
-	if err := p.kvSetChannelState(us.channelID, state); err != nil {
-		return fmt.Errorf("failed to set channel state: %w", err)
+
+	if err := p.store.UpdateCall(state.Call.call); err != nil {
+		return fmt.Errorf("failed to update call: %w", err)
 	}
 
 	msgType := rtc.ScreenOnMessage
@@ -289,12 +296,15 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			return fmt.Errorf("call state is missing from channel state")
 		}
 		uState := state.Call.Sessions[us.originalConnID]
+		session := state.Call.sessions[us.originalConnID]
 		if uState == nil {
 			return fmt.Errorf("user state is missing from call state")
 		}
 		uState.Unmuted = msg.Type == clientMessageTypeUnmute
-		if err := p.kvSetChannelState(us.channelID, state); err != nil {
-			return fmt.Errorf("failed to set channel state: %w", err)
+		session.Unmuted = msg.Type == clientMessageTypeUnmute
+
+		if err := p.store.UpdateCallSession(session); err != nil {
+			return fmt.Errorf("failed to update call session: %w", err)
 		}
 
 		evType := wsEventUserUnmuted
@@ -330,13 +340,22 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if uState == nil {
 			return fmt.Errorf("user state is missing from call state")
 		}
+
+		session := state.Call.sessions[us.originalConnID]
+		if session == nil {
+			return fmt.Errorf("user session is missing from call state")
+		}
+
 		if msg.Type == clientMessageTypeRaiseHand {
 			uState.RaisedHand = time.Now().UnixMilli()
+			session.RaisedHand = time.Now().UnixMilli()
 		} else {
 			uState.RaisedHand = 0
+			session.RaisedHand = 0
 		}
-		if err := p.kvSetChannelState(us.channelID, state); err != nil {
-			return fmt.Errorf("failed to set channel state: %w", err)
+
+		if err := p.store.UpdateCallSession(session); err != nil {
+			return fmt.Errorf("failed to update call session: %w", err)
 		}
 
 		p.publishWebSocketEvent(evType, map[string]interface{}{
@@ -447,7 +466,11 @@ func (p *Plugin) sendRTCMessage(msg rtc.Message, channelID string) error {
 			Type: rtcd.ClientMessageRTC,
 			Data: msg,
 		}
-		return p.rtcdManager.Send(cm, channelID)
+		host, err := p.store.GetRTCDHostForActiveCall(channelID, db.GetCallOpts{})
+		if err != nil {
+			return fmt.Errorf("failed to get RTCD host for active call: %w", err)
+		}
+		return p.rtcdManager.Send(cm, channelID, host)
 	}
 
 	return p.rtcServer.Send(msg)
@@ -620,9 +643,9 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			p.LogError(err.Error())
 		}
 
-		state.Call.PostID = postID
-		state.Call.ThreadID = threadID
-		if err := p.kvSetChannelState(channelID, state); err != nil {
+		state.Call.call.PostID = postID
+		state.Call.call.ThreadID = threadID
+		if err := p.store.UpdateCall(state.Call.call); err != nil {
 			p.LogError(err.Error())
 		}
 
@@ -676,7 +699,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 				"sessionID": connID,
 			},
 		}
-		if err := p.rtcdManager.Send(msg, channelID); err != nil {
+		if err := p.rtcdManager.Send(msg, channelID, state.Call.RTCDHost); err != nil {
 			return fmt.Errorf("failed to send client join message: %w", err)
 		}
 	} else {
@@ -841,7 +864,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 				"sessionID": originalConnID,
 			},
 		}
-		if err := p.rtcdManager.Send(msg, channelID); err != nil {
+		if err := p.rtcdManager.Send(msg, channelID, state.Call.RTCDHost); err != nil {
 			return fmt.Errorf("failed to send client reconnect message: %w", err)
 		}
 	}
@@ -1021,7 +1044,13 @@ func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID string) er
 				"sessionID": connID,
 			},
 		}
-		if err := p.rtcdManager.Send(msg, channelID); err != nil {
+
+		host, err := p.store.GetRTCDHostForActiveCall(channelID, db.GetCallOpts{})
+		if err != nil {
+			return fmt.Errorf("failed to get RTCD host for active call: %w", err)
+		}
+
+		if err := p.rtcdManager.Send(msg, channelID, host); err != nil {
 			return fmt.Errorf("failed to send client message: %w", err)
 		}
 	}

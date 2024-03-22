@@ -64,7 +64,7 @@ func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	call, err := p.store.GetCallByChannelID(channelID, db.GetCallOpts{})
+	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{})
 	if err != nil && !errors.Is(err, db.ErrNotFound) {
 		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -87,6 +87,7 @@ func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Reques
 
 	data["channel_id"] = channel.ChannelID
 	data["enabled"] = channel.Enabled
+	// TODO: need to send client state here
 	data["call"] = call
 
 	w.Header().Set("Content-Type", "application/json")
@@ -150,7 +151,7 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 			continue
 		}
 
-		call, err := p.store.GetCallByChannelID(ch.ChannelID, db.GetCallOpts{})
+		call, err := p.store.GetActiveCallByChannelID(ch.ChannelID, db.GetCallOpts{})
 		if err != nil && !errors.Is(err, db.ErrNotFound) {
 			p.LogError("failed to get call by channel ID", "err", err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -165,6 +166,7 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 			"enabled":    ch.Enabled,
 		}
 		if call != nil {
+			// TODO: need to send client state here
 			channelData["call"] = call
 		}
 
@@ -210,10 +212,11 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 
 	if state.Call.EndAt == 0 {
 		state.Call.EndAt = time.Now().UnixMilli()
+		state.Call.call.EndAt = time.Now().UnixMilli()
 	}
 
-	if err := p.kvSetChannelState(channelID, state); err != nil {
-		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+	if err := p.store.UpdateCall(state.Call.call); err != nil {
+		res.Err = fmt.Errorf("failed to update call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
@@ -278,11 +281,13 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 
 	if state.Call.DismissedNotification == nil {
 		state.Call.DismissedNotification = make(map[string]bool)
+		state.Call.call.Props.DismissedNotification = make(map[string]bool)
 	}
 	state.Call.DismissedNotification[userID] = true
+	state.Call.call.Props.DismissedNotification[userID] = true
 
-	if err := p.kvSetChannelState(channelID, state); err != nil {
-		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+	if err := p.store.UpdateCall(state.Call.call); err != nil {
+		res.Err = fmt.Errorf("failed to update call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}

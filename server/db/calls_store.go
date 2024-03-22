@@ -7,6 +7,8 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
+	"github.com/mattermost/mattermost/server/public/model"
+
 	sq "github.com/mattermost/squirrel"
 )
 
@@ -64,12 +66,16 @@ func (s *Store) UpdateCall(call *public.Call) error {
 		Update("calls").
 		Set("EndAt", call.EndAt).
 		Set("DeleteAt", call.DeleteAt).
+		Set("ThreadID", call.ThreadID).
+		Set("PostID", call.PostID).
 		Set("Participants", s.newJSONValueWrapper(call.Participants)).
 		Set("Stats", s.newJSONValueWrapper(call.Stats)).
 		Set("Props", s.newJSONValueWrapper(call.Props)).
 		Where(
-			sq.Eq{"ID": call.ID},
-			sq.Eq{"ChannelID": call.ChannelID},
+			sq.Or{
+				sq.Eq{"ID": call.ID},
+				sq.Eq{"ChannelID": call.ChannelID},
+			},
 		)
 
 	q, args, err := qb.ToSql()
@@ -167,16 +173,19 @@ func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 	return &call, nil
 }
 
-func (s *Store) GetCallByChannelID(channelID string, opts GetCallOpts) (*public.Call, error) {
-	s.metrics.IncStoreOp("GetCallByChannelID")
+func (s *Store) GetActiveCallByChannelID(channelID string, opts GetCallOpts) (*public.Call, error) {
+	s.metrics.IncStoreOp("GetActiveCallByChannelID")
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls").
 		Where(
-			sq.Eq{"ChannelID": channelID},
-			sq.Eq{"EndAt": 0},
-			sq.Eq{"DeleteAt": 0},
-		).OrderBy("StartAt, ID DESC").Limit(1)
+			sq.And{
+				sq.Eq{"ChannelID": channelID},
+				sq.Eq{"EndAt": 0},
+				sq.Gt{"StartAt": 0},
+				sq.Eq{"DeleteAt": 0},
+			},
+		).OrderBy("StartAt DESC, ID").Limit(1)
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -191,4 +200,38 @@ func (s *Store) GetCallByChannelID(channelID string, opts GetCallOpts) (*public.
 	}
 
 	return &call, nil
+}
+
+func (s *Store) GetRTCDHostForActiveCall(channelID string, opts GetCallOpts) (string, error) {
+	s.metrics.IncStoreOp("GetRTCDHostForActiveCall")
+
+	selectProp := "COALESCE(props->>'rtcd_host', '')"
+	if s.driverName == model.DatabaseDriverMysql {
+		selectProp = `COALESCE(Props->>"$.rtcd_host", '')`
+	}
+
+	qb := getQueryBuilder(s.driverName).Select(selectProp).
+		From("calls").
+		Where(
+			sq.And{
+				sq.Eq{"ChannelID": channelID},
+				sq.Eq{"EndAt": 0},
+				sq.Gt{"StartAt": 0},
+				sq.Eq{"DeleteAt": 0},
+			},
+		).OrderBy("StartAt DESC, ID").Limit(1)
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return "", fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var rtcdHost string
+	if err := s.dbXFromGetOpts(opts).Get(&rtcdHost, q, args...); err == sql.ErrNoRows {
+		return "", fmt.Errorf("call %w", ErrNotFound)
+	} else if err != nil {
+		return "", fmt.Errorf("failed to get rtcdHost for call: %w", err)
+	}
+
+	return rtcdHost, nil
 }

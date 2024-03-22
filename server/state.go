@@ -5,7 +5,14 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
+
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 type jobState struct {
@@ -29,23 +36,25 @@ type callStats struct {
 }
 
 type callState struct {
-	ID                     string                `json:"id"`
-	StartAt                int64                 `json:"create_at"`
-	EndAt                  int64                 `json:"end_at"`
-	Sessions               map[string]*userState `json:"sessions,omitempty"`
-	OwnerID                string                `json:"owner_id"`
-	ThreadID               string                `json:"thread_id"`
-	PostID                 string                `json:"post_id"`
-	ScreenSharingSessionID string                `json:"screen_sharing_session_id"`
-	ScreenStreamID         string                `json:"screen_stream_id"`
-	ScreenStartAt          int64                 `json:"screen_start_at"`
-	Stats                  callStats             `json:"stats"`
-	RTCDHost               string                `json:"rtcd_host"`
-	HostID                 string                `json:"host_id"`
-	Recording              *jobState             `json:"recording,omitempty"`
-	Transcription          *jobState             `json:"transcription,omitempty"`
-	DismissedNotification  map[string]bool       `json:"dismissed_notification,omitempty"`
-	NodeID                 string                `json:"node_id,omitempty"`
+	ID                     string                         `json:"id"`
+	StartAt                int64                          `json:"start_at"`
+	CreateAt               int64                          `json:"create_at"`
+	EndAt                  int64                          `json:"end_at"`
+	Sessions               map[string]*userState          `json:"sessions,omitempty"`
+	OwnerID                string                         `json:"owner_id"`
+	ThreadID               string                         `json:"thread_id"`
+	PostID                 string                         `json:"post_id"`
+	ScreenSharingSessionID string                         `json:"screen_sharing_session_id"`
+	ScreenStartAt          int64                          `json:"screen_start_at"`
+	Stats                  callStats                      `json:"stats"`
+	RTCDHost               string                         `json:"rtcd_host"`
+	HostID                 string                         `json:"host_id"`
+	Recording              *jobState                      `json:"recording,omitempty"`
+	Transcription          *jobState                      `json:"transcription,omitempty"`
+	DismissedNotification  map[string]bool                `json:"dismissed_notification,omitempty"`
+	NodeID                 string                         `json:"node_id,omitempty"`
+	call                   *public.Call                   `json:"-"`
+	sessions               map[string]*public.CallSession `json:"-"`
 }
 
 type channelState struct {
@@ -288,17 +297,82 @@ func (cs *callState) onlyUserLeft(userID string) bool {
 }
 
 func (p *Plugin) kvGetChannelState(channelID string, fromWriter bool) (*channelState, error) {
-	data, appErr := p.KVGet(channelID, fromWriter)
-	if appErr != nil {
-		return nil, fmt.Errorf("KVGet failed: %w", appErr)
+	channel, err := p.store.GetCallsChannel(channelID, db.GetCallsChannelOpts{
+		FromWriter: fromWriter,
+	})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		return nil, fmt.Errorf("failed to get call channel: %w", err)
 	}
-	if data == nil {
-		return nil, nil
+
+	state := &channelState{
+		Enabled: nil,
 	}
-	var state *channelState
-	if err := json.Unmarshal(data, &state); err != nil {
-		return nil, err
+	if channel != nil {
+		state.Enabled = model.NewBool(channel.Enabled)
 	}
+
+	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{
+		FromWriter: fromWriter,
+	})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		return nil, fmt.Errorf("failed to get active call: %w", err)
+	}
+
+	if call != nil {
+		// TODO: add proper support for multiple hosts
+		var hostID string
+		if len(call.Props.Hosts) > 0 {
+			hostID = call.Props.Hosts[0]
+		}
+
+		participants := make(map[string]struct{}, len(call.Participants))
+		for _, p := range call.Participants {
+			participants[p] = struct{}{}
+		}
+
+		state.Call = &callState{
+			ID:                     call.ID,
+			CreateAt:               call.CreateAt,
+			StartAt:                call.StartAt,
+			EndAt:                  call.EndAt,
+			OwnerID:                call.OwnerID,
+			ThreadID:               call.ThreadID,
+			PostID:                 call.PostID,
+			ScreenSharingSessionID: call.Props.ScreenSharingSessionID,
+			ScreenStartAt:          call.Props.ScreenStartAt,
+			RTCDHost:               call.Props.RTCDHost,
+			HostID:                 hostID,
+			NodeID:                 call.Props.NodeID,
+			DismissedNotification:  call.Props.DismissedNotification,
+			Stats: callStats{
+				Participants:   participants,
+				ScreenDuration: call.Stats.ScreenDuration,
+			},
+		}
+
+		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{
+			FromWriter: fromWriter,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get sessions: %w", err)
+		}
+
+		state.Call.Sessions = make(map[string]*userState, len(sessions))
+		state.Call.sessions = make(map[string]*public.CallSession, len(sessions))
+
+		for _, session := range sessions {
+			state.Call.Sessions[session.ID] = &userState{
+				UserID:     session.UserID,
+				Unmuted:    session.Unmuted,
+				RaisedHand: session.RaisedHand,
+				JoinAt:     session.JoinAt,
+			}
+			state.Call.sessions[session.ID] = session
+		}
+
+		state.Call.call = call
+	}
+
 	return state, nil
 }
 
@@ -374,12 +448,19 @@ func (p *Plugin) cleanCallState(channelID string, state *channelState) error {
 		return nil
 	}
 
-	if state.Call != nil {
-		if _, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Stats.Participants)); err != nil {
-			p.LogError("failed to update call post", "err", err.Error())
-		}
-		state.Call = nil
+	if state.Call == nil {
+		return nil
 	}
 
-	return p.kvSetChannelState(channelID, state)
+	if _, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Stats.Participants)); err != nil {
+		p.LogError("failed to update call post", "err", err.Error())
+	}
+
+	call := state.Call.call
+	if call.EndAt == 0 {
+		call.EndAt = time.Now().UnixMilli()
+	}
+	state.Call = nil
+
+	return p.store.UpdateCall(call)
 }

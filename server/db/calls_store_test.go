@@ -17,12 +17,13 @@ import (
 func TestCallsStore(t *testing.T) {
 	t.Parallel()
 	testStore(t, map[string]func(t *testing.T, store *Store){
-		"TestCreateCall":            testCreateCall,
-		"TestDeleteCall":            testDeleteCall,
-		"TestDeleteCallByChannelID": testDeleteCallByChannelID,
-		"TestUpdateCall":            testUpdateCall,
-		"TestGetCall":               testGetCall,
-		"TestGetCallByChannelID":    testGetCallByChannelID,
+		"TestCreateCall":               testCreateCall,
+		"TestDeleteCall":               testDeleteCall,
+		"TestDeleteCallByChannelID":    testDeleteCallByChannelID,
+		"TestUpdateCall":               testUpdateCall,
+		"TestGetCall":                  testGetCall,
+		"TestGetActiveCallByChannelID": testGetActiveCallByChannelID,
+		"TestGetRTCDHostForActiveCall": testGetRTCDHostForActiveCall,
 	})
 }
 
@@ -51,23 +52,6 @@ func testCreateCall(t *testing.T, store *Store) {
 			StartAt:   time.Now().UnixMilli(),
 		})
 		require.EqualError(t, err, "invalid call: invalid CreateAt: should be > 0")
-
-		err = store.CreateCall(&public.Call{
-			ID:        model.NewId(),
-			ChannelID: model.NewId(),
-			StartAt:   time.Now().UnixMilli(),
-			CreateAt:  time.Now().UnixMilli(),
-		})
-		require.EqualError(t, err, "invalid call: invalid PostID: should not be empty")
-
-		err = store.CreateCall(&public.Call{
-			ID:        model.NewId(),
-			ChannelID: model.NewId(),
-			StartAt:   time.Now().UnixMilli(),
-			CreateAt:  time.Now().UnixMilli(),
-			PostID:    model.NewId(),
-		})
-		require.EqualError(t, err, "invalid call: invalid ThreadID: should not be empty")
 
 		err = store.CreateCall(&public.Call{
 			ID:        model.NewId(),
@@ -288,14 +272,14 @@ func testGetCall(t *testing.T, store *Store) {
 	})
 }
 
-func testGetCallByChannelID(t *testing.T, store *Store) {
+func testGetActiveCallByChannelID(t *testing.T, store *Store) {
 	t.Run("missing", func(t *testing.T) {
-		call, err := store.GetCallByChannelID("channelID", GetCallOpts{})
+		call, err := store.GetActiveCallByChannelID("channelID", GetCallOpts{})
 		require.EqualError(t, err, "call not found")
 		require.Nil(t, call)
 	})
 
-	t.Run("existing", func(t *testing.T) {
+	t.Run("multiple active calls", func(t *testing.T) {
 		call := &public.Call{
 			ID:           model.NewId(),
 			CreateAt:     time.Now().UnixMilli(),
@@ -316,9 +300,110 @@ func testGetCallByChannelID(t *testing.T, store *Store) {
 		err := store.CreateCall(call)
 		require.NoError(t, err)
 
-		gotCall, err := store.GetCallByChannelID(call.ChannelID, GetCallOpts{FromWriter: true})
+		call.ID = model.NewId()
+		call.StartAt = call.StartAt + 45
+		err = store.CreateCall(call)
+		require.NoError(t, err)
+
+		gotCall, err := store.GetActiveCallByChannelID(call.ChannelID, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.NotNil(t, gotCall)
 		require.Equal(t, call, gotCall)
+	})
+
+	t.Run("ended call", func(t *testing.T) {
+		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
+			ChannelID:    model.NewId(),
+			StartAt:      time.Now().UnixMilli(),
+			PostID:       model.NewId(),
+			ThreadID:     model.NewId(),
+			OwnerID:      model.NewId(),
+			Participants: []string{model.NewId(), model.NewId()},
+			Stats: public.CallStats{
+				ScreenDuration: 45,
+			},
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
+			},
+		}
+
+		err := store.CreateCall(call)
+		require.NoError(t, err)
+
+		gotCall, err := store.GetActiveCallByChannelID(call.ChannelID, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.NotNil(t, gotCall)
+		require.Equal(t, call, gotCall)
+
+		call.EndAt = time.Now().UnixMilli()
+		err = store.UpdateCall(call)
+		require.NoError(t, err)
+
+		gotCall, err = store.GetActiveCallByChannelID(call.ChannelID, GetCallOpts{FromWriter: true})
+		require.EqualError(t, err, "call not found")
+		require.Nil(t, gotCall)
+	})
+}
+
+func testGetRTCDHostForActiveCall(t *testing.T, store *Store) {
+	t.Run("missing", func(t *testing.T) {
+		host, err := store.GetRTCDHostForActiveCall("channelID", GetCallOpts{})
+		require.EqualError(t, err, "call not found")
+		require.Empty(t, host)
+	})
+
+	t.Run("unset", func(t *testing.T) {
+		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
+			ChannelID:    model.NewId(),
+			StartAt:      time.Now().UnixMilli(),
+			PostID:       model.NewId(),
+			ThreadID:     model.NewId(),
+			OwnerID:      model.NewId(),
+			Participants: []string{model.NewId(), model.NewId()},
+			Stats: public.CallStats{
+				ScreenDuration: 45,
+			},
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
+			},
+		}
+
+		err := store.CreateCall(call)
+		require.NoError(t, err)
+
+		host, err := store.GetRTCDHostForActiveCall(call.ChannelID, GetCallOpts{})
+		require.NoError(t, err)
+		require.Empty(t, host)
+	})
+
+	t.Run("set", func(t *testing.T) {
+		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
+			ChannelID:    model.NewId(),
+			StartAt:      time.Now().UnixMilli(),
+			PostID:       model.NewId(),
+			ThreadID:     model.NewId(),
+			OwnerID:      model.NewId(),
+			Participants: []string{model.NewId(), model.NewId()},
+			Stats: public.CallStats{
+				ScreenDuration: 45,
+			},
+			Props: public.CallProps{
+				Hosts:    []string{"userA", "userB"},
+				RTCDHost: "192.168.1.1",
+			},
+		}
+
+		err := store.CreateCall(call)
+		require.NoError(t, err)
+
+		host, err := store.GetRTCDHostForActiveCall(call.ChannelID, GetCallOpts{})
+		require.NoError(t, err)
+		require.Equal(t, call.Props.RTCDHost, host)
 	})
 }

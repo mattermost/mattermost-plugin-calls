@@ -10,6 +10,8 @@ import (
 
 	"golang.org/x/time/rate"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
@@ -82,9 +84,12 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		return nil, fmt.Errorf("calls are not enabled")
 	}
 
+	var newCall bool
 	if state.Call == nil {
+		newCall = true
 		state.Call = &callState{
 			ID:       model.NewId(),
+			CreateAt: time.Now().UnixMilli(),
 			StartAt:  time.Now().UnixMilli(),
 			Sessions: make(map[string]*userState),
 			OwnerID:  userID,
@@ -154,8 +159,40 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		state.Call.Stats.Participants[userID] = struct{}{}
 	}
 
-	if err := p.kvSetChannelState(channelID, state); err != nil {
-		return nil, err
+	call := &public.Call{
+		ID:        state.Call.ID,
+		CreateAt:  state.Call.CreateAt,
+		StartAt:   state.Call.StartAt,
+		OwnerID:   state.Call.OwnerID,
+		ChannelID: channelID,
+		PostID:    state.Call.PostID,
+		ThreadID:  state.Call.ThreadID,
+		Props: public.CallProps{
+			Hosts:    []string{state.Call.HostID},
+			NodeID:   state.Call.NodeID,
+			RTCDHost: state.Call.RTCDHost,
+		},
+		Participants: mapKeys(state.Call.Stats.Participants),
+	}
+	if newCall {
+		if err := p.store.CreateCall(call); err != nil {
+			return state, fmt.Errorf("failed to create call: %w", err)
+		}
+		// TODO: remove me
+		state.Call.call = call
+	} else {
+		if err := p.store.UpdateCall(call); err != nil {
+			return state, fmt.Errorf("failed to update call: %w", err)
+		}
+	}
+	callSession := &public.CallSession{
+		ID:     connID,
+		CallID: call.ID,
+		UserID: userID,
+		JoinAt: state.Call.Sessions[connID].JoinAt,
+	}
+	if err := p.store.CreateCallSession(callSession); err != nil {
+		return state, fmt.Errorf("failed to create call session: %w", err)
 	}
 
 	return state, nil
@@ -205,13 +242,16 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 	}
 
 	state = state.Clone()
+	call := state.Call.call
 
 	if state.Call.ScreenSharingSessionID == connID {
 		state.Call.ScreenSharingSessionID = ""
-		state.Call.ScreenStreamID = ""
+		call.Props.ScreenSharingSessionID = ""
 		if state.Call.ScreenStartAt > 0 {
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
+			call.Stats.ScreenDuration = secondsSinceTimestamp(call.Props.ScreenStartAt)
 			state.Call.ScreenStartAt = 0
+			call.Props.ScreenStartAt = 0
 		}
 	}
 
@@ -219,6 +259,7 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 
 	if state.Call.HostID == userID && len(state.Call.Sessions) > 0 {
 		state.Call.HostID = state.Call.getHostID(p.getBotID())
+		call.Props.Hosts = []string{state.Call.getHostID(p.getBotID())}
 	}
 
 	// If the bot leaves the call and recording has not been stopped it either means
@@ -234,12 +275,22 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 	if len(state.Call.Sessions) == 0 {
 		if state.Call.ScreenStartAt > 0 {
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
+			call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.call.Props.ScreenStartAt)
 		}
+		call.EndAt = time.Now().UnixMilli()
+		call.Props.RTCDHost = ""
+		call.Props.DismissedNotification = nil
+		call.Props.NodeID = ""
+		call.Props.Hosts = nil
 		state.Call = nil
 	}
 
-	if err := p.kvSetChannelState(channelID, state); err != nil {
-		return nil, err
+	if err := p.store.DeleteCallSession(connID); err != nil {
+		return nil, fmt.Errorf("failed to delete call session: %w", err)
+	}
+
+	if err := p.store.UpdateCall(call); err != nil {
+		return nil, fmt.Errorf("failed to update call: %w", err)
 	}
 
 	return state, nil

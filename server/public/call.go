@@ -45,14 +45,6 @@ func (c *Call) IsValid() error {
 		return fmt.Errorf("invalid DeleteAt: should be zero")
 	}
 
-	if c.PostID == "" {
-		return fmt.Errorf("invalid PostID: should not be empty")
-	}
-
-	if c.ThreadID == "" {
-		return fmt.Errorf("invalid ThreadID: should not be empty")
-	}
-
 	if c.OwnerID == "" {
 		return fmt.Errorf("invalid OwnerID: should not be empty")
 	}
@@ -65,8 +57,10 @@ type CallProps struct {
 	RTCDHost               string          `json:"rtcd_host,omitempty"`
 	ScreenSharingSessionID string          `json:"screen_sharing_session_id,omitempty"`
 	DismissedNotification  map[string]bool `json:"dismissed_notification,omitempty"`
+	ScreenStartAt          int64           `json:"screen_start_at,omitempty"`
+	NodeID                 string          `json:"node_id,omitempty"`
 }
 
 type CallStats struct {
-	ScreenDuration int `json:"screen_duration,omitempty"`
+	ScreenDuration int64 `json:"screen_duration,omitempty"`
 }
