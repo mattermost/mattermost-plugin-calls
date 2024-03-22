@@ -97,7 +97,7 @@ import (
 // 		mockAPI.On("KVDelete", "mutex_call_channelID").Return(nil).Once()
 
 // 		// We do the expected mutation.
-// 		state.Call.Recording.BotConnID = "connID"
+// 		state.Recording.BotConnID = "connID"
 // 		expectedStateJSON, err := json.Marshal(state)
 // 		require.NoError(t, err)
 
@@ -125,7 +125,7 @@ import (
 // 		mockAPI.On("KVDelete", "mutex_call_channelID").Return(nil).Once()
 
 // 		// We do the expected mutation.
-// 		state.Call.Transcription.BotConnID = "connID"
+// 		state.Transcription.BotConnID = "connID"
 // 		expectedStateJSON, err := json.Marshal(state)
 // 		require.NoError(t, err)
 
@@ -157,7 +157,7 @@ import (
 // 			mockAPI.On("KVDelete", "mutex_call_channelID").Return(nil).Once()
 
 // 			// We do the expected mutation.
-// 			state.Call.Recording.BotConnID = "newRecordingBotConnID"
+// 			state.Recording.BotConnID = "newRecordingBotConnID"
 // 			expectedStateJSON, err := json.Marshal(state)
 // 			require.NoError(t, err)
 
@@ -188,7 +188,7 @@ import (
 // 			mockAPI.On("KVDelete", "mutex_call_channelID").Return(nil).Once()
 
 // 			// We do the expected mutation.
-// 			state.Call.Transcription.BotConnID = "newTranscribingBotConnID"
+// 			state.Transcription.BotConnID = "newTranscribingBotConnID"
 // 			expectedStateJSON, err := json.Marshal(state)
 // 			require.NoError(t, err)
 

@@ -286,7 +286,7 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) createCallStartedPost(state *channelState, userID, channelID, title, threadID string) (string, string, error) {
+func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, title, threadID string) (string, string, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return "", "", appErr
@@ -398,18 +398,18 @@ func (p *Plugin) UserHasLeftChannel(_ *plugin.Context, cm *model.ChannelMember, 
 		return
 	}
 
-	state, err := p.kvGetChannelState(cm.ChannelId, false)
+	state, err := p.getCallState(cm.ChannelId, false)
 	if err != nil {
 		p.LogError("UserHasLeftChannel: failed to get call state", "err", err.Error(), "channelID", cm.ChannelId)
 		return
-	} else if state == nil || state.Call == nil {
+	} else if state == nil {
 		p.LogDebug("UserHasLeftChannel: no call ongoing", "channelID", cm.ChannelId)
 		return
 	}
 
 	// Closing the underlying RTC connection(s) for the user to stop
 	// communication.
-	for connID, session := range state.Call.sessions {
+	for connID, session := range state.sessions {
 		if session.UserID == cm.UserId {
 			p.LogDebug("UserHasLeftChannel: closing RTC session for user who left channel",
 				"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)

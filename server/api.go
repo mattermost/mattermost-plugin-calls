@@ -238,7 +238,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 	}
 	defer p.unlockCall(channelID)
 
-	if state == nil || state.Call == nil {
+	if state == nil {
 		res.Err = "no call ongoing"
 		res.Code = http.StatusBadRequest
 		return
@@ -254,7 +254,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 		state.Call.EndAt = time.Now().UnixMilli()
 	}
 
-	if err := p.store.UpdateCall(&state.Call.Call); err != nil {
+	if err := p.store.UpdateCall(&state.Call); err != nil {
 		res.Err = fmt.Errorf("failed to update call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
@@ -276,13 +276,13 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 		}
 		defer p.unlockCall(channelID)
 
-		if state == nil || state.Call == nil || state.Call.ID != callID {
+		if state == nil || state.Call.ID != callID {
 			return
 		}
 
 		p.LogInfo("call state is still in store, force ending it", "channelID", channelID)
 
-		for connID := range state.Call.sessions {
+		for connID := range state.sessions {
 			if err := p.closeRTCSession(userID, connID, channelID, state.Call.Props.NodeID); err != nil {
 				p.LogError(err.Error())
 			}
@@ -312,7 +312,7 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 	}
 	defer p.unlockCall(channelID)
 
-	if state == nil || state.Call == nil {
+	if state == nil {
 		res.Err = "no call ongoing"
 		res.Code = http.StatusBadRequest
 		return
@@ -323,7 +323,7 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 	}
 	state.Call.Props.DismissedNotification[userID] = true
 
-	if err := p.store.UpdateCall(&state.Call.Call); err != nil {
+	if err := p.store.UpdateCall(&state.Call); err != nil {
 		res.Err = fmt.Errorf("failed to update call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return

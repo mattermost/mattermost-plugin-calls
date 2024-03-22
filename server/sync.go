@@ -13,7 +13,7 @@ import (
 
 // lockCall locks the global (cluster) mutex for the given channelID and
 // returns the current state.
-func (p *Plugin) lockCall(channelID string) (*channelState, error) {
+func (p *Plugin) lockCall(channelID string) (*callState, error) {
 	p.callsClusterLocksMut.Lock()
 	mut := p.callsClusterLocks[channelID]
 	if mut == nil {
@@ -40,7 +40,7 @@ func (p *Plugin) lockCall(channelID string) (*channelState, error) {
 		return nil, fmt.Errorf("failed to lock: %w", err)
 	}
 
-	state, err := p.kvGetChannelState(channelID, true)
+	state, err := p.getCallState(channelID, true)
 	if err != nil {
 		mut.Unlock()
 		return nil, fmt.Errorf("failed to get channel state: %w", err)

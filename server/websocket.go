@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
@@ -117,10 +118,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 	}
 	defer p.unlockCall(us.channelID)
 	if state == nil {
-		return fmt.Errorf("channel state is missing from store")
-	}
-	if state.Call == nil {
-		return fmt.Errorf("call state is missing from channel state")
+		return fmt.Errorf("no call ongoing")
 	}
 
 	if msg.Type == clientMessageTypeScreenOn {
@@ -140,7 +138,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 	}
 
-	if err := p.store.UpdateCall(&state.Call.Call); err != nil {
+	if err := p.store.UpdateCall(&state.Call); err != nil {
 		return fmt.Errorf("failed to update call: %w", err)
 	}
 
@@ -284,12 +282,9 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		}
 		defer p.unlockCall(us.channelID)
 		if state == nil {
-			return fmt.Errorf("channel state is missing from store")
+			return fmt.Errorf("no call ongoing")
 		}
-		if state.Call == nil {
-			return fmt.Errorf("call state is missing from channel state")
-		}
-		session := state.Call.sessions[us.originalConnID]
+		session := state.sessions[us.originalConnID]
 		if session == nil {
 			return fmt.Errorf("user state is missing from call state")
 		}
@@ -323,13 +318,10 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		}
 		defer p.unlockCall(us.channelID)
 		if state == nil {
-			return fmt.Errorf("channel state is missing from store")
-		}
-		if state.Call == nil {
-			return fmt.Errorf("call state is missing from channel state")
+			return fmt.Errorf("no call ongoing")
 		}
 
-		session := state.Call.sessions[us.originalConnID]
+		session := state.sessions[us.originalConnID]
 		if session == nil {
 			return fmt.Errorf("user session is missing from call state")
 		}
@@ -524,7 +516,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 		p.LogDebug("timeout waiting for reconnection", "userID", userID, "connID", connID, "channelID", channelID)
 	}
 
-	state, err := p.kvGetChannelState(channelID, false)
+	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
 	}
@@ -533,7 +525,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 	if err != nil {
 		p.LogError(err.Error())
 	}
-	if handlerID == "" && state != nil && state.Call != nil {
+	if handlerID == "" && state != nil {
 		handlerID = state.Call.Props.NodeID
 	}
 
@@ -545,7 +537,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 		p.LogError(err.Error())
 	}
 
-	if state != nil && state.Call != nil {
+	if state != nil {
 		p.track(evCallUserLeft, map[string]interface{}{
 			"ParticipantID": userID,
 			"ChannelID":     channelID,
@@ -597,19 +589,28 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		}
 	}
 
+	callsChannel, err := p.store.GetCallsChannel(channelID, db.GetCallsChannelOpts{})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		return fmt.Errorf("failed to get call channel: %w", err)
+	}
+	var callsEnabled *bool
+	if callsChannel != nil {
+		callsEnabled = model.NewBool(callsChannel.Enabled)
+	}
+
 	state, err := p.lockCall(channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
 
-	state, err = p.addUserSession(state, userID, connID, channelID, joinData.JobID)
+	state, err = p.addUserSession(state, callsEnabled, userID, connID, channelID, joinData.JobID)
 	if err != nil {
 		p.unlockCall(channelID)
 		return fmt.Errorf("failed to add user session: %w", err)
-	} else if state.Call == nil {
+	} else if state == nil {
 		p.unlockCall(channelID)
-		return fmt.Errorf("state.Call should not be nil")
-	} else if len(state.Call.sessions) == 1 {
+		return fmt.Errorf("state should not be nil")
+	} else if len(state.sessions) == 1 {
 		// new call has started
 		// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
 		if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
@@ -631,7 +632,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 
 		state.Call.PostID = postID
 		state.Call.ThreadID = threadID
-		if err := p.store.UpdateCall(&state.Call.Call); err != nil {
+		if err := p.store.UpdateCall(&state.Call); err != nil {
 			p.LogError(err.Error())
 		}
 
@@ -723,7 +724,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		"connID": connID,
 	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 
-	if len(state.Call.sessionsForUser(userID)) == 1 {
+	if len(state.sessionsForUser(userID)) == 1 {
 		// Only send event on first session join.
 		// This is to keep backwards compatibility with clients not supporting
 		// multi-sessions.
@@ -737,14 +738,14 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		"session_id": connID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
-	if userID == p.getBotID() && state.Call.Recording != nil {
+	if userID == p.getBotID() && state.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   channelID,
-			"recState": state.Call.Recording.getClientState().toMap(),
+			"recState": state.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
-	clientStateData, err := json.Marshal(state.Call.getClientState(p.getBotID(), userID))
+	clientStateData, err := json.Marshal(state.getClientState(p.getBotID(), userID))
 	if err != nil {
 		p.LogError("failed to marshal client state", "err", err.Error())
 	} else {
@@ -777,12 +778,12 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		return fmt.Errorf("forbidden")
 	}
 
-	state, err := p.kvGetChannelState(channelID, false)
+	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
-	} else if state == nil || state.Call == nil {
-		return fmt.Errorf("call state not found")
-	} else if state, ok := state.Call.sessions[originalConnID]; !ok || state.UserID != userID {
+	} else if state == nil {
+		return fmt.Errorf("no call ongoing")
+	} else if state, ok := state.sessions[originalConnID]; !ok || state.UserID != userID {
 		return fmt.Errorf("session not found in call state")
 	}
 
@@ -1053,27 +1054,28 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 	}
 	defer p.unlockCall(channelID)
 
-	if state.Call != nil && state.Call.Recording != nil && state.Call.Recording.BotConnID == prevConnID {
+	if state != nil && state.Recording != nil && state.Recording.BotConnID == prevConnID {
 		p.LogDebug("updating bot conn ID for recording job",
-			"recID", state.Call.Recording.ID,
-			"recJobID", state.Call.Recording.JobID,
+			"recID", state.Recording.ID,
+			"recJobID", state.Recording.JobID,
 			"botOriginalConnID", originalConnID,
 			"botConnID", connID,
 		)
-		state.Call.Recording.BotConnID = connID
-	} else if state.Call != nil && state.Call.Transcription != nil && state.Call.Transcription.BotConnID == prevConnID {
+		state.Recording.BotConnID = connID
+	} else if state != nil && state.Transcription != nil && state.Transcription.BotConnID == prevConnID {
 		p.LogDebug("updating bot conn ID for transcribing job",
-			"trID", state.Call.Transcription.ID,
-			"trJobID", state.Call.Transcription.JobID,
+			"trID", state.Transcription.ID,
+			"trJobID", state.Transcription.JobID,
 			"botOriginalConnID", originalConnID,
 			"botConnID", connID,
 		)
-		state.Call.Transcription.BotConnID = connID
+		state.Transcription.BotConnID = connID
 	}
 
-	if err := p.kvSetChannelState(channelID, state); err != nil {
-		return fmt.Errorf("failed to set channel state: %w", err)
-	}
+	// FIXME
+	// if err := p.kvSetChannelState(channelID, state); err != nil {
+	// 	return fmt.Errorf("failed to set channel state: %w", err)
+	// }
 
 	return nil
 }

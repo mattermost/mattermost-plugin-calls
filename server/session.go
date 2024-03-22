@@ -73,17 +73,14 @@ func newUserSession(userID, channelID, connID string, rtc bool) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, jobID string) (*channelState, error) {
-	if state == nil {
-		state = &channelState{}
-	}
-
-	if !p.userCanStartOrJoin(userID, state) {
+func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, connID, channelID, jobID string) (*callState, error) {
+	// If there is an ongoing call, we can let anyone join.
+	if state == nil && !p.userCanStartOrJoin(userID, callsEnabled) {
 		return nil, fmt.Errorf("calls are not enabled")
 	}
 
-	if state.Call == nil {
-		state.Call = &callState{
+	if state == nil {
+		state = &callState{
 			Call: public.Call{
 				ID:        model.NewId(),
 				CreateAt:  time.Now().UnixMilli(),
@@ -111,7 +108,7 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		return nil, fmt.Errorf("call has ended")
 	}
 
-	if _, ok := state.Call.sessions[connID]; ok {
+	if _, ok := state.sessions[connID]; ok {
 		return nil, fmt.Errorf("session is already connected")
 	}
 
@@ -126,16 +123,16 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 	// When the bot joins the call it means a job (recording, transcription) is
 	// starting.The actual start time is when the bot sends the status update through the API.
 	if userID == p.getBotID() {
-		if state.Call.Recording == nil && state.Call.Transcription == nil {
+		if state.Recording == nil && state.Transcription == nil {
 			return nil, fmt.Errorf("no job in progress")
 		}
 
-		if state.Call.Recording != nil && state.Call.Recording.ID == jobID && state.Call.Recording.StartAt == 0 {
+		if state.Recording != nil && state.Recording.ID == jobID && state.Recording.StartAt == 0 {
 			p.LogDebug("bot joined, recording job is starting", "jobID", jobID)
-			state.Call.Recording.BotConnID = connID
-		} else if state.Call.Transcription != nil && state.Call.Transcription.ID == jobID && state.Call.Transcription.StartAt == 0 {
+			state.Recording.BotConnID = connID
+		} else if state.Transcription != nil && state.Transcription.ID == jobID && state.Transcription.StartAt == 0 {
 			p.LogDebug("bot joined, transcribing job is starting", "jobID", jobID)
-			state.Call.Transcription.BotConnID = connID
+			state.Transcription.BotConnID = connID
 		} else {
 			// In this case we should fail to prevent the bot from joining
 			// without consent.
@@ -147,7 +144,7 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		state.Call.Props.Hosts = []string{userID}
 	}
 
-	state.Call.sessions[connID] = &public.CallSession{
+	state.sessions[connID] = &public.CallSession{
 		ID:     connID,
 		CallID: state.Call.ID,
 		UserID: userID,
@@ -162,24 +159,23 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		state.Call.Props.Participants[userID] = struct{}{}
 	}
 
-	if len(state.Call.sessions) == 1 {
-		if err := p.store.CreateCall(&state.Call.Call); err != nil {
+	if len(state.sessions) == 1 {
+		if err := p.store.CreateCall(&state.Call); err != nil {
 			return state, fmt.Errorf("failed to create call: %w", err)
 		}
 	} else {
-		if err := p.store.UpdateCall(&state.Call.Call); err != nil {
+		if err := p.store.UpdateCall(&state.Call); err != nil {
 			return state, fmt.Errorf("failed to update call: %w", err)
 		}
 	}
-	if err := p.store.CreateCallSession(state.Call.sessions[connID]); err != nil {
+	if err := p.store.CreateCallSession(state.sessions[connID]); err != nil {
 		return state, fmt.Errorf("failed to create call session: %w", err)
 	}
 
 	return state, nil
 }
 
-func (p *Plugin) userCanStartOrJoin(userID string, state *channelState) bool {
-	// If there is an ongoing call, we can let anyone join.
+func (p *Plugin) userCanStartOrJoin(userID string, enabled *bool) bool {
 	// If calls are disabled, no-one can start or join.
 	// If explicitly enabled, everyone can start or join.
 	// If not explicitly enabled and default enabled, everyone can join or start
@@ -187,13 +183,10 @@ func (p *Plugin) userCanStartOrJoin(userID string, state *channelState) bool {
 	// TODO: look to see what logic we should lift to the joinCall fn
 	cfg := p.getConfiguration()
 
-	explicitlyEnabled := state.Enabled != nil && *state.Enabled
-	explicitlyDisabled := state.Enabled != nil && !*state.Enabled
+	explicitlyEnabled := enabled != nil && *enabled
+	explicitlyDisabled := enabled != nil && !*enabled
 	defaultEnabled := cfg.DefaultEnabled != nil && *cfg.DefaultEnabled
 
-	if state.Call != nil {
-		return true
-	}
 	if explicitlyDisabled {
 		return false
 	}
@@ -208,16 +201,12 @@ func (p *Plugin) userCanStartOrJoin(userID string, state *channelState) bool {
 	return p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 }
 
-func (p *Plugin) removeUserSession(state *channelState, userID, originalConnID, connID, channelID string) (rErr error) {
+func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, connID, channelID string) (rErr error) {
 	if state == nil {
-		return fmt.Errorf("channel state is missing from store")
+		return fmt.Errorf("call state is nil")
 	}
 
-	if state.Call == nil {
-		return fmt.Errorf("call state is missing from channel state")
-	}
-
-	if _, ok := state.Call.sessions[originalConnID]; !ok {
+	if _, ok := state.sessions[originalConnID]; !ok {
 		return fmt.Errorf("session not found in call state")
 	}
 
@@ -235,19 +224,19 @@ func (p *Plugin) removeUserSession(state *channelState, userID, originalConnID, 
 		}()
 	}
 
-	delete(state.Call.sessions, originalConnID)
+	delete(state.sessions, originalConnID)
 
 	// If the bot leaves the call and recording has not been stopped it either means
 	// something has failed or the max duration timeout triggered.
-	if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 && originalConnID == state.Call.Recording.BotConnID {
-		state.Call.Recording.EndAt = time.Now().UnixMilli()
+	if state.Recording != nil && state.Recording.EndAt == 0 && originalConnID == state.Recording.BotConnID {
+		state.Recording.EndAt = time.Now().UnixMilli()
 	}
 
-	if state.Call.Transcription != nil && state.Call.Transcription.EndAt == 0 && originalConnID == state.Call.Transcription.BotConnID {
-		state.Call.Transcription.EndAt = time.Now().UnixMilli()
+	if state.Transcription != nil && state.Transcription.EndAt == 0 && originalConnID == state.Transcription.BotConnID {
+		state.Transcription.EndAt = time.Now().UnixMilli()
 	}
 
-	if len(state.Call.sessions) == 0 {
+	if len(state.sessions) == 0 {
 		if state.Call.Props.ScreenStartAt > 0 {
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
 		}
@@ -265,7 +254,7 @@ func (p *Plugin) removeUserSession(state *channelState, userID, originalConnID, 
 	}
 
 	p.LogDebug("session was removed from state", "userID", userID, "connID", connID, "originalConnID", originalConnID)
-	if len(state.Call.sessionsForUser(userID)) == 0 {
+	if len(state.sessionsForUser(userID)) == 0 {
 		// Only send event when all sessions for user have left.
 		// This is to keep backwards compatibility with clients not supporting
 		// multi-sessions.
@@ -278,8 +267,8 @@ func (p *Plugin) removeUserSession(state *channelState, userID, originalConnID, 
 		"session_id": originalConnID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
-	if state.Call.GetHostID() == userID && len(state.Call.sessions) > 0 {
-		newHostID := state.Call.getHostID(p.getBotID())
+	if state.Call.GetHostID() == userID && len(state.sessions) > 0 {
+		newHostID := state.getHostID(p.getBotID())
 		state.Call.Props.Hosts = []string{newHostID}
 		if newHostID != userID {
 			p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
@@ -288,7 +277,7 @@ func (p *Plugin) removeUserSession(state *channelState, userID, originalConnID, 
 		}
 	}
 
-	if err := p.store.UpdateCall(&state.Call.Call); err != nil {
+	if err := p.store.UpdateCall(&state.Call); err != nil {
 		return fmt.Errorf("failed to update call: %w", err)
 	}
 
@@ -311,14 +300,14 @@ func (p *Plugin) removeUserSession(state *channelState, userID, originalConnID, 
 
 // JoinAllowed returns true if the user is allowed to join the call, taking into
 // account cloud and configuration limits
-func (p *Plugin) joinAllowed(state *channelState) (bool, error) {
+func (p *Plugin) joinAllowed(state *callState) (bool, error) {
 	// Rules are:
 	// Cloud Starter: channels, dm/gm: limited to cfg.cloudStarterMaxParticipantsDefault
 	// On-prem, Cloud Professional & Cloud Enterprise (incl. trial): DMs 1-1, GMs and Channel calls
 	// limited to cfg.cloudPaidMaxParticipantsDefault people.
 	// This is set in the override defaults, so MaxCallParticipants will be accurate for the current license.
 	if cfg := p.getConfiguration(); cfg != nil && cfg.MaxCallParticipants != nil &&
-		*cfg.MaxCallParticipants != 0 && len(state.Call.sessions) >= *cfg.MaxCallParticipants {
+		*cfg.MaxCallParticipants != 0 && len(state.sessions) >= *cfg.MaxCallParticipants {
 		return false, nil
 	}
 	return true, nil

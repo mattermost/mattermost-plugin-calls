@@ -44,13 +44,14 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 
 		p.LogError("timed out waiting for recorder bot to join", "callID", callID, "jobID", jobID)
 
-		state.Call.Recording = nil
-		if err := p.kvSetChannelState(callID, state); err != nil {
-			p.LogError("failed to set channel state", "err", err.Error())
-			return
-		}
+		state.Recording = nil
+		// FIXME
+		// if err := p.kvSetChannelState(callID, state); err != nil {
+		// 	p.LogError("failed to set channel state", "err", err.Error())
+		// 	return
+		// }
 
-		if state.Call.Transcription != nil && state.Call.Transcription.EndAt == 0 {
+		if state.Transcription != nil && state.Transcription.EndAt == 0 {
 			if err := p.stopTranscribingJob(state, callID); err != nil {
 				p.LogError("failed to stop transcribing job", "err", err.Error(), "callID", callID, "jobID", jobID)
 			}
@@ -67,8 +68,8 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	}
 }
 
-func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (rst *JobStateClient, rcode int, rerr error) {
-	if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
+func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst *JobStateClient, rcode int, rerr error) {
+	if state.Recording != nil && state.Recording.EndAt == 0 {
 		return nil, http.StatusForbidden, fmt.Errorf("recording already in progress")
 	}
 
@@ -76,11 +77,12 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	recState.ID = model.NewId()
 	recState.CreatorID = userID
 	recState.InitAt = time.Now().UnixMilli()
-	state.Call.Recording = recState
+	state.Recording = recState
 
-	if err := p.kvSetChannelState(callID, state); err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
-	}
+	// FIXME
+	// if err := p.kvSetChannelState(callID, state); err != nil {
+	// 	return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
+	// }
 
 	defer func() {
 		// In case of any error we relay it to the client.
@@ -117,10 +119,11 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	}
 
 	if jobErr != nil {
-		state.Call.Recording = nil
-		if err := p.kvSetChannelState(callID, state); err != nil {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
-		}
+		state.Recording = nil
+		// FIXME
+		// if err := p.kvSetChannelState(callID, state); err != nil {
+		// 	return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
+		// }
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create recording job: %w", jobErr)
 	}
 
@@ -128,9 +131,10 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 		return nil, http.StatusForbidden, fmt.Errorf("recording job already in progress")
 	}
 	recState.JobID = recJobID
-	if err := p.kvSetChannelState(callID, state); err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
-	}
+	// FIXME
+	// if err := p.kvSetChannelState(callID, state); err != nil {
+	// 	return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
+	// }
 
 	p.LogDebug("recording job started successfully", "jobID", recJobID, "callID", callID)
 
@@ -158,8 +162,8 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	return recState.getClientState(), http.StatusOK, nil
 }
 
-func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobStateClient, rcode int, rerr error) {
-	if state.Call.Recording == nil || state.Call.Recording.EndAt != 0 {
+func (p *Plugin) stopRecordingJob(state *callState, callID string) (rst *JobStateClient, rcode int, rerr error) {
+	if state.Recording == nil || state.Recording.EndAt != 0 {
 		return nil, http.StatusForbidden, fmt.Errorf("no recording in progress")
 	}
 
@@ -168,11 +172,12 @@ func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobS
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to get recording state: %w", err)
 	}
 	recState.EndAt = time.Now().UnixMilli()
-	state.Call.Recording = nil
+	state.Recording = nil
 
-	if err := p.kvSetChannelState(callID, state); err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
-	}
+	// FIXME
+	// if err := p.kvSetChannelState(callID, state); err != nil {
+	// 	return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
+	// }
 
 	defer func() {
 		// In case of any error we relay it to the client.
@@ -185,7 +190,7 @@ func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobS
 		}
 	}()
 
-	if state.Call.Transcription != nil && state.Call.Transcription.EndAt == 0 {
+	if state.Transcription != nil && state.Transcription.EndAt == 0 {
 		if err := p.stopTranscribingJob(state, callID); err != nil {
 			p.LogError("failed to stop transcribing job", "callID", callID, "err", err.Error())
 		}
@@ -244,11 +249,6 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request) {
 	defer p.unlockCall(callID)
 
 	if state == nil {
-		res.Err = "channel state is missing from store"
-		res.Code = http.StatusForbidden
-		return
-	}
-	if state.Call == nil {
 		res.Err = "no call ongoing"
 		res.Code = http.StatusForbidden
 		return

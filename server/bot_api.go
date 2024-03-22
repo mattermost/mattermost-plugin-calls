@@ -437,7 +437,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 	}
 	defer p.unlockCall(callID)
 
-	if state == nil || state.Call == nil {
+	if state == nil {
 		res.Err = "no call ongoing"
 		res.Code = http.StatusBadRequest
 		return
@@ -446,9 +446,9 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 	var jb *jobState
 	switch status.JobType {
 	case public.JobTypeRecording:
-		jb = state.Call.Recording
+		jb = state.Recording
 	case public.JobTypeTranscribing:
-		jb = state.Call.Transcription
+		jb = state.Transcription
 	default:
 		res.Err = "invalid job type"
 		res.Code = http.StatusBadRequest
@@ -478,11 +478,11 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 		jb.EndAt = time.Now().UnixMilli()
 		jb.Err = status.Error
 
-		if status.JobType == public.JobTypeRecording && state.Call.Transcription != nil {
+		if status.JobType == public.JobTypeRecording && state.Transcription != nil {
 			if err := p.stopTranscribingJob(state, callID); err != nil {
 				p.LogError("failed to stop transcribing job", "callID", callID, "err", err.Error())
 			}
-		} else if status.JobType == public.JobTypeTranscribing && state.Call.Recording != nil {
+		} else if status.JobType == public.JobTypeTranscribing && state.Recording != nil {
 			if _, _, err := p.stopRecordingJob(state, callID); err != nil {
 				p.LogError("failed to stop recording job", "callID", callID, "err", err.Error())
 			}
@@ -502,21 +502,22 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := p.kvSetChannelState(callID, state); err != nil {
-		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
+	// FIXME
+	// if err := p.kvSetChannelState(callID, state); err != nil {
+	// 	res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+	// 	res.Code = http.StatusInternalServerError
+	// 	return
+	// }
 
 	if status.JobType == public.JobTypeRecording {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
-			"recState": state.Call.Recording.getClientState().toMap(),
+			"recState": state.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	} else {
 		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 			"callID":  callID,
-			"trState": state.Call.Transcription.getClientState().toMap(),
+			"trState": state.Transcription.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	}
 
@@ -540,13 +541,13 @@ func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, r *http.Re
 	}
 	defer p.unlockCall(callID)
 
-	if state == nil || state.Call == nil {
+	if state == nil {
 		res.Code = http.StatusBadRequest
 		res.Err = "no call ongoing"
 		return
 	}
 
-	ust := state.Call.sessions[sessionID]
+	ust := state.sessions[sessionID]
 	if ust.UserID == "" {
 		res.Code = http.StatusNotFound
 		res.Err = "not found"

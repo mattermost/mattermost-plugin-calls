@@ -4,15 +4,12 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
-
-	"github.com/mattermost/mattermost/server/public/model"
 )
 
 type jobState struct {
@@ -23,11 +20,6 @@ type jobState struct {
 	JobStateClient
 }
 
-type callStats struct {
-	Participants   map[string]struct{} `json:"participants"`
-	ScreenDuration int64               `json:"screen_duration"`
-}
-
 type callState struct {
 	public.Call
 	sessions map[string]*public.CallSession
@@ -35,11 +27,6 @@ type callState struct {
 	// FIXME later
 	Recording     *jobState
 	Transcription *jobState
-}
-
-type channelState struct {
-	Enabled *bool
-	Call    *callState
 }
 
 type UserStateClient struct {
@@ -119,30 +106,24 @@ func (cs *callState) sessionsForUser(userID string) []*public.CallSession {
 	return sessions
 }
 
-func (cs *channelState) getRecording() (*jobState, error) {
+func (cs *callState) getRecording() (*jobState, error) {
 	if cs == nil {
-		return nil, fmt.Errorf("channel state is missing from store")
-	}
-	if cs.Call == nil {
 		return nil, fmt.Errorf("no call ongoing")
 	}
-	if cs.Call.Recording == nil {
+	if cs.Recording == nil {
 		return nil, fmt.Errorf("no recording ongoing")
 	}
-	return cs.Call.Recording, nil
+	return cs.Recording, nil
 }
 
-func (cs *channelState) getTranscription() (*jobState, error) {
+func (cs *callState) getTranscription() (*jobState, error) {
 	if cs == nil {
-		return nil, fmt.Errorf("channel state is missing from store")
-	}
-	if cs.Call == nil {
 		return nil, fmt.Errorf("no call ongoing")
 	}
-	if cs.Call.Transcription == nil {
+	if cs.Transcription == nil {
 		return nil, fmt.Errorf("no transcription ongoing")
 	}
-	return cs.Call.Transcription, nil
+	return cs.Transcription, nil
 }
 
 func (cs *callState) getHostID(botID string) string {
@@ -232,21 +213,7 @@ func (cs *callState) onlyUserLeft(userID string) bool {
 	return true
 }
 
-func (p *Plugin) kvGetChannelState(channelID string, fromWriter bool) (*channelState, error) {
-	channel, err := p.store.GetCallsChannel(channelID, db.GetCallsChannelOpts{
-		FromWriter: fromWriter,
-	})
-	if err != nil && !errors.Is(err, db.ErrNotFound) {
-		return nil, fmt.Errorf("failed to get call channel: %w", err)
-	}
-
-	state := &channelState{
-		Enabled: nil,
-	}
-	if channel != nil {
-		state.Enabled = model.NewBool(channel.Enabled)
-	}
-
+func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, error) {
 	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{
 		FromWriter: fromWriter,
 	})
@@ -254,15 +221,19 @@ func (p *Plugin) kvGetChannelState(channelID string, fromWriter bool) (*channelS
 		return nil, fmt.Errorf("failed to get active call: %w", err)
 	}
 
+	if call == nil {
+		return nil, nil
+	}
+
+	state := &callState{}
+
 	if call != nil {
 		participants := make(map[string]struct{}, len(call.Participants))
 		for _, p := range call.Participants {
 			participants[p] = struct{}{}
 		}
 
-		state.Call = &callState{
-			Call: *call,
-		}
+		state.Call = *call
 
 		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{
 			FromWriter: fromWriter,
@@ -271,25 +242,10 @@ func (p *Plugin) kvGetChannelState(channelID string, fromWriter bool) (*channelS
 			return nil, fmt.Errorf("failed to get call sessions: %w", err)
 		}
 
-		state.Call.sessions = sessions
+		state.sessions = sessions
 	}
 
 	return state, nil
-}
-
-func (p *Plugin) kvSetChannelState(channelID string, state *channelState) error {
-	p.metrics.IncStoreOp("KVSet")
-
-	data, err := json.Marshal(state)
-	if err != nil {
-		return fmt.Errorf("failed to marshal channel state: %w", err)
-	}
-
-	appErr := p.API.KVSet(channelID, data)
-	if appErr != nil {
-		return fmt.Errorf("KVSet failed: %w", appErr)
-	}
-	return nil
 }
 
 func (p *Plugin) cleanUpState() (retErr error) {
@@ -344,12 +300,8 @@ func (p *Plugin) cleanUpState() (retErr error) {
 
 // NOTE: cleanCallState is meant to be called under lock (on channelID) so that
 // the operation can be performed atomically.
-func (p *Plugin) cleanCallState(channelID string, state *channelState) error {
+func (p *Plugin) cleanCallState(channelID string, state *callState) error {
 	if state == nil {
-		return nil
-	}
-
-	if state.Call == nil {
 		return nil
 	}
 
@@ -361,5 +313,5 @@ func (p *Plugin) cleanCallState(channelID string, state *channelState) error {
 		state.Call.EndAt = time.Now().UnixMilli()
 	}
 
-	return p.store.UpdateCall(&state.Call.Call)
+	return p.store.UpdateCall(&state.Call)
 }

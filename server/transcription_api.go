@@ -40,18 +40,19 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 
 		p.LogError("timed out waiting for transcriber bot to join", "callID", callID, "jobID", jobID)
 
-		state.Call.Transcription = nil
-		if err := p.kvSetChannelState(callID, state); err != nil {
-			p.LogError("failed to set channel state", "err", err.Error())
-			return
-		}
+		state.Transcription = nil
+		// FIXME
+		// if err := p.kvSetChannelState(callID, state); err != nil {
+		// 	p.LogError("failed to set channel state", "err", err.Error())
+		// 	return
+		// }
 
 		clientState := trState.getClientState()
 		clientState.Err = "failed to start transcriber job: timed out waiting for bot to join call"
 		clientState.EndAt = time.Now().UnixMilli()
 
-		if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
-			recClientState := state.Call.Recording.getClientState()
+		if state.Recording != nil && state.Recording.EndAt == 0 {
+			recClientState := state.Recording.getClientState()
 			if _, _, err := p.stopRecordingJob(state, callID); err != nil {
 				p.LogError("failed to stop recording job", "err", err.Error(), "callID", callID, "jobID", jobID)
 			}
@@ -72,8 +73,8 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 	}
 }
 
-func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID string) (rerr error) {
-	if state.Call.Transcription != nil && state.Call.Transcription.EndAt == 0 {
+func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID string) (rerr error) {
+	if state.Transcription != nil && state.Transcription.EndAt == 0 {
 		return fmt.Errorf("transcription already in progress")
 	}
 
@@ -85,11 +86,12 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	trState.ID = trID
 	trState.CreatorID = userID
 	trState.InitAt = time.Now().UnixMilli()
-	state.Call.Transcription = trState
+	state.Transcription = trState
 
-	if err := p.kvSetChannelState(callID, state); err != nil {
-		return fmt.Errorf("failed to set channel state: %w", err)
-	}
+	// FIXME
+	// if err := p.kvSetChannelState(callID, state); err != nil {
+	// 	return fmt.Errorf("failed to set channel state: %w", err)
+	// }
 
 	defer func() {
 		// In case of any error we relay it to the client.
@@ -126,10 +128,11 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	}
 
 	if jobErr != nil {
-		state.Call.Transcription = nil
-		if err := p.kvSetChannelState(callID, state); err != nil {
-			return fmt.Errorf("failed to set channel state: %w", err)
-		}
+		state.Transcription = nil
+		// FIXME
+		// if err := p.kvSetChannelState(callID, state); err != nil {
+		// 	return fmt.Errorf("failed to set channel state: %w", err)
+		// }
 		return fmt.Errorf("failed to create transcription job: %w", jobErr)
 	}
 
@@ -137,9 +140,10 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 		return fmt.Errorf("transcription job already in progress")
 	}
 	trState.JobID = trJobID
-	if err := p.kvSetChannelState(callID, state); err != nil {
-		return fmt.Errorf("failed to set channel state: %w", err)
-	}
+	// FIXME
+	// if err := p.kvSetChannelState(callID, state); err != nil {
+	// 	return fmt.Errorf("failed to set channel state: %w", err)
+	// }
 
 	p.LogDebug("transcription job started successfully", "jobID", trJobID, "callID", callID)
 
@@ -153,10 +157,10 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	return nil
 }
 
-func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr error) {
+func (p *Plugin) stopTranscribingJob(state *callState, callID string) (rerr error) {
 	p.LogDebug("stopping transcribing job", "callID", callID)
 
-	if state.Call.Transcription == nil || state.Call.Transcription.EndAt != 0 {
+	if state.Transcription == nil || state.Transcription.EndAt != 0 {
 		return fmt.Errorf("no transcription in progress")
 	}
 
@@ -165,11 +169,12 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 		return fmt.Errorf("failed to get transcription state: %w", err)
 	}
 	trState.EndAt = time.Now().UnixMilli()
-	state.Call.Transcription = nil
+	state.Transcription = nil
 
-	if err := p.kvSetChannelState(callID, state); err != nil {
-		return fmt.Errorf("failed to set channel state: %w", err)
-	}
+	// FIXME
+	// if err := p.kvSetChannelState(callID, state); err != nil {
+	// 	return fmt.Errorf("failed to set channel state: %w", err)
+	// }
 
 	defer func() {
 		// In case of any error we relay it to the client.
@@ -186,7 +191,7 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 		return fmt.Errorf("failed to stop transcription job: %w", err)
 	}
 
-	if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
+	if state.Recording != nil && state.Recording.EndAt == 0 {
 		if _, _, err := p.stopRecordingJob(state, callID); err != nil {
 			p.LogError("failed to stop recording job", "callID", callID, "err", err.Error())
 		}
