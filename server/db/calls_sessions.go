@@ -138,3 +138,23 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 
 	return sessionsMap, nil
 }
+
+func (s *Store) DeleteCallsSessions(callID string) error {
+	s.metrics.IncStoreOp("DeleteCallsSessions")
+
+	qb := getQueryBuilder(s.driverName).
+		Delete("calls_sessions").
+		Where(sq.Eq{"CallID": callID})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	_, err = s.wDB.Exec(q, args...)
+	if err != nil {
+		return fmt.Errorf("failed to run query: %w", err)
+	}
+
+	return nil
+}

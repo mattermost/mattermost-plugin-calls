@@ -288,7 +288,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if err := p.cleanCallState(channelID, state); err != nil {
+		if err := p.cleanCallState(&state.Call); err != nil {
 			p.LogError(err.Error())
 		}
 	}()

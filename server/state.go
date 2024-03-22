@@ -242,70 +242,59 @@ func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, er
 	return state, nil
 }
 
-func (p *Plugin) cleanUpState() (retErr error) {
+func (p *Plugin) cleanUpState() error {
 	p.LogDebug("cleaning up calls state")
-	var page int
-	perPage := 100
-	for {
-		p.metrics.IncStoreOp("KVList")
-		keys, appErr := p.API.KVList(page, perPage)
-		if appErr != nil {
-			return appErr
-		}
-		if len(keys) == 0 {
-			break
-		}
-		for _, k := range keys {
-			if k == handlerKey {
-				handlerID, err := p.getHandlerID()
-				if err != nil {
-					p.LogError(err.Error())
-					continue
-				}
 
-				if p.nodeID == handlerID {
-					p.metrics.IncStoreOp("KVDelete")
-					if appErr = p.API.KVDelete(k); appErr != nil {
-						p.LogError(err.Error())
-					}
-				}
-				continue
-			}
-
-			if len(k) != 26 {
-				continue
-			}
-
-			state, err := p.lockCall(k)
-			if err != nil {
-				p.LogError("failed to lock call", "err", err.Error())
-				continue
-			}
-			if err := p.cleanCallState(k, state); err != nil {
-				p.unlockCall(k)
-				return fmt.Errorf("failed to clean up state: %w", err)
-			}
-			p.unlockCall(k)
-		}
-		page++
+	handlerID, err := p.getHandlerID()
+	if err != nil {
+		p.LogError(err.Error())
 	}
+
+	if handlerID != "" && p.nodeID == handlerID {
+		p.metrics.IncStoreOp("KVDelete")
+		if appErr := p.API.KVDelete(handlerKey); appErr != nil {
+			p.LogError(appErr.Error())
+		}
+	}
+
+	calls, err := p.store.GetAllActiveCalls(db.GetCallOpts{FromWriter: true})
+	if err != nil {
+		return fmt.Errorf("failed to get all active calls: %w", err)
+	}
+
+	for _, call := range calls {
+		if err := p.lockCallSimple(call.ChannelID); err != nil {
+			p.LogError("failed to lock call", "err", err.Error())
+			continue
+		}
+		if err := p.cleanCallState(call); err != nil {
+			p.unlockCall(call.ChannelID)
+			return fmt.Errorf("failed to clean up state: %w", err)
+		}
+		p.unlockCall(call.ChannelID)
+	}
+
 	return nil
 }
 
 // NOTE: cleanCallState is meant to be called under lock (on channelID) so that
 // the operation can be performed atomically.
-func (p *Plugin) cleanCallState(channelID string, state *callState) error {
-	if state == nil {
+func (p *Plugin) cleanCallState(call *public.Call) error {
+	if call == nil {
 		return nil
 	}
 
-	if _, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants)); err != nil {
+	if _, err := p.updateCallPostEnded(call.PostID, mapKeys(call.Props.Participants)); err != nil {
 		p.LogError("failed to update call post", "err", err.Error())
 	}
 
-	if state.Call.EndAt == 0 {
-		state.Call.EndAt = time.Now().UnixMilli()
+	if call.EndAt == 0 {
+		call.EndAt = time.Now().UnixMilli()
 	}
 
-	return p.store.UpdateCall(&state.Call)
+	if err := p.store.DeleteCallsSessions(call.ID); err != nil {
+		p.LogError("failed to delete calls sessions", "err", err.Error())
+	}
+
+	return p.store.UpdateCall(call)
 }
