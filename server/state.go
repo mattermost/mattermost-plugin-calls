@@ -268,13 +268,10 @@ func (p *Plugin) kvGetChannelState(channelID string, fromWriter bool) (*channelS
 			FromWriter: fromWriter,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to get sessions: %w", err)
+			return nil, fmt.Errorf("failed to get call sessions: %w", err)
 		}
 
-		state.Call.sessions = make(map[string]*public.CallSession, len(sessions))
-		for _, session := range sessions {
-			state.Call.sessions[session.ID] = session
-		}
+		state.Call.sessions = sessions
 	}
 
 	return state, nil

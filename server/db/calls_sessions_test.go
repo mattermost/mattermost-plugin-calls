@@ -185,23 +185,25 @@ func testGetCallSessions(t *testing.T, store *Store) {
 	})
 
 	t.Run("multiple sessions", func(t *testing.T) {
-		var sessions []*public.CallSession
+		sessions := map[string]*public.CallSession{}
 		callID := model.NewId()
 		for i := 0; i < 10; i++ {
-			sessions = append(sessions, &public.CallSession{
+			session := &public.CallSession{
 				ID:     model.NewId(),
 				CallID: callID,
 				UserID: model.NewId(),
 				JoinAt: time.Now().UnixMilli(),
-			})
+			}
 
-			err := store.CreateCallSession(sessions[i])
+			err := store.CreateCallSession(session)
 			require.NoError(t, err)
+
+			sessions[session.ID] = session
 		}
 
 		gotSessions, err := store.GetCallSessions(callID, GetCallSessionOpts{})
 		require.NoError(t, err)
 		require.Len(t, gotSessions, 10)
-		require.ElementsMatch(t, sessions, gotSessions)
+		require.Equal(t, sessions, gotSessions)
 	})
 }

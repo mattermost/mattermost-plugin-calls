@@ -252,10 +252,12 @@ func (p *Plugin) removeUserSession(state *channelState, userID, originalConnID, 
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
 		}
 		state.Call.EndAt = time.Now().UnixMilli()
+		state.Call.Participants = mapKeys(state.Call.Props.Participants)
 		state.Call.Props.RTCDHost = ""
 		state.Call.Props.DismissedNotification = nil
 		state.Call.Props.NodeID = ""
 		state.Call.Props.Hosts = nil
+		state.Call.Props.Participants = nil
 	}
 
 	if err := p.store.DeleteCallSession(originalConnID); err != nil {

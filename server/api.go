@@ -80,15 +80,22 @@ func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{})
+	if err != nil {
+		p.LogError(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	// Here we need to keep backwards compatibility so we send both
 	// channel info and current call state, as expected by our older clients.
-
 	data := map[string]any{}
-
 	data["channel_id"] = channel.ChannelID
 	data["enabled"] = channel.Enabled
-	// TODO: need to send client state here
-	data["call"] = call
+	data["call"] = (&callState{
+		Call:     *call,
+		sessions: sessions,
+	}).getClientState(p.getBotID(), userID)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(data); err != nil {
@@ -151,9 +158,12 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	callsMap := make(map[string]*public.Call, len(calls))
+	callsMap := make(map[string]*public.Call)
 	for _, call := range calls {
-		callsMap[call.ChannelID] = call
+		// only include calls user has access to
+		if p.hasPermissionToChannel(channelMembers[call.ChannelID], model.PermissionReadChannel) {
+			callsMap[call.ChannelID] = call
+		}
 	}
 
 	data := []any{}
@@ -168,8 +178,16 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 			"enabled":    ch.Enabled,
 		}
 		if call := callsMap[ch.ChannelID]; call != nil {
-			// TODO: need to send client state here
-			channelData["call"] = call
+			sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{})
+			if err != nil {
+				p.LogError(err.Error())
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			channelData["call"] = (&callState{
+				Call:     *call,
+				sessions: sessions,
+			}).getClientState(p.getBotID(), userID)
 			delete(callsMap, ch.ChannelID)
 		}
 
@@ -181,10 +199,19 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 	// We also need to include any active calls that may not have an explicit entry in
 	// calls_channels
 	for _, call := range callsMap {
+		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{})
+		if err != nil {
+			p.LogError(err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		data = append(data, map[string]any{
 			"channel_id": call.ChannelID,
-			// TODO: need to send client state here
-			"call": call,
+			"call": (&callState{
+				Call:     *call,
+				sessions: sessions,
+			}).getClientState(p.getBotID(), userID),
 		})
 	}
 

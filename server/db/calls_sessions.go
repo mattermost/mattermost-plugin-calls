@@ -114,7 +114,7 @@ func (s *Store) GetCallSession(id string, opts GetCallSessionOpts) (*public.Call
 	return &session, nil
 }
 
-func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) ([]*public.CallSession, error) {
+func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[string]*public.CallSession, error) {
 	s.metrics.IncStoreOp("GetCallSessions")
 
 	qb := getQueryBuilder(s.driverName).Select("*").
@@ -131,5 +131,10 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) ([]*publ
 		return nil, fmt.Errorf("failed to get call sessions: %w", err)
 	}
 
-	return sessions, nil
+	sessionsMap := make(map[string]*public.CallSession, len(sessions))
+	for _, session := range sessions {
+		sessionsMap[session.ID] = session
+	}
+
+	return sessionsMap, nil
 }
