@@ -153,6 +153,31 @@ func TestConfigurationIsValid(t *testing.T) {
 			err: "LiveCaptionsNumThreadsPerTranscriber is not valid: should be greater than 0",
 		},
 		{
+			name: "blank LiveCaptionsLanguage is valid",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.LiveCaptionsLanguage = ""
+				return cfg
+			}(),
+		},
+		{
+			name: "invalid LiveCaptionsLanguage",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.LiveCaptionsLanguage = "inv"
+				return cfg
+			}(),
+			err: "LiveCaptionsLanguage is not valid: should be a 2-letter ISO 639 set 1 language code, or blank for default",
+		},
+		{
 			name: "invalid TranscriberNumThreads",
 			input: func() configuration {
 				var cfg configuration

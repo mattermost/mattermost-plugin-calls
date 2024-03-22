@@ -33,6 +33,7 @@ import EnableLiveCaptions from 'src/components/admin_console_settings/recordings
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
 import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
+import LiveCaptionsLanguage from 'src/components/admin_console_settings/recordings/live_captions_language';
 import LiveCaptionsModelSize from 'src/components/admin_console_settings/recordings/live_captions_model_size';
 import LiveCaptionsNumThreadsPerTranscriber
     from 'src/components/admin_console_settings/recordings/live_captions_num_threads_per_transcriber';
@@ -388,6 +389,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('LiveCaptionsModelSize', LiveCaptionsModelSize);
         registry.registerAdminConsoleCustomSetting('LiveCaptionsNumTranscribers', LiveCaptionsNumTranscribers);
         registry.registerAdminConsoleCustomSetting('LiveCaptionsNumThreadsPerTranscriber', LiveCaptionsNumThreadsPerTranscriber);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsLanguage', LiveCaptionsLanguage);
 
         // RTCD server turns on/off the following:
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);

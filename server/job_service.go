@@ -329,6 +329,7 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		transcriberConfig.LiveCaptionsNumTranscribers = *cfg.LiveCaptionsNumTranscribers
 		transcriberConfig.NumThreads = *cfg.TranscriberNumThreads
 		transcriberConfig.LiveCaptionsNumThreadsPerTranscriber = *cfg.LiveCaptionsNumThreadsPerTranscriber
+		transcriberConfig.LiveCaptionsLanguage = cfg.LiveCaptionsLanguage
 
 		jobCfg.Runner = transcriberJobRunner
 		// Setting the max duration to double the value of the recording's setting as

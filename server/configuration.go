@@ -79,6 +79,8 @@ type configuration struct {
 	LiveCaptionsNumTranscribers *int
 	// The number of threads per transcriber to use for processing audio tracks into live captions.
 	LiveCaptionsNumThreadsPerTranscriber *int
+	// The language to be passed to the live captions transcriber.
+	LiveCaptionsLanguage string
 
 	clientConfig
 }
@@ -247,6 +249,9 @@ func (c *configuration) SetDefaults() {
 	if c.LiveCaptionsNumThreadsPerTranscriber == nil {
 		c.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(transcriber.LiveCaptionsNumThreadsPerTranscriberDefault)
 	}
+	if c.LiveCaptionsLanguage == "" {
+		c.LiveCaptionsLanguage = transcriber.LiveCaptionsLanguageDefault
+	}
 }
 
 func (c *configuration) IsValid() error {
@@ -317,6 +322,9 @@ func (c *configuration) IsValid() error {
 		if c.LiveCaptionsNumThreadsPerTranscriber == nil || *c.LiveCaptionsNumThreadsPerTranscriber <= 0 {
 			return fmt.Errorf("LiveCaptionsNumThreadsPerTranscriber is not valid: should be greater than 0")
 		}
+		if c.LiveCaptionsLanguage != "" && len(c.LiveCaptionsLanguage) != 2 {
+			return fmt.Errorf("LiveCaptionsLanguage is not valid: should be a 2-letter ISO 639 set 1 language code, or blank for default")
+		}
 	}
 	return nil
 }
@@ -334,6 +342,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.RecordingQuality = c.RecordingQuality
 	cfg.TranscriberModelSize = c.TranscriberModelSize
 	cfg.LiveCaptionsModelSize = c.LiveCaptionsModelSize
+	cfg.LiveCaptionsLanguage = c.LiveCaptionsLanguage
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = model.NewInt(*c.UDPServerPort)
