@@ -546,7 +546,7 @@ func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	ust := state.Call.Sessions[sessionID]
+	ust := state.Call.sessions[sessionID]
 	if ust.UserID == "" {
 		res.Code = http.StatusNotFound
 		res.Err = "not found"

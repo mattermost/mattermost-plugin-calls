@@ -71,12 +71,7 @@ func (s *Store) UpdateCall(call *public.Call) error {
 		Set("Participants", s.newJSONValueWrapper(call.Participants)).
 		Set("Stats", s.newJSONValueWrapper(call.Stats)).
 		Set("Props", s.newJSONValueWrapper(call.Props)).
-		Where(
-			sq.Or{
-				sq.Eq{"ID": call.ID},
-				sq.Eq{"ChannelID": call.ChannelID},
-			},
-		)
+		Where(sq.Eq{"ID": call.ID})
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -94,7 +89,7 @@ func (s *Store) UpdateCall(call *public.Call) error {
 	}
 
 	if count != 1 {
-		return fmt.Errorf("failed to update call")
+		return fmt.Errorf("failed to update call: unexpected updated rows count %d", count)
 	}
 
 	return nil
@@ -200,6 +195,32 @@ func (s *Store) GetActiveCallByChannelID(channelID string, opts GetCallOpts) (*p
 	}
 
 	return &call, nil
+}
+
+func (s *Store) GetAllActiveCalls(opts GetCallOpts) ([]*public.Call, error) {
+	s.metrics.IncStoreOp("GetAllActiveCalls")
+
+	qb := getQueryBuilder(s.driverName).Select("*").
+		From("calls").
+		Where(
+			sq.And{
+				sq.Eq{"EndAt": 0},
+				sq.Gt{"StartAt": 0},
+				sq.Eq{"DeleteAt": 0},
+			},
+		).OrderBy("StartAt DESC, ID")
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	calls := []*public.Call{}
+	if err := s.dbXFromGetOpts(opts).Select(&calls, q, args...); err != nil {
+		return nil, fmt.Errorf("failed to get calls: %w", err)
+	}
+
+	return calls, nil
 }
 
 func (s *Store) GetRTCDHostForActiveCall(channelID string, opts GetCallOpts) (string, error) {

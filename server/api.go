@@ -144,6 +144,18 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	calls, err := p.store.GetAllActiveCalls(db.GetCallOpts{})
+	if err != nil {
+		p.LogError("failed to get all active calls", "err", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	callsMap := make(map[string]*public.Call, len(calls))
+	for _, call := range calls {
+		callsMap[call.ChannelID] = call
+	}
+
 	data := []any{}
 	// loop on channels to check membership/permissions
 	for _, ch := range channels {
@@ -151,28 +163,29 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 			continue
 		}
 
-		call, err := p.store.GetActiveCallByChannelID(ch.ChannelID, db.GetCallOpts{})
-		if err != nil && !errors.Is(err, db.ErrNotFound) {
-			p.LogError("failed to get call by channel ID", "err", err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// TODO: need to query currently active calls as well in case they have no
-		// entry in calls_channels table.
-
 		channelData := map[string]any{
 			"channel_id": ch.ChannelID,
 			"enabled":    ch.Enabled,
 		}
-		if call != nil {
+		if call := callsMap[ch.ChannelID]; call != nil {
 			// TODO: need to send client state here
 			channelData["call"] = call
+			delete(callsMap, ch.ChannelID)
 		}
 
 		// Here we need to keep backwards compatibility so we send both
 		// channel info and current call state, as expected by our older clients.
 		data = append(data, channelData)
+	}
+
+	// We also need to include any active calls that may not have an explicit entry in
+	// calls_channels
+	for _, call := range callsMap {
+		data = append(data, map[string]any{
+			"channel_id": call.ChannelID,
+			// TODO: need to send client state here
+			"call": call,
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -212,10 +225,9 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 
 	if state.Call.EndAt == 0 {
 		state.Call.EndAt = time.Now().UnixMilli()
-		state.Call.call.EndAt = time.Now().UnixMilli()
 	}
 
-	if err := p.store.UpdateCall(state.Call.call); err != nil {
+	if err := p.store.UpdateCall(&state.Call.Call); err != nil {
 		res.Err = fmt.Errorf("failed to update call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
@@ -243,8 +255,8 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 
 		p.LogInfo("call state is still in store, force ending it", "channelID", channelID)
 
-		for connID := range state.Call.Sessions {
-			if err := p.closeRTCSession(userID, connID, channelID, state.Call.NodeID); err != nil {
+		for connID := range state.Call.sessions {
+			if err := p.closeRTCSession(userID, connID, channelID, state.Call.Props.NodeID); err != nil {
 				p.LogError(err.Error())
 			}
 		}
@@ -279,14 +291,12 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if state.Call.DismissedNotification == nil {
-		state.Call.DismissedNotification = make(map[string]bool)
-		state.Call.call.Props.DismissedNotification = make(map[string]bool)
+	if state.Call.Props.DismissedNotification == nil {
+		state.Call.Props.DismissedNotification = make(map[string]bool)
 	}
-	state.Call.DismissedNotification[userID] = true
-	state.Call.call.Props.DismissedNotification[userID] = true
+	state.Call.Props.DismissedNotification[userID] = true
 
-	if err := p.store.UpdateCall(state.Call.call); err != nil {
+	if err := p.store.UpdateCall(&state.Call.Call); err != nil {
 		res.Err = fmt.Errorf("failed to update call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return

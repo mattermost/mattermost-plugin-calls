@@ -253,7 +253,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request) {
 		res.Code = http.StatusForbidden
 		return
 	}
-	if state.Call.HostID != userID {
+	if len(state.Call.Props.Hosts) == 0 || state.Call.Props.Hosts[0] != userID {
 		res.Err = "no permissions to record"
 		res.Code = http.StatusForbidden
 		return

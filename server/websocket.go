@@ -124,29 +124,23 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 	}
 
 	if msg.Type == clientMessageTypeScreenOn {
-		if state.Call.ScreenSharingSessionID != "" {
-			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingSessionID)
+		if state.Call.Props.ScreenSharingSessionID != "" {
+			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: connID=%s", state.Call.Props.ScreenSharingSessionID)
 		}
-		state.Call.ScreenSharingSessionID = us.originalConnID
-		state.Call.ScreenStartAt = time.Now().Unix()
-
-		state.Call.call.Props.ScreenSharingSessionID = us.originalConnID
-		state.Call.call.Props.ScreenStartAt = state.Call.ScreenStartAt
+		state.Call.Props.ScreenSharingSessionID = us.originalConnID
+		state.Call.Props.ScreenStartAt = time.Now().Unix()
 	} else {
-		if state.Call.ScreenSharingSessionID != us.originalConnID {
-			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: connID=%s", state.Call.ScreenSharingSessionID)
+		if state.Call.Props.ScreenSharingSessionID != us.originalConnID {
+			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: connID=%s", state.Call.Props.ScreenSharingSessionID)
 		}
-		state.Call.ScreenSharingSessionID = ""
-		state.Call.call.Props.ScreenSharingSessionID = ""
-		if state.Call.ScreenStartAt > 0 {
-			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.ScreenStartAt)
-			state.Call.call.Stats.ScreenDuration = state.Call.Stats.ScreenDuration
-			state.Call.ScreenStartAt = 0
-			state.Call.call.Props.ScreenStartAt = 0
+		state.Call.Props.ScreenSharingSessionID = ""
+		if state.Call.Props.ScreenStartAt > 0 {
+			state.Call.Stats.ScreenDuration = secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
+			state.Call.Props.ScreenStartAt = 0
 		}
 	}
 
-	if err := p.store.UpdateCall(state.Call.call); err != nil {
+	if err := p.store.UpdateCall(&state.Call.Call); err != nil {
 		return fmt.Errorf("failed to update call: %w", err)
 	}
 
@@ -295,12 +289,10 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if state.Call == nil {
 			return fmt.Errorf("call state is missing from channel state")
 		}
-		uState := state.Call.Sessions[us.originalConnID]
 		session := state.Call.sessions[us.originalConnID]
-		if uState == nil {
+		if session == nil {
 			return fmt.Errorf("user state is missing from call state")
 		}
-		uState.Unmuted = msg.Type == clientMessageTypeUnmute
 		session.Unmuted = msg.Type == clientMessageTypeUnmute
 
 		if err := p.store.UpdateCallSession(session); err != nil {
@@ -336,10 +328,6 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if state.Call == nil {
 			return fmt.Errorf("call state is missing from channel state")
 		}
-		uState := state.Call.Sessions[us.originalConnID]
-		if uState == nil {
-			return fmt.Errorf("user state is missing from call state")
-		}
 
 		session := state.Call.sessions[us.originalConnID]
 		if session == nil {
@@ -347,10 +335,8 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		}
 
 		if msg.Type == clientMessageTypeRaiseHand {
-			uState.RaisedHand = time.Now().UnixMilli()
 			session.RaisedHand = time.Now().UnixMilli()
 		} else {
-			uState.RaisedHand = 0
 			session.RaisedHand = 0
 		}
 
@@ -361,7 +347,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":      us.userID,
 			"session_id":  us.originalConnID,
-			"raised_hand": uState.RaisedHand,
+			"raised_hand": session.RaisedHand,
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeReact:
 		evType := wsEventUserReacted
@@ -548,7 +534,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 		p.LogError(err.Error())
 	}
 	if handlerID == "" && state != nil && state.Call != nil {
-		handlerID = state.Call.NodeID
+		handlerID = state.Call.Props.NodeID
 	}
 
 	if err := p.closeRTCSession(userID, us.originalConnID, channelID, handlerID); err != nil {
@@ -611,19 +597,19 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		}
 	}
 
-	prevState, err := p.lockCall(channelID)
+	state, err := p.lockCall(channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
 
-	state, err := p.addUserSession(prevState, userID, connID, channelID, joinData.JobID)
+	state, err = p.addUserSession(state, userID, connID, channelID, joinData.JobID)
 	if err != nil {
 		p.unlockCall(channelID)
 		return fmt.Errorf("failed to add user session: %w", err)
 	} else if state.Call == nil {
 		p.unlockCall(channelID)
 		return fmt.Errorf("state.Call should not be nil")
-	} else if len(state.Call.Sessions) == 1 {
+	} else if len(state.Call.sessions) == 1 {
 		// new call has started
 		// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
 		if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
@@ -643,9 +629,9 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			p.LogError(err.Error())
 		}
 
-		state.Call.call.PostID = postID
-		state.Call.call.ThreadID = threadID
-		if err := p.store.UpdateCall(state.Call.call); err != nil {
+		state.Call.PostID = postID
+		state.Call.ThreadID = threadID
+		if err := p.store.UpdateCall(&state.Call.Call); err != nil {
 			p.LogError(err.Error())
 		}
 
@@ -657,7 +643,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			"thread_id": threadID,
 			"post_id":   postID,
 			"owner_id":  state.Call.OwnerID,
-			"host_id":   state.Call.HostID,
+			"host_id":   state.Call.GetHostID(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 		p.track(evCallStarted, map[string]interface{}{
@@ -673,7 +659,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		p.LogError(err.Error())
 	}
 	if handlerID == "" {
-		handlerID = state.Call.NodeID
+		handlerID = state.Call.Props.NodeID
 	}
 	p.LogDebug("got handlerID", "handlerID", handlerID)
 
@@ -699,7 +685,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 				"sessionID": connID,
 			},
 		}
-		if err := p.rtcdManager.Send(msg, channelID, state.Call.RTCDHost); err != nil {
+		if err := p.rtcdManager.Send(msg, channelID, state.Call.Props.RTCDHost); err != nil {
 			return fmt.Errorf("failed to send client join message: %w", err)
 		}
 	} else {
@@ -796,7 +782,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		return err
 	} else if state == nil || state.Call == nil {
 		return fmt.Errorf("call state not found")
-	} else if state, ok := state.Call.Sessions[originalConnID]; !ok || state.UserID != userID {
+	} else if state, ok := state.Call.sessions[originalConnID]; !ok || state.UserID != userID {
 		return fmt.Errorf("session not found in call state")
 	}
 
@@ -864,7 +850,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 				"sessionID": originalConnID,
 			},
 		}
-		if err := p.rtcdManager.Send(msg, channelID, state.Call.RTCDHost); err != nil {
+		if err := p.rtcdManager.Send(msg, channelID, state.Call.Props.RTCDHost); err != nil {
 			return fmt.Errorf("failed to send client reconnect message: %w", err)
 		}
 	}
@@ -874,7 +860,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		p.LogError(err.Error())
 	}
 	if handlerID == "" && state != nil {
-		handlerID = state.Call.NodeID
+		handlerID = state.Call.Props.NodeID
 	}
 
 	p.wsReader(us, authSessionID, handlerID)

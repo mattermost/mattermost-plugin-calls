@@ -409,11 +409,11 @@ func (p *Plugin) UserHasLeftChannel(_ *plugin.Context, cm *model.ChannelMember, 
 
 	// Closing the underlying RTC connection(s) for the user to stop
 	// communication.
-	for connID, session := range state.Call.Sessions {
+	for connID, session := range state.Call.sessions {
 		if session.UserID == cm.UserId {
 			p.LogDebug("UserHasLeftChannel: closing RTC session for user who left channel",
 				"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
-			if err := p.closeRTCSession(session.UserID, connID, cm.ChannelId, state.Call.NodeID); err != nil {
+			if err := p.closeRTCSession(session.UserID, connID, cm.ChannelId, state.Call.Props.NodeID); err != nil {
 				p.LogError("UserHasLeftChannel: failed to close RTC session", "err", err.Error(),
 					"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
 			}

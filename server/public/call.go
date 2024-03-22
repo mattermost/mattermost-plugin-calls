@@ -52,13 +52,21 @@ func (c *Call) IsValid() error {
 	return nil
 }
 
+func (c Call) GetHostID() string {
+	if len(c.Props.Hosts) == 0 {
+		return ""
+	}
+	return c.Props.Hosts[0]
+}
+
 type CallProps struct {
-	Hosts                  []string        `json:"hosts,omitempty"`
-	RTCDHost               string          `json:"rtcd_host,omitempty"`
-	ScreenSharingSessionID string          `json:"screen_sharing_session_id,omitempty"`
-	DismissedNotification  map[string]bool `json:"dismissed_notification,omitempty"`
-	ScreenStartAt          int64           `json:"screen_start_at,omitempty"`
-	NodeID                 string          `json:"node_id,omitempty"`
+	Hosts                  []string            `json:"hosts,omitempty"`
+	RTCDHost               string              `json:"rtcd_host,omitempty"`
+	ScreenSharingSessionID string              `json:"screen_sharing_session_id,omitempty"`
+	DismissedNotification  map[string]bool     `json:"dismissed_notification,omitempty"`
+	ScreenStartAt          int64               `json:"screen_start_at,omitempty"`
+	NodeID                 string              `json:"node_id,omitempty"`
+	Participants           map[string]struct{} `json:"participants,omitempty"`
 }
 
 type CallStats struct {

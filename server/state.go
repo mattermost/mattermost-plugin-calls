@@ -23,43 +23,23 @@ type jobState struct {
 	JobStateClient
 }
 
-type userState struct {
-	UserID     string `json:"user_id"`
-	Unmuted    bool   `json:"unmuted"`
-	RaisedHand int64  `json:"raised_hand"`
-	JoinAt     int64  `json:"join_at"`
-}
-
 type callStats struct {
 	Participants   map[string]struct{} `json:"participants"`
 	ScreenDuration int64               `json:"screen_duration"`
 }
 
 type callState struct {
-	ID                     string                         `json:"id"`
-	StartAt                int64                          `json:"start_at"`
-	CreateAt               int64                          `json:"create_at"`
-	EndAt                  int64                          `json:"end_at"`
-	Sessions               map[string]*userState          `json:"sessions,omitempty"`
-	OwnerID                string                         `json:"owner_id"`
-	ThreadID               string                         `json:"thread_id"`
-	PostID                 string                         `json:"post_id"`
-	ScreenSharingSessionID string                         `json:"screen_sharing_session_id"`
-	ScreenStartAt          int64                          `json:"screen_start_at"`
-	Stats                  callStats                      `json:"stats"`
-	RTCDHost               string                         `json:"rtcd_host"`
-	HostID                 string                         `json:"host_id"`
-	Recording              *jobState                      `json:"recording,omitempty"`
-	Transcription          *jobState                      `json:"transcription,omitempty"`
-	DismissedNotification  map[string]bool                `json:"dismissed_notification,omitempty"`
-	NodeID                 string                         `json:"node_id,omitempty"`
-	call                   *public.Call                   `json:"-"`
-	sessions               map[string]*public.CallSession `json:"-"`
+	public.Call
+	sessions map[string]*public.CallSession
+
+	// FIXME later
+	Recording     *jobState
+	Transcription *jobState
 }
 
 type channelState struct {
-	Enabled *bool      `json:"enabled"`
-	Call    *callState `json:"call,omitempty"`
+	Enabled *bool
+	Call    *callState
 }
 
 type UserStateClient struct {
@@ -126,40 +106,12 @@ func (js *jobState) getClientState() *JobStateClient {
 	return &js.JobStateClient
 }
 
-func (cs *callState) Clone() *callState {
+func (cs *callState) sessionsForUser(userID string) []*public.CallSession {
 	if cs == nil {
 		return nil
 	}
-
-	newState := *cs
-
-	if cs.Sessions != nil {
-		newState.Sessions = make(map[string]*userState, len(cs.Sessions))
-		for id, state := range cs.Sessions {
-			newState.Sessions[id] = &userState{}
-			*newState.Sessions[id] = *state
-		}
-	}
-
-	if cs.Recording != nil {
-		newState.Recording = &jobState{}
-		*newState.Recording = *cs.Recording
-	}
-
-	if cs.Transcription != nil {
-		newState.Transcription = &jobState{}
-		*newState.Transcription = *cs.Transcription
-	}
-
-	return &newState
-}
-
-func (cs *callState) sessionsForUser(userID string) []*userState {
-	if cs == nil {
-		return nil
-	}
-	var sessions []*userState
-	for _, session := range cs.Sessions {
+	var sessions []*public.CallSession
+	for _, session := range cs.sessions {
 		if session.UserID == userID {
 			sessions = append(sessions, session)
 		}
@@ -193,39 +145,18 @@ func (cs *channelState) getTranscription() (*jobState, error) {
 	return cs.Call.Transcription, nil
 }
 
-func (cs *channelState) Clone() *channelState {
-	if cs == nil {
-		return nil
-	}
-	newState := *cs
-	if cs.Call != nil {
-		newState.Call = cs.Call.Clone()
-	}
-	return &newState
-}
-
-func (us *userState) getClientState(sessionID string) UserStateClient {
-	return UserStateClient{
-		SessionID:  sessionID,
-		UserID:     us.UserID,
-		Unmuted:    us.Unmuted,
-		RaisedHand: us.RaisedHand,
-	}
-}
-
 func (cs *callState) getHostID(botID string) string {
-	var host userState
-
-	for _, state := range cs.Sessions {
-		if state.UserID == botID {
+	var host public.CallSession
+	for _, session := range cs.sessions {
+		if session.UserID == botID {
 			continue
 		}
 		if host.UserID == "" {
-			host = *state
+			host = *session
 			continue
 		}
-		if state.JoinAt < host.JoinAt {
-			host = *state
+		if session.JoinAt < host.JoinAt {
+			host = *session
 		}
 	}
 
@@ -237,14 +168,14 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 
 	// For now, only send the user's own dismissed state.
 	var dismissed map[string]bool
-	if cs.DismissedNotification[userID] {
+	if cs.Props.DismissedNotification[userID] {
 		dismissed = map[string]bool{
 			userID: true,
 		}
 	}
 
 	var screenSharingUserID string
-	if s := cs.Sessions[cs.ScreenSharingSessionID]; s != nil {
+	if s := cs.sessions[cs.Props.ScreenSharingSessionID]; s != nil {
 		screenSharingUserID = s.UserID
 	}
 
@@ -264,9 +195,9 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		// DEPRECATED since v0.21
 		ScreenSharingID: screenSharingUserID,
 
-		ScreenSharingSessionID: cs.ScreenSharingSessionID,
+		ScreenSharingSessionID: cs.Props.ScreenSharingSessionID,
 		OwnerID:                cs.OwnerID,
-		HostID:                 cs.HostID,
+		HostID:                 cs.GetHostID(),
 		Recording:              cs.Recording.getClientState(),
 		Transcription:          cs.Transcription.getClientState(),
 		DismissedNotification:  dismissed,
@@ -274,22 +205,27 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 }
 
 func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClient) {
-	users := make([]string, 0, len(cs.Sessions))
-	states := make([]UserStateClient, 0, len(cs.Sessions))
-	for sessionID, state := range cs.Sessions {
+	users := make([]string, 0, len(cs.sessions))
+	states := make([]UserStateClient, 0, len(cs.sessions))
+	for _, session := range cs.sessions {
 		// We don't want to expose to the client that the bot is in a call.
-		if state.UserID == botID {
+		if session.UserID == botID {
 			continue
 		}
-		users = append(users, state.UserID)
-		states = append(states, state.getClientState(sessionID))
+		users = append(users, session.UserID)
+		states = append(states, UserStateClient{
+			SessionID:  session.ID,
+			UserID:     session.UserID,
+			Unmuted:    session.Unmuted,
+			RaisedHand: session.RaisedHand,
+		})
 	}
 	return users, states
 }
 
 func (cs *callState) onlyUserLeft(userID string) bool {
-	for _, state := range cs.Sessions {
-		if state.UserID != userID {
+	for _, session := range cs.sessions {
+		if session.UserID != userID {
 			return false
 		}
 	}
@@ -319,35 +255,13 @@ func (p *Plugin) kvGetChannelState(channelID string, fromWriter bool) (*channelS
 	}
 
 	if call != nil {
-		// TODO: add proper support for multiple hosts
-		var hostID string
-		if len(call.Props.Hosts) > 0 {
-			hostID = call.Props.Hosts[0]
-		}
-
 		participants := make(map[string]struct{}, len(call.Participants))
 		for _, p := range call.Participants {
 			participants[p] = struct{}{}
 		}
 
 		state.Call = &callState{
-			ID:                     call.ID,
-			CreateAt:               call.CreateAt,
-			StartAt:                call.StartAt,
-			EndAt:                  call.EndAt,
-			OwnerID:                call.OwnerID,
-			ThreadID:               call.ThreadID,
-			PostID:                 call.PostID,
-			ScreenSharingSessionID: call.Props.ScreenSharingSessionID,
-			ScreenStartAt:          call.Props.ScreenStartAt,
-			RTCDHost:               call.Props.RTCDHost,
-			HostID:                 hostID,
-			NodeID:                 call.Props.NodeID,
-			DismissedNotification:  call.Props.DismissedNotification,
-			Stats: callStats{
-				Participants:   participants,
-				ScreenDuration: call.Stats.ScreenDuration,
-			},
+			Call: *call,
 		}
 
 		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{
@@ -357,20 +271,10 @@ func (p *Plugin) kvGetChannelState(channelID string, fromWriter bool) (*channelS
 			return nil, fmt.Errorf("failed to get sessions: %w", err)
 		}
 
-		state.Call.Sessions = make(map[string]*userState, len(sessions))
 		state.Call.sessions = make(map[string]*public.CallSession, len(sessions))
-
 		for _, session := range sessions {
-			state.Call.Sessions[session.ID] = &userState{
-				UserID:     session.UserID,
-				Unmuted:    session.Unmuted,
-				RaisedHand: session.RaisedHand,
-				JoinAt:     session.JoinAt,
-			}
 			state.Call.sessions[session.ID] = session
 		}
-
-		state.Call.call = call
 	}
 
 	return state, nil
@@ -452,15 +356,13 @@ func (p *Plugin) cleanCallState(channelID string, state *channelState) error {
 		return nil
 	}
 
-	if _, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Stats.Participants)); err != nil {
+	if _, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants)); err != nil {
 		p.LogError("failed to update call post", "err", err.Error())
 	}
 
-	call := state.Call.call
-	if call.EndAt == 0 {
-		call.EndAt = time.Now().UnixMilli()
+	if state.Call.EndAt == 0 {
+		state.Call.EndAt = time.Now().UnixMilli()
 	}
-	state.Call = nil
 
-	return p.store.UpdateCall(call)
+	return p.store.UpdateCall(&state.Call.Call)
 }

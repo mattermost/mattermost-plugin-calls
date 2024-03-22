@@ -24,6 +24,7 @@ func TestCallsStore(t *testing.T) {
 		"TestGetCall":                  testGetCall,
 		"TestGetActiveCallByChannelID": testGetActiveCallByChannelID,
 		"TestGetRTCDHostForActiveCall": testGetRTCDHostForActiveCall,
+		"TestGetAllActiveCalls":        testGetAllActiveCalls,
 	})
 }
 
@@ -198,7 +199,7 @@ func testUpdateCall(t *testing.T, store *Store) {
 			ThreadID:  model.NewId(),
 			OwnerID:   model.NewId(),
 		})
-		require.EqualError(t, err, "failed to update call")
+		require.EqualError(t, err, "failed to update call: unexpected updated rows count 0")
 	})
 
 	t.Run("existing", func(t *testing.T) {
@@ -405,5 +406,43 @@ func testGetRTCDHostForActiveCall(t *testing.T, store *Store) {
 		host, err := store.GetRTCDHostForActiveCall(call.ChannelID, GetCallOpts{})
 		require.NoError(t, err)
 		require.Equal(t, call.Props.RTCDHost, host)
+	})
+}
+
+func testGetAllActiveCalls(t *testing.T, store *Store) {
+	t.Run("no calls", func(t *testing.T) {
+		calls, err := store.GetAllActiveCalls(GetCallOpts{})
+		require.NoError(t, err)
+		require.Empty(t, calls)
+	})
+
+	t.Run("multiple calls", func(t *testing.T) {
+		var calls []*public.Call
+		for i := 0; i < 10; i++ {
+			call := &public.Call{
+				ID:           model.NewId(),
+				CreateAt:     time.Now().UnixMilli(),
+				ChannelID:    model.NewId(),
+				StartAt:      time.Now().UnixMilli(),
+				PostID:       model.NewId(),
+				ThreadID:     model.NewId(),
+				OwnerID:      model.NewId(),
+				Participants: []string{model.NewId(), model.NewId()},
+				Stats: public.CallStats{
+					ScreenDuration: 45,
+				},
+				Props: public.CallProps{
+					Hosts: []string{"userA", "userB"},
+				},
+			}
+
+			err := store.CreateCall(call)
+			require.NoError(t, err)
+			calls = append(calls, call)
+		}
+
+		gotCalls, err := store.GetAllActiveCalls(GetCallOpts{})
+		require.NoError(t, err)
+		require.ElementsMatch(t, calls, gotCalls)
 	})
 }
