@@ -68,12 +68,6 @@ type JobStateClient struct {
 	Err     string `json:"err,omitempty"`
 }
 
-type ChannelStateClient struct {
-	ChannelID string           `json:"channel_id,omitempty"`
-	Enabled   *bool            `json:"enabled,omitempty"`
-	Call      *CallStateClient `json:"call,omitempty"`
-}
-
 func (js *JobStateClient) toMap() map[string]interface{} {
 	if js == nil {
 		return nil
