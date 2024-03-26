@@ -167,7 +167,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 			Data:      msg.Data,
 		}
 
-		if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
+		if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
 			p.LogError("failed to send RTC message", "error", err)
 		}
 	}
@@ -221,7 +221,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				Data:      msg.Data,
 			}
 
-			if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
+			if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
 				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		}
@@ -234,7 +234,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				Data:      msg.Data,
 			}
 
-			if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
+			if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
 				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		} else {
@@ -275,7 +275,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				Data:      msg.Data,
 			}
 
-			if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
+			if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
 				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		}
@@ -442,7 +442,7 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 	}
 }
 
-func (p *Plugin) sendRTCMessage(msg rtc.Message, channelID, callID string) error {
+func (p *Plugin) sendRTCMessage(msg rtc.Message, callID string) error {
 	if p.rtcdManager != nil {
 		cm := rtcd.ClientMessage{
 			Type: rtcd.ClientMessageRTC,
@@ -452,7 +452,7 @@ func (p *Plugin) sendRTCMessage(msg rtc.Message, channelID, callID string) error
 		if err != nil {
 			return fmt.Errorf("failed to get RTCD host for call: %w", err)
 		}
-		return p.rtcdManager.Send(cm, channelID, host)
+		return p.rtcdManager.Send(cm, host)
 	}
 
 	return p.rtcServer.Send(msg)
@@ -690,7 +690,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 				"sessionID": connID,
 			},
 		}
-		if err := p.rtcdManager.Send(msg, channelID, state.Call.Props.RTCDHost); err != nil {
+		if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
 			return fmt.Errorf("failed to send client join message: %w", err)
 		}
 	} else {
@@ -857,7 +857,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 				"sessionID": originalConnID,
 			},
 		}
-		if err := p.rtcdManager.Send(msg, channelID, state.Call.Props.RTCDHost); err != nil {
+		if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
 			return fmt.Errorf("failed to send client reconnect message: %w", err)
 		}
 	}
@@ -1044,7 +1044,7 @@ func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID, callID st
 			return fmt.Errorf("failed to get RTCD host for call: %w", err)
 		}
 
-		if err := p.rtcdManager.Send(msg, channelID, host); err != nil {
+		if err := p.rtcdManager.Send(msg, host); err != nil {
 			return fmt.Errorf("failed to send client message: %w", err)
 		}
 	}

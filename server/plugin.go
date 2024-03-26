@@ -230,7 +230,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			Data:      msg.ClientMessage.Data,
 		}
 
-		if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
+		if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
 			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	case clusterMessageTypeUserState:
@@ -264,7 +264,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			Data:      msg.ClientMessage.Data,
 		}
 
-		if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
+		if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
 			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	default:
