@@ -120,3 +120,7 @@ func (s *Store) Close() error {
 
 	return ret
 }
+
+func (s *Store) WriterDB() *sql.DB {
+	return s.wDB
+}
