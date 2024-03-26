@@ -80,7 +80,7 @@ func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{})
+	cs, err := p.getCallStateFromCall(call, false)
 	if err != nil {
 		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -92,10 +92,7 @@ func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Reques
 	data := map[string]any{}
 	data["channel_id"] = channel.ChannelID
 	data["enabled"] = channel.Enabled
-	data["call"] = (&callState{
-		Call:     *call,
-		sessions: sessions,
-	}).getClientState(p.getBotID(), userID)
+	data["call"] = cs.getClientState(p.getBotID(), userID)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(data); err != nil {
@@ -178,16 +175,13 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 			"enabled":    ch.Enabled,
 		}
 		if call := callsMap[ch.ChannelID]; call != nil {
-			sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{})
+			cs, err := p.getCallStateFromCall(call, false)
 			if err != nil {
 				p.LogError(err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			channelData["call"] = (&callState{
-				Call:     *call,
-				sessions: sessions,
-			}).getClientState(p.getBotID(), userID)
+			channelData["call"] = cs.getClientState(p.getBotID(), userID)
 			delete(callsMap, ch.ChannelID)
 		}
 
@@ -199,7 +193,7 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 	// We also need to include any active calls that may not have an explicit entry in
 	// calls_channels
 	for _, call := range callsMap {
-		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{})
+		cs, err := p.getCallStateFromCall(call, false)
 		if err != nil {
 			p.LogError(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -208,10 +202,7 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 
 		data = append(data, map[string]any{
 			"channel_id": call.ChannelID,
-			"call": (&callState{
-				Call:     *call,
-				sessions: sessions,
-			}).getClientState(p.getBotID(), userID),
+			"call":       cs.getClientState(p.getBotID(), userID),
 		})
 	}
 

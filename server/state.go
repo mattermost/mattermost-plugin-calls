@@ -202,16 +202,9 @@ func (cs *callState) onlyUserLeft(userID string) bool {
 	return true
 }
 
-func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, error) {
-	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{
-		FromWriter: fromWriter,
-	})
-	if err != nil && !errors.Is(err, db.ErrNotFound) {
-		return nil, fmt.Errorf("failed to get active call: %w", err)
-	}
-
+func (p *Plugin) getCallStateFromCall(call *public.Call, fromWriter bool) (*callState, error) {
 	if call == nil {
-		return nil, nil
+		return nil, fmt.Errorf("call should not be nil")
 	}
 
 	state := &callState{
@@ -246,6 +239,21 @@ func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, er
 	}
 
 	return state, nil
+}
+
+func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, error) {
+	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{
+		FromWriter: fromWriter,
+	})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		return nil, fmt.Errorf("failed to get active call: %w", err)
+	}
+
+	if call == nil {
+		return nil, nil
+	}
+
+	return p.getCallStateFromCall(call, fromWriter)
 }
 
 func (p *Plugin) cleanUpState() error {
