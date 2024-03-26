@@ -201,7 +201,7 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	defer p.unlockCall(callID)
 
 	// Update call post
-	post, err := p.GetPost(info.PostID)
+	post, err := p.store.GetPost(info.PostID)
 	if err != nil {
 		res.Err = "failed to get call post: " + err.Error()
 		res.Code = http.StatusInternalServerError
@@ -307,7 +307,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	defer p.unlockCall(callID)
 
 	// Update call post
-	post, err := p.GetPost(info.PostID)
+	post, err := p.store.GetPost(info.PostID)
 	if err != nil {
 		res.Err = "failed to get call post: " + err.Error()
 		res.Code = http.StatusInternalServerError
@@ -327,8 +327,8 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	// Updating the file to point to the existing call post solves this problem
 	// without requiring us to expose a dedicated API nor attach the file which
 	// we don't want to show.
-	if err := p.updateFileInfoPostID(info.Transcriptions[0].FileIDs[0], callID, info.PostID); err != nil {
-		res.Err = "failed to update fileinfo post id: " + err.Error()
+	if err := p.store.UpdateFileInfoPostID(info.Transcriptions[0].FileIDs[0], callID, info.PostID); err != nil {
+		res.Err = "failed to update fileinfo post and channel ids: " + err.Error()
 		res.Code = http.StatusInternalServerError
 	}
 
@@ -384,7 +384,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	var rm jobMetadata
 	rm.fromMap(recordings[tm.RecID])
 	if rm.PostID != "" {
-		recPost, err := p.GetPost(rm.PostID)
+		recPost, err := p.store.GetPost(rm.PostID)
 		if err != nil {
 			res.Err = "failed to get recording post: " + err.Error()
 			res.Code = http.StatusInternalServerError

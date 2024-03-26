@@ -76,7 +76,7 @@ func (jm *jobMetadata) fromMap(data any) {
 }
 
 func (p *Plugin) saveRecordingMetadata(postID, recID, trID string) error {
-	post, err := p.GetPost(postID)
+	post, err := p.store.GetPost(postID)
 	if err != nil {
 		return fmt.Errorf("failed to get call post: %w", err)
 	}

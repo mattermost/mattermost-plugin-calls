@@ -287,8 +287,8 @@ func (cs *callState) onlyUserLeft(userID string) bool {
 	return true
 }
 
-func (p *Plugin) kvGetChannelState(channelID string, fromMaster bool) (*channelState, error) {
-	data, appErr := p.KVGet(channelID, fromMaster)
+func (p *Plugin) kvGetChannelState(channelID string, fromWriter bool) (*channelState, error) {
+	data, appErr := p.KVGet(channelID, fromWriter)
 	if appErr != nil {
 		return nil, fmt.Errorf("KVGet failed: %w", appErr)
 	}
