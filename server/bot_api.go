@@ -443,7 +443,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var jb *jobState
+	var jb *public.CallJob
 	switch status.JobType {
 	case public.JobTypeRecording:
 		jb = state.Recording
@@ -476,7 +476,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 	if status.Status == public.JobStatusTypeFailed {
 		p.LogDebug("job has failed", "jobID", jobID, "jobType", status.JobType)
 		jb.EndAt = time.Now().UnixMilli()
-		jb.Err = status.Error
+		jb.Props.Err = status.Error
 
 		if status.JobType == public.JobTypeRecording && state.Transcription != nil {
 			if err := p.stopTranscribingJob(state, callID); err != nil {
@@ -502,22 +502,21 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// FIXME
-	// if err := p.kvSetChannelState(callID, state); err != nil {
-	// 	res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
-	// 	res.Code = http.StatusInternalServerError
-	// 	return
-	// }
+	if err := p.store.UpdateCallJob(jb); err != nil {
+		res.Err = fmt.Errorf("failed to update call job: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
 
 	if status.JobType == public.JobTypeRecording {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
-			"recState": state.Recording.getClientState().toMap(),
+			"recState": getClientStateFromCallJob(state.Recording).toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	} else {
 		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 			"callID":  callID,
-			"trState": state.Transcription.getClientState().toMap(),
+			"trState": getClientStateFromCallJob(state.Transcription).toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	}
 

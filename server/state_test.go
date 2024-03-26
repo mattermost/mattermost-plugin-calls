@@ -280,21 +280,19 @@ func TestCallStateGetHostID(t *testing.T) {
 	})
 }
 
-func TestJobStateGetClientState(t *testing.T) {
+func TestGetClientStateFromCallJob(t *testing.T) {
 	t.Run("nil", func(t *testing.T) {
-		var rs jobState
-		require.Empty(t, rs.getClientState())
+		var job *public.CallJob
+		require.Empty(t, getClientStateFromCallJob(job))
 	})
 
 	t.Run("non-nil", func(t *testing.T) {
-		rs := &jobState{
+		job := &public.CallJob{
 			ID:        "recID",
 			CreatorID: "creatorID",
-			JobStateClient: JobStateClient{
-				InitAt:  100,
-				StartAt: 200,
-				EndAt:   300,
-			},
+			InitAt:    100,
+			StartAt:   200,
+			EndAt:     300,
 		}
 
 		recState := &JobStateClient{
@@ -303,6 +301,6 @@ func TestJobStateGetClientState(t *testing.T) {
 			EndAt:   300,
 		}
 
-		require.Equal(t, recState, rs.getClientState())
+		require.Equal(t, recState, getClientStateFromCallJob(job))
 	})
 }

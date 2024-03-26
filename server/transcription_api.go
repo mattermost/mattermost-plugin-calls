@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	"github.com/mattermost/calls-offloader/public/job"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -33,26 +35,23 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 	// If the transcription hasn't started (bot hasn't joined yet) we notify the
 	// client.
 	if trState.StartAt == 0 {
-		if trState.JobID != jobID {
+		if trState.Props.JobID != jobID {
 			p.LogInfo("a new job has started in between, exiting", "callID", callID, "jobID", jobID)
 			return
 		}
 
 		p.LogError("timed out waiting for transcriber bot to join", "callID", callID, "jobID", jobID)
 
-		state.Transcription = nil
-		// FIXME
-		// if err := p.kvSetChannelState(callID, state); err != nil {
-		// 	p.LogError("failed to set channel state", "err", err.Error())
-		// 	return
-		// }
+		trState.EndAt = time.Now().UnixMilli()
+		trState.Props.Err = "failed to start transcriber job: timed out waiting for bot to join call"
+		if err := p.store.UpdateCallJob(trState); err != nil {
+			p.LogError("failed to update call job", "callID", callID, "jobID", jobID, "err", err.Error())
+		}
 
-		clientState := trState.getClientState()
-		clientState.Err = "failed to start transcriber job: timed out waiting for bot to join call"
-		clientState.EndAt = time.Now().UnixMilli()
+		clientState := getClientStateFromCallJob(trState)
 
 		if state.Recording != nil && state.Recording.EndAt == 0 {
-			recClientState := state.Recording.getClientState()
+			recClientState := getClientStateFromCallJob(state.Recording)
 			if _, _, err := p.stopRecordingJob(state, callID); err != nil {
 				p.LogError("failed to stop recording job", "err", err.Error(), "callID", callID, "jobID", jobID)
 			}
@@ -82,25 +81,25 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 		return fmt.Errorf("trID should not be empty")
 	}
 
-	trState := new(jobState)
+	trState := new(public.CallJob)
 	trState.ID = trID
+	trState.CallID = state.Call.ID
+	trState.Type = public.JobTypeTranscribing
 	trState.CreatorID = userID
 	trState.InitAt = time.Now().UnixMilli()
-	state.Transcription = trState
 
-	// FIXME
-	// if err := p.kvSetChannelState(callID, state); err != nil {
-	// 	return fmt.Errorf("failed to set channel state: %w", err)
-	// }
+	if err := p.store.CreateCallJob(trState); err != nil {
+		return fmt.Errorf("failed to update call job: %w", err)
+	}
 
 	defer func() {
 		// In case of any error we relay it to the client.
 		if rerr != nil && trState != nil {
 			trState.EndAt = time.Now().UnixMilli()
-			trState.Err = rerr.Error()
+			trState.Props.Err = rerr.Error()
 			p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 				"callID":  callID,
-				"trState": trState.getClientState().toMap(),
+				"trState": getClientStateFromCallJob(trState).toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 	}()
@@ -110,7 +109,7 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	// to get their local state updated as soon as it changes on the server.
 	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 		"callID":  callID,
-		"trState": trState.getClientState().toMap(),
+		"trState": getClientStateFromCallJob(trState).toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 	// We don't want to keep the lock while making the API call to the service since it
@@ -128,28 +127,27 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	}
 
 	if jobErr != nil {
-		state.Transcription = nil
-		// FIXME
-		// if err := p.kvSetChannelState(callID, state); err != nil {
-		// 	return fmt.Errorf("failed to set channel state: %w", err)
-		// }
+		trState.EndAt = time.Now().UnixMilli()
+		trState.Props.Err = jobErr.Error()
+		if err := p.store.UpdateCallJob(trState); err != nil {
+			p.LogError("failed to update call job", "err", err.Error(), "jobID", trJobID, "callID", callID)
+		}
 		return fmt.Errorf("failed to create transcription job: %w", jobErr)
 	}
 
-	if trState.JobID != "" {
+	if trState.Props.JobID != "" {
 		return fmt.Errorf("transcription job already in progress")
 	}
-	trState.JobID = trJobID
-	// FIXME
-	// if err := p.kvSetChannelState(callID, state); err != nil {
-	// 	return fmt.Errorf("failed to set channel state: %w", err)
-	// }
+	trState.Props.JobID = trJobID
+	if err := p.store.UpdateCallJob(trState); err != nil {
+		return fmt.Errorf("failed to update call job: %w", err)
+	}
 
 	p.LogDebug("transcription job started successfully", "jobID", trJobID, "callID", callID)
 
 	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 		"callID":  callID,
-		"trState": trState.getClientState().toMap(),
+		"trState": getClientStateFromCallJob(trState).toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 	go p.transcriptionJobTimeoutChecker(callID, trJobID)
@@ -169,25 +167,23 @@ func (p *Plugin) stopTranscribingJob(state *callState, callID string) (rerr erro
 		return fmt.Errorf("failed to get transcription state: %w", err)
 	}
 	trState.EndAt = time.Now().UnixMilli()
-	state.Transcription = nil
 
-	// FIXME
-	// if err := p.kvSetChannelState(callID, state); err != nil {
-	// 	return fmt.Errorf("failed to set channel state: %w", err)
-	// }
+	if err := p.store.UpdateCallJob(trState); err != nil {
+		return fmt.Errorf("failed to update call job: %w", err)
+	}
 
 	defer func() {
 		// In case of any error we relay it to the client.
 		if rerr != nil {
-			trState.Err = rerr.Error()
+			trState.Props.Err = rerr.Error()
 			p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 				"callID":  callID,
-				"trState": trState.getClientState().toMap(),
+				"trState": getClientStateFromCallJob(trState).toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 	}()
 
-	if err := p.getJobService().StopJob(callID, trState.ID, p.getBotID(), trState.BotConnID); err != nil {
+	if err := p.getJobService().StopJob(callID, trState.ID, p.getBotID(), trState.Props.BotConnID); err != nil {
 		return fmt.Errorf("failed to stop transcription job: %w", err)
 	}
 
@@ -199,7 +195,7 @@ func (p *Plugin) stopTranscribingJob(state *callState, callID string) (rerr erro
 
 	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
 		"callID":  callID,
-		"trState": trState.getClientState().toMap(),
+		"trState": getClientStateFromCallJob(trState).toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 	return nil

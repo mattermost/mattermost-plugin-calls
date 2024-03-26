@@ -213,6 +213,33 @@ func testGetCallJobs(t *testing.T, store *Store) {
 		}, jobs)
 	})
 
+	t.Run("ordered jobs", func(t *testing.T) {
+		var jobs []*public.CallJob
+		callID := model.NewId()
+		startTimeBase := time.Now().UnixMilli()
+		for i := 0; i < 10; i++ {
+			recJob := &public.CallJob{
+				ID:        model.NewId(),
+				CallID:    callID,
+				Type:      public.JobTypeRecording,
+				CreatorID: model.NewId(),
+				InitAt:    time.Now().UnixMilli(),
+			}
+			err := store.CreateCallJob(recJob)
+			require.NoError(t, err)
+
+			jobs = append(jobs, recJob)
+
+			recJob.StartAt = startTimeBase + int64(i*1000)
+			err = store.UpdateCallJob(recJob)
+			require.NoError(t, err)
+		}
+
+		gotJobs, err := store.GetCallJobs(callID, GetCallJobOpts{})
+		require.NoError(t, err)
+		require.Equal(t, jobs[len(jobs)-1], gotJobs[0])
+	})
+
 	t.Run("include ended", func(t *testing.T) {
 		callID := model.NewId()
 		job := &public.CallJob{

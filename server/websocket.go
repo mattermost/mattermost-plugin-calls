@@ -154,6 +154,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 			ConnID:        us.originalConnID,
 			UserID:        us.userID,
 			ChannelID:     us.channelID,
+			CallID:        us.callID,
 			SenderID:      p.nodeID,
 			ClientMessage: msg,
 		}, clusterMessageTypeUserState, handlerID); err != nil {
@@ -166,7 +167,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 			Data:      msg.Data,
 		}
 
-		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
+		if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
 			p.LogError("failed to send RTC message", "error", err)
 		}
 	}
@@ -207,6 +208,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				ConnID:        us.originalConnID,
 				UserID:        us.userID,
 				ChannelID:     us.channelID,
+				CallID:        us.callID,
 				SenderID:      p.nodeID,
 				ClientMessage: msg,
 			}, clusterMessageTypeSignaling, handlerID); err != nil {
@@ -219,7 +221,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				Data:      msg.Data,
 			}
 
-			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
+			if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
 				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		}
@@ -232,7 +234,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				Data:      msg.Data,
 			}
 
-			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
+			if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
 				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		} else {
@@ -241,6 +243,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				ConnID:        us.originalConnID,
 				UserID:        us.userID,
 				ChannelID:     us.channelID,
+				CallID:        us.callID,
 				SenderID:      p.nodeID,
 				ClientMessage: msg,
 			}, clusterMessageTypeSignaling, handlerID); err != nil {
@@ -254,6 +257,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				ConnID:        us.originalConnID,
 				UserID:        us.userID,
 				ChannelID:     us.channelID,
+				CallID:        us.callID,
 				SenderID:      p.nodeID,
 				ClientMessage: msg,
 			}, clusterMessageTypeUserState, handlerID); err != nil {
@@ -271,7 +275,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				Data:      msg.Data,
 			}
 
-			if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
+			if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
 				return fmt.Errorf("failed to send RTC message: %w", err)
 			}
 		}
@@ -428,7 +432,7 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 				p.LogInfo("invalid or expired session, closing RTC session", fields...)
 
 				// We forcefully disconnect any session that has been revoked or expired.
-				if err := p.closeRTCSession(us.userID, us.connID, us.channelID, handlerID); err != nil {
+				if err := p.closeRTCSession(us.userID, us.connID, us.channelID, handlerID, us.callID); err != nil {
 					p.LogError("failed to close RTC session", append(fields[:5], "err", err.Error()))
 				}
 
@@ -438,15 +442,15 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 	}
 }
 
-func (p *Plugin) sendRTCMessage(msg rtc.Message, channelID string) error {
+func (p *Plugin) sendRTCMessage(msg rtc.Message, channelID, callID string) error {
 	if p.rtcdManager != nil {
 		cm := rtcd.ClientMessage{
 			Type: rtcd.ClientMessageRTC,
 			Data: msg,
 		}
-		host, err := p.store.GetRTCDHostForActiveCall(channelID, db.GetCallOpts{})
+		host, err := p.store.GetRTCDHostForCall(callID, db.GetCallOpts{})
 		if err != nil {
-			return fmt.Errorf("failed to get RTCD host for active call: %w", err)
+			return fmt.Errorf("failed to get RTCD host for call: %w", err)
 		}
 		return p.rtcdManager.Send(cm, channelID, host)
 	}
@@ -529,7 +533,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 		handlerID = state.Call.Props.NodeID
 	}
 
-	if err := p.closeRTCSession(userID, us.originalConnID, channelID, handlerID); err != nil {
+	if err := p.closeRTCSession(userID, us.originalConnID, channelID, handlerID, us.callID); err != nil {
 		p.LogError(err.Error())
 	}
 
@@ -664,7 +668,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 	}
 	p.LogDebug("got handlerID", "handlerID", handlerID)
 
-	us := newUserSession(userID, channelID, connID, p.rtcdManager == nil && handlerID == p.nodeID)
+	us := newUserSession(userID, channelID, connID, state.Call.ID, p.rtcdManager == nil && handlerID == p.nodeID)
 	p.mut.Lock()
 	p.sessions[connID] = us
 	p.mut.Unlock()
@@ -712,6 +716,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 				ConnID:    connID,
 				UserID:    userID,
 				ChannelID: channelID,
+				CallID:    us.callID,
 				SenderID:  p.nodeID,
 			}, clusterMessageTypeConnect, handlerID); err != nil {
 				return fmt.Errorf("failed to send connect message: %w", err)
@@ -741,7 +746,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 	if userID == p.getBotID() && state.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   channelID,
-			"recState": state.Recording.getClientState().toMap(),
+			"recState": getClientStateFromCallJob(state.Recording).toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
@@ -831,7 +836,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		}
 	}
 
-	us = newUserSession(userID, channelID, connID, rtc)
+	us = newUserSession(userID, channelID, connID, state.Call.ID, rtc)
 	us.originalConnID = originalConnID
 	p.sessions[connID] = us
 	p.mut.Unlock()
@@ -839,6 +844,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 	if err := p.sendClusterMessage(clusterMessage{
 		ConnID:   prevConnID,
 		UserID:   userID,
+		CallID:   state.Call.ID,
 		SenderID: p.nodeID,
 	}, clusterMessageTypeReconnect, ""); err != nil {
 		p.LogError(err.Error())
@@ -1007,7 +1013,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	}
 }
 
-func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID string) error {
+func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID, callID string) error {
 	p.LogDebug("closeRTCSession", "userID", userID, "connID", connID, "channelID", channelID)
 	if p.rtcServer != nil {
 		if handlerID == p.nodeID {
@@ -1019,6 +1025,7 @@ func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID string) er
 				ConnID:    connID,
 				UserID:    userID,
 				ChannelID: channelID,
+				CallID:    callID,
 				SenderID:  p.nodeID,
 			}, clusterMessageTypeDisconnect, handlerID); err != nil {
 				return err
@@ -1032,9 +1039,9 @@ func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID string) er
 			},
 		}
 
-		host, err := p.store.GetRTCDHostForActiveCall(channelID, db.GetCallOpts{})
+		host, err := p.store.GetRTCDHostForCall(callID, db.GetCallOpts{})
 		if err != nil {
-			return fmt.Errorf("failed to get RTCD host for active call: %w", err)
+			return fmt.Errorf("failed to get RTCD host for call: %w", err)
 		}
 
 		if err := p.rtcdManager.Send(msg, channelID, host); err != nil {
@@ -1054,28 +1061,31 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 	}
 	defer p.unlockCall(channelID)
 
-	if state != nil && state.Recording != nil && state.Recording.BotConnID == prevConnID {
+	if state != nil && state.Recording != nil && state.Recording.Props.BotConnID == prevConnID {
 		p.LogDebug("updating bot conn ID for recording job",
 			"recID", state.Recording.ID,
-			"recJobID", state.Recording.JobID,
+			"recJobID", state.Recording.Props.JobID,
 			"botOriginalConnID", originalConnID,
 			"botConnID", connID,
 		)
-		state.Recording.BotConnID = connID
-	} else if state != nil && state.Transcription != nil && state.Transcription.BotConnID == prevConnID {
+		state.Recording.Props.BotConnID = connID
+
+		if err := p.store.UpdateCallJob(state.Recording); err != nil {
+			return fmt.Errorf("failed to update call job: %w", err)
+		}
+	} else if state != nil && state.Transcription != nil && state.Transcription.Props.BotConnID == prevConnID {
 		p.LogDebug("updating bot conn ID for transcribing job",
 			"trID", state.Transcription.ID,
-			"trJobID", state.Transcription.JobID,
+			"trJobID", state.Transcription.Props.JobID,
 			"botOriginalConnID", originalConnID,
 			"botConnID", connID,
 		)
-		state.Transcription.BotConnID = connID
-	}
+		state.Transcription.Props.BotConnID = connID
 
-	// FIXME
-	// if err := p.kvSetChannelState(channelID, state); err != nil {
-	// 	return fmt.Errorf("failed to set channel state: %w", err)
-	// }
+		if err := p.store.UpdateCallJob(state.Transcription); err != nil {
+			return fmt.Errorf("failed to update call job: %w", err)
+		}
+	}
 
 	return nil
 }

@@ -263,32 +263,30 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	callID := state.Call.ID
+	nodeID := state.Call.Props.NodeID
 
 	go func() {
 		// We wait a few seconds for the call to end cleanly. If this doesn't
 		// happen we force end it.
 		time.Sleep(5 * time.Second)
 
-		state, err := p.lockCall(channelID)
+		call, err := p.store.GetCall(callID, db.GetCallOpts{})
 		if err != nil {
-			p.LogError("failed to lock call", "err", err.Error())
-			return
-		}
-		defer p.unlockCall(channelID)
-
-		if state == nil || state.Call.ID != callID {
-			return
+			p.LogError("failed to get call", "err", err.Error())
 		}
 
-		p.LogInfo("call state is still in store, force ending it", "channelID", channelID)
+		sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})
+		if err != nil {
+			p.LogError("failed to get call sessions", "err", err.Error())
+		}
 
-		for connID := range state.sessions {
-			if err := p.closeRTCSession(userID, connID, channelID, state.Call.Props.NodeID); err != nil {
+		for connID := range sessions {
+			if err := p.closeRTCSession(userID, connID, channelID, nodeID, callID); err != nil {
 				p.LogError(err.Error())
 			}
 		}
 
-		if err := p.cleanCallState(&state.Call); err != nil {
+		if err := p.cleanCallState(call); err != nil {
 			p.LogError(err.Error())
 		}
 	}()

@@ -217,7 +217,7 @@ func TestWSReader(t *testing.T) {
 		sessionAuthCheckInterval = time.Second
 
 		t.Run("empty session ID", func(t *testing.T) {
-			us := newUserSession("userID", "channelID", "connID", false)
+			us := newUserSession("userID", "channelID", "connID", "callID", false)
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
@@ -237,7 +237,7 @@ func TestWSReader(t *testing.T) {
 				ExpiresAt: time.Now().UnixMilli() + 60000,
 			}, nil).Once()
 
-			us := newUserSession("userID", "channelID", "connID", false)
+			us := newUserSession("userID", "channelID", "connID", "callID", false)
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
@@ -256,7 +256,7 @@ func TestWSReader(t *testing.T) {
 				Id: "authSessionID",
 			}, nil).Once()
 
-			us := newUserSession("userID", "channelID", "connID", false)
+			us := newUserSession("userID", "channelID", "connID", "callID", false)
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
@@ -272,7 +272,7 @@ func TestWSReader(t *testing.T) {
 
 		t.Run("expired session", func(t *testing.T) {
 			expiresAt := time.Now().UnixMilli()
-			us := newUserSession("userID", "channelID", "connID", false)
+			us := newUserSession("userID", "channelID", "connID", "callID", false)
 
 			mockAPI.On("GetSession", "authSessionID").Return(&model.Session{
 				Id:        "authSessionID",
@@ -302,7 +302,7 @@ func TestWSReader(t *testing.T) {
 		})
 
 		t.Run("revoked session", func(t *testing.T) {
-			us := newUserSession("userID", "channelID", "connID", false)
+			us := newUserSession("userID", "channelID", "connID", "callID", false)
 
 			mockAPI.On("GetSession", "authSessionID").Return(nil,
 				model.NewAppError("GetSessionById", "We encountered an error finding the session.", nil, "", http.StatusUnauthorized)).Once()

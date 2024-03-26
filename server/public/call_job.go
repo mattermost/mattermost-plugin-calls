@@ -44,7 +44,7 @@ func (j *CallJob) IsValid() error {
 }
 
 type CallJobProps struct {
-	JobID     string `json:"job_id"`
-	BotConnID string `json:"bot_conn_id"`
-	Err       string `json:"err"`
+	JobID     string `json:"job_id,omitempty"`
+	BotConnID string `json:"bot_conn_id,omitempty"`
+	Err       string `json:"err,omitempty"`
 }

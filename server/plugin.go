@@ -110,6 +110,7 @@ func (p *Plugin) startSession(us *session, senderID string) {
 				ConnID:    us.connID,
 				UserID:    us.userID,
 				ChannelID: us.channelID,
+				CallID:    us.callID,
 				SenderID:  p.nodeID,
 				ClientMessage: clientMessage{
 					Type: clientMessageTypeSDP,
@@ -151,7 +152,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			return fmt.Errorf("session already exists, userID=%q, connID=%q, channelID=%q",
 				us.userID, msg.ConnID, us.channelID)
 		}
-		us = newUserSession(msg.UserID, msg.ChannelID, msg.ConnID, true)
+		us = newUserSession(msg.UserID, msg.ChannelID, msg.ConnID, msg.CallID, true)
 		p.sessions[msg.ConnID] = us
 		go p.startSession(us, msg.SenderID)
 		return nil
@@ -229,7 +230,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			Data:      msg.ClientMessage.Data,
 		}
 
-		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
+		if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
 			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	case clusterMessageTypeUserState:
@@ -263,7 +264,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			Data:      msg.ClientMessage.Data,
 		}
 
-		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
+		if err := p.sendRTCMessage(rtcMsg, us.channelID, us.callID); err != nil {
 			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	default:
@@ -413,7 +414,7 @@ func (p *Plugin) UserHasLeftChannel(_ *plugin.Context, cm *model.ChannelMember, 
 		if session.UserID == cm.UserId {
 			p.LogDebug("UserHasLeftChannel: closing RTC session for user who left channel",
 				"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
-			if err := p.closeRTCSession(session.UserID, connID, cm.ChannelId, state.Call.Props.NodeID); err != nil {
+			if err := p.closeRTCSession(session.UserID, connID, cm.ChannelId, state.Call.Props.NodeID, state.Call.ID); err != nil {
 				p.LogError("UserHasLeftChannel: failed to close RTC session", "err", err.Error(),
 					"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
 			}

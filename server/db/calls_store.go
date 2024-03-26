@@ -223,8 +223,8 @@ func (s *Store) GetAllActiveCalls(opts GetCallOpts) ([]*public.Call, error) {
 	return calls, nil
 }
 
-func (s *Store) GetRTCDHostForActiveCall(channelID string, opts GetCallOpts) (string, error) {
-	s.metrics.IncStoreOp("GetRTCDHostForActiveCall")
+func (s *Store) GetRTCDHostForCall(callID string, opts GetCallOpts) (string, error) {
+	s.metrics.IncStoreOp("GetRTCDHostForCall")
 
 	selectProp := "COALESCE(props->>'rtcd_host', '')"
 	if s.driverName == model.DatabaseDriverMysql {
@@ -233,14 +233,7 @@ func (s *Store) GetRTCDHostForActiveCall(channelID string, opts GetCallOpts) (st
 
 	qb := getQueryBuilder(s.driverName).Select(selectProp).
 		From("calls").
-		Where(
-			sq.And{
-				sq.Eq{"ChannelID": channelID},
-				sq.Eq{"EndAt": 0},
-				sq.Gt{"StartAt": 0},
-				sq.Eq{"DeleteAt": 0},
-			},
-		).OrderBy("StartAt DESC, ID").Limit(1)
+		Where(sq.Eq{"ID": callID}).OrderBy("StartAt DESC, ID").Limit(1)
 
 	q, args, err := qb.ToSql()
 	if err != nil {

@@ -23,7 +23,7 @@ func TestCallsStore(t *testing.T) {
 		"TestUpdateCall":               testUpdateCall,
 		"TestGetCall":                  testGetCall,
 		"TestGetActiveCallByChannelID": testGetActiveCallByChannelID,
-		"TestGetRTCDHostForActiveCall": testGetRTCDHostForActiveCall,
+		"TestGetRTCDHostForCall":       testGetRTCDHostForCall,
 		"TestGetAllActiveCalls":        testGetAllActiveCalls,
 	})
 }
@@ -348,9 +348,9 @@ func testGetActiveCallByChannelID(t *testing.T, store *Store) {
 	})
 }
 
-func testGetRTCDHostForActiveCall(t *testing.T, store *Store) {
+func testGetRTCDHostForCall(t *testing.T, store *Store) {
 	t.Run("missing", func(t *testing.T) {
-		host, err := store.GetRTCDHostForActiveCall("channelID", GetCallOpts{})
+		host, err := store.GetRTCDHostForCall("callID", GetCallOpts{})
 		require.EqualError(t, err, "call not found")
 		require.Empty(t, host)
 	})
@@ -376,7 +376,7 @@ func testGetRTCDHostForActiveCall(t *testing.T, store *Store) {
 		err := store.CreateCall(call)
 		require.NoError(t, err)
 
-		host, err := store.GetRTCDHostForActiveCall(call.ChannelID, GetCallOpts{})
+		host, err := store.GetRTCDHostForCall(call.ID, GetCallOpts{})
 		require.NoError(t, err)
 		require.Empty(t, host)
 	})
@@ -403,7 +403,7 @@ func testGetRTCDHostForActiveCall(t *testing.T, store *Store) {
 		err := store.CreateCall(call)
 		require.NoError(t, err)
 
-		host, err := store.GetRTCDHostForActiveCall(call.ChannelID, GetCallOpts{})
+		host, err := store.GetRTCDHostForCall(call.ID, GetCallOpts{})
 		require.NoError(t, err)
 		require.Equal(t, call.Props.RTCDHost, host)
 	})

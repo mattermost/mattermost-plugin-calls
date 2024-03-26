@@ -104,7 +104,8 @@ func (s *Store) GetCallJobs(callID string, opts GetCallJobOpts) ([]*public.CallJ
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls_jobs").
-		Where(sq.Eq{"CallID": callID})
+		Where(sq.Eq{"CallID": callID}).
+		OrderBy("StartAt DESC, ID")
 
 	if !opts.IncludeEnded {
 		qb = qb.Where(sq.Eq{"EndAt": 0})

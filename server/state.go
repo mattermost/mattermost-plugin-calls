@@ -12,21 +12,11 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 )
 
-type jobState struct {
-	ID        string `json:"id"`
-	CreatorID string `json:"creator_id"`
-	JobID     string `json:"job_id"`
-	BotConnID string `json:"bot_conn_id"`
-	JobStateClient
-}
-
 type callState struct {
 	public.Call
-	sessions map[string]*public.CallSession
-
-	// FIXME later
-	Recording     *jobState
-	Transcription *jobState
+	sessions      map[string]*public.CallSession
+	Recording     *public.CallJob
+	Transcription *public.CallJob
 }
 
 type UserStateClient struct {
@@ -80,11 +70,16 @@ func (js *JobStateClient) toMap() map[string]interface{} {
 	}
 }
 
-func (js *jobState) getClientState() *JobStateClient {
-	if js == nil {
+func getClientStateFromCallJob(job *public.CallJob) *JobStateClient {
+	if job == nil {
 		return nil
 	}
-	return &js.JobStateClient
+	return &JobStateClient{
+		InitAt:  job.InitAt,
+		StartAt: job.StartAt,
+		EndAt:   job.EndAt,
+		Err:     job.Props.Err,
+	}
 }
 
 func (cs *callState) sessionsForUser(userID string) []*public.CallSession {
@@ -100,7 +95,7 @@ func (cs *callState) sessionsForUser(userID string) []*public.CallSession {
 	return sessions
 }
 
-func (cs *callState) getRecording() (*jobState, error) {
+func (cs *callState) getRecording() (*public.CallJob, error) {
 	if cs == nil {
 		return nil, fmt.Errorf("no call ongoing")
 	}
@@ -110,7 +105,7 @@ func (cs *callState) getRecording() (*jobState, error) {
 	return cs.Recording, nil
 }
 
-func (cs *callState) getTranscription() (*jobState, error) {
+func (cs *callState) getTranscription() (*public.CallJob, error) {
 	if cs == nil {
 		return nil, fmt.Errorf("no call ongoing")
 	}
@@ -173,8 +168,8 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		ScreenSharingSessionID: cs.Props.ScreenSharingSessionID,
 		OwnerID:                cs.OwnerID,
 		HostID:                 cs.GetHostID(),
-		Recording:              cs.Recording.getClientState(),
-		Transcription:          cs.Transcription.getClientState(),
+		Recording:              getClientStateFromCallJob(cs.Recording),
+		Transcription:          getClientStateFromCallJob(cs.Transcription),
 		DismissedNotification:  dismissed,
 	}
 }
@@ -219,24 +214,35 @@ func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, er
 		return nil, nil
 	}
 
-	state := &callState{}
+	state := &callState{
+		Call: *call,
+	}
 
-	if call != nil {
-		participants := make(map[string]struct{}, len(call.Participants))
-		for _, p := range call.Participants {
-			participants[p] = struct{}{}
+	participants := make(map[string]struct{}, len(call.Participants))
+	for _, p := range call.Participants {
+		participants[p] = struct{}{}
+	}
+
+	sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{
+		FromWriter: fromWriter,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get call sessions: %w", err)
+	}
+	state.sessions = sessions
+
+	jobs, err := p.store.GetCallJobs(call.ID, db.GetCallJobOpts{
+		FromWriter: fromWriter,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get call jobs: %w", err)
+	}
+	for _, job := range jobs {
+		if job.Type == public.JobTypeRecording && state.Recording == nil {
+			state.Recording = job
+		} else if job.Type == public.JobTypeTranscribing && state.Transcription == nil {
+			state.Transcription = job
 		}
-
-		state.Call = *call
-
-		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{
-			FromWriter: fromWriter,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get call sessions: %w", err)
-		}
-
-		state.sessions = sessions
 	}
 
 	return state, nil
