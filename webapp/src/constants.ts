@@ -10,11 +10,17 @@ export const DEFAULT_RING_SOUND = 'Calm';
 export const CALL_START_POST_TYPE = 'custom_calls';
 export const CALL_RECORDING_POST_TYPE = 'custom_calls_recording';
 export const CALL_TRANSCRIPTION_POST_TYPE = 'custom_calls_transcription';
+export const LIVE_CAPTION_TIMEOUT = 5000;
 
 // From mattermost-webapp/webapp/channels/src/utils/constants.tsx, importing causes tsc to throw fits.
 export const MESSAGE_DISPLAY = 'message_display';
 export const MESSAGE_DISPLAY_COMPACT = 'compact';
 export const MESSAGE_DISPLAY_DEFAULT = 'clean';
+
+// The JobTypes from server/public/job.go
+export const JOB_TYPE_RECORDING = 'recording';
+export const JOB_TYPE_TRANSCRIBING = 'transcribing';
+export const JOB_TYPE_CAPTIONING = 'captioning';
 
 export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
     missingAudioInput: {

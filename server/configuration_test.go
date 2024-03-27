@@ -114,6 +114,82 @@ func TestConfigurationIsValid(t *testing.T) {
 			err: "ICEHostPortOverride is not valid: 45 is not in allowed range [80, 49151]",
 		},
 		{
+			name: "invalid LiveCaptionsModelSize",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.LiveCaptionsModelSize = ""
+				return cfg
+			}(),
+			err: "LiveCaptionsModelSize is not valid",
+		},
+		{
+			name: "invalid LiveCaptionsNumTranscribers",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.LiveCaptionsNumTranscribers = model.NewInt(0)
+				return cfg
+			}(),
+			err: "LiveCaptionsNumTranscribers is not valid: should be greater than 0",
+		},
+		{
+			name: "invalid LiveCaptionsNumThreadsPerTranscriber",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(0)
+				return cfg
+			}(),
+			err: "LiveCaptionsNumThreadsPerTranscriber is not valid: should be greater than 0",
+		},
+		{
+			name: "blank LiveCaptionsLanguage is valid",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.LiveCaptionsLanguage = ""
+				return cfg
+			}(),
+		},
+		{
+			name: "invalid LiveCaptionsLanguage",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.LiveCaptionsLanguage = "inv"
+				return cfg
+			}(),
+			err: "LiveCaptionsLanguage is not valid: should be a 2-letter ISO 639 set 1 language code, or blank for default",
+		},
+		{
+			name: "invalid TranscriberNumThreads",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.EnableRecordings = model.NewBool(true)
+				cfg.EnableTranscriptions = model.NewBool(true)
+				cfg.TranscriberNumThreads = model.NewInt(0)
+				return cfg
+			}(),
+			err: "TranscriberNumThreads is not valid: should be greater than 0",
+		},
+		{
 			name:  "defaults",
 			input: defaultConfig,
 		},
