@@ -483,9 +483,6 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 			if err := p.stopTranscribingJob(state, callID); err != nil {
 				p.LogError("failed to stop transcribing job", "callID", callID, "err", err.Error())
 			}
-			if lcState != nil {
-				lcState.EndAt = time.Now().UnixMilli()
-			}
 		} else if status.JobType == public.JobTypeTranscribing && state.Call.Recording != nil {
 			if _, _, err := p.stopRecordingJob(state, callID); err != nil {
 				p.LogError("failed to stop recording job", "callID", callID, "err", err.Error())

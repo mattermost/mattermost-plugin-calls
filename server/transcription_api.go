@@ -84,8 +84,7 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 
-		// We need to send it as a "recording" because we don't handle the "transcription" type on the client.
-		// MM-57265: However, we don't show this message yet.
+		// MM-57265: This message is delayed and not shown to the client correctly.
 		jobState := clientState.toMap()
 		jobState["type"] = public.JobTypeTranscribing
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
