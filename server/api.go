@@ -271,8 +271,8 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 			p.LogError("failed to get call sessions", "err", err.Error())
 		}
 
-		for connID := range sessions {
-			if err := p.closeRTCSession(userID, connID, channelID, nodeID, callID); err != nil {
+		for _, session := range sessions {
+			if err := p.closeRTCSession(session.UserID, session.ID, channelID, nodeID, callID); err != nil {
 				p.LogError(err.Error())
 			}
 		}

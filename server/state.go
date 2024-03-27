@@ -10,6 +10,8 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 type callState struct {
@@ -194,12 +196,14 @@ func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClien
 }
 
 func (cs *callState) onlyUserLeft(userID string) bool {
+	var found bool
 	for _, session := range cs.sessions {
 		if session.UserID != userID {
 			return false
 		}
+		found = true
 	}
-	return true
+	return found
 }
 
 func (p *Plugin) getCallStateFromCall(call *public.Call, fromWriter bool) (*callState, error) {
@@ -308,6 +312,28 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 
 	if err := p.store.DeleteCallsSessions(call.ID); err != nil {
 		p.LogError("failed to delete calls sessions", "err", err.Error())
+	}
+
+	jobs, err := p.store.GetCallJobs(call.ID, db.GetCallJobOpts{
+		FromWriter: true,
+	})
+	if err != nil {
+		p.LogError("failed to get call jobs", "err", err.Error())
+	}
+	for _, job := range jobs {
+		if job.EndAt == 0 {
+			job.EndAt = time.Now().UnixMilli()
+			if err := p.store.UpdateCallJob(job); err != nil {
+				p.LogError("failed to update call job", "err", err.Error())
+			}
+
+			if job.Type == public.JobTypeRecording {
+				p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+					"callID":   call.ChannelID,
+					"recState": getClientStateFromCallJob(job).toMap(),
+				}, &model.WebsocketBroadcast{ChannelId: call.ChannelID, ReliableClusterSend: true})
+			}
+		}
 	}
 
 	return p.store.UpdateCall(call)

@@ -266,7 +266,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// If the bot leaves the call and recording has not been stopped it either means
 	// something has failed or the max duration timeout triggered.
 	if state.Recording != nil && state.Recording.EndAt == 0 && originalConnID == state.Recording.Props.BotConnID {
-		p.LogDebug("recording bot left the call", "channelID", channelID, "jobID", state.Recording.Props.JobID)
+		p.LogDebug("recording bot left the call", "channelID", channelID, "jobID", state.Recording.Props.JobID, "botConnID", originalConnID)
 
 		state.Recording.EndAt = time.Now().UnixMilli()
 		if err := p.store.UpdateCallJob(state.Recording); err != nil {
@@ -289,7 +289,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	}
 
 	if state.Transcription != nil && state.Transcription.EndAt == 0 && originalConnID == state.Transcription.Props.BotConnID {
-		p.LogDebug("transcribing bot left the call", "channelID", channelID, "jobID", state.Transcription.Props.JobID)
+		p.LogDebug("transcribing bot left the call", "channelID", channelID, "jobID", state.Transcription.Props.JobID, "botConnID", originalConnID)
 
 		state.Transcription.EndAt = time.Now().UnixMilli()
 		if err := p.store.UpdateCallJob(state.Transcription); err != nil {
