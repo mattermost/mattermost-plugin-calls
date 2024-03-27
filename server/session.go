@@ -141,14 +141,12 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		}
 	}
 
-	if state.Call.HostID == "" && userID != p.getBotID() {
-		state.Call.HostID = userID
-	}
-
 	state.Call.Sessions[connID] = &userState{
 		UserID: userID,
 		JoinAt: time.Now().UnixMilli(),
 	}
+
+	state.Call.HostID = state.Call.getHostID(p.getBotID())
 
 	if state.Call.Stats.Participants == nil {
 		state.Call.Stats.Participants = map[string]struct{}{}
@@ -195,7 +193,7 @@ func (p *Plugin) userCanStartOrJoin(userID string, state *channelState) bool {
 	return p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 }
 
-func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelID string) (*channelState, error) {
+func (p *Plugin) removeUserSession(state *channelState, connID, channelID string) (*channelState, error) {
 	if state == nil {
 		return nil, fmt.Errorf("channel state is missing from store")
 	}
@@ -221,9 +219,7 @@ func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelI
 
 	delete(state.Call.Sessions, connID)
 
-	if state.Call.HostID == userID && len(state.Call.Sessions) > 0 {
-		state.Call.HostID = state.Call.getHostID(p.getBotID())
-	}
+	state.Call.HostID = state.Call.getHostID(p.getBotID())
 
 	// If the bot leaves the call and recording has not been stopped it either means
 	// something has failed or the max duration timeout triggered.
@@ -294,7 +290,7 @@ func (p *Plugin) removeSession(us *session) error {
 	delete(p.sessions, us.connID)
 	p.mut.Unlock()
 
-	currState, err := p.removeUserSession(prevState, us.userID, us.originalConnID, us.channelID)
+	currState, err := p.removeUserSession(prevState, us.originalConnID, us.channelID)
 	if err != nil {
 		return fmt.Errorf("failed to remove user session (connID=%s): %w", us.originalConnID, err)
 	}

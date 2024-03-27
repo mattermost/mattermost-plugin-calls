@@ -24,6 +24,7 @@ const (
 	statsCommandTrigger        = "stats"
 	endCommandTrigger          = "end"
 	recordingCommandTrigger    = "recording"
+	hostCommandTrigger         = "host"
 )
 
 var subCommands = []string{
@@ -37,7 +38,7 @@ var subCommands = []string{
 	recordingCommandTrigger,
 }
 
-func getAutocompleteData() *model.AutocompleteData {
+func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data := model.NewAutocompleteData(rootCommandTrigger, "[command]",
 		"Available commands: "+strings.Join(subCommands, ","))
 	startCmdData := model.NewAutocompleteData(startCommandTrigger, "", "Starts a call in the current channel")
@@ -57,6 +58,13 @@ func getAutocompleteData() *model.AutocompleteData {
 	recordingCmdData.AddTextArgument("Available options: start, stop", "", "start|stop")
 	data.AddCommand(recordingCmdData)
 
+	if p.licenseChecker.HostControlsAllowed() {
+		subCommands = append(subCommands, hostCommandTrigger)
+		hostCmdData := model.NewAutocompleteData(hostCommandTrigger, "", "Change the host (system admins only).")
+		hostCmdData.AddTextArgument("@username", "", "@*")
+		data.AddCommand(hostCmdData)
+	}
+
 	return data
 }
 
@@ -68,7 +76,7 @@ func (p *Plugin) registerCommands() error {
 		AutoComplete:     true,
 		AutoCompleteDesc: "Available commands: " + strings.Join(subCommands, ", "),
 		AutoCompleteHint: "[command]",
-		AutocompleteData: getAutocompleteData(),
+		AutocompleteData: p.getAutocompleteData(),
 	}); err != nil {
 		return fmt.Errorf("failed to register %s command: %w", rootCommandTrigger, err)
 	}
@@ -165,6 +173,25 @@ func (p *Plugin) handleRecordingCommand(fields []string) (*model.CommandResponse
 	return &model.CommandResponse{}, nil
 }
 
+func (p *Plugin) handleHostCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("Invalid number of arguments provided")
+	}
+
+	newHostUsername := strings.TrimPrefix(fields[2], "@")
+
+	newHost, appErr := p.API.GetUserByUsername(newHostUsername)
+	if appErr != nil {
+		return nil, fmt.Errorf("Could not find user `%s`", newHostUsername)
+	}
+
+	if err := p.changeHost(args.UserId, args.ChannelId, newHost.Id); err != nil {
+		return nil, err
+	}
+
+	return &model.CommandResponse{}, nil
+}
+
 func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
@@ -231,6 +258,17 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == recordingCommandTrigger {
 		resp, err := p.handleRecordingCommand(fields)
+		if err != nil {
+			return &model.CommandResponse{
+				ResponseType: model.CommandResponseTypeEphemeral,
+				Text:         fmt.Sprintf("Error: %s", err.Error()),
+			}, nil
+		}
+		return resp, nil
+	}
+
+	if subCmd == hostCommandTrigger && p.licenseChecker.HostControlsAllowed() {
+		resp, err := p.handleHostCommand(args, fields)
 		if err != nil {
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,
