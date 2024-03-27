@@ -7,15 +7,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	"time"
+
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/calls-offloader/public/job"
 
 	"github.com/mattermost/mattermost/server/public/model"
-)
 
-var callRecordingActionRE = regexp.MustCompile(`^\/calls\/([a-z0-9]+)/recording/(start|stop|publish)$`)
+	"github.com/gorilla/mux"
+)
 
 const recordingJobStartTimeout = time.Minute
 
@@ -38,59 +39,56 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	// If the recording hasn't started (bot hasn't joined yet) we notify the
 	// client.
 	if recState.StartAt == 0 {
-		if recState.JobID != jobID {
+		if recState.Props.JobID != jobID {
 			p.LogInfo("a new job has started in between, exiting", "callID", callID, "jobID", jobID)
 			return
 		}
 
 		p.LogError("timed out waiting for recorder bot to join", "callID", callID, "jobID", jobID)
 
-		state.Call.Recording = nil
-		if err := p.kvSetChannelState(callID, state); err != nil {
-			p.LogError("failed to set channel state", "err", err.Error())
-			return
+		recState.Props.Err = "failed to start recording job: timed out waiting for bot to join call"
+		recState.EndAt = time.Now().UnixMilli()
+		if err := p.store.UpdateCallJob(recState); err != nil {
+			p.LogError("failed to update call job", "callID", callID, "jobID", jobID, "err", err.Error())
 		}
 
-		if state.Call.Transcription != nil && state.Call.Transcription.EndAt == 0 {
+		if state.Transcription != nil && state.Transcription.EndAt == 0 {
 			if err := p.stopTranscribingJob(state, callID); err != nil {
 				p.LogError("failed to stop transcribing job", "err", err.Error(), "callID", callID, "jobID", jobID)
 			}
 		}
 
-		clientState := recState.getClientState()
-		clientState.Err = "failed to start recording job: timed out waiting for bot to join call"
-		clientState.EndAt = time.Now().UnixMilli()
-
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
-			"recState": clientState.toMap(),
+			"recState": getClientStateFromCallJob(recState).toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	}
 }
 
-func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (rst *JobStateClient, rcode int, rerr error) {
-	if state.Call.Recording != nil && state.Call.Recording.EndAt == 0 {
+func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst *JobStateClient, rcode int, rerr error) {
+	if state.Recording != nil && state.Recording.EndAt == 0 {
 		return nil, http.StatusForbidden, fmt.Errorf("recording already in progress")
 	}
 
-	recState := new(jobState)
+	recState := new(public.CallJob)
 	recState.ID = model.NewId()
+	recState.CallID = state.Call.ID
+	recState.Type = public.JobTypeRecording
 	recState.CreatorID = userID
 	recState.InitAt = time.Now().UnixMilli()
-	state.Call.Recording = recState
 
-	if err := p.kvSetChannelState(callID, state); err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
+	if err := p.store.CreateCallJob(recState); err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create call job: %w", err)
 	}
 
 	defer func() {
 		// In case of any error we relay it to the client.
 		if rerr != nil && recState != nil {
 			recState.EndAt = time.Now().UnixMilli()
-			recState.Err = rerr.Error()
+			recState.Props.Err = rerr.Error()
 			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 				"callID":   callID,
-				"recState": recState.getClientState().toMap(),
+				"recState": getClientStateFromCallJob(recState).toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 	}()
@@ -100,7 +98,7 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	// to get their local state updated as soon as it changes on the server.
 	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 		"callID":   callID,
-		"recState": recState.getClientState().toMap(),
+		"recState": getClientStateFromCallJob(recState).toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 	// We don't want to keep the lock while making the API call to the service since it
@@ -118,19 +116,21 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 	}
 
 	if jobErr != nil {
-		state.Call.Recording = nil
-		if err := p.kvSetChannelState(callID, state); err != nil {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
+		recState.EndAt = time.Now().UnixMilli()
+		recState.Props.Err = jobErr.Error()
+		if err := p.store.UpdateCallJob(recState); err != nil {
+			p.LogError("failed to update call job", "err", err.Error(), "jobID", recJobID, "callID", callID)
 		}
+
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create recording job: %w", jobErr)
 	}
 
-	if recState.JobID != "" {
+	if recState.Props.JobID != "" {
 		return nil, http.StatusForbidden, fmt.Errorf("recording job already in progress")
 	}
-	recState.JobID = recJobID
-	if err := p.kvSetChannelState(callID, state); err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
+	recState.Props.JobID = recJobID
+	if err := p.store.UpdateCallJob(recState); err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update call job: %w", err)
 	}
 
 	p.LogDebug("recording job started successfully", "jobID", recJobID, "callID", callID)
@@ -151,16 +151,16 @@ func (p *Plugin) startRecordingJob(state *channelState, callID, userID string) (
 
 	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 		"callID":   callID,
-		"recState": recState.getClientState().toMap(),
+		"recState": getClientStateFromCallJob(recState).toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 	go p.recJobTimeoutChecker(callID, recJobID)
 
-	return recState.getClientState(), http.StatusOK, nil
+	return getClientStateFromCallJob(recState), http.StatusOK, nil
 }
 
-func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobStateClient, rcode int, rerr error) {
-	if state.Call.Recording == nil || state.Call.Recording.EndAt != 0 {
+func (p *Plugin) stopRecordingJob(state *callState, callID string) (rst *JobStateClient, rcode int, rerr error) {
+	if state.Recording == nil || state.Recording.EndAt != 0 {
 		return nil, http.StatusForbidden, fmt.Errorf("no recording in progress")
 	}
 
@@ -169,46 +169,46 @@ func (p *Plugin) stopRecordingJob(state *channelState, callID string) (rst *JobS
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to get recording state: %w", err)
 	}
 	recState.EndAt = time.Now().UnixMilli()
-	state.Call.Recording = nil
-
-	if err := p.kvSetChannelState(callID, state); err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to set channel state: %w", err)
+	if err := p.store.UpdateCallJob(recState); err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update call job: %w", err)
 	}
 
 	defer func() {
 		// In case of any error we relay it to the client.
 		if rerr != nil {
-			recState.Err = rerr.Error()
+			recState.Props.Err = rerr.Error()
 			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 				"callID":   callID,
-				"recState": recState.getClientState().toMap(),
+				"recState": getClientStateFromCallJob(recState).toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 	}()
 
-	if state.Call.Transcription != nil && state.Call.Transcription.EndAt == 0 {
+	if state.Transcription != nil && state.Transcription.EndAt == 0 {
 		if err := p.stopTranscribingJob(state, callID); err != nil {
 			p.LogError("failed to stop transcribing job", "callID", callID, "err", err.Error())
 		}
 	}
 
-	if err := p.getJobService().StopJob(callID, recState.ID, p.getBotID(), recState.BotConnID); err != nil {
+	if err := p.getJobService().StopJob(callID, recState.ID, p.getBotID(), recState.Props.BotConnID); err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to stop recording job: %w", err)
 	}
 
 	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 		"callID":   callID,
-		"recState": recState.getClientState().toMap(),
+		"recState": getClientStateFromCallJob(recState).toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
-	return recState.getClientState(), http.StatusOK, nil
+	return getClientStateFromCallJob(recState), http.StatusOK, nil
 }
 
-func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, callID, action string) {
+func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleRecordingAction", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
+	callID := mux.Vars(r)["call_id"]
+	action := mux.Vars(r)["action"]
 
 	if !p.API.HasPermissionToChannel(userID, callID, model.PermissionReadChannel) {
 		res.Err = "Forbidden"
@@ -243,16 +243,11 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request, c
 	defer p.unlockCall(callID)
 
 	if state == nil {
-		res.Err = "channel state is missing from store"
-		res.Code = http.StatusForbidden
-		return
-	}
-	if state.Call == nil {
 		res.Err = "no call ongoing"
 		res.Code = http.StatusForbidden
 		return
 	}
-	if state.Call.HostID != userID {
+	if len(state.Call.Props.Hosts) == 0 || state.Call.Props.Hosts[0] != userID {
 		res.Err = "no permissions to record"
 		res.Code = http.StatusForbidden
 		return

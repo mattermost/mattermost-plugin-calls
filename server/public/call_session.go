@@ -13,7 +13,11 @@ type CallSession struct {
 	RaisedHand int64  `json:"raised_hand"`
 }
 
-func (s CallSession) IsValid() error {
+func (s *CallSession) IsValid() error {
+	if s == nil {
+		return fmt.Errorf("should not be nil")
+	}
+
 	if s.ID == "" {
 		return fmt.Errorf("invalid ID: should not be empty")
 	}

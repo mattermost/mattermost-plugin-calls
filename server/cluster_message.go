@@ -14,6 +14,7 @@ type clusterMessage struct {
 	ConnID        string        `json:"conn_id,omitempty"`
 	UserID        string        `json:"user_id,omitempty"`
 	ChannelID     string        `json:"channel_id,omitempty"`
+	CallID        string        `json:"call_id,omitempty"`
 	SenderID      string        `json:"sender_id,omitempty"`
 	ClientMessage clientMessage `json:"client_message,omitempty"`
 }

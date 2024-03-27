@@ -31,6 +31,15 @@ func (o GetCallSessionOpts) UseWriter() bool {
 	return o.FromWriter
 }
 
+type GetCallJobOpts struct {
+	FromWriter   bool
+	IncludeEnded bool
+}
+
+func (o GetCallJobOpts) UseWriter() bool {
+	return o.FromWriter
+}
+
 type getOpts interface {
 	UseWriter() bool
 }

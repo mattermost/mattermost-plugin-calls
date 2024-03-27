@@ -16,21 +16,20 @@ import (
 func TestCallsChannelsStore(t *testing.T) {
 	t.Parallel()
 	testStore(t, map[string]func(t *testing.T, store *Store){
-		"TestCreateCallsChannel": testCreateCallsChannel,
-		"TestUpdateCallsChannel": testUpdateCallsChannel,
-		"TestGetCallsChannel":    testGetCallsChannel,
+		"TestCreateCallsChannel":  testCreateCallsChannel,
+		"TestUpdateCallsChannel":  testUpdateCallsChannel,
+		"TestGetCallsChannel":     testGetCallsChannel,
+		"TestGetAllCallsChannels": testGetAllCallsChannels,
 	})
 }
 
 func testCreateCallsChannel(t *testing.T, store *Store) {
 	t.Run("empty", func(t *testing.T) {
-		channel, err := store.CreateCallsChannel(nil)
-		require.EqualError(t, err, "channel should not be nil")
-		require.Nil(t, channel)
+		err := store.CreateCallsChannel(nil)
+		require.EqualError(t, err, "invalid channel: should not be nil")
 
-		channel, err = store.CreateCallsChannel(&public.CallsChannel{})
-		require.EqualError(t, err, "invalid ChannelID: should not be empty")
-		require.Nil(t, channel)
+		err = store.CreateCallsChannel(&public.CallsChannel{})
+		require.EqualError(t, err, "invalid channel: invalid ChannelID: should not be empty")
 	})
 
 	t.Run("valid", func(t *testing.T) {
@@ -47,9 +46,8 @@ func testCreateCallsChannel(t *testing.T, store *Store) {
 			},
 		}
 
-		channel, err := store.CreateCallsChannel(channel)
+		err := store.CreateCallsChannel(channel)
 		require.NoError(t, err)
-		require.NotNil(t, channel)
 
 		gotChannel, err := store.GetCallsChannel(channel.ChannelID, GetCallsChannelOpts{
 			FromWriter: true,
@@ -63,7 +61,7 @@ func testUpdateCallsChannel(t *testing.T, store *Store) {
 	t.Run("nil", func(t *testing.T) {
 		var channel *public.CallsChannel
 		err := store.UpdateCallsChannel(channel)
-		require.EqualError(t, err, "channel should not be nil")
+		require.EqualError(t, err, "invalid channel: should not be nil")
 	})
 
 	t.Run("missing", func(t *testing.T) {
@@ -82,9 +80,8 @@ func testUpdateCallsChannel(t *testing.T, store *Store) {
 			},
 		}
 
-		channel, err := store.CreateCallsChannel(channel)
+		err := store.CreateCallsChannel(channel)
 		require.NoError(t, err)
-		require.NotNil(t, channel)
 
 		channel.Enabled = false
 		channel.Props["new_prop"] = float64(45)
@@ -116,13 +113,47 @@ func testGetCallsChannel(t *testing.T, store *Store) {
 			},
 		}
 
-		channel, err := store.CreateCallsChannel(channel)
+		err := store.CreateCallsChannel(channel)
 		require.NoError(t, err)
-		require.NotNil(t, channel)
 
 		gotChannel, err := store.GetCallsChannel(channel.ChannelID, GetCallsChannelOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.NotNil(t, gotChannel)
 		require.Equal(t, channel, gotChannel)
+	})
+}
+
+func testGetAllCallsChannels(t *testing.T, store *Store) {
+	t.Run("no channels", func(t *testing.T) {
+		channels, err := store.GetAllCallsChannels(GetCallsChannelOpts{})
+		require.NoError(t, err)
+		require.Empty(t, channels)
+	})
+
+	t.Run("all channels", func(t *testing.T) {
+		var createdChannels []*public.CallsChannel
+		for i := 0; i < 10; i++ {
+			channel := &public.CallsChannel{
+				ChannelID: model.NewId(),
+				Enabled:   i%2 == 0,
+				Props: map[string]any{
+					"string_prop": "test",
+					"number_prop": float64(45),
+					"slice_prop":  []any{"1", "2"},
+					"map_prop": map[string]any{
+						"key": "value",
+					},
+				},
+			}
+
+			err := store.CreateCallsChannel(channel)
+			require.NoError(t, err)
+
+			createdChannels = append(createdChannels, channel)
+		}
+
+		channels, err := store.GetAllCallsChannels(GetCallsChannelOpts{})
+		require.NoError(t, err)
+		require.ElementsMatch(t, createdChannels, channels)
 	})
 }

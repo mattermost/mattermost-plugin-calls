@@ -4,53 +4,21 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
+
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
-type jobState struct {
-	ID        string `json:"id"`
-	CreatorID string `json:"creator_id"`
-	JobID     string `json:"job_id"`
-	BotConnID string `json:"bot_conn_id"`
-	JobStateClient
-}
-
-type userState struct {
-	UserID     string `json:"user_id"`
-	Unmuted    bool   `json:"unmuted"`
-	RaisedHand int64  `json:"raised_hand"`
-	JoinAt     int64  `json:"join_at"`
-}
-
-type callStats struct {
-	Participants   map[string]struct{} `json:"participants"`
-	ScreenDuration int64               `json:"screen_duration"`
-}
-
 type callState struct {
-	ID                     string                `json:"id"`
-	StartAt                int64                 `json:"create_at"`
-	EndAt                  int64                 `json:"end_at"`
-	Sessions               map[string]*userState `json:"sessions,omitempty"`
-	OwnerID                string                `json:"owner_id"`
-	ThreadID               string                `json:"thread_id"`
-	PostID                 string                `json:"post_id"`
-	ScreenSharingSessionID string                `json:"screen_sharing_session_id"`
-	ScreenStreamID         string                `json:"screen_stream_id"`
-	ScreenStartAt          int64                 `json:"screen_start_at"`
-	Stats                  callStats             `json:"stats"`
-	RTCDHost               string                `json:"rtcd_host"`
-	HostID                 string                `json:"host_id"`
-	Recording              *jobState             `json:"recording,omitempty"`
-	Transcription          *jobState             `json:"transcription,omitempty"`
-	DismissedNotification  map[string]bool       `json:"dismissed_notification,omitempty"`
-}
-
-type channelState struct {
-	NodeID  string     `json:"node_id,omitempty"`
-	Enabled *bool      `json:"enabled"`
-	Call    *callState `json:"call,omitempty"`
+	public.Call
+	sessions      map[string]*public.CallSession
+	Recording     *public.CallJob
+	Transcription *public.CallJob
 }
 
 type UserStateClient struct {
@@ -92,12 +60,6 @@ type JobStateClient struct {
 	Err     string `json:"err,omitempty"`
 }
 
-type ChannelStateClient struct {
-	ChannelID string           `json:"channel_id,omitempty"`
-	Enabled   *bool            `json:"enabled,omitempty"`
-	Call      *CallStateClient `json:"call,omitempty"`
-}
-
 func (js *JobStateClient) toMap() map[string]interface{} {
 	if js == nil {
 		return nil
@@ -110,47 +72,24 @@ func (js *JobStateClient) toMap() map[string]interface{} {
 	}
 }
 
-func (js *jobState) getClientState() *JobStateClient {
-	if js == nil {
+func getClientStateFromCallJob(job *public.CallJob) *JobStateClient {
+	if job == nil {
 		return nil
 	}
-	return &js.JobStateClient
+	return &JobStateClient{
+		InitAt:  job.InitAt,
+		StartAt: job.StartAt,
+		EndAt:   job.EndAt,
+		Err:     job.Props.Err,
+	}
 }
 
-func (cs *callState) Clone() *callState {
+func (cs *callState) sessionsForUser(userID string) []*public.CallSession {
 	if cs == nil {
 		return nil
 	}
-
-	newState := *cs
-
-	if cs.Sessions != nil {
-		newState.Sessions = make(map[string]*userState, len(cs.Sessions))
-		for id, state := range cs.Sessions {
-			newState.Sessions[id] = &userState{}
-			*newState.Sessions[id] = *state
-		}
-	}
-
-	if cs.Recording != nil {
-		newState.Recording = &jobState{}
-		*newState.Recording = *cs.Recording
-	}
-
-	if cs.Transcription != nil {
-		newState.Transcription = &jobState{}
-		*newState.Transcription = *cs.Transcription
-	}
-
-	return &newState
-}
-
-func (cs *callState) sessionsForUser(userID string) []*userState {
-	if cs == nil {
-		return nil
-	}
-	var sessions []*userState
-	for _, session := range cs.Sessions {
+	var sessions []*public.CallSession
+	for _, session := range cs.sessions {
 		if session.UserID == userID {
 			sessions = append(sessions, session)
 		}
@@ -158,65 +97,38 @@ func (cs *callState) sessionsForUser(userID string) []*userState {
 	return sessions
 }
 
-func (cs *channelState) getRecording() (*jobState, error) {
+func (cs *callState) getRecording() (*public.CallJob, error) {
 	if cs == nil {
-		return nil, fmt.Errorf("channel state is missing from store")
-	}
-	if cs.Call == nil {
 		return nil, fmt.Errorf("no call ongoing")
 	}
-	if cs.Call.Recording == nil {
+	if cs.Recording == nil {
 		return nil, fmt.Errorf("no recording ongoing")
 	}
-	return cs.Call.Recording, nil
+	return cs.Recording, nil
 }
 
-func (cs *channelState) getTranscription() (*jobState, error) {
+func (cs *callState) getTranscription() (*public.CallJob, error) {
 	if cs == nil {
-		return nil, fmt.Errorf("channel state is missing from store")
-	}
-	if cs.Call == nil {
 		return nil, fmt.Errorf("no call ongoing")
 	}
-	if cs.Call.Transcription == nil {
+	if cs.Transcription == nil {
 		return nil, fmt.Errorf("no transcription ongoing")
 	}
-	return cs.Call.Transcription, nil
-}
-
-func (cs *channelState) Clone() *channelState {
-	if cs == nil {
-		return nil
-	}
-	newState := *cs
-	if cs.Call != nil {
-		newState.Call = cs.Call.Clone()
-	}
-	return &newState
-}
-
-func (us *userState) getClientState(sessionID string) UserStateClient {
-	return UserStateClient{
-		SessionID:  sessionID,
-		UserID:     us.UserID,
-		Unmuted:    us.Unmuted,
-		RaisedHand: us.RaisedHand,
-	}
+	return cs.Transcription, nil
 }
 
 func (cs *callState) getHostID(botID string) string {
-	var host userState
-
-	for _, state := range cs.Sessions {
-		if state.UserID == botID {
+	var host public.CallSession
+	for _, session := range cs.sessions {
+		if session.UserID == botID {
 			continue
 		}
 		if host.UserID == "" {
-			host = *state
+			host = *session
 			continue
 		}
-		if state.JoinAt < host.JoinAt {
-			host = *state
+		if session.JoinAt < host.JoinAt {
+			host = *session
 		}
 	}
 
@@ -228,14 +140,14 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 
 	// For now, only send the user's own dismissed state.
 	var dismissed map[string]bool
-	if cs.DismissedNotification[userID] {
+	if cs.Props.DismissedNotification[userID] {
 		dismissed = map[string]bool{
 			userID: true,
 		}
 	}
 
 	var screenSharingUserID string
-	if s := cs.Sessions[cs.ScreenSharingSessionID]; s != nil {
+	if s := cs.sessions[cs.Props.ScreenSharingSessionID]; s != nil {
 		screenSharingUserID = s.UserID
 	}
 
@@ -255,133 +167,174 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		// DEPRECATED since v0.21
 		ScreenSharingID: screenSharingUserID,
 
-		ScreenSharingSessionID: cs.ScreenSharingSessionID,
+		ScreenSharingSessionID: cs.Props.ScreenSharingSessionID,
 		OwnerID:                cs.OwnerID,
-		HostID:                 cs.HostID,
-		Recording:              cs.Recording.getClientState(),
-		Transcription:          cs.Transcription.getClientState(),
+		HostID:                 cs.GetHostID(),
+		Recording:              getClientStateFromCallJob(cs.Recording),
+		Transcription:          getClientStateFromCallJob(cs.Transcription),
 		DismissedNotification:  dismissed,
 	}
 }
 
 func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClient) {
-	users := make([]string, 0, len(cs.Sessions))
-	states := make([]UserStateClient, 0, len(cs.Sessions))
-	for sessionID, state := range cs.Sessions {
+	users := make([]string, 0, len(cs.sessions))
+	states := make([]UserStateClient, 0, len(cs.sessions))
+	for _, session := range cs.sessions {
 		// We don't want to expose to the client that the bot is in a call.
-		if state.UserID == botID {
+		if session.UserID == botID {
 			continue
 		}
-		users = append(users, state.UserID)
-		states = append(states, state.getClientState(sessionID))
+		users = append(users, session.UserID)
+		states = append(states, UserStateClient{
+			SessionID:  session.ID,
+			UserID:     session.UserID,
+			Unmuted:    session.Unmuted,
+			RaisedHand: session.RaisedHand,
+		})
 	}
 	return users, states
 }
 
 func (cs *callState) onlyUserLeft(userID string) bool {
-	for _, state := range cs.Sessions {
-		if state.UserID != userID {
+	var found bool
+	for _, session := range cs.sessions {
+		if session.UserID != userID {
 			return false
 		}
+		found = true
 	}
-	return true
+	return found
 }
 
-func (p *Plugin) kvGetChannelState(channelID string, fromWriter bool) (*channelState, error) {
-	data, appErr := p.KVGet(channelID, fromWriter)
-	if appErr != nil {
-		return nil, fmt.Errorf("KVGet failed: %w", appErr)
+func (p *Plugin) getCallStateFromCall(call *public.Call, fromWriter bool) (*callState, error) {
+	if call == nil {
+		return nil, fmt.Errorf("call should not be nil")
 	}
-	if data == nil {
-		return nil, nil
+
+	state := &callState{
+		Call: *call,
 	}
-	var state *channelState
-	if err := json.Unmarshal(data, &state); err != nil {
-		return nil, err
+
+	participants := make(map[string]struct{}, len(call.Participants))
+	for _, p := range call.Participants {
+		participants[p] = struct{}{}
 	}
+
+	sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{
+		FromWriter: fromWriter,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get call sessions: %w", err)
+	}
+	state.sessions = sessions
+
+	jobs, err := p.store.GetCallJobs(call.ID, db.GetCallJobOpts{
+		FromWriter: fromWriter,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get call jobs: %w", err)
+	}
+	for _, job := range jobs {
+		if job.Type == public.JobTypeRecording && state.Recording == nil {
+			state.Recording = job
+		} else if job.Type == public.JobTypeTranscribing && state.Transcription == nil {
+			state.Transcription = job
+		}
+	}
+
 	return state, nil
 }
 
-func (p *Plugin) kvSetChannelState(channelID string, state *channelState) error {
-	p.metrics.IncStoreOp("KVSet")
-
-	data, err := json.Marshal(state)
-	if err != nil {
-		return fmt.Errorf("failed to marshal channel state: %w", err)
+func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, error) {
+	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{
+		FromWriter: fromWriter,
+	})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		return nil, fmt.Errorf("failed to get active call: %w", err)
 	}
 
-	appErr := p.API.KVSet(channelID, data)
-	if appErr != nil {
-		return fmt.Errorf("KVSet failed: %w", appErr)
+	if call == nil {
+		return nil, nil
 	}
-	return nil
+
+	return p.getCallStateFromCall(call, fromWriter)
 }
 
-func (p *Plugin) cleanUpState() (retErr error) {
+func (p *Plugin) cleanUpState() error {
 	p.LogDebug("cleaning up calls state")
-	var page int
-	perPage := 100
-	for {
-		p.metrics.IncStoreOp("KVList")
-		keys, appErr := p.API.KVList(page, perPage)
-		if appErr != nil {
-			return appErr
-		}
-		if len(keys) == 0 {
-			break
-		}
-		for _, k := range keys {
-			if k == handlerKey {
-				handlerID, err := p.getHandlerID()
-				if err != nil {
-					p.LogError(err.Error())
-					continue
-				}
 
-				if p.nodeID == handlerID {
-					p.metrics.IncStoreOp("KVDelete")
-					if appErr = p.API.KVDelete(k); appErr != nil {
-						p.LogError(err.Error())
-					}
-				}
-				continue
-			}
-
-			if len(k) != 26 {
-				continue
-			}
-
-			state, err := p.lockCall(k)
-			if err != nil {
-				p.LogError("failed to lock call", "err", err.Error())
-				continue
-			}
-			if err := p.cleanCallState(k, state); err != nil {
-				p.unlockCall(k)
-				return fmt.Errorf("failed to clean up state: %w", err)
-			}
-			p.unlockCall(k)
-		}
-		page++
+	handlerID, err := p.getHandlerID()
+	if err != nil {
+		p.LogError(err.Error())
 	}
+
+	if handlerID != "" && p.nodeID == handlerID {
+		p.metrics.IncStoreOp("KVDelete")
+		if appErr := p.API.KVDelete(handlerKey); appErr != nil {
+			p.LogError(appErr.Error())
+		}
+	}
+
+	calls, err := p.store.GetAllActiveCalls(db.GetCallOpts{FromWriter: true})
+	if err != nil {
+		return fmt.Errorf("failed to get all active calls: %w", err)
+	}
+
+	for _, call := range calls {
+		if err := p.lockCallSimple(call.ChannelID); err != nil {
+			p.LogError("failed to lock call", "err", err.Error())
+			continue
+		}
+		if err := p.cleanCallState(call); err != nil {
+			p.unlockCall(call.ChannelID)
+			return fmt.Errorf("failed to clean up state: %w", err)
+		}
+		p.unlockCall(call.ChannelID)
+	}
+
 	return nil
 }
 
 // NOTE: cleanCallState is meant to be called under lock (on channelID) so that
 // the operation can be performed atomically.
-func (p *Plugin) cleanCallState(channelID string, state *channelState) error {
-	if state == nil {
+func (p *Plugin) cleanCallState(call *public.Call) error {
+	if call == nil {
 		return nil
 	}
 
-	state.NodeID = ""
-
-	if state.Call != nil {
-		if _, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Stats.Participants)); err != nil {
-			p.LogError("failed to update call post", "err", err.Error())
-		}
-		state.Call = nil
+	if _, err := p.updateCallPostEnded(call.PostID, mapKeys(call.Props.Participants)); err != nil {
+		p.LogError("failed to update call post", "err", err.Error())
 	}
 
-	return p.kvSetChannelState(channelID, state)
+	if call.EndAt == 0 {
+		call.EndAt = time.Now().UnixMilli()
+	}
+
+	if err := p.store.DeleteCallsSessions(call.ID); err != nil {
+		p.LogError("failed to delete calls sessions", "err", err.Error())
+	}
+
+	jobs, err := p.store.GetCallJobs(call.ID, db.GetCallJobOpts{
+		FromWriter: true,
+	})
+	if err != nil {
+		p.LogError("failed to get call jobs", "err", err.Error())
+	}
+	for _, job := range jobs {
+		if job.EndAt == 0 {
+			job.EndAt = time.Now().UnixMilli()
+			if err := p.store.UpdateCallJob(job); err != nil {
+				p.LogError("failed to update call job", "err", err.Error())
+			}
+
+			if job.Type == public.JobTypeRecording {
+				p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+					"callID":   call.ChannelID,
+					"recState": getClientStateFromCallJob(job).toMap(),
+				}, &model.WebsocketBroadcast{ChannelId: call.ChannelID, ReliableClusterSend: true})
+			}
+		}
+	}
+
+	return p.store.UpdateCall(call)
 }

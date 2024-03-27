@@ -15,10 +15,6 @@ import (
 func (s *Store) CreateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("CreateCallSession")
 
-	if session == nil {
-		return fmt.Errorf("session should not be nil")
-	}
-
 	if err := session.IsValid(); err != nil {
 		return fmt.Errorf("invalid call session: %w", err)
 	}
@@ -44,8 +40,8 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 func (s *Store) UpdateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("UpdateCallSession")
 
-	if session == nil {
-		return fmt.Errorf("session should not be nil")
+	if err := session.IsValid(); err != nil {
+		return fmt.Errorf("invalid call session: %w", err)
 	}
 
 	qb := getQueryBuilder(s.driverName).
@@ -118,7 +114,7 @@ func (s *Store) GetCallSession(id string, opts GetCallSessionOpts) (*public.Call
 	return &session, nil
 }
 
-func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) ([]*public.CallSession, error) {
+func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[string]*public.CallSession, error) {
 	s.metrics.IncStoreOp("GetCallSessions")
 
 	qb := getQueryBuilder(s.driverName).Select("*").
@@ -135,5 +131,30 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) ([]*publ
 		return nil, fmt.Errorf("failed to get call sessions: %w", err)
 	}
 
-	return sessions, nil
+	sessionsMap := make(map[string]*public.CallSession, len(sessions))
+	for _, session := range sessions {
+		sessionsMap[session.ID] = session
+	}
+
+	return sessionsMap, nil
+}
+
+func (s *Store) DeleteCallsSessions(callID string) error {
+	s.metrics.IncStoreOp("DeleteCallsSessions")
+
+	qb := getQueryBuilder(s.driverName).
+		Delete("calls_sessions").
+		Where(sq.Eq{"CallID": callID})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	_, err = s.wDB.Exec(q, args...)
+	if err != nil {
+		return fmt.Errorf("failed to run query: %w", err)
+	}
+
+	return nil
 }

@@ -28,86 +28,50 @@ var callsColumns = []string{
 	"Props",
 }
 
-func (s *Store) CreateCall(call *public.Call) (*public.Call, error) {
+func (s *Store) CreateCall(call *public.Call) error {
 	s.metrics.IncStoreOp("CreateCall")
 
-	if call == nil {
-		return nil, fmt.Errorf("call should not be nil")
+	if err := call.IsValid(); err != nil {
+		return fmt.Errorf("invalid call: %w", err)
 	}
-
-	if call.ID != "" {
-		return nil, fmt.Errorf("invalid ID: should be empty")
-	}
-
-	if call.ChannelID == "" {
-		return nil, fmt.Errorf("invalid ChannelID: should not be empty")
-	}
-
-	if call.StartAt == 0 {
-		return nil, fmt.Errorf("invalid StartAt: should be > 0")
-	}
-
-	if call.CreateAt != 0 {
-		return nil, fmt.Errorf("invalid CreateAt: should be zero")
-	}
-
-	if call.DeleteAt != 0 {
-		return nil, fmt.Errorf("invalid DeleteAt: should be zero")
-	}
-
-	if call.PostID == "" {
-		return nil, fmt.Errorf("invalid PostID: should not be empty")
-	}
-
-	if call.ThreadID == "" {
-		return nil, fmt.Errorf("invalid ThreadID: should not be empty")
-	}
-
-	if call.OwnerID == "" {
-		return nil, fmt.Errorf("invalid OwnerID: should not be empty")
-	}
-
-	call.ID = model.NewId()
-	call.CreateAt = time.Now().UnixMilli()
 
 	qb := getQueryBuilder(s.driverName).
 		Insert("calls").
 		Columns(callsColumns...).
 		Values(call.ID, call.ChannelID, call.StartAt, call.EndAt, call.CreateAt, call.DeleteAt,
 			call.Title, call.PostID, call.ThreadID, call.OwnerID,
-			call.Participants, call.Stats, call.Props)
+			s.newJSONValueWrapper(call.Participants), s.newJSONValueWrapper(call.Stats), s.newJSONValueWrapper(call.Props))
 
 	q, args, err := qb.ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
 	_, err = s.wDB.Exec(q, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to run query: %w", err)
+		return fmt.Errorf("failed to run query: %w", err)
 	}
 
-	return call, nil
+	return nil
 }
 
 func (s *Store) UpdateCall(call *public.Call) error {
 	s.metrics.IncStoreOp("UpdateCall")
 
-	if call == nil {
-		return fmt.Errorf("call should not be nil")
+	if err := call.IsValid(); err != nil {
+		return fmt.Errorf("invalid call: %w", err)
 	}
 
 	qb := getQueryBuilder(s.driverName).
 		Update("calls").
 		Set("EndAt", call.EndAt).
 		Set("DeleteAt", call.DeleteAt).
-		Set("Participants", call.Participants).
-		Set("Stats", call.Stats).
-		Set("Props", call.Props).
-		Where(
-			sq.Eq{"ID": call.ID},
-			sq.Eq{"ChannelID": call.ChannelID},
-		)
+		Set("ThreadID", call.ThreadID).
+		Set("PostID", call.PostID).
+		Set("Participants", s.newJSONValueWrapper(call.Participants)).
+		Set("Stats", s.newJSONValueWrapper(call.Stats)).
+		Set("Props", s.newJSONValueWrapper(call.Props)).
+		Where(sq.Eq{"ID": call.ID})
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -125,7 +89,7 @@ func (s *Store) UpdateCall(call *public.Call) error {
 	}
 
 	if count != 1 {
-		return fmt.Errorf("failed to update call")
+		return fmt.Errorf("failed to update call: unexpected updated rows count %d", count)
 	}
 
 	return nil
@@ -196,7 +160,7 @@ func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 
 	var call public.Call
 	if err := s.dbXFromGetOpts(opts).Get(&call, q, args...); err == sql.ErrNoRows {
-		return nil, fmt.Errorf("call not found")
+		return nil, fmt.Errorf("call %w", ErrNotFound)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get call: %w", err)
 	}
@@ -204,12 +168,19 @@ func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 	return &call, nil
 }
 
-func (s *Store) GetCallByChannelID(channelID string, opts GetCallOpts) (*public.Call, error) {
-	s.metrics.IncStoreOp("GetCallByChannelID")
+func (s *Store) GetActiveCallByChannelID(channelID string, opts GetCallOpts) (*public.Call, error) {
+	s.metrics.IncStoreOp("GetActiveCallByChannelID")
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls").
-		Where(sq.Eq{"ChannelID": channelID})
+		Where(
+			sq.And{
+				sq.Eq{"ChannelID": channelID},
+				sq.Eq{"EndAt": 0},
+				sq.Gt{"StartAt": 0},
+				sq.Eq{"DeleteAt": 0},
+			},
+		).OrderBy("StartAt DESC, ID").Limit(1)
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -218,10 +189,63 @@ func (s *Store) GetCallByChannelID(channelID string, opts GetCallOpts) (*public.
 
 	var call public.Call
 	if err := s.dbXFromGetOpts(opts).Get(&call, q, args...); err == sql.ErrNoRows {
-		return nil, fmt.Errorf("call not found")
+		return nil, fmt.Errorf("call %w", ErrNotFound)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get call: %w", err)
 	}
 
 	return &call, nil
+}
+
+func (s *Store) GetAllActiveCalls(opts GetCallOpts) ([]*public.Call, error) {
+	s.metrics.IncStoreOp("GetAllActiveCalls")
+
+	qb := getQueryBuilder(s.driverName).Select("*").
+		From("calls").
+		Where(
+			sq.And{
+				sq.Eq{"EndAt": 0},
+				sq.Gt{"StartAt": 0},
+				sq.Eq{"DeleteAt": 0},
+			},
+		).OrderBy("StartAt DESC, ID")
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	calls := []*public.Call{}
+	if err := s.dbXFromGetOpts(opts).Select(&calls, q, args...); err != nil {
+		return nil, fmt.Errorf("failed to get calls: %w", err)
+	}
+
+	return calls, nil
+}
+
+func (s *Store) GetRTCDHostForCall(callID string, opts GetCallOpts) (string, error) {
+	s.metrics.IncStoreOp("GetRTCDHostForCall")
+
+	selectProp := "COALESCE(props->>'rtcd_host', '')"
+	if s.driverName == model.DatabaseDriverMysql {
+		selectProp = `COALESCE(Props->>"$.rtcd_host", '')`
+	}
+
+	qb := getQueryBuilder(s.driverName).Select(selectProp).
+		From("calls").
+		Where(sq.Eq{"ID": callID}).OrderBy("StartAt DESC, ID").Limit(1)
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return "", fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var rtcdHost string
+	if err := s.dbXFromGetOpts(opts).Get(&rtcdHost, q, args...); err == sql.ErrNoRows {
+		return "", fmt.Errorf("call %w", ErrNotFound)
+	} else if err != nil {
+		return "", fmt.Errorf("failed to get rtcdHost for call: %w", err)
+	}
+
+	return rtcdHost, nil
 }

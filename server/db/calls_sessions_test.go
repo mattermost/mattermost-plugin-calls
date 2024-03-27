@@ -14,21 +14,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCallSessionStore(t *testing.T) {
+func TestCallsSessionsStore(t *testing.T) {
 	t.Parallel()
 	testStore(t, map[string]func(t *testing.T, store *Store){
-		"TestCreateCallSession": testCreateCallSession,
-		"TestDeleteCallSession": testDeleteCallSession,
-		"TestUpdateCallSession": testUpdateCallSession,
-		"TestGetCallSession":    testGetCallSession,
-		"TestGetCallSessions":   testGetCallSessions,
+		"TestCreateCallSession":   testCreateCallSession,
+		"TestDeleteCallSession":   testDeleteCallSession,
+		"TestUpdateCallSession":   testUpdateCallSession,
+		"TestGetCallSession":      testGetCallSession,
+		"TestGetCallSessions":     testGetCallSessions,
+		"TestDeleteCallsSessions": testDeleteCallsSessions,
 	})
 }
 
 func testCreateCallSession(t *testing.T, store *Store) {
 	t.Run("invalid", func(t *testing.T) {
 		err := store.CreateCallSession(nil)
-		require.EqualError(t, err, "session should not be nil")
+		require.EqualError(t, err, "invalid call session: should not be nil")
 
 		err = store.CreateCallSession(&public.CallSession{})
 		require.EqualError(t, err, "invalid call session: invalid ID: should not be empty")
@@ -77,12 +78,15 @@ func testUpdateCallSession(t *testing.T, store *Store) {
 	t.Run("nil", func(t *testing.T) {
 		var session *public.CallSession
 		err := store.UpdateCallSession(session)
-		require.EqualError(t, err, "session should not be nil")
+		require.EqualError(t, err, "invalid call session: should not be nil")
 	})
 
 	t.Run("missing", func(t *testing.T) {
 		err := store.UpdateCallSession(&public.CallSession{
-			ID: "sessionID",
+			ID:     model.NewId(),
+			CallID: model.NewId(),
+			UserID: model.NewId(),
+			JoinAt: time.Now().UnixMilli(),
 		})
 		require.EqualError(t, err, "failed to update call session")
 	})
@@ -182,23 +186,56 @@ func testGetCallSessions(t *testing.T, store *Store) {
 	})
 
 	t.Run("multiple sessions", func(t *testing.T) {
-		var sessions []*public.CallSession
+		sessions := map[string]*public.CallSession{}
 		callID := model.NewId()
 		for i := 0; i < 10; i++ {
-			sessions = append(sessions, &public.CallSession{
+			session := &public.CallSession{
 				ID:     model.NewId(),
 				CallID: callID,
 				UserID: model.NewId(),
 				JoinAt: time.Now().UnixMilli(),
-			})
+			}
 
-			err := store.CreateCallSession(sessions[i])
+			err := store.CreateCallSession(session)
 			require.NoError(t, err)
+
+			sessions[session.ID] = session
 		}
 
 		gotSessions, err := store.GetCallSessions(callID, GetCallSessionOpts{})
 		require.NoError(t, err)
 		require.Len(t, gotSessions, 10)
-		require.ElementsMatch(t, sessions, gotSessions)
+		require.Equal(t, sessions, gotSessions)
+	})
+}
+
+func testDeleteCallsSessions(t *testing.T, store *Store) {
+	t.Run("no sessions", func(t *testing.T) {
+		err := store.DeleteCallsSessions(model.NewId())
+		require.NoError(t, err)
+	})
+
+	t.Run("multiple sessions", func(t *testing.T) {
+		callID := model.NewId()
+
+		for i := 0; i < 10; i++ {
+			session := &public.CallSession{
+				ID:      model.NewId(),
+				CallID:  callID,
+				UserID:  model.NewId(),
+				JoinAt:  time.Now().UnixMilli(),
+				Unmuted: true,
+			}
+
+			err := store.CreateCallSession(session)
+			require.NoError(t, err)
+		}
+
+		err := store.DeleteCallsSessions(callID)
+		require.NoError(t, err)
+
+		sessions, err := store.GetCallSessions(callID, GetCallSessionOpts{})
+		require.NoError(t, err)
+		require.Empty(t, sessions)
 	})
 }
