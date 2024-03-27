@@ -29,6 +29,11 @@ func (e *LicenseChecker) isAtLeastE20Licensed() bool {
 	return license.IsE20LicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
 }
 
+// isAtLeastE10Licensed returns true when the server either has at least an E20 license or is configured for development.
+func (e *LicenseChecker) isAtLeastE10Licensed() bool {
+	return license.IsE10LicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
+}
+
 // RTCDAllowed returns true if the license allows use of an external rtcd service.
 func (e *LicenseChecker) RTCDAllowed() bool {
 	return e.isAtLeastE20Licensed() || license.IsCloud(e.api.GetLicense())
@@ -47,5 +52,5 @@ func (e *LicenseChecker) TranscriptionsAllowed() bool {
 }
 
 func (e *LicenseChecker) HostControlsAllowed() bool {
-	return e.isAtLeastE20Licensed()
+	return e.isAtLeastE10Licensed()
 }
