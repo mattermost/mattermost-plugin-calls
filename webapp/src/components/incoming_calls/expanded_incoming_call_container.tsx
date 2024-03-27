@@ -4,7 +4,7 @@ import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming
 import {ringingEnabled, sortedIncomingCalls} from 'src/selectors';
 import styled from 'styled-components';
 
-export const ExpandedCallContainer = () => {
+export const ExpandedIncomingCallContainer = () => {
     const enabled = useSelector(ringingEnabled);
     const calls = useSelector(sortedIncomingCalls);
 

@@ -69,6 +69,18 @@ type configuration struct {
 	EnableRinging *bool
 	// The speech-to-text model size to use to transcribe calls.
 	TranscriberModelSize transcriber.ModelSize
+	// The number of threads to use to transcriber calls.
+	TranscriberNumThreads *int
+	// When set to true live captions will be enabled when starting transcription jobs.
+	EnableLiveCaptions *bool
+	// The speech-to-text model size to use to transcribe live captions.
+	LiveCaptionsModelSize transcriber.ModelSize
+	// The number of transcribers to use for processing audio tracks into live captions.
+	LiveCaptionsNumTranscribers *int
+	// The number of threads per transcriber to use for processing audio tracks into live captions.
+	LiveCaptionsNumThreadsPerTranscriber *int
+	// The language to be passed to the live captions transcriber.
+	LiveCaptionsLanguage string
 
 	clientConfig
 }
@@ -99,6 +111,8 @@ type clientConfig struct {
 	EnableRecordings *bool
 	// When set to true it enables the call transcriptions functionality
 	EnableTranscriptions *bool
+	// When set to true it enables the live captions functionality
+	EnableLiveCaptions *bool
 	// The maximum duration (in minutes) for call recordings.
 	MaxRecordingDuration *int
 	// When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.
@@ -164,6 +178,7 @@ func (c *configuration) getClientConfig() clientConfig {
 		AllowScreenSharing:   c.AllowScreenSharing,
 		EnableRecordings:     c.EnableRecordings,
 		EnableTranscriptions: c.EnableTranscriptions,
+		EnableLiveCaptions:   c.EnableLiveCaptions,
 		MaxRecordingDuration: c.MaxRecordingDuration,
 		EnableSimulcast:      c.EnableSimulcast,
 		EnableRinging:        c.EnableRinging,
@@ -201,6 +216,9 @@ func (c *configuration) SetDefaults() {
 	if c.EnableTranscriptions == nil {
 		c.EnableTranscriptions = model.NewBool(false)
 	}
+	if c.TranscriberNumThreads == nil {
+		c.TranscriberNumThreads = model.NewInt(transcriber.NumThreadsDefault)
+	}
 	if c.MaxRecordingDuration == nil {
 		c.MaxRecordingDuration = model.NewInt(defaultRecDurationMinutes)
 	}
@@ -218,6 +236,21 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.TranscriberModelSize == "" {
 		c.TranscriberModelSize = transcriber.ModelSizeDefault
+	}
+	if c.EnableLiveCaptions == nil {
+		c.EnableLiveCaptions = model.NewBool(false)
+	}
+	if c.LiveCaptionsModelSize == "" {
+		c.LiveCaptionsModelSize = transcriber.LiveCaptionsModelSizeDefault
+	}
+	if c.LiveCaptionsNumTranscribers == nil {
+		c.LiveCaptionsNumTranscribers = model.NewInt(transcriber.LiveCaptionsNumTranscribersDefault)
+	}
+	if c.LiveCaptionsNumThreadsPerTranscriber == nil {
+		c.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(transcriber.LiveCaptionsNumThreadsPerTranscriberDefault)
+	}
+	if c.LiveCaptionsLanguage == "" {
+		c.LiveCaptionsLanguage = transcriber.LiveCaptionsLanguageDefault
 	}
 }
 
@@ -262,14 +295,37 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("RecordingQuality is not valid")
 	}
 
-	if ok := c.TranscriberModelSize.IsValid(); !ok {
-		return fmt.Errorf("TranscriberModelSize is not valid")
+	if c.transcriptionsEnabled() {
+		if ok := c.TranscriberModelSize.IsValid(); !ok {
+			return fmt.Errorf("TranscriberModelSize is not valid")
+		}
+
+		if c.TranscriberNumThreads == nil || *c.TranscriberNumThreads <= 0 {
+			return fmt.Errorf("TranscriberNumThreads is not valid: should be greater than 0")
+		}
 	}
 
 	if c.ICEHostPortOverride != nil && *c.ICEHostPortOverride != 0 && (*c.ICEHostPortOverride < minAllowedPort || *c.ICEHostPortOverride > maxAllowedPort) {
 		return fmt.Errorf("ICEHostPortOverride is not valid: %d is not in allowed range [%d, %d]", *c.ICEHostPortOverride, minAllowedPort, maxAllowedPort)
 	}
 
+	if c.liveCaptionsEnabled() {
+		if ok := c.LiveCaptionsModelSize.IsValid(); !ok {
+			return fmt.Errorf("LiveCaptionsModelSize is not valid")
+		}
+		// Note: we're only testing for gross validity here; actual validity of threads vs. cpus is done
+		// in the transcriber's validity checks (when it has numCPUs)
+		if c.LiveCaptionsNumTranscribers == nil || *c.LiveCaptionsNumTranscribers <= 0 {
+			return fmt.Errorf("LiveCaptionsNumTranscribers is not valid: should be greater than 0")
+		}
+
+		if c.LiveCaptionsNumThreadsPerTranscriber == nil || *c.LiveCaptionsNumThreadsPerTranscriber <= 0 {
+			return fmt.Errorf("LiveCaptionsNumThreadsPerTranscriber is not valid: should be greater than 0")
+		}
+		if c.LiveCaptionsLanguage != "" && len(c.LiveCaptionsLanguage) != 2 {
+			return fmt.Errorf("LiveCaptionsLanguage is not valid: should be a 2-letter ISO 639 set 1 language code, or blank for default")
+		}
+	}
 	return nil
 }
 
@@ -285,6 +341,8 @@ func (c *configuration) Clone() *configuration {
 	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 	cfg.RecordingQuality = c.RecordingQuality
 	cfg.TranscriberModelSize = c.TranscriberModelSize
+	cfg.LiveCaptionsModelSize = c.LiveCaptionsModelSize
+	cfg.LiveCaptionsLanguage = c.LiveCaptionsLanguage
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = model.NewInt(*c.UDPServerPort)
@@ -335,6 +393,14 @@ func (c *configuration) Clone() *configuration {
 		cfg.EnableTranscriptions = model.NewBool(*c.EnableTranscriptions)
 	}
 
+	if c.TranscriberNumThreads != nil {
+		cfg.TranscriberNumThreads = model.NewInt(*c.TranscriberNumThreads)
+	}
+
+	if c.EnableLiveCaptions != nil {
+		cfg.EnableLiveCaptions = model.NewBool(*c.EnableLiveCaptions)
+	}
+
 	if c.MaxRecordingDuration != nil {
 		cfg.MaxRecordingDuration = model.NewInt(*c.MaxRecordingDuration)
 	}
@@ -353,6 +419,14 @@ func (c *configuration) Clone() *configuration {
 
 	if c.ICEHostPortOverride != nil {
 		cfg.ICEHostPortOverride = model.NewInt(*c.ICEHostPortOverride)
+	}
+
+	if c.LiveCaptionsNumTranscribers != nil {
+		cfg.LiveCaptionsNumTranscribers = model.NewInt(*c.LiveCaptionsNumTranscribers)
+	}
+
+	if c.LiveCaptionsNumThreadsPerTranscriber != nil {
+		cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(*c.LiveCaptionsNumThreadsPerTranscriber)
 	}
 
 	return &cfg
@@ -381,6 +455,14 @@ func (c *configuration) recordingsEnabled() bool {
 
 func (c *configuration) transcriptionsEnabled() bool {
 	if c.recordingsEnabled() && c.EnableTranscriptions != nil && *c.EnableTranscriptions {
+		return true
+	}
+	return false
+}
+
+func (c *configuration) liveCaptionsEnabled() bool {
+	if c.recordingsEnabled() && c.transcriptionsEnabled() &&
+		c.EnableLiveCaptions != nil && *c.EnableLiveCaptions {
 		return true
 	}
 	return false

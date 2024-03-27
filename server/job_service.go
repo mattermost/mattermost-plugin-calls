@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -330,9 +329,12 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		transcriberConfig.TranscriptionID = jobID
 		transcriberConfig.AuthToken = authToken
 		transcriberConfig.ModelSize = cfg.TranscriberModelSize
-		if val := os.Getenv("MM_CALLS_TRANSCRIBER_NUM_THREADS"); val != "" {
-			transcriberConfig.NumThreads, _ = strconv.Atoi(val)
-		}
+		transcriberConfig.LiveCaptionsOn = cfg.liveCaptionsEnabled()
+		transcriberConfig.LiveCaptionsModelSize = cfg.LiveCaptionsModelSize
+		transcriberConfig.LiveCaptionsNumTranscribers = *cfg.LiveCaptionsNumTranscribers
+		transcriberConfig.NumThreads = *cfg.TranscriberNumThreads
+		transcriberConfig.LiveCaptionsNumThreadsPerTranscriber = *cfg.LiveCaptionsNumThreadsPerTranscriber
+		transcriberConfig.LiveCaptionsLanguage = cfg.LiveCaptionsLanguage
 
 		if err := transcriberConfig.IsValid(); err != nil {
 			return "", fmt.Errorf("transcriber config is not valid: %w", err)

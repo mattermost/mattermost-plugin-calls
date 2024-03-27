@@ -6,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 )
 
 type jobState struct {
@@ -44,6 +45,7 @@ type callState struct {
 	HostID                 string                `json:"host_id"`
 	Recording              *jobState             `json:"recording,omitempty"`
 	Transcription          *jobState             `json:"transcription,omitempty"`
+	LiveCaptions           *jobState             `json:"live_captions,omitempty"`
 	DismissedNotification  map[string]bool       `json:"dismissed_notification,omitempty"`
 }
 
@@ -82,14 +84,16 @@ type CallStateClient struct {
 	HostID                 string          `json:"host_id"`
 	Recording              *JobStateClient `json:"recording,omitempty"`
 	Transcription          *JobStateClient `json:"transcription,omitempty"`
+	LiveCaptions           *JobStateClient `json:"live_captions,omitempty"`
 	DismissedNotification  map[string]bool `json:"dismissed_notification,omitempty"`
 }
 
 type JobStateClient struct {
-	InitAt  int64  `json:"init_at"`
-	StartAt int64  `json:"start_at"`
-	EndAt   int64  `json:"end_at"`
-	Err     string `json:"err,omitempty"`
+	Type    public.JobType `json:"type"`
+	InitAt  int64          `json:"init_at"`
+	StartAt int64          `json:"start_at"`
+	EndAt   int64          `json:"end_at"`
+	Err     string         `json:"err,omitempty"`
 }
 
 type ChannelStateClient struct {
@@ -103,6 +107,7 @@ func (js *JobStateClient) toMap() map[string]interface{} {
 		return nil
 	}
 	return map[string]interface{}{
+		"type":     string(js.Type),
 		"init_at":  js.InitAt,
 		"start_at": js.StartAt,
 		"end_at":   js.EndAt,
@@ -140,6 +145,11 @@ func (cs *callState) Clone() *callState {
 	if cs.Transcription != nil {
 		newState.Transcription = &jobState{}
 		*newState.Transcription = *cs.Transcription
+	}
+
+	if cs.LiveCaptions != nil {
+		newState.LiveCaptions = &jobState{}
+		*newState.LiveCaptions = *cs.LiveCaptions
 	}
 
 	return &newState
@@ -182,6 +192,19 @@ func (cs *channelState) getTranscription() (*jobState, error) {
 		return nil, fmt.Errorf("no transcription ongoing")
 	}
 	return cs.Call.Transcription, nil
+}
+
+func (cs *channelState) getLiveCaptions() (*jobState, error) {
+	if cs == nil {
+		return nil, fmt.Errorf("channel state is missing from store")
+	}
+	if cs.Call == nil {
+		return nil, fmt.Errorf("no call ongoing")
+	}
+	if cs.Call.LiveCaptions == nil {
+		return nil, fmt.Errorf("no live captions ongoing")
+	}
+	return cs.Call.LiveCaptions, nil
 }
 
 func (cs *channelState) Clone() *channelState {
@@ -260,6 +283,7 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		HostID:                 cs.HostID,
 		Recording:              cs.Recording.getClientState(),
 		Transcription:          cs.Transcription.getClientState(),
+		LiveCaptions:           cs.LiveCaptions.getClientState(),
 		DismissedNotification:  dismissed,
 	}
 }
