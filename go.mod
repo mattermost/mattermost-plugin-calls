@@ -14,7 +14,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/gorilla/websocket v1.5.1
 	github.com/jmoiron/sqlx v1.3.5
-	github.com/mattermost/calls-offloader v0.6.0
+	github.com/mattermost/calls-offloader v0.7.1-0.20240327193521-2fce52099a3b
 	github.com/mattermost/calls-recorder v0.6.4
 	github.com/mattermost/calls-transcriber v0.1.8
 	github.com/mattermost/logr/v2 v2.0.21
