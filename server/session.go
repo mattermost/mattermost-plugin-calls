@@ -189,7 +189,7 @@ func (p *Plugin) userCanStartOrJoin(userID string, state *channelState) bool {
 	return p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 }
 
-func (p *Plugin) removeUserSession(state *channelState, userID, connID, channelID string) (*channelState, error) {
+func (p *Plugin) removeUserSession(state *channelState, connID, channelID string) (*channelState, error) {
 	if state == nil {
 		return nil, fmt.Errorf("channel state is missing from store")
 	}
@@ -282,7 +282,7 @@ func (p *Plugin) removeSession(us *session) error {
 	delete(p.sessions, us.connID)
 	p.mut.Unlock()
 
-	currState, err := p.removeUserSession(prevState, us.userID, us.originalConnID, us.channelID)
+	currState, err := p.removeUserSession(prevState, us.originalConnID, us.channelID)
 	if err != nil {
 		return fmt.Errorf("failed to remove user session (connID=%s): %w", us.originalConnID, err)
 	}
