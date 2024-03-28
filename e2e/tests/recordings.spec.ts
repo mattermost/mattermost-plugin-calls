@@ -1,6 +1,6 @@
 import {chromium, expect, test} from '@playwright/test';
 
-import {apiDisableTranscriptions, apiEnableTranscriptions} from '../config';
+import {apiSetEnableLiveCaptions, apiSetEnableTranscriptions} from '../config';
 import {adminState, baseURL, defaultTeam, pluginID} from '../constants';
 import PlaywrightDevPage from '../page';
 import {getUserStoragesForTest, newUserPage} from '../utils';
@@ -10,13 +10,13 @@ test.beforeEach(async ({page, context}) => {
     await devPage.goto();
 });
 
-test.describe('call recordings and transcriptions', () => {
+test.describe('call recordings, transcriptions, live-captions', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('recording - slash command', async ({page, request}) => {
+    test('slash command, popout + buttons', async ({page, context, request}) => {
         test.setTimeout(150000);
 
-        await apiDisableTranscriptions();
+        await apiSetEnableTranscriptions(false);
 
         // start call
         const devPage = new PlaywrightDevPage(page);
@@ -59,11 +59,12 @@ test.describe('call recordings and transcriptions', () => {
         // leave call
         await devPage.leaveCall();
 
+        //
         // Transcriptions test, we need to keep it here or it would conflict
         // with the above as tests are run concurrently.
-
+        //
         await page.reload();
-        await apiEnableTranscriptions();
+        await apiSetEnableTranscriptions(true);
 
         // start call
         await devPage.startCall();
@@ -86,7 +87,7 @@ test.describe('call recordings and transcriptions', () => {
         await page.locator('#post_textbox').fill('/call recording stop');
         await page.getByTestId('SendMessageButton').click();
 
-        // very recording ended prompt renders correctly
+        // verify recording ended prompt renders correctly
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording and transcription has stopped. Processing…');
 
@@ -117,5 +118,102 @@ test.describe('call recordings and transcriptions', () => {
 
         // leave call
         await devPage.leaveCall();
+
+        //
+        // Live captions tests.
+        // First, verify [cc] is not available when live captions is off.
+        //
+        await page.reload();
+        await apiSetEnableLiveCaptions(false);
+
+        // start call
+        await devPage.startCall();
+
+        let [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+
+        // start recording with button
+        await popOut.locator('#calls-popout-record-button').click();
+
+        // verify we get the badge
+        await expect(popOut.getByTestId('calls-recording-badge')).toBeVisible();
+        await expect(popOut.getByTestId('calls-recording-badge')).toContainText('REC');
+
+        // verify we get the recording start prompt
+        await expect(popOut.getByTestId('banner-recording')).toBeVisible();
+        await expect(popOut.getByTestId('banner-recording')).toContainText('Recording and transcription has started');
+
+        // close the banner
+        await popOut.getByTestId('popout-prompt-close').click();
+        await expect(popOut.getByTestId('banner-recording')).toBeHidden();
+
+        // verify we do not have the [cc] button
+        await expect(popOut.locator('#calls-popout-cc-button')).toBeHidden();
+
+        // stop recording
+        await popOut.locator('#calls-popout-record-button').click();
+
+        // verify recording ended prompt renders correctly
+        await expect(popOut.getByTestId('banner-recording-stopped')).toBeVisible();
+        await expect(popOut.getByTestId('banner-recording-stopped')).toContainText('Recording and transcription has stopped. Processing…');
+
+        // leave call
+        await popOut.locator('#calls-popout-leave-button').click();
+
+        //
+        // Lice captions tests.
+        // Second, verify [cc] is available and gives us the right closed captions.
+        //
+        await page.reload();
+        await apiSetEnableLiveCaptions(true);
+
+        // start call
+        await devPage.startCall();
+
+        [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+
+        // start recording with button
+        await popOut.locator('#calls-popout-record-button').click();
+
+        // verify we get the badge
+        await expect(popOut.getByTestId('calls-recording-badge')).toBeVisible();
+        await expect(popOut.getByTestId('calls-recording-badge')).toContainText('REC');
+
+        // verify we get the recording start prompt
+        await expect(popOut.getByTestId('banner-recording')).toBeVisible();
+        await expect(popOut.getByTestId('banner-recording')).toContainText('Recording and transcription has started');
+
+        // close the banner
+        await popOut.getByTestId('popout-prompt-close').click();
+        await expect(popOut.getByTestId('banner-recording')).toBeHidden();
+
+        // verify we have the [cc] button
+        await expect(popOut.locator('#calls-popout-cc-button')).toBeVisible();
+
+        // toggle closed captioning
+        await popOut.locator('#calls-popout-cc-button').click();
+
+        // Unmute
+        await popOut.locator('#calls-popout-mute-button').click();
+
+        // Wait for the closed captioning
+        await expect(popOut.locator('[class^="Caption-"]')).toContainText('This is a test transcription sample');
+
+        // stop recording
+        await popOut.locator('#calls-popout-record-button').click();
+
+        // verify recording ended prompt renders correctly
+        await expect(popOut.getByTestId('banner-recording-stopped')).toBeVisible();
+        await expect(popOut.getByTestId('banner-recording-stopped')).toContainText('Recording and transcription has stopped. Processing…');
+
+        // leave call
+        await popOut.locator('#calls-popout-leave-button').click();
     });
 });
