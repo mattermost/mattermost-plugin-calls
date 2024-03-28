@@ -210,16 +210,13 @@ func (cs *callState) getHostID(botID string) string {
 		return cs.HostID
 	}
 
-	// if current host is still in the call, keep them as the host
+	var host userState
 	for _, state := range cs.Sessions {
+		// if current host is still in the call, keep them as the host
 		if state.UserID == cs.HostID {
 			return cs.HostID
 		}
-	}
 
-	// the participant who joined earliest should be host
-	var host userState
-	for _, state := range cs.Sessions {
 		if state.UserID == botID {
 			continue
 		}
@@ -227,6 +224,7 @@ func (cs *callState) getHostID(botID string) string {
 			host = *state
 			continue
 		}
+		// the participant who joined earliest should be host
 		if state.JoinAt < host.JoinAt {
 			host = *state
 		}

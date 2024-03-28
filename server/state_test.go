@@ -281,6 +281,38 @@ func TestCallStateGetHostID(t *testing.T) {
 
 		require.Equal(t, "userA", cs.getHostID("botID"))
 	})
+
+	t.Run("returns existing host", func(t *testing.T) {
+		cs := &callState{
+			ID:      "test",
+			StartAt: 100,
+			Sessions: map[string]*userState{
+				"sessionA": {
+					UserID: "userA",
+					JoinAt: 1000,
+				},
+				"sessionB": {
+					UserID: "userB",
+					JoinAt: 800,
+				},
+				"sessionC": {
+					UserID: "userC",
+					JoinAt: 1100,
+				},
+				"sessionD": {
+					UserID: "userD",
+					JoinAt: 700,
+				},
+				"sessionE": {
+					UserID: "userE",
+					JoinAt: 1500,
+				},
+			},
+			HostID: "userE",
+		}
+
+		require.Equal(t, "userE", cs.getHostID("botID"))
+	})
 }
 
 func TestChannelStateClone(t *testing.T) {
