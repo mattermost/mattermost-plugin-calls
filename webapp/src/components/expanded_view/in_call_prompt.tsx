@@ -85,6 +85,7 @@ const Prompt = styled.div`
   border-radius: 4px;
   padding: 24px 22px;
   max-width: 480px;
+  z-index: 1;
 `;
 
 const Main = styled.div`

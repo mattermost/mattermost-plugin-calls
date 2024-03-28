@@ -6,7 +6,7 @@ import {
     CallRecordingDisclaimerStrings,
     CallTranscribingDisclaimerStrings,
 } from 'src/constants';
-import {CallRecordingReduxState} from 'src/types/types';
+import {CallJobReduxState} from 'src/types/types';
 import {
     capitalize,
 } from 'src/utils';
@@ -16,7 +16,7 @@ import InCallPrompt from './in_call_prompt';
 type Props = {
     isHost: boolean;
     hostChangeAt: number;
-    recording?: CallRecordingReduxState;
+    recording?: CallJobReduxState;
     recordingMaxDuration: number;
     onDecline: () => void;
     promptDismissed: () => void;

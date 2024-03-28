@@ -25,15 +25,22 @@ import {
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
 import {
-    callsRecordingsState,
+    callsJobState,
     callState,
     hostsState,
+    liveCaptionState,
     recentlyJoinedUsersState,
     screenSharingIDsState,
     sessionsState,
     usersReactionsState,
 } from 'src/reducers';
-import {CallRecordingReduxState, CallsUserPreferences, ChannelState, IncomingCallNotification} from 'src/types/types';
+import {
+    CallJobReduxState,
+    CallsUserPreferences,
+    ChannelState,
+    IncomingCallNotification,
+    LiveCaptions,
+} from 'src/types/types';
 import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL} from 'src/utils';
 
 import {pluginId} from './manifest';
@@ -158,6 +165,18 @@ export const reactionsInCurrentCall: (state: GlobalState) => Reaction[] =
         (reactions, channelID) => reactions[channelID]?.reactions || [],
     );
 
+const liveCaptionsInCalls = (state: GlobalState): liveCaptionState => {
+    return pluginState(state).liveCaptions;
+};
+
+export const liveCaptionsInCurrentCall: (state: GlobalState) => LiveCaptions =
+    createSelector(
+        'liveCaptionsInCurrentCall',
+        liveCaptionsInCalls,
+        channelIDForCurrentCall,
+        (liveCaptions, channelID) => liveCaptions[channelID] || {},
+    );
+
 export const callStartAtForCallInChannel = (state: GlobalState, channelID: string): number => {
     return pluginState(state).calls[channelID]?.startAt || 0;
 };
@@ -228,16 +247,40 @@ export const threadIDForCallInChannel = (state: GlobalState, channelID: string) 
     return pluginState(state).calls[channelID]?.threadID || '';
 };
 
-const recordingsForCalls = (state: GlobalState): callsRecordingsState => {
+const recordingsForCalls = (state: GlobalState): callsJobState => {
     return pluginState(state).recordings;
 };
 
-export const recordingForCurrentCall: (state: GlobalState) => CallRecordingReduxState =
+export const recordingForCurrentCall: (state: GlobalState) => CallJobReduxState =
     createSelector(
         'recordingForCurrentCall',
         recordingsForCalls,
         channelIDForCurrentCall,
         (recordings, channelID) => recordings[channelID] || {},
+    );
+
+const liveCaptionsStateForCalls = (state: GlobalState): callsJobState => {
+    return pluginState(state).callLiveCaptionsState;
+};
+
+export const liveCaptionsStateForCurrentCall: (state: GlobalState) => CallJobReduxState =
+    createSelector(
+        'liveCaptionsStateForCurrentCall',
+        liveCaptionsStateForCalls,
+        channelIDForCurrentCall,
+        (liveCaptions, channelID) => liveCaptions[channelID] || {},
+    );
+
+export const areLiveCaptionsAvailableInCurrentCall: (state: GlobalState) => boolean =
+    createSelector(
+        'areLiveCaptionsAvailableInCurrentCall',
+        liveCaptionsStateForCurrentCall,
+        (liveCaptions) => {
+            if (!liveCaptions?.start_at) {
+                return false;
+            }
+            return liveCaptions.start_at > liveCaptions.end_at;
+        },
     );
 
 const recentlyJoinedUsersInCalls = (state: GlobalState): recentlyJoinedUsersState => {
@@ -341,6 +384,9 @@ export const recordingsEnabled = (state: GlobalState) =>
 
 export const transcriptionsEnabled = (state: GlobalState) =>
     callsConfig(state).EnableTranscriptions;
+
+export const liveCaptionsEnabled = (state: GlobalState) =>
+    callsConfig(state).EnableLiveCaptions;
 
 export const recordingMaxDuration = (state: GlobalState) =>
     callsConfig(state).MaxRecordingDuration;

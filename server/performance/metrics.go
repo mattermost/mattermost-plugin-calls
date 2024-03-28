@@ -19,19 +19,24 @@ const (
 	metricsSubSystemWS      = "websocket"
 	metricsSubSystemCluster = "cluster"
 	metricsSubSystemStore   = "store"
+	metricsSubSystemJobs    = "jobs"
 )
 
 type Metrics struct {
 	registry   *prometheus.Registry
 	rtcMetrics *perf.Metrics
 
-	WebSocketConnections             prometheus.Gauge
-	WebSocketEventCounters           *prometheus.CounterVec
-	ClusterEventCounters             *prometheus.CounterVec
-	StoreOpCounters                  *prometheus.CounterVec
-	ClusterMutexGrabTimeHistograms   *prometheus.HistogramVec
-	ClusterMutexLockedTimeHistograms *prometheus.HistogramVec
-	ClusterMutexLockRetriesCounters  *prometheus.CounterVec
+	WebSocketConnections                   prometheus.Gauge
+	WebSocketEventCounters                 *prometheus.CounterVec
+	ClusterEventCounters                   *prometheus.CounterVec
+	StoreOpCounters                        *prometheus.CounterVec
+	ClusterMutexGrabTimeHistograms         *prometheus.HistogramVec
+	ClusterMutexLockedTimeHistograms       *prometheus.HistogramVec
+	ClusterMutexLockRetriesCounters        *prometheus.CounterVec
+	LiveCaptionsNewAudioLenHistogram       prometheus.Histogram
+	LiveCaptionsWindowDroppedCounter       prometheus.Counter
+	LiveCaptionsTranscriberBufFullCounter  prometheus.Counter
+	LiveCaptionsPktPayloadChBufFullCounter prometheus.Counter
 }
 
 func NewMetrics() *Metrics {
@@ -117,6 +122,44 @@ func NewMetrics() *Metrics {
 	)
 	m.registry.MustRegister(m.ClusterMutexLockRetriesCounters)
 
+	m.LiveCaptionsNewAudioLenHistogram = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemJobs,
+			Name:      "live_captions_new_audio_len_ms",
+			Help:      "Length (in ms) of new audio transcribed for live captions",
+			Buckets:   prometheus.LinearBuckets(1000, 250, 25),
+		},
+	)
+	m.registry.MustRegister(m.LiveCaptionsNewAudioLenHistogram)
+
+	m.LiveCaptionsWindowDroppedCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemJobs,
+			Name:      "live_captions_window_dropped",
+			Help:      "Dropped a window of audio data due to pressure on the transcriber",
+		})
+	m.registry.MustRegister(m.LiveCaptionsWindowDroppedCounter)
+
+	m.LiveCaptionsTranscriberBufFullCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemJobs,
+			Name:      "live_captions_transcriber_buf_full",
+			Help:      "Dropped a package of audio data due to the transcriber buffer full",
+		})
+	m.registry.MustRegister(m.LiveCaptionsTranscriberBufFullCounter)
+
+	m.LiveCaptionsPktPayloadChBufFullCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemJobs,
+			Name:      "live_captions_pktPayloadCh_buf_full",
+			Help:      "Dropped a package of audio data due to the pktPayloadCh buffer full",
+		})
+	m.registry.MustRegister(m.LiveCaptionsPktPayloadChBufFullCounter)
+
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
@@ -160,4 +203,20 @@ func (m *Metrics) ObserveClusterMutexLockedTime(group string, elapsed float64) {
 
 func (m *Metrics) IncClusterMutexLockRetries(group string) {
 	m.ClusterMutexLockRetriesCounters.With(prometheus.Labels{"group": group}).Inc()
+}
+
+func (m *Metrics) ObserveLiveCaptionsAudioLen(elapsed float64) {
+	m.LiveCaptionsNewAudioLenHistogram.Observe(elapsed)
+}
+
+func (m *Metrics) IncLiveCaptionsWindowDropped() {
+	m.LiveCaptionsWindowDroppedCounter.Inc()
+}
+
+func (m *Metrics) IncLiveCaptionsTranscriberBufFull() {
+	m.LiveCaptionsTranscriberBufFullCounter.Inc()
+}
+
+func (m *Metrics) IncLiveCaptionsPktPayloadChBufFull() {
+	m.LiveCaptionsPktPayloadChBufFullCounter.Inc()
 }

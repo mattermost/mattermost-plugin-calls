@@ -438,12 +438,18 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	var jb *jobState
+	var jb, lcState *jobState
 	switch status.JobType {
 	case public.JobTypeRecording:
 		jb = state.Call.Recording
 	case public.JobTypeTranscribing:
 		jb = state.Call.Transcription
+		if cfg := p.getConfiguration(); cfg != nil && cfg.liveCaptionsEnabled() {
+			if lcState, err = state.getLiveCaptions(); err != nil {
+				p.LogError("failed to get live captions job", "callID", callID,
+					"error", err.Error())
+			}
+		}
 	default:
 		res.Err = "invalid job type"
 		res.Code = http.StatusBadRequest
@@ -491,6 +497,13 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 		}
 		p.LogDebug("job has started", "jobID", jobID)
 		jb.StartAt = time.Now().UnixMilli()
+
+		if lcState != nil {
+			// For now we are assuming that if transcriptions are on and live captions are enabled,
+			// then the live captioning has started. This can change in the future; if it does, we will
+			// only need to change the backend.
+			lcState.StartAt = time.Now().UnixMilli()
+		}
 	} else {
 		res.Err = "unsupported status type"
 		res.Code = http.StatusBadRequest
@@ -504,15 +517,28 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 	}
 
 	if status.JobType == public.JobTypeRecording {
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"callID":   callID,
+			"jobState": state.Call.Recording.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
 			"recState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	} else {
-		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-			"callID":  callID,
-			"trState": state.Call.Transcription.getClientState().toMap(),
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"callID":   callID,
+			"jobState": state.Call.Transcription.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+		if lcState != nil {
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"callID":   callID,
+				"jobState": state.Call.LiveCaptions.getClientState().toMap(),
+			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+		}
 	}
 
 	res.Code = http.StatusOK

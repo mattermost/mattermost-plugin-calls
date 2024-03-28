@@ -4,6 +4,7 @@
 package main
 
 import (
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 	"reflect"
 	"testing"
 
@@ -374,6 +375,7 @@ func TestChannelStateClone(t *testing.T) {
 				},
 				Recording: &jobState{
 					JobStateClient: JobStateClient{
+						Type:    public.JobTypeRecording,
 						InitAt:  1100,
 						StartAt: 1200,
 					},
@@ -414,6 +416,7 @@ func TestJobStateGetClientState(t *testing.T) {
 			ID:        "recID",
 			CreatorID: "creatorID",
 			JobStateClient: JobStateClient{
+				Type:    public.JobTypeRecording,
 				InitAt:  100,
 				StartAt: 200,
 				EndAt:   300,
@@ -421,6 +424,7 @@ func TestJobStateGetClientState(t *testing.T) {
 		}
 
 		recState := &JobStateClient{
+			Type:    public.JobTypeRecording,
 			InitAt:  100,
 			StartAt: 200,
 			EndAt:   300,

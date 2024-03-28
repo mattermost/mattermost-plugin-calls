@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 	"time"
 
 	"github.com/mattermost/calls-offloader/public/job"
@@ -30,6 +31,15 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 		return
 	}
 
+	var lcState *jobState
+	if cfg := p.getConfiguration(); cfg != nil && cfg.liveCaptionsEnabled() {
+		var err error
+		if lcState, err = state.getLiveCaptions(); err != nil {
+			p.LogError("failed to get live captions state", "error", err.Error())
+			// Note: not returning because we still want to finish ending the transcriber
+		}
+	}
+
 	// If the transcription hasn't started (bot hasn't joined yet) we notify the
 	// client.
 	if trState.StartAt == 0 {
@@ -41,6 +51,9 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 		p.LogError("timed out waiting for transcriber bot to join", "callID", callID, "jobID", jobID)
 
 		state.Call.Transcription = nil
+		if lcState != nil {
+			state.Call.LiveCaptions = nil
+		}
 		if err := p.kvSetChannelState(callID, state); err != nil {
 			p.LogError("failed to set channel state", "err", err.Error())
 			return
@@ -59,15 +72,24 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 			// This is needed as we don't yet handle wsEventCallTranscriptionState on
 			// the client since jobs are coupled.
 			recClientState.Err = "failed to start transcriber job: timed out waiting for bot to join call"
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"callID":   callID,
+				"jobState": recClientState.toMap(),
+			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+			// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 				"callID":   callID,
-				"recState": clientState.toMap(),
+				"recState": recClientState.toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 
-		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-			"callID":  callID,
-			"trState": clientState.toMap(),
+		// MM-57265: This message is delayed and not shown to the client correctly.
+		jobState := clientState.toMap()
+		jobState["type"] = public.JobTypeTranscribing
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"callID":   callID,
+			"jobState": jobState,
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	}
 }
@@ -82,10 +104,22 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	}
 
 	trState := new(jobState)
+	trState.Type = public.JobTypeTranscribing
 	trState.ID = trID
 	trState.CreatorID = userID
 	trState.InitAt = time.Now().UnixMilli()
 	state.Call.Transcription = trState
+
+	liveCaptionsOn := false
+	if cfg := p.getConfiguration(); cfg != nil && cfg.liveCaptionsEnabled() {
+		liveCaptionsOn = true
+		lcState := new(jobState)
+		lcState.Type = public.JobTypeCaptioning
+		lcState.ID = trID
+		lcState.CreatorID = userID
+		lcState.InitAt = time.Now().UnixMilli()
+		state.Call.LiveCaptions = lcState
+	}
 
 	if err := p.kvSetChannelState(callID, state); err != nil {
 		return fmt.Errorf("failed to set channel state: %w", err)
@@ -96,9 +130,9 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 		if rerr != nil && trState != nil {
 			trState.EndAt = time.Now().UnixMilli()
 			trState.Err = rerr.Error()
-			p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-				"callID":  callID,
-				"trState": trState.getClientState().toMap(),
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"callID":   callID,
+				"jobState": trState.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 	}()
@@ -106,10 +140,13 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	// Sending the event prior to making the API call to the job service
 	// since it could take a few seconds to complete and we want clients
 	// to get their local state updated as soon as it changes on the server.
-	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-		"callID":  callID,
-		"trState": trState.getClientState().toMap(),
+	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+		"callID":   callID,
+		"jobState": trState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+	// Note: We don't need to send the live captions event until we get the StartAt in the
+	// bot_api handleBotPostJobsStatus
 
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return. We lock again as soon as this returns.
@@ -124,9 +161,20 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 	if err != nil {
 		return fmt.Errorf("failed to get transcription state: %w", err)
 	}
+	var lcState *jobState
+	if liveCaptionsOn {
+		lcState, err = state.getLiveCaptions()
+		if err != nil {
+			p.LogError("failed to get live captions state", "callID", callID,
+				"error", err)
+		}
+	}
 
 	if jobErr != nil {
 		state.Call.Transcription = nil
+		if lcState != nil {
+			state.Call.LiveCaptions = nil
+		}
 		if err := p.kvSetChannelState(callID, state); err != nil {
 			return fmt.Errorf("failed to set channel state: %w", err)
 		}
@@ -137,15 +185,18 @@ func (p *Plugin) startTranscribingJob(state *channelState, callID, userID, trID 
 		return fmt.Errorf("transcription job already in progress")
 	}
 	trState.JobID = trJobID
+	if lcState != nil {
+		lcState.JobID = trJobID
+	}
 	if err := p.kvSetChannelState(callID, state); err != nil {
 		return fmt.Errorf("failed to set channel state: %w", err)
 	}
 
 	p.LogDebug("transcription job started successfully", "jobID", trJobID, "callID", callID)
 
-	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-		"callID":  callID,
-		"trState": trState.getClientState().toMap(),
+	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+		"callID":   callID,
+		"jobState": trState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 	go p.transcriptionJobTimeoutChecker(callID, trJobID)
@@ -167,6 +218,12 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 	trState.EndAt = time.Now().UnixMilli()
 	state.Call.Transcription = nil
 
+	lcState, err := state.getLiveCaptions()
+	if err == nil {
+		lcState.EndAt = time.Now().UnixMilli()
+		state.Call.LiveCaptions = nil
+	}
+
 	if err := p.kvSetChannelState(callID, state); err != nil {
 		return fmt.Errorf("failed to set channel state: %w", err)
 	}
@@ -175,9 +232,9 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 		// In case of any error we relay it to the client.
 		if rerr != nil {
 			trState.Err = rerr.Error()
-			p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-				"callID":  callID,
-				"trState": trState.getClientState().toMap(),
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"callID":   callID,
+				"jobState": trState.getClientState().toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 	}()
@@ -192,10 +249,17 @@ func (p *Plugin) stopTranscribingJob(state *channelState, callID string) (rerr e
 		}
 	}
 
-	p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-		"callID":  callID,
-		"trState": trState.getClientState().toMap(),
+	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+		"callID":   callID,
+		"jobState": trState.getClientState().toMap(),
 	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+
+	if lcState != nil {
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"callID":   callID,
+			"jobState": lcState.getClientState().toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}
 
 	return nil
 }
