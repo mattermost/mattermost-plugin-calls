@@ -27,8 +27,8 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 
 	if state.Call.HostID == newHostID {
 		// Host is same, but do we need to host lock?
-		if !state.Call.HostLocked {
-			state.Call.HostLocked = true
+		if state.Call.HostLockedUserID == "" {
+			state.Call.HostLockedUserID = newHostID
 			if err := p.kvSetChannelState(channelID, state); err != nil {
 				return fmt.Errorf("failed to set channel state: %w", err)
 			}
@@ -36,19 +36,12 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 		return nil
 	}
 
-	hostInCall := false
-	for _, sess := range state.Call.Sessions {
-		if sess.UserID == newHostID {
-			hostInCall = true
-			break
-		}
-	}
-	if !hostInCall {
+	if !state.Call.isUserIDInCall(newHostID) {
 		return errors.New("user is not in the call")
 	}
 
 	state.Call.HostID = newHostID
-	state.Call.HostLocked = true
+	state.Call.HostLockedUserID = newHostID
 
 	if err := p.kvSetChannelState(channelID, state); err != nil {
 		return fmt.Errorf("failed to set channel state: %w", err)

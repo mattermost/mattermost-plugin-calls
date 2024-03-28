@@ -47,7 +47,7 @@ type callState struct {
 	Transcription          *jobState             `json:"transcription,omitempty"`
 	LiveCaptions           *jobState             `json:"live_captions,omitempty"`
 	DismissedNotification  map[string]bool       `json:"dismissed_notification,omitempty"`
-	HostLocked             bool                  `json:"host_locked"`
+	HostLockedUserID       string                `json:"host_locked_user_id"`
 }
 
 type channelState struct {
@@ -229,8 +229,8 @@ func (us *userState) getClientState(sessionID string) UserStateClient {
 }
 
 func (cs *callState) getHostID(botID string) string {
-	if cs.HostLocked {
-		return cs.HostID
+	if cs.HostLockedUserID != "" && cs.isUserIDInCall(cs.HostLockedUserID) {
+		return cs.HostLockedUserID
 	}
 
 	var host userState
@@ -254,6 +254,15 @@ func (cs *callState) getHostID(botID string) string {
 	}
 
 	return host.UserID
+}
+
+func (cs *callState) isUserIDInCall(userID string) bool {
+	for _, session := range cs.Sessions {
+		if session.UserID == userID {
+			return true
+		}
+	}
+	return false
 }
 
 func (cs *callState) getClientState(botID, userID string) *CallStateClient {
