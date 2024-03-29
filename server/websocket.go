@@ -754,6 +754,13 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
 	}
 
+	// If there are other sessions and the host changed because of this user joining, we need to update them.
+	if len(state.Call.Sessions) > 1 && state.Call.HostID != prevState.Call.HostID {
+		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
+			"hostID": state.Call.HostID,
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}
+
 	p.unlockCall(channelID)
 
 	p.metrics.IncWebSocketConn()

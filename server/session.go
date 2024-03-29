@@ -141,14 +141,12 @@ func (p *Plugin) addUserSession(state *channelState, userID, connID, channelID, 
 		}
 	}
 
-	if state.Call.HostID == "" && userID != p.getBotID() {
-		state.Call.HostID = userID
-	}
-
 	state.Call.Sessions[connID] = &userState{
 		UserID: userID,
 		JoinAt: time.Now().UnixMilli(),
 	}
+
+	state.Call.HostID = state.Call.getHostID(p.getBotID())
 
 	if state.Call.Stats.Participants == nil {
 		state.Call.Stats.Participants = map[string]struct{}{}
