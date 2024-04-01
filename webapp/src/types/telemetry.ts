@@ -13,6 +13,8 @@ export enum Event {
     NotificationJoin = 'notification_join',
     NotificationDismiss = 'notification_dismiss',
     NotificationClickGotoChannel = 'notification_click_goto_channel',
+    LiveCaptionsOn = 'live_captions_on',
+    LiveCaptionsOff = 'live_captions_off',
 }
 
 export enum Source {

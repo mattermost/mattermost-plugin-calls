@@ -22,6 +22,10 @@ type Metrics interface {
 	ObserveClusterMutexGrabTime(group string, elapsed float64)
 	ObserveClusterMutexLockedTime(group string, elapsed float64)
 	IncClusterMutexLockRetries(group string)
+	ObserveLiveCaptionsAudioLen(elapsed float64)
+	IncLiveCaptionsWindowDropped()
+	IncLiveCaptionsTranscriberBufFull()
+	IncLiveCaptionsPktPayloadChBufFull()
 }
 
 type StoreMetrics interface {

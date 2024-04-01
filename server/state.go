@@ -19,6 +19,7 @@ type callState struct {
 	sessions      map[string]*public.CallSession
 	Recording     *public.CallJob
 	Transcription *public.CallJob
+	LiveCaptions  *public.CallJob
 }
 
 type UserStateClient struct {
@@ -50,14 +51,16 @@ type CallStateClient struct {
 	HostID                 string          `json:"host_id"`
 	Recording              *JobStateClient `json:"recording,omitempty"`
 	Transcription          *JobStateClient `json:"transcription,omitempty"`
+	LiveCaptions           *JobStateClient `json:"live_captions,omitempty"`
 	DismissedNotification  map[string]bool `json:"dismissed_notification,omitempty"`
 }
 
 type JobStateClient struct {
-	InitAt  int64  `json:"init_at"`
-	StartAt int64  `json:"start_at"`
-	EndAt   int64  `json:"end_at"`
-	Err     string `json:"err,omitempty"`
+	Type    public.JobType `json:"type"`
+	InitAt  int64          `json:"init_at"`
+	StartAt int64          `json:"start_at"`
+	EndAt   int64          `json:"end_at"`
+	Err     string         `json:"err,omitempty"`
 }
 
 func (js *JobStateClient) toMap() map[string]interface{} {
@@ -65,6 +68,7 @@ func (js *JobStateClient) toMap() map[string]interface{} {
 		return nil
 	}
 	return map[string]interface{}{
+		"type":     string(js.Type),
 		"init_at":  js.InitAt,
 		"start_at": js.StartAt,
 		"end_at":   js.EndAt,
@@ -77,6 +81,7 @@ func getClientStateFromCallJob(job *public.CallJob) *JobStateClient {
 		return nil
 	}
 	return &JobStateClient{
+		Type:    job.Type,
 		InitAt:  job.InitAt,
 		StartAt: job.StartAt,
 		EndAt:   job.EndAt,
@@ -117,22 +122,54 @@ func (cs *callState) getTranscription() (*public.CallJob, error) {
 	return cs.Transcription, nil
 }
 
+func (cs *callState) getLiveCaptions() (*public.CallJob, error) {
+	if cs == nil {
+		return nil, fmt.Errorf("no call ongoing")
+	}
+	if cs.LiveCaptions == nil {
+		return nil, fmt.Errorf("no live captions ongoing")
+	}
+	return cs.LiveCaptions, nil
+}
+
 func (cs *callState) getHostID(botID string) string {
+	if cs.Call.Props.HostLockedUserID != "" && cs.isUserIDInCall(cs.Call.Props.HostLockedUserID) {
+		return cs.Call.Props.HostLockedUserID
+	}
+
 	var host public.CallSession
 	for _, session := range cs.sessions {
+		// if current host is still in the call, keep them as the host
+		if session.UserID == cs.Call.GetHostID() {
+			return cs.Call.GetHostID()
+		}
+
+		// bot can't be host
 		if session.UserID == botID {
 			continue
 		}
+
 		if host.UserID == "" {
 			host = *session
 			continue
 		}
+
+		// the participant who joined earliest should be host
 		if session.JoinAt < host.JoinAt {
 			host = *session
 		}
 	}
 
 	return host.UserID
+}
+
+func (cs *callState) isUserIDInCall(userID string) bool {
+	for _, session := range cs.sessions {
+		if session.UserID == userID {
+			return true
+		}
+	}
+	return false
 }
 
 func (cs *callState) getClientState(botID, userID string) *CallStateClient {
@@ -172,6 +209,7 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		HostID:                 cs.GetHostID(),
 		Recording:              getClientStateFromCallJob(cs.Recording),
 		Transcription:          getClientStateFromCallJob(cs.Transcription),
+		LiveCaptions:           getClientStateFromCallJob(cs.LiveCaptions),
 		DismissedNotification:  dismissed,
 	}
 }
@@ -236,6 +274,7 @@ func (p *Plugin) getCallStateFromCall(call *public.Call, fromWriter bool) (*call
 	}
 	state.Recording = jobs[public.JobTypeRecording]
 	state.Transcription = jobs[public.JobTypeTranscribing]
+	state.LiveCaptions = jobs[public.JobTypeCaptioning]
 
 	return state, nil
 }

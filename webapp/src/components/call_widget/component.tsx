@@ -53,7 +53,7 @@ import {
     AudioDevices,
     CallAlertStates,
     CallAlertStatesDefault,
-    CallRecordingReduxState,
+    CallJobReduxState,
     IncomingCallNotification,
 } from 'src/types/types';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
@@ -78,7 +78,7 @@ interface Props {
     callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
-    callRecording?: CallRecordingReduxState,
+    callRecording?: CallJobReduxState,
     screenSharingSession?: UserSessionState,
     show: boolean,
     showExpandedView: () => void,

@@ -36,6 +36,8 @@ var (
 		"notification_join",
 		"notification_dismiss",
 		"notification_click_goto_channel",
+		"live_captions_on",
+		"live_captions_off",
 	}
 	telemetryClientTypesMap  map[string]struct{}
 	telemetryClientEventsMap map[string]struct{}

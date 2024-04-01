@@ -17,14 +17,14 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
-	github.com/mattermost/calls-offloader v0.6.0
+	github.com/mattermost/calls-offloader v0.8.0
 	github.com/mattermost/calls-recorder v0.6.4
-	github.com/mattermost/calls-transcriber v0.1.8
+	github.com/mattermost/calls-transcriber v0.2.0
 	github.com/mattermost/logr/v2 v2.0.21
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.0.12
 	github.com/mattermost/morph v1.1.0
-	github.com/mattermost/rtcd v0.13.1-0.20240311212157-7a6415db7b1d
+	github.com/mattermost/rtcd v0.14.0
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pion/interceptor v0.1.25
 	github.com/pion/rtp v1.8.3

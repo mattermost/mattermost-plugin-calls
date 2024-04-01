@@ -140,6 +140,14 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 			p.LogDebug("bot joined, transcribing job is starting", "jobID", jobID)
 			state.Transcription.Props.BotConnID = connID
 
+			if state.LiveCaptions != nil && state.LiveCaptions.StartAt == 0 {
+				p.LogDebug("bot joined, live captions job is starting", "jobID", state.LiveCaptions.ID, "trID", jobID)
+				state.LiveCaptions.Props.BotConnID = connID
+				if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
+					return nil, fmt.Errorf("failed to update call job: %w", err)
+				}
+			}
+
 			if err := p.store.UpdateCallJob(state.Transcription); err != nil {
 				return nil, fmt.Errorf("failed to update call job: %w", err)
 			}
@@ -150,15 +158,18 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 		}
 	}
 
-	if state.Call.GetHostID() == "" && userID != p.getBotID() {
-		state.Call.Props.Hosts = []string{userID}
-	}
-
 	state.sessions[connID] = &public.CallSession{
 		ID:     connID,
 		CallID: state.Call.ID,
 		UserID: userID,
 		JoinAt: time.Now().UnixMilli(),
+	}
+
+	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
+		state.Call.Props.Hosts = []string{newHostID}
+		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
+			"hostID": newHostID,
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
 	if state.Call.Props.Participants == nil {
@@ -255,7 +266,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		if state.Transcription != nil {
 			p.LogDebug("stopping ongoing transcription", "jobID", state.Transcription.Props.JobID, "botConnID", state.Transcription.Props.BotConnID)
 			if err := p.getJobService().StopJob(channelID, state.Transcription.ID, p.getBotID(), state.Transcription.Props.BotConnID); err != nil {
-				p.LogError("failed to stop recording job", "error", err.Error(),
+				p.LogError("failed to stop transcribing job", "error", err.Error(),
 					"channelID", channelID,
 					"jobID", state.Transcription.Props.JobID,
 					"botConnID", state.Transcription.Props.BotConnID)
@@ -282,6 +293,12 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			}
 		}
 
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"callID":   channelID,
+			"jobState": getClientStateFromCallJob(state.Recording).toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   channelID,
 			"recState": getClientStateFromCallJob(state.Recording).toMap(),
@@ -303,10 +320,24 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			}
 		}
 
-		p.publishWebSocketEvent(wsEventCallTranscriptionState, map[string]interface{}{
-			"callID":  channelID,
-			"trState": getClientStateFromCallJob(state.Transcription).toMap(),
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"callID":   channelID,
+			"jobState": getClientStateFromCallJob(state.Transcription).toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+		if state.LiveCaptions != nil {
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"callID":   channelID,
+				"jobState": getClientStateFromCallJob(state.LiveCaptions).toMap(),
+			}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}
+	}
+
+	if state.LiveCaptions != nil && state.LiveCaptions.EndAt == 0 && connID == state.LiveCaptions.Props.BotConnID {
+		state.LiveCaptions.EndAt = time.Now().UnixMilli()
+		if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
+			return fmt.Errorf("failed to update call job: %w", err)
+		}
 	}
 
 	if len(state.sessionsForUser(userID)) == 0 {
