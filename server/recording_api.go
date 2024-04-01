@@ -23,7 +23,7 @@ const recordingJobStartTimeout = time.Minute
 func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	time.Sleep(recordingJobStartTimeout)
 
-	state, err := p.lockCall(callID)
+	state, err := p.lockCallReturnState(callID)
 	if err != nil {
 		p.LogError("failed to lock call", "err", err.Error(), "callID", callID, "jobID", jobID)
 		return
@@ -105,7 +105,7 @@ func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst
 	// could take a while to return. We lock again as soon as this returns.
 	p.unlockCall(callID)
 	recJobID, jobErr := p.getJobService().RunJob(job.TypeRecording, callID, state.Call.PostID, recState.ID, p.botSession.Token)
-	state, err := p.lockCall(callID)
+	state, err := p.lockCallReturnState(callID)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to lock call: %w", err)
 	}
@@ -234,7 +234,7 @@ func (p *Plugin) handleRecordingAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	state, err := p.lockCall(callID)
+	state, err := p.lockCallReturnState(callID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError

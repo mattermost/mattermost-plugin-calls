@@ -112,7 +112,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 	}
 
-	state, err := p.lockCall(us.channelID)
+	state, err := p.lockCallReturnState(us.channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
@@ -280,7 +280,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			}
 		}
 
-		state, err := p.lockCall(us.channelID)
+		state, err := p.lockCallReturnState(us.channelID)
 		if err != nil {
 			return fmt.Errorf("failed to lock call: %w", err)
 		}
@@ -316,7 +316,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			evType = wsEventUserRaiseHand
 		}
 
-		state, err := p.lockCall(us.channelID)
+		state, err := p.lockCallReturnState(us.channelID)
 		if err != nil {
 			return fmt.Errorf("failed to lock call: %w", err)
 		}
@@ -602,7 +602,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		callsEnabled = model.NewBool(callsChannel.Enabled)
 	}
 
-	state, err := p.lockCall(channelID)
+	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
@@ -1055,7 +1055,7 @@ func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID, callID st
 func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channelID string) error {
 	p.LogDebug("bot ws reconnection", "connID", connID, "prevConnID", prevConnID, "originalConnID", originalConnID, "channelID", channelID)
 
-	state, err := p.lockCall(channelID)
+	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}

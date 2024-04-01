@@ -221,7 +221,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 
 	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 
-	state, err := p.lockCall(channelID)
+	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
@@ -293,7 +293,7 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 	userID := r.Header.Get("Mattermost-User-Id")
 	channelID := mux.Vars(r)["channel_id"]
 
-	state, err := p.lockCall(channelID)
+	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError

@@ -192,7 +192,7 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request)
 	// Here we need to lock since we'll be reading and updating the call
 	// post, potentially concurrently with other events (e.g. call ending,
 	// transcribing job completing).
-	_, err := p.lockCall(callID)
+	_, err := p.lockCallReturnState(callID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
@@ -300,7 +300,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	// Here we need to lock since we'll be reading and updating the call
 	// post, potentially concurrently with other events (e.g. call ending,
 	// recording job completing).
-	_, err := p.lockCall(callID)
+	_, err := p.lockCallReturnState(callID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
@@ -429,7 +429,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	state, err := p.lockCall(callID)
+	state, err := p.lockCallReturnState(callID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
@@ -531,7 +531,7 @@ func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, r *http.Re
 	callID := mux.Vars(r)["call_id"]
 	sessionID := mux.Vars(r)["session_id"]
 
-	state, err := p.lockCall(callID)
+	state, err := p.lockCallReturnState(callID)
 	if err != nil {
 		p.LogError("handleBotGetProfileForSession: failed to lock call", "err", err.Error())
 		res.Code = http.StatusInternalServerError

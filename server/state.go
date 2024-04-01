@@ -276,7 +276,7 @@ func (p *Plugin) cleanUpState() error {
 	}
 
 	for _, call := range calls {
-		if err := p.lockCallSimple(call.ChannelID); err != nil {
+		if err := p.lockCall(call.ChannelID); err != nil {
 			p.LogError("failed to lock call", "err", err.Error())
 			continue
 		}

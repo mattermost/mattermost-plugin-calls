@@ -19,7 +19,7 @@ const transcriptionJobStartTimeout = time.Minute
 func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 	time.Sleep(transcriptionJobStartTimeout)
 
-	state, err := p.lockCall(callID)
+	state, err := p.lockCallReturnState(callID)
 	if err != nil {
 		p.LogError("failed to lock call", "err", err.Error())
 		return
@@ -116,7 +116,7 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	// could take a while to return. We lock again as soon as this returns.
 	p.unlockCall(callID)
 	trJobID, jobErr := p.getJobService().RunJob(job.TypeTranscribing, callID, state.Call.PostID, trState.ID, p.botSession.Token)
-	state, err := p.lockCall(callID)
+	state, err := p.lockCallReturnState(callID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}

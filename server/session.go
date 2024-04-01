@@ -399,7 +399,7 @@ func (p *Plugin) removeSession(us *session) error {
 		return nil
 	}
 
-	state, err := p.lockCall(us.channelID)
+	state, err := p.lockCallReturnState(us.channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}

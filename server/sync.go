@@ -11,8 +11,8 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 )
 
-// lockCallSimple locks the global (cluster) mutex for the given channelID.
-func (p *Plugin) lockCallSimple(channelID string) error {
+// lockCall locks the global (cluster) mutex for the given channelID.
+func (p *Plugin) lockCall(channelID string) error {
 	p.callsClusterLocksMut.Lock()
 	mut := p.callsClusterLocks[channelID]
 	if mut == nil {
@@ -42,10 +42,10 @@ func (p *Plugin) lockCallSimple(channelID string) error {
 	return nil
 }
 
-// lockCall locks the global (cluster) mutex for the given channelID and
+// lockCallReturnState locks the global (cluster) mutex for the given channelID and
 // returns the current state.
-func (p *Plugin) lockCall(channelID string) (*callState, error) {
-	if err := p.lockCallSimple(channelID); err != nil {
+func (p *Plugin) lockCallReturnState(channelID string) (*callState, error) {
+	if err := p.lockCall(channelID); err != nil {
 		return nil, fmt.Errorf("failed to create call lock: %w", err)
 	}
 
