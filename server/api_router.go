@@ -18,6 +18,7 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	var metricsRoute *mux.Route
 	if p.metrics != nil {
 		// NOTE: deprecated in favor of the ServeMetrics hook. Consider removing in v1.0.
+		// https://mattermost.atlassian.net/browse/MM-57549
 		metricsRoute = router.Handle("/metrics", p.metrics.Handler()).Methods("GET")
 	}
 	standaloneRoute := router.PathPrefix("/standalone/").HandlerFunc(p.handleServeStandalone).Methods("GET")
