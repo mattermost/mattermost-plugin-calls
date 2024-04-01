@@ -1,16 +1,16 @@
 CREATE TABLE IF NOT EXISTS calls_channels (
     channelid VARCHAR(26) PRIMARY KEY,
     enabled boolean,
-    props jsonb
+    props jsonb NOT NULL
 );
 
 DO $$
 <<migrate_calls_channels>>
 BEGIN
     INSERT INTO
-        calls_channels(channelid, enabled)
+        calls_channels(channelid, enabled, props)
     SELECT
-        pkey, (encode(pvalue, 'escape')::json->>'enabled')::boolean
+        pkey, (encode(pvalue, 'escape')::json->>'enabled')::boolean, 'null'
     FROM
         pluginkeyvaluestore
     WHERE

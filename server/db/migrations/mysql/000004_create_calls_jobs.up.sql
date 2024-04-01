@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS calls_jobs (
     InitAt BIGINT,
     StartAt BIGINT,
     EndAt BIGINT,
-    Props JSON
+    Props JSON NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 SET @preparedStatement = (SELECT IF(

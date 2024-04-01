@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS calls_jobs (
     initat bigint,
     startat bigint,
     endat bigint,
-    props jsonb
+    props jsonb NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_calls_jobs_call_id ON calls_jobs (callid);

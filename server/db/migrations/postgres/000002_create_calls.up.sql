@@ -9,9 +9,9 @@ CREATE TABLE IF NOT EXISTS calls (
     postid VARCHAR(26),
     threadid VARCHAR(26),
     ownerid VARCHAR(26),
-    participants jsonb,
-    stats jsonb,
-    props jsonb
+    participants jsonb NOT NULL,
+    stats jsonb NOT NULL,
+    props jsonb NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_calls_channel_id ON calls (channelid);

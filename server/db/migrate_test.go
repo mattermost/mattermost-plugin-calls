@@ -117,6 +117,14 @@ func TestMigrate(t *testing.T) {
 							Enabled:   true,
 						},
 					}, callsChannels)
+
+					channels, err := store.GetAllCallsChannels(GetCallsChannelOpts{})
+					require.NoError(t, err)
+					require.Len(t, channels, 4)
+					require.Nil(t, channels[0].Props)
+					require.Nil(t, channels[1].Props)
+					require.Nil(t, channels[2].Props)
+					require.Nil(t, channels[3].Props)
 				})
 
 				t.Run("down", func(t *testing.T) {
@@ -239,6 +247,14 @@ func TestMigrate(t *testing.T) {
 						Enabled:   true,
 					},
 				}, callsChannels)
+
+				channels, err := store.GetAllCallsChannels(GetCallsChannelOpts{})
+				require.NoError(t, err)
+				require.Len(t, channels, 4)
+				require.Nil(t, channels[0].Props)
+				require.Nil(t, channels[1].Props)
+				require.Nil(t, channels[2].Props)
+				require.Nil(t, channels[3].Props)
 			})
 
 			t.Run("down", func(t *testing.T) {

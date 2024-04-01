@@ -9,9 +9,9 @@ CREATE TABLE IF NOT EXISTS calls (
     PostID VARCHAR(26),
     ThreadID VARCHAR(26),
     OwnerID VARCHAR(26),
-    Participants JSON,
-    Stats JSON,
-    Props JSON
+    Participants JSON NOT NULL,
+    Stats JSON NOT NULL,
+    Props JSON NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 SET @preparedStatement = (SELECT IF(

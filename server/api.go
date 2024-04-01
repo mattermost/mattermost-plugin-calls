@@ -427,7 +427,7 @@ func (p *Plugin) handlePostCallsChannel(w http.ResponseWriter, r *http.Request) 
 	}()
 
 	if storedChannel == nil {
-		storedChannel := &public.CallsChannel{
+		storedChannel = &public.CallsChannel{
 			ChannelID: channelID,
 			Enabled:   channel.Enabled,
 			Props:     channel.Props,
