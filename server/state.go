@@ -228,19 +228,14 @@ func (p *Plugin) getCallStateFromCall(call *public.Call, fromWriter bool) (*call
 	}
 	state.sessions = sessions
 
-	jobs, err := p.store.GetCallJobs(call.ID, db.GetCallJobOpts{
+	jobs, err := p.store.GetActiveCallJobs(call.ID, db.GetCallJobOpts{
 		FromWriter: fromWriter,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get call jobs: %w", err)
 	}
-	for _, job := range jobs {
-		if job.Type == public.JobTypeRecording && state.Recording == nil {
-			state.Recording = job
-		} else if job.Type == public.JobTypeTranscribing && state.Transcription == nil {
-			state.Transcription = job
-		}
-	}
+	state.Recording = jobs[public.JobTypeRecording]
+	state.Transcription = jobs[public.JobTypeTranscribing]
 
 	return state, nil
 }
@@ -314,7 +309,7 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 		p.LogError("failed to delete calls sessions", "err", err.Error())
 	}
 
-	jobs, err := p.store.GetCallJobs(call.ID, db.GetCallJobOpts{
+	jobs, err := p.store.GetActiveCallJobs(call.ID, db.GetCallJobOpts{
 		FromWriter: true,
 	})
 	if err != nil {

@@ -99,17 +99,15 @@ func (s *Store) GetCallJob(id string, opts GetCallJobOpts) (*public.CallJob, err
 	return &job, nil
 }
 
-func (s *Store) GetCallJobs(callID string, opts GetCallJobOpts) ([]*public.CallJob, error) {
-	s.metrics.IncStoreOp("GetCallJobs")
+func (s *Store) GetActiveCallJobs(callID string, opts GetCallJobOpts) (map[public.JobType]*public.CallJob, error) {
+	s.metrics.IncStoreOp("GetActiveCallJobs")
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls_jobs").
-		Where(sq.Eq{"CallID": callID}).
-		OrderBy("StartAt DESC, ID")
-
-	if !opts.IncludeEnded {
-		qb = qb.Where(sq.Eq{"EndAt": 0})
-	}
+		Where(sq.And{
+			sq.Eq{"CallID": callID},
+			sq.Eq{"EndAt": 0},
+		}).OrderBy("StartAt DESC, ID")
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -121,5 +119,17 @@ func (s *Store) GetCallJobs(callID string, opts GetCallJobOpts) ([]*public.CallJ
 		return nil, fmt.Errorf("failed to get call jobs: %w", err)
 	}
 
-	return jobs, nil
+	// We want to return only one job per type. Since we are sorting by
+	// StartAt (DESC) we select the first one we find. It should generally be one
+	// but we want to avoid consistencies issues (e.g. two running jobs for same
+	// type).
+	jobsMap := make(map[public.JobType]*public.CallJob, len(jobs))
+	for _, job := range jobs {
+		_, ok := jobsMap[job.Type]
+		if !ok {
+			jobsMap[job.Type] = job
+		}
+	}
+
+	return jobsMap, nil
 }

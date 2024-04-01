@@ -17,10 +17,10 @@ import (
 func TestCallsJobsStore(t *testing.T) {
 	t.Parallel()
 	testStore(t, map[string]func(t *testing.T, store *Store){
-		"TestCreateCallJob": testCreateCallJob,
-		"TestUpdateCallJob": testUpdateCallJob,
-		"TestGetCallJob":    testGetCallJob,
-		"TestGetCallJobs":   testGetCallJobs,
+		"TestCreateCallJob":     testCreateCallJob,
+		"TestUpdateCallJob":     testUpdateCallJob,
+		"TestGetCallJob":        testGetCallJob,
+		"TestGetActiveCallJobs": testGetActiveCallJobs,
 	})
 }
 
@@ -179,9 +179,9 @@ func testGetCallJob(t *testing.T, store *Store) {
 	})
 }
 
-func testGetCallJobs(t *testing.T, store *Store) {
+func testGetActiveCallJobs(t *testing.T, store *Store) {
 	t.Run("no jobs", func(t *testing.T) {
-		jobs, err := store.GetCallJobs(model.NewId(), GetCallJobOpts{})
+		jobs, err := store.GetActiveCallJobs(model.NewId(), GetCallJobOpts{})
 		require.NoError(t, err)
 		require.Empty(t, jobs)
 	})
@@ -205,11 +205,11 @@ func testGetCallJobs(t *testing.T, store *Store) {
 		err = store.CreateCallJob(&trJob)
 		require.NoError(t, err)
 
-		jobs, err := store.GetCallJobs(callID, GetCallJobOpts{})
+		jobs, err := store.GetActiveCallJobs(callID, GetCallJobOpts{})
 		require.NoError(t, err)
-		require.ElementsMatch(t, []*public.CallJob{
-			recJob,
-			&trJob,
+		require.Equal(t, map[public.JobType]*public.CallJob{
+			public.JobTypeRecording:    recJob,
+			public.JobTypeTranscribing: &trJob,
 		}, jobs)
 	})
 
@@ -235,12 +235,12 @@ func testGetCallJobs(t *testing.T, store *Store) {
 			require.NoError(t, err)
 		}
 
-		gotJobs, err := store.GetCallJobs(callID, GetCallJobOpts{})
+		gotJobs, err := store.GetActiveCallJobs(callID, GetCallJobOpts{})
 		require.NoError(t, err)
-		require.Equal(t, jobs[len(jobs)-1], gotJobs[0])
+		require.Equal(t, jobs[len(jobs)-1], gotJobs[public.JobTypeRecording])
 	})
 
-	t.Run("include ended", func(t *testing.T) {
+	t.Run("should never include ended", func(t *testing.T) {
 		callID := model.NewId()
 		job := &public.CallJob{
 			ID:        model.NewId(),
@@ -253,33 +253,22 @@ func testGetCallJobs(t *testing.T, store *Store) {
 		err := store.CreateCallJob(job)
 		require.NoError(t, err)
 
+		jobs, err := store.GetActiveCallJobs(callID, GetCallJobOpts{
+			IncludeEnded: true,
+		})
+		require.NoError(t, err)
+		require.Equal(t, job, jobs[public.JobTypeRecording])
+
 		job.StartAt = time.Now().UnixMilli()
 		job.EndAt = job.StartAt + 1000
 		err = store.UpdateCallJob(job)
 		require.NoError(t, err)
 
-		job2 := &public.CallJob{
-			ID:        model.NewId(),
-			CallID:    callID,
-			Type:      public.JobTypeRecording,
-			CreatorID: model.NewId(),
-			InitAt:    time.Now().UnixMilli(),
-		}
-		err = store.CreateCallJob(job2)
-		require.NoError(t, err)
-
-		jobs, err := store.GetCallJobs(callID, GetCallJobOpts{})
-		require.NoError(t, err)
-		require.Len(t, jobs, 1)
-		require.Equal(t, job2, jobs[0])
-
-		jobs, err = store.GetCallJobs(callID, GetCallJobOpts{
+		jobs, err = store.GetActiveCallJobs(callID, GetCallJobOpts{
 			IncludeEnded: true,
 		})
 		require.NoError(t, err)
-		require.ElementsMatch(t, []*public.CallJob{
-			job,
-			job2,
-		}, jobs)
+		require.Nil(t, jobs[public.JobTypeRecording])
+		require.Empty(t, jobs)
 	})
 }
