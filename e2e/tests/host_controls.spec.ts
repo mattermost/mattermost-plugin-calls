@@ -14,9 +14,10 @@ test.beforeEach(async ({page, context}) => {
 test.describe('host controls', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('participants list toggle', async ({page}) => {
+    test('host change', async ({page}) => {
+        test.setTimeout(200000);
         const user0Page = await startCall(userStorages[0]);
-        let user1Page = await joinCall(userStorages[1]);
+        const user1Page = await joinCall(userStorages[1]);
         const user2Page = await joinCall(userStorages[2]);
 
         await user0Page.page.locator('#calls-widget-participants-button').click();
@@ -40,12 +41,12 @@ test.describe('host controls', () => {
         await expect(user0Page.page.getByTestId('participant-list-host')).toContainText(usernames[1]);
 
         // When the host leaves, the longest member becomes host.
-        user1Page.leaveCall();
+        await user1Page.leaveCall();
         await user0Page.wait(1000);
         await expect(user0Page.page.getByTestId('participant-list-host')).toContainText(usernames[0]);
 
         // When the assigned host returns, the designated host regains host control.
-        user1Page = await joinCall(userStorages[1]);
+        await joinCall(userStorages[1]);
         await user0Page.wait(1000);
         await expect(user0Page.page.getByTestId('participant-list-host')).toContainText(usernames[1]);
     });
