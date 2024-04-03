@@ -14,6 +14,7 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
+    areLiveCaptionsAvailableInCurrentCall,
     callStartAtForCurrentCall,
     channelForCurrentCall,
     expandedView,
@@ -85,6 +86,7 @@ const mapStateToProps = (state: GlobalState) => {
         recordingsEnabled: recordingsEnabled(state),
         recordingMaxDuration: recordingMaxDuration(state),
         transcriptionsEnabled: transcriptionsEnabled(state),
+        liveCaptionsAvailable: areLiveCaptionsAvailableInCurrentCall(state),
     };
 };
 

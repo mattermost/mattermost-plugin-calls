@@ -53,7 +53,7 @@ import {
     AudioDevices,
     CallAlertStates,
     CallAlertStatesDefault,
-    CallRecordingReduxState,
+    CallJobReduxState,
     IncomingCallNotification,
 } from 'src/types/types';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
@@ -78,7 +78,7 @@ interface Props {
     callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
-    callRecording?: CallRecordingReduxState,
+    callRecording?: CallJobReduxState,
     screenSharingSession?: UserSessionState,
     show: boolean,
     showExpandedView: () => void,
@@ -1014,6 +1014,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 return (
                     <li
                         className='MenuItem'
+                        data-testid={isHost && 'participant-list-host'}
                         key={'participants_profile_' + session.session_id}
                         style={{padding: '11px 16px', gap: '12px'}}
                     >
@@ -1046,7 +1047,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                         {formatMessage({defaultMessage: '(you)'})}
                                     </span>
                                 }
-                                {isHost && <HostBadge onWhiteBg={true}/>}
+                                {isHost &&
+                                    <HostBadge
+                                        data-testid={'participant-list-host-badge'}
+                                        onWhiteBg={true}
+                                    />
+                                }
                             </span>
                         }
 

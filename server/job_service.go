@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -310,11 +309,16 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		baseRecorderCfg.RecordingID = jobID
 		baseRecorderCfg.AuthToken = authToken
 
+		if err := baseRecorderCfg.IsValid(); err != nil {
+			return "", fmt.Errorf("recorder config is not valid: %w", err)
+		}
+
 		jobCfg.Runner = recorderJobRunner
 		jobCfg.MaxDurationSec = int64(*cfg.MaxRecordingDuration * 60)
 		jobCfg.InputData = baseRecorderCfg.ToMap()
 	case job.TypeTranscribing:
 		var transcriberConfig transcriber.CallTranscriberConfig
+		transcriberConfig.SetDefaults()
 		transcriberConfig.SiteURL = siteURL
 		if siteURLOverride := os.Getenv("MM_CALLS_TRANSCRIBER_SITE_URL"); siteURLOverride != "" {
 			s.ctx.LogInfo("using SiteURL override for transcriber job", "siteURL", siteURL, "siteURLOverride", siteURLOverride)
@@ -325,8 +329,15 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		transcriberConfig.TranscriptionID = jobID
 		transcriberConfig.AuthToken = authToken
 		transcriberConfig.ModelSize = cfg.TranscriberModelSize
-		if val := os.Getenv("MM_CALLS_TRANSCRIBER_NUM_THREADS"); val != "" {
-			transcriberConfig.NumThreads, _ = strconv.Atoi(val)
+		transcriberConfig.LiveCaptionsOn = cfg.liveCaptionsEnabled()
+		transcriberConfig.LiveCaptionsModelSize = cfg.LiveCaptionsModelSize
+		transcriberConfig.LiveCaptionsNumTranscribers = *cfg.LiveCaptionsNumTranscribers
+		transcriberConfig.NumThreads = *cfg.TranscriberNumThreads
+		transcriberConfig.LiveCaptionsNumThreadsPerTranscriber = *cfg.LiveCaptionsNumThreadsPerTranscriber
+		transcriberConfig.LiveCaptionsLanguage = cfg.LiveCaptionsLanguage
+
+		if err := transcriberConfig.IsValid(); err != nil {
+			return "", fmt.Errorf("transcriber config is not valid: %w", err)
 		}
 
 		jobCfg.Runner = transcriberJobRunner

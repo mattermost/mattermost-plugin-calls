@@ -28,6 +28,8 @@ import Avatar from 'src/components/avatar/avatar';
 import {Badge, HostBadge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import {Emoji} from 'src/components/emoji/emoji';
+import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
+import CCIcon from 'src/components/icons/cc_icon';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CollapseIcon from 'src/components/icons/collapse';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -41,7 +43,7 @@ import ScreenIcon from 'src/components/icons/screen_icon';
 import ShareScreenIcon from 'src/components/icons/share_screen';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
-import {ExpandedCallContainer} from 'src/components/incoming_calls/expanded_call_container';
+import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import {
     CallAlertConfigs,
@@ -64,7 +66,7 @@ import {
     AudioDevices,
     CallAlertStates,
     CallAlertStatesDefault,
-    CallRecordingReduxState,
+    CallJobReduxState,
 } from 'src/types/types';
 import {
     getCallsClient,
@@ -99,7 +101,7 @@ interface Props extends RouteComponentProps {
     callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
-    callRecording?: CallRecordingReduxState,
+    callRecording?: CallJobReduxState,
     isRecording: boolean,
     hideExpandedView: () => void,
     showScreenSourceModal: () => void,
@@ -123,11 +125,13 @@ interface Props extends RouteComponentProps {
     startCallRecording: (callID: string) => void,
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     transcriptionsEnabled: boolean,
+    liveCaptionsAvailable: boolean,
 }
 
 interface State {
     screenStream: MediaStream | null,
     showParticipantsList: boolean,
+    showLiveCaptions: boolean,
     alerts: CallAlertStates,
 }
 
@@ -138,10 +142,12 @@ const StyledMediaController = styled(MediaController)`
 `;
 
 const StyledMediaControlBar = styled(MediaControlBar)`
+    position: relative;
     display: flex;
     flex-direction: row;
     justify-content: flex-end;
     background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1;
 `;
 
 const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
@@ -174,6 +180,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 overflow: 'auto',
             },
             main: {
+                position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
                 flex: '1',
@@ -289,6 +296,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.state = {
             screenStream: null,
             showParticipantsList: false,
+            showLiveCaptions: false,
             alerts: CallAlertStatesDefault,
         };
 
@@ -534,6 +542,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.props.trackEvent(event, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
+        });
+    };
+
+    onLiveCaptionsToggle = (fromShortcut?: boolean) => {
+        const event = this.state.showLiveCaptions ? Telemetry.Event.LiveCaptionsOff : Telemetry.Event.LiveCaptionsOn;
+        this.props.trackEvent(event, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
+        this.setState({
+            showLiveCaptions: !this.state.showLiveCaptions,
         });
     };
 
@@ -1028,6 +1044,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         }
 
+        const liveCaptionsText = this.state.showLiveCaptions ? formatMessage({defaultMessage: 'Turn off live captions'}) : formatMessage({defaultMessage: 'Turn on live captions'});
+
         const globalRhsSupported = Boolean(this.props.selectRhsPost);
 
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
@@ -1035,6 +1053,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isHost = this.props.callHostID === this.props.currentUserID;
 
         const isRecording = isHost && this.props.isRecording;
+        const showCCButton = this.props.liveCaptionsAvailable;
 
         const recordTooltipText = isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
         const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
@@ -1066,7 +1085,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </span>
 
                         <div style={this.style.headerSpreader}/>
-                        <ExpandedCallContainer/>
+                        <ExpandedIncomingCallContainer/>
                         <OverlayTrigger
                             placement='bottom'
                             key={'close-window'}
@@ -1106,6 +1125,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
                     }
                     {this.props.screenSharingSession && this.renderScreenSharingPlayer()}
+
+                    {this.state.showLiveCaptions &&
+                        <LiveCaptionsOverlay>
+                            <LiveCaptionsStream/>
+                        </LiveCaptionsOverlay>
+                    }
                     <div
                         id='calls-expanded-view-controls'
                         style={this.style.controls}
@@ -1196,6 +1221,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 />
                             }
 
+                            {showCCButton &&
+                                <ControlsButton
+                                    id='calls-popout-cc-button'
+                                    onToggle={this.onLiveCaptionsToggle}
+                                    icon={<CCIcon style={{width: '32px', height: '32px'}}/>}
+                                    tooltipText={liveCaptionsText}
+                                    bgColor={this.state.showLiveCaptions ? 'white' : ''}
+                                    bgColorHover={this.state.showLiveCaptions ? 'rgba(255, 255, 255, 0.92)' : ''}
+                                    iconFill={this.state.showLiveCaptions ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
+                                    iconFillHover={this.state.showLiveCaptions ? 'var(--calls-bg)' : ''}
+                                />
+                            }
+
                             <ReactionButton
                                 ref={this.emojiButtonRef}
                                 trackEvent={this.props.trackEvent}
@@ -1268,7 +1306,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     />
                 }
 
-                <Overlay>
+                <ReactionOverlay>
                     <ReactionStream/>
                     <RecordingInfoPrompt
                         isHost={this.props.callHostID === this.props.currentUserID}
@@ -1279,7 +1317,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         promptDismissed={this.dismissRecordingPrompt}
                         transcriptionsEnabled={this.props.transcriptionsEnabled}
                     />
-                </Overlay>
+                </ReactionOverlay>
             </div>
         );
     }
@@ -1376,10 +1414,19 @@ const CloseButton = styled.button`
     }
 `;
 
-const Overlay = styled.div`
+const ReactionOverlay = styled.div`
     position: absolute;
     bottom: 96px;
     display: flex;
     flex-direction: column;
     gap: 12px;
+`;
+
+const LiveCaptionsOverlay = styled.div`
+    position: absolute;
+    width: calc(100%);
+    display: flex;
+    justify-content: center;
+    bottom: 96px;
+    z-index: auto;
 `;

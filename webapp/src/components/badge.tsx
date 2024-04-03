@@ -92,11 +92,14 @@ type HostBadgeProps = {
     onWhiteBg?: boolean;
 }
 
-export const HostBadge = ({onWhiteBg}: HostBadgeProps) => {
+export const HostBadge = ({onWhiteBg, ...rest}: HostBadgeProps) => {
     const {formatMessage} = useIntl();
 
     return (
-        <div style={{padding: '1px 2px'}}>
+        <div
+            style={{padding: '1px 2px'}}
+            {...rest}
+        >
             <HBadge onWhiteBg={onWhiteBg}>
                 {formatMessage({defaultMessage: 'Host'})}
             </HBadge>

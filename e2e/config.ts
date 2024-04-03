@@ -5,7 +5,8 @@ import {adminState, baseURL, pluginID} from './constants';
 import {headers, newUserPage} from './utils';
 
 type CallsConfig = {
-    enabletranscriptions: boolean;
+    enabletranscriptions?: boolean;
+    enablelivecaptions?: boolean;
 };
 
 export const apiPatchConfig = async (cfg: CallsConfig) => {
@@ -30,14 +31,14 @@ export const apiPatchConfig = async (cfg: CallsConfig) => {
     await expect(resp.status()).toEqual(200);
 };
 
-export const apiEnableTranscriptions = async () => {
+export const apiSetEnableTranscriptions = async (enabled: boolean) => {
     return apiPatchConfig({
-        enabletranscriptions: true,
+        enabletranscriptions: enabled,
     });
 };
 
-export const apiDisableTranscriptions = async () => {
+export const apiSetEnableLiveCaptions = async (enabled: boolean) => {
     return apiPatchConfig({
-        enabletranscriptions: false,
+        enablelivecaptions: enabled,
     });
 };

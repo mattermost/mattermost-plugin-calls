@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -44,11 +45,13 @@ const (
 	wsEventJoin                      = "join"
 	wsEventError                     = "error"
 	wsEventCallHostChanged           = "call_host_changed"
-	wsEventCallRecordingState        = "call_recording_state"
-	wsEventCallTranscriptionState    = "call_transcription_state"
+	wsEventCallJobState              = "call_job_state"
 	wsEventUserDismissedNotification = "user_dismissed_notification"
 	wsEventJobStop                   = "job_stop"
 	wsReconnectionTimeout            = 10 * time.Second
+
+	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+	wsEventCallRecordingState = "call_recording_state"
 )
 
 var (
@@ -744,6 +747,12 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	if userID == p.getBotID() && state.Recording != nil {
+		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+			"callID":   channelID,
+			"jobState": getClientStateFromCallJob(state.Recording).toMap(),
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   channelID,
 			"recState": getClientStateFromCallJob(state.Recording).toMap(),
@@ -1003,6 +1012,41 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 		msg.Data = []byte(msgData)
+	case clientMessageTypeCaption:
+		// Sent from the transcriber.
+		p.metrics.IncWebSocketEvent("in", msg.Type)
+		sessionID, ok := req.Data["session_id"].(string)
+		if !ok {
+			p.LogError("invalid or missing session_id in caption ws message")
+			return
+		}
+		userID, ok := req.Data["user_id"].(string)
+		if !ok {
+			p.LogError("invalid or missing user_id in caption ws message")
+			return
+		}
+		text, ok := req.Data["text"].(string)
+		if !ok {
+			p.LogError("invalid or missing text in caption ws message")
+			return
+		}
+		newAudioLenMs, ok := req.Data["new_audio_len_ms"].(float64)
+		if !ok {
+			p.LogError("invalid or missing new_audio_len_ms in caption ws message")
+			return
+		}
+		p.handleCaptionMessage(us.channelID, sessionID, userID, text, newAudioLenMs)
+		return
+	case clientMessageTypeMetric:
+		// Sent from the transcriber.
+		p.metrics.IncWebSocketEvent("in", msg.Type)
+		metricName, ok := req.Data["metric_name"].(string)
+		if !ok {
+			p.LogError("invalid or missing metric_name in metric ws message")
+			return
+		}
+		p.handleMetricMessage(public.MetricName(metricName))
+		return
 	}
 
 	select {
@@ -1081,11 +1125,39 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 			"botConnID", connID,
 		)
 		state.Transcription.Props.BotConnID = connID
-
 		if err := p.store.UpdateCallJob(state.Transcription); err != nil {
 			return fmt.Errorf("failed to update call job: %w", err)
+		}
+		if state.LiveCaptions != nil && state.LiveCaptions.Props.BotConnID == prevConnID {
+			state.LiveCaptions.Props.BotConnID = connID
+			if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
+				return fmt.Errorf("failed to update call job: %w", err)
+			}
 		}
 	}
 
 	return nil
+}
+
+func (p *Plugin) handleCaptionMessage(channelID, captionFromSessionID, captionFromUserID, text string, newAudioLenMs float64) {
+	// TODO: broadcast to participants only, https://github.com/mattermost/mattermost-plugin-calls/pull/609
+	p.publishWebSocketEvent(clientMessageTypeCaption, map[string]interface{}{
+		"channel_id": channelID,
+		"user_id":    captionFromUserID,
+		"session_id": captionFromSessionID,
+		"text":       text,
+	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+	p.metrics.ObserveLiveCaptionsAudioLen(newAudioLenMs)
+}
+
+func (p *Plugin) handleMetricMessage(metricName public.MetricName) {
+	switch metricName {
+	case public.MetricLiveCaptionsWindowDropped:
+		p.metrics.IncLiveCaptionsWindowDropped()
+	case public.MetricLiveCaptionsTranscriberBufFull:
+		p.metrics.IncLiveCaptionsTranscriberBufFull()
+	case public.MetricLiveCaptionsPktPayloadChBufFull:
+		p.metrics.IncLiveCaptionsPktPayloadChBufFull()
+	}
 }

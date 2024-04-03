@@ -67,6 +67,7 @@ type CallProps struct {
 	ScreenStartAt          int64               `json:"screen_start_at,omitempty"`
 	NodeID                 string              `json:"node_id,omitempty"`
 	Participants           map[string]struct{} `json:"participants,omitempty"`
+	HostLockedUserID       string              `json:"host_locked_user_id,omitempty"`
 }
 
 type CallStats struct {

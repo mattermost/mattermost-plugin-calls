@@ -1,10 +1,12 @@
 import {
     CallHostChangedData,
-    CallRecordingStateData,
+    CallJobStateData,
     CallStartData,
     CallState,
     CallStateData,
     EmptyData,
+    LiveCaption,
+    LiveCaptionData,
     Reaction,
     UserDismissedNotification,
     UserJoinedData,
@@ -19,19 +21,29 @@ import {
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {generateId} from 'mattermost-redux/utils/helpers';
 import {incomingCallOnChannel, loadCallState, removeIncomingCallNotification, userLeft} from 'src/actions';
 import {
     userLeftChannelErr,
     userRemovedFromChannelErr,
 } from 'src/client';
-import {JOINED_USER_NOTIFICATION_TIMEOUT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
+import {
+    JOB_TYPE_CAPTIONING,
+    JOB_TYPE_RECORDING,
+    JOINED_USER_NOTIFICATION_TIMEOUT,
+    LIVE_CAPTION_TIMEOUT,
+    REACTION_TIMEOUT_IN_REACTION_STREAM,
+} from 'src/constants';
 
 import {
     CALL_END,
     CALL_HOST,
+    CALL_LIVE_CAPTIONS_STATE,
     CALL_RECORDING_STATE,
     CALL_STATE,
     DISMISS_CALL,
+    LIVE_CAPTION,
+    LIVE_CAPTION_TIMEOUT_EVENT,
     PROFILE_JOINED,
     USER_JOINED,
     USER_JOINED_TIMEOUT,
@@ -97,14 +109,22 @@ export async function handleCallState(store: Store, ev: WebSocketMessage<CallSta
 export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
-    // Clear the old recording state (if any).
+    // Clear the old recording and live captions state (if any).
     store.dispatch({
         type: CALL_RECORDING_STATE,
         data: {
             callID: channelID,
-            recState: null,
+            jobState: null,
         },
     });
+    store.dispatch({
+        type: CALL_LIVE_CAPTIONS_STATE,
+        data: {
+            callID: channelID,
+            jobState: null,
+        },
+    });
+
     store.dispatch({
         type: CALL_STATE,
         data: {
@@ -342,16 +362,26 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
     });
 }
 
-export function handleCallRecordingState(store: Store, ev: WebSocketMessage<CallRecordingStateData>) {
-    if (ev.data.recState.err) {
-        ev.data.recState.error_at = Date.now();
+export function handleCallJobState(store: Store, ev: WebSocketMessage<CallJobStateData>) {
+    if (ev.data.jobState.err) {
+        ev.data.jobState.error_at = Date.now();
+    }
+
+    let type = '';
+    switch (ev.data.jobState.type) {
+    case JOB_TYPE_RECORDING:
+        type = CALL_RECORDING_STATE;
+        break;
+    case JOB_TYPE_CAPTIONING:
+        type = CALL_LIVE_CAPTIONS_STATE;
+        break;
     }
 
     store.dispatch({
-        type: CALL_RECORDING_STATE,
+        type,
         data: {
             callID: ev.data.callID,
-            recState: ev.data.recState,
+            jobState: ev.data.jobState,
         },
     });
 }
@@ -381,3 +411,35 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
         getCallsClient()?.disconnect(removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr);
     }
 }
+
+export function handleCaption(store: Store, ev: WebSocketMessage<LiveCaptionData>) {
+    const channel_id = ev.data.channel_id;
+
+    if (channelIDForCurrentCall(store.getState()) !== channel_id) {
+        return;
+    }
+
+    const profiles = profilesInCurrentCallMap(store.getState());
+    const display_name = getUserDisplayName(profiles[ev.data.user_id]);
+    const caption: LiveCaption = {
+        ...ev.data,
+        channel_id,
+        display_name,
+        caption_id: generateId(),
+    };
+    store.dispatch({
+        type: LIVE_CAPTION,
+        data: caption,
+    });
+    setTimeout(() => {
+        store.dispatch({
+            type: LIVE_CAPTION_TIMEOUT_EVENT,
+            data: {
+                channel_id,
+                session_id: caption.session_id,
+                caption_id: caption.caption_id,
+            },
+        });
+    }, LIVE_CAPTION_TIMEOUT);
+}
+
