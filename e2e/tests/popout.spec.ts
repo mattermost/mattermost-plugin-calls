@@ -240,26 +240,6 @@ test.describe('popout window', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('raising hand', async ({page, context}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.goto();
-        await devPage.startCall();
-
-        const [popOut, _] = await Promise.all([
-            context.waitForEvent('page'),
-            page.click('#calls-widget-expand-button'),
-        ]);
-        await expect(popOut.locator('#calls-popout-emoji-picker-button')).toBeVisible();
-
-        await popOut.locator('#calls-popout-emoji-picker-button').click();
-
-        await expect(popOut.getByTestId('raise-hand-button')).toBeVisible();
-        await popOut.getByTestId('raise-hand-button').click();
-        await expect(popOut.getByTestId('lower-hand-button')).toBeVisible();
-        await popOut.getByTestId('lower-hand-button').click();
-        await expect(popOut.getByTestId('raise-hand-button')).toBeVisible();
-    });
-
     test('/call leave slash command', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
@@ -281,5 +261,140 @@ test.describe('popout window', () => {
         // Verify we left the call.
         await expect(page.locator('#calls-widget')).toBeHidden();
         await expect(popOut.isClosed()).toEqual(true);
+    });
+});
+
+test.describe('popout window - reactions', () => {
+    test.use({storageState: userStorages[0]});
+
+    test('raising hand', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.goto();
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-popout-emoji-picker-button')).toBeVisible();
+
+        await popOut.locator('#calls-popout-emoji-picker-button').click();
+
+        await expect(popOut.getByTestId('raise-hand-button')).toBeVisible();
+        await popOut.getByTestId('raise-hand-button').click();
+        await expect(popOut.getByTestId('lower-hand-button')).toBeVisible();
+        await popOut.getByTestId('lower-hand-button').click();
+        await expect(popOut.getByTestId('raise-hand-button')).toBeVisible();
+    });
+
+    test('quick reaction', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.goto();
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-popout-emoji-picker-button')).toBeVisible();
+
+        // Open reaction bar
+        await popOut.locator('#calls-popout-emoji-picker-button').click();
+
+        // Verify the reactions bar is visibile and the full reaction picker is not
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeVisible();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeHidden();
+
+        // Quick react
+        await popOut.locator('span.emoticon').first().click();
+
+        // Verify that reacting closes the bar
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeHidden();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeHidden();
+
+        // Open reaction bar
+        await popOut.locator('#calls-popout-emoji-picker-button').click();
+
+        // Verify the reactions bar is visibile and the full reaction picker is not
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeVisible();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeHidden();
+
+        // Press Escape
+        await popOut.keyboard.press('Escape');
+
+        // Verify that hitting Escape key closes it
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeHidden();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeHidden();
+
+        // Open reaction bar
+        await popOut.locator('#calls-popout-emoji-picker-button').click();
+
+        // Verify the reactions bar is visibile and the full reaction picker is not
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeVisible();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeHidden();
+
+        // Click outside
+        await popOut.locator('#calls-expanded-view').click({force: true, position: {x: 0, y: 0}});
+
+        // Verify that clicking outside closes it
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeHidden();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeHidden();
+    });
+
+    test('reaction picker', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.goto();
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-popout-emoji-picker-button')).toBeVisible();
+
+        // Open reaction bar
+        await popOut.locator('#calls-popout-emoji-picker-button').click();
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeVisible();
+
+        // Open reaction picker
+        await popOut.locator('i.icon-emoticon-plus-outline').click();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeVisible();
+
+        // Pick a reaction
+        await popOut.locator('button.epr-visible').first().click();
+
+        // Verify that reacting closes both the bar and picker
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeHidden();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeHidden();
+
+        // Open reaction bar
+        await popOut.locator('#calls-popout-emoji-picker-button').click();
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeVisible();
+
+        // Open reaction picker
+        await popOut.locator('i.icon-emoticon-plus-outline').click();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeVisible();
+
+        // Press Escape
+        await popOut.keyboard.press('Escape');
+
+        // Verify that hitting Escape key closes everything
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeHidden();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeHidden();
+
+        // Open reaction bar
+        await popOut.locator('#calls-popout-emoji-picker-button').click();
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeVisible();
+
+        // Open reaction picker
+        await popOut.locator('i.icon-emoticon-plus-outline').click();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeVisible();
+
+        // Click outside
+        await popOut.locator('#calls-expanded-view').click({force: true, position: {x: 0, y: 0}});
+
+        // Verify that clicking outside closes everything
+        await expect(popOut.locator('#calls-popout-emoji-bar')).toBeHidden();
+        await expect(popOut.locator('#calls-popout-emoji-picker')).toBeHidden();
     });
 });
