@@ -15,3 +15,5 @@ CREATE TABLE IF NOT EXISTS calls (
 );
 
 CREATE INDEX IF NOT EXISTS idx_calls_channel_id ON calls (channelid);
+
+CREATE INDEX IF NOT EXISTS idx_calls_end_at ON calls (endat);
