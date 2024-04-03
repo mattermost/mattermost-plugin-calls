@@ -28,3 +28,18 @@ SET @preparedStatement = (SELECT IF(
 PREPARE createIndexIfNotExists FROM @preparedStatement;
 EXECUTE createIndexIfNotExists;
 DEALLOCATE PREPARE createIndexIfNotExists;
+
+SET @preparedStatement = (SELECT IF(
+    (
+        SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+        WHERE table_name = 'calls'
+        AND table_schema = DATABASE()
+        AND index_name = 'idx_calls_end_at'
+    ) > 0,
+    'SELECT 1',
+    'CREATE INDEX idx_calls_end_at ON calls(EndAt);'
+));
+
+PREPARE createIndexIfNotExists FROM @preparedStatement;
+EXECUTE createIndexIfNotExists;
+DEALLOCATE PREPARE createIndexIfNotExists;
