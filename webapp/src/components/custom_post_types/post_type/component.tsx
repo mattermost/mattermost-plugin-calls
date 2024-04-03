@@ -239,12 +239,12 @@ const Main = styled.div`
     }
 `;
 
-const SubMain = styled.div<{ $ended: boolean }>`
+const SubMain = styled.div`
     display: flex;
     align-items: center;
     width: 100%;
-    flex-wrap: ${(props) => (props.$ended ? 'nowrap' : 'wrap')};
-    row-gap: 8px;
+    flex-wrap: wrap;
+    row-gap: 20px;
 `;
 
 const Left = styled.div`
@@ -258,6 +258,7 @@ const Left = styled.div`
 const Right = styled.div`
     display: flex;
     flex-grow: 1;
+    gap: 12px;
 `;
 
 const CallIndicator = styled.div<{ $ended: boolean }>`
@@ -369,6 +370,7 @@ const RecordingsContainer = styled.div`
     align-items: center;
     font-size: 12px;
     line-height: 16px;
+    white-space: nowrap;
     color: rgba(var(--center-channel-color-rgb), 0.72);
 `;
 
