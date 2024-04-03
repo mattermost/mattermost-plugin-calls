@@ -79,45 +79,50 @@ const PostType = ({
     const recordings = callProps.recording_files?.length || 0;
 
     const recordingsSubMessage = recordings > 0 ? (
-        <>
-            <Divider>{untranslatable('•')}</Divider>
+        <RecordingsContainer>
             <CompassIcon
                 icon='file-video-outline'
-                style={{display: 'inline'}}
+                style={{display: 'inline', fontSize: '16px'}}
             />
-            <span>{formatMessage({defaultMessage: '{count, plural, =1 {# recording} other {# recordings}} available'}, {count: recordings})}</span>
-        </>
+            <span>{formatMessage({defaultMessage: '{count, plural, =1 {# recording} other {# recordings}}'}, {count: recordings})}</span>
+        </RecordingsContainer>
     ) : null;
 
     const subMessage = callProps.start_at && callProps.end_at ? (
         <>
-            <Duration>
+            <span>
                 {formatMessage(
                     {defaultMessage: 'Ended at {endTime}'},
                     {endTime: DateTime.fromMillis(callProps.end_at).toLocaleString(timeFormat)},
                 )}
-            </Duration>
+            </span>
             <Divider>{untranslatable('•')}</Divider>
-            <Duration>
+            <span>
                 {formatMessage(
                     {defaultMessage: 'Lasted {callDuration}'},
                     {callDuration: toHuman(intl, LuxonDuration.fromMillis(callProps.end_at - callProps.start_at), 'minutes', {unitDisplay: 'long'})},
                 )}
-            </Duration>
-            {recordingsSubMessage}
+            </span>
         </>
     ) : (
-        <Duration>
+        <>
             <Timestamp
                 timestampFn={timestampFn}
                 interval={5000}
             />
-        </Duration>
+            { untranslatable(' ')}
+            {
+                formatMessage({defaultMessage: 'by {user}'}, {user: getUserDisplayName(user)})
+            }
+        </>
     );
 
     let joinButton = (
         <JoinButton onClick={onJoin}>
-            <CallIcon fill='var(--center-channel-bg)'/>
+            <ActiveCallIcon
+                fill='var(--center-channel-bg)'
+                style={{width: '16px', height: '16px'}}
+            />
             <ButtonText>{formatMessage({defaultMessage: 'Join call'})}</ButtonText>
         </JoinButton>
     );
@@ -155,10 +160,10 @@ const PostType = ({
     const button = inCall ? (
         <LeaveButton onClick={onLeaveButtonClick}>
             <LeaveCallIcon
-                fill='var(--error-text)'
-                style={{width: '14px', height: '14px'}}
+                fill='var(--button-color)'
+                style={{width: '18px', height: '16px'}}
             />
-            <ButtonText>{formatMessage({defaultMessage: 'Leave call'})}</ButtonText>
+            <ButtonText>{formatMessage({defaultMessage: 'Leave'})}</ButtonText>
         </LeaveButton>
     ) : joinButton;
 
@@ -172,20 +177,20 @@ const PostType = ({
                             {!callProps.end_at &&
                                 <ActiveCallIcon
                                     fill='var(--center-channel-bg)'
-                                    style={{width: '100%', height: '100%'}}
+                                    style={{width: '20px', height: '20px'}}
                                 />
                             }
                             {callProps.end_at &&
                                 <LeaveCallIcon
-                                    fill={'rgba(var(--center-channel-color-rgb), 0.56)'}
-                                    style={{width: '100%', height: '100%'}}
+                                    fill={'rgba(var(--center-channel-color-rgb), 0.72)'}
+                                    style={{width: '24px', height: '20px'}}
                                 />
                             }
                         </CallIndicator>
                         <MessageWrapper>
                             <Message>
                                 {!callProps.end_at &&
-                                    formatMessage({defaultMessage: '{user} started a call'}, {user: getUserDisplayName(user)})
+                                    formatMessage({defaultMessage: 'Call started'})
                                 }
                                 {callProps.end_at &&
                                     formatMessage({defaultMessage: 'Call ended'})
@@ -200,15 +205,16 @@ const PostType = ({
                                 <Profiles>
                                     <ConnectedProfiles
                                         profiles={profiles}
-                                        size={32}
-                                        fontSize={12}
+                                        size={28}
+                                        fontSize={14}
                                         border={true}
-                                        maxShowedProfiles={2}
+                                        maxShowedProfiles={3}
                                     />
                                 </Profiles>
                                 {button}
                             </>
                         }
+                        {recordingsSubMessage}
                     </Right>
                 </SubMain>
             </Main>
@@ -223,10 +229,14 @@ const Main = styled.div`
     margin: 4px 0;
     padding: 16px;
     background: var(--center-channel-bg);
-    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
-    box-shadow: 0px 4px 6px rgba(var(--center-channel-color-rgb), 0.12);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    box-shadow: var(--elevation-1);
     color: var(--center-channel-color);
     border-radius: 4px;
+
+    &:hover {
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    }
 `;
 
 const SubMain = styled.div<{ $ended: boolean }>`
@@ -251,12 +261,15 @@ const Right = styled.div`
 `;
 
 const CallIndicator = styled.div<{ $ended: boolean }>`
-    background: ${(props) => (props.$ended ? 'rgba(var(--center-channel-color-rgb), 0.16)' : 'var(--online-indicator)')};
-    border-radius: 4px;
-    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: ${(props) => (props.$ended ? 'rgba(var(--center-channel-color-rgb), 0.08)' : 'var(--online-indicator)')};
+    border-radius: 24px;
     width: 40px;
     height: 40px;
     flex-shrink: 0;
+    gap: 8px;
 `;
 
 const MessageWrapper = styled.div`
@@ -268,22 +281,25 @@ const MessageWrapper = styled.div`
 
 const Message = styled.span`
     font-weight: 600;
+    font-family: Metropolis;
+    font-size: 16px;
+    line-height: 24px;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--center-channel-color);
 `;
 
 const SubMessage = styled.div`
     white-space: normal;
+    font-size: 12px;
+    line-height: 16px;
+    color: rgba(var(--center-channel-color-rgb), 0.72);
 `;
 
 const Profiles = styled.div`
     display: flex;
     align-items: center;
     margin-right: auto;
-`;
-
-const Duration = styled.span`
-    color: var(--center-channel-color);
 `;
 
 const Button = styled.button`
@@ -296,13 +312,41 @@ const Button = styled.button`
 `;
 
 const JoinButton = styled(Button)`
+    font-size: 14px;
+    line-height: 20px;
     color: var(--center-channel-bg);
     background: var(--online-indicator);
+
+    &:hover {
+        background: linear-gradient(0deg, var(--online-indicator), var(--online-indicator)),
+            linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
+        background-blend-mode: multiply;
+    }
+
+    &:active {
+        background: linear-gradient(0deg, var(--online-indicator), var(--online-indicator)),
+            linear-gradient(0deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16));
+        background-blend-mode: multiply;
+    }
 `;
 
 const LeaveButton = styled(Button)`
-    color: var(--error-text);
-    background: rgba(var(--error-text-color-rgb), 0.16);
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--button-color);
+    background: var(--error-text);
+
+    &:hover {
+        background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+            linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
+        background-blend-mode: multiply;
+    }
+
+    &:active {
+        background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+            linear-gradient(0deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16));
+        background-blend-mode: multiply;
+    }
 `;
 
 const ButtonText = styled.span`
@@ -318,6 +362,14 @@ const DisabledButton = styled(Button)`
 
 const Divider = styled.span`
     margin: 0 4px;
+`;
+
+const RecordingsContainer = styled.div`
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    line-height: 16px;
+    color: rgba(var(--center-channel-color-rgb), 0.72);
 `;
 
 export default PostType;
