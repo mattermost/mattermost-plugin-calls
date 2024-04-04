@@ -22,7 +22,7 @@ export const ParticipantsList = ({
     callHostID,
     currentSession,
     screenSharingSession,
-    callID
+    callID,
 }: Props) => {
     const {formatMessage} = useIntl();
 

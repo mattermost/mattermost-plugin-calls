@@ -6,7 +6,7 @@
 import './component.scss';
 
 import {mosThreshold} from '@calls/common';
-import {UserSessionState,} from '@calls/common/lib/types';
+import {UserSessionState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
@@ -19,7 +19,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
-import {stopCallRecording,} from 'src/actions';
+import {stopCallRecording} from 'src/actions';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
@@ -39,7 +39,7 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
-import {CallAlertConfigs,} from 'src/constants';
+import {CallAlertConfigs} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -54,7 +54,7 @@ import {
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
 import * as Telemetry from 'src/types/telemetry';
-import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallJobReduxState,} from 'src/types/types';
+import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallJobReduxState} from 'src/types/types';
 import {
     getCallsClient,
     getScreenStream,
