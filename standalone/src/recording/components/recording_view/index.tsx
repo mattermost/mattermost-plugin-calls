@@ -18,15 +18,15 @@ import {
     hostIDForCurrentCall,
     profilesInCurrentCallMap,
     screenSharingSessionForCurrentCall,
-    sessionsInCurrentCall
+    sessionsInCurrentCall,
 } from 'src/selectors';
 
 const MaxParticipantsPerRow = 10;
 
 const RecordingView = () => {
     const {formatMessage} = useIntl();
-    const [screenPlayerNode, setScreenPlayerNode] = useState<HTMLVideoElement|null>(null);
-    const [screenStream, setScreenStream] = useState<MediaStream|null>(null);
+    const [screenPlayerNode, setScreenPlayerNode] = useState<HTMLVideoElement | null>(null);
+    const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
     const callsClient = window.callsClient;
     const screenSharingSession = useSelector(screenSharingSessionForCurrentCall);
 
@@ -206,7 +206,7 @@ const RecordingView = () => {
             id='calls-recording-view'
             style={style.root}
         >
-            { !hasScreenShare &&
+            {!hasScreenShare &&
                 <div style={style.main}>
                     <ul
                         id='calls-recording-view-participants-grid'
@@ -215,11 +215,11 @@ const RecordingView = () => {
                             gridTemplateColumns: `repeat(${Math.min(sessions.length, MaxParticipantsPerRow)}, 1fr)`,
                         }}
                     >
-                        { renderParticipants() }
+                        {renderParticipants()}
                     </ul>
                 </div>
             }
-            { hasScreenShare && renderScreenSharingPlayer() }
+            {hasScreenShare && renderScreenSharingPlayer()}
 
             <div
                 style={style.footer}
@@ -228,7 +228,7 @@ const RecordingView = () => {
                 <span style={{marginLeft: '4px'}}>
                     {untranslatable('• ')}{formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: sessions.length})}
                 </span>
-                { hasScreenShare && renderSpeaking() }
+                {hasScreenShare && renderSpeaking()}
             </div>
 
             <div style={style.reactionsContainer}>
