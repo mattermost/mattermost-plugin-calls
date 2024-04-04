@@ -838,9 +838,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             display: 'flex',
                             width: '100%',
                             height: '100%',
-                            background: 'rgba(var(--dnd-indicator-rgb), 0.4)',
+                            top: '1px',
+                            background: 'rgba(63, 67, 80, 0.4)',
                             justifyContent: 'center',
                             alignItems: 'center',
+                            borderRadius: '8px',
                             zIndex: 1001,
                         }}
                     >
@@ -910,7 +912,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <span
                         style={{
                             marginTop: '8px',
-                            color: 'rgba(var(--center-channel-color-rgb), 0.56)',
+                            color: 'rgba(var(--center-channel-color-rgb), 0.72)',
                             fontSize: '12px',
                             padding: '0 8px',
                             textAlign: 'center',
