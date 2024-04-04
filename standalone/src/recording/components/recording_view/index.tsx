@@ -14,7 +14,12 @@ import {useSelector} from 'react-redux';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import Timestamp from 'src/components/timestamp';
 import {callProfileImages} from 'src/recording/selectors';
-import {hostIDForCurrentCall, profilesInCurrentCallMap, screenSharingSessionForCurrentCall, sessionsInCurrentCall} from 'src/selectors';
+import {
+    hostIDForCurrentCall,
+    profilesInCurrentCallMap,
+    screenSharingSessionForCurrentCall,
+    sessionsInCurrentCall
+} from 'src/selectors';
 
 const MaxParticipantsPerRow = 10;
 
@@ -150,6 +155,8 @@ const RecordingView = () => {
                     isHandRaised={isHandRaised}
                     reaction={session?.reaction}
                     isHost={profile.id === hostID}
+                    iAmHost={false}
+                    isYou={false}
                 />
             );
         });

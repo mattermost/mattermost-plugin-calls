@@ -500,6 +500,15 @@ export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
     return !isCloud(state) && !enterprise;
 };
 
+export const isAtLeastProfessional = (state: GlobalState): boolean => {
+    const license = getLicense(state);
+    const enterprise = license.SkuShortName === LicenseSkus.E20 || license.SkuShortName === LicenseSkus.Enterprise;
+    const professional = license.SkuShortName === LicenseSkus.E10 || license.SkuShortName === LicenseSkus.Professional;
+    return enterprise || professional || isCloudProfessionalOrEnterpriseOrTrial(state);
+};
+
+export const areHostControlsAllowed = (state: GlobalState): boolean => isAtLeastProfessional(state);
+
 export const adminStats = (state: GlobalState) => state.entities.admin.analytics;
 
 export const getChannelUrlAndDisplayName = (state: GlobalState, channel?: Channel) => {
