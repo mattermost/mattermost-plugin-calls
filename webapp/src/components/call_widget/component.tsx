@@ -847,18 +847,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         }}
                     >
                         <button
+                            id='calls-widget-stop-screenshare'
                             data-testid='calls-widget-stop-screenshare'
                             className='cursor--pointer style--none'
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                padding: '8px 16px',
-                                background: 'var(--dnd-indicator)',
-                                color: 'white',
-                                borderRadius: '4px',
-                                fontWeight: 600,
-                            }}
                             onClick={() => this.onShareScreenToggle()}
                         >
                             {formatMessage({defaultMessage: 'Stop sharing'})}
