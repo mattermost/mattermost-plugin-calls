@@ -119,3 +119,26 @@ a.calls-channel-link {
 #calls-widget-menu-screenshare.unavailable {
   background: none;
 }
+
+#calls-widget #calls-widget-stop-screenshare {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 16px;
+    background: var(--error-text);
+    color: white;
+    border-radius: 4px;
+    font-weight: 600;
+
+    &:hover {
+        background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+            linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
+        background-blend-mode: multiply;
+    }
+
+    &:active {
+        background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+            linear-gradient(0deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16));
+        background-blend-mode: multiply;
+    }
+}
