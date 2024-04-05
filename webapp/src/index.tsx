@@ -1,15 +1,14 @@
 /* eslint-disable max-lines */
 
 import {CallChannelState} from '@calls/common/lib/types';
+import WebSocketClient from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
-import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
-import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
-import React from 'react';
+import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import React, {useEffect} from 'react';
 import ReactDOM from 'react-dom';
 import {injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
@@ -21,7 +20,6 @@ import {
     displayFreeTrial,
     getCallsConfig,
     incomingCallOnChannel,
-    loadCallState,
     showScreenSourceModal,
     showSwitchCallModal,
 } from 'src/actions';
@@ -111,13 +109,11 @@ import {DesktopNotificationArgs, PluginRegistry, Store, WebAppUtils} from './typ
 import {
     followThread,
     getChannelURL,
-    getExpandedChannelID,
     getPluginPath,
     getProfilesForSessions,
     getTranslations,
-    getUserIdFromDM,
     getWSConnectionURL,
-    isDMChannel,
+    isCallsPopOut,
     playSound,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
@@ -635,12 +631,17 @@ export default class Plugin {
             );
         };
 
-        const fetchChannels = async (): Promise<AnyAction[]> => {
+        const fetchChannels = async (skipChannelID?: string): Promise<AnyAction[]> => {
             const actions = [];
             try {
                 const data = await RestClient.fetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
 
                 for (let i = 0; i < data.length; i++) {
+                    if (skipChannelID === data[i].channel_id) {
+                        logDebug('skipping channel from state loading', skipChannelID);
+                        continue;
+                    }
+
                     actions.push({
                         type: RECEIVED_CHANNEL_STATE,
                         data: {
@@ -714,59 +715,14 @@ export default class Plugin {
             }
         };
 
-        const fetchChannelData = async (channelID: string) => {
-            if (!channelID) {
-                // Must be Global threads view, or another view that isn't a channel.
-                logDebug('fetchChannelData: missing channelID');
-                return;
-            }
-
-            let channel = getChannel(store.getState(), channelID);
-            if (!channel) {
-                await store.dispatch(getChannelAction(channelID));
-                channel = getChannel(store.getState(), channelID);
-            }
-
-            if (isDMChannel(channel)) {
-                const otherID = getUserIdFromDM(channel.name, getCurrentUserId(store.getState()));
-                const dmUser = getUser(store.getState(), otherID);
-                if (!dmUser) {
-                    store.dispatch(getProfilesByIdsAction([otherID]));
-                }
-            }
-
-            await registerHeaderMenuComponentIfNeeded(channelID);
-
-            try {
-                const data = await RestClient.fetch<CallChannelState>(`${getPluginPath()}/${channelID}`, {method: 'get'});
-                store.dispatch({
-                    type: RECEIVED_CHANNEL_STATE,
-                    data: {id: channelID, enabled: data.enabled},
-                });
-
-                const call = data.call;
-                if (!call) {
-                    return;
-                }
-
-                await store.dispatch(loadCallState(channelID, call));
-            } catch (err) {
-                logErr(err);
-                store.dispatch({
-                    type: RECEIVED_CHANNEL_STATE,
-                    data: {id: channelID, enabled: false},
-                });
-            }
-        };
-
         // Run onActivate once we're logged in.
         const unsubscribeActivateListener = store.subscribe(() => {
-            if (getCurrentUserId(store.getState())) {
+            if (getCurrentUserId(store.getState()) && !isCallsPopOut()) {
                 onActivate();
             }
         });
 
-        const onActivate = async () => {
+        const onActivate = async (wsClient?: WebSocketClient) => {
             if (!getCurrentUserId(store.getState())) {
                 // not logged in, returning. Shouldn't happen, but being defensive.
                 return;
@@ -776,18 +732,29 @@ export default class Plugin {
 
             await store.dispatch(getCallsConfig());
 
-            const actions = await fetchChannels();
-            const currChannelId = getCurrentChannelId(store.getState());
-            if (currChannelId) {
-                await fetchChannelData(currChannelId);
-            } else {
-                const expandedID = getExpandedChannelID();
-                if (expandedID.length > 0) {
-                    await fetchChannelData(expandedID);
+            const currentCallChannelID = channelIDForCurrentCall(store.getState());
+
+            // We pass currentCallChannelID so that we
+            // can skip loading its state as a result of the HTTP calls in
+            // fetchChannels since it would be racy.
+            const actions = await fetchChannels(currentCallChannelID);
+            store.dispatch(batchActions(actions));
+
+            // If indeed we are in a call we should request the up-to-date
+            // state from websocket.
+            if (currentCallChannelID) {
+                if (wsClient) {
+                    logDebug('requesting call state through ws');
+                    wsClient.sendMessage('custom_com.mattermost.calls_call_state', {channelID: currentCallChannelID});
+                } else {
+                    logErr('unexpected missing wsClient');
                 }
             }
 
-            store.dispatch(batchActions(actions));
+            const currChannelId = getCurrentChannelId(store.getState());
+            if (currChannelId) {
+                await registerHeaderMenuComponentIfNeeded(currChannelId);
+            }
         };
 
         this.unsubscribers.push(() => {
@@ -800,17 +767,29 @@ export default class Plugin {
             });
         });
 
-        this.registerWebSocketEvents(registry, store);
-        this.registerReconnectHandler(registry, store, () => {
-            logDebug('websocket reconnect handler');
-            if (!window.callsClient) {
-                logDebug('resetting state');
-                store.dispatch({
-                    type: UNINIT,
+        // A dummy React component so we can access webapp's
+        // WebSocket client through the provided hook. Just lovely.
+        registry.registerGlobalComponent(() => {
+            const client = window.ProductApi.useWebSocketClient();
+
+            useEffect(() => {
+                logDebug('registering ws reconnect handler');
+                // eslint-disable-next-line max-nested-callbacks
+                this.registerReconnectHandler(registry, store, () => {
+                    logDebug('websocket reconnect handler');
+                    if (!window.callsClient) {
+                        logDebug('resetting state');
+                        store.dispatch({
+                            type: UNINIT,
+                        });
+                    }
+                    onActivate(client);
                 });
-            }
-            onActivate();
+            }, []);
+
+            return null;
         });
+        this.registerWebSocketEvents(registry, store);
 
         let currChannelId = getCurrentChannelId(store.getState());
         let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
@@ -878,6 +857,11 @@ declare global {
         e2eNotificationsSoundStoppedAt?: number[],
         e2eRingLength?: number,
         WebappUtils: WebAppUtils,
+
+        ProductApi: {
+            useWebSocketClient: () => WebSocketClient,
+            WebSocketProvider: React.Context<WebSocketClient>,
+        };
     }
 
     interface HTMLVideoElement {
