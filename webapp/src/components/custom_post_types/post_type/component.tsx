@@ -171,7 +171,7 @@ const PostType = ({
         <>
             {title}
             <Main data-testid={'call-thread'}>
-                <SubMain $ended={Boolean(callProps.end_at)}>
+                <SubMain>
                     <Left>
                         <CallIndicator $ended={Boolean(callProps.end_at)}>
                             {!callProps.end_at &&
@@ -199,6 +199,7 @@ const PostType = ({
                             <SubMessage>{subMessage}</SubMessage>
                         </MessageWrapper>
                     </Left>
+                    { (recordings > 0 || callActive) && <RowDivider/> }
                     <Right>
                         {callActive &&
                             <>
@@ -234,6 +235,8 @@ const Main = styled.div`
     color: var(--center-channel-color);
     border-radius: 4px;
 
+    container: main / inline-size;
+
     &:hover {
         border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
     }
@@ -245,6 +248,17 @@ const SubMain = styled.div`
     width: 100%;
     flex-wrap: wrap;
     row-gap: 20px;
+
+    container-type: inline-size;
+
+    @container main (inline-size < 566px) {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    &:empty {
+      display: none;
+    }
 `;
 
 const Left = styled.div`
@@ -258,7 +272,30 @@ const Left = styled.div`
 const Right = styled.div`
     display: flex;
     flex-grow: 1;
+    justify-content: flex-end;
     gap: 12px;
+
+    @container main (inline-size < 566px) {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    &:empty {
+      display: none;
+    }
+`;
+
+const RowDivider = styled.hr`
+    display: none;
+
+    @container main (inline-size < 566px) {
+        &&&& {
+          display: block;
+          width: 100%;
+          margin: 0;
+          border: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+        }
+    }
 `;
 
 const CallIndicator = styled.div<{ $ended: boolean }>`
@@ -300,7 +337,6 @@ const SubMessage = styled.div`
 const Profiles = styled.div`
     display: flex;
     align-items: center;
-    margin-right: auto;
 `;
 
 const Button = styled.button`
