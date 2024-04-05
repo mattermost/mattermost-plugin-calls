@@ -166,9 +166,9 @@ const PostType = ({
         <>
             {title}
             <Main data-testid={'call-thread'}>
-                <SubMain ended={Boolean(callProps.end_at)}>
+                <SubMain $ended={Boolean(callProps.end_at)}>
                     <Left>
-                        <CallIndicator ended={Boolean(callProps.end_at)}>
+                        <CallIndicator $ended={Boolean(callProps.end_at)}>
                             {!callProps.end_at &&
                                 <ActiveCallIcon
                                     fill='var(--center-channel-bg)'
@@ -229,11 +229,11 @@ const Main = styled.div`
     border-radius: 4px;
 `;
 
-const SubMain = styled.div<{ ended: boolean }>`
+const SubMain = styled.div<{ $ended: boolean }>`
     display: flex;
     align-items: center;
     width: 100%;
-    flex-wrap: ${(props) => (props.ended ? 'nowrap' : 'wrap')};
+    flex-wrap: ${(props) => (props.$ended ? 'nowrap' : 'wrap')};
     row-gap: 8px;
 `;
 
@@ -250,8 +250,8 @@ const Right = styled.div`
     flex-grow: 1;
 `;
 
-const CallIndicator = styled.div<{ ended: boolean }>`
-    background: ${(props) => (props.ended ? 'rgba(var(--center-channel-color-rgb), 0.16)' : 'var(--online-indicator)')};
+const CallIndicator = styled.div<{ $ended: boolean }>`
+    background: ${(props) => (props.$ended ? 'rgba(var(--center-channel-color-rgb), 0.16)' : 'var(--online-indicator)')};
     border-radius: 4px;
     padding: 10px;
     width: 40px;

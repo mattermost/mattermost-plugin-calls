@@ -43,9 +43,9 @@ const ChannelHeaderButton = ({
         <CallButton
             id='calls-join-button'
             className={'style--none call-button ' + (inCall || restricted ? 'disabled' : '')}
-            restricted={restricted}
+            $restricted={restricted}
             disabled={isChannelArchived || isDeactivatedDM}
-            isCloudPaid={isCloudPaid}
+            $isCloudPaid={isCloudPaid}
         >
             <CompassIcon icon='phone'/>
             <div>
@@ -154,15 +154,15 @@ const ChannelHeaderButton = ({
     return button;
 };
 
-const CallButton = styled.button<{ restricted: boolean, isCloudPaid: boolean }>`
+const CallButton = styled.button<{ $restricted: boolean, $isCloudPaid: boolean }>`
     // &&& is to override the call-button styles
     &&& {
-        ${(props) => props.restricted && css`
+        ${(props) => props.$restricted && css`
             color: rgba(var(--center-channel-color-rgb), 0.48);
             border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
             margin-right: 4px;
         `}
-        cursor: ${(props) => (props.restricted && props.isCloudPaid ? 'not-allowed' : 'pointer')};
+        cursor: ${(props) => (props.$restricted && props.$isCloudPaid ? 'not-allowed' : 'pointer')};
     }
 `;
 

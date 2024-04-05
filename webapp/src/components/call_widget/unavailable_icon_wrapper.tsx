@@ -11,8 +11,8 @@ export type Props = {
 export default function UnavailableIconWrapper(props: Props) {
     return (
         <IconWrapper
-            unavailable={props.unavailable}
-            margin={props.margin}
+            $unavailable={props.unavailable}
+            $margin={props.margin}
         >
             { props.unavailable &&
             <UnavailableIcon>
@@ -24,11 +24,11 @@ export default function UnavailableIconWrapper(props: Props) {
     );
 }
 
-const IconWrapper = styled.div<{unavailable: boolean, margin?: string}>`
+const IconWrapper = styled.div<{$unavailable: boolean, $margin?: string}>`
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: ${({margin}) => margin || 0};
+  margin: ${({$margin}) => $margin || 0};
   width: 18px;
   height: 18px;
 
@@ -40,7 +40,7 @@ const IconWrapper = styled.div<{unavailable: boolean, margin?: string}>`
       width: 16px;
       height: 16px;
 
-      ${({unavailable}) => (unavailable) && css`
+      ${({$unavailable}) => ($unavailable) && css`
         fill: rgba(var(--center-channel-color-rgb), 0.32);
       `}
     }

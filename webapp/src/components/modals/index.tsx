@@ -24,7 +24,7 @@ export const CallsInTestModeModal = (modalProps: Props) => {
             onHide={() => null}
             components={{FooterContainer}}
         >
-            <VerticalSpacer size={22}/>
+            <VerticalSpacer $size={22}/>
             <p>{formatMessage({defaultMessage: 'Calls are currently running in test mode and only system admins can start them. Reach out directly to your system admin for assistance'})}</p>
         </SizedGenericModal>
     );

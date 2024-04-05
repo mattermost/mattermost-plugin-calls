@@ -1046,7 +1046,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                         {formatMessage({defaultMessage: '(you)'})}
                                     </span>
                                 }
-                                {isHost && <HostBadge onWhiteBg={true}/>}
+                                {isHost && <HostBadge $onWhiteBg={true}/>}
                             </span>
                         }
 
