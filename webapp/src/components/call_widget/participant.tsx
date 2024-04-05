@@ -53,7 +53,9 @@ export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharing
             className='MenuItem'
             data-testid={isHost && 'participant-list-host'}
             key={'participants_profile_' + session.session_id}
-            style={{padding: '11px 16px', gap: '12px', height: '28px'}}
+
+            /* @ts-ignore */
+            style={{padding: '11px 16px', gap: '12px', height: '28px', appRegion: 'no-drag'}}
         >
             <Avatar
                 size={20}
@@ -128,7 +130,7 @@ export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharing
                         dotMenuButton={DotMenuButton}
                         dropdownMenu={StyledDropdownMenu}
                         title={formatMessage({defaultMessage: 'Host controls'})}
-                        placement='top-start'
+                        placement={'top-start'}
                         portal={false}
                         strategy={'fixed'}
                         offset={0}

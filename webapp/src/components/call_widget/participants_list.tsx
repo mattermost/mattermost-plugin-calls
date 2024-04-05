@@ -73,7 +73,7 @@ const styles: Record<string, React.CSSProperties> = ({
         position: 'relative',
         borderRadius: '8px',
         border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
-        boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
+        boxShadow: 'none',
 
         /* @ts-ignore */
         appRegion: 'no-drag',
