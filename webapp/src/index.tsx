@@ -717,7 +717,7 @@ export default class Plugin {
 
         // Run onActivate once we're logged in.
         const unsubscribeActivateListener = store.subscribe(() => {
-            if (getCurrentUserId(store.getState()) && !isCallsPopOut()) {
+            if (getCurrentUserId(store.getState())) {
                 onActivate();
             }
         });
@@ -731,6 +731,13 @@ export default class Plugin {
             unsubscribeActivateListener();
 
             await store.dispatch(getCallsConfig());
+
+            // We don't care about fetching other calls states in pop out.
+            // Current call state will be requested over websocket
+            // from the ExpandedView component itself.
+            if (isCallsPopOut()) {
+                return;
+            }
 
             const currentCallChannelID = channelIDForCurrentCall(store.getState());
 
