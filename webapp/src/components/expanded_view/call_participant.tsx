@@ -175,7 +175,6 @@ const Participant = styled.li<{ withHover: boolean }>`
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
-    margin: 16px;
     gap: 12px;
     padding: 16px;
 
