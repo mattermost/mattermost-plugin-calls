@@ -134,7 +134,7 @@ const DotMenu = ({
     );
 };
 
-export const DropdownMenuItemStyled = styled.a`
+export const DropdownMenuItemStyled = styled.div`
     && {
         font-family: 'Open Sans';
         font-style: normal;
@@ -185,12 +185,9 @@ export const DropdownMenuItem = (props: {
     children: React.ReactNode,
     onClick?: () => void,
     className?: string,
-    disabled?: boolean,
-    disabledAltText?: string
 }) => {
     return (
         <DropdownMenuItemStyled
-            href='#'
             onClick={props.onClick}
             className={props.className}
             role={'button'}
@@ -203,20 +200,5 @@ export const DropdownMenuItem = (props: {
         </DropdownMenuItemStyled>
     );
 };
-
-// Alternate dot menu button. Use `dotMenuButton={TitleButton}` for this style.
-export const TitleButton = styled.div<{ isActive: boolean }>`
-    padding: 2px 2px 2px 6px;
-    display: inline-flex;
-    border-radius: 4px;
-    color: ${({isActive}) => (isActive ? 'var(--button-bg)' : 'var(--center-channel-color)')};
-    background: ${({isActive}) => (isActive ? 'rgba(var(--button-bg-rgb), 0.08)' : 'auto')};
-
-    min-width: 0;
-
-    &:hover {
-        background: ${({isActive}) => (isActive ? 'rgba(var(--button-bg-rgb), 0.08)' : 'rgba(var(--center-channel-color-rgb), 0.08)')};
-    }
-`;
 
 export default DotMenu;
