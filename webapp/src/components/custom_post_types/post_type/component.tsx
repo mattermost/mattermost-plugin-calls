@@ -247,7 +247,7 @@ const SubMain = styled.div`
     align-items: center;
     width: 100%;
     flex-wrap: wrap;
-    row-gap: 20px;
+    row-gap: 12px;
 
     container-type: inline-size;
 
