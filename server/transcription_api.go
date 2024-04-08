@@ -78,7 +78,11 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 				"callID":   callID,
 				"jobState": recClientState.toMap(),
-			}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{
+				ChannelID:           callID,
+				ReliableClusterSend: true,
+				UserIDs:             getUserIDsFromSessions(state.sessions),
+			})
 
 			// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
@@ -93,7 +97,11 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   callID,
 			"jobState": jobState,
-		}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{
+			ChannelID:           callID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
 	}
 }
 
@@ -139,7 +147,11 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 				"callID":   callID,
 				"jobState": getClientStateFromCallJob(trState).toMap(),
-			}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{
+				ChannelID:           callID,
+				ReliableClusterSend: true,
+				UserIDs:             getUserIDsFromSessions(state.sessions),
+			})
 		}
 	}()
 
@@ -149,7 +161,11 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 		"callID":   callID,
 		"jobState": getClientStateFromCallJob(trState).toMap(),
-	}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{
+		ChannelID:           callID,
+		ReliableClusterSend: true,
+		UserIDs:             getUserIDsFromSessions(state.sessions),
+	})
 
 	// Note: We don't need to send the live captions event until we get the StartAt in the
 	// bot_api handleBotPostJobsStatus
@@ -210,7 +226,11 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 		"callID":   callID,
 		"jobState": getClientStateFromCallJob(trState).toMap(),
-	}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{
+		ChannelID:           callID,
+		ReliableClusterSend: true,
+		UserIDs:             getUserIDsFromSessions(state.sessions),
+	})
 
 	go p.transcriptionJobTimeoutChecker(callID, trJobID)
 
@@ -247,7 +267,11 @@ func (p *Plugin) stopTranscribingJob(state *callState, callID string) (rerr erro
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 				"callID":   callID,
 				"jobState": getClientStateFromCallJob(trState).toMap(),
-			}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{
+				ChannelID:           callID,
+				ReliableClusterSend: true,
+				UserIDs:             getUserIDsFromSessions(state.sessions),
+			})
 		}
 	}()
 
@@ -264,13 +288,21 @@ func (p *Plugin) stopTranscribingJob(state *callState, callID string) (rerr erro
 	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 		"callID":   callID,
 		"jobState": getClientStateFromCallJob(trState).toMap(),
-	}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{
+		ChannelID:           callID,
+		ReliableClusterSend: true,
+		UserIDs:             getUserIDsFromSessions(state.sessions),
+	})
 
 	if lcState != nil {
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   callID,
 			"jobState": getClientStateFromCallJob(lcState).toMap(),
-		}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{
+			ChannelID:           callID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
 	}
 
 	return nil

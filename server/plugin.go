@@ -78,7 +78,7 @@ type Plugin struct {
 func (p *Plugin) startSession(us *session, senderID string) {
 	cfg := rtc.SessionConfig{
 		GroupID:   "default",
-		CallID:    us.channelID,
+		CallID:    us.callID,
 		UserID:    us.userID,
 		SessionID: us.connID,
 	}

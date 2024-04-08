@@ -48,6 +48,7 @@ const (
 	wsEventCallJobState              = "call_job_state"
 	wsEventUserDismissedNotification = "user_dismissed_notification"
 	wsEventJobStop                   = "job_stop"
+	wsEventCaption                   = "caption"
 	wsReconnectionTimeout            = 10 * time.Second
 
 	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
@@ -214,7 +215,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 	p.publishWebSocketEvent(wsMsgType, map[string]interface{}{
 		"userID":     us.userID,
 		"session_id": us.originalConnID,
-	}, &WebSocketBroadcast{ChannelID: us.channelID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ChannelID: us.channelID, ReliableClusterSend: true, UserIDs: getUserIDsFromSessions(state.sessions)})
 
 	return nil
 }
@@ -344,7 +345,11 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":     us.userID,
 			"session_id": us.originalConnID,
-		}, &WebSocketBroadcast{ChannelID: us.channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{
+			ChannelID:           us.channelID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
 		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
 			return err
@@ -383,7 +388,11 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"userID":      us.userID,
 			"session_id":  us.originalConnID,
 			"raised_hand": session.RaisedHand,
-		}, &WebSocketBroadcast{ChannelID: us.channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{
+			ChannelID:           us.channelID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
 	case clientMessageTypeReact:
 		evType := wsEventUserReacted
 
@@ -392,12 +401,20 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			return fmt.Errorf("failed to unmarshal emoji data: %w", err)
 		}
 
+		sessions, err := p.store.GetCallSessions(us.callID, db.GetCallSessionOpts{})
+		if err != nil {
+			return fmt.Errorf("failed to get call sessions: %w", err)
+		}
+
 		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"user_id":    us.userID,
 			"session_id": us.originalConnID,
 			"emoji":      emoji.toMap(),
 			"timestamp":  time.Now().UnixMilli(),
-		}, &WebSocketBroadcast{ChannelID: us.channelID})
+		}, &WebSocketBroadcast{
+			ChannelID: us.channelID,
+			UserIDs:   getUserIDsFromSessions(sessions),
+		})
 	default:
 		return fmt.Errorf("invalid client message type %q", msg.Type)
 	}
@@ -517,10 +534,18 @@ func (p *Plugin) wsWriter() {
 				if msg.Type == rtc.VoiceOnMessage {
 					evType = wsEventUserVoiceOn
 				}
+
+				sessions, err := p.store.GetCallSessions(us.callID, db.GetCallSessionOpts{})
+				if err != nil {
+					p.LogError("failed to get call sessions", "err", err.Error())
+					continue
+				}
+
 				p.publishWebSocketEvent(evType, map[string]interface{}{
 					"userID":     us.userID,
 					"session_id": us.originalConnID,
-				}, &WebSocketBroadcast{ChannelID: us.channelID})
+				}, &WebSocketBroadcast{ChannelID: us.channelID, UserIDs: getUserIDsFromSessions(sessions)})
+
 				continue
 			}
 
@@ -724,7 +749,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		msg := rtcd.ClientMessage{
 			Type: rtcd.ClientMessageJoin,
 			Data: map[string]string{
-				"callID":    channelID,
+				"callID":    us.callID,
 				"userID":    userID,
 				"sessionID": connID,
 			},
@@ -736,11 +761,11 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		if handlerID == p.nodeID {
 			cfg := rtc.SessionConfig{
 				GroupID:   "default",
-				CallID:    channelID,
+				CallID:    us.callID,
 				UserID:    userID,
 				SessionID: connID,
 			}
-			p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID)
+			p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID, "callID", us.callID)
 			if err = p.rtcServer.InitSession(cfg, func() error {
 				if atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
 					close(us.rtcCloseCh)
@@ -786,13 +811,21 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   channelID,
 			"jobState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{
+			ChannelID:           channelID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
 
 		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   channelID,
 			"recState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{
+			ChannelID:           channelID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
 	}
 
 	clientStateData, err := json.Marshal(state.getClientState(p.getBotID(), userID))
@@ -1071,7 +1104,10 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("invalid or missing new_audio_len_ms in caption ws message")
 			return
 		}
-		p.handleCaptionMessage(us.channelID, sessionID, userID, text, newAudioLenMs)
+		if err := p.handleCaptionMessage(us.callID, us.channelID, sessionID, userID, text, newAudioLenMs); err != nil {
+			p.LogError("handleCaptionMessage failed", "err", err.Error(), "userID", userID, "connID", connID)
+			return
+		}
 		return
 	case clientMessageTypeMetric:
 		// Sent from the transcriber.
@@ -1175,16 +1211,26 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 	return nil
 }
 
-func (p *Plugin) handleCaptionMessage(channelID, captionFromSessionID, captionFromUserID, text string, newAudioLenMs float64) {
-	// TODO: broadcast to participants only, https://github.com/mattermost/mattermost-plugin-calls/pull/609
+func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, captionFromUserID, text string, newAudioLenMs float64) error {
+	sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})
+	if err != nil {
+		return fmt.Errorf("failed to get call sessions: %w", err)
+	}
+
 	p.publishWebSocketEvent(clientMessageTypeCaption, map[string]interface{}{
 		"channel_id": channelID,
 		"user_id":    captionFromUserID,
 		"session_id": captionFromSessionID,
 		"text":       text,
-	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{
+		ChannelID:           channelID,
+		ReliableClusterSend: true,
+		UserIDs:             getUserIDsFromSessions(sessions),
+	})
 
 	p.metrics.ObserveLiveCaptionsAudioLen(newAudioLenMs)
+
+	return nil
 }
 
 func (p *Plugin) handleMetricMessage(metricName public.MetricName) {
