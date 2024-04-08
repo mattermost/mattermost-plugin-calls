@@ -293,7 +293,7 @@ const RowDivider = styled.hr`
           display: block;
           width: 100%;
           margin: 0;
-          border: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+          border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
         }
     }
 `;
