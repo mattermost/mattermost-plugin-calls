@@ -22,8 +22,6 @@ import (
 	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/random"
 	"github.com/mattermost/rtcd/service/rtc"
-
-	"github.com/mattermost/mattermost/server/public/model"
 )
 
 const (
@@ -603,7 +601,7 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 		m.ctx.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":     rtcMsg.UserID,
 			"session_id": rtcMsg.SessionID,
-		}, &model.WebsocketBroadcast{ChannelId: rtcMsg.CallID})
+		}, &WebSocketBroadcast{ChannelID: rtcMsg.CallID})
 		return nil
 	}
 
@@ -611,7 +609,7 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 	m.ctx.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 		"data":   string(rtcMsg.Data),
 		"connID": rtcMsg.SessionID,
-	}, &model.WebsocketBroadcast{UserId: rtcMsg.UserID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{UserID: rtcMsg.UserID, ReliableClusterSend: true})
 
 	return nil
 }

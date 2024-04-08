@@ -78,13 +78,13 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 				"callID":   callID,
 				"jobState": recClientState.toMap(),
-			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
 
 			// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 				"callID":   callID,
 				"recState": recClientState.toMap(),
-			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
 		}
 
 		// MM-57265: This message is delayed and not shown to the client correctly.
@@ -93,7 +93,7 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   callID,
 			"jobState": jobState,
-		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
 	}
 }
 
@@ -139,7 +139,7 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 				"callID":   callID,
 				"jobState": getClientStateFromCallJob(trState).toMap(),
-			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
 		}
 	}()
 
@@ -149,7 +149,7 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 		"callID":   callID,
 		"jobState": getClientStateFromCallJob(trState).toMap(),
-	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
 
 	// Note: We don't need to send the live captions event until we get the StartAt in the
 	// bot_api handleBotPostJobsStatus
@@ -210,7 +210,7 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 		"callID":   callID,
 		"jobState": getClientStateFromCallJob(trState).toMap(),
-	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
 
 	go p.transcriptionJobTimeoutChecker(callID, trJobID)
 
@@ -247,7 +247,7 @@ func (p *Plugin) stopTranscribingJob(state *callState, callID string) (rerr erro
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 				"callID":   callID,
 				"jobState": getClientStateFromCallJob(trState).toMap(),
-			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
 		}
 	}()
 
@@ -264,13 +264,13 @@ func (p *Plugin) stopTranscribingJob(state *callState, callID string) (rerr erro
 	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 		"callID":   callID,
 		"jobState": getClientStateFromCallJob(trState).toMap(),
-	}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
 
 	if lcState != nil {
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   callID,
 			"jobState": getClientStateFromCallJob(lcState).toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
 	}
 
 	return nil

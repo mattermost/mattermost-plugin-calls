@@ -51,7 +51,7 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 
 	p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 		"hostID": newHostID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 	return nil
 }

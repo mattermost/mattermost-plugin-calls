@@ -69,7 +69,30 @@ type CallsClientJoinData struct {
 	JobID string
 }
 
-func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *model.WebsocketBroadcast) {
+type WebSocketBroadcast struct {
+	ChannelID           string
+	UserID              string
+	ConnectionID        string
+	ReliableClusterSend bool
+	OmitUsers           map[string]bool
+	UserIDs             []string
+}
+
+func (wsb *WebSocketBroadcast) ToModel() *model.WebsocketBroadcast {
+	if wsb == nil {
+		return nil
+	}
+
+	return &model.WebsocketBroadcast{
+		ChannelId:           wsb.ChannelID,
+		UserId:              wsb.UserID,
+		ConnectionId:        wsb.ConnectionID,
+		ReliableClusterSend: wsb.ReliableClusterSend,
+		OmitUsers:           wsb.OmitUsers,
+	}
+}
+
+func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *WebSocketBroadcast) {
 	botID := p.getBotID()
 	// We don't want to expose to clients that the bot is in a call.
 	if (ev == wsEventUserConnected || ev == wsEventUserDisconnected) && data["userID"] == botID {
@@ -81,15 +104,17 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 
 	// If broadcasting to a channel we need to also send to the bot since they
 	// won't be in the channel.
-	if botID != "" && broadcast != nil && broadcast.ChannelId != "" {
+	if botID != "" && broadcast != nil && broadcast.ChannelID != "" {
 		if data == nil {
 			data = map[string]interface{}{}
 		}
-		data["channelID"] = broadcast.ChannelId
+		data["channelID"] = broadcast.ChannelID
 		p.metrics.IncWebSocketEvent("out", ev)
 		p.API.PublishWebSocketEvent(ev, data, &model.WebsocketBroadcast{
 			UserId: botID,
 		})
+
+		// Prevent sending this event to the bot twice.
 		if broadcast.OmitUsers == nil {
 			broadcast.OmitUsers = map[string]bool{
 				botID: true,
@@ -100,7 +125,18 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 	}
 
 	p.metrics.IncWebSocketEvent("out", ev)
-	p.API.PublishWebSocketEvent(ev, data, broadcast)
+
+	// If userIDs is set we broadcast the event only to the specified users (e.g.
+	// call participants).
+	if broadcast != nil && len(broadcast.UserIDs) > 0 {
+		for _, userID := range broadcast.UserIDs {
+			broadcast.UserID = userID
+			p.API.PublishWebSocketEvent(ev, data, broadcast.ToModel())
+		}
+		return
+	}
+
+	p.API.PublishWebSocketEvent(ev, data, broadcast.ToModel())
 }
 
 func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, handlerID string) error {
@@ -178,7 +214,7 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 	p.publishWebSocketEvent(wsMsgType, map[string]interface{}{
 		"userID":     us.userID,
 		"session_id": us.originalConnID,
-	}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ChannelID: us.channelID, ReliableClusterSend: true})
 
 	return nil
 }
@@ -308,7 +344,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		p.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":     us.userID,
 			"session_id": us.originalConnID,
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
 		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
 			return err
@@ -347,7 +383,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"userID":      us.userID,
 			"session_id":  us.originalConnID,
 			"raised_hand": session.RaisedHand,
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: us.channelID, ReliableClusterSend: true})
 	case clientMessageTypeReact:
 		evType := wsEventUserReacted
 
@@ -361,7 +397,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			"session_id": us.originalConnID,
 			"emoji":      emoji.toMap(),
 			"timestamp":  time.Now().UnixMilli(),
-		}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+		}, &WebSocketBroadcast{ChannelID: us.channelID})
 	default:
 		return fmt.Errorf("invalid client message type %q", msg.Type)
 	}
@@ -484,14 +520,14 @@ func (p *Plugin) wsWriter() {
 				p.publishWebSocketEvent(evType, map[string]interface{}{
 					"userID":     us.userID,
 					"session_id": us.originalConnID,
-				}, &model.WebsocketBroadcast{ChannelId: us.channelID})
+				}, &WebSocketBroadcast{ChannelID: us.channelID})
 				continue
 			}
 
 			p.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 				"data":   string(msg.Data),
 				"connID": msg.SessionID,
-			}, &model.WebsocketBroadcast{UserId: us.userID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{UserID: us.userID, ReliableClusterSend: true})
 		case <-p.stopCh:
 			return
 		}
@@ -652,7 +688,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			"post_id":   postID,
 			"owner_id":  state.Call.OwnerID,
 			"host_id":   state.Call.GetHostID(),
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 		p.track(evCallStarted, map[string]interface{}{
 			"ParticipantID": userID,
@@ -730,7 +766,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 	// send successful join response
 	p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
 		"connID": connID,
-	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
 
 	if len(state.sessionsForUser(userID)) == 1 {
 		// Only send event on first session join.
@@ -738,25 +774,25 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		// multi-sessions.
 		p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
 			"userID": userID,
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 	}
 
 	p.publishWebSocketEvent(wsEventUserJoined, map[string]interface{}{
 		"user_id":    userID,
 		"session_id": connID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 	if userID == p.getBotID() && state.Recording != nil {
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   channelID,
 			"jobState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   channelID,
 			"recState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 	}
 
 	clientStateData, err := json.Marshal(state.getClientState(p.getBotID(), userID))
@@ -766,7 +802,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		p.publishWebSocketEvent(wsEventCallState, map[string]interface{}{
 			"channel_id": channelID,
 			"call":       string(clientStateData),
-		}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
 	}
 
 	p.unlockCall(channelID)
@@ -940,7 +976,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
 					"connID": connID,
-				}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
+				}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
 				return
 			}
 		}()
@@ -1146,7 +1182,7 @@ func (p *Plugin) handleCaptionMessage(channelID, captionFromSessionID, captionFr
 		"user_id":    captionFromUserID,
 		"session_id": captionFromSessionID,
 		"text":       text,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 	p.metrics.ObserveLiveCaptionsAudioLen(newAudioLenMs)
 }

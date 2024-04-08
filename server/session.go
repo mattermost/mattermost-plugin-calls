@@ -169,7 +169,7 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 		state.Call.Props.Hosts = []string{newHostID}
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 			"hostID": newHostID,
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 	}
 
 	if state.Call.Props.Participants == nil {
@@ -245,7 +245,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			state.Call.Props.ScreenStartAt = 0
 		}
 		p.LogDebug("removed session was sharing, sending screen off event", "userID", userID, "connID", connID, "originalConnID", originalConnID)
-		p.publishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		p.publishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 	}
 
 	// If the bot is the only user left in the call we automatically stop any
@@ -296,13 +296,13 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   channelID,
 			"jobState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   channelID,
 			"recState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 	}
 
 	if state.Transcription != nil && state.Transcription.EndAt == 0 && originalConnID == state.Transcription.Props.BotConnID {
@@ -323,13 +323,13 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   channelID,
 			"jobState": getClientStateFromCallJob(state.Transcription).toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 		if state.LiveCaptions != nil {
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 				"callID":   channelID,
 				"jobState": getClientStateFromCallJob(state.LiveCaptions).toMap(),
-			}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 		}
 	}
 
@@ -346,12 +346,12 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		// multi-sessions.
 		p.publishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
 			"userID": userID,
-		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 	}
 	p.publishWebSocketEvent(wsEventUserLeft, map[string]interface{}{
 		"user_id":    userID,
 		"session_id": originalConnID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 	// Change host if needed
 	if state.Call.GetHostID() == userID && len(state.sessions) > 0 {
@@ -363,7 +363,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			}
 			p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 				"hostID": newHostID,
-			}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 		}
 	}
 
