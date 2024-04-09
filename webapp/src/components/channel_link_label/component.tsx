@@ -41,10 +41,22 @@ const ChannelLinkLabel = (props: Props) => {
                 </Tooltip>
             }
         >
-            <ActiveCallIcon
-                fill={props.theme.sidebarText}
-                style={{marginLeft: 'auto', height: 'auto'}}
-            />
+
+            <span
+                style={
+                    {
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginLeft: 'auto',
+                        height: 'auto',
+                    }
+                }
+            >
+                <ActiveCallIcon
+                    fill={props.theme.sidebarText}
+                    style={{width: '12px', height: '12px'}}
+                />
+            </span>
         </OverlayTrigger>
     );
 };

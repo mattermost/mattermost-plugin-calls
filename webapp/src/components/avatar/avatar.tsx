@@ -102,7 +102,7 @@ const Profile = styled.div<ProfileProps>`
     height: ${({$size}) => $size}px;
     font-size: ${({$fontSize}) => $fontSize}px;
 
-    :not(:first-child) {
+    &:not(:first-child) {
         margin-left: -${({$size}) => $size * 0.25}px;
     }
 

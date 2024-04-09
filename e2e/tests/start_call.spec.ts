@@ -123,7 +123,8 @@ test.describe('start new call', () => {
         await expect(page.locator('#calls-widget')).toBeVisible();
 
         // verify the call post is created in the thread.
-        await expect(page.locator('#rhsContainer').filter({has: page.getByText(`${usernames[0]} started a call`)})).toBeVisible();
+        await expect(page.locator('#rhsContainer').filter({has: page.getByText('Call started')})).toBeVisible();
+        await expect(page.locator('#rhsContainer').filter({has: page.getByText(`by ${usernames[0]}`)})).toBeVisible();
 
         await page.locator('#reply_textbox').fill('/call leave');
         await page.locator('#reply_textbox').press('Control+Enter');
