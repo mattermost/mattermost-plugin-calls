@@ -10,6 +10,7 @@ import {Header, SubHeader} from 'src/components/shared';
 import {
     callsShowButton,
     channelIDForCurrentCall,
+    clientConnecting,
     isCloudProfessionalOrEnterpriseOrTrial,
     isCloudStarter,
     isLimitRestricted,
@@ -34,6 +35,7 @@ const ChannelHeaderButton = () => {
     const limitRestricted = useSelector(isLimitRestricted);
     const maxCallParticipants = useSelector(maxParticipants);
     const isChannelArchived = channel?.delete_at > 0;
+    const isClientConnecting = useSelector(clientConnecting);
 
     const {formatMessage} = useIntl();
 
@@ -44,6 +46,17 @@ const ChannelHeaderButton = () => {
     const restricted = limitRestricted || isChannelArchived || isDeactivatedDM;
     const withUpsellIcon = (limitRestricted && cloudStarter && !inCall);
 
+    let callButtonText;
+    if (hasCall) {
+        callButtonText = formatMessage({defaultMessage: 'Join call'});
+    } else {
+        callButtonText = formatMessage({defaultMessage: 'Start call'});
+    }
+
+    if (isClientConnecting) {
+        callButtonText = formatMessage({defaultMessage: 'Joining call…'});
+    }
+
     const button = (
         <CallButton
             id='calls-join-button'
@@ -51,13 +64,12 @@ const ChannelHeaderButton = () => {
             disabled={isChannelArchived || isDeactivatedDM}
             $restricted={restricted}
             $isCloudPaid={isCloudPaid}
+            $isClientConnecting={isClientConnecting}
         >
-            <CompassIcon icon='phone'/>
-            <div>
-                <span className='call-button-label'>
-                    {hasCall ? formatMessage({defaultMessage: 'Join call'}) : formatMessage({defaultMessage: 'Start call'})}
-                </span>
-            </div>
+            {isClientConnecting ? <Spinner size={12}/> : <CompassIcon icon='phone'/>}
+            <CallButtonText>
+                { callButtonText }
+            </CallButtonText>
             {withUpsellIcon &&
                 <UpsellIcon className={'icon icon-key-variant'}/>
             }
@@ -75,9 +87,7 @@ const ChannelHeaderButton = () => {
                     </Tooltip>
                 }
             >
-                <Wrapper>
-                    {button}
-                </Wrapper>
+                {button}
             </OverlayTrigger>
         );
     }
@@ -93,9 +103,7 @@ const ChannelHeaderButton = () => {
                     </Tooltip>
                 }
             >
-                <Wrapper>
-                    {button}
-                </Wrapper>
+                {button}
             </OverlayTrigger>
         );
     }
@@ -159,7 +167,9 @@ const ChannelHeaderButton = () => {
     return button;
 };
 
-const CallButton = styled.button<{ $restricted: boolean, $isCloudPaid: boolean }>`
+const CallButton = styled.button<{ $restricted: boolean, $isCloudPaid: boolean, $isClientConnecting: boolean }>`
+    gap: 6px;
+
     // &&& is to override the call-button styles
     &&& {
         ${(props) => props.$restricted && css`
@@ -169,10 +179,13 @@ const CallButton = styled.button<{ $restricted: boolean, $isCloudPaid: boolean }
         `}
         cursor: ${(props) => (props.$restricted && props.$isCloudPaid ? 'not-allowed' : 'pointer')};
     }
-`;
 
-const Wrapper = styled.span`
-    margin-right: 4px;
+    ${(props) => props.$isClientConnecting && css`
+      &&&& {
+        background: rgba(var(--button-bg-rgb), 0.12);
+        color: var(--button-bg);
+      }
+    `}
 `;
 
 const UpsellIcon = styled.i`
@@ -187,6 +200,34 @@ const UpsellIcon = styled.i`
         background-color: var(--center-channel-bg);
         border-radius: 50%;
     }
+`;
+
+const Spinner = styled.span<{size: number}>`
+  width: ${({size}) => size}px;
+  height: ${({size}) => size}px;
+  border-radius: 50%;
+  display: inline-block;
+  border-top: 2px solid #166DE0;
+  border-right: 2px solid transparent;
+  box-sizing: border-box;
+  animation: spin 0.8s linear infinite;
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const CallButtonText = styled.span`
+  &&&& {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 600;
+  }
 `;
 
 export default ChannelHeaderButton;

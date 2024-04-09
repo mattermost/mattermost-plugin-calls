@@ -21,6 +21,7 @@ import {
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
     CALL_STATE,
+    CLIENT_CONNECTING,
     DESKTOP_WIDGET_CONNECTED,
     DID_NOTIFY_FOR_CALL,
     DID_RING_FOR_CALL,
@@ -991,6 +992,17 @@ const dismissedCalls = (state: { [callID: string]: boolean } = {}, action: RingN
     }
 };
 
+const clientConnecting = (state = false, action: { type: string, data: boolean }) => {
+    switch (action.type) {
+    case UNINIT:
+        return false;
+    case CLIENT_CONNECTING:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     channels,
     clientStateReducer,
@@ -1021,4 +1033,5 @@ export default combineReducers({
     didNotifyForCalls,
     dismissedCalls,
     liveCaptions,
+    clientConnecting,
 });

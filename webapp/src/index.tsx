@@ -22,6 +22,7 @@ import {
     getCallsConfig,
     incomingCallOnChannel,
     loadCallState,
+    setClientConnecting,
     showScreenSourceModal,
     showSwitchCallModal,
 } from 'src/actions';
@@ -505,7 +506,11 @@ export default class Plugin {
                     rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
                 }
 
+                window.callsClient.on('connect', () => store.dispatch(setClientConnecting(false)));
+
                 window.callsClient.on('close', (err?: Error) => {
+                    store.dispatch(setClientConnecting(false));
+
                     unmountCallWidget();
                     if (window.desktop) {
                         registry.unregisterComponent(rootComponentID);
@@ -571,11 +576,15 @@ export default class Plugin {
                     title,
                     threadID: rootId,
                 }).catch((err: Error) => {
+                    store.dispatch(setClientConnecting(false));
+
                     logErr(err);
                     unmountCallWidget();
                     store.dispatch(displayCallErrorModal(err, channelID));
                     delete window.callsClient;
                 });
+
+                store.dispatch(setClientConnecting(true));
             } catch (err) {
                 delete window.callsClient;
                 logErr(err);
