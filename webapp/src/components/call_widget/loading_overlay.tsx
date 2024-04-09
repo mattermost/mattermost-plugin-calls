@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {useIntl} from 'react-intl';
+import {Spinner} from 'src/components/shared';
 import styled, {css} from 'styled-components';
 
 export type Props = {
@@ -26,7 +27,7 @@ export default function LoadingOverlay(props: Props) {
         >
             <Body>
                 <Spinner size={16}/>
-                <Text>{formatMessage({defaultMessage: 'Connecting to the call…'})}</Text>
+                <Text>{formatMessage({defaultMessage: 'Joining call…'})}</Text>
             </Body>
         </Container>
     );
@@ -56,32 +57,13 @@ const Body = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 6px;
 `;
 
 const Text = styled.span`
-  color: rgba(var(--center-channel-color-rgb), 0.84);
+  color: var(--center-channel-color);
   font-size: 12px;
   line-height: 16px;
-  margin-left: 8px;
   font-weight: 600;
 `;
 
-const Spinner = styled.span<{size: number}>`
-  width: ${({size}) => size}px;
-  height: ${({size}) => size}px;
-  border-radius: 50%;
-  display: inline-block;
-  border-top: 2px solid #166DE0;
-  border-right: 2px solid transparent;
-  box-sizing: border-box;
-  animation: spin 0.8s linear infinite;
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-`;

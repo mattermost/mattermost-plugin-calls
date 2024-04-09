@@ -6,7 +6,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import CompassIcon from 'src/components/icons/compassIcon';
-import {Header, SubHeader} from 'src/components/shared';
+import {Header, Spinner, SubHeader} from 'src/components/shared';
 import {
     callsShowButton,
     channelIDForCurrentCall,
@@ -200,26 +200,6 @@ const UpsellIcon = styled.i`
         background-color: var(--center-channel-bg);
         border-radius: 50%;
     }
-`;
-
-const Spinner = styled.span<{size: number}>`
-  width: ${({size}) => size}px;
-  height: ${({size}) => size}px;
-  border-radius: 50%;
-  display: inline-block;
-  border-top: 2px solid #166DE0;
-  border-right: 2px solid transparent;
-  box-sizing: border-box;
-  animation: spin 0.8s linear infinite;
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
 `;
 
 const CallButtonText = styled.span`

@@ -95,6 +95,7 @@ interface Props {
     wider: boolean,
     callsIncoming: IncomingCallNotification[],
     transcriptionsEnabled: boolean,
+    clientConnecting: boolean,
 }
 
 interface DraggingState {
@@ -120,7 +121,6 @@ interface State {
     expandedViewWindow: Window | null,
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
-    connecting: boolean,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -266,7 +266,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             expandedViewWindow: null,
             audioEls: [],
             alerts: CallAlertStatesDefault,
-            connecting: true,
             screenStream: null,
         };
         this.node = React.createRef();
@@ -438,11 +437,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             setRecordingPromptDismissedAt: this.props.recordingPromptDismissedAt,
         };
 
-        // eslint-disable-next-line react/no-did-mount-set-state
-        this.setState({
-            connecting: Boolean(window.callsClient?.isConnecting()),
-        });
-
         this.attachVoiceTracks(window.callsClient.getRemoteVoiceTracks());
         window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
             this.attachVoiceTracks(stream.getAudioTracks());
@@ -479,8 +473,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient.on('connect', () => {
-            this.setState({connecting: false});
-
             const callsClient = window.callsClient;
 
             if (this.props.global && callsClient) {
@@ -1680,7 +1672,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <div style={{display: 'flex', flexDirection: 'column-reverse', gap: '4px'}}>
                 <JoinNotification
-                    visible={!this.state.connecting}
+                    visible={!this.props.clientConnecting}
                     isMuted={this.isMuted()}
                 />
                 {joinedUsers}
@@ -1928,7 +1920,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 style={mainStyle}
                 ref={this.node}
             >
-                <LoadingOverlay visible={this.state.connecting}/>
+                <LoadingOverlay visible={this.props.clientConnecting}/>
 
                 <div
                     ref={this.menuNode}

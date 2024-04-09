@@ -632,10 +632,6 @@ export default class CallsClient extends EventEmitter {
         return this.audioDevices;
     }
 
-    public isConnecting() {
-        return !this.connected && !this.closed;
-    }
-
     public getSessionID() {
         return this.ws?.getOriginalConnID();
     }
