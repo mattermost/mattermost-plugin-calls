@@ -445,8 +445,6 @@ func (u *User) transmitSpeech() {
 				var err error
 				if u.pollySession != nil {
 					rd, rate, err = u.pollyToSpeech(text)
-				} else {
-					rd, rate, err = textToSpeech(text)
 				}
 				if err != nil {
 					log.Printf("%s: textToSpeech failed: %s", u.cfg.Username, err.Error())
