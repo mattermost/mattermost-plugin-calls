@@ -131,7 +131,6 @@ export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharing
                         dropdownMenu={StyledDropdownMenu}
                         title={formatMessage({defaultMessage: 'Host controls'})}
                         placement={'top-start'}
-                        portal={false}
                         strategy={'fixed'}
                         offset={0}
                     >

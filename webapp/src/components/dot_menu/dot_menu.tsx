@@ -3,7 +3,7 @@
 
 import React, {ComponentProps, useState} from 'react';
 import {PrimaryButton} from 'src/components/buttons';
-import styled, {css} from 'styled-components';
+import styled from 'styled-components';
 
 import Dropdown from './dropdown';
 
@@ -160,25 +160,6 @@ export const DropdownMenuItemStyled = styled.div`
             color: inherit;
         }
     }
-`;
-
-export const DisabledDropdownMenuItemStyled = styled.div`
-    && {
-        cursor: default;
-        font-family: 'Open Sans';
-        font-style: normal;
-        font-weight: normal;
-        font-size: 14px;
-        color: var(--center-channel-color-40);
-        padding: 8px 20px;
-        text-decoration: unset;
-    }
-`;
-
-export const iconSplitStyling = css`
-    display: flex;
-    align-items: center;
-    gap: 8px;
 `;
 
 export const DropdownMenuItem = (props: {

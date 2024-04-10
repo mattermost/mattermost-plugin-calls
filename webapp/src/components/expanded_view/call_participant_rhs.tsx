@@ -134,7 +134,6 @@ const CallParticipantRHS = ({session, profile, isYou, isHost, iAmHost, isSharing
                         dropdownMenu={StyledDropdownMenu}
                         title={formatMessage({defaultMessage: 'Host controls'})}
                         placement='bottom-end'
-                        portal={false}
                         offset={0}
                     >
                         <HostControlsMenu

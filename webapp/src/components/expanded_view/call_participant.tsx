@@ -119,7 +119,6 @@ export default function CallParticipant({
                         dropdownMenu={StyledDropdownMenu}
                         title={formatMessage({defaultMessage: 'Host controls'})}
                         placement={'bottom-start'}
-                        portal={false}
                         strategy={'fixed'}
                     >
                         <HostControlsMenu

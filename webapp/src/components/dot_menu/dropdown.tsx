@@ -6,7 +6,6 @@ import {
     autoUpdate,
     flip,
     FloatingFocusManager,
-    FloatingPortal,
     offset,
     Placement,
     shift,
@@ -31,7 +30,6 @@ type DropdownProps = {
     flip?: Parameters<typeof flip>[0];
     shift?: Parameters<typeof shift>[0];
     focusManager?: boolean | Omit<ComponentProps<typeof FloatingFocusManager>, 'context' | 'children'>;
-    portal?: boolean;
     strategy?: Strategy;
     isOpen: boolean;
     onOpenChange?: ((open: boolean) => void);
@@ -60,8 +58,6 @@ const Dropdown = (props: DropdownProps) => {
         useRole(context),
         useDismiss(context),
     ]);
-
-    const MaybePortal = (props.portal ?? true) ? FloatingPortal : React.Fragment; // 🤷
 
     let content = (
         <FloatingContainer
@@ -92,9 +88,7 @@ const Dropdown = (props: DropdownProps) => {
     return (
         <>
             {cloneElement(props.target, getReferenceProps({ref: reference, ...props.target.props}))}
-            <MaybePortal>
-                {open && content}
-            </MaybePortal>
+            {open && content}
         </>
     );
 };
