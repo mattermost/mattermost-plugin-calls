@@ -110,7 +110,7 @@ export default function CallParticipant({
             <Participant
                 onMouseEnter={hoverOn}
                 onMouseLeave={hoverOff}
-                withHover={showHostControls}
+                $withHover={showHostControls}
             >
                 {showHostControls &&
                     <StyledDotMenu
@@ -133,7 +133,7 @@ export default function CallParticipant({
     }
 
     return (
-        <Participant withHover={false}>
+        <Participant $withHover={false}>
             {innerParticipant}
         </Participant>
     );
@@ -168,7 +168,7 @@ const styles: Record<string, CSSObject> = {
     },
 };
 
-const Participant = styled.li<{ withHover: boolean }>`
+const Participant = styled.li<{ $withHover: boolean }>`
     position: relative;
     display: flex;
     flex-direction: column;
@@ -177,7 +177,7 @@ const Participant = styled.li<{ withHover: boolean }>`
     gap: 12px;
     padding: 16px;
 
-    ${({withHover}) => withHover && css`
+    ${({$withHover}) => $withHover && css`
         &:hover {
             border-radius: 8px;
             background: rgba(var(--sidebar-text-rgb), 0.08);
@@ -190,10 +190,10 @@ const StyledThreeDotsButton = styled(ThreeDotsButton)`
 `;
 
 const StyledDotMenuButton = styled(DotMenuButton)`
-    background-color: ${(props) => (props.isActive ? 'rgba(var(--sidebar-text-rgb), 0.16)' : 'transparent')};
+    background-color: ${(props) => (props.$isActive ? 'rgba(var(--sidebar-text-rgb), 0.16)' : 'transparent')};
 
     &:hover {
-        background-color: ${(props) => (props.isActive ? 'rgba(var(--sidebar-text-rgb), 0.16)' : 'rgba(var(--sidebar-text-rgb), 0.16)')};
+        background-color: ${(props) => (props.$isActive ? 'rgba(var(--sidebar-text-rgb), 0.16)' : 'rgba(var(--sidebar-text-rgb), 0.16)')};
     }
 `;
 

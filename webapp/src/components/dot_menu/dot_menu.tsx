@@ -7,7 +7,7 @@ import styled from 'styled-components';
 
 import Dropdown from './dropdown';
 
-export const DotMenuButton = styled.div<{ isActive: boolean }>`
+export const DotMenuButton = styled.div<{ $isActive: boolean }>`
     display: inline-flex;
     padding: 0;
     border: none;
@@ -19,12 +19,12 @@ export const DotMenuButton = styled.div<{ isActive: boolean }>`
     fill: rgba(var(--center-channel-color-rgb), 0.56);
     cursor: pointer;
 
-    color: ${(props) => (props.isActive ? 'var(--button-bg)' : 'rgba(var(--center-channel-color-rgb), 0.56)')};
-    background-color: ${(props) => (props.isActive ? 'rgba(var(--button-bg-rgb), 0.08)' : 'transparent')};
+    color: ${(props) => (props.$isActive ? 'var(--button-bg)' : 'rgba(var(--center-channel-color-rgb), 0.56)')};
+    background-color: ${(props) => (props.$isActive ? 'rgba(var(--button-bg-rgb), 0.08)' : 'transparent')};
 
     &:hover {
-        color: ${(props) => (props.isActive ? 'var(--button-bg)' : 'rgba(var(--center-channel-color-rgb), 0.56)')};
-        background-color: ${(props) => (props.isActive ? 'rgba(var(--button-bg-rgb), 0.08)' : 'rgba(var(--center-channel-color-rgb), 0.08)')};
+        color: ${(props) => (props.$isActive ? 'var(--button-bg)' : 'rgba(var(--center-channel-color-rgb), 0.56)')};
+        background-color: ${(props) => (props.$isActive ? 'rgba(var(--button-bg-rgb), 0.08)' : 'rgba(var(--center-channel-color-rgb), 0.08)')};
     }
 `;
 
@@ -95,7 +95,7 @@ const DotMenu = ({
                 e.stopPropagation();
                 toggleOpen();
             }}
-            onKeyDown={(e: KeyboardEvent) => {
+            onKeyUp={(e: KeyboardEvent) => {
                 // Handle Enter and Space as clicking on the button
                 if (e.key === 'Space' || e.key === 'Enter') {
                     e.stopPropagation();
