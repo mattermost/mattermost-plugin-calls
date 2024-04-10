@@ -354,7 +354,7 @@ func (p *Plugin) removeSession(us *session) error {
 		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   us.channelID,
-			"jobState": currState.Call.Recording.getClientState().toMap(),
+			"recState": currState.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: us.channelID, ReliableClusterSend: true})
 	}
 

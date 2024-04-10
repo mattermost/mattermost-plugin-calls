@@ -740,7 +740,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   channelID,
-			"jobState": state.Call.Recording.getClientState().toMap(),
+			"recState": state.Call.Recording.getClientState().toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 	}
 
