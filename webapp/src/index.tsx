@@ -637,6 +637,9 @@ export default class Plugin {
                 const data = await RestClient.fetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
 
                 for (let i = 0; i < data.length; i++) {
+                    // Skipping the channel for the current call here is important
+                    // as it can avoid an inconsistent state for the current call due to a race.
+                    // State for the current call should ONLY be mutated as a result of websocket events, not HTTP calls.
                     if (skipChannelID === data[i].channel_id) {
                         logDebug('skipping channel from state loading', skipChannelID);
                         continue;
