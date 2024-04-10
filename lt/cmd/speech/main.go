@@ -173,7 +173,7 @@ func performScript(filename string) error {
 				doneCh := userClients[userIdx].Speak(block.text[i])
 				go func(idx int) {
 					<-doneCh
-					log.Printf("<><> user %s finished\n", script.users[idx])
+					userClients[idx].Mute()
 					blockWg.Done()
 				}(userIdx)
 			}

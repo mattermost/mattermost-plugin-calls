@@ -496,6 +496,7 @@ func (u *User) transmitSpeech() {
 }
 
 func (u *User) Speak(text string) chan struct{} {
+	u.Unmute()
 	u.speechTextCh <- text
 	return u.doneSpeakingCh
 }
