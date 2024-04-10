@@ -4,7 +4,7 @@
   "description": "Integrates real-time voice communication in Mattermost",
   "homepage_url": "https://github.com/mattermost/mattermost-plugin-calls/",
   "support_url": "https://github.com/mattermost/mattermost-plugin-calls/issues",
-  "min_server_version": "7.8.0",
+  "min_server_version": "9.5.0",
   "server": {
     "executables": {
       "linux-amd64": "server/dist/plugin-linux-amd64",
@@ -189,14 +189,14 @@
         "display_name": "Enable call transcriptions (Experimental)",
         "type": "bool",
         "default": false,
-        "help_text": "(Optional) When set to true, call transcriptions are enabled."
+        "help_text": "(Optional) When set to true, post-call transcriptions are enabled."
       },
       {
         "key": "TranscriberModelSize",
         "display_name": "Call transcriber model size",
         "type": "dropdown",
         "default": "base",
-        "help_text": "The speech-to-text model size to use. Heavier models will produce more accurate results at the expense of processing time and resources usage.",
+        "help_text": "The speech-to-text model size to use for post-call transcriptions. Heavier models will produce more accurate results at the expense of processing time and resources usage.",
         "options": [
           {
             "display_name": "Tiny",
@@ -212,6 +212,63 @@
           }
         ],
         "hosting": "on-prem"
+      },
+      {
+        "key": "TranscriberNumThreads",
+        "display_name": "Call transcriber threads",
+        "type": "number",
+        "default": 2,
+        "help_text": "The number of threads used by the post-call transcriber. This must be in the range [1, numCPUs]."
+      },
+      {
+        "key": "EnableLiveCaptions",
+        "display_name": "Enable live captions (Experimental)",
+        "type": "bool",
+        "default": false,
+        "help_text": "(Optional) When set to true, live captions are enabled."
+      },
+      {
+        "key": "LiveCaptionsModelSize",
+        "display_name": "Live captions: Model size",
+        "type": "dropdown",
+        "default": "tiny",
+        "help_text": "The speech-to-text model size to use for live captions. Heavier models will produce more accurate results at the expense of processing time and resources usage.",
+        "options": [
+          {
+            "display_name": "Tiny",
+            "value": "tiny"
+          },
+          {
+            "display_name": "Base",
+            "value": "base"
+          },
+          {
+            "display_name": "Small",
+            "value": "small"
+          }
+        ],
+        "hosting": "on-prem"
+      },
+      {
+        "key": "LiveCaptionsNumTranscribers",
+        "display_name": "Live captions: Number of transcribers used per call",
+        "type": "number",
+        "default": 1,
+        "help_text": "The number of separate live-captions transcribers for each call. Each transcribes one audio stream at a time. The product of LiveCaptionsNumTranscribers * LiveCaptionsNumThreadsPerTranscriber must be in the range [1, numCPUs]."
+      },
+      {
+        "key": "LiveCaptionsNumThreadsPerTranscriber",
+        "display_name": "Live captions: Number of threads per transcriber",
+        "type": "number",
+        "default": 2,
+        "help_text": "The number of threads per live-captions transcriber. The product of LiveCaptionsNumTranscribers * LiveCaptionsNumThreadsPerTranscriber must be in the range [1, numCPUs]."
+      },
+      {
+        "key": "LiveCaptionsLanguage",
+        "display_name": "Live captions language",
+        "type": "text",
+        "default": "en",
+        "help_text": "The language passed to the live captions transcriber. Should be a 2-letter ISO 639 Set 1 language code, e.g. 'en'. If blank, will be set to English 'en' as default."
       },
       {
         "key": "EnableIPv6",
@@ -232,8 +289,8 @@
   },
   "props": {
     "min_rtcd_version": "v0.12.0",
-    "min_offloader_version": "v0.6.0",
-    "calls_recorder_version": "v0.6.3",
-    "calls_transcriber_version": "v0.1.8"
+    "min_offloader_version": "v0.8.0",
+    "calls_recorder_version": "v0.7.1",
+    "calls_transcriber_version": "v0.2.1"
   }
 }

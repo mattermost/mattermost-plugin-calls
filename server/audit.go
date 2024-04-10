@@ -30,9 +30,11 @@ func (p *Plugin) httpResponseHandler(res *httpResponse, w http.ResponseWriter) {
 		if res.Code != 0 {
 			w.WriteHeader(res.Code)
 		}
-		w.Header().Add("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			p.LogError(fmt.Sprintf("failed to encode data: %s", err))
+		if res.Code != http.StatusNoContent {
+			w.Header().Add("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				p.LogError(fmt.Sprintf("failed to encode data: %s", err))
+			}
 		}
 	}
 }
@@ -42,7 +44,7 @@ func (p *Plugin) httpAudit(handler string, res *httpResponse, w http.ResponseWri
 	if res.Err != "" {
 		logFields = append(logFields, "error", res.Err, "code", res.Code, "status", "fail")
 	} else {
-		logFields = append(logFields, "status", "success")
+		logFields = append(logFields, "code", res.Code, "status", "success")
 	}
 
 	p.httpResponseHandler(res, w)

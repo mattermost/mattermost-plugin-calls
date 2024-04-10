@@ -41,7 +41,7 @@ const ChannelHeaderDropdownButton = ({
             className={'style--none call-button-dropdown ' + (inCall || restricted ? 'disabled' : '')}
             restricted={restricted}
         >
-            <CompassIcon icon='phone-outline'/>
+            <CompassIcon icon='phone'/>
             <div>
                 <span className='call-button-label'>
                     {hasCall ? formatMessage({defaultMessage: 'Join call'}) : formatMessage({defaultMessage: 'Start call'})}

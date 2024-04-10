@@ -9,7 +9,7 @@ import '@mattermost/compass-icons/css/compass-icons.css';
 
 import {
     CallHostChangedData,
-    CallRecordingStateData,
+    CallJobStateData,
     CallStartData,
     CallStateData,
     EmptyData,
@@ -26,10 +26,9 @@ import {
     WebsocketEventData,
 } from '@calls/common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
+import type {DesktopAPI} from '@mattermost/desktop-api';
 import {setServerVersion} from 'mattermost-redux/actions/general';
-import {getMyPreferences} from 'mattermost-redux/actions/preferences';
-import {getMyTeamMembers, getMyTeams} from 'mattermost-redux/actions/teams';
-import {getMe} from 'mattermost-redux/actions/users';
+import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
@@ -52,7 +51,7 @@ import {
 import {
     handleCallEnd,
     handleCallHostChanged,
-    handleCallRecordingState,
+    handleCallJobState,
     handleCallStart,
     handleCallState,
     handleUserDismissedNotification,
@@ -164,17 +163,13 @@ export default async function init(cfg: InitConfig) {
 
     // Setting the base URL if present, in case MM is running under a subpath.
     if (window.basename) {
+        // If present, we need to set the basename on both the client we use (RestClient)
+        // and the default one (Client4) used by internal Redux actions. Not doing so
+        // would break Calls widget on installations served under a subpath.
         RestClient.setUrl(window.basename);
+        Client4.setUrl(window.basename);
     }
     RestClient.setToken(getToken());
-
-    // initialize some basic state.
-    await Promise.all([
-        getMe()(store.dispatch, store.getState),
-        getMyPreferences()(store.dispatch, store.getState),
-        getMyTeams()(store.dispatch, store.getState),
-        getMyTeamMembers()(store.dispatch, store.getState),
-    ]);
 
     if (cfg.initStore) {
         await cfg.initStore(store, channelID);
@@ -258,8 +253,8 @@ export default async function init(cfg: InitConfig) {
         case `custom_${pluginId}_user_reacted`:
             handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);
             break;
-        case `custom_${pluginId}_call_recording_state`:
-            handleCallRecordingState(store, ev as WebSocketMessage<CallRecordingStateData>);
+        case `custom_${pluginId}_call_job_state`:
+            handleCallJobState(store, ev as WebSocketMessage<CallJobStateData>);
             break;
         case `custom_${pluginId}_user_dismissed_notification`:
             handleUserDismissedNotification(store, ev as WebSocketMessage<UserDismissedNotification>);
@@ -299,6 +294,7 @@ declare global {
         desktop: {
             version?: string | null;
         },
+        desktopAPI?: DesktopAPI;
         screenSharingTrackId: string,
         currentCallData?: CurrentCallData,
         callActions?: CallActions,

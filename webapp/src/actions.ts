@@ -43,6 +43,7 @@ import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 import {
     ADD_INCOMING_CALL,
     CALL_HOST,
+    CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
     CALL_STATE,
@@ -51,7 +52,7 @@ import {
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
-    HIDE_SWITCH_CALL_MODAL,
+    HIDE_SWITCH_CALL_MODAL, LIVE_CAPTIONS_ENABLED,
     PROFILES_JOINED,
     RECEIVED_CALLS_CONFIG,
     RECORDINGS_ENABLED,
@@ -143,6 +144,13 @@ export const setTranscriptionsEnabled = (enabled: boolean) => (dispatch: Dispatc
     });
 };
 
+export const setLiveCaptionsEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: LIVE_CAPTIONS_ENABLED,
+        data: enabled,
+    });
+};
+
 export const notifyAdminCloudFreeTrial = async () => {
     return RestClient.fetch(
         `${getPluginPath()}/cloud-notify-admins`,
@@ -210,7 +218,7 @@ export const endCall = (channelID: string) => {
     );
 };
 
-export const displayCallErrorModal = (channelID: string, err: Error) => (dispatch: Dispatch<GenericAction>) => {
+export const displayCallErrorModal = (err: Error, channelID?: string) => (dispatch: Dispatch<GenericAction>) => {
     dispatch(modals.openModal({
         modalId: CallErrorModalID,
         dialogType: CallErrorModal,
@@ -266,7 +274,7 @@ export const startCallRecording = (callID: string) => (dispatch: Dispatch<Generi
             type: CALL_RECORDING_STATE,
             data: {
                 callID,
-                recState: {
+                jobState: {
                     init_at: 0,
                     start_at: 0,
                     end_at: 0,
@@ -476,7 +484,15 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
         type: CALL_RECORDING_STATE,
         data: {
             callID: channelID,
-            recState: call.recording,
+            jobState: call.recording,
+        },
+    });
+
+    actions.push({
+        type: CALL_LIVE_CAPTIONS_STATE,
+        data: {
+            callID: channelID,
+            jobState: call.live_captions,
         },
     });
 

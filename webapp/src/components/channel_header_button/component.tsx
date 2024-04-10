@@ -15,6 +15,7 @@ interface Props {
     isLimitRestricted: boolean,
     maxParticipants: number,
     isChannelArchived: boolean,
+    isDeactivatedDM: boolean,
 }
 
 const ChannelHeaderButton = ({
@@ -27,6 +28,7 @@ const ChannelHeaderButton = ({
     isLimitRestricted,
     maxParticipants,
     isChannelArchived,
+    isDeactivatedDM,
 }: Props) => {
     const {formatMessage} = useIntl();
 
@@ -34,7 +36,7 @@ const ChannelHeaderButton = ({
         return null;
     }
 
-    const restricted = isLimitRestricted || isChannelArchived;
+    const restricted = isLimitRestricted || isChannelArchived || isDeactivatedDM;
     const withUpsellIcon = (isLimitRestricted && isCloudStarter && !inCall);
 
     const button = (
@@ -42,9 +44,10 @@ const ChannelHeaderButton = ({
             id='calls-join-button'
             className={'style--none call-button ' + (inCall || restricted ? 'disabled' : '')}
             restricted={restricted}
+            disabled={isChannelArchived || isDeactivatedDM}
             isCloudPaid={isCloudPaid}
         >
-            <CompassIcon icon='phone-outline'/>
+            <CompassIcon icon='phone'/>
             <div>
                 <span className='call-button-label'>
                     {hasCall ? formatMessage({defaultMessage: 'Join call'}) : formatMessage({defaultMessage: 'Start call'})}
@@ -64,6 +67,24 @@ const ChannelHeaderButton = ({
                 overlay={
                     <Tooltip id='tooltip-limit-header'>
                         {formatMessage({defaultMessage: 'Calls are not available in archived channels.'})}
+                    </Tooltip>
+                }
+            >
+                <Wrapper>
+                    {button}
+                </Wrapper>
+            </OverlayTrigger>
+        );
+    }
+
+    if (isDeactivatedDM) {
+        return (
+            <OverlayTrigger
+                placement='bottom'
+                rootClose={true}
+                overlay={
+                    <Tooltip id='tooltip-limit-header'>
+                        {formatMessage({defaultMessage: 'Calls are not available in a DM with a deactivated user.'})}
                     </Tooltip>
                 }
             >

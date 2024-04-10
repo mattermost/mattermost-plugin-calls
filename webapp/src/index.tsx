@@ -1,6 +1,7 @@
 /* eslint-disable max-lines */
 
 import {CallChannelState} from '@calls/common/lib/types';
+import type {DesktopAPI} from '@mattermost/desktop-api';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
@@ -28,12 +29,20 @@ import {navigateToURL} from 'src/browser_routing';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
+import EnableLiveCaptions from 'src/components/admin_console_settings/recordings/enable_live_captions';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
 import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
+import LiveCaptionsLanguage from 'src/components/admin_console_settings/recordings/live_captions_language';
+import LiveCaptionsModelSize from 'src/components/admin_console_settings/recordings/live_captions_model_size';
+import LiveCaptionsNumThreadsPerTranscriber
+    from 'src/components/admin_console_settings/recordings/live_captions_num_threads_per_transcriber';
+import LiveCaptionsNumTranscribers
+    from 'src/components/admin_console_settings/recordings/live_captions_num_transcribers';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
 import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
 import TranscriberModelSize from 'src/components/admin_console_settings/recordings/transcriber_model_size';
+import TranscriberNumThreads from 'src/components/admin_console_settings/recordings/transcriber_num_threads';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
 import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
 import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
@@ -53,11 +62,9 @@ import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/ty
 
 import {
     CALL_STATE,
-    DESKTOP_WIDGET_CONNECTED,
     DISMISS_CALL,
     PROFILES_JOINED,
     RECEIVED_CHANNEL_STATE,
-    SHOW_SWITCH_CALL_MODAL,
     UNINIT,
     USER_LOWER_HAND,
     USER_MUTED,
@@ -77,6 +84,9 @@ import EndCallModal from './components/end_call_modal';
 import ExpandedView from './components/expanded_view';
 import ScreenSourceModal from './components/screen_source_modal';
 import SwitchCallModal from './components/switch_call_modal';
+import {
+    handleDesktopJoinedCall,
+} from './desktop';
 import {logDebug, logErr} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
@@ -99,7 +109,6 @@ import {
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {DesktopNotificationArgs, PluginRegistry, Store, WebAppUtils} from './types/mattermost-webapp';
 import {
-    desktopGTE,
     followThread,
     getChannelURL,
     getExpandedChannelID,
@@ -116,9 +125,10 @@ import {
 import {
     handleCallEnd,
     handleCallHostChanged,
-    handleCallRecordingState,
+    handleCallJobState,
     handleCallStart,
     handleCallState,
+    handleCaption,
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
@@ -217,8 +227,8 @@ export default class Plugin {
             handleCallHostChanged(store, ev);
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_recording_state`, (ev) => {
-            handleCallRecordingState(store, ev);
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_job_state`, (ev) => {
+            handleCallJobState(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_dismissed_notification`, (ev) => {
@@ -231,6 +241,10 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler('user_removed', (ev) => {
             handleUserRemovedFromChannel(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_caption`, (ev) => {
+            handleCaption(store, ev);
         });
     }
 
@@ -265,7 +279,7 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
 
         registry.registerFilePreviewComponent((fi, post) => {
-            return String(post.type) === CALL_RECORDING_POST_TYPE;
+            return String(post?.type) === CALL_RECORDING_POST_TYPE;
         }, RecordingsFilePreview);
 
         registry.registerTranslations((locale: string) => {
@@ -290,9 +304,7 @@ export default class Plugin {
                     followThread(store, channelId, teamId);
                 }
             } else if (channelIDForCurrentCall(store.getState()) !== channelId) {
-                store.dispatch({
-                    type: SHOW_SWITCH_CALL_MODAL,
-                });
+                store.dispatch(showSwitchCallModal(channelId));
             }
         };
 
@@ -371,6 +383,13 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('RecordingQuality', RecordingQuality);
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
         registry.registerAdminConsoleCustomSetting('EnableTranscriptions', EnableTranscriptions);
+        registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
+        registry.registerAdminConsoleCustomSetting('TranscriberNumThreads', TranscriberNumThreads);
+        registry.registerAdminConsoleCustomSetting('EnableLiveCaptions', EnableLiveCaptions);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsModelSize', LiveCaptionsModelSize);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsNumTranscribers', LiveCaptionsNumTranscribers);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsNumThreadsPerTranscriber', LiveCaptionsNumThreadsPerTranscriber);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsLanguage', LiveCaptionsLanguage);
 
         // RTCD server turns on/off the following:
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
@@ -382,17 +401,51 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
         registry.registerAdminConsoleCustomSetting('ICEHostPortOverride', ICEHostPortOverride);
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
-        registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
+
+        // Desktop API handlers
+        if (window.desktopAPI?.onOpenScreenShareModal) {
+            logDebug('registering desktopAPI.onOpenScreenShareModal');
+            this.unsubscribers.push(window.desktopAPI.onOpenScreenShareModal(() => {
+                logDebug('desktopAPI.onOpenScreenShareModal');
+                store.dispatch(showScreenSourceModal());
+            }));
+        }
+
+        if (window.desktopAPI?.onJoinCallRequest) {
+            logDebug('registering desktopAPI.onJoinCallRequest');
+            this.unsubscribers.push(window.desktopAPI.onJoinCallRequest((channelID: string) => {
+                logDebug('desktopAPI.onJoinCallRequest');
+                store.dispatch(showSwitchCallModal(channelID));
+            }));
+        }
+
+        if (window.desktopAPI?.onCallsError) {
+            logDebug('registering desktopAPI.onCallsError');
+            this.unsubscribers.push(window.desktopAPI.onCallsError((err: string, callID?: string, errMsg?: string) => {
+                logDebug('desktopAPI.onCallsError');
+                if (err === 'client-error') {
+                    store.dispatch(displayCallErrorModal(new Error(errMsg), callID));
+                }
+            }));
+        }
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
-            if (shouldRenderDesktopWidget()) {
+            // Desktop handler
+            const payload = {
+                callID: channelID,
+                title: title || '',
+                channelURL: getChannelURL(store.getState(), getChannel(store.getState(), channelID), getCurrentTeamId(store.getState())),
+                rootID: rootId || '',
+            };
+            if (window.desktopAPI?.joinCall) {
+                logDebug('desktopAPI.joinCall');
+                handleDesktopJoinedCall(store, await window.desktopAPI.joinCall(payload));
+                return;
+            } else if (shouldRenderDesktopWidget()) {
                 logDebug('sending join call message to desktop app');
-                sendDesktopEvent('calls-join-call', {
-                    callID: channelID,
-                    title,
-                    channelURL: getChannelURL(store.getState(), getChannel(store.getState(), channelID), getCurrentTeamId(store.getState())),
-                    rootID: rootId,
-                });
+
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                sendDesktopEvent('calls-join-call', payload);
                 return;
             }
 
@@ -459,7 +512,7 @@ export default class Plugin {
                     }
                     if (window.callsClient) {
                         if (err) {
-                            store.dispatch(displayCallErrorModal(window.callsClient.channelID, err));
+                            store.dispatch(displayCallErrorModal(err, window.callsClient.channelID));
                         }
                         window.callsClient.destroy();
                         delete window.callsClient;
@@ -520,7 +573,7 @@ export default class Plugin {
                 }).catch((err: Error) => {
                     logErr(err);
                     unmountCallWidget();
-                    store.dispatch(displayCallErrorModal(channelID, err));
+                    store.dispatch(displayCallErrorModal(err, channelID));
                     delete window.callsClient;
                 });
             } catch (err) {
@@ -535,30 +588,23 @@ export default class Plugin {
             if (ev.data?.type === 'connectCall') {
                 connectCall(ev.data.channelID);
                 followThread(store, ev.data.channelID, getCurrentTeamId(store.getState()));
-            } else if (ev.data?.type === 'desktop-sources-modal-request') {
+            } else if (ev.data?.type === 'desktop-sources-modal-request' && !window.desktopAPI?.onOpenScreenShareModal) {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 store.dispatch(showScreenSourceModal());
-            } else if (ev.data?.type === 'calls-joined-call') {
-                if (!desktopGTE(5, 5) && ev.data.message.type === 'calls-join-request') {
-                    // This `calls-joined-call` message has been repurposed as a `calls-join-request` message
-                    // because the current desktop version (< 5.5) does not have a dedicated `calls-join-request` message.
-                    store.dispatch(showSwitchCallModal(ev.data.message.callID));
-                    return;
-                }
-                store.dispatch({
-                    type: DESKTOP_WIDGET_CONNECTED,
-                    data: {
-                        channel_id: ev.data.message.callID,
-                        session_id: ev.data.message.sessionID,
-                    },
-                });
-            } else if (ev.data?.type === 'calls-join-request') {
+            } else if (ev.data?.type === 'calls-joined-call' && !window.desktopAPI?.joinCall) {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                handleDesktopJoinedCall(store, ev.data.message);
+            } else if (ev.data?.type === 'calls-join-request' && !window.desktopAPI?.onJoinCallRequest) {
                 // we can assume that we are already in a call, since the global widget sent this.
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 store.dispatch(showSwitchCallModal(ev.data.message.callID));
-            } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error') {
-                store.dispatch(displayCallErrorModal(ev.data.message.callID, new Error(ev.data.message.errMsg)));
+            } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error' && !window.desktopAPI?.onCallsError) {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                store.dispatch(displayCallErrorModal(new Error(ev.data.message.errMsg), ev.data.message.callID));
             } else if (ev.data?.type === 'calls-run-slash-command') {
                 slashCommandsHandler(store, joinCall, ev.data.message, ev.data.args);
-            } else if (ev.data?.type === 'calls-link-click') {
+            } else if (ev.data?.type === 'calls-link-click' && !window.desktopAPI?.openLinkFromCalls) {
+                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 navigateToURL(ev.data.message.link);
             }
         };
@@ -818,9 +864,11 @@ declare global {
         callsClient?: CallsClient,
         webkitAudioContext: AudioContext,
         basename: string,
+
         desktop?: {
             version?: string | null;
         },
+        desktopAPI?: DesktopAPI;
         screenSharingTrackId: string,
         currentCallData?: CurrentCallData,
         callActions?: CallActions,

@@ -397,6 +397,7 @@ export function desktopGTE(major: number, minor: number) {
     return version.major > major || version.minor >= minor;
 }
 
+// DEPRECATED: legacy Desktop API logic (<= 5.6.0)
 export function sendDesktopEvent(event: string, data?: Record<string, unknown>) {
     const win = window.opener ? window.opener : window;
     win.postMessage(
@@ -439,6 +440,18 @@ export function untranslatable(msg: string) {
 export function getTranslations(locale: string) {
     try {
         logDebug(`loading translations file for locale '${locale}'`);
+
+        // Remapping some language codes to their actual file.
+        // This is needed as Mattermost product uses different codes for
+        // certain languages such as simplified and traditional Chinese.
+        switch (locale) {
+        case 'zh-CN':
+            locale = 'zh_Hans';
+            break;
+        case 'zh-TW':
+            locale = 'zh_Hant';
+            break;
+        }
 
         // synchronously loading all translation files from bundle (MM-50811).
         // eslint-disable-next-line global-require

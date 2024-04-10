@@ -13,13 +13,13 @@ require (
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/jmoiron/sqlx v1.3.5
-	github.com/mattermost/calls-offloader v0.6.0
-	github.com/mattermost/calls-recorder v0.6.2
-	github.com/mattermost/calls-transcriber v0.1.8
+	github.com/mattermost/calls-offloader v0.8.0
+	github.com/mattermost/calls-recorder v0.6.4
+	github.com/mattermost/calls-transcriber v0.2.0
 	github.com/mattermost/logr/v2 v2.0.21
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.0.12
-	github.com/mattermost/rtcd v0.13.1-0.20240123225600-e6976e37e812
+	github.com/mattermost/rtcd v0.14.0
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
@@ -45,10 +45,11 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.5.0 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.4 // indirect
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.7 // indirect
 	github.com/hashicorp/go-hclog v1.6.2 // indirect
 	github.com/hashicorp/go-plugin v1.6.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
+	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
