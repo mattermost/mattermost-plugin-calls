@@ -19,7 +19,7 @@ const (
 	duration = 10 * time.Minute
 )
 
-var script, siteURL, wsURL, channelID, teamID, userPassword string
+var script, siteURL, wsURL, channelID, teamID, userPassword, profile string
 var setup bool
 
 func main() {
@@ -30,6 +30,7 @@ func main() {
 	flag.StringVar(&teamID, "teamID", "", "TeamID of the call")
 	flag.BoolVar(&setup, "setup", false, "setup users (needs teamID and valid sysadmin login)")
 	flag.StringVar(&userPassword, "userPassword", "testPass123$", "password for users (default testPass123$)")
+	flag.StringVar(&profile, "profile", "default", "named aws profile, located in .aws/config, see https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/")
 	flag.Parse()
 
 	if channelID == "" {
@@ -115,6 +116,7 @@ func main() {
 
 func performScript(filename string) error {
 	awsSess := session.Must(session.NewSessionWithOptions(session.Options{
+		Profile:           profile,
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 	svc := polly.New(awsSess)
