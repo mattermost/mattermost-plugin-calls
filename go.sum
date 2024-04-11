@@ -373,8 +373,8 @@ github.com/mattermost/mattermost/server/public v0.0.12 h1:iunc9q4/XkArOrndEUn73u
 github.com/mattermost/mattermost/server/public v0.0.12/go.mod h1:Bk+atJcELCIk9Yeq5FoqTr+gra9704+X4amrlwlTgSc=
 github.com/mattermost/morph v1.1.0 h1:Q9vrJbeM3s2jfweGheq12EFIzdNp9a/6IovcbvOQ6Cw=
 github.com/mattermost/morph v1.1.0/go.mod h1:gD+EaqX2UMyyuzmF4PFh4r33XneQ8Nzi+0E8nXjMa3A=
-github.com/mattermost/rtcd v0.14.1-0.20240411193104-8accb047c5e0 h1:9dwIQDaKIKJQCHW8ffBXeMc31dBwEa0WlFjeixIxMAA=
-github.com/mattermost/rtcd v0.14.1-0.20240411193104-8accb047c5e0/go.mod h1:7+YUNYTCin+PSl3tT/vsz9cWHmQ7egQf2ESw5rFAb8A=
+github.com/mattermost/rtcd v0.14.1-0.20240411213408-e373823da2ea h1:OJq0H22jdE86rrqEztpTkBI83sRWXhRle3852sHPIN4=
+github.com/mattermost/rtcd v0.14.1-0.20240411213408-e373823da2ea/go.mod h1:CaDYwB/c+UC0MHs+nMZkE3p7Sd4f0Sh+66jjZNDVdRQ=
 github.com/mattermost/squirrel v0.2.0 h1:8ZWeyf+MWQ2cL7hu9REZgLtz2IJi51qqZEovI3T3TT8=
 github.com/mattermost/squirrel v0.2.0/go.mod h1:NPPtk+CdpWre4GxMGoOpzEVFVc0ZoEFyJBZGCtn9nSU=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
@@ -584,8 +584,8 @@ github.com/spf13/pflag v1.0.3/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnIn
 github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
 github.com/spf13/viper v1.4.0/go.mod h1:PTJ7Z/lr49W6bUbkmS1V3by4uWynFiR9p7+dSq/yZzE=
 github.com/spf13/viper v1.8.1/go.mod h1:o0Pch8wJ9BVSWGQMbra6iw0oQ5oktSIBaujf1rJH9Ns=
-github.com/streamer45/interceptor v0.0.0-20240411183850-febf3ca5abce h1:s7e3yAegP4lYHy7cE/PE6weAAtHWFzeiq9MZYwRLXCI=
-github.com/streamer45/interceptor v0.0.0-20240411183850-febf3ca5abce/go.mod h1:ri+LGNjRUc5xUNtDEPzfdkmSqISixVTBF/z/Zms/6T4=
+github.com/streamer45/interceptor v0.0.0-20240411210059-c7d42d2dafc1 h1:jw+SOJtiW9xDbcbxy+/6IIz1f7LUQQRvjuhl2O+TqC0=
+github.com/streamer45/interceptor v0.0.0-20240411210059-c7d42d2dafc1/go.mod h1:ri+LGNjRUc5xUNtDEPzfdkmSqISixVTBF/z/Zms/6T4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.2.0/go.mod h1:qt09Ya8vawLte6SNmTgCsAVtYtaKzEcn8ATUoHMkEqE=

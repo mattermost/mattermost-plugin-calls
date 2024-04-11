@@ -23,7 +23,7 @@ require (
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.0.12
 	github.com/mattermost/morph v1.1.0
-	github.com/mattermost/rtcd v0.14.1-0.20240411193104-8accb047c5e0
+	github.com/mattermost/rtcd v0.14.1-0.20240411213408-e373823da2ea
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
@@ -33,7 +33,7 @@ require (
 	golang.org/x/time v0.3.0
 )
 
-replace github.com/pion/interceptor v0.1.28 => github.com/streamer45/interceptor v0.0.0-20240411183850-febf3ca5abce
+replace github.com/pion/interceptor v0.1.28 => github.com/streamer45/interceptor v0.0.0-20240411210059-c7d42d2dafc1
 
 replace github.com/mattermost/mattermost-plugin-calls/server/public => ./server/public
 
