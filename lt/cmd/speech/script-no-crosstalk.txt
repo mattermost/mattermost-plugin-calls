@@ -1,0 +1,210 @@
+Alice-F Bilbo-M Cercei-F Dartagnan-M
+
+500ms
+Alice
+Yeah, it should probably be a quick one. Just kind of a bit of a, maybe I'm missing something, maybe, well, maybe just, we have kind of a consensus on this in a while.
+
+500ms
+Alice
+But basically, there's been a couple of times recently where I've merged people's PRs and they've come back to me and said, hey, I'd still had something else I wanted to do on that.
+
+1s
+Dartagnan
+I do have a couple of thoughts, but I also don't want to buy us the discussion, so there's anyone else.
+
+1s
+Bilbo
+Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+
+1s
+Alice
+That was nuts.
+
+1s
+Alice
+Let's do it again.
+
+10ms
+Alice
+After these quick sentences.
+
+10ms
+Alice
+To see how well the transcriber.
+
+10ms
+Alice
+Handles short breaks.
+
+10ms
+Alice
+If we can do that.
+
+10ms
+Alice
+Not sure how quick it will be.
+
+10ms
+Alice
+Let's do it again.
+
+1s
+Bilbo
+Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+
+200ms
+Dartagnan
+Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+
+200ms
+Alice
+Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
+
+500ms
+Alice
+Let's do it again. This time with longer sentences.
+
+200ms
+Bilbo
+Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure. Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+
+200ms
+Dartagnan
+Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me. That could be solved with a merge queue, but that's a whole other thing we need to configure. Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me. That could be solved with a merge queue, but that's a whole other thing we need to configure.
+
+200ms
+Alice
+Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable. Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable. Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
+
+500ms
+Cercei
+Okay, well, I tend to think that way as well.
+
+200ms
+Bilbo
+But that doesn't always work as we want. Sometimes there are maybe like last minute like additions or little fixes that the author wants.
+
+1s
+Cercei
+That may be problematic. So I definitely acknowledge there is a potential problem there. But it's eventually is really about process.
+
+1s
+Alice
+Yeah, and I guess I'll depend a bit on the PR because sometimes you might run into the-- like I'm expecting to run into with some of the various brief actions I've been doing things that cause conflict without causing a git conflict.
+
+1s
+Bilbo
+Or then it might merge in and then fail.
+
+200ms
+Dartagnan
+That could be solved with a merge queue, but that's a whole other thing we need to configure.
+
+200ms
+Alice
+Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
+
+1s
+Cercei
+Right, yeah. Or in the past, if there's something I want to merge myself, I'll assign it to myself. I just know some people prefer all of their PRs get merged by themselves.
+
+5s
+Bilbo
+I appreciate the invite. So I'm working on some tools on GitHub for making it possible to build large scale go applications in a more modular way.
+
+300ms
+Bilbo
+I was working on LibPierre to Pierre, which is a go library for peer-to-peer communications. And we were talking about having a demon for it that you could configure.
+
+300ms
+Bilbo
+The idea being, let's say I have a service on one machine and I want to access it somewhere else and I'd like to tunnel that communication over peer-to-peer network with sort of any protocol under the covers, whether it be WebRTC or Web Sockets.
+
+300ms
+Bilbo
+And I was looking at how could we implement this demon for this? And the initial work was kind of a little bit annoying because when you're building something like that, you end up making all kinds of assumptions about how the code works underneath. And so I sort of set out to find a way to make this thing more modular.
+
+500ms
+Alice
+Amazing. That is incredibly interesting and I'm sure we're gonna find so many applications for this.
+
+200ms
+Bilbo
+And hopefully here I can show my screen, let's see. Okay, I'll put this on the other one. All right, so now I don't know necessarily if you will find these tools useful or not.
+
+1s
+Cercei
+Let's talk about something else?
+
+100ms
+Bilbo
+Yeah, it's not long that something I like to start gets kind of stuck for quite a few months. A long story short, this at the effort to make the source, make the metrics,
+
+500ms
+Dartagnan
+Make the code for powering our permeasious metrics source available, which is to say that it's now in the public monorepo. Developers can see the code.
+
+1s
+Alice
+continues to ship without any metrics and there's nothing that can be done to flip that bit on at runtime. It's just not included in the code at all. So it's kind of the beginning of this new enterprise source available mindset, which I'd love to see more code live in this as opposed to.
+
+500ms
+Cercei
+having to go into the closed source repository. And maybe someday, far into the future, you know, the enterprise closed source repository just lives in a source available folder and we call it a day. But just as an interesting anecdote, the biggest reason why this didn't get merged.
+
+500ms
+Bilbo
+Was because I had written some end-to-end tests that were failing in CI and not failing locally. There's some weird flakiness around, you know, loading and unloading a license and, you know.
+
+1s
+Bilbo
+Matter-mosture running the CI tests. And you cannot uninstall your license if you have an environment-defined license. Matter-mosture just immediately reinstalls the version because it's like, oh, there's a license
+
+100ms
+Cercei
+Available and puts it right back. Um, so all of my tests that were trying to remove it and prove that metrics got disabled, um, because in an enterprise edition just would fail in that mindset because
+
+100ms
+Alice
+They never actually got disabled. So if anyone's writing any tests that involved licenses, right now, that is a limitation of the CI framework. Pretty sure, um, Saturn and, and the team are, are having on their queue to like go and figure out a different solution to that. But that was the, the hold-up for,
+
+400ms
+Bilbo
+You know, why I didn't get merged quite so quickly. So I was hoping to figure out the source of that. Um, that also means that the test that is merged is actually still failing and we agree that.
+
+3s
+Dartagnan
+Was okay for now. Obviously if you see that, that's, that's my fault. Um, yeah. Anyway, just in case you're looking for metrics, they're in the honor repo and it's all merged and hopefully this is the the beginning of a new thing, that's it for me.
+
+300ms
+Dartagnan
+Okay, I have one. I don't want to put you on your on the spot, just as so, feel free to say, I don't know, but can you just remind us what the source available license is, what it permits?
+
+300ms
+Alice
+And do you know how it differs from something like a GPL or similarly open source license?
+
+400ms
+Bilbo
+Right. So the matter most source available license is kind of, it's a handcrafted license that our legal team helped draft. It's inspired by how GitLab, GitLab, oh my goodness, GitLab
+
+1s
+Cercei
+Distributes their enterprise source code, which is also in their motor repo, and essentially code that is licensed under the source available license, obviously the source is available,
+
+3s
+Bilbo
+Allows the use of that code in developer environments and in testing environments, just not in production. That's really the extent of it. We used in playbooks, that's where
+
+200ms
+Bilbo
+it kind of originated three years ago, to continue to develop in that single repository, mindset, and I think it's red to a full of other repositories as well. You can apply it
+
+300ms
+Cercei
+On the entire repo, that's one way of deploying it to a plugin or to a code base, but you can also apply it to a single folder. And in the playbooks case, like total transparency, the code inside the enterprise folder is nothing more than if it is licensed than do something. Sort of thing, there's like no logic, no business logic there whatsoever. And as we all kind of understand that the purpose of these licenses isn't to prevent somebody from overriding it and then just using it as they see fit. It has much more to do with business and how. Businesses are willing to use products and code in various environments. And so the goal is not to make a bullet proof, can't be cracked, kind of modeled, but to more create a, frankly,
+
+300ms
+Alice
+but to use it in a production environment, as to how the license is written, requires in our case a matter most enterprise addition license, a valid one. So that explicitly
+
