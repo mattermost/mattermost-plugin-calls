@@ -66,7 +66,7 @@ export const ReactionStream = () => {
         handsUp = (
             <ReactionChip
                 key={'hands'}
-                highlight={true}
+                $highlight={true}
             >
                 <HandEmoji
                     style={{
@@ -105,7 +105,7 @@ const ReactionStreamList = styled.div`
 `;
 
 interface chipProps {
-    highlight?: boolean;
+    $highlight?: boolean;
 }
 
 const ReactionChipOverlay = styled.div`
@@ -127,7 +127,7 @@ const ReactionChip = styled.div<chipProps>`
     font-size: 14px;
     line-height: 20px;
 
-    ${(props) => props.highlight && css`
+    ${(props) => props.$highlight && css`
         background: #FFFFFF;
         color: #090A0B;
   `}

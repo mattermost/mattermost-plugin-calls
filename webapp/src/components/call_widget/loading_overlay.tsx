@@ -21,18 +21,18 @@ export default function LoadingOverlay(props: Props) {
     return (
         <Container
             data-testid={'calls-widget-loading-overlay'}
-            visible={props.visible}
             onAnimationEnd={onAnimationEnd}
+            $visible={props.visible}
         >
             <Body>
-                <Spinner size={16}/>
+                <Spinner $size={16}/>
                 <Text>{formatMessage({defaultMessage: 'Connecting to the call…'})}</Text>
             </Body>
         </Container>
     );
 }
 
-const Container = styled.div<{visible: boolean}>`
+const Container = styled.div<{$visible: boolean}>`
   position: absolute;
   top: 0;
   bottom: 0;
@@ -45,7 +45,7 @@ const Container = styled.div<{visible: boolean}>`
   background: rgba(var(--center-channel-bg-rgb), 0.7);
   app-region: drag;
 
-  ${({visible}) => !visible && css`
+  ${({$visible}) => !$visible && css`
       visibility: hidden;
       opacity: 0;
       transition: visibility 0s 0.3s, opacity 0.3s ease-out;
@@ -66,9 +66,9 @@ const Text = styled.span`
   font-weight: 600;
 `;
 
-const Spinner = styled.span<{size: number}>`
-  width: ${({size}) => size}px;
-  height: ${({size}) => size}px;
+const Spinner = styled.span<{$size: number}>`
+  width: ${({$size}) => $size}px;
+  height: ${({$size}) => $size}px;
   border-radius: 50%;
   display: inline-block;
   border-top: 2px solid #166DE0;

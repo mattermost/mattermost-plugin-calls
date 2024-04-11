@@ -99,6 +99,16 @@ export function getCallsClientInitTime(): number {
     return getCallsClient()?.initTime || 0;
 }
 
+export function isCallsPopOut(): boolean {
+    try {
+        return window.opener && window.opener.callsClient;
+    } catch (err) {
+        logErr(err);
+        return false;
+    }
+    return false;
+}
+
 export function shouldRenderCallsIncoming() {
     try {
         const win = window.opener ? window.opener : window;

@@ -22,8 +22,8 @@ export type Props = {
 export default function GlobalBanner(props: Props) {
     return (
         <Banner
-            color={colorMap[props.type]}
-            bgColor={bgMap[props.type]}
+            $color={colorMap[props.type]}
+            $bgColor={bgMap[props.type]}
         >
             <Icon>
                 <CompassIcon icon={props.icon}/>
@@ -44,18 +44,18 @@ export default function GlobalBanner(props: Props) {
     );
 }
 
-const Banner = styled.div<{color: string, bgColor: string}>`
+const Banner = styled.div<{$color: string, $bgColor: string}>`
   display: flex;
   justify-content: center;
   align-items: center;
   width: 100%;
   height: 40px;
-  background-color: ${({bgColor}) => bgColor};
+  background-color: ${({$bgColor}) => $bgColor};
   font-size: 14px;
-  color: ${({color}) => color};
+  color: ${({$color}) => $color};
 
   a, a:hover, a:visited {
-    color: ${({color}) => color};
+    color: ${({$color}) => $color};
   }
 
   i {

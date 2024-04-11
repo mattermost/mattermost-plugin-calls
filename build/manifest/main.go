@@ -3,13 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mattermost/mattermost/server/public/model"
 	"io/ioutil"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 
-	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 )
 
@@ -103,6 +103,11 @@ func main() {
 	case "dist":
 		if err := distManifest(manifest); err != nil {
 			panic("failed to write manifest to dist directory: " + err.Error())
+		}
+
+	case "check":
+		if err := manifest.IsValid(); err != nil {
+			panic("failed to check manifest: " + err.Error())
 		}
 
 	default:
