@@ -3,13 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mattermost/mattermost/server/public/model"
 	"io/ioutil"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 
-	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 )
 
