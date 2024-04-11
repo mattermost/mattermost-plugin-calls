@@ -39,14 +39,14 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                 width={110}
                 height={100}
             />
-            <VerticalSpacer size={32}/>
+            <VerticalSpacer $size={32}/>
             <ModalTitle>
                 <FormattedMessage
                     defaultMessage={'Your trial has started!{br}Explore the benefits of Enterprise'}
                     values={{br: <br/>}}
                 />
             </ModalTitle>
-            <VerticalSpacer size={8}/>
+            <VerticalSpacer $size={8}/>
             <ModalBody css={'text-align: left'}>
                 <FormattedMessage
                     defaultMessage={'Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. ' +
@@ -129,7 +129,7 @@ export const OnPremTrialError = (modalProps: Props) => {
             <ModalTitle>
                 <FormattedMessage defaultMessage={'Something went wrong!'}/>
             </ModalTitle>
-            <VerticalSpacer size={8}/>
+            <VerticalSpacer $size={8}/>
             <ModalBody css={'text-align: center'}>
                 <FormattedMessage
                     defaultMessage={'It looks like something went wrong with your Enterprise trial request. ' +

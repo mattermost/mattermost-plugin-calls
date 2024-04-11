@@ -38,12 +38,11 @@
     "@types/react-redux": "7.1.21",
     "@types/shallow-equals": "1.0.0",
     "@types/simple-peer": "9.11.3",
-    "@types/styled-components": "5.1.25",
     "@typescript-eslint/eslint-plugin": "5.62.0",
     "@typescript-eslint/parser": "5.62.0",
     "babel-loader": "8.2.3",
     "babel-plugin-formatjs": "10.4.0",
-    "babel-plugin-styled-components": "2.0.6",
+    "babel-plugin-styled-components": "2.1.4",
     "babel-plugin-typescript-to-proptypes": "2.0.0",
     "css-loader": "5.2.6",
     "css-vars-ponyfill": "2.4.8",
@@ -71,7 +70,7 @@
     "webpack-cli": "4.10.0"
   },
   "dependencies": {
-    "@calls/common": "github:mattermost/calls-common#954d125d14fd3b46d723bab01d92a0ef3ecca1b8",
+    "@calls/common": "github:mattermost/calls-common#v0.26.0",
     "@mattermost/compass-icons": "0.1.31",
     "@msgpack/msgpack": "2.7.1",
     "bootstrap": "3.4.1",
@@ -84,6 +83,7 @@
     "react-redux": "7.2.4",
     "redux": "4.2.0",
     "semver-parser": "4.0.0",
-    "styled-components": "5.3.5"
+    "styled-components": "6.1.8",
+    "stylis": "4.3.1"
   }
 }

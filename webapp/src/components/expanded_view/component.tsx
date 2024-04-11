@@ -150,6 +150,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private pushToTalk = false;
     private screenPlayer: HTMLVideoElement | null = null;
 
+    static contextType = window.ProductApi.WebSocketProvider;
+
     #unlockNavigation?: () => void;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
@@ -579,8 +581,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     public componentDidMount() {
         const callsClient = getCallsClient();
         if (!callsClient) {
+            logErr('callsClient should be defined');
             return;
         }
+
+        // On mount we request the call state through websocket. This avoids
+        // making a potentially racy HTTP call and should guarantee
+        // a consistent state.
+        logDebug('requesting call state through ws');
+        this.context.sendMessage('custom_com.mattermost.calls_call_state', {channelID: callsClient.channelID});
 
         // keyboard shortcuts
         window.addEventListener('keydown', this.handleKBShortcuts, true);

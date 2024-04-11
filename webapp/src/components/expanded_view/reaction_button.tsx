@@ -8,7 +8,7 @@ import EmojiPicker, {
     SkinTonePickerLocation,
     SuggestionMode,
 } from 'emoji-picker-react';
-import React, {forwardRef, useImperativeHandle, useState} from 'react';
+import React, {forwardRef, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {OverlayTrigger} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
 import {Emoji} from 'src/components/emoji/emoji';
@@ -47,20 +47,39 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
         },
     }));
 
+    const innerRef = useRef<HTMLDivElement>(null);
+
+    const closeOnBlur = (e: Event) => {
+        if (innerRef && innerRef.current && e.target && innerRef.current.contains(e.target as Node)) {
+            return;
+        }
+
+        // hide everything
+        setShowPicker(false);
+        setShowBar(false);
+    };
+
+    const closeOnEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            // hide everything
+            setShowPicker(false);
+            setShowBar(false);
+        }
+    };
+
+    useEffect(() => {
+        document.addEventListener('click', closeOnBlur, true);
+        document.addEventListener('keyup', closeOnEscape, true);
+        return () => {
+            document.removeEventListener('click', closeOnBlur, true);
+            document.removeEventListener('keyup', closeOnEscape, true);
+        };
+    }, []);
+
     const callsClient = getCallsClient();
     const addReactionText = showBar ?
         formatMessage({defaultMessage: 'Close reactions'}) :
         formatMessage({defaultMessage: 'Add reaction'});
-
-    const handleUserPicksEmoji = (ecd: EmojiClickData) => {
-        const emojiData: EmojiData = {
-            name: findEmojiName(ecd.names),
-            skin: ecd.activeSkinTone,
-            unified: ecd.unified.toLowerCase(),
-            literal: ecd.emoji || '',
-        };
-        callsClient?.sendUserReaction(emojiData);
-    };
 
     const onRaiseHandToggle = () => {
         if (isHandRaised) {
@@ -91,10 +110,27 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
         return !prev;
     });
 
+    const handleUserPicksEmoji = (ecd: EmojiClickData) => {
+        const emojiData: EmojiData = {
+            name: findEmojiName(ecd.names),
+            skin: ecd.activeSkinTone,
+            unified: ecd.unified.toLowerCase(),
+            literal: ecd.emoji || '',
+        };
+        callsClient?.sendUserReaction(emojiData);
+
+        // hide everything
+        setShowPicker(false);
+        setShowBar(false);
+    };
+
     return (
-        <div style={{position: 'relative'}}>
+        <div
+            style={{position: 'relative'}}
+            ref={innerRef}
+        >
             {showPicker &&
-                <PickerContainer>
+                <PickerContainer id={'calls-popout-emoji-picker'}>
                     <EmojiPicker
                         emojiVersion={EMOJI_VERSION}
                         emojiStyle={EmojiStyle.APPLE}
@@ -109,7 +145,7 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
                 </PickerContainer>
             }
             {showBar &&
-                <Bar>
+                <Bar id={'calls-popout-emoji-bar'}>
                     <OverlayTrigger
                         key={'calls-popout-raisehand-button'}
                         placement='top'
@@ -121,9 +157,9 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
                         }
                     >
                         <HandsButton
-                            onClick={onRaiseHandToggle}
-                            active={isHandRaised}
                             data-testid={isHandRaised ? 'lower-hand-button' : 'raise-hand-button'}
+                            onClick={onRaiseHandToggle}
+                            $active={isHandRaised}
                         >
                             {handIcon}
                             <HandText>{raiseHandText}</HandText>
@@ -152,7 +188,7 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
                         />
                         <QuickSelectButton
                             onClick={toggleShowPicker}
-                            active={showPicker}
+                            $active={showPicker}
                         >
                             <CompassIcon icon='emoticon-plus-outline'/>
                         </QuickSelectButton>
@@ -264,7 +300,7 @@ const Bar = styled.div`
     gap: 8px;
 `;
 
-const HandsButton = styled.button<{ active: boolean }>`
+const HandsButton = styled.button<{ $active: boolean }>`
     border: none;
     display: flex;
     justify-content: center;
@@ -280,14 +316,14 @@ const HandsButton = styled.button<{ active: boolean }>`
     font-size: 16px;
     line-height: 16px;
 
-    :hover {
+    &:hover {
         background: rgba(var(--center-channel-color-rgb), 0.08);
     }
 
-    ${({active}) => (active && css`
+    ${({$active}) => ($active && css`
         background: rgba(255, 188, 31, 0.12);
 
-        :hover {
+        &:hover {
             background: rgba(255, 188, 31, 0.2);
         }
     `)}
@@ -305,7 +341,7 @@ const QuickSelectContainer = styled.div`
     gap: 4px;
 `;
 
-const QuickSelectButton = styled.button<{ active?: boolean }>`
+const QuickSelectButton = styled.button<{ $active?: boolean }>`
     border: none;
     display: flex;
     justify-content: center;
@@ -316,7 +352,7 @@ const QuickSelectButton = styled.button<{ active?: boolean }>`
     line-height: 24px;
     padding: 8px;
 
-    :hover {
+    &:hover {
         background: rgba(var(--center-channel-color-rgb), 0.08);
     }
 
@@ -324,11 +360,11 @@ const QuickSelectButton = styled.button<{ active?: boolean }>`
       margin: 0;
     }
 
-    ${({active}) => (active && css`
+    ${({$active}) => ($active && css`
         background: var(--button-bg);
         color: var(--button-color);
 
-        :hover {
+        &:hover {
             background: rgba(var(--button-bg-rgb), 0.92);
         }
     `)}

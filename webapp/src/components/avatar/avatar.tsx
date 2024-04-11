@@ -36,10 +36,10 @@ const Avatar = ({
             <ProfilePlain
                 {...attrs}
                 data-content={text}
-                size={size}
-                fontSize={fontSize}
-                border={border}
-                borderGlowWidth={borderGlowWidth}
+                $size={size}
+                $fontSize={fontSize}
+                $border={border}
+                $borderGlowWidth={borderGlowWidth}
             />
         );
     }
@@ -48,10 +48,10 @@ const Avatar = ({
         return (
             <ProfilePlain
                 {...attrs}
-                size={size}
-                fontSize={fontSize}
-                border={border}
-                borderGlowWidth={borderGlowWidth}
+                $size={size}
+                $fontSize={fontSize}
+                $border={border}
+                $borderGlowWidth={borderGlowWidth}
             >
                 <CompassIcon icon={icon}/>
             </ProfilePlain>
@@ -59,23 +59,24 @@ const Avatar = ({
     }
 
     return (
-        <Img
+        <Profile
             {...attrs}
+            as='img'
             alt={`${username || 'user'} profile image`}
             src={url}
-            size={size}
-            fontSize={fontSize}
-            border={border}
-            borderGlowWidth={borderGlowWidth}
+            $size={size}
+            $fontSize={fontSize}
+            $border={border}
+            $borderGlowWidth={borderGlowWidth}
         />
     );
 };
 
 interface ProfileProps {
-    size: number;
-    fontSize: number;
-    border?: boolean;
-    borderGlowWidth: number;
+    $size: number;
+    $fontSize: number;
+    $border?: boolean;
+    $borderGlowWidth: number;
 }
 
 const Profile = styled.div<ProfileProps>`
@@ -92,20 +93,20 @@ const Profile = styled.div<ProfileProps>`
     vertical-align: sub;
     background: var(--center-channel-bg);
 
-    ${(props) => props.border && props.borderGlowWidth === 0 && css`
+    ${(props) => props.$border && props.$borderGlowWidth === 0 && css`
         border: 1px solid var(--center-channel-bg);
     `}
 
-    width: ${({size}) => size}px;
-    min-width: ${({size}) => size}px;
-    height: ${({size}) => size}px;
-    font-size: ${({fontSize}) => fontSize}px;
+    width: ${({$size}) => $size}px;
+    min-width: ${({$size}) => $size}px;
+    height: ${({$size}) => $size}px;
+    font-size: ${({$fontSize}) => $fontSize}px;
 
-    :not(:first-child) {
-        margin-left: -${({size}) => size * 0.25}px;
+    &:not(:first-child) {
+        margin-left: -${({$size}) => $size * 0.25}px;
     }
 
-    box-shadow: ${({borderGlowWidth}) => borderGlowWidth > 0 ? `0px 0px 0px ${borderGlowWidth}px rgba(61, 184, 135, 0.56)` : 'none'};
+    box-shadow: ${({$borderGlowWidth}) => $borderGlowWidth > 0 ? `0px 0px 0px ${$borderGlowWidth}px rgba(61, 184, 135, 0.56)` : 'none'};
 `;
 
 const ProfilePlain = styled(Profile)`
@@ -128,7 +129,5 @@ const ProfilePlain = styled(Profile)`
         content: attr(data-content);
     }
 `;
-
-const Img = Profile.withComponent('img');
 
 export default memo(Avatar);

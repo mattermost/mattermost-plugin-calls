@@ -266,7 +266,7 @@
       {
         "key": "LiveCaptionsLanguage",
         "display_name": "Live captions language",
-        "type": "string",
+        "type": "text",
         "default": "en",
         "help_text": "The language passed to the live captions transcriber. Should be a 2-letter ISO 639 Set 1 language code, e.g. 'en'. If blank, will be set to English 'en' as default."
       },

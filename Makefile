@@ -43,6 +43,11 @@ endif
 .PHONY: all
 all: check-style test dist
 
+## Ensures the plugin manifest is valid
+.PHONY: manifest-check
+manifest-check:
+	./build/bin/manifest check
+
 ## Propagates plugin manifest information into the server/ and webapp/ folders.
 .PHONY: apply
 apply:
@@ -63,7 +68,7 @@ i18n-check:
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: apply golangci-lint webapp/node_modules standalone/node_modules e2e/node_modules gomod-check i18n-check
+check-style: manifest-check apply golangci-lint webapp/node_modules standalone/node_modules e2e/node_modules gomod-check i18n-check
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
@@ -80,7 +85,7 @@ ifneq ($(HAS_SERVER),)
 	fi; \
 
 	@echo Running golangci-lint
-	golangci-lint run ./server/... ./lt/...
+	golangci-lint run ./server/...
 	cd server/public && golangci-lint run ./...
 endif
 

@@ -61,15 +61,15 @@ export default function ControlsButton(props: Props) {
         >
             <ButtonContainer
                 id={props.id}
-                bgColor={props.bgColor}
-                bgColorHover={props.bgColorHover}
-                margin={props.margin}
                 onClick={onClick}
                 disabled={props.disabled}
-                isDisabled={props.disabled}
-                isUnavailable={props.unavailable}
-                fill={props.iconFill}
-                fillHover={props.iconFillHover}
+                $bgColor={props.bgColor}
+                $bgColorHover={props.bgColorHover}
+                $margin={props.margin}
+                $isDisabled={props.disabled}
+                $isUnavailable={props.unavailable}
+                $fill={props.iconFill}
+                $fillHover={props.iconFillHover}
             >
                 <ButtonIcon>
                     {props.icon}
@@ -88,13 +88,13 @@ export default function ControlsButton(props: Props) {
 }
 
 type ButtonContainerProps = {
-    bgColor: string,
-    bgColorHover?: string,
-    margin?: string,
-    isDisabled?: boolean,
-    isUnavailable?: boolean,
-    fill?: string,
-    fillHover?: string,
+    $bgColor: string,
+    $bgColorHover?: string,
+    $margin?: string,
+    $isDisabled?: boolean,
+    $isUnavailable?: boolean,
+    $fill?: string,
+    $fillHover?: string,
 }
 
 const ButtonContainer = styled.button<ButtonContainerProps>`
@@ -102,29 +102,29 @@ const ButtonContainer = styled.button<ButtonContainerProps>`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: ${({margin}) => margin || '0 8px'};
+    margin: ${({$margin}) => $margin || '0 8px'};
     border-radius: 8px;
     padding: 12px;
     border: none;
-    background: ${({bgColor}) => bgColor || 'rgba(var(--button-color-rgb), 0.08)'};
+    background: ${({$bgColor}) => $bgColor || 'rgba(var(--button-color-rgb), 0.08)'};
 
-    :hover {
-      background: ${({bgColorHover}) => bgColorHover || 'rgba(var(--button-color-rgb), 0.12)'};
+    &:hover {
+      background: ${({$bgColorHover}) => $bgColorHover || 'rgba(var(--button-color-rgb), 0.12)'};
 
       svg {
-        fill: ${({fillHover}) => fillHover || 'var(--button-color)'};
+        fill: ${({$fillHover}) => $fillHover || 'var(--button-color)'};
       }
     }
 
     svg {
-      fill: ${({fill}) => fill || 'rgba(var(--button-color-rgb), 0.56)'};
-      ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
+      fill: ${({$fill}) => $fill || 'rgba(var(--button-color-rgb), 0.56)'};
+      ${({$isDisabled, $isUnavailable}) => ($isDisabled || $isUnavailable) && css`
         fill: rgba(var(--button-color-rgb), 0.32);
       `}
     }
 
-    ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
-      :hover {
+    ${({$isDisabled, $isUnavailable}) => ($isDisabled || $isUnavailable) && css`
+      &:hover {
           background: rgba(var(--button-color-rgb), 0.08);
       }
     `}
