@@ -90,8 +90,10 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     });
 
     if (ringingEnabled(store.getState())) {
-        const callID = calls(store.getState())[channelID].ID || '';
-        store.dispatch(removeIncomingCallNotification(callID));
+        const call = calls(store.getState())[channelID];
+        if (call) {
+            store.dispatch(removeIncomingCallNotification(call.ID));
+        }
     }
 }
 

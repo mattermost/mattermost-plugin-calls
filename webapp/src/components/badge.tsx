@@ -89,15 +89,18 @@ const Spinner = styled.span<{ $size: number }>`
 `;
 
 type HostBadgeProps = {
-    $onWhiteBg?: boolean;
+    onWhiteBg?: boolean;
 }
 
-export const HostBadge = ({$onWhiteBg}: HostBadgeProps) => {
+export const HostBadge = ({onWhiteBg, ...rest}: HostBadgeProps) => {
     const {formatMessage} = useIntl();
 
     return (
-        <div style={{padding: '1px 2px'}}>
-            <HBadge $onWhiteBg={$onWhiteBg}>
+        <div
+            style={{padding: '1px 2px'}}
+            {...rest}
+        >
+            <HBadge $onWhiteBg={onWhiteBg}>
                 {formatMessage({defaultMessage: 'Host'})}
             </HBadge>
         </div>

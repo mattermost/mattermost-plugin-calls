@@ -838,25 +838,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             display: 'flex',
                             width: '100%',
                             height: '100%',
-                            background: 'rgba(var(--dnd-indicator-rgb), 0.4)',
+                            top: '1px',
+                            background: 'rgba(63, 67, 80, 0.4)',
                             justifyContent: 'center',
                             alignItems: 'center',
+                            borderRadius: '8px',
                             zIndex: 1001,
                         }}
                     >
                         <button
+                            id='calls-widget-stop-screenshare'
                             data-testid='calls-widget-stop-screenshare'
                             className='cursor--pointer style--none'
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                padding: '8px 16px',
-                                background: 'var(--dnd-indicator)',
-                                color: 'white',
-                                borderRadius: '4px',
-                                fontWeight: 600,
-                            }}
                             onClick={() => this.onShareScreenToggle()}
                         >
                             {formatMessage({defaultMessage: 'Stop sharing'})}
@@ -910,7 +903,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <span
                         style={{
                             marginTop: '8px',
-                            color: 'rgba(var(--center-channel-color-rgb), 0.56)',
+                            color: 'rgba(var(--center-channel-color-rgb), 0.72)',
                             fontSize: '12px',
                             padding: '0 8px',
                             textAlign: 'center',
@@ -1014,6 +1007,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 return (
                     <li
                         className='MenuItem'
+                        data-testid={isHost && 'participant-list-host'}
                         key={'participants_profile_' + session.session_id}
                         style={{padding: '11px 16px', gap: '12px'}}
                     >
@@ -1046,7 +1040,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                         {formatMessage({defaultMessage: '(you)'})}
                                     </span>
                                 }
-                                {isHost && <HostBadge $onWhiteBg={true}/>}
+                                {isHost &&
+                                    <HostBadge
+                                        data-testid={'participant-list-host-badge'}
+                                        onWhiteBg={true}
+                                    />
+                                }
                             </span>
                         }
 

@@ -5,29 +5,28 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-	"net/http/pprof"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
+
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
-)
 
-var chRE = regexp.MustCompile(`^/([a-z0-9]+)$`)
-var callEndRE = regexp.MustCompile(`^/calls/([a-z0-9]+)/end$`)
-var callDismissNotificationRE = regexp.MustCompile(`^/calls/([a-z0-9]+)/dismiss-notification$`)
+	"github.com/gorilla/mux"
+)
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
-func (p *Plugin) handleGetVersion(w http.ResponseWriter) {
+func (p *Plugin) handleGetVersion(w http.ResponseWriter, _ *http.Request) {
 	info := map[string]interface{}{
 		"version": manifest.Version,
 		"build":   buildHash,
@@ -38,8 +37,11 @@ func (p *Plugin) handleGetVersion(w http.ResponseWriter) {
 	}
 }
 
-func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channelID string) {
+// DEPRECATED in v1
+func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
+
 	// We should go through only if the user has permissions to the requested channel
 	// or if the user is the Calls bot.
 	if !(p.isBotSession(r) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
@@ -47,32 +49,53 @@ func (p *Plugin) handleGetChannel(w http.ResponseWriter, r *http.Request, channe
 		return
 	}
 
-	mobile, postGA := isMobilePostGA(r)
+	channel, err := p.store.GetCallsChannel(channelID, db.GetCallsChannelOpts{})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		p.LogError(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	state, err := p.kvGetChannelState(channelID, false)
+	if channel == nil {
+		cfg := p.getConfiguration()
+		channel = &public.CallsChannel{
+			ChannelID: channelID,
+			Enabled:   cfg.DefaultEnabled != nil && *cfg.DefaultEnabled,
+		}
+	}
+
+	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		p.LogError(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// No call ongoing, we send the channel info only.
+	if call == nil {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(channel); err != nil {
+			p.LogError(err.Error())
+		}
+		return
+	}
+
+	cs, err := p.getCallStateFromCall(call, false)
 	if err != nil {
 		p.LogError(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	info := ChannelStateClient{
-		ChannelID: channelID,
-	}
-
-	if state != nil {
-		info.Enabled = state.Enabled
-		// This is for backwards compatibility for mobile pre-v2
-		if info.Enabled == nil && mobile && !postGA {
-			cfg := p.getConfiguration()
-			info.Enabled = model.NewBool(cfg.DefaultEnabled != nil && *cfg.DefaultEnabled)
-		}
-
-		if state.Call != nil {
-			info.Call = state.Call.getClientState(p.getBotID(), userID)
-		}
-	}
+	// Here we need to keep backwards compatibility so we send both
+	// channel info and current call state, as expected by our older clients.
+	data := map[string]any{}
+	data["channel_id"] = channel.ChannelID
+	data["enabled"] = channel.Enabled
+	data["call"] = cs.getClientState(p.getBotID(), userID)
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(info); err != nil {
+	if err := json.NewEncoder(w).Encode(data); err != nil {
 		p.LogError(err.Error())
 	}
 }
@@ -94,13 +117,11 @@ func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Per
 	return p.API.HasPermissionTo(cm.UserId, perm)
 }
 
-func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
-	mobile, postGA := isMobilePostGA(r)
 
-	var page int
-	channels := []ChannelStateClient{}
 	channelMembers := map[string]*model.ChannelMember{}
+	var page int
 	perPage := 200
 
 	// getting all channel members for the asking user.
@@ -120,66 +141,87 @@ func (p *Plugin) handleGetAllChannels(w http.ResponseWriter, r *http.Request) {
 		page++
 	}
 
+	channels, err := p.store.GetAllCallsChannels(db.GetCallsChannelOpts{})
+	if err != nil {
+		p.LogError("failed to get all calls channels", "err", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	calls, err := p.store.GetAllActiveCalls(db.GetCallOpts{})
+	if err != nil {
+		p.LogError("failed to get all active calls", "err", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	callsMap := make(map[string]*public.Call)
+	for _, call := range calls {
+		// only include calls user has access to
+		if p.hasPermissionToChannel(channelMembers[call.ChannelID], model.PermissionReadChannel) {
+			callsMap[call.ChannelID] = call
+		}
+	}
+
+	data := []any{}
 	// loop on channels to check membership/permissions
-	page = 0
-	for {
-		p.metrics.IncStoreOp("KVList")
-		channelIDs, appErr := p.API.KVList(page, perPage)
-		if appErr != nil {
-			p.LogError(appErr.Error())
-			http.Error(w, appErr.Error(), http.StatusInternalServerError)
+	for _, ch := range channels {
+		if !p.hasPermissionToChannel(channelMembers[ch.ChannelID], model.PermissionReadChannel) {
+			continue
+		}
+
+		channelData := map[string]any{
+			"channel_id": ch.ChannelID,
+			"enabled":    ch.Enabled,
+		}
+		if call := callsMap[ch.ChannelID]; call != nil {
+			cs, err := p.getCallStateFromCall(call, false)
+			if err != nil {
+				p.LogError(err.Error())
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			channelData["call"] = cs.getClientState(p.getBotID(), userID)
+			delete(callsMap, ch.ChannelID)
+		}
+
+		// Here we need to keep backwards compatibility so we send both
+		// channel info and current call state, as expected by our older clients.
+		data = append(data, channelData)
+	}
+
+	// We also need to include any active calls that may not have an explicit entry in
+	// calls_channels
+	for _, call := range callsMap {
+		cs, err := p.getCallStateFromCall(call, false)
+		if err != nil {
+			p.LogError(err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		for _, channelID := range channelIDs {
-			if len(channelID) != 26 || !p.hasPermissionToChannel(channelMembers[channelID], model.PermissionReadChannel) {
-				continue
-			}
-
-			state, err := p.kvGetChannelState(channelID, false)
-			if err != nil {
-				p.LogError(err.Error())
-				continue
-			}
-
-			enabled := state.Enabled
-			// This is for backwards compatibility for mobile pre-v2
-			if enabled == nil && mobile && !postGA {
-				cfg := p.getConfiguration()
-				enabled = model.NewBool(cfg.DefaultEnabled != nil && *cfg.DefaultEnabled)
-			}
-			info := ChannelStateClient{
-				ChannelID: channelID,
-				Enabled:   enabled,
-			}
-			if state.Call != nil {
-				info.Call = state.Call.getClientState(p.getBotID(), userID)
-			}
-			channels = append(channels, info)
-		}
-
-		if len(channelIDs) < perPage {
-			break
-		}
-
-		page++
+		data = append(data, map[string]any{
+			"channel_id": call.ChannelID,
+			"call":       cs.getClientState(p.getBotID(), userID),
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(channels); err != nil {
+	if err := json.NewEncoder(w).Encode(data); err != nil {
 		p.LogError(err.Error())
 	}
 }
 
-func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID string) {
+func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleEndCall", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
 
 	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
 
-	state, err := p.lockCall(channelID)
+	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
@@ -187,7 +229,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 	}
 	defer p.unlockCall(channelID)
 
-	if state == nil || state.Call == nil {
+	if state == nil {
 		res.Err = "no call ongoing"
 		res.Code = http.StatusBadRequest
 		return
@@ -203,8 +245,8 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 		state.Call.EndAt = time.Now().UnixMilli()
 	}
 
-	if err := p.kvSetChannelState(channelID, state); err != nil {
-		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		res.Err = fmt.Errorf("failed to update call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
@@ -212,32 +254,30 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	callID := state.Call.ID
+	nodeID := state.Call.Props.NodeID
 
 	go func() {
 		// We wait a few seconds for the call to end cleanly. If this doesn't
 		// happen we force end it.
 		time.Sleep(5 * time.Second)
 
-		state, err := p.lockCall(channelID)
+		call, err := p.store.GetCall(callID, db.GetCallOpts{})
 		if err != nil {
-			p.LogError("failed to lock call", "err", err.Error())
-			return
-		}
-		defer p.unlockCall(channelID)
-
-		if state == nil || state.Call == nil || state.Call.ID != callID {
-			return
+			p.LogError("failed to get call", "err", err.Error())
 		}
 
-		p.LogInfo("call state is still in store, force ending it", "channelID", channelID)
+		sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})
+		if err != nil {
+			p.LogError("failed to get call sessions", "err", err.Error())
+		}
 
-		for connID := range state.Call.Sessions {
-			if err := p.closeRTCSession(userID, connID, channelID, state.NodeID); err != nil {
+		for _, session := range sessions {
+			if err := p.closeRTCSession(session.UserID, session.ID, channelID, nodeID, callID); err != nil {
 				p.LogError(err.Error())
 			}
 		}
 
-		if err := p.cleanCallState(channelID, state); err != nil {
+		if err := p.cleanCallState(call); err != nil {
 			p.LogError(err.Error())
 		}
 	}()
@@ -246,13 +286,14 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request, channelID
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Request, channelID string) {
+func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleDismissNotification", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
 
-	state, err := p.lockCall(channelID)
+	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
@@ -260,19 +301,19 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 	}
 	defer p.unlockCall(channelID)
 
-	if state == nil || state.Call == nil {
+	if state == nil {
 		res.Err = "no call ongoing"
 		res.Code = http.StatusBadRequest
 		return
 	}
 
-	if state.Call.DismissedNotification == nil {
-		state.Call.DismissedNotification = make(map[string]bool)
+	if state.Call.Props.DismissedNotification == nil {
+		state.Call.Props.DismissedNotification = make(map[string]bool)
 	}
-	state.Call.DismissedNotification[userID] = true
+	state.Call.Props.DismissedNotification[userID] = true
 
-	if err := p.kvSetChannelState(channelID, state); err != nil {
-		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		res.Err = fmt.Errorf("failed to update call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
@@ -346,11 +387,12 @@ func (p *Plugin) permissionToEnableDisableChannel(userID, channelID string) (boo
 	return false, nil
 }
 
-func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, channelID string) {
+func (p *Plugin) handlePostCallsChannel(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
-	defer p.httpAudit("handlePostChannel", &res, w, r)
+	defer p.httpAudit("handlePostCallsChannel", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
 
 	if permission, appErr := p.permissionToEnableDisableChannel(userID, channelID); appErr != nil || !permission {
 		res.Err = "Forbidden"
@@ -361,70 +403,59 @@ func (p *Plugin) handlePostChannel(w http.ResponseWriter, r *http.Request, chann
 		return
 	}
 
-	var info ChannelStateClient
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
+	var channel public.CallsChannel
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&channel); err != nil {
 		res.Err = err.Error()
 		res.Code = http.StatusBadRequest
 		return
 	}
 
-	state, err := p.lockCall(channelID)
-	if err != nil {
-		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-	defer func() {
-		p.unlockCall(channelID)
-		if res.Err != "" {
-			return
-		}
-		if err := json.NewEncoder(w).Encode(info); err != nil {
-			p.LogError(err.Error())
-		}
-	}()
-	if state == nil {
-		state = &channelState{}
-	}
-	state.Enabled = info.Enabled
-	if err := p.kvSetChannelState(channelID, state); err != nil {
-		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+	storedChannel, err := p.store.GetCallsChannel(channelID, db.GetCallsChannelOpts{})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		res.Err = fmt.Errorf("failed to get calls channel: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
 
+	defer func() {
+		if res.Err != "" {
+			return
+		}
+		if err := json.NewEncoder(w).Encode(storedChannel); err != nil {
+			p.LogError(err.Error())
+		}
+	}()
+
+	if storedChannel == nil {
+		storedChannel = &public.CallsChannel{
+			ChannelID: channelID,
+			Enabled:   channel.Enabled,
+			Props:     channel.Props,
+		}
+		if err := p.store.CreateCallsChannel(storedChannel); err != nil {
+			res.Err = fmt.Errorf("failed to create calls channel: %w", err).Error()
+			res.Code = http.StatusInternalServerError
+			return
+		}
+	} else {
+		storedChannel.ChannelID = channelID
+		storedChannel.Enabled = channel.Enabled
+		storedChannel.Props = channel.Props
+		if err := p.store.UpdateCallsChannel(storedChannel); err != nil {
+			res.Err = fmt.Errorf("failed to update calls channel: %w", err).Error()
+			res.Code = http.StatusInternalServerError
+			return
+		}
+	}
+
 	var evType string
-	if info.Enabled != nil && *info.Enabled {
+	if storedChannel.Enabled {
 		evType = "channel_enable_voice"
 	} else {
 		evType = "channel_disable_voice"
 	}
 
 	p.publishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-}
-
-func (p *Plugin) handleDebug(w http.ResponseWriter, r *http.Request) {
-	var res httpResponse
-	defer p.httpAudit("handleDebug", &res, w, r)
-
-	userID := r.Header.Get("Mattermost-User-Id")
-	if !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-		res.Err = "Forbidden"
-		res.Code = http.StatusForbidden
-		return
-	}
-	if strings.HasPrefix(r.URL.Path, "/debug/pprof/profile") {
-		pprof.Profile(w, r)
-		return
-	} else if strings.HasPrefix(r.URL.Path, "/debug/pprof/trace") {
-		pprof.Trace(w, r)
-		return
-	} else if strings.HasPrefix(r.URL.Path, "/debug/pprof") {
-		pprof.Index(w, r)
-		return
-	}
-	res.Err = "Not found"
-	res.Code = http.StatusNotFound
 }
 
 func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request) {
@@ -516,101 +547,5 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 		}
 	}()
 
-	if strings.HasPrefix(r.URL.Path, "/version") {
-		p.handleGetVersion(w)
-		return
-	}
-
-	// NOTE: deprecated in favor of the ServeMetrics hook. Consider removing in v1.0.
-	if strings.HasPrefix(r.URL.Path, "/metrics") && p.metrics != nil {
-		p.metrics.Handler().ServeHTTP(w, r)
-		return
-	}
-
-	if strings.HasPrefix(r.URL.Path, "/standalone/") {
-		p.handleServeStandalone(w, r)
-		return
-	}
-
-	userID := r.Header.Get("Mattermost-User-Id")
-	if userID == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	if strings.HasPrefix(r.URL.Path, "/bot") {
-		p.handleBotAPI(w, r)
-		return
-	}
-
-	if err := p.checkAPIRateLimits(userID); err != nil {
-		http.Error(w, err.Error(), http.StatusTooManyRequests)
-		return
-	}
-
-	if strings.HasPrefix(r.URL.Path, "/debug") {
-		p.handleDebug(w, r)
-		return
-	}
-
-	if r.Method == http.MethodGet {
-		if r.URL.Path == "/config" {
-			if err := p.handleConfig(w); err != nil {
-				p.handleError(w, err)
-			}
-			return
-		}
-
-		if r.URL.Path == "/channels" {
-			p.handleGetAllChannels(w, r)
-			return
-		}
-
-		if r.URL.Path == "/turn-credentials" {
-			p.handleGetTURNCredentials(w, r)
-			return
-		}
-
-		if matches := chRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleGetChannel(w, r, matches[1])
-			return
-		}
-	}
-
-	if r.Method == http.MethodPost {
-		// End user has requested to notify their admin about upgrading for calls
-		if r.URL.Path == "/cloud-notify-admins" {
-			if err := p.handleCloudNotifyAdmins(w, r); err != nil {
-				p.handleError(w, err)
-			}
-			return
-		}
-
-		if matches := chRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handlePostChannel(w, r, matches[1])
-			return
-		}
-
-		if matches := callEndRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleEndCall(w, r, matches[1])
-			return
-		}
-
-		if matches := callDismissNotificationRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleDismissNotification(w, r, matches[1])
-			return
-		}
-
-		if r.URL.Path == "/telemetry/track" {
-			p.handleTrackEvent(w, r)
-			return
-		}
-
-		if matches := callRecordingActionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
-			p.handleRecordingAction(w, r, matches[1], matches[2])
-			return
-		}
-	}
-
-	http.NotFound(w, r)
+	p.apiRouter.ServeHTTP(w, r)
 }

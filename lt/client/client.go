@@ -1,22 +1,21 @@
-package main
+package client
 
 import (
 	"bytes"
 	"compress/zlib"
 	"context"
+	"encoding/binary"
 	"encoding/json"
-	"flag"
+	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/polly"
+	"github.com/pion/webrtc/v3"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
-	"net/url"
 	"os"
-	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/lt/ws"
@@ -27,10 +26,11 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
-	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 	"github.com/pion/webrtc/v3/pkg/media/ivfreader"
 	"github.com/pion/webrtc/v3/pkg/media/oggreader"
+
+	"gopkg.in/hraban/opus.v2"
 )
 
 var (
@@ -44,7 +44,6 @@ var (
 	rtpVideoCodecVP8 = webrtc.RTPCodecCapability{
 		MimeType:    "video/VP8",
 		ClockRate:   90000,
-		Channels:    0,
 		SDPFmtpLine: "",
 		RTCPFeedback: []webrtc.RTCPFeedback{
 			{Type: "goog-remb", Parameter: ""},
@@ -66,27 +65,31 @@ const (
 	simulcastLevelLow  = "l"
 	receiveMTU         = 1460
 	sendMTU            = 1200
-	httpRequestTimeout = 10 * time.Second
+	HTTPRequestTimeout = 10 * time.Second
 )
 
-type config struct {
-	username      string
-	password      string
-	teamID        string
-	channelID     string
-	siteURL       string
-	wsURL         string
-	duration      time.Duration
-	unmuted       bool
-	screenSharing bool
-	recording     bool
-	simulcast     bool
-	setup         bool
+type Config struct {
+	Username      string
+	Password      string
+	TeamID        string
+	ChannelID     string
+	SiteURL       string
+	WsURL         string
+	Duration      time.Duration
+	Unmuted       bool
+	Speak         bool
+	ScreenSharing bool
+	Recording     bool
+	Simulcast     bool
+	Setup         bool
+	SpeechFile    string
+	PollySession  *polly.Polly
+	PollyVoiceID  *string
 }
 
-type user struct {
+type User struct {
 	userID      string
-	cfg         config
+	cfg         Config
 	client      *model.Client4
 	pc          *webrtc.PeerConnection
 	dc          *webrtc.DataChannel
@@ -95,6 +98,11 @@ type user struct {
 	iceCh       chan webrtc.ICECandidateInit
 	initCh      chan struct{}
 	isHost      bool
+
+	pollySession   *polly.Polly
+	pollyVoiceID   *string
+	speechTextCh   chan string
+	doneSpeakingCh chan struct{}
 
 	// WebSocket
 	wsCloseCh chan struct{}
@@ -107,19 +115,23 @@ type wsMsg struct {
 	binary bool
 }
 
-func newUser(cfg config) *user {
-	return &user{
-		cfg:         cfg,
-		connectedCh: make(chan struct{}),
-		doneCh:      make(chan struct{}),
-		iceCh:       make(chan webrtc.ICECandidateInit, 10),
-		wsCloseCh:   make(chan struct{}),
-		wsSendCh:    make(chan wsMsg, 256),
-		initCh:      make(chan struct{}),
+func NewUser(cfg Config) *User {
+	return &User{
+		cfg:            cfg,
+		connectedCh:    make(chan struct{}),
+		doneCh:         make(chan struct{}),
+		iceCh:          make(chan webrtc.ICECandidateInit, 10),
+		wsCloseCh:      make(chan struct{}),
+		wsSendCh:       make(chan wsMsg, 256),
+		initCh:         make(chan struct{}),
+		speechTextCh:   make(chan string, 8),
+		doneSpeakingCh: make(chan struct{}),
+		pollySession:   cfg.PollySession,
+		pollyVoiceID:   cfg.PollyVoiceID,
 	}
 }
 
-func (u *user) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPTransceiver, simulcast bool) {
+func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPTransceiver, simulcast bool) {
 	getExtensionID := func(URI string) uint8 {
 		for _, ext := range trx.Sender().GetParameters().RTPParameters.HeaderExtensions {
 			if ext.URI == URI {
@@ -203,12 +215,12 @@ func (u *user) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 	}
 }
 
-func (u *user) startRecording() error {
-	log.Printf("%s: starting recording", u.cfg.username)
-	ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
+func (u *User) startRecording() error {
+	log.Printf("%s: starting recording", u.cfg.Username)
+	ctx, cancel := context.WithTimeout(context.Background(), HTTPRequestTimeout)
 	defer cancel()
 	res, err := u.client.DoAPIRequest(ctx, http.MethodPost,
-		fmt.Sprintf("%s/plugins/com.mattermost.calls/calls/%s/recording/start", u.client.URL, u.cfg.channelID), "", "")
+		fmt.Sprintf("%s/plugins/com.mattermost.calls/calls/%s/recording/start", u.client.URL, u.cfg.ChannelID), "", "")
 	defer res.Body.Close()
 
 	if err != nil {
@@ -222,7 +234,7 @@ func (u *user) startRecording() error {
 	return fmt.Errorf("unexpected status code %d", res.StatusCode)
 }
 
-func (u *user) transmitScreen(simulcast bool) {
+func (u *User) transmitScreen(simulcast bool) {
 	streamID := model.NewId()
 
 	trackHigh, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelHigh))
@@ -290,7 +302,7 @@ func (u *user) transmitScreen(simulcast bool) {
 	}()
 }
 
-func (u *user) transmitAudio() {
+func (u *User) transmitAudio() {
 	track, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
 	if err != nil {
 		log.Fatalf(err.Error())
@@ -304,7 +316,7 @@ func (u *user) transmitAudio() {
 		rtcpBuf := make([]byte, receiveMTU)
 		for {
 			if _, _, rtcpErr := sender.Read(rtcpBuf); rtcpErr != nil {
-				log.Printf("%s: failed to read rtcp: %s", u.cfg.username, rtcpErr.Error())
+				log.Printf("%s: failed to read rtcp: %s", u.cfg.Username, rtcpErr.Error())
 				return
 			}
 		}
@@ -312,7 +324,7 @@ func (u *user) transmitAudio() {
 
 	go func() {
 		// Open a OGG file and start reading using our OGGReader
-		file, oggErr := os.Open("./lt/samples/audio.ogg")
+		file, oggErr := os.Open(u.cfg.SpeechFile)
 		if oggErr != nil {
 			log.Fatalf(oggErr.Error())
 		}
@@ -376,8 +388,121 @@ func (u *user) transmitAudio() {
 	}()
 }
 
-func (u *user) initRTC() error {
-	log.Printf("%s: setting up RTC connection", u.cfg.username)
+func (u *User) Unmute() {
+	select {
+	case u.wsSendCh <- wsMsg{event: "custom_com.mattermost.calls_unmute", data: nil}:
+	default:
+		log.Printf("failed to send ws message")
+	}
+}
+
+func (u *User) Mute() {
+	select {
+	case u.wsSendCh <- wsMsg{event: "custom_com.mattermost.calls_mute", data: nil}:
+	default:
+		log.Printf("failed to send ws message")
+	}
+}
+
+func (u *User) transmitSpeech() {
+	track, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	sender, err := u.pc.AddTrack(track)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	go func() {
+		rtcpBuf := make([]byte, receiveMTU)
+		for {
+			if _, _, rtcpErr := sender.Read(rtcpBuf); rtcpErr != nil {
+				log.Printf("%s: failed to read rtcp: %s", u.cfg.Username, rtcpErr.Error())
+				return
+			}
+		}
+	}()
+
+	go func() {
+		// Wait for connection established
+		<-u.connectedCh
+
+		enc, err := opus.NewEncoder(24000, 1, opus.AppVoIP)
+		if err != nil {
+			log.Fatalf("%s: failed to create opus encoder: %s", u.cfg.Username, err.Error())
+		}
+
+		for text := range u.speechTextCh {
+			func() {
+				defer func() {
+					u.doneSpeakingCh <- struct{}{}
+				}()
+				log.Printf("%s: received text to speak: %q", u.cfg.Username, text)
+
+				var rd io.Reader
+				var rate int
+				var err error
+				if u.pollySession != nil {
+					rd, rate, err = u.pollyToSpeech(text)
+				}
+				if err != nil {
+					log.Printf("%s: textToSpeech failed: %s", u.cfg.Username, err.Error())
+					return
+				}
+
+				log.Printf("%s: raw speech samples decoded (%d)", u.cfg.Username, rate)
+
+				audioSamplesDataBuf := bytes.NewBuffer([]byte{})
+				if _, err := audioSamplesDataBuf.ReadFrom(rd); err != nil {
+					log.Printf("%s: failed to read samples data: %s", u.cfg.Username, err.Error())
+					return
+				}
+
+				log.Printf("read %d samples bytes", audioSamplesDataBuf.Len())
+
+				sampleDuration := time.Millisecond * 20
+				ticker := time.NewTicker(sampleDuration)
+				audioSamplesData := make([]byte, 480*4)
+				audioSamples := make([]int16, 480)
+				opusData := make([]byte, 8192)
+				for ; true; <-ticker.C {
+					n, err := audioSamplesDataBuf.Read(audioSamplesData)
+					if err != nil {
+						if !errors.Is(err, io.EOF) {
+							log.Printf("%s: failed to read audio samples: %s", u.cfg.Username, err.Error())
+						}
+						break
+					}
+
+					// Convert []byte to []int16
+					for i := 0; i < n; i += 4 {
+						audioSamples[i/4] = int16(binary.LittleEndian.Uint16(audioSamplesData[i : i+4]))
+					}
+
+					n, err = enc.Encode(audioSamples, opusData)
+					if err != nil {
+						log.Printf("%s: failed to encode: %s", u.cfg.Username, err.Error())
+						continue
+					}
+
+					if err := track.WriteSample(media.Sample{Data: opusData[:n], Duration: sampleDuration}); err != nil {
+						log.Printf("%s: failed to write audio sample: %s", u.cfg.Username, err.Error())
+					}
+				}
+			}()
+		}
+	}()
+}
+
+func (u *User) Speak(text string) chan struct{} {
+	u.Unmute()
+	u.speechTextCh <- text
+	return u.doneSpeakingCh
+}
+
+func (u *User) initRTC() error {
+	log.Printf("%s: setting up RTC connection", u.cfg.Username)
 
 	peerConnConfig := webrtc.Configuration{
 		ICEServers:   []webrtc.ICEServer{},
@@ -400,7 +525,7 @@ func (u *user) initRTC() error {
 		return err
 	}
 
-	if u.cfg.simulcast {
+	if u.cfg.Simulcast {
 		for _, ext := range rtpVideoExtensions {
 			if err := m.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: ext}, webrtc.RTPCodecTypeVideo); err != nil {
 				return err
@@ -419,7 +544,7 @@ func (u *user) initRTC() error {
 	gatherCh := make(chan struct{}, 1)
 	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
 		if c == nil {
-			log.Printf("%s: end of candidates", u.cfg.username)
+			log.Printf("%s: end of candidates", u.cfg.Username)
 			select {
 			case gatherCh <- struct{}{}:
 			default:
@@ -427,7 +552,7 @@ func (u *user) initRTC() error {
 			return
 		}
 
-		log.Printf("%s: ice: %v", u.cfg.username, c)
+		log.Printf("%s: ice: %v", u.cfg.Username, c)
 
 		data, err := json.Marshal(c.ToJSON())
 		if err != nil {
@@ -445,20 +570,20 @@ func (u *user) initRTC() error {
 
 	pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		if connectionState == webrtc.ICEConnectionStateConnected {
-			log.Printf("%s: rtc connected", u.cfg.username)
+			log.Printf("%s: rtc connected", u.cfg.Username)
 			close(u.connectedCh)
 
-			if u.cfg.recording && u.isHost {
+			if u.cfg.Recording && u.isHost {
 				if err := u.startRecording(); err != nil {
-					log.Printf("%s: failed to start recording: %s", u.cfg.username, err)
+					log.Printf("%s: failed to start recording: %s", u.cfg.Username, err)
 				} else {
-					log.Printf("%s: recording started successfully", u.cfg.username)
+					log.Printf("%s: recording started successfully", u.cfg.Username)
 				}
 			}
 		}
 
 		if connectionState == webrtc.ICEConnectionStateDisconnected || connectionState == webrtc.ICEConnectionStateFailed {
-			log.Printf("%s: ice disconnect", u.cfg.username)
+			log.Printf("%s: ice disconnect", u.cfg.Username)
 			close(u.wsCloseCh)
 		}
 	})
@@ -467,29 +592,31 @@ func (u *user) initRTC() error {
 		if track.Kind() == webrtc.RTPCodecTypeVideo {
 			rtcpSendErr := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
 			if rtcpSendErr != nil {
-				log.Printf("%s: rtcp send error: %s", u.cfg.username, rtcpSendErr.Error())
+				log.Printf("%s: rtcp send error: %s", u.cfg.Username, rtcpSendErr.Error())
 			}
 		}
 
 		codecName := strings.Split(track.Codec().RTPCodecCapability.MimeType, "/")[1]
-		log.Printf("%s: Track has started, of type %d: %s \n", u.cfg.username, track.PayloadType(), codecName)
+		log.Printf("%s: Track has started, of type %d: %s \n", u.cfg.Username, track.PayloadType(), codecName)
 
 		buf := make([]byte, receiveMTU)
 		for {
 			_, _, readErr := track.Read(buf)
 			if readErr != nil {
-				log.Printf("%s: track read error: %s", u.cfg.username, readErr.Error())
+				log.Printf("%s: track read error: %s", u.cfg.Username, readErr.Error())
 				return
 			}
 		}
 	})
 
-	if u.cfg.unmuted {
+	if u.cfg.Unmuted {
 		u.transmitAudio()
+	} else if u.cfg.Speak {
+		u.transmitSpeech()
 	}
 
-	if u.cfg.screenSharing {
-		u.transmitScreen(u.cfg.simulcast)
+	if u.cfg.ScreenSharing {
+		u.transmitScreen(u.cfg.Simulcast)
 	}
 
 	dc, err := pc.CreateDataChannel("calls-dc", nil)
@@ -532,7 +659,7 @@ func (u *user) initRTC() error {
 	return nil
 }
 
-func (u *user) handleSignal(ev *model.WebSocketEvent) {
+func (u *User) handleSignal(ev *model.WebSocketEvent) {
 	evData := ev.GetData()
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(evData["data"].(string)), &data); err != nil {
@@ -542,33 +669,33 @@ func (u *user) handleSignal(ev *model.WebSocketEvent) {
 	t, _ := data["type"].(string)
 
 	if t == "candidate" {
-		log.Printf("%s: ice!", u.cfg.username)
+		log.Printf("%s: ice!", u.cfg.Username)
 		u.iceCh <- webrtc.ICECandidateInit{Candidate: data["candidate"].(map[string]interface{})["candidate"].(string)}
 	} else if t == "answer" {
-		log.Printf("%s: sdp answer!", u.cfg.username)
+		log.Printf("%s: sdp answer!", u.cfg.Username)
 		if err := u.pc.SetRemoteDescription(webrtc.SessionDescription{
 			Type: webrtc.SDPTypeAnswer,
 			SDP:  data["sdp"].(string),
 		}); err != nil {
-			log.Fatalf("%s: SetRemoteDescription failed: %s", u.cfg.username, err.Error())
+			log.Fatalf("%s: SetRemoteDescription failed: %s", u.cfg.Username, err.Error())
 		}
 
 		go func() {
 			for ice := range u.iceCh {
 				if err := u.pc.AddICECandidate(ice); err != nil {
-					log.Printf("%s: %s", u.cfg.username, err.Error())
+					log.Printf("%s: %s", u.cfg.Username, err.Error())
 				}
 			}
 		}()
 
 	} else if t == "offer" {
-		log.Printf("%s: sdp offer", u.cfg.username)
+		log.Printf("%s: sdp offer", u.cfg.Username)
 
 		if u.pc.SignalingState() != webrtc.SignalingStateStable {
-			log.Printf("%s: signaling conflict on offer, queuing", u.cfg.username)
+			log.Printf("%s: signaling conflict on offer, queuing", u.cfg.Username)
 			go func() {
 				time.Sleep(100 * time.Millisecond)
-				log.Printf("%s: applying previously queued offer", u.cfg.username)
+				log.Printf("%s: applying previously queued offer", u.cfg.Username)
 				u.handleSignal(ev)
 			}()
 			return
@@ -578,22 +705,22 @@ func (u *user) handleSignal(ev *model.WebSocketEvent) {
 			Type: webrtc.SDPTypeOffer,
 			SDP:  data["sdp"].(string),
 		}); err != nil {
-			log.Fatalf("%s: SetRemoteDescription failed: %s", u.cfg.username, err.Error())
+			log.Fatalf("%s: SetRemoteDescription failed: %s", u.cfg.Username, err.Error())
 		}
 
 		sdp, err := u.pc.CreateAnswer(nil)
 		if err != nil {
-			log.Printf("%s: %s", u.cfg.username, err.Error())
+			log.Printf("%s: %s", u.cfg.Username, err.Error())
 		}
 
 		if err := u.pc.SetLocalDescription(sdp); err != nil {
-			log.Printf("%s: SetLocalDescription failed: %s", u.cfg.username, err.Error())
+			log.Printf("%s: SetLocalDescription failed: %s", u.cfg.Username, err.Error())
 		}
 
 		var sdpData bytes.Buffer
 		w := zlib.NewWriter(&sdpData)
 		if err := json.NewEncoder(w).Encode(sdp); err != nil {
-			log.Fatalf("%s: %s", u.cfg.username, err.Error())
+			log.Fatalf("%s: %s", u.cfg.Username, err.Error())
 		}
 		w.Close()
 
@@ -608,7 +735,7 @@ func (u *user) handleSignal(ev *model.WebSocketEvent) {
 	}
 }
 
-func (u *user) wsListen(authToken string) {
+func (u *User) wsListen(authToken string) {
 	defer close(u.iceCh)
 
 	var wsConnID string
@@ -617,7 +744,7 @@ func (u *user) wsListen(authToken string) {
 
 	connect := func() (*ws.Client, error) {
 		ws, err := ws.NewClient(&ws.ClientParams{
-			WsURL:          u.cfg.wsURL,
+			WsURL:          u.cfg.WsURL,
 			AuthToken:      authToken,
 			ConnID:         wsConnID,
 			ServerSequence: wsServerSeq,
@@ -634,7 +761,7 @@ func (u *user) wsListen(authToken string) {
 	defer func() {
 		err := ws.SendMessage("custom_com.mattermost.calls_leave", nil)
 		if err != nil {
-			log.Printf("%s: ws send error: %s", u.cfg.username, err.Error())
+			log.Printf("%s: ws send error: %s", u.cfg.Username, err.Error())
 		}
 		ws.Close()
 	}()
@@ -654,12 +781,12 @@ func (u *user) wsListen(authToken string) {
 					}
 
 					data := map[string]interface{}{
-						"channelID":      u.cfg.channelID,
+						"channelID":      u.cfg.ChannelID,
 						"originalConnID": originalConnID,
 						"prevConnID":     wsConnID,
 					}
 					if err := ws.SendMessage("custom_com.mattermost.calls_reconnect", data); err != nil {
-						log.Printf("%s: ws send error: %s", u.cfg.username, err.Error())
+						log.Printf("%s: ws send error: %s", u.cfg.Username, err.Error())
 						continue
 					}
 
@@ -678,9 +805,9 @@ func (u *user) wsListen(authToken string) {
 						log.Printf("setting original conn id")
 						originalConnID = connID
 
-						log.Printf("%s: joining call", u.cfg.username)
+						log.Printf("%s: joining call", u.cfg.Username)
 						data := map[string]interface{}{
-							"channelID": u.cfg.channelID,
+							"channelID": u.cfg.ChannelID,
 						}
 						if err := ws.SendMessage("custom_com.mattermost.calls_join", data); err != nil {
 							log.Fatalf(err.Error())
@@ -699,8 +826,8 @@ func (u *user) wsListen(authToken string) {
 			if ev.EventType() == "custom_com.mattermost.calls_call_start" {
 				channelID, _ := ev.GetData()["channelID"].(string)
 				hostID, _ := ev.GetData()["host_id"].(string)
-				if channelID == u.cfg.channelID && hostID == u.userID {
-					log.Printf("%s: I am call host", u.cfg.username)
+				if channelID == u.cfg.ChannelID && hostID == u.userID {
+					log.Printf("%s: I am call host", u.cfg.Username)
 					u.isHost = true
 				}
 				continue
@@ -712,21 +839,21 @@ func (u *user) wsListen(authToken string) {
 
 			switch ev.EventType() {
 			case "custom_com.mattermost.calls_join":
-				log.Printf("%s: joined call", u.cfg.username)
+				log.Printf("%s: joined call", u.cfg.Username)
 				if err := u.initRTC(); err != nil {
 					log.Fatalf(err.Error())
 				}
 				defer u.pc.Close()
 			case "custom_com.mattermost.calls_signal":
-				log.Printf("%s: received signal", u.cfg.username)
+				log.Printf("%s: received signal", u.cfg.Username)
 				select {
 				case <-u.initCh:
 					u.handleSignal(ev)
 				case <-time.After(2 * time.Second):
-					log.Printf("%s: timed out waiting for init", u.cfg.username)
+					log.Printf("%s: timed out waiting for init", u.cfg.Username)
 				}
 			case "custom_com.mattermost.calls_call_end":
-				log.Printf("%s: call end event, exiting", u.cfg.username)
+				log.Printf("%s: call end event, exiting", u.cfg.Username)
 				return
 			default:
 			}
@@ -751,16 +878,16 @@ func (u *user) wsListen(authToken string) {
 	}
 }
 
-func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) error {
-	log.Printf("%s: connecting user", u.cfg.username)
+func (u *User) Connect(stopCh chan struct{}) error {
+	log.Printf("%s: connecting user", u.cfg.Username)
 
 	var user *model.User
-	client := model.NewAPIv4Client(u.cfg.siteURL)
+	client := model.NewAPIv4Client(u.cfg.SiteURL)
 	u.client = client
 	// login (or create) user
-	ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), HTTPRequestTimeout)
 	defer cancel()
-	user, _, err := client.Login(ctx, u.cfg.username, u.cfg.password)
+	user, _, err := client.Login(ctx, u.cfg.Username, u.cfg.Password)
 	appErr, ok := err.(*model.AppError)
 	if err != nil && !ok {
 		return err
@@ -770,48 +897,56 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 	if ok && appErr != nil && appErr.Id != "api.user.login.invalid_credentials_email_username" {
 		return err
 	} else if ok && appErr != nil && appErr.Id == "api.user.login.invalid_credentials_email_username" {
-		if !u.cfg.setup {
+		if !u.cfg.Setup {
 			return fmt.Errorf("cannot register user with setup disabled")
 		}
 
-		log.Printf("%s: registering user", u.cfg.username)
-		ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
+		log.Printf("%s: registering user", u.cfg.Username)
+		ctx, cancel := context.WithTimeout(context.Background(), HTTPRequestTimeout)
 		user, _, err = client.CreateUser(ctx, &model.User{
-			Username: u.cfg.username,
-			Password: u.cfg.password,
-			Email:    u.cfg.username + "@example.com",
+			Username: u.cfg.Username,
+			Password: u.cfg.Password,
+			Email:    u.cfg.Username + "@example.com",
 		})
 		cancel()
 		if err != nil {
 			return err
 		}
-		ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+		ctx, cancel = context.WithTimeout(context.Background(), HTTPRequestTimeout)
 		defer cancel()
-		user, _, err = client.Login(ctx, u.cfg.username, u.cfg.password)
+		user, _, err = client.Login(ctx, u.cfg.Username, u.cfg.Password)
 		if err != nil {
 			return err
 		}
 		cancel()
 	}
 
-	log.Printf("%s: logged in", u.cfg.username)
+	log.Printf("%s: logged in", u.cfg.Username)
 	u.userID = user.Id
 
 	// join team
-	if u.cfg.setup {
-		ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+	if u.cfg.Setup {
+		ctx, cancel = context.WithTimeout(context.Background(), HTTPRequestTimeout)
 		defer cancel()
-		_, _, err = client.AddTeamMember(ctx, u.cfg.teamID, user.Id)
+		_, _, err = client.AddTeamMember(ctx, u.cfg.TeamID, user.Id)
 		if err != nil {
 			return err
 		}
 		cancel()
 
-		if channelType == "O" || channelType == "P" {
+		ctx, cancel = context.WithTimeout(context.Background(), HTTPRequestTimeout)
+		defer cancel()
+		channel, _, err := client.GetChannel(ctx, u.cfg.ChannelID, "")
+		if err != nil {
+			return err
+		}
+		cancel()
+
+		if channel.Type == "O" || channel.Type == "P" {
 			// join channel
-			ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
+			ctx, cancel = context.WithTimeout(context.Background(), HTTPRequestTimeout)
 			defer cancel()
-			_, _, err = client.AddChannelMember(ctx, u.cfg.channelID, user.Id)
+			_, _, err = client.AddChannelMember(ctx, u.cfg.ChannelID, user.Id)
 			if err != nil {
 				return err
 			}
@@ -819,7 +954,7 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 		}
 	}
 
-	log.Printf("%s: connecting to websocket", u.cfg.username)
+	log.Printf("%s: connecting to websocket", u.cfg.Username)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -828,7 +963,7 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 		u.wsListen(client.AuthToken)
 	}()
 
-	ticker := time.NewTicker(u.cfg.duration)
+	ticker := time.NewTicker(u.cfg.Duration)
 	defer ticker.Stop()
 
 	select {
@@ -836,235 +971,11 @@ func (u *user) Connect(stopCh chan struct{}, channelType model.ChannelType) erro
 	case <-stopCh:
 	}
 
-	log.Printf("%s: disconnecting...", u.cfg.username)
+	log.Printf("%s: disconnecting...", u.cfg.Username)
 	close(u.doneCh)
 	wg.Wait()
 
-	log.Printf("%s: disconnected", u.cfg.username)
+	log.Printf("%s: disconnected", u.cfg.Username)
 
 	return nil
-}
-
-func main() {
-	// TODO: consider using a config file instead.
-	var teamID string
-	var channelID string
-	var siteURL string
-	var userPassword string
-	var userPrefix string
-	var duration string
-	var joinDuration string
-	var adminUsername string
-	var adminPassword string
-	var offset int
-	var numUnmuted int
-	var numScreenSharing int
-	var numCalls int
-	var numUsersPerCall int
-	var numRecordings int
-	var simulcast bool
-	var setup bool
-
-	flag.StringVar(&teamID, "team", "", "The team ID to start calls in")
-	flag.StringVar(&channelID, "channel", "", "The channel ID to start the call in")
-	flag.StringVar(&siteURL, "url", "http://localhost:8065", "Mattermost SiteURL")
-	flag.StringVar(&userPrefix, "user-prefix", "testuser-", "The user prefix used to create and log in users")
-	flag.StringVar(&userPassword, "user-password", "testPass123$", "user password")
-	flag.IntVar(&numUnmuted, "unmuted", 0, "The number of unmuted users per call")
-	flag.IntVar(&numScreenSharing, "screen-sharing", 0, "The number of users screen-sharing")
-	flag.IntVar(&numRecordings, "recordings", 0, "The number of calls to record")
-	flag.IntVar(&offset, "offset", 0, "The user offset")
-	flag.IntVar(&numCalls, "calls", 1, "The number of calls to start")
-	flag.IntVar(&numUsersPerCall, "users-per-call", 1, "The number of participants per call")
-	flag.StringVar(&duration, "duration", "1m", "The total duration of the test")
-	flag.StringVar(&joinDuration, "join-duration", "30s", "The amount of time it takes for all participants to join their calls")
-	flag.StringVar(&adminUsername, "admin-username", "sysadmin", "The username of a system admin account")
-	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "The password of a system admin account")
-	flag.BoolVar(&simulcast, "simulcast", false, "Whether or not to enable simulcast for screen")
-	flag.BoolVar(&setup, "setup", true, "Whether or not setup actions like creating users, channels, teams and/or members should be executed.")
-
-	flag.Parse()
-
-	if numCalls == 0 {
-		log.Fatalf("calls should be > 0")
-	}
-
-	if channelID != "" && numCalls != 1 {
-		log.Fatalf("number of calls should be 1 when running on a single channel")
-	}
-
-	if channelID == "" && teamID == "" {
-		log.Fatalf("team must be set")
-	}
-
-	if !setup && (channelID == "" || teamID == "") {
-		log.Fatalf("team and channel are required when running with setup disabled")
-	}
-
-	if numUsersPerCall == 0 {
-		log.Fatalf("users-per-call should be > 0")
-	}
-
-	if siteURL == "" {
-		log.Fatalf("siteURL must be set")
-	}
-
-	dur, err := time.ParseDuration(duration)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	joinDur, err := time.ParseDuration(joinDuration)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	var wsURL string
-	u, err := url.Parse(siteURL)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	if u.Scheme == "https" {
-		wsURL = "wss://" + u.Host
-	} else {
-		wsURL = "ws://" + u.Host
-	}
-
-	if numUnmuted > numUsersPerCall {
-		log.Fatalf("unmuted cannot be greater than the number of users per call")
-	}
-
-	if numScreenSharing > numCalls {
-		log.Fatalf("screen-sharing cannot be greater than the number of calls")
-	}
-
-	if numRecordings > numCalls {
-		log.Fatalf("recordings cannot be greater than the number of calls")
-	}
-
-	var channels []*model.Channel
-	if setup {
-		adminClient := model.NewAPIv4Client(siteURL)
-		ctx, cancel := context.WithTimeout(context.Background(), httpRequestTimeout)
-		defer cancel()
-		_, _, err = adminClient.Login(ctx, adminUsername, adminPassword)
-		if err != nil {
-			log.Fatalf("failed to login as admin: %s", err.Error())
-		}
-		cancel()
-
-		if channelID == "" {
-			page := 0
-			perPage := 100
-			for {
-				ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
-				chs, _, err := adminClient.SearchChannels(ctx, teamID, &model.ChannelSearch{
-					Public:  true,
-					PerPage: &perPage,
-					Page:    &page,
-				})
-				cancel()
-				if err != nil {
-					log.Fatalf("failed to search channels: %s", err.Error())
-				}
-				channels = append(channels, chs...)
-				if len(channels) >= numCalls || len(chs) < perPage {
-					break
-				}
-				page++
-			}
-
-			if len(channels) < numCalls {
-				channels = make([]*model.Channel, numCalls)
-				for i := 0; i < numCalls; i++ {
-					name := model.NewId()
-					ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
-					channel, _, err := adminClient.CreateChannel(ctx, &model.Channel{
-						TeamId:      teamID,
-						Name:        name,
-						DisplayName: "test-" + name,
-						Type:        model.ChannelTypeOpen,
-					})
-					cancel()
-					if err != nil {
-						log.Fatalf("failed to create channel: %s", err.Error())
-					}
-					channels[i] = channel
-				}
-			}
-		} else {
-			ctx, cancel = context.WithTimeout(context.Background(), httpRequestTimeout)
-			channel, _, err := adminClient.GetChannel(ctx, channelID, "")
-			cancel()
-			if err != nil {
-				log.Fatalf("failed to search channels: %s", err.Error())
-			}
-			channels = append(channels, channel)
-		}
-	} else {
-		channels = []*model.Channel{
-			{
-				Id:     channelID,
-				TeamId: teamID,
-			},
-		}
-	}
-
-	stopCh := make(chan struct{})
-	var wg sync.WaitGroup
-	wg.Add(numUsersPerCall * numCalls)
-	for j := 0; j < numCalls; j++ {
-		log.Printf("starting call in %s", channels[j].DisplayName)
-		for i := 0; i < numUsersPerCall; i++ {
-			go func(idx int, channelID string, teamID string, channelType model.ChannelType, unmuted, screenSharing, recording bool) {
-				username := fmt.Sprintf("%s%d", userPrefix, idx)
-				if unmuted {
-					log.Printf("%s: going to transmit voice", username)
-				}
-				if screenSharing {
-					log.Printf("%s: going to transmit screen", username)
-				}
-				defer wg.Done()
-
-				ticker := time.NewTicker(time.Duration(rand.Intn(int(joinDur.Milliseconds())))*time.Millisecond + 1)
-				defer ticker.Stop()
-				select {
-				case <-ticker.C:
-				case <-stopCh:
-					return
-				}
-
-				cfg := config{
-					username:      username,
-					password:      userPassword,
-					teamID:        teamID,
-					channelID:     channelID,
-					siteURL:       siteURL,
-					wsURL:         wsURL,
-					duration:      dur,
-					unmuted:       unmuted,
-					screenSharing: screenSharing,
-					recording:     recording,
-					simulcast:     simulcast,
-					setup:         setup,
-				}
-
-				user := newUser(cfg)
-				if err := user.Connect(stopCh, channelType); err != nil {
-					log.Printf("connectUser failed: %s", err.Error())
-				}
-			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, channels[j].Type, i < numUnmuted, i == 0 && j < numScreenSharing, j < numRecordings)
-		}
-	}
-
-	go func() {
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-		<-sig
-		close(stopCh)
-	}()
-
-	wg.Wait()
-
-	fmt.Println("DONE")
 }

@@ -17,6 +17,7 @@ func TestServeHTTP(t *testing.T) {
 	plugin := Plugin{}
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	plugin.apiRouter = plugin.newAPIRouter()
 
 	plugin.ServeHTTP(nil, w, r)
 
@@ -27,6 +28,6 @@ func TestServeHTTP(t *testing.T) {
 	assert.Nil(err)
 	bodyString := string(bodyBytes)
 
-	assert.Equal("Unauthorized\n", bodyString)
-	assert.Equal(http.StatusUnauthorized, result.StatusCode)
+	assert.Equal("404 page not found\n", bodyString)
+	assert.Equal(http.StatusNotFound, result.StatusCode)
 }
