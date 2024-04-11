@@ -1,6 +1,3 @@
-service:
-  golangci-lint-version: 1.54.2
-
 run:
   timeout: 5m
   modules-download-mode: readonly
@@ -9,35 +6,15 @@ linters-settings:
   gofmt:
     simplify: true
   govet:
-    check-shadowing: false # set this to true from time to time to check for possible issues
-    disable-all: true
-    enable:
-      - asmdecl      # report mismatches between assembly files and Go declarations
-      - assign       # check for useless assignments
-      - atomic       # check for common mistakes using the sync/atomic package
-      - bools        # check for common mistakes involving boolean operators
-      - buildtag     # check that +build tags are well-formed and correctly located
-      - cgocall      # detect some violations of the cgo pointer passing rules
-      - composites   # check for unkeyed composite literals
-      - copylocks    # check for locks erroneously passed by value
-      - errorsas     # report passing non-pointer or non-error values to errors.As
-      - httpresponse # check for mistakes using HTTP responses
-      - loopclosure  # check references to loop variables from within nested functions
-      - lostcancel   # check cancel func returned by context.WithCancel is called
-      - nilfunc      # check for useless comparisons between functions and nil
-      - printf       # check consistency of Printf format strings and arguments
-      - shift        # check for shifts that equal or exceed the width of the integer
-      - stdmethods   # check signature of methods of well-known interfaces
-      - structtag    # check that struct field tags conform to reflect.StructTag.Get
-      - tests        # check for common mistaken usages of tests and examples
-      - unmarshal    # report passing non-pointer or non-interface values to unmarshal
-      - unreachable  # check for unreachable code
-      - unsafeptr    # check for invalid conversions of uintptr to unsafe.Pointer
-      - unusedresult # check for unused results of calls to some functions
+    enable-all: true
+    disable:
+      - fieldalignment
+      - shadow
 
 linters:
   disable-all: true
   enable:
+    - typecheck     # This is to improve error reporting
     - gofmt         # Checks whether code was gofmt-ed
     - revive        # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint
     - gosimple      # Linter for Go source code that specializes in simplifying a code
@@ -46,4 +23,16 @@ linters:
     - unconvert     # Removes unnecessary type conversions
     - unused        # Checks Go code for unused constants, variables, functions and types
     - exportloopref # Checks for pointers to enclosing loop variables
-    - errcheck      # Detects unchecked errors.
+    - errcheck      # Detects unchecked errors
+    - misspell      # Finds commonly misspelled English words
+    - goimports     # Check import statements are formatted according to the 'goimports' command
+    - makezero      # Finds slice declarations with non-zero initial length
+    - whitespace    # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc
+    - staticcheck   # It's a set of rules from staticcheck
+
+issues:
+  exclude-dirs:
+    - webapp
+    - standalone
+    - lt
+

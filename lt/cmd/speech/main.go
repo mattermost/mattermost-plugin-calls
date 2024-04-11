@@ -2,15 +2,16 @@ package main
 
 import (
 	"flag"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/polly"
 	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/polly"
 
 	"github.com/mattermost/mattermost-plugin-calls/lt/client"
 )
@@ -147,7 +148,7 @@ func performScript(filename string) error {
 			Setup:        setup,
 			TeamID:       teamID,
 			PollySession: svc,
-			PollyVoiceID: aws.String(script.voiceIds[i]),
+			PollyVoiceID: aws.String(script.voiceIDs[i]),
 		})
 		userClients = append(userClients, user)
 

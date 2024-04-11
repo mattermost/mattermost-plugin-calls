@@ -5,9 +5,10 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 // cloudStarterMaxParticipantsDefault is set to 8.
