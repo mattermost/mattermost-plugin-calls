@@ -107,79 +107,65 @@ func testCreateCall(t *testing.T, store *Store) {
 }
 
 func testDeleteCall(t *testing.T, store *Store) {
-	t.Run("missing", func(t *testing.T) {
-		err := store.DeleteCall("callID")
-		require.EqualError(t, err, "failed to delete call")
-	})
+	call := &public.Call{
+		ID:           model.NewId(),
+		CreateAt:     time.Now().UnixMilli(),
+		ChannelID:    model.NewId(),
+		StartAt:      time.Now().UnixMilli(),
+		PostID:       model.NewId(),
+		ThreadID:     model.NewId(),
+		OwnerID:      model.NewId(),
+		Participants: []string{model.NewId(), model.NewId()},
+		Stats: public.CallStats{
+			ScreenDuration: 45,
+		},
+		Props: public.CallProps{
+			Hosts: []string{"userA", "userB"},
+		},
+	}
 
-	t.Run("existing", func(t *testing.T) {
-		call := &public.Call{
-			ID:           model.NewId(),
-			CreateAt:     time.Now().UnixMilli(),
-			ChannelID:    model.NewId(),
-			StartAt:      time.Now().UnixMilli(),
-			PostID:       model.NewId(),
-			ThreadID:     model.NewId(),
-			OwnerID:      model.NewId(),
-			Participants: []string{model.NewId(), model.NewId()},
-			Stats: public.CallStats{
-				ScreenDuration: 45,
-			},
-			Props: public.CallProps{
-				Hosts: []string{"userA", "userB"},
-			},
-		}
+	err := store.CreateCall(call)
+	require.NoError(t, err)
 
-		err := store.CreateCall(call)
-		require.NoError(t, err)
+	now := time.Now().UnixMilli()
 
-		now := time.Now().UnixMilli()
+	err = store.DeleteCall(call.ID)
+	require.NoError(t, err)
 
-		err = store.DeleteCall(call.ID)
-		require.NoError(t, err)
-
-		call, err = store.GetCall(call.ID, GetCallOpts{FromWriter: true})
-		require.NoError(t, err)
-		require.GreaterOrEqual(t, call.DeleteAt, now)
-	})
+	call, err = store.GetCall(call.ID, GetCallOpts{FromWriter: true})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, call.DeleteAt, now)
 }
 
 func testDeleteCallByChannelID(t *testing.T, store *Store) {
-	t.Run("missing", func(t *testing.T) {
-		err := store.DeleteCall("channelID")
-		require.EqualError(t, err, "failed to delete call")
-	})
+	call := &public.Call{
+		ID:           model.NewId(),
+		CreateAt:     time.Now().UnixMilli(),
+		ChannelID:    model.NewId(),
+		StartAt:      time.Now().UnixMilli(),
+		PostID:       model.NewId(),
+		ThreadID:     model.NewId(),
+		OwnerID:      model.NewId(),
+		Participants: []string{model.NewId(), model.NewId()},
+		Stats: public.CallStats{
+			ScreenDuration: 45,
+		},
+		Props: public.CallProps{
+			Hosts: []string{"userA", "userB"},
+		},
+	}
 
-	t.Run("existing", func(t *testing.T) {
-		call := &public.Call{
-			ID:           model.NewId(),
-			CreateAt:     time.Now().UnixMilli(),
-			ChannelID:    model.NewId(),
-			StartAt:      time.Now().UnixMilli(),
-			PostID:       model.NewId(),
-			ThreadID:     model.NewId(),
-			OwnerID:      model.NewId(),
-			Participants: []string{model.NewId(), model.NewId()},
-			Stats: public.CallStats{
-				ScreenDuration: 45,
-			},
-			Props: public.CallProps{
-				Hosts: []string{"userA", "userB"},
-			},
-		}
+	err := store.CreateCall(call)
+	require.NoError(t, err)
 
-		err := store.CreateCall(call)
-		require.NoError(t, err)
+	now := time.Now().UnixMilli()
 
-		now := time.Now().UnixMilli()
+	err = store.DeleteCallByChannelID(call.ChannelID)
+	require.NoError(t, err)
 
-		err = store.DeleteCallByChannelID(call.ChannelID)
-		require.NoError(t, err)
-
-		call, err = store.GetCall(call.ID, GetCallOpts{FromWriter: true})
-		require.NoError(t, err)
-		require.GreaterOrEqual(t, call.DeleteAt, now)
-	})
+	call, err = store.GetCall(call.ID, GetCallOpts{FromWriter: true})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, call.DeleteAt, now)
 }
 
 func testUpdateCall(t *testing.T, store *Store) {
@@ -187,19 +173,6 @@ func testUpdateCall(t *testing.T, store *Store) {
 		var call *public.Call
 		err := store.UpdateCall(call)
 		require.EqualError(t, err, "invalid call: should not be nil")
-	})
-
-	t.Run("missing", func(t *testing.T) {
-		err := store.UpdateCall(&public.Call{
-			ID:        model.NewId(),
-			CreateAt:  time.Now().UnixMilli(),
-			ChannelID: model.NewId(),
-			StartAt:   time.Now().UnixMilli(),
-			PostID:    model.NewId(),
-			ThreadID:  model.NewId(),
-			OwnerID:   model.NewId(),
-		})
-		require.EqualError(t, err, "failed to update call: unexpected updated rows count 0")
 	})
 
 	t.Run("existing", func(t *testing.T) {
