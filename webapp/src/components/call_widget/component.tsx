@@ -1007,6 +1007,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 return (
                     <li
                         className='MenuItem'
+                        data-testid={isHost && 'participant-list-host'}
                         key={'participants_profile_' + session.session_id}
                         style={{padding: '11px 16px', gap: '12px'}}
                     >
@@ -1039,7 +1040,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                         {formatMessage({defaultMessage: '(you)'})}
                                     </span>
                                 }
-                                {isHost && <HostBadge onWhiteBg={true}/>}
+                                {isHost &&
+                                    <HostBadge
+                                        data-testid={'participant-list-host-badge'}
+                                        onWhiteBg={true}
+                                    />
+                                }
                             </span>
                         }
 

@@ -11,9 +11,8 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 )
 
-// lockCall locks the global (cluster) mutex for the given channelID and
-// returns the current state.
-func (p *Plugin) lockCall(channelID string) (*channelState, error) {
+// lockCall locks the global (cluster) mutex for the given channelID.
+func (p *Plugin) lockCall(channelID string) error {
 	p.callsClusterLocksMut.Lock()
 	mut := p.callsClusterLocks[channelID]
 	if mut == nil {
@@ -26,7 +25,7 @@ func (p *Plugin) lockCall(channelID string) (*channelState, error) {
 		})
 		if err != nil {
 			p.callsClusterLocksMut.Unlock()
-			return nil, fmt.Errorf("failed to create new call cluster mutex: %w", err)
+			return fmt.Errorf("failed to create new call cluster mutex: %w", err)
 		}
 		p.callsClusterLocks[channelID] = m
 		mut = m
@@ -37,13 +36,23 @@ func (p *Plugin) lockCall(channelID string) (*channelState, error) {
 	defer cancelCtx()
 
 	if err := mut.Lock(lockCtx); err != nil {
-		return nil, fmt.Errorf("failed to lock: %w", err)
+		return fmt.Errorf("failed to lock: %w", err)
 	}
 
-	state, err := p.kvGetChannelState(channelID, true)
+	return nil
+}
+
+// lockCallReturnState locks the global (cluster) mutex for the given channelID and
+// returns the current state.
+func (p *Plugin) lockCallReturnState(channelID string) (*callState, error) {
+	if err := p.lockCall(channelID); err != nil {
+		return nil, fmt.Errorf("failed to create call lock: %w", err)
+	}
+
+	state, err := p.getCallState(channelID, true)
 	if err != nil {
-		mut.Unlock()
-		return nil, fmt.Errorf("failed to get channel state: %w", err)
+		p.unlockCall(channelID)
+		return nil, fmt.Errorf("failed to get call state: %w", err)
 	}
 
 	return state, nil

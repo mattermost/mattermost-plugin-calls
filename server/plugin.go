@@ -4,7 +4,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"sync"
@@ -14,6 +13,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
@@ -23,7 +23,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/gorilla/mux"
 )
 
 const (
@@ -42,6 +42,8 @@ type Plugin struct {
 	// configuration is the active plugin configuration. Consult getConfiguration and
 	// setConfiguration for usage.
 	configuration *configuration
+
+	apiRouter *mux.Router
 
 	metrics   interfaces.Metrics
 	telemetry *telemetry.Client
@@ -69,10 +71,8 @@ type Plugin struct {
 	callsClusterLocks    map[string]*cluster.Mutex
 	callsClusterLocksMut sync.RWMutex
 
-	// Database handle to the writer DB node
-	wDB        *sql.DB
-	wDBx       *sqlx.DB
-	driverName string
+	// Database
+	store *db.Store
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
@@ -110,6 +110,7 @@ func (p *Plugin) startSession(us *session, senderID string) {
 				ConnID:    us.connID,
 				UserID:    us.userID,
 				ChannelID: us.channelID,
+				CallID:    us.callID,
 				SenderID:  p.nodeID,
 				ClientMessage: clientMessage{
 					Type: clientMessageTypeSDP,
@@ -151,7 +152,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			return fmt.Errorf("session already exists, userID=%q, connID=%q, channelID=%q",
 				us.userID, msg.ConnID, us.channelID)
 		}
-		us = newUserSession(msg.UserID, msg.ChannelID, msg.ConnID, true)
+		us = newUserSession(msg.UserID, msg.ChannelID, msg.ConnID, msg.CallID, true)
 		p.sessions[msg.ConnID] = us
 		go p.startSession(us, msg.SenderID)
 		return nil
@@ -229,7 +230,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			Data:      msg.ClientMessage.Data,
 		}
 
-		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
+		if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
 			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	case clusterMessageTypeUserState:
@@ -263,7 +264,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			Data:      msg.ClientMessage.Data,
 		}
 
-		if err := p.sendRTCMessage(rtcMsg, us.channelID); err != nil {
+		if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
 			return fmt.Errorf("failed to send RTC message: %w", err)
 		}
 	default:
@@ -286,7 +287,7 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) createCallStartedPost(state *channelState, userID, channelID, title, threadID string) (string, string, error) {
+func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, title, threadID string) (string, string, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return "", "", appErr
@@ -343,7 +344,7 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 		return 0, fmt.Errorf("postID should not be empty")
 	}
 
-	post, err := p.GetPost(postID)
+	post, err := p.store.GetPost(postID)
 	if err != nil {
 		return 0, err
 	}
@@ -398,22 +399,22 @@ func (p *Plugin) UserHasLeftChannel(_ *plugin.Context, cm *model.ChannelMember, 
 		return
 	}
 
-	state, err := p.kvGetChannelState(cm.ChannelId, false)
+	state, err := p.getCallState(cm.ChannelId, false)
 	if err != nil {
 		p.LogError("UserHasLeftChannel: failed to get call state", "err", err.Error(), "channelID", cm.ChannelId)
 		return
-	} else if state == nil || state.Call == nil {
+	} else if state == nil {
 		p.LogDebug("UserHasLeftChannel: no call ongoing", "channelID", cm.ChannelId)
 		return
 	}
 
 	// Closing the underlying RTC connection(s) for the user to stop
 	// communication.
-	for connID, session := range state.Call.Sessions {
+	for connID, session := range state.sessions {
 		if session.UserID == cm.UserId {
 			p.LogDebug("UserHasLeftChannel: closing RTC session for user who left channel",
 				"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
-			if err := p.closeRTCSession(session.UserID, connID, cm.ChannelId, state.NodeID); err != nil {
+			if err := p.closeRTCSession(session.UserID, connID, cm.ChannelId, state.Call.Props.NodeID, state.Call.ID); err != nil {
 				p.LogError("UserHasLeftChannel: failed to close RTC session", "err", err.Error(),
 					"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
 			}

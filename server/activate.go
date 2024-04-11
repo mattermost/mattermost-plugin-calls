@@ -212,10 +212,8 @@ func (p *Plugin) OnDeactivate() error {
 	p.LogDebug("deactivate")
 	close(p.stopCh)
 
-	if p.wDB != nil {
-		if err := p.wDB.Close(); err != nil {
-			p.LogError(err.Error())
-		}
+	if err := p.store.Close(); err != nil {
+		p.LogError(err.Error())
 	}
 
 	if p.rtcdManager != nil {

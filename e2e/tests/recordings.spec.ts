@@ -31,7 +31,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(page.getByTestId('calls-recording-badge')).toBeVisible();
         await expect(page.getByTestId('calls-recording-badge')).toContainText('REC');
 
-        // very recording start prompt renders correctly
+        // verify recording start prompt renders correctly
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('You\'re recording');
 
@@ -46,7 +46,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await page.locator('#post_textbox').fill('/call recording stop');
         await page.getByTestId('SendMessageButton').click();
 
-        // very recording ended prompt renders correctly
+        // verify recording ended prompt renders correctly
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing…');
 
@@ -73,7 +73,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await page.locator('#post_textbox').fill('/call recording start');
         await page.getByTestId('SendMessageButton').click();
 
-        // very recording start prompt renders correctly
+        // verify recording start prompt renders correctly
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording and transcription has started');
 
@@ -215,5 +215,64 @@ test.describe('call recordings, transcriptions, live-captions', () => {
 
         // leave call
         await popOut.locator('#calls-popout-leave-button').click();
+    });
+
+    test('recording - no participants left', async ({page, request}) => {
+        // start call
+        const devPage = new PlaywrightDevPage(page);
+
+        await devPage.startCall();
+
+        // start recording
+        await page.locator('#post_textbox').fill('/call recording start');
+        await page.getByTestId('SendMessageButton').click();
+
+        // verify recording start prompt renders correctly
+        await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
+
+        // Give it a few of seconds to produce a decent recording
+        await devPage.wait(4000);
+
+        // leave call
+        await devPage.leaveCall();
+
+        // verify recording file has been posted by the bot (assumes CRT enabled)
+        await page.locator('.post__body').last().locator('.ThreadFooter button.ReplyButton').click();
+        await expect(page.locator('.ThreadViewer').locator('.post__header').last()).toContainText('calls');
+        await expect(page.locator('.ThreadViewer').locator('.post__header').last()).toContainText('BOT');
+        await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
+    });
+
+    test('recording - call end', async ({page, request}) => {
+        // start call
+        const devPage = new PlaywrightDevPage(page);
+
+        await devPage.startCall();
+
+        // start recording
+        await page.locator('#post_textbox').fill('/call recording start');
+        await page.getByTestId('SendMessageButton').click();
+
+        // verify recording start prompt renders correctly
+        await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
+
+        // Give it a few of seconds to produce a decent recording
+        await devPage.wait(4000);
+
+        // forcefully end call
+        await page.locator('#post_textbox').fill('/call end');
+        await page.getByTestId('SendMessageButton').click();
+        await expect(page.locator('#calls-end-call-modal')).toBeVisible();
+        await page.locator('#calls-end-call-modal').locator('button', {hasText: 'End call'}).click();
+
+        // verify user has been kicked out
+        await page.waitForFunction(() => !window.callsClient || window.callsClient.closed);
+        await expect(page.locator('#calls-widget')).toBeHidden();
+
+        // verify recording file has been posted by the bot (assumes CRT enabled)
+        await page.locator('.post__body').last().locator('.ThreadFooter button.ReplyButton').click();
+        await expect(page.locator('.ThreadViewer').locator('.post__header').last()).toContainText('calls');
+        await expect(page.locator('.ThreadViewer').locator('.post__header').last()).toContainText('BOT');
+        await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
     });
 });

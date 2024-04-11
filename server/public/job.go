@@ -12,6 +12,22 @@ const (
 	JobTypeCaptioning           = "captioning"
 )
 
+func (t JobType) IsValid() error {
+	if t == "" {
+		return fmt.Errorf("should not be empty")
+	}
+
+	switch t {
+	case JobTypeRecording:
+	case JobTypeTranscribing:
+	case JobTypeCaptioning:
+	default:
+		return fmt.Errorf("invalid job type %q", t)
+	}
+
+	return nil
+}
+
 type JobStatusType string
 
 const (

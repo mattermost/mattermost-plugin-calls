@@ -8,23 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost/server/public/model"
-)
 
-var (
-	botChRE                = regexp.MustCompile(`^\/bot\/channels\/([a-z0-9]+)$`)
-	botUserImageRE         = regexp.MustCompile(`^\/bot\/users\/([a-z0-9]+)\/image$`)
-	botUploadsRE           = regexp.MustCompile(`^\/bot\/uploads\/?([a-z0-9]+)?$`)
-	botRecordingsRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/recordings$`)
-	botJobsStatusRE        = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/jobs\/([a-z0-9]+)\/status$`)
-	botProfileForSessionRE = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/sessions\/([a-z0-9]+)\/profile$`)
-	botTranscriptionsRE    = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/transcriptions$`)
-	botFilenameRE          = regexp.MustCompile(`^\/bot\/calls\/([a-z0-9]+)\/filename$`)
+	"github.com/gorilla/mux"
 )
 
 func (p *Plugin) getBotID() string {
@@ -45,7 +35,9 @@ func (p *Plugin) isBotSession(r *http.Request) bool {
 	return p.isBot(r.Header.Get("Mattermost-User-Id"))
 }
 
-func (p *Plugin) handleBotGetChannel(w http.ResponseWriter, _ *http.Request, channelID string) {
+func (p *Plugin) handleBotGetChannel(w http.ResponseWriter, r *http.Request) {
+	channelID := mux.Vars(r)["channel_id"]
+
 	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
 		p.LogError(appErr.Error())
@@ -57,7 +49,9 @@ func (p *Plugin) handleBotGetChannel(w http.ResponseWriter, _ *http.Request, cha
 	}
 }
 
-func (p *Plugin) handleBotGetUserImage(w http.ResponseWriter, r *http.Request, userID string) {
+func (p *Plugin) handleBotGetUserImage(w http.ResponseWriter, r *http.Request) {
+	userID := mux.Vars(r)["user_id"]
+
 	data, appErr := p.API.GetProfileImage(userID)
 	if appErr != nil {
 		p.LogError(appErr.Error())
@@ -67,9 +61,11 @@ func (p *Plugin) handleBotGetUserImage(w http.ResponseWriter, r *http.Request, u
 	http.ServeContent(w, r, userID, time.Now(), bytes.NewReader(data))
 }
 
-func (p *Plugin) handleBotGetUpload(w http.ResponseWriter, _ *http.Request, uploadID string) {
+func (p *Plugin) handleBotGetUpload(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpResponseHandler(&res, w)
+
+	uploadID := mux.Vars(r)["upload_id"]
 
 	us, err := p.API.GetUploadSession(uploadID)
 	if err != nil {
@@ -89,9 +85,11 @@ func (p *Plugin) handleBotGetUpload(w http.ResponseWriter, _ *http.Request, uplo
 	}
 }
 
-func (p *Plugin) handleBotUploadData(w http.ResponseWriter, r *http.Request, uploadID string) {
+func (p *Plugin) handleBotUploadData(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleBotUploadData", &res, w, r)
+
+	uploadID := mux.Vars(r)["upload_id"]
 
 	us, err := p.API.GetUploadSession(uploadID)
 	if err != nil {
@@ -172,9 +170,11 @@ func (p *Plugin) handleBotCreateUpload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request, callID string) {
+func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleBotPostRecordings", &res, w, r)
+
+	callID := mux.Vars(r)["call_id"]
 
 	var info public.RecordingJobInfo
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
@@ -192,7 +192,7 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	// Here we need to lock since we'll be reading and updating the call
 	// post, potentially concurrently with other events (e.g. call ending,
 	// transcribing job completing).
-	_, err := p.lockCall(callID)
+	_, err := p.lockCallReturnState(callID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
@@ -201,7 +201,7 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	defer p.unlockCall(callID)
 
 	// Update call post
-	post, err := p.GetPost(info.PostID)
+	post, err := p.store.GetPost(info.PostID)
 	if err != nil {
 		res.Err = "failed to get call post: " + err.Error()
 		res.Code = http.StatusInternalServerError
@@ -278,9 +278,11 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request,
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Request, callID string) {
+func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleBotPostTranscription", &res, w, r)
+
+	callID := mux.Vars(r)["call_id"]
 
 	var info public.TranscribingJobInfo
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&info); err != nil {
@@ -298,7 +300,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	// Here we need to lock since we'll be reading and updating the call
 	// post, potentially concurrently with other events (e.g. call ending,
 	// recording job completing).
-	_, err := p.lockCall(callID)
+	_, err := p.lockCallReturnState(callID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
@@ -307,7 +309,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	defer p.unlockCall(callID)
 
 	// Update call post
-	post, err := p.GetPost(info.PostID)
+	post, err := p.store.GetPost(info.PostID)
 	if err != nil {
 		res.Err = "failed to get call post: " + err.Error()
 		res.Code = http.StatusInternalServerError
@@ -327,8 +329,8 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	// Updating the file to point to the existing call post solves this problem
 	// without requiring us to expose a dedicated API nor attach the file which
 	// we don't want to show.
-	if err := p.updateFileInfoPostID(info.Transcriptions[0].FileIDs[0], callID, info.PostID); err != nil {
-		res.Err = "failed to update fileinfo post id: " + err.Error()
+	if err := p.store.UpdateFileInfoPostID(info.Transcriptions[0].FileIDs[0], callID, info.PostID); err != nil {
+		res.Err = "failed to update fileinfo post and channel ids: " + err.Error()
 		res.Code = http.StatusInternalServerError
 	}
 
@@ -384,7 +386,7 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	var rm jobMetadata
 	rm.fromMap(recordings[tm.RecID])
 	if rm.PostID != "" {
-		recPost, err := p.GetPost(rm.PostID)
+		recPost, err := p.store.GetPost(rm.PostID)
 		if err != nil {
 			res.Err = "failed to get recording post: " + err.Error()
 			res.Code = http.StatusInternalServerError
@@ -413,9 +415,12 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request, callID, jobID string) {
+func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleBotPostJobsStatus", &res, w, r)
+
+	callID := mux.Vars(r)["call_id"]
+	jobID := mux.Vars(r)["job_id"]
 
 	var status public.JobStatus
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&status); err != nil {
@@ -424,7 +429,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	state, err := p.lockCall(callID)
+	state, err := p.lockCallReturnState(callID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
 		res.Code = http.StatusInternalServerError
@@ -432,18 +437,18 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 	}
 	defer p.unlockCall(callID)
 
-	if state == nil || state.Call == nil {
+	if state == nil {
 		res.Err = "no call ongoing"
 		res.Code = http.StatusBadRequest
 		return
 	}
 
-	var jb, lcState *jobState
+	var jb, lcState *public.CallJob
 	switch status.JobType {
 	case public.JobTypeRecording:
-		jb = state.Call.Recording
+		jb = state.Recording
 	case public.JobTypeTranscribing:
-		jb = state.Call.Transcription
+		jb = state.Transcription
 		if cfg := p.getConfiguration(); cfg != nil && cfg.liveCaptionsEnabled() {
 			if lcState, err = state.getLiveCaptions(); err != nil {
 				p.LogError("failed to get live captions job", "callID", callID,
@@ -477,13 +482,13 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 	if status.Status == public.JobStatusTypeFailed {
 		p.LogDebug("job has failed", "jobID", jobID, "jobType", status.JobType)
 		jb.EndAt = time.Now().UnixMilli()
-		jb.Err = status.Error
+		jb.Props.Err = status.Error
 
-		if status.JobType == public.JobTypeRecording && state.Call.Transcription != nil {
+		if status.JobType == public.JobTypeRecording && state.Transcription != nil {
 			if err := p.stopTranscribingJob(state, callID); err != nil {
 				p.LogError("failed to stop transcribing job", "callID", callID, "err", err.Error())
 			}
-		} else if status.JobType == public.JobTypeTranscribing && state.Call.Recording != nil {
+		} else if status.JobType == public.JobTypeTranscribing && state.Recording != nil {
 			if _, _, err := p.stopRecordingJob(state, callID); err != nil {
 				p.LogError("failed to stop recording job", "callID", callID, "err", err.Error())
 			}
@@ -503,6 +508,11 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 			// then the live captioning has started. This can change in the future; if it does, we will
 			// only need to change the backend.
 			lcState.StartAt = time.Now().UnixMilli()
+			if err := p.store.UpdateCallJob(lcState); err != nil {
+				res.Err = fmt.Errorf("failed to update call job: %w", err).Error()
+				res.Code = http.StatusInternalServerError
+				return
+			}
 		}
 	} else {
 		res.Err = "unsupported status type"
@@ -510,8 +520,8 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	if err := p.kvSetChannelState(callID, state); err != nil {
-		res.Err = fmt.Errorf("failed to set channel state: %w", err).Error()
+	if err := p.store.UpdateCallJob(jb); err != nil {
+		res.Err = fmt.Errorf("failed to update call job: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
@@ -519,24 +529,24 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 	if status.JobType == public.JobTypeRecording {
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   callID,
-			"jobState": state.Call.Recording.getClientState().toMap(),
+			"jobState": getClientStateFromCallJob(state.Recording).toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
-			"recState": state.Call.Recording.getClientState().toMap(),
+			"recState": getClientStateFromCallJob(state.Recording).toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 	} else {
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   callID,
-			"jobState": state.Call.Transcription.getClientState().toMap(),
+			"jobState": getClientStateFromCallJob(state.Transcription).toMap(),
 		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 
 		if lcState != nil {
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 				"callID":   callID,
-				"jobState": state.Call.LiveCaptions.getClientState().toMap(),
+				"jobState": getClientStateFromCallJob(state.LiveCaptions).toMap(),
 			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
 		}
 	}
@@ -545,11 +555,14 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request,
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, callID, sessionID string) {
+func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpResponseHandler(&res, w)
 
-	state, err := p.lockCall(callID)
+	callID := mux.Vars(r)["call_id"]
+	sessionID := mux.Vars(r)["session_id"]
+
+	state, err := p.lockCallReturnState(callID)
 	if err != nil {
 		p.LogError("handleBotGetProfileForSession: failed to lock call", "err", err.Error())
 		res.Code = http.StatusInternalServerError
@@ -558,13 +571,13 @@ func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, callID, se
 	}
 	defer p.unlockCall(callID)
 
-	if state == nil || state.Call == nil {
+	if state == nil {
 		res.Code = http.StatusBadRequest
 		res.Err = "no call ongoing"
 		return
 	}
 
-	ust := state.Call.Sessions[sessionID]
+	ust := state.sessions[sessionID]
 	if ust.UserID == "" {
 		res.Code = http.StatusNotFound
 		res.Err = "not found"
@@ -586,9 +599,11 @@ func (p *Plugin) handleBotGetProfileForSession(w http.ResponseWriter, callID, se
 	}
 }
 
-func (p *Plugin) handleBotGetFilenameForCall(w http.ResponseWriter, callID string) {
+func (p *Plugin) handleBotGetFilenameForCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpResponseHandler(&res, w)
+
+	callID := mux.Vars(r)["call_id"]
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
@@ -596,70 +611,4 @@ func (p *Plugin) handleBotGetFilenameForCall(w http.ResponseWriter, callID strin
 	}); err != nil {
 		p.LogError(err.Error())
 	}
-}
-
-func (p *Plugin) handleBotAPI(w http.ResponseWriter, r *http.Request) {
-	if !p.licenseChecker.RecordingsAllowed() {
-		http.Error(w, "Forbidden", http.StatusForbidden)
-		return
-	}
-
-	if !p.isBotSession(r) {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	if r.Method == http.MethodGet {
-		if matches := botChRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleBotGetChannel(w, r, matches[1])
-			return
-		}
-
-		if matches := botUserImageRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleBotGetUserImage(w, r, matches[1])
-			return
-		}
-
-		if matches := botUploadsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 && matches[1] != "" {
-			p.handleBotGetUpload(w, r, matches[1])
-			return
-		}
-
-		if matches := botProfileForSessionRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
-			p.handleBotGetProfileForSession(w, matches[1], matches[2])
-			return
-		}
-
-		if matches := botFilenameRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleBotGetFilenameForCall(w, matches[1])
-			return
-		}
-	}
-
-	if r.Method == http.MethodPost {
-		if r.URL.Path == "/bot/uploads" {
-			p.handleBotCreateUpload(w, r)
-			return
-		} else if matches := botUploadsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 && matches[1] != "" {
-			p.handleBotUploadData(w, r, matches[1])
-			return
-		}
-
-		if matches := botRecordingsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleBotPostRecordings(w, r, matches[1])
-			return
-		}
-
-		if matches := botJobsStatusRE.FindStringSubmatch(r.URL.Path); len(matches) == 3 {
-			p.handleBotPostJobsStatus(w, r, matches[1], matches[2])
-			return
-		}
-
-		if matches := botTranscriptionsRE.FindStringSubmatch(r.URL.Path); len(matches) == 2 {
-			p.handleBotPostTranscriptions(w, r, matches[1])
-			return
-		}
-	}
-
-	http.NotFound(w, r)
 }
