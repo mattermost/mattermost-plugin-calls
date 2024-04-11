@@ -20,8 +20,8 @@ export default function InCallPrompt(props: Props) {
     return (
         <Prompt data-testid={props.testId}>
             <Icon
-                fill={props.iconFill}
-                color={props.iconColor}
+                $fill={props.iconFill}
+                $color={props.iconColor}
             >
                 { typeof props.icon === 'string' &&
                 <CompassIcon icon={props.icon}/>
@@ -140,10 +140,10 @@ const DeclineButton = styled.button`
   }
 `;
 
-const Icon = styled.div<{fill?: string, color?: string}>`
+const Icon = styled.div<{$fill?: string, $color?: string}>`
   font-size: 18px;
-  fill: ${({fill}) => (fill || 'currentColor')};
-  color: ${({color}) => (color || 'currentColor')};
+  fill: ${({$fill}) => ($fill || 'currentColor')};
+  color: ${({$color}) => ($color || 'currentColor')};
 `;
 
 const CloseButton = styled.button`
@@ -165,7 +165,7 @@ const CloseButton = styled.button`
     line-heght: 18px;
   }
 
-  :hover {
+  &:hover {
     background: rgba(var(--center-channel-color-rgb), 0.08);
     color: rgba(var(--center-channel-color-rgb), 0.72);
     fill: rgba(var(--center-channel-color-rgb), 0.72);

@@ -39,7 +39,7 @@ const ChannelHeaderDropdownButton = ({
         <CallButton
             id='calls-join-button'
             className={'style--none call-button-dropdown ' + (inCall || restricted ? 'disabled' : '')}
-            restricted={restricted}
+            $restricted={restricted}
         >
             <CompassIcon icon='phone'/>
             <div>
@@ -125,10 +125,10 @@ const ChannelHeaderDropdownButton = ({
     return button;
 };
 
-const CallButton = styled.button<{restricted: boolean}>`
+const CallButton = styled.button<{$restricted: boolean}>`
     // &&&&& is to override the call-button styles
     &&&&& {
-        ${(props) => props.restricted && css`
+        ${(props) => props.$restricted && css`
             .call-button-label {
                 color: rgba(var(--center-channel-color-rgb), 0.72);
             }

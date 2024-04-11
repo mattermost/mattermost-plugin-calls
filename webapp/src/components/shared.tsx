@@ -11,12 +11,12 @@ export const SubHeader = styled.div`
     opacity: 0.56;
 `;
 
-export const HorizontalSpacer = styled.div<{ size: number }>`
-    margin-left: ${(props) => props.size}px;
+export const HorizontalSpacer = styled.div<{ $size: number }>`
+    margin-left: ${(props) => props.$size}px;
 `;
 
-export const VerticalSpacer = styled.div<{ size: number }>`
-    margin-top: ${(props) => props.size}px;
+export const VerticalSpacer = styled.div<{ $size: number }>`
+    margin-top: ${(props) => props.$size}px;
 `;
 
 export const StyledTooltip = styled(Tooltip)<{$isDisabled?: boolean}>`

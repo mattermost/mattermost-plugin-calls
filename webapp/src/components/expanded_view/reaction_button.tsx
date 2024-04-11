@@ -157,9 +157,9 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
                         }
                     >
                         <HandsButton
-                            onClick={onRaiseHandToggle}
-                            active={isHandRaised}
                             data-testid={isHandRaised ? 'lower-hand-button' : 'raise-hand-button'}
+                            onClick={onRaiseHandToggle}
+                            $active={isHandRaised}
                         >
                             {handIcon}
                             <HandText>{raiseHandText}</HandText>
@@ -188,7 +188,7 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
                         />
                         <QuickSelectButton
                             onClick={toggleShowPicker}
-                            active={showPicker}
+                            $active={showPicker}
                         >
                             <CompassIcon icon='emoticon-plus-outline'/>
                         </QuickSelectButton>
@@ -300,7 +300,7 @@ const Bar = styled.div`
     gap: 8px;
 `;
 
-const HandsButton = styled.button<{ active: boolean }>`
+const HandsButton = styled.button<{ $active: boolean }>`
     border: none;
     display: flex;
     justify-content: center;
@@ -316,14 +316,14 @@ const HandsButton = styled.button<{ active: boolean }>`
     font-size: 16px;
     line-height: 16px;
 
-    :hover {
+    &:hover {
         background: rgba(var(--center-channel-color-rgb), 0.08);
     }
 
-    ${({active}) => (active && css`
+    ${({$active}) => ($active && css`
         background: rgba(255, 188, 31, 0.12);
 
-        :hover {
+        &:hover {
             background: rgba(255, 188, 31, 0.2);
         }
     `)}
@@ -341,7 +341,7 @@ const QuickSelectContainer = styled.div`
     gap: 4px;
 `;
 
-const QuickSelectButton = styled.button<{ active?: boolean }>`
+const QuickSelectButton = styled.button<{ $active?: boolean }>`
     border: none;
     display: flex;
     justify-content: center;
@@ -352,7 +352,7 @@ const QuickSelectButton = styled.button<{ active?: boolean }>`
     line-height: 24px;
     padding: 8px;
 
-    :hover {
+    &:hover {
         background: rgba(var(--center-channel-color-rgb), 0.08);
     }
 
@@ -360,11 +360,11 @@ const QuickSelectButton = styled.button<{ active?: boolean }>`
       margin: 0;
     }
 
-    ${({active}) => (active && css`
+    ${({$active}) => ($active && css`
         background: var(--button-bg);
         color: var(--button-color);
 
-        :hover {
+        &:hover {
             background: rgba(var(--button-bg-rgb), 0.92);
         }
     `)}

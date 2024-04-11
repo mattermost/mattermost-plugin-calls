@@ -35,12 +35,12 @@ export default function WidgetButton(props: Props) {
                 className='cursor--pointer style--none'
                 // eslint-disable-next-line no-undefined
                 onClick={props.disabled ? undefined : props.onToggle}
-                bgColor={props.bgColor}
-                bgColorHover={props.bgColorHover}
-                isDisabled={props.disabled}
-                isUnavailable={props.unavailable}
                 disabled={props.disabled}
                 style={props.style}
+                $bgColor={props.bgColor}
+                $bgColorHover={props.bgColorHover}
+                $isDisabled={props.disabled}
+                $isUnavailable={props.unavailable}
             >
                 <UnavailableIconWrapper
                     icon={props.icon}
@@ -75,7 +75,7 @@ export default function WidgetButton(props: Props) {
     );
 }
 
-const Button = styled.button<{bgColor: string, bgColorHover?: string, isDisabled?: boolean, isUnavailable?: boolean}>`
+const Button = styled.button<{$bgColor: string, $bgColorHover?: string, $isDisabled?: boolean, $isUnavailable?: boolean}>`
   display: flex;
   justify-content: center;
   align-items: center;
@@ -84,7 +84,7 @@ const Button = styled.button<{bgColor: string, bgColorHover?: string, isDisabled
   color: rgba(var(--center-channel-color-rgb), 0.64);
 
   &&&&:hover {
-    background: ${({bgColorHover}) => bgColorHover || 'rgba(var(--center-channel-color-rgb), 0.12)'};
+    background: ${({$bgColorHover}) => $bgColorHover || 'rgba(var(--center-channel-color-rgb), 0.12)'};
   }
 
   svg {
@@ -93,9 +93,9 @@ const Button = styled.button<{bgColor: string, bgColorHover?: string, isDisabled
 
   &&& {
     padding: 5px;
-    background-color: ${({bgColor}) => bgColor};
+    background-color: ${({$bgColor}) => $bgColor};
 
-    ${({isDisabled, isUnavailable}) => (isDisabled || isUnavailable) && css`
+    ${({$isDisabled, $isUnavailable}) => ($isDisabled || $isUnavailable) && css`
       :hover {
         background-color: transparent;
       }
