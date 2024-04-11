@@ -377,7 +377,7 @@ func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.Dial
 			return nil
 		}
 
-		m.ctx.LogDebug("reconnection successfull, replacing client")
+		m.ctx.LogDebug("reconnection successful, replacing client")
 
 		if err = m.removeHost(host); err != nil {
 			m.ctx.LogError("failed to remove rtcd client: %w", err)

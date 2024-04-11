@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-calls
 
-go 1.21.4
+go 1.21.9
 
 require (
 	github.com/pion/ice/v2 v2.3.14 // indirect

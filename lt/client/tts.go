@@ -2,10 +2,11 @@ package client
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/polly"
 	mp3 "github.com/hajimehoshi/go-mp3"
-	"io"
 )
 
 func (u *User) pollyToSpeech(text string) (io.Reader, int, error) {
