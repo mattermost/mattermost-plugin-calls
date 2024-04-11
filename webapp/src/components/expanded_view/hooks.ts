@@ -11,14 +11,22 @@ export const useHostControls = (isYou: boolean, isHost: boolean, iAmHost: boolea
     const hoverOn = () => setHover(true);
     const hoverOff = () => setHover(false);
 
+    const [sticky, setSticky] = useState(false);
+    const onOpenChange = (open: boolean) => {
+        setSticky(open);
+        setHover(open);
+    };
+
     const hostControlsAvailable = hostControlsAllowed && (iAmHost || isAdmin);
 
     // Show host controls when allowed + hover, but don't show if this is me and I'm the host already,
-    const showHostControls = hostControlsAvailable && hover && !(isYou && isHost);
+    // When sticky is true, we always show.
+    const showHostControls = (hostControlsAvailable && hover && !(isYou && isHost)) || sticky;
 
     return {
         hoverOn,
         hoverOff,
+        onOpenChange,
         hostControlsAvailable,
         showHostControls,
     };

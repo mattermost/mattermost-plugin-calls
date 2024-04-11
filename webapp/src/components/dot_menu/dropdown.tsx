@@ -45,7 +45,7 @@ const Dropdown = (props: DropdownProps) => {
         setIsOpen(updatedOpen);
     };
 
-    const {strategy, x, y, reference, floating, context} = useFloating<HTMLElement>({
+    const {strategy, x, y, reference, floating, context} = useFloating({
         open,
         onOpenChange: setOpen,
         placement: props.placement ?? 'bottom-start',

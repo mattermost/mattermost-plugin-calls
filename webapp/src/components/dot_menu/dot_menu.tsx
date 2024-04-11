@@ -37,7 +37,7 @@ export const DropdownMenu = styled.div`
     text-align: left;
     list-style: none;
 
-    padding: 10px 0;
+    padding: 8px 0;
     font-family: Open Sans;
     font-style: normal;
     font-weight: normal;
@@ -63,6 +63,7 @@ type DotMenuProps = {
     className?: string;
     isActive?: boolean;
     closeOnClick?: boolean;
+    onOpenChange?: (open: boolean) => void;
 };
 
 type DropdownProps = Omit<ComponentProps<typeof Dropdown>, 'target' | 'children' | 'isOpen'>;
@@ -74,14 +75,19 @@ const DotMenu = ({
     className,
     disabled,
     isActive,
+    onOpenChange,
     closeOnClick = true,
     dotMenuButton: MenuButton = DotMenuButton,
     dropdownMenu: Menu = DropdownMenu,
     ...props
 }: DotMenuProps & DropdownProps) => {
     const [isOpen, setOpen] = useState(false);
+    const setOpenWrapper = (open: boolean) => {
+        onOpenChange?.(open);
+        setOpen(open);
+    };
     const toggleOpen = () => {
-        setOpen(!isOpen);
+        setOpenWrapper(!isOpen);
     };
 
     const button = (
@@ -89,7 +95,7 @@ const DotMenu = ({
         // @ts-ignore
         <MenuButton
             title={title}
-            isActive={(isActive ?? false) || isOpen}
+            $isActive={(isActive ?? false) || isOpen}
             onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -116,7 +122,7 @@ const DotMenu = ({
         <Dropdown
             {...props}
             isOpen={isOpen}
-            onOpenChange={setOpen}
+            onOpenChange={setOpenWrapper}
             target={button}
         >
             <Menu
@@ -124,7 +130,7 @@ const DotMenu = ({
                 onClick={(e) => {
                     e.stopPropagation();
                     if (closeOnClick) {
-                        setOpen(false);
+                        setOpenWrapper(false);
                     }
                 }}
             >

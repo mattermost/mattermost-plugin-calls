@@ -16,7 +16,7 @@ import ScreenIcon from 'src/components/icons/screen_icon';
 import {ThreeDotsButton} from 'src/components/icons/three_dots';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import {getUserDisplayName} from 'src/utils';
-import styled from 'styled-components';
+import styled, {css} from 'styled-components';
 
 type Props = {
     session: UserSessionState;
@@ -30,7 +30,7 @@ type Props = {
 
 export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharingScreen, callID}: Props) => {
     const {formatMessage} = useIntl();
-    const {hoverOn, hoverOff, showHostControls} = useHostControls(isYou, isHost, iAmHost);
+    const {hoverOn, hoverOff, onOpenChange, showHostControls} = useHostControls(isYou, isHost, iAmHost);
 
     const isMuted = !session.unmuted;
     const isSpeaking = Boolean(session.voice);
@@ -47,15 +47,13 @@ export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharing
     }
 
     return (
-        <li
+        <ParticipantListItem
             onMouseEnter={hoverOn}
             onMouseLeave={hoverOff}
             className='MenuItem'
             data-testid={isHost && 'participant-list-host'}
             key={'participants_profile_' + session.session_id}
-
-            /* @ts-ignore */
-            style={{padding: '11px 16px', gap: '12px', height: '28px', appRegion: 'no-drag'}}
+            $hover={showHostControls}
         >
             <Avatar
                 size={20}
@@ -127,12 +125,12 @@ export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharing
                 {showHostControls &&
                     <StyledDotMenu
                         icon={<StyledThreeDotsButton/>}
-                        dotMenuButton={DotMenuButton}
+                        dotMenuButton={StyledDotMenuButton}
                         dropdownMenu={StyledDropdownMenu}
                         title={formatMessage({defaultMessage: 'Host controls'})}
                         placement={'top-start'}
                         strategy={'fixed'}
-                        offset={0}
+                        onOpenChange={onOpenChange}
                     >
                         <HostControlsMenu
                             callID={callID}
@@ -147,12 +145,31 @@ export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharing
                 />
 
             </span>
-        </li>
+        </ParticipantListItem>
     );
 };
 
+const ParticipantListItem = styled.li<{ $hover: boolean }>`
+    display: flex;
+    align-items: center;
+    padding: 6px 16px;
+    gap: 12px;
+    height: 40px;
+    appRegion: 'no-drag';
+
+    ${({$hover}) => $hover && css`
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+    `}
+`;
+
 const StyledDotMenu = styled(DotMenu)`
     margin-right: -4px;
+`;
+
+const StyledDotMenuButton = styled(DotMenuButton)<{ $isActive: boolean }>`
+    > svg {
+        fill: ${(props) => (props.$isActive ? 'var(--button-bg)' : 'rgba(var(--center-channel-color-rgb), 0.56)')};
+    }
 `;
 
 const StyledThreeDotsButton = styled(ThreeDotsButton)`

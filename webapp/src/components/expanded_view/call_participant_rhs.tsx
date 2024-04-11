@@ -16,7 +16,7 @@ import ScreenIcon from 'src/components/icons/screen_icon';
 import {ThreeDotsButton} from 'src/components/icons/three_dots';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import {getUserDisplayName} from 'src/utils';
-import styled from 'styled-components';
+import styled, {css} from 'styled-components';
 
 type Props = {
     session: UserSessionState;
@@ -30,7 +30,7 @@ type Props = {
 
 const CallParticipantRHS = ({session, profile, isYou, isHost, iAmHost, isSharingScreen, callID}: Props) => {
     const {formatMessage} = useIntl();
-    const {hoverOn, hoverOff, showHostControls} = useHostControls(isYou, isHost, iAmHost);
+    const {hoverOn, hoverOff, onOpenChange, showHostControls} = useHostControls(isYou, isHost, iAmHost);
 
     const isMuted = !session.unmuted;
     const isSpeaking = Boolean(session.voice);
@@ -47,10 +47,10 @@ const CallParticipantRHS = ({session, profile, isYou, isHost, iAmHost, isSharing
     const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
     return (
-        <li
+        <ParticipantListItem
             onMouseEnter={hoverOn}
             onMouseLeave={hoverOff}
-            style={{display: 'flex', alignItems: 'center', padding: '6px 16px', gap: '8px', height: '28px'}}
+            $hover={showHostControls}
         >
 
             <Avatar
@@ -130,11 +130,11 @@ const CallParticipantRHS = ({session, profile, isYou, isHost, iAmHost, isSharing
                 {showHostControls &&
                     <StyledDotMenu
                         icon={<StyledThreeDotsButton/>}
-                        dotMenuButton={DotMenuButton}
+                        dotMenuButton={StyledDotMenuButton}
                         dropdownMenu={StyledDropdownMenu}
                         title={formatMessage({defaultMessage: 'Host controls'})}
                         placement='bottom-end'
-                        offset={0}
+                        onOpenChange={onOpenChange}
                     >
                         <HostControlsMenu
                             callID={callID}
@@ -149,9 +149,21 @@ const CallParticipantRHS = ({session, profile, isYou, isHost, iAmHost, isSharing
                 />
 
             </div>
-        </li>
+        </ParticipantListItem>
     );
 };
+
+const ParticipantListItem = styled.li<{ $hover: boolean }>`
+    display: flex;
+    align-items: center;
+    padding: 6px 16px;
+    gap: 8px;
+    height: 40px;
+    
+    ${({$hover}) => $hover && css`
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+    `}
+`;
 
 const StyledDotMenu = styled(DotMenu)`
     margin-right: -4px;
@@ -159,6 +171,12 @@ const StyledDotMenu = styled(DotMenu)`
 
 const StyledThreeDotsButton = styled(ThreeDotsButton)`
     fill: rgba(var(--center-channel-color-rgb), 0.56);
+`;
+
+const StyledDotMenuButton = styled(DotMenuButton)<{ $isActive: boolean }>`
+    > svg {
+        fill: ${(props) => (props.$isActive ? 'var(--button-bg)' : 'rgba(var(--center-channel-color-rgb), 0.56)')};
+    }
 `;
 
 export default CallParticipantRHS;

@@ -42,7 +42,7 @@ export default function CallParticipant({
     userID,
 }: Props) {
     const {formatMessage} = useIntl();
-    const {hoverOn, hoverOff, hostControlsAvailable, showHostControls} = useHostControls(isYou, isHost, iAmHost);
+    const {hoverOn, hoverOff, onOpenChange, hostControlsAvailable, showHostControls} = useHostControls(isYou, isHost, iAmHost);
 
     const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
@@ -110,7 +110,7 @@ export default function CallParticipant({
             <Participant
                 onMouseEnter={hoverOn}
                 onMouseLeave={hoverOff}
-                $withHover={showHostControls}
+                $hover={showHostControls}
             >
                 {showHostControls &&
                     <StyledDotMenu
@@ -120,6 +120,7 @@ export default function CallParticipant({
                         title={formatMessage({defaultMessage: 'Host controls'})}
                         placement={'bottom-start'}
                         strategy={'fixed'}
+                        onOpenChange={onOpenChange}
                     >
                         <HostControlsMenu
                             callID={callID}
@@ -133,7 +134,7 @@ export default function CallParticipant({
     }
 
     return (
-        <Participant $withHover={false}>
+        <Participant>
             {innerParticipant}
         </Participant>
     );
@@ -168,7 +169,7 @@ const styles: Record<string, CSSObject> = {
     },
 };
 
-const Participant = styled.li<{ $withHover: boolean }>`
+const Participant = styled.li<{ $hover?: boolean }>`
     position: relative;
     display: flex;
     flex-direction: column;
@@ -176,12 +177,10 @@ const Participant = styled.li<{ $withHover: boolean }>`
     align-items: center;
     gap: 12px;
     padding: 16px;
-
-    ${({$withHover}) => $withHover && css`
-        &:hover {
-            border-radius: 8px;
-            background: rgba(var(--sidebar-text-rgb), 0.08);
-        }
+    
+    ${({$hover}) => $hover && css`
+        border-radius: 8px;
+        background: rgba(var(--sidebar-text-rgb), 0.08);
     `}
 `;
 
