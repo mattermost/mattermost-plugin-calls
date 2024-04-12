@@ -95,7 +95,7 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 
 	// Host Controls
 	hostCtrlRouter := router.PathPrefix("/calls/{call_id:[a-z0-9]{26}}/host").Subrouter()
-	hostCtrlRouter.HandleFunc("/make/{new_host_id:[a-z0-9]{26}}", p.handleMakeHost).Methods("POST")
+	hostCtrlRouter.HandleFunc("/make", p.handleMakeHost).Methods("POST")
 
 	// Bot
 	botRouter := router.PathPrefix("/bot").Subrouter()

@@ -558,7 +558,10 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
 
 export const makeHost = async (callID: string, newHostID: string) => {
     return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/make/${newHostID}`,
-        {method: 'post'},
+        `${getPluginPath()}/calls/${callID}/host/make`,
+        {
+            method: 'post',
+            body: JSON.stringify({new_host_id: newHostID}),
+        },
     );
 };
