@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/polly"
-	"github.com/pion/webrtc/v3"
 	"io"
 	"log"
 	"net/http"
@@ -17,6 +15,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/aws/aws-sdk-go/service/polly"
+	"github.com/pion/webrtc/v3"
 
 	"github.com/mattermost/mattermost-plugin-calls/lt/ws"
 
@@ -221,11 +222,10 @@ func (u *User) startRecording() error {
 	defer cancel()
 	res, err := u.client.DoAPIRequest(ctx, http.MethodPost,
 		fmt.Sprintf("%s/plugins/com.mattermost.calls/calls/%s/recording/start", u.client.URL, u.cfg.ChannelID), "", "")
-	defer res.Body.Close()
-
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode == 200 {
 		return nil
@@ -588,7 +588,7 @@ func (u *User) initRTC() error {
 		}
 	})
 
-	pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
+	pc.OnTrack(func(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		if track.Kind() == webrtc.RTPCodecTypeVideo {
 			rtcpSendErr := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
 			if rtcpSendErr != nil {
@@ -687,7 +687,6 @@ func (u *User) handleSignal(ev *model.WebSocketEvent) {
 				}
 			}
 		}()
-
 	} else if t == "offer" {
 		log.Printf("%s: sdp offer", u.cfg.Username)
 
@@ -776,7 +775,7 @@ func (u *User) wsListen(authToken string) {
 					log.Printf("attempting ws reconnection")
 					ws, err = connect()
 					if err != nil {
-						log.Printf(err.Error())
+						log.Print(err.Error())
 						continue
 					}
 
@@ -903,7 +902,7 @@ func (u *User) Connect(stopCh chan struct{}) error {
 
 		log.Printf("%s: registering user", u.cfg.Username)
 		ctx, cancel := context.WithTimeout(context.Background(), HTTPRequestTimeout)
-		user, _, err = client.CreateUser(ctx, &model.User{
+		_, _, err = client.CreateUser(ctx, &model.User{
 			Username: u.cfg.Username,
 			Password: u.cfg.Password,
 			Email:    u.cfg.Username + "@example.com",

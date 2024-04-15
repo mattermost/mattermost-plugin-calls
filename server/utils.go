@@ -8,7 +8,6 @@ import (
 	"compress/zlib"
 	"errors"
 	"fmt"
-	"github.com/mattermost/mattermost/server/public/model"
 	"io"
 	"math"
 	"net/url"
@@ -17,6 +16,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/Masterminds/semver"
 )

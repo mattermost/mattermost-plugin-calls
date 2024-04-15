@@ -140,9 +140,7 @@ func TestCallStateGetClientState(t *testing.T) {
 		}
 
 		ccs := CallStateClient{
-			ID:      "test",
-			StartAt: 100,
-			Users:   []string{"userA", "userA", "userB"},
+			Users: []string{"userA", "userA", "userB"},
 			States: []UserStateClient{
 				{
 					SessionID:  "sessionA",
