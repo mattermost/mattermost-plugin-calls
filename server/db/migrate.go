@@ -67,7 +67,7 @@ func (s *Store) initMorph(dryRun bool, timeoutSecs int) (*morph.Morph, error) {
 			return nil, fmt.Errorf("failed to reset read timeout: %w", dsnErr)
 		}
 		dsn, dsnErr = appendMultipleStatementsFlag(dsn)
-		if err != nil {
+		if dsnErr != nil {
 			return nil, fmt.Errorf("failed to append multiple statements flag: %w", dsnErr)
 		}
 

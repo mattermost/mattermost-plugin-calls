@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/mattermost/mattermost-plugin-calls/server/public"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 
@@ -875,7 +876,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 	if err != nil {
 		p.LogError(err.Error())
 	}
-	if handlerID == "" && state != nil {
+	if handlerID == "" {
 		handlerID = state.Call.Props.NodeID
 	}
 

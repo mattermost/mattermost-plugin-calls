@@ -493,7 +493,6 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 				p.LogError("failed to stop recording job", "callID", callID, "err", err.Error())
 			}
 		}
-
 	} else if status.Status == public.JobStatusTypeStarted {
 		if jb.StartAt > 0 {
 			res.Err = "job has already started"

@@ -8,8 +8,8 @@ type JobType string
 
 const (
 	JobTypeRecording    JobType = "recording"
-	JobTypeTranscribing         = "transcribing"
-	JobTypeCaptioning           = "captioning"
+	JobTypeTranscribing JobType = "transcribing"
+	JobTypeCaptioning   JobType = "captioning"
 )
 
 func (t JobType) IsValid() error {
@@ -32,7 +32,7 @@ type JobStatusType string
 
 const (
 	JobStatusTypeStarted JobStatusType = "started"
-	JobStatusTypeFailed                = "failed"
+	JobStatusTypeFailed  JobStatusType = "failed"
 )
 
 type JobStatus struct {
