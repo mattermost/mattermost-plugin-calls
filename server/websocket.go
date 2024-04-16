@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/mattermost/mattermost-plugin-calls/server/public"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 
@@ -944,7 +945,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 	if err != nil {
 		p.LogError(err.Error())
 	}
-	if handlerID == "" && state != nil {
+	if handlerID == "" {
 		handlerID = state.Call.Props.NodeID
 	}
 
@@ -957,6 +958,40 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 	return nil
 }
 
+func (p *Plugin) handleCallStateRequest(channelID, userID, connID string) error {
+	// We should go through only if the user has permissions to the requested channel
+	// or if the user is the Calls bot.
+	if !(p.isBot(userID) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
+		return fmt.Errorf("forbidden")
+	}
+
+	// Locking is not ideal but it's the only way to guarantee a race free
+	// sequence and a consistent state.
+	// On the client we should make sure to make this request only when strictly
+	// necessary (i.e first load, joining call, reconnecting).
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		return fmt.Errorf("failed to lock call: %w", err)
+	}
+	defer p.unlockCall(channelID)
+
+	if state == nil {
+		return fmt.Errorf("no call ongoing")
+	}
+
+	clientStateData, err := json.Marshal(state.getClientState(p.getBotID(), userID))
+	if err != nil {
+		return fmt.Errorf("failed to marshal client state: %w", err)
+	}
+
+	p.publishWebSocketEvent(wsEventCallState, map[string]interface{}{
+		"channel_id": channelID,
+		"call":       string(clientStateData),
+	}, &WebSocketBroadcast{ConnectionID: connID, ReliableClusterSend: true})
+
+	return nil
+}
+
 func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model.WebSocketRequest) {
 	var msg clientMessage
 	msg.Type = strings.TrimPrefix(req.Action, wsActionPrefix)
@@ -965,10 +1000,14 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	us := p.sessions[connID]
 	p.mut.RUnlock()
 
-	if msg.Type != clientMessageTypeJoin &&
-		msg.Type != clientMessageTypeLeave &&
-		msg.Type != clientMessageTypeReconnect && us == nil {
-		return
+	if us == nil {
+		// Only a few events don't require a user session to exist. For anything else
+		// we should return.
+		switch msg.Type {
+		case clientMessageTypeJoin, clientMessageTypeLeave, clientMessageTypeReconnect, clientMessageTypeCallState:
+		default:
+			return
+		}
 	}
 
 	if us != nil && !us.wsMsgLimiter.Allow() {
@@ -1054,6 +1093,19 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError(err.Error())
 		}
 
+		return
+	case clientMessageTypeCallState:
+		p.metrics.IncWebSocketEvent("in", "call_state")
+
+		channelID, _ := req.Data["channelID"].(string)
+		if channelID == "" {
+			p.LogError("missing channelID")
+			return
+		}
+
+		if err := p.handleCallStateRequest(channelID, userID, connID); err != nil {
+			p.LogError("handleCallStateRequest failed", "err", err.Error(), "userID", userID, "connID", connID)
+		}
 		return
 	case clientMessageTypeSDP:
 		msgData, ok := req.Data["data"].([]byte)

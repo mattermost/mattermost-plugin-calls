@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {useIntl} from 'react-intl';
+import {Spinner} from 'src/components/shared';
 import styled, {css} from 'styled-components';
 
 export type Props = {
@@ -21,18 +22,18 @@ export default function LoadingOverlay(props: Props) {
     return (
         <Container
             data-testid={'calls-widget-loading-overlay'}
-            visible={props.visible}
             onAnimationEnd={onAnimationEnd}
+            $visible={props.visible}
         >
             <Body>
-                <Spinner size={16}/>
-                <Text>{formatMessage({defaultMessage: 'Connecting to the call…'})}</Text>
+                <Spinner $size={16}/>
+                <Text>{formatMessage({defaultMessage: 'Joining call…'})}</Text>
             </Body>
         </Container>
     );
 }
 
-const Container = styled.div<{visible: boolean}>`
+const Container = styled.div<{$visible: boolean}>`
   position: absolute;
   top: 0;
   bottom: 0;
@@ -45,7 +46,7 @@ const Container = styled.div<{visible: boolean}>`
   background: rgba(var(--center-channel-bg-rgb), 0.7);
   app-region: drag;
 
-  ${({visible}) => !visible && css`
+  ${({$visible}) => !$visible && css`
       visibility: hidden;
       opacity: 0;
       transition: visibility 0s 0.3s, opacity 0.3s ease-out;
@@ -56,32 +57,12 @@ const Body = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 6px;
 `;
 
 const Text = styled.span`
-  color: rgba(var(--center-channel-color-rgb), 0.84);
+  color: var(--center-channel-color);
   font-size: 12px;
   line-height: 16px;
-  margin-left: 8px;
   font-weight: 600;
-`;
-
-const Spinner = styled.span<{size: number}>`
-  width: ${({size}) => size}px;
-  height: ${({size}) => size}px;
-  border-radius: 50%;
-  display: inline-block;
-  border-top: 2px solid #166DE0;
-  border-right: 2px solid transparent;
-  box-sizing: border-box;
-  animation: spin 0.8s linear infinite;
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
 `;

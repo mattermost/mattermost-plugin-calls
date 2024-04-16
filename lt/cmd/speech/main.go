@@ -2,15 +2,17 @@ package main
 
 import (
 	"flag"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/polly"
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/polly"
 
 	"github.com/mattermost/mattermost-plugin-calls/lt/client"
 )
@@ -23,7 +25,7 @@ var script, siteURL, wsURL, channelID, teamID, userPassword, profile string
 var setup bool
 
 func main() {
-	flag.StringVar(&script, "script", "script.txt", "Script for the tts")
+	flag.StringVar(&script, "script", "script.txt", "Script for the tts, to be found in lt/scripts; assumes you will be running the lt program from the repo/lt directory")
 	flag.StringVar(&siteURL, "siteURL", "http://localhost:8065", "Mattermost SiteURL")
 	flag.StringVar(&wsURL, "wsURL", "ws://localhost:8065", "Mattermost wsURL")
 	flag.StringVar(&channelID, "channelID", "", "ChannelID of the call")
@@ -121,7 +123,7 @@ func performScript(filename string) error {
 	}))
 	svc := polly.New(awsSess)
 
-	f, err := os.Open(filename)
+	f, err := os.Open(filepath.Join("scripts", filename))
 	if err != nil {
 		log.Fatalf("open script %s failed: %v", filename, err)
 	}
@@ -147,7 +149,7 @@ func performScript(filename string) error {
 			Setup:        setup,
 			TeamID:       teamID,
 			PollySession: svc,
-			PollyVoiceID: aws.String(script.voiceIds[i]),
+			PollyVoiceID: aws.String(script.voiceIDs[i]),
 		})
 		userClients = append(userClients, user)
 

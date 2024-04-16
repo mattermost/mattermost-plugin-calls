@@ -95,7 +95,7 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
                                 defaultMessage={'Use your own WebRTC service for calls and media processing'}
                             />
                         </Title>
-                        <VerticalSpacer size={8}/>
+                        <VerticalSpacer $size={8}/>
                         <Text>
                             <FormattedMessage
                                 defaultMessage={'Real-time communication daemon is a service built to offload calls onto your own WebRTC services and efficiently support scalable and secure deployments. <featureLink>Learn more about this feature</featureLink>.'}
@@ -111,14 +111,14 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
                                 }}
                             />
                         </Text>
-                        <VerticalSpacer size={16}/>
+                        <VerticalSpacer $size={16}/>
                         <Footer>
                             <div>
                                 <PrimaryButton onClick={requestLicense}>
                                     <FormattedMessage defaultMessage={'Try free for 30 days'}/>
                                 </PrimaryButton>
                             </div>
-                            <HorizontalSpacer size={16}/>
+                            <HorizontalSpacer $size={16}/>
                             <FooterText>
                                 <FormattedMessage
                                     defaultMessage={'By selecting <b>Try free for 30 days</b>, I agree to the <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>Privacy Policy</linkPrivacy>, and receiving product emails.'}

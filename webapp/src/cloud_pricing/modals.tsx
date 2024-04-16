@@ -33,7 +33,7 @@ export const CloudFreeTrialModalUser = (modalProps: Props) => {
             onHide={() => null}
             components={{FooterContainer}}
         >
-            <VerticalSpacer size={22}/>
+            <VerticalSpacer $size={22}/>
             <p>{formatMessage({defaultMessage: 'Calls are a quick, audio-first, way to interact with your team. Get the full calls experience when you start a free, 30-day trial.'})}</p>
             <p>{formatMessage({defaultMessage: 'Select Notify admin to send an automatic request to your system admins to start the trial.'})}</p>
         </SizedGenericModal>
@@ -72,7 +72,7 @@ export const CloudFreeTrialModalAdmin = (modalProps: Props) => {
             onHide={() => null}
             components={{FooterContainer}}
         >
-            <VerticalSpacer size={22}/>
+            <VerticalSpacer $size={22}/>
             {bodyText}
         </SizedGenericModal>
     );

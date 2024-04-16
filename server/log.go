@@ -79,7 +79,7 @@ func newLogger(p *Plugin) *logger {
 
 func (l *logger) fieldsToArgs(fields []logr.Field) []interface{} {
 	var buf bytes.Buffer
-	args := append([]interface{}{"origin", getErrOrigin()})
+	args := []interface{}{"origin", getErrOrigin()}
 	for _, field := range fields {
 		args = append(args, field.Key)
 		if err := field.ValueString(&buf, nil); err != nil {

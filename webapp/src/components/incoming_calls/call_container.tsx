@@ -24,7 +24,7 @@ export const IncomingCallContainer = () => {
     const firstCall = calls.splice(-1)[0];
 
     return (
-        <Container wider={wider}>
+        <Container $wider={wider}>
             {calls.map((c) => (
                 <CallIncomingCondensed
                     key={c.callID}
@@ -36,13 +36,13 @@ export const IncomingCallContainer = () => {
     );
 };
 
-const Container = styled.div<{ wider: boolean }>`
+const Container = styled.div<{ $wider: boolean }>`
     position: absolute;
     display: flex;
     flex-direction: column;
     gap: 5px;
     z-index: 102;
-    width: ${(props) => (props.wider ? '280px' : '216px')};
+    width: ${(props) => (props.$wider ? '280px' : '216px')};
     bottom: 10px;
     left: 12px;
 `;

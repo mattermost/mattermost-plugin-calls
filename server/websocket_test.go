@@ -360,6 +360,71 @@ func TestWSReader(t *testing.T) {
 	})
 }
 
+func TestHandleCallStateRequest(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	mockMetrics := &serverMocks.MockMetrics{}
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		callsClusterLocks: map[string]*cluster.Mutex{},
+		metrics:           mockMetrics,
+	}
+
+	store, tearDown := NewTestStore(t)
+	t.Cleanup(tearDown)
+	p.store = store
+
+	mockAPI.On("LogDebug", mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
+	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))
+	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64"))
+	mockMetrics.On("IncStoreOp", "KVGet")
+	mockMetrics.On("IncStoreOp", "KVSet")
+
+	channelID := model.NewId()
+	userID := model.NewId()
+	connID := model.NewId()
+
+	t.Run("no permissions", func(t *testing.T) {
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(false).Once()
+		err := p.handleCallStateRequest(channelID, userID, connID)
+		require.EqualError(t, err, "forbidden")
+	})
+
+	t.Run("no call ongoing", func(t *testing.T) {
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(true).Once()
+		err := p.handleCallStateRequest(channelID, userID, connID)
+		require.EqualError(t, err, "no call ongoing")
+	})
+
+	t.Run("active call", func(t *testing.T) {
+		err := p.store.CreateCall(&public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			ChannelID: channelID,
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  model.NewId(),
+			OwnerID:   model.NewId(),
+		})
+		require.NoError(t, err)
+
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(true).Once()
+		mockMetrics.On("IncWebSocketEvent", "out", "call_state").Once()
+		mockAPI.On("PublishWebSocketEvent", "call_state", mock.Anything, mock.Anything).Once()
+
+		err = p.handleCallStateRequest(channelID, userID, connID)
+		require.NoError(t, err)
+	})
+}
+
 func TestWebSocketBroadcastToModel(t *testing.T) {
 	t.Run("nil/empty", func(t *testing.T) {
 		var wsb *WebSocketBroadcast

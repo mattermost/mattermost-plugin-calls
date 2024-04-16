@@ -94,7 +94,7 @@ const EnableRecordings = (props: CustomComponentProps) => {
                                 defaultMessage={'Enable call recordings'}
                             />
                         </Title>
-                        <VerticalSpacer size={8}/>
+                        <VerticalSpacer $size={8}/>
                         <Text>
                             <FormattedMessage
                                 defaultMessage={'Allow call hosts to record meeting video and audio in the cloud. Recording include the entire call window view along with participants\' audio track and any shared screen video. <featureLink>Learn more about this feature</featureLink>.'}
@@ -110,14 +110,14 @@ const EnableRecordings = (props: CustomComponentProps) => {
                                 }}
                             />
                         </Text>
-                        <VerticalSpacer size={16}/>
+                        <VerticalSpacer $size={16}/>
                         <Footer>
                             <div>
                                 <PrimaryButton onClick={requestLicense}>
                                     <FormattedMessage defaultMessage={'Try free for 30 days'}/>
                                 </PrimaryButton>
                             </div>
-                            <HorizontalSpacer size={16}/>
+                            <HorizontalSpacer $size={16}/>
                             <FooterText>
                                 <FormattedMessage
                                     defaultMessage={'By selecting <b>Try free for 30 days</b>, I agree to the <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>Privacy Policy</linkPrivacy>, and receiving product emails.'}

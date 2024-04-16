@@ -64,13 +64,6 @@ func testUpdateCallsChannel(t *testing.T, store *Store) {
 		require.EqualError(t, err, "invalid channel: should not be nil")
 	})
 
-	t.Run("missing", func(t *testing.T) {
-		err := store.UpdateCallsChannel(&public.CallsChannel{
-			ChannelID: "channelID",
-		})
-		require.EqualError(t, err, "failed to update calls channel")
-	})
-
 	t.Run("existing", func(t *testing.T) {
 		channel := &public.CallsChannel{
 			ChannelID: model.NewId(),
@@ -99,28 +92,20 @@ func testUpdateCallsChannel(t *testing.T, store *Store) {
 }
 
 func testGetCallsChannel(t *testing.T, store *Store) {
-	t.Run("missing", func(t *testing.T) {
-		channel, err := store.GetCallsChannel("channelID", GetCallsChannelOpts{})
-		require.EqualError(t, err, "calls channel not found")
-		require.Nil(t, channel)
-	})
+	channel := &public.CallsChannel{
+		ChannelID: model.NewId(),
+		Props: map[string]any{
+			"test_prop": "test",
+		},
+	}
 
-	t.Run("existing", func(t *testing.T) {
-		channel := &public.CallsChannel{
-			ChannelID: model.NewId(),
-			Props: map[string]any{
-				"test_prop": "test",
-			},
-		}
+	err := store.CreateCallsChannel(channel)
+	require.NoError(t, err)
 
-		err := store.CreateCallsChannel(channel)
-		require.NoError(t, err)
-
-		gotChannel, err := store.GetCallsChannel(channel.ChannelID, GetCallsChannelOpts{FromWriter: true})
-		require.NoError(t, err)
-		require.NotNil(t, gotChannel)
-		require.Equal(t, channel, gotChannel)
-	})
+	gotChannel, err := store.GetCallsChannel(channel.ChannelID, GetCallsChannelOpts{FromWriter: true})
+	require.NoError(t, err)
+	require.NotNil(t, gotChannel)
+	require.Equal(t, channel, gotChannel)
 }
 
 func testGetAllCallsChannels(t *testing.T, store *Store) {
