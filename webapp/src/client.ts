@@ -15,6 +15,7 @@ import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 export const AudioInputPermissionsError = new Error('missing audio input permissions');
 export const AudioInputMissingError = new Error('no audio input available');
 export const rtcPeerErr = new Error('rtc peer error');
+export const rtcPeerTimeoutErr = new Error('timed out waiting for rtc connection');
 export const rtcPeerCloseErr = new Error('rtc peer close');
 export const insecureContextErr = new Error('insecure context');
 export const userRemovedFromChannelErr = new Error('user was removed from channel');
@@ -255,6 +256,7 @@ export default class CallsClient extends EventEmitter {
 
             peer.on('candidate', (candidate) => {
                 logDebug(`local candidate: ${JSON.stringify(candidate)}`);
+
                 ws.send('ice', {
                     data: JSON.stringify(candidate),
                 });
@@ -263,7 +265,7 @@ export default class CallsClient extends EventEmitter {
             peer.on('error', (err) => {
                 logErr('peer error', err);
                 if (!this.closed) {
-                    this.disconnect(rtcPeerErr);
+                    this.disconnect(err === rtcPeerTimeoutErr.message ? rtcPeerTimeoutErr : rtcPeerErr);
                 }
             });
 
