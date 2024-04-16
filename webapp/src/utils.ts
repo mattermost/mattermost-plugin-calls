@@ -257,7 +257,7 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
 }
 
 export function isDMChannel(channel: Channel) {
-    return channel.type === General.DM_CHANNEL;
+    return channel?.type === General.DM_CHANNEL;
 }
 
 export function isGMChannel(channel: Channel) {

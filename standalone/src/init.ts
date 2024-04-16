@@ -33,7 +33,7 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {getCallsConfig} from 'plugin/actions';
+import {getCallsConfig, setClientConnecting} from 'plugin/actions';
 import CallsClient from 'plugin/client';
 import {
     logDebug,
@@ -91,6 +91,7 @@ function connectCall(
     joinData: CallsClientJoinData,
     clientConfig: CallsClientConfig,
     wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void,
+    store: Store,
     closeCb?: (err?: Error) => void,
 ) {
     try {
@@ -102,7 +103,10 @@ function connectCall(
         window.callsClient = new CallsClient(clientConfig);
         window.currentCallData = CurrentCallDataDefault;
 
+        window.callsClient.on('connect', () => store.dispatch(setClientConnecting(false)));
+
         window.callsClient.on('close', (err?: Error) => {
+            store.dispatch(setClientConnecting(false));
             if (closeCb) {
                 closeCb(err);
             }
@@ -111,11 +115,14 @@ function connectCall(
         window.callsClient.init(joinData).then(() => {
             window.callsClient?.ws?.on('event', wsEventHandler);
         }).catch((err: Error) => {
+            store.dispatch(setClientConnecting(false));
             logErr(err);
             if (closeCb) {
                 closeCb(err);
             }
         });
+
+        store.dispatch(setClientConnecting(true));
     } catch (err) {
         logErr(err);
         if (closeCb) {
@@ -271,7 +278,7 @@ export default async function init(cfg: InitConfig) {
         if (cfg.wsHandler) {
             cfg.wsHandler(store, ev);
         }
-    }, cfg.closeCb);
+    }, store, cfg.closeCb);
 
     const theme = getTheme(store.getState());
     applyTheme(theme);

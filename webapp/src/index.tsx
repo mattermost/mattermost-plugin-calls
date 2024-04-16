@@ -20,6 +20,7 @@ import {
     displayFreeTrial,
     getCallsConfig,
     incomingCallOnChannel,
+    setClientConnecting,
     showScreenSourceModal,
     showSwitchCallModal,
 } from 'src/actions';
@@ -419,6 +420,7 @@ export default class Plugin {
             logDebug('registering desktopAPI.onCallsError');
             this.unsubscribers.push(window.desktopAPI.onCallsError((err: string, callID?: string, errMsg?: string) => {
                 logDebug('desktopAPI.onCallsError');
+                store.dispatch(setClientConnecting(false));
                 if (err === 'client-error') {
                     store.dispatch(displayCallErrorModal(new Error(errMsg), callID));
                 }
@@ -435,12 +437,15 @@ export default class Plugin {
             };
             if (window.desktopAPI?.joinCall) {
                 logDebug('desktopAPI.joinCall');
+                store.dispatch(setClientConnecting(true));
                 handleDesktopJoinedCall(store, await window.desktopAPI.joinCall(payload));
+                store.dispatch(setClientConnecting(false));
                 return;
             } else if (shouldRenderDesktopWidget()) {
                 logDebug('sending join call message to desktop app');
 
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                store.dispatch(setClientConnecting(true));
                 sendDesktopEvent('calls-join-call', payload);
                 return;
             }
@@ -501,7 +506,11 @@ export default class Plugin {
                     rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
                 }
 
+                window.callsClient.on('connect', () => store.dispatch(setClientConnecting(false)));
+
                 window.callsClient.on('close', (err?: Error) => {
+                    store.dispatch(setClientConnecting(false));
+
                     unmountCallWidget();
                     if (window.desktop) {
                         registry.unregisterComponent(rootComponentID);
@@ -567,11 +576,15 @@ export default class Plugin {
                     title,
                     threadID: rootId,
                 }).catch((err: Error) => {
+                    store.dispatch(setClientConnecting(false));
+
                     logErr(err);
                     unmountCallWidget();
                     store.dispatch(displayCallErrorModal(err, channelID));
                     delete window.callsClient;
                 });
+
+                store.dispatch(setClientConnecting(true));
             } catch (err) {
                 delete window.callsClient;
                 logErr(err);
@@ -589,6 +602,7 @@ export default class Plugin {
                 store.dispatch(showScreenSourceModal());
             } else if (ev.data?.type === 'calls-joined-call' && !window.desktopAPI?.joinCall) {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                store.dispatch(setClientConnecting(false));
                 handleDesktopJoinedCall(store, ev.data.message);
             } else if (ev.data?.type === 'calls-join-request' && !window.desktopAPI?.onJoinCallRequest) {
                 // we can assume that we are already in a call, since the global widget sent this.
@@ -596,6 +610,7 @@ export default class Plugin {
                 store.dispatch(showSwitchCallModal(ev.data.message.callID));
             } else if (ev.data?.type === 'calls-error' && ev.data.message.err === 'client-error' && !window.desktopAPI?.onCallsError) {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+                store.dispatch(setClientConnecting(false));
                 store.dispatch(displayCallErrorModal(new Error(ev.data.message.errMsg), ev.data.message.callID));
             } else if (ev.data?.type === 'calls-run-slash-command') {
                 slashCommandsHandler(store, joinCall, ev.data.message, ev.data.args);

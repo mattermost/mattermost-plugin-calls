@@ -5,6 +5,7 @@ import {
     insecureContextErr,
     rtcPeerCloseErr,
     rtcPeerErr,
+    rtcPeerTimeoutErr,
     userLeftChannelErr,
     userRemovedFromChannelErr,
 } from 'src/client';
@@ -88,10 +89,29 @@ export const CallErrorModal = (props: Props) => {
     let confirmMsg = formatMessage({defaultMessage: 'Okay'});
 
     switch (props.err.message) {
+    case rtcPeerTimeoutErr.message:
+        headerMsg = (
+            <span>{formatMessage({defaultMessage: 'Call connection failed'})}</span>
+        );
+        msg = (
+            <span>
+                {formatMessage({defaultMessage: 'We couldn\'t join the call because the connection timed out. Please check your network connection and try again.'}, {
+                    joinLink: (text: string) => (
+                        <a
+                            href=''
+                            onClick={onRejoinClick}
+                        >{text}</a>
+                    ),
+                })}
+                {untranslatable(' ')}
+                {troubleShootingMsg}
+            </span>
+        );
+        break;
     case rtcPeerErr.message:
     case rtcPeerCloseErr.message:
         headerMsg = (
-            <span>{formatMessage({defaultMessage: 'Connection failed'})}</span>
+            <span>{formatMessage({defaultMessage: 'Call connection failed'})}</span>
         );
         msg = (
             <span>

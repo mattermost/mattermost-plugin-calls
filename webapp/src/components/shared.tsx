@@ -24,3 +24,23 @@ export const StyledTooltip = styled(Tooltip)<{$isDisabled?: boolean}>`
       display: none;
   `}
 `;
+
+export const Spinner = styled.span<{$size: number}>`
+  width: ${({$size}) => $size}px;
+  height: ${({$size}) => $size}px;
+  border-radius: 50%;
+  display: inline-block;
+  border-top: 2px solid #166DE0;
+  border-right: 2px solid transparent;
+  box-sizing: border-box;
+  animation: spin 0.8s linear infinite;
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;

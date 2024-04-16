@@ -9,6 +9,7 @@ import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, tra
 import {
     allowScreenSharing,
     callStartAtForCurrentCall,
+    clientConnecting,
     expandedView,
     getChannelUrlAndDisplayName,
     hostChangeAtForCurrentCall,
@@ -63,6 +64,7 @@ const mapStateToProps = (state: GlobalState) => {
         wider: getMyTeams(state)?.length > 1,
         callsIncoming: sortedIncomingCalls(state),
         transcriptionsEnabled: transcriptionsEnabled(state),
+        clientConnecting: clientConnecting(state),
     };
 };
 

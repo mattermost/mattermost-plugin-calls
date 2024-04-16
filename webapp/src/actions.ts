@@ -47,6 +47,7 @@ import {
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
     CALL_STATE,
+    CLIENT_CONNECTING,
     DID_RING_FOR_CALL,
     DISMISS_CALL,
     HIDE_END_CALL_MODAL,
@@ -551,4 +552,11 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
     });
 
     dispatch(batchActions(actions));
+};
+
+export const setClientConnecting = (value: boolean) => (dispatch: Dispatch<GenericAction>) => {
+    dispatch({
+        type: CLIENT_CONNECTING,
+        data: value,
+    });
 };
