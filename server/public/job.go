@@ -8,15 +8,31 @@ type JobType string
 
 const (
 	JobTypeRecording    JobType = "recording"
-	JobTypeTranscribing         = "transcribing"
-	JobTypeCaptioning           = "captioning"
+	JobTypeTranscribing JobType = "transcribing"
+	JobTypeCaptioning   JobType = "captioning"
 )
+
+func (t JobType) IsValid() error {
+	if t == "" {
+		return fmt.Errorf("should not be empty")
+	}
+
+	switch t {
+	case JobTypeRecording:
+	case JobTypeTranscribing:
+	case JobTypeCaptioning:
+	default:
+		return fmt.Errorf("invalid job type %q", t)
+	}
+
+	return nil
+}
 
 type JobStatusType string
 
 const (
 	JobStatusTypeStarted JobStatusType = "started"
-	JobStatusTypeFailed                = "failed"
+	JobStatusTypeFailed  JobStatusType = "failed"
 )
 
 type JobStatus struct {

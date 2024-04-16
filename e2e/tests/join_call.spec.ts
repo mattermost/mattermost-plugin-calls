@@ -66,7 +66,7 @@ test.describe('join call', () => {
 
         expect(await page.locator('data-testid=call-thread').last().screenshot()).toMatchSnapshot('call-thread-leave.png');
 
-        const leaveCallButton = page.locator('.post__body').last().locator('button:has-text("Leave call")');
+        const leaveCallButton = page.locator('.post__body').last().locator('button:has-text("Leave")');
         await expect(leaveCallButton).toBeVisible();
         await leaveCallButton.click();
         await expect(page.locator('#calls-widget')).toBeHidden();

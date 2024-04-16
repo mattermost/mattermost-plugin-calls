@@ -11,12 +11,12 @@ export const SubHeader = styled.div`
     opacity: 0.56;
 `;
 
-export const HorizontalSpacer = styled.div<{ size: number }>`
-    margin-left: ${(props) => props.size}px;
+export const HorizontalSpacer = styled.div<{ $size: number }>`
+    margin-left: ${(props) => props.$size}px;
 `;
 
-export const VerticalSpacer = styled.div<{ size: number }>`
-    margin-top: ${(props) => props.size}px;
+export const VerticalSpacer = styled.div<{ $size: number }>`
+    margin-top: ${(props) => props.$size}px;
 `;
 
 export const StyledTooltip = styled(Tooltip)<{$isDisabled?: boolean}>`
@@ -25,9 +25,9 @@ export const StyledTooltip = styled(Tooltip)<{$isDisabled?: boolean}>`
   `}
 `;
 
-export const Spinner = styled.span<{size: number}>`
-  width: ${({size}) => size}px;
-  height: ${({size}) => size}px;
+export const Spinner = styled.span<{$size: number}>`
+  width: ${({$size}) => $size}px;
+  height: ${({$size}) => $size}px;
   border-radius: 50%;
   display: inline-block;
   border-top: 2px solid #166DE0;

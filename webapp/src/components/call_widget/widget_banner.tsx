@@ -44,14 +44,14 @@ export default function WidgetBanner(props: Props) {
     return (
         <Banner
             data-testid={props.id}
-            color={colorMap[props.type]}
-            bgColor={bgMap[props.type]}
-            fadeIn={!closing && !declining}
             onAnimationEnd={onAnimationEnd}
+            $color={colorMap[props.type]}
+            $bgColor={bgMap[props.type]}
+            $fadeIn={!closing && !declining}
         >
             <Icon
-                fill={props.iconFill}
-                color={props.iconColor}
+                $fill={props.iconFill}
+                $color={props.iconColor}
             >
                 { typeof props.icon === 'string' &&
                     <CompassIcon icon={props.icon}/>
@@ -106,7 +106,7 @@ export default function WidgetBanner(props: Props) {
     );
 }
 
-const Banner = styled.div<{color: string, bgColor: string, fadeIn: boolean}>`
+const Banner = styled.div<{$color: string, $bgColor: string, $fadeIn: boolean}>`
   @keyframes fade-in {
     from {
       opacity: 0;
@@ -132,16 +132,16 @@ const Banner = styled.div<{color: string, bgColor: string, fadeIn: boolean}>`
   display: flex;
   align-items: flex-start;
   width: 100%;
-  background-color: ${({bgColor}) => bgColor};
+  background-color: ${({$bgColor}) => $bgColor};
   box-shadow: 0 8px 24px rgba(var(--center-channel-color-rgb), 0.12);
   padding: 5px 8px;
   border-radius: 4px;
-  color: ${({color}) => color};
+  color: ${({$color}) => $color};
   margin-top: 4px;
-  animation: ${({fadeIn}) => (fadeIn ? 'fade-in 0.3s ease-in' : 'fade-out 0.3s ease-out')};
+  animation: ${({$fadeIn}) => ($fadeIn ? 'fade-in 0.3s ease-in' : 'fade-out 0.3s ease-out')};
 
   a, a:hover, a:visited {
-    color: ${({color}) => color};
+    color: ${({$color}) => $color};
   }
 `;
 
@@ -206,10 +206,10 @@ const DeclineButton = styled.button`
   }
 `;
 
-const Icon = styled.div<{fill?: string, color?: string}>`
+const Icon = styled.div<{$fill?: string, $color?: string}>`
   font-size: 12px;
-  fill: ${({fill}) => (fill || 'currentColor')};
-  color: ${({color}) => (color || 'currentColor')};
+  fill: ${({$fill}) => ($fill || 'currentColor')};
+  color: ${({$color}) => ($color || 'currentColor')};
   margin-top: 4px;
 `;
 
@@ -218,7 +218,7 @@ const CloseButton = styled(Icon)`
   margin-top: 4px;
   app-region: no-drag;
 
-  :hover {
+  &:hover {
     background: rgba(var(--center-channel-color-rgb), 0.08);
   }
 `;

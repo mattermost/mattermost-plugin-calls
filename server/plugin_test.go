@@ -4,7 +4,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,16 +17,17 @@ func TestServeHTTP(t *testing.T) {
 	plugin := Plugin{}
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	plugin.apiRouter = plugin.newAPIRouter()
 
 	plugin.ServeHTTP(nil, w, r)
 
 	result := w.Result()
 	assert.NotNil(result)
 	defer result.Body.Close()
-	bodyBytes, err := ioutil.ReadAll(result.Body)
+	bodyBytes, err := io.ReadAll(result.Body)
 	assert.Nil(err)
 	bodyString := string(bodyBytes)
 
-	assert.Equal("Unauthorized\n", bodyString)
-	assert.Equal(http.StatusUnauthorized, result.StatusCode)
+	assert.Equal("404 page not found\n", bodyString)
+	assert.Equal(http.StatusNotFound, result.StatusCode)
 }

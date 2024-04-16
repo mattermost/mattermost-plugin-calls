@@ -249,24 +249,20 @@ func (m *rtcdClientManager) GetHostForNewCall() (string, error) {
 
 // Send routes the message to the appropriate host that's handling the given
 // call. If this is missing a new client is created and added to the mapping.
-func (m *rtcdClientManager) Send(msg rtcd.ClientMessage, callID string) error {
-	state, err := m.ctx.kvGetChannelState(callID, false)
-	if err != nil {
-		return fmt.Errorf("failed to get channel state: %w", err)
-	}
-	if state.Call == nil {
-		return fmt.Errorf("state.Call should not be nil")
-	}
-	host := state.Call.RTCDHost
-
+func (m *rtcdClientManager) Send(msg rtcd.ClientMessage, host string) error {
 	var client *rtcd.Client
+
+	if host == "" {
+		return fmt.Errorf("host should not be empty")
+	}
+
 	if h := m.getHost(host); h == nil {
 		m.ctx.LogDebug("creating client for missing host on send", "host", host)
-		client, err = m.newRTCDClient(m.rtcdURL, host, getDialFn(host, m.rtcdPort))
+		client, err := m.newRTCDClient(m.rtcdURL, host, getDialFn(host, m.rtcdPort))
 		if err != nil {
 			return fmt.Errorf("failed to create new client: %w", err)
 		}
-		if err := m.addHost(state.Call.RTCDHost, client); err != nil {
+		if err := m.addHost(host, client); err != nil {
 			return fmt.Errorf("failed to add host: %w", err)
 		}
 	} else {
@@ -350,7 +346,7 @@ func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.Dial
 	}
 
 	var reconnectCb rtcd.ClientReconnectCb
-	reconnectCb = func(c *rtcd.Client, attempt int) error {
+	reconnectCb = func(_ *rtcd.Client, attempt int) error {
 		if attempt >= maxReconnectAttempts {
 			if err := m.removeHost(host); err != nil {
 				m.ctx.LogError("failed to remove rtcd client: %w", err)
@@ -381,7 +377,7 @@ func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.Dial
 			return nil
 		}
 
-		m.ctx.LogDebug("reconnection successfull, replacing client")
+		m.ctx.LogDebug("reconnection successful, replacing client")
 
 		if err = m.removeHost(host); err != nil {
 			m.ctx.LogError("failed to remove rtcd client: %w", err)
@@ -621,11 +617,11 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 }
 
 func getDialFn(host, port string) rtcd.DialContextFn {
-	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+	return func(ctx context.Context, network, _ string) (net.Conn, error) {
 		dialer := &net.Dialer{
 			Timeout: dialingTimeout,
 		}
-		return dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%s", host, port))
+		return dialer.DialContext(ctx, network, fmt.Sprintf("%s:%s", host, port))
 	}
 }
 

@@ -66,7 +66,7 @@ const ChannelHeaderButton = () => {
             $isCloudPaid={isCloudPaid}
             $isClientConnecting={isClientConnecting}
         >
-            {isClientConnecting ? <Spinner size={12}/> : <CompassIcon icon='phone'/>}
+            {isClientConnecting ? <Spinner $size={12}/> : <CompassIcon icon='phone'/>}
             <CallButtonText>
                 { callButtonText }
             </CallButtonText>

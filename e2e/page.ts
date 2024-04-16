@@ -119,4 +119,9 @@ export default class PlaywrightDevPage {
     async unmute() {
         await this.page.locator('#voice-mute-unmute').click();
     }
+
+    async sendSlashCommand(cmd: string) {
+        await this.page.locator('#post_textbox').fill(cmd);
+        await this.page.getByTestId('SendMessageButton').click();
+    }
 }

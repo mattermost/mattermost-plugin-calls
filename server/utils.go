@@ -8,17 +8,16 @@ import (
 	"compress/zlib"
 	"errors"
 	"fmt"
-	"github.com/mattermost/mattermost/server/public/model"
 	"io"
 	"math"
-	"net/http"
 	"net/url"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/Masterminds/semver"
 )
@@ -137,44 +136,6 @@ func parseURL(u string) (string, string, string, error) {
 
 func secondsSinceTimestamp(ts int64) int64 {
 	return int64(math.Round(time.Since(time.Unix(ts, 0)).Seconds()))
-}
-
-func isMobilePostGA(r *http.Request) (mobile, postGA bool) {
-	queryParam := r.URL.Query().Get("mobilev2")
-	if queryParam == "true" {
-		return true, true
-	}
-
-	// Below here is to test two things: is this mobile pre-GA? Is mobile version 441
-	// (a one-week period when we didn't have the above queryParam)
-	// TODO: simplify this once we can stop supporting 441.
-	//   https://mattermost.atlassian.net/browse/MM-48929
-	userAgent := r.Header.Get("User-Agent")
-	fields := strings.Fields(userAgent)
-	if len(fields) == 0 {
-		return false, false
-	}
-
-	clientAgent := fields[0]
-	isMobile := strings.HasPrefix(clientAgent, "rnbeta") || strings.HasPrefix(clientAgent, "Mattermost")
-	if !isMobile {
-		return false, false
-	}
-	agent := strings.Split(clientAgent, "/")
-	if len(agent) != 2 {
-		return true, false
-	}
-
-	// We can't use a semver package, because we're not using semver correctly. So manually parse...
-	version := strings.Split(agent[1], ".")
-	if len(version) != 4 {
-		return true, false
-	}
-	minor, err := strconv.Atoi(version[3])
-	if err != nil {
-		return true, false
-	}
-	return true, minor >= 441
 }
 
 func checkMinVersion(minVersion, currVersion string) error {

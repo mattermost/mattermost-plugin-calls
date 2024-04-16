@@ -29,6 +29,7 @@ const (
 	clientMessageTypeReact       = "react"
 	clientMessageTypeCaption     = "caption"
 	clientMessageTypeMetric      = "metric"
+	clientMessageTypeCallState   = "call_state"
 )
 
 func (m *clientMessage) ToJSON() ([]byte, error) {
