@@ -70,7 +70,7 @@ func RunPostgresContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (
 
 	return cnt, func() {
 		if err := cnt.Terminate(ctx); err != nil {
-			log.Printf(err.Error())
+			log.Print(err.Error())
 		}
 	}, nil
 }
@@ -91,7 +91,7 @@ func RunMySQLContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (*my
 
 	return cnt, func() {
 		if err := cnt.Terminate(ctx); err != nil {
-			log.Printf(err.Error())
+			log.Print(err.Error())
 		}
 	}, nil
 }

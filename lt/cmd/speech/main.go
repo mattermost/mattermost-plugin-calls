@@ -2,15 +2,17 @@ package main
 
 import (
 	"flag"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/polly"
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/polly"
 
 	"github.com/mattermost/mattermost-plugin-calls/lt/client"
 )
@@ -23,7 +25,7 @@ var script, siteURL, wsURL, channelID, teamID, userPassword, profile string
 var setup bool
 
 func main() {
-	flag.StringVar(&script, "script", "script.txt", "Script for the tts")
+	flag.StringVar(&script, "script", "script.txt", "Script for the tts, to be found in lt/scripts; assumes you will be running the lt program from the repo/lt directory")
 	flag.StringVar(&siteURL, "siteURL", "http://localhost:8065", "Mattermost SiteURL")
 	flag.StringVar(&wsURL, "wsURL", "ws://localhost:8065", "Mattermost wsURL")
 	flag.StringVar(&channelID, "channelID", "", "ChannelID of the call")
@@ -34,84 +36,20 @@ func main() {
 	flag.Parse()
 
 	if channelID == "" {
-		log.Fatalf("need a --channelID flag")
+		log.Fatalf("need a -channelID flag")
 	}
 
-	if script != "" {
-		if setup && teamID == "" {
-			log.Fatalf("need a --teamID flag")
-		}
-
-		if err := performScript(script); err != nil {
-			log.Fatalf("error performing script: %v", err)
-		}
-		return
+	if script == "" {
+		log.Fatalf("need a -script flag")
 	}
 
-	stopCh := make(chan struct{})
-	var wg sync.WaitGroup
-	wg.Add(2)
+	if setup && teamID == "" {
+		log.Fatalf("need a -teamID flag")
+	}
 
-	userA := client.NewUser(client.Config{
-		Username:  "testuser-0",
-		Password:  userPassword,
-		ChannelID: channelID,
-		SiteURL:   siteURL,
-		WsURL:     wsURL,
-		Duration:  duration,
-		Speak:     true,
-	})
-	go func() {
-		defer wg.Done()
-		if err := userA.Connect(stopCh); err != nil {
-			log.Fatalf("connectUser failed: %s", err.Error())
-		}
-	}()
-
-	userB := client.NewUser(client.Config{
-		Username:  "testuser-1",
-		Password:  userPassword,
-		ChannelID: channelID,
-		SiteURL:   siteURL,
-		WsURL:     wsURL,
-		Duration:  duration,
-		Speak:     true,
-	})
-	go func() {
-		defer wg.Done()
-		if err := userB.Connect(stopCh); err != nil {
-			log.Fatalf("connectUser failed: %s", err.Error())
-		}
-	}()
-
-	// "Conversation" logic
-	go func() {
-		time.Sleep(2 * time.Second)
-
-		userA.Unmute()
-		doneCh := userA.Speak("Hi, this is user A")
-		<-doneCh
-		userA.Mute()
-
-		userB.Unmute()
-		doneCh = userB.Speak("Hi user A, this is user B responding")
-		<-doneCh
-		userB.Mute()
-
-		userA.Unmute()
-		doneCh = userA.Speak("Nice to meet you user B!")
-		<-doneCh
-		userA.Mute()
-	}()
-
-	go func() {
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-		<-sig
-		close(stopCh)
-	}()
-
-	wg.Wait()
+	if err := performScript(script); err != nil {
+		log.Fatalf("error performing script: %v", err)
+	}
 }
 
 func performScript(filename string) error {
@@ -121,7 +59,7 @@ func performScript(filename string) error {
 	}))
 	svc := polly.New(awsSess)
 
-	f, err := os.Open(filename)
+	f, err := os.Open(filepath.Join("scripts", filename))
 	if err != nil {
 		log.Fatalf("open script %s failed: %v", filename, err)
 	}
@@ -147,7 +85,7 @@ func performScript(filename string) error {
 			Setup:        setup,
 			TeamID:       teamID,
 			PollySession: svc,
-			PollyVoiceID: aws.String(script.voiceIds[i]),
+			PollyVoiceID: aws.String(script.voiceIDs[i]),
 		})
 		userClients = append(userClients, user)
 

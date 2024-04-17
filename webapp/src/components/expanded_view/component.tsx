@@ -578,6 +578,20 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
+    requestCallState = () => {
+        const callsClient = getCallsClient();
+        if (!callsClient) {
+            logErr('callsClient should be defined');
+            return;
+        }
+
+        // On WebSocket connect we request the call state. This avoids
+        // making a potentially racy HTTP call and should guarantee
+        // a consistent state.
+        logDebug('requesting call state through ws');
+        this.context.sendMessage('custom_com.mattermost.calls_call_state', {channelID: callsClient.channelID});
+    };
+
     public componentDidMount() {
         const callsClient = getCallsClient();
         if (!callsClient) {
@@ -585,11 +599,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return;
         }
 
-        // On mount we request the call state through websocket. This avoids
-        // making a potentially racy HTTP call and should guarantee
-        // a consistent state.
-        logDebug('requesting call state through ws');
-        this.context.sendMessage('custom_com.mattermost.calls_call_state', {channelID: callsClient.channelID});
+        if (!this.context) {
+            logErr('context should be defined');
+            return;
+        }
+
+        if (this.context?.conn?.readyState === WebSocket.OPEN) {
+            this.requestCallState();
+        } else {
+            logDebug('ws not connected still, adding listener');
+            this.context.addFirstConnectListener(this.requestCallState);
+        }
 
         // keyboard shortcuts
         window.addEventListener('keydown', this.handleKBShortcuts, true);
@@ -694,6 +714,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.removeEventListener('keyup', this.handleKeyUp, true);
         window.removeEventListener('blur', this.handleBlur, true);
         this.#unlockNavigation?.();
+        this.context?.removeFirstConnectListener(this.requestCallState);
     }
 
     dismissRecordingPrompt = () => {

@@ -55,18 +55,9 @@ func (s *Store) UpdateCallSession(session *public.CallSession) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	res, err := s.wDB.Exec(q, args...)
+	_, err = s.wDB.Exec(q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
-	}
-
-	count, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if count != 1 {
-		return fmt.Errorf("failed to update call session")
 	}
 
 	return nil

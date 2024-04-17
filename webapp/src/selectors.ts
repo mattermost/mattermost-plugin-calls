@@ -564,3 +564,7 @@ export const switchCallModal = (state: GlobalState) => {
 export const screenSourceModal = (state: GlobalState) => {
     return pluginState(state).screenSourceModal;
 };
+
+export const clientConnecting = (state: GlobalState) => {
+    return pluginState(state).clientConnecting;
+};

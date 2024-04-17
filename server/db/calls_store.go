@@ -78,18 +78,9 @@ func (s *Store) UpdateCall(call *public.Call) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	res, err := s.wDB.Exec(q, args...)
+	_, err = s.wDB.Exec(q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
-	}
-
-	count, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if count != 1 {
-		return fmt.Errorf("failed to update call: unexpected updated rows count %d", count)
 	}
 
 	return nil
@@ -108,18 +99,9 @@ func (s *Store) DeleteCall(callID string) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	res, err := s.wDB.Exec(q, args...)
+	_, err = s.wDB.Exec(q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
-	}
-
-	count, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if count != 1 {
-		return fmt.Errorf("failed to delete call")
 	}
 
 	return nil

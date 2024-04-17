@@ -81,16 +81,6 @@ func testUpdateCallSession(t *testing.T, store *Store) {
 		require.EqualError(t, err, "invalid call session: should not be nil")
 	})
 
-	t.Run("missing", func(t *testing.T) {
-		err := store.UpdateCallSession(&public.CallSession{
-			ID:     model.NewId(),
-			CallID: model.NewId(),
-			UserID: model.NewId(),
-			JoinAt: time.Now().UnixMilli(),
-		})
-		require.EqualError(t, err, "failed to update call session")
-	})
-
 	t.Run("existing", func(t *testing.T) {
 		session := &public.CallSession{
 			ID:      model.NewId(),
@@ -118,36 +108,29 @@ func testUpdateCallSession(t *testing.T, store *Store) {
 }
 
 func testDeleteCallSession(t *testing.T, store *Store) {
-	t.Run("missing", func(t *testing.T) {
-		err := store.DeleteCallSession(model.NewId())
-		require.NoError(t, err)
+	session := &public.CallSession{
+		ID:      model.NewId(),
+		CallID:  model.NewId(),
+		UserID:  model.NewId(),
+		JoinAt:  time.Now().UnixMilli(),
+		Unmuted: true,
+	}
+
+	err := store.CreateCallSession(session)
+	require.NoError(t, err)
+
+	_, err = store.GetCallSession(session.ID, GetCallSessionOpts{
+		FromWriter: true,
 	})
+	require.NoError(t, err)
 
-	t.Run("existing", func(t *testing.T) {
-		session := &public.CallSession{
-			ID:      model.NewId(),
-			CallID:  model.NewId(),
-			UserID:  model.NewId(),
-			JoinAt:  time.Now().UnixMilli(),
-			Unmuted: true,
-		}
+	err = store.DeleteCallSession(session.ID)
+	require.NoError(t, err)
 
-		err := store.CreateCallSession(session)
-		require.NoError(t, err)
-
-		_, err = store.GetCallSession(session.ID, GetCallSessionOpts{
-			FromWriter: true,
-		})
-		require.NoError(t, err)
-
-		err = store.DeleteCallSession(session.ID)
-		require.NoError(t, err)
-
-		_, err = store.GetCallSession(session.ID, GetCallSessionOpts{
-			FromWriter: true,
-		})
-		require.EqualError(t, err, "call session not found")
+	_, err = store.GetCallSession(session.ID, GetCallSessionOpts{
+		FromWriter: true,
 	})
+	require.EqualError(t, err, "call session not found")
 }
 
 func testGetCallSession(t *testing.T, store *Store) {

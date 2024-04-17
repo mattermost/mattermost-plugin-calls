@@ -90,18 +90,6 @@ func testUpdateCallJob(t *testing.T, store *Store) {
 		require.EqualError(t, err, "invalid call job: should not be nil")
 	})
 
-	t.Run("missing", func(t *testing.T) {
-		job := &public.CallJob{
-			ID:        model.NewId(),
-			CallID:    model.NewId(),
-			Type:      public.JobTypeRecording,
-			CreatorID: model.NewId(),
-			InitAt:    time.Now().UnixMilli(),
-		}
-		err := store.UpdateCallJob(job)
-		require.EqualError(t, err, "failed to update call job")
-	})
-
 	t.Run("existing", func(t *testing.T) {
 		job := &public.CallJob{
 			ID:        model.NewId(),
