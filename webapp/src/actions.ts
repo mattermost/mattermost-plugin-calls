@@ -1,5 +1,8 @@
+/* eslint-disable max-lines */
+
 import {CallsConfig, CallState, UserSessionState} from '@calls/common/lib/types';
 import {ClientError} from '@mattermost/client';
+import {Channel} from '@mattermost/types/channels';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
@@ -9,7 +12,7 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
-import {ActionFunc, DispatchFunc, GenericAction, GetStateFunc} from 'mattermost-redux/types/actions';
+import {ActionFuncAsync, DispatchFunc, GetStateFunc} from 'mattermost-redux/types/actions';
 import {MessageDescriptor} from 'react-intl';
 import {AnyAction, Dispatch} from 'redux';
 import {batchActions} from 'redux-batched-actions';
@@ -69,19 +72,19 @@ import {
     USERS_STATES,
 } from './action_types';
 
-export const showExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
+export const showExpandedView = () => (dispatch: Dispatch) => {
     dispatch({
         type: SHOW_EXPANDED_VIEW,
     });
 };
 
-export const hideExpandedView = () => (dispatch: Dispatch<GenericAction>) => {
+export const hideExpandedView = () => (dispatch: Dispatch) => {
     dispatch({
         type: HIDE_EXPANDED_VIEW,
     });
 };
 
-export const showSwitchCallModal = (targetID?: string) => (dispatch: Dispatch<GenericAction>) => {
+export const showSwitchCallModal = (targetID?: string) => (dispatch: Dispatch) => {
     dispatch({
         type: SHOW_SWITCH_CALL_MODAL,
         data: {
@@ -90,31 +93,31 @@ export const showSwitchCallModal = (targetID?: string) => (dispatch: Dispatch<Ge
     });
 };
 
-export const hideSwitchCallModal = () => (dispatch: Dispatch<GenericAction>) => {
+export const hideSwitchCallModal = () => (dispatch: Dispatch) => {
     dispatch({
         type: HIDE_SWITCH_CALL_MODAL,
     });
 };
 
-export const hideEndCallModal = () => (dispatch: Dispatch<GenericAction>) => {
+export const hideEndCallModal = () => (dispatch: Dispatch) => {
     dispatch({
         type: HIDE_END_CALL_MODAL,
     });
 };
 
-export const showScreenSourceModal = () => (dispatch: Dispatch<GenericAction>) => {
+export const showScreenSourceModal = () => (dispatch: Dispatch) => {
     dispatch({
         type: SHOW_SCREEN_SOURCE_MODAL,
     });
 };
 
-export const hideScreenSourceModal = () => (dispatch: Dispatch<GenericAction>) => {
+export const hideScreenSourceModal = () => (dispatch: Dispatch) => {
     dispatch({
         type: HIDE_SCREEN_SOURCE_MODAL,
     });
 };
 
-export const getCallsConfig = (): ActionFunc => {
+export const getCallsConfig = (): ActionFuncAsync<CallsConfig> => {
     return bindClientFunc({
         clientFunc: () => RestClient.fetch<CallsConfig>(
             `${getPluginPath()}/config`,
@@ -124,28 +127,28 @@ export const getCallsConfig = (): ActionFunc => {
     });
 };
 
-export const setRecordingsEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
+export const setRecordingsEnabled = (enabled: boolean) => (dispatch: Dispatch) => {
     dispatch({
         type: RECORDINGS_ENABLED,
         data: enabled,
     });
 };
 
-export const setRTCDEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
+export const setRTCDEnabled = (enabled: boolean) => (dispatch: Dispatch) => {
     dispatch({
         type: RTCD_ENABLED,
         data: enabled,
     });
 };
 
-export const setTranscriptionsEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
+export const setTranscriptionsEnabled = (enabled: boolean) => (dispatch: Dispatch) => {
     dispatch({
         type: TRANSCRIPTIONS_ENABLED,
         data: enabled,
     });
 };
 
-export const setLiveCaptionsEnabled = (enabled: boolean) => (dispatch: Dispatch<GenericAction>) => {
+export const setLiveCaptionsEnabled = (enabled: boolean) => (dispatch: Dispatch) => {
     dispatch({
         type: LIVE_CAPTIONS_ENABLED,
         data: enabled,
@@ -180,7 +183,7 @@ export const displayFreeTrial = () => {
 };
 
 export const displayCloudPricing = () => {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+    return async (_: DispatchFunc, getState: GetStateFunc) => {
         const isAdmin = isCurrentUserSystemAdmin(getState());
         if (!isAdmin) {
             return {};
@@ -219,7 +222,7 @@ export const endCall = (channelID: string) => {
     );
 };
 
-export const displayCallErrorModal = (err: Error, channelID?: string) => (dispatch: Dispatch<GenericAction>) => {
+export const displayCallErrorModal = (err: Error, channelID?: string) => (dispatch: Dispatch) => {
     dispatch(modals.openModal({
         modalId: CallErrorModalID,
         dialogType: CallErrorModal,
@@ -231,7 +234,7 @@ export const displayCallErrorModal = (err: Error, channelID?: string) => (dispat
 };
 
 export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => {
-    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
+    return (_: DispatchFunc, getState: GetStateFunc) => {
         const config = getConfig(getState());
         if (config.DiagnosticsEnabled !== 'true') {
             return;
@@ -266,7 +269,7 @@ export function prefetchThread(postId: string) {
     };
 }
 
-export const startCallRecording = (callID: string) => (dispatch: Dispatch<GenericAction>) => {
+export const startCallRecording = (callID: string) => (dispatch: Dispatch) => {
     RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/recording/start`,
         {method: 'post'},
@@ -294,7 +297,7 @@ export const stopCallRecording = async (callID: string) => {
     );
 };
 
-export const recordingPromptDismissedAt = (callID: string, dismissedAt: number) => (dispatch: Dispatch<GenericAction>) => {
+export const recordingPromptDismissedAt = (callID: string, dismissedAt: number) => (dispatch: Dispatch) => {
     dispatch({
         type: CALL_REC_PROMPT_DISMISSED,
         data: {
@@ -336,7 +339,7 @@ export const displayGenericErrorModal = (title: MessageDescriptor, message: Mess
 
 export function incomingCallOnChannel(channelID: string, callID: string, callerID: string, startAt: number) {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
-        let channel = getChannel(getState(), channelID);
+        let channel: Channel | undefined = getChannel(getState(), channelID);
         if (!channel) {
             const res = await dispatch(loadChannel(channelID));
             channel = res.data;
@@ -366,7 +369,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
             await dispatch(getProfilesByIdsAction([callerID]));
         }
 
-        await dispatch({
+        dispatch({
             type: ADD_INCOMING_CALL,
             data: {
                 callID,
@@ -384,7 +387,7 @@ export const userLeft = (channelID: string, userID: string, sessionID: string) =
         // save for later
         const callID = calls(getState())[channelID]?.ID || '';
 
-        await dispatch({
+        dispatch({
             type: USER_LEFT,
             data: {
                 channelID,
@@ -416,10 +419,10 @@ export const dismissIncomingCallNotification = (channelID: string, callID: strin
     };
 };
 
-export const removeIncomingCallNotification = (callID: string): ActionFunc => {
+export const removeIncomingCallNotification = (callID: string): ActionFuncAsync => {
     return async (dispatch: DispatchFunc) => {
-        await dispatch(stopRingingForCall(callID));
-        await dispatch({
+        dispatch(stopRingingForCall(callID));
+        dispatch({
             type: REMOVE_INCOMING_CALL,
             data: {
                 callID,
@@ -439,7 +442,7 @@ export const ringForCall = (callID: string, sound: string) => {
         }
 
         // register we've rang, so we don't ring again ever for this call
-        await dispatch({
+        dispatch({
             type: RINGING_FOR_CALL,
             data: {
                 callID,
@@ -452,7 +455,7 @@ export const ringForCall = (callID: string, sound: string) => {
     };
 };
 
-export const stopRingingForCall = (callID: string): ActionFunc => {
+export const stopRingingForCall = (callID: string): ActionFuncAsync => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         if (ringingForCall(getState(), callID)) {
             notificationsStopRinging();
@@ -554,7 +557,7 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
     dispatch(batchActions(actions));
 };
 
-export const setClientConnecting = (value: boolean) => (dispatch: Dispatch<GenericAction>) => {
+export const setClientConnecting = (value: boolean) => (dispatch: Dispatch) => {
     dispatch({
         type: CLIENT_CONNECTING,
         data: value,
