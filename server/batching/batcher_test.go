@@ -71,12 +71,14 @@ func TestBatcher(t *testing.T) {
 	})
 
 	t.Run("context aware batching", func(t *testing.T) {
-		preRunCb := func(ctx Context) {
+		preRunCb := func(ctx Context) error {
 			ctx["shared_state"] = 0
+			return nil
 		}
 
-		postRunCb := func(ctx Context) {
+		postRunCb := func(ctx Context) error {
 			require.Equal(t, ctx[ContextBatchSizeKey].(int), ctx["shared_state"])
+			return nil
 		}
 
 		b, err := NewBatcher(Config{
@@ -102,5 +104,34 @@ func TestBatcher(t *testing.T) {
 		}
 
 		b.Stop()
+	})
+
+	t.Run("returning error", func(t *testing.T) {
+		b, err := NewBatcher(Config{
+			Interval: 10 * time.Millisecond,
+			Size:     100,
+			PreRunCb: func(_ Context) error {
+				return fmt.Errorf("some error")
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, b)
+
+		b.Start()
+
+		var counter int
+		// Simulating some bursts of requests that need batching.
+		for i := 0; i < 10; i++ {
+			for j := 0; j < 10; j++ {
+				err := b.Push(func(_ Context) {
+					counter++
+				})
+				require.NoError(t, err)
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		b.Stop()
+		require.Zero(t, counter)
 	})
 }

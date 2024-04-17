@@ -16,6 +16,7 @@ const (
 )
 
 type Item func(ctx Context)
+type BatchCb func(ctx Context) error
 
 type Batcher struct {
 	cfg     Config
@@ -33,9 +34,9 @@ type Config struct {
 	// An optional callback to be executed before processing a batch.
 	// This is where expensive operations should usually be performed
 	// in order to make the batching efficient.
-	PreRunCb Item
+	PreRunCb BatchCb
 	// An optional callback to be executed after processing a batch.
-	PostRunCb Item
+	PostRunCb BatchCb
 }
 
 // NewBatcher creates a new Batcher with the given config.
@@ -85,7 +86,9 @@ func (b *Batcher) Start() {
 					}
 
 					if b.cfg.PreRunCb != nil {
-						b.cfg.PreRunCb(ctx)
+						if err := b.cfg.PreRunCb(ctx); err != nil {
+							continue
+						}
 					}
 
 					for i := 0; i < batchSize; i++ {
@@ -93,7 +96,7 @@ func (b *Batcher) Start() {
 					}
 
 					if b.cfg.PostRunCb != nil {
-						b.cfg.PostRunCb(ctx)
+						_ = b.cfg.PostRunCb(ctx)
 					}
 				}
 			case <-b.stopCh:
