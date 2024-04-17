@@ -26,3 +26,8 @@ webapp/src/manifest.ts
 webapp/mattermost-webapp/
 server/manifest.go
 server/data/
+
+# e2e
+config/
+dotenv/
+logs/
