@@ -408,13 +408,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		if state.Call.Props.ScreenStartAt > 0 {
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
 		}
-		state.Call.EndAt = time.Now().UnixMilli()
-		state.Call.Participants = mapKeys(state.Call.Props.Participants)
-		state.Call.Props.RTCDHost = ""
-		state.Call.Props.DismissedNotification = nil
-		state.Call.Props.NodeID = ""
-		state.Call.Props.Hosts = nil
-		state.Call.Props.Participants = nil
+		setCallEnded(&state.Call)
 
 		defer func() {
 			dur, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))

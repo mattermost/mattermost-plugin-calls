@@ -343,7 +343,7 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 	}
 
 	if call.EndAt == 0 {
-		call.EndAt = time.Now().UnixMilli()
+		setCallEnded(call)
 	}
 
 	if err := p.store.DeleteCallsSessions(call.ID); err != nil {
@@ -373,4 +373,14 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 	}
 
 	return p.store.UpdateCall(call)
+}
+
+func setCallEnded(call *public.Call) {
+	call.EndAt = time.Now().UnixMilli()
+	call.Participants = mapKeys(call.Props.Participants)
+	call.Props.RTCDHost = ""
+	call.Props.DismissedNotification = nil
+	call.Props.NodeID = ""
+	call.Props.Hosts = nil
+	call.Props.Participants = nil
 }
