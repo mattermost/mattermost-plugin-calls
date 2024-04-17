@@ -14,26 +14,36 @@ import (
 func TestBatcher(t *testing.T) {
 	t.Run("NewBatcher", func(t *testing.T) {
 		t.Run("invalid interval", func(t *testing.T) {
-			b, err := NewBatcher(0, 100)
+			b, err := NewBatcher(Config{
+				Size: 10,
+			})
 			require.EqualError(t, err, "interval should be > 0")
 			require.Nil(t, b)
 		})
 
 		t.Run("invalid size", func(t *testing.T) {
-			b, err := NewBatcher(time.Second, 0)
+			b, err := NewBatcher(Config{
+				Interval: time.Second,
+			})
 			require.EqualError(t, err, "size should be > 0")
 			require.Nil(t, b)
 		})
 
 		t.Run("valid", func(t *testing.T) {
-			b, err := NewBatcher(time.Second, 10)
+			b, err := NewBatcher(Config{
+				Interval: time.Second,
+				Size:     10,
+			})
 			require.NoError(t, err)
 			require.NotNil(t, b)
 		})
 	})
 
-	t.Run("batching", func(t *testing.T) {
-		b, err := NewBatcher(10*time.Millisecond, 10)
+	t.Run("basic batching", func(t *testing.T) {
+		b, err := NewBatcher(Config{
+			Interval: 10 * time.Millisecond,
+			Size:     10,
+		})
 		require.NoError(t, err)
 		require.NotNil(t, b)
 
@@ -42,25 +52,55 @@ func TestBatcher(t *testing.T) {
 		var counter int
 
 		// Simulating some bursts of requests that need batching.
-		go func() {
-			for i := 0; i < 10; i++ {
-				for j := 0; j < 10; j++ {
-					fmt.Printf("pushing %d\n", i*10+j)
-					err := b.Push(func() {
-						fmt.Printf("executing %d\n", counter)
-						counter++
-					})
-					require.NoError(t, err)
-				}
-				time.Sleep(50 * time.Millisecond)
+		for i := 0; i < 10; i++ {
+			for j := 0; j < 10; j++ {
+				fmt.Printf("pushing %d\n", i*10+j)
+				err := b.Push(func(_ Context) {
+					fmt.Printf("executing %d\n", counter)
+					counter++
+				})
+				require.NoError(t, err)
 			}
-		}()
-
-		time.Sleep(1 * time.Second)
+			time.Sleep(50 * time.Millisecond)
+		}
 
 		b.Stop()
 
 		require.Equal(t, 100, counter)
 		require.GreaterOrEqual(t, b.batches, 10)
+	})
+
+	t.Run("context aware batching", func(t *testing.T) {
+		preRunCb := func(ctx Context) {
+			ctx["shared_state"] = 0
+		}
+
+		postRunCb := func(ctx Context) {
+			require.Equal(t, ctx[ContextBatchSizeKey].(int), ctx["shared_state"])
+		}
+
+		b, err := NewBatcher(Config{
+			Interval:  10 * time.Millisecond,
+			Size:      10,
+			PreRunCb:  preRunCb,
+			PostRunCb: postRunCb,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, b)
+
+		b.Start()
+
+		// Simulating some bursts of requests that need batching.
+		for i := 0; i < 10; i++ {
+			for j := 0; j < 10; j++ {
+				err := b.Push(func(ctx Context) {
+					ctx["shared_state"] = ctx["shared_state"].(int) + 1
+				})
+				require.NoError(t, err)
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		b.Stop()
 	})
 }

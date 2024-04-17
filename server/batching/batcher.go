@@ -8,37 +8,55 @@ import (
 	"time"
 )
 
-type Item func()
+type Context map[string]any
+
+const (
+	ContextBatchNumKey  = "batch_num"
+	ContextBatchSizeKey = "batch_size"
+)
+
+type Item func(ctx Context)
 
 type Batcher struct {
-	interval time.Duration
-	itemsCh  chan Item
-	stopCh   chan struct{}
-	doneCh   chan struct{}
-	batches  int
+	cfg     Config
+	itemsCh chan Item
+	stopCh  chan struct{}
+	doneCh  chan struct{}
+	batches int
 }
 
-// NewBatcher creates a new Batcher with the given options:
-// interval: the frequency at which batches should be executed
-// size: the maximum size of the items queue
-func NewBatcher(interval time.Duration, size int) (*Batcher, error) {
-	if interval <= 0 {
+type Config struct {
+	// The frequency at which batches should be executed.
+	Interval time.Duration
+	// The maximum size of the queue of items.
+	Size int
+	// An optional callback to be executed before processing a batch.
+	// This is where expensive operations should usually be performed
+	// in order to make the batching efficient.
+	PreRunCb Item
+	// An optional callback to be executed after processing a batch.
+	PostRunCb Item
+}
+
+// NewBatcher creates a new Batcher with the given config.
+func NewBatcher(cfg Config) (*Batcher, error) {
+	if cfg.Interval <= 0 {
 		return nil, fmt.Errorf("interval should be > 0")
 	}
 
-	if size <= 0 {
+	if cfg.Size <= 0 {
 		return nil, fmt.Errorf("size should be > 0")
 	}
 
 	return &Batcher{
-		interval: interval,
-		itemsCh:  make(chan Item, size),
-		stopCh:   make(chan struct{}),
-		doneCh:   make(chan struct{}),
+		cfg:     cfg,
+		itemsCh: make(chan Item, cfg.Size),
+		stopCh:  make(chan struct{}),
+		doneCh:  make(chan struct{}),
 	}, nil
 }
 
-// Push adds one item into the batch queue.
+// Push adds one item into the work queue.
 func (b *Batcher) Push(item Item) error {
 	select {
 	case b.itemsCh <- item:
@@ -49,20 +67,34 @@ func (b *Batcher) Push(item Item) error {
 	return nil
 }
 
-// Start starts the batching process. Should only be called once.
+// Start begins the processing of batches at the configured interval. Should only be called once.
 func (b *Batcher) Start() {
 	go func() {
 		defer close(b.doneCh)
-		ticker := time.NewTicker(b.interval)
+		ticker := time.NewTicker(b.cfg.Interval)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
 				if batchSize := len(b.itemsCh); batchSize > 0 {
-					for i := 0; i < batchSize; i++ {
-						(<-b.itemsCh)()
-					}
 					b.batches++
+
+					ctx := Context{
+						ContextBatchNumKey:  b.batches,
+						ContextBatchSizeKey: batchSize,
+					}
+
+					if b.cfg.PreRunCb != nil {
+						b.cfg.PreRunCb(ctx)
+					}
+
+					for i := 0; i < batchSize; i++ {
+						(<-b.itemsCh)(ctx)
+					}
+
+					if b.cfg.PostRunCb != nil {
+						b.cfg.PostRunCb(ctx)
+					}
 				}
 			case <-b.stopCh:
 				return
