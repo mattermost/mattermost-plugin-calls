@@ -2,8 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func (p *Plugin) handleMakeHost(w http.ResponseWriter, r *http.Request) {
