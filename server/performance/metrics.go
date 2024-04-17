@@ -18,6 +18,7 @@ const (
 	metricsNamespace        = "mattermost_plugin_calls"
 	metricsSubSystemWS      = "websocket"
 	metricsSubSystemCluster = "cluster"
+	metricsSubSystemApp     = "app"
 	metricsSubSystemStore   = "store"
 	metricsSubSystemJobs    = "jobs"
 )
@@ -26,13 +27,18 @@ type Metrics struct {
 	registry   *prometheus.Registry
 	rtcMetrics *perf.Metrics
 
-	WebSocketConnections                   prometheus.Gauge
-	WebSocketEventCounters                 *prometheus.CounterVec
-	ClusterEventCounters                   *prometheus.CounterVec
-	StoreOpCounters                        *prometheus.CounterVec
-	ClusterMutexGrabTimeHistograms         *prometheus.HistogramVec
-	ClusterMutexLockedTimeHistograms       *prometheus.HistogramVec
-	ClusterMutexLockRetriesCounters        *prometheus.CounterVec
+	WebSocketConnections             prometheus.Gauge
+	WebSocketEventCounters           *prometheus.CounterVec
+	ClusterEventCounters             *prometheus.CounterVec
+	ClusterMutexGrabTimeHistograms   *prometheus.HistogramVec
+	ClusterMutexLockedTimeHistograms *prometheus.HistogramVec
+	ClusterMutexLockRetriesCounters  *prometheus.CounterVec
+
+	AppHandlersTimeHistograms *prometheus.HistogramVec
+
+	StoreOpCounters            *prometheus.CounterVec
+	StoreMethodsTimeHistograms *prometheus.HistogramVec
+
 	LiveCaptionsNewAudioLenHistogram       prometheus.Histogram
 	LiveCaptionsWindowDroppedCounter       prometheus.Counter
 	LiveCaptionsTranscriberBufFullCounter  prometheus.Counter
@@ -160,6 +166,28 @@ func NewMetrics() *Metrics {
 		})
 	m.registry.MustRegister(m.LiveCaptionsPktPayloadChBufFullCounter)
 
+	m.AppHandlersTimeHistograms = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemApp,
+			Name:      "handlers_time",
+			Help:      "Time to execute app handlers",
+		},
+		[]string{"handler"},
+	)
+	m.registry.MustRegister(m.AppHandlersTimeHistograms)
+
+	m.StoreMethodsTimeHistograms = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemStore,
+			Name:      "methods_time",
+			Help:      "Time to execute store methods",
+		},
+		[]string{"method"},
+	)
+	m.registry.MustRegister(m.StoreMethodsTimeHistograms)
+
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
@@ -219,4 +247,12 @@ func (m *Metrics) IncLiveCaptionsTranscriberBufFull() {
 
 func (m *Metrics) IncLiveCaptionsPktPayloadChBufFull() {
 	m.LiveCaptionsPktPayloadChBufFullCounter.Inc()
+}
+
+func (m *Metrics) ObserveAppHandlersTime(handler string, elapsed float64) {
+	m.AppHandlersTimeHistograms.With(prometheus.Labels{"handler": handler}).Observe(elapsed)
+}
+
+func (m *Metrics) ObserveStoreMethodsTime(method string, elapsed float64) {
+	m.StoreMethodsTimeHistograms.With(prometheus.Labels{"method": method}).Observe(elapsed)
 }

@@ -76,6 +76,10 @@ func newUserSession(userID, channelID, connID, callID string, rtc bool) *session
 }
 
 func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, connID, channelID, jobID string) (*callState, error) {
+	defer func(start time.Time) {
+		p.metrics.ObserveAppHandlersTime("addUserSession", time.Since(start).Seconds())
+	}(time.Now())
+
 	// If there is an ongoing call, we can let anyone join.
 	if state == nil && !p.userCanStartOrJoin(userID, callsEnabled) {
 		return nil, fmt.Errorf("calls are not enabled")
@@ -227,6 +231,10 @@ func (p *Plugin) userCanStartOrJoin(userID string, enabled *bool) bool {
 }
 
 func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, connID, channelID string) error {
+	defer func(start time.Time) {
+		p.metrics.ObserveAppHandlersTime("removeUserSession", time.Since(start).Seconds())
+	}(time.Now())
+
 	if state == nil {
 		return fmt.Errorf("call state is nil")
 	}
