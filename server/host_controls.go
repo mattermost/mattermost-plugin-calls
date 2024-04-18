@@ -78,10 +78,6 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 		return errors.New("session is not in the call")
 	}
 
-	if p.isBot(ust.UserID) {
-		return errors.New("cannot mute the bot")
-	}
-
 	if !ust.Unmuted {
 		return nil
 	}
