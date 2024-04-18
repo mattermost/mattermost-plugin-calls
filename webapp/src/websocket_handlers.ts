@@ -70,7 +70,6 @@ import {Store} from './types/mattermost-webapp';
 import {
     followThread,
     getCallsClient,
-    getCallsClientSessionID,
     getProfilesByIds,
     getUserDisplayName,
     notificationsStopRinging,
@@ -452,7 +451,7 @@ export function handleHostMute(store: Store, ev: WebSocketMessage<{ channel_id: 
         return;
     }
 
-    const sessionID = getCallsClientSessionID();
+    const sessionID = client.getSessionID();
     if (ev.data.session_id !== sessionID) {
         return;
     }

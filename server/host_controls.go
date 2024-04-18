@@ -83,7 +83,7 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	}
 
 	if !ust.Unmuted {
-		return errors.New("user is already muted")
+		return nil
 	}
 
 	p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
