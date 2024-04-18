@@ -26,8 +26,10 @@ import RestClient from 'src/rest_client';
 import {
     callDismissedNotification,
     calls,
-    channelHasCall, hostChangeAtForCurrentCall,
-    idForCurrentCall, incomingCalls,
+    channelHasCall,
+    hostChangeAtForCurrentCall,
+    idForCurrentCall,
+    incomingCalls,
     ringingEnabled,
     ringingForCall,
 } from 'src/selectors';
@@ -56,7 +58,8 @@ import {
     HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
-    HIDE_SWITCH_CALL_MODAL, LIVE_CAPTIONS_ENABLED,
+    HIDE_SWITCH_CALL_MODAL,
+    LIVE_CAPTIONS_ENABLED,
     PROFILES_JOINED,
     RECEIVED_CALLS_CONFIG,
     RECORDINGS_ENABLED,
@@ -562,4 +565,14 @@ export const setClientConnecting = (value: boolean) => (dispatch: Dispatch) => {
         type: CLIENT_CONNECTING,
         data: value,
     });
+};
+
+export const makeHost = async (callID: string, newHostID: string) => {
+    return RestClient.fetch(
+        `${getPluginPath()}/calls/${callID}/host/make`,
+        {
+            method: 'post',
+            body: JSON.stringify({new_host_id: newHostID}),
+        },
+    );
 };
