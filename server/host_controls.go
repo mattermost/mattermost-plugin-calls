@@ -69,7 +69,7 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to change host")
+			return errors.New("no permissions to mute session")
 		}
 	}
 
