@@ -1,7 +1,6 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {Strategy} from '@floating-ui/react';
 import {
     autoUpdate,
     flip,
@@ -9,11 +8,12 @@ import {
     offset,
     Placement,
     shift,
+    Strategy,
     useDismiss,
     useFloating,
     useInteractions,
     useRole,
-} from '@floating-ui/react-dom-interactions';
+} from '@floating-ui/react';
 import React, {cloneElement, ComponentProps, useState} from 'react';
 import styled from 'styled-components';
 
@@ -45,7 +45,7 @@ const Dropdown = (props: DropdownProps) => {
         setIsOpen(updatedOpen);
     };
 
-    const {strategy, x, y, reference, floating, context} = useFloating({
+    const {strategy, x, y, refs, context} = useFloating({
         open,
         onOpenChange: setOpen,
         placement: props.placement ?? 'bottom-start',
@@ -62,7 +62,7 @@ const Dropdown = (props: DropdownProps) => {
     let content = (
         <FloatingContainer
             {...getFloatingProps({
-                ref: floating,
+                ref: refs.setFloating,
                 style: {
                     position: strategy,
                     top: y ?? 0,
@@ -87,7 +87,7 @@ const Dropdown = (props: DropdownProps) => {
 
     return (
         <>
-            {cloneElement(props.target, getReferenceProps({ref: reference, ...props.target.props}))}
+            {cloneElement(props.target, getReferenceProps({ref: refs.setReference, ...props.target.props}))}
             {open && content}
         </>
     );
