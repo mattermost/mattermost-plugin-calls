@@ -58,11 +58,10 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 }
 
 func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
-	state, err := p.lockCallReturnState(channelID)
+	state, err := p.getCallState(channelID, false)
 	if err != nil {
-		return fmt.Errorf("failed to lock call: %w", err)
+		return err
 	}
-	defer p.unlockCall(channelID)
 
 	if state == nil {
 		return errors.New("no call ongoing")
