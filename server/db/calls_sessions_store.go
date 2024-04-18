@@ -140,7 +140,6 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 	}
 	defer rows.Close()
 
-	start := time.Now()
 	for rows.Next() {
 		var session public.CallSession
 		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.Unmuted, &session.RaisedHand); err != nil {
@@ -148,7 +147,6 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 		}
 		sessionsMap[session.ID] = &session
 	}
-	s.metrics.ObserveStoreMethodsTime("GetCallSessionsScan", time.Since(start).Seconds())
 
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("failed to read rows: %w", err)
