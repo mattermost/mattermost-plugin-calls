@@ -869,7 +869,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		}
 
 		p.metrics.IncWebSocketConn()
-		defer p.metrics.DecWebSocketConn()
 		p.track(evCallUserJoined, map[string]interface{}{
 			"ParticipantID": userID,
 			"ChannelID":     channelID,
@@ -877,6 +876,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		})
 
 		go func() {
+			defer p.metrics.DecWebSocketConn()
 			p.wsReader(us, authSessionID, handlerID)
 			if err := p.handleLeave(us, userID, connID, channelID); err != nil {
 				p.LogError(err.Error())

@@ -15,3 +15,7 @@ packages:
         config:
         interfaces:
             LoggerIFace:
+    github.com/mattermost/rtcd/service/rtc:
+        config:
+        interfaces:
+            Metrics:

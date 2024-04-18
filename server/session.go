@@ -440,6 +440,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		if batcher := p.addSessionsBatchers[channelID]; batcher != nil {
 			p.LogDebug("stopping batcher for call", "channelID", channelID)
 			p.addSessionsBatchers[channelID] = nil
+			delete(p.addSessionsBatchers, channelID)
 			// stop needs to happen asynchronously since this method is executed as part of a batch.
 			go batcher.Stop()
 		}
@@ -447,6 +448,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		if batcher := p.removeSessionsBatchers[channelID]; batcher != nil {
 			p.LogDebug("stopping batcher for call", "channelID", channelID)
 			p.removeSessionsBatchers[channelID] = nil
+			delete(p.removeSessionsBatchers, channelID)
 			// stop needs to happen asynchronously since this method is executed as part of a batch.
 			go batcher.Stop()
 		}
@@ -455,7 +457,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		defer func() {
 			dur, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))
 			if err != nil {
-				p.LogError("failed to update call post ended: %w", "err", err.Error(), "channelID", channelID)
+				p.LogError("failed to update call post ended", "err", err.Error(), "channelID", channelID)
 			}
 			p.track(evCallEnded, map[string]interface{}{
 				"ChannelID":      channelID,
