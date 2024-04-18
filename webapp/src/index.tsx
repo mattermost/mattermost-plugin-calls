@@ -126,6 +126,7 @@ import {
     handleCallStart,
     handleCallState,
     handleCaption,
+    handleHostMute,
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
@@ -242,6 +243,10 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_caption`, (ev) => {
             handleCaption(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_host_mute`, (ev) => {
+            handleHostMute(store, ev);
         });
     }
 

@@ -157,6 +157,8 @@ const RecordingView = () => {
                     isHost={profile.id === hostID}
                     iAmHost={false}
                     isYou={false}
+                    userID={session.user_id}
+                    sessionID={session.session_id}
                 />
             );
         });

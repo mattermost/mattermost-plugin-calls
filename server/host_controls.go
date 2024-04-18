@@ -56,3 +56,42 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 
 	return nil
 }
+
+func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		return fmt.Errorf("failed to lock call: %w", err)
+	}
+	defer p.unlockCall(channelID)
+
+	if state == nil {
+		return errors.New("no call ongoing")
+	}
+
+	if requesterID != state.Call.GetHostID() {
+		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
+			return errors.New("no permissions to change host")
+		}
+	}
+
+	ust, ok := state.sessions[sessionID]
+
+	if !ok {
+		return errors.New("session is not in the call")
+	}
+
+	if p.isBot(ust.UserID) {
+		return errors.New("cannot mute the bot")
+	}
+
+	if !ust.Unmuted {
+		return errors.New("user is already muted")
+	}
+
+	p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
+		"channel_id": channelID,
+		"session_id": sessionID,
+	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+
+	return nil
+}
