@@ -75,7 +75,7 @@ func newUserSession(userID, channelID, connID, callID string, rtc bool) *session
 	}
 }
 
-func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, connID, channelID, jobID string) (*callState, error) {
+func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, connID, channelID, jobID string) (retState *callState, retErr error) {
 	defer func(start time.Time) {
 		p.metrics.ObserveAppHandlersTime("addUserSession", time.Since(start).Seconds())
 	}(time.Now())
@@ -138,6 +138,7 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 			state.Recording.Props.BotConnID = connID
 
 			if err := p.store.UpdateCallJob(state.Recording); err != nil {
+				state.Recording.Props.BotConnID = ""
 				return nil, fmt.Errorf("failed to update call job: %w", err)
 			}
 		} else if state.Transcription != nil && state.Transcription.ID == jobID && state.Transcription.StartAt == 0 {
@@ -148,11 +149,13 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 				p.LogDebug("bot joined, live captions job is starting", "jobID", state.LiveCaptions.ID, "trID", jobID)
 				state.LiveCaptions.Props.BotConnID = connID
 				if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
+					state.LiveCaptions.Props.BotConnID = ""
 					return nil, fmt.Errorf("failed to update call job: %w", err)
 				}
 			}
 
 			if err := p.store.UpdateCallJob(state.Transcription); err != nil {
+				state.Transcription.Props.BotConnID = ""
 				return nil, fmt.Errorf("failed to update call job: %w", err)
 			}
 		} else {
@@ -168,16 +171,31 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 		UserID: userID,
 		JoinAt: time.Now().UnixMilli(),
 	}
+	defer func() {
+		// We need to make sure and keep the state consistent in case of error since it can be shared
+		// with other operations in the same batch.
+		if retErr != nil {
+			// Undo in case of error
+			delete(state.sessions, connID)
+		}
+	}()
 
 	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
 		state.Call.Props.Hosts = []string{newHostID}
-		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
-			"hostID": newHostID,
-		}, &WebSocketBroadcast{
-			ChannelID:           channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
+		defer func() {
+			if retErr == nil {
+				p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
+					"hostID": newHostID,
+				}, &WebSocketBroadcast{
+					ChannelID:           channelID,
+					ReliableClusterSend: true,
+					UserIDs:             getUserIDsFromSessions(state.sessions),
+				})
+			} else {
+				// Undo in case of error
+				state.Call.Props.Hosts = []string{}
+			}
+		}()
 	}
 
 	if state.Call.Props.Participants == nil {
@@ -186,6 +204,12 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 
 	if userID != p.getBotID() {
 		state.Call.Props.Participants[userID] = struct{}{}
+		// Undo in case of error
+		defer func() {
+			if retErr != nil {
+				delete(state.Call.Props.Participants, userID)
+			}
+		}()
 	}
 
 	if len(state.sessions) == 1 {
@@ -409,6 +433,14 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
 		}
 		setCallEnded(&state.Call)
+
+		p.mut.Lock()
+		if batcher := p.addSessionsBatchers[channelID]; batcher != nil {
+			p.LogDebug("stopping batcher for call", "channelID", channelID)
+			batcher.Stop()
+			p.addSessionsBatchers[channelID] = nil
+		}
+		p.mut.Unlock()
 
 		defer func() {
 			dur, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))

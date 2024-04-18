@@ -6,6 +6,7 @@ package main
 import (
 	"golang.org/x/time/rate"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/batching"
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 
@@ -25,12 +26,13 @@ const clusterEventQueueSize = 4096
 
 func main() {
 	p := &Plugin{
-		stopCh:            make(chan struct{}),
-		clusterEvCh:       make(chan model.PluginClusterEvent, clusterEventQueueSize),
-		sessions:          map[string]*session{},
-		metrics:           performance.NewMetrics(),
-		apiLimiters:       map[string]*rate.Limiter{},
-		callsClusterLocks: map[string]*cluster.Mutex{},
+		stopCh:              make(chan struct{}),
+		clusterEvCh:         make(chan model.PluginClusterEvent, clusterEventQueueSize),
+		sessions:            map[string]*session{},
+		metrics:             performance.NewMetrics(),
+		apiLimiters:         map[string]*rate.Limiter{},
+		callsClusterLocks:   map[string]*cluster.Mutex{},
+		addSessionsBatchers: map[string]*batching.Batcher{},
 	}
 	p.apiRouter = p.newAPIRouter()
 	plugin.ClientMain(p)
