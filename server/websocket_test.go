@@ -631,7 +631,7 @@ func TestHandleJoin(t *testing.T) {
 		channelID := model.NewId()
 		userID := model.NewId()
 		connID := model.NewId()
-		authSessionID := model.NewId()
+		authSessionID := ""
 		postID := model.NewId()
 
 		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
@@ -761,7 +761,7 @@ func TestHandleJoin(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			userID := model.NewId()
 			connID := model.NewId()
-			authSessionID := model.NewId()
+			authSessionID := ""
 
 			mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
 			mockAPI.On("GetChannel", channelID).Return(&model.Channel{
