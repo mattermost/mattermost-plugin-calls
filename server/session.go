@@ -11,6 +11,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/batching"
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -501,40 +502,12 @@ func (p *Plugin) removeSession(us *session) error {
 		return nil
 	}
 
-	var err error
-	p.mut.Lock()
-	batcher := p.removeSessionsBatchers[us.channelID]
-	if batcher == nil {
-		p.LogDebug("creating new batcher for call", "channelID", us.channelID)
-		batcher, err = batching.NewBatcher(batching.Config{
-			Interval: time.Second,
-			Size:     1000,
-			PreRunCb: func(ctx batching.Context) error {
-				p.LogDebug("performing batch", "channelID", us.channelID, "batchSize", ctx[batching.ContextBatchSizeKey])
-
-				state, err := p.lockCallReturnState(us.channelID)
-				if err != nil {
-					return fmt.Errorf("failed to lock call: %w", err)
-				}
-				ctx["callState"] = state
-				return nil
-			},
-			PostRunCb: func(_ batching.Context) error {
-				p.unlockCall(us.channelID)
-				return nil
-			},
-		})
-		if err != nil {
-			p.mut.Unlock()
-			return fmt.Errorf("failed to create batcher: %w", err)
-		}
-		p.removeSessionsBatchers[us.channelID] = batcher
-		batcher.Start()
+	sessionsCount, err := p.store.GetCallSessionsCount(us.callID, db.GetCallSessionOpts{})
+	if err != nil {
+		p.LogError("failed to get call sessions count", "callID", us.callID, "err", err.Error())
 	}
-	p.mut.Unlock()
 
-	err = batcher.Push(func(ctx batching.Context) {
-		state := ctx["callState"].(*callState)
+	removeSessionFromCall := func(state *callState) {
 		p.LogDebug("removing session from state", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
 
 		p.mut.Lock()
@@ -544,10 +517,60 @@ func (p *Plugin) removeSession(us *session) error {
 		if err := p.removeUserSession(state, us.userID, us.originalConnID, us.connID, us.channelID); err != nil {
 			p.LogError("failed to remove user session ", "originalConnID", us.originalConnID, "err", err.Error())
 		}
-	})
-	if err != nil {
-		return fmt.Errorf("failed to push to batcher: %w", err)
 	}
+
+	p.mut.Lock()
+	batcher := p.removeSessionsBatchers[us.channelID]
+	shouldBatch := batcher != nil || sessionsCount >= minMembersCountForBatching
+	if shouldBatch {
+		defer p.mut.Unlock()
+		var err error
+		if batcher == nil {
+			p.LogDebug("creating new batcher for call", "channelID", us.channelID)
+			batcher, err = batching.NewBatcher(batching.Config{
+				Interval: joinLeaveBatchingInterval,
+				Size:     sessionsCount,
+				PreRunCb: func(ctx batching.Context) error {
+					p.LogDebug("performing batch", "channelID", us.channelID, "batchSize", ctx[batching.ContextBatchSizeKey])
+
+					state, err := p.lockCallReturnState(us.channelID)
+					if err != nil {
+						return fmt.Errorf("failed to lock call: %w", err)
+					}
+					ctx["callState"] = state
+
+					return nil
+				},
+				PostRunCb: func(_ batching.Context) error {
+					p.unlockCall(us.channelID)
+					return nil
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("failed to create batcher: %w", err)
+			}
+			p.removeSessionsBatchers[us.channelID] = batcher
+			batcher.Start()
+		}
+
+		err = batcher.Push(func(ctx batching.Context) {
+			removeSessionFromCall(ctx["callState"].(*callState))
+		})
+		if err != nil {
+			return fmt.Errorf("failed to push to batcher: %w", err)
+		}
+
+		return nil
+	}
+
+	// Non-batching case
+	p.mut.Unlock()
+	state, err := p.lockCallReturnState(us.channelID)
+	if err != nil {
+		return fmt.Errorf("failed to lock call: %w", err)
+	}
+	removeSessionFromCall(state)
+	p.unlockCall(us.channelID)
 
 	return nil
 }

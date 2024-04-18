@@ -177,3 +177,26 @@ func (s *Store) DeleteCallsSessions(callID string) error {
 
 	return nil
 }
+
+func (s *Store) GetCallSessionsCount(callID string, opts GetCallSessionOpts) (int, error) {
+	s.metrics.IncStoreOp("GetCallSessionsCount")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetCallSessionsCount", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder(s.driverName).Select("COUNT(*)").
+		From("calls_sessions").
+		Where(sq.Eq{"CallID": callID})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var count int
+	if err := s.dbXFromGetOpts(opts).Get(&count, q, args...); err != nil {
+		return 0, fmt.Errorf("failed to get call sessions count: %w", err)
+	}
+
+	return count, nil
+}

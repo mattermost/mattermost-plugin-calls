@@ -58,6 +58,19 @@ const (
 )
 
 var (
+	minMembersCountForBatching = 100
+	// This is a reasonable upper bound which should match our official
+	// target for max supported participants in a single call.
+	// It's meant to handle the worst case scenario of everyone joining or leaving at the same exact time.
+	maxJoinLeaveOpsBatchSize = 1000
+
+	// TODO: consider making this dynamic. Higher interval values will make the batching more efficient
+	// at the cost of added latency when joining. Maybe we could make it a function of the members count.
+	// One step further could be an adaptive algorithm but it may be a little overcomplicating.
+	joinLeaveBatchingInterval = time.Second
+)
+
+var (
 	sessionAuthCheckInterval = 10 * time.Second
 )
 
@@ -639,6 +652,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 	if channel.DeleteAt > 0 {
 		return fmt.Errorf("cannot join call in archived channel")
 	}
+	channelStats, appErr := p.API.GetChannelStats(channelID)
+	if appErr != nil {
+		return appErr
+	}
 
 	if joinData.ThreadID != "" {
 		post, appErr := p.API.GetPost(joinData.ThreadID)
@@ -668,39 +685,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		callsEnabled = model.NewBool(callsChannel.Enabled)
 	}
 
-	p.mut.Lock()
-	batcher := p.addSessionsBatchers[channelID]
-	if batcher == nil {
-		p.LogDebug("creating new batcher for call", "channelID", channelID)
-		batcher, err = batching.NewBatcher(batching.Config{
-			Interval: time.Second,
-			Size:     1000,
-			PreRunCb: func(ctx batching.Context) error {
-				p.LogDebug("performing batch", "channelID", channelID, "batchSize", ctx[batching.ContextBatchSizeKey])
+	addSessionToCall := func(state *callState) (retState *callState) {
+		var err error
 
-				state, err := p.lockCallReturnState(channelID)
-				if err != nil {
-					return fmt.Errorf("failed to lock call: %w", err)
-				}
-				ctx["callState"] = state
-				return nil
-			},
-			PostRunCb: func(_ batching.Context) error {
-				p.unlockCall(channelID)
-				return nil
-			},
-		})
-		if err != nil {
-			p.mut.Unlock()
-			return fmt.Errorf("failed to create batcher: %w", err)
-		}
-		p.addSessionsBatchers[channelID] = batcher
-		batcher.Start()
-	}
-	p.mut.Unlock()
-
-	err = batcher.Push(func(ctx batching.Context) {
-		state := ctx["callState"].(*callState)
+		retState = state
 
 		state, err = p.addUserSession(state, callsEnabled, userID, connID, channelID, joinData.JobID)
 		if err != nil {
@@ -710,7 +698,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			// new call has started
 
 			// Setting the state as it would have been nil.
-			ctx["callState"] = state
+			retState = state
 
 			// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
 			if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
@@ -894,10 +882,80 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 				p.LogError(err.Error())
 			}
 		}()
-	})
-	if err != nil {
-		return fmt.Errorf("failed to push to batcher: %w", err)
+
+		return
 	}
+
+	p.mut.Lock()
+	batcher := p.addSessionsBatchers[channelID]
+
+	// It's not worth the overhead of batching join operations in small calls.
+	// Of course we need to make an assumption that the members count of a channel
+	// reasonably maps to the expected participants count.
+	// In the future we could think of more accurate estimates such as looking at statistics from previous calls.
+	shouldBatch := batcher != nil || int(channelStats.MemberCount) >= minMembersCountForBatching
+
+	if shouldBatch {
+		defer p.mut.Unlock()
+		p.LogDebug("will batch sessions joining operations",
+			"channelID", channelID,
+			"membersCount", channelStats.MemberCount,
+			"threshold", minMembersCountForBatching,
+		)
+
+		if batcher == nil {
+			batchMaxSize := min(int(channelStats.MemberCount), maxJoinLeaveOpsBatchSize)
+			p.LogDebug("creating new addSessionsBatcher for call", "channelID", channelID, "batchMaxSize", batchMaxSize)
+			batcher, err = batching.NewBatcher(batching.Config{
+				Interval: joinLeaveBatchingInterval,
+				Size:     batchMaxSize,
+				PreRunCb: func(ctx batching.Context) error {
+					p.LogDebug("performing batch", "channelID", channelID, "batchSize", ctx[batching.ContextBatchSizeKey])
+
+					state, err := p.lockCallReturnState(channelID)
+					if err != nil {
+						return fmt.Errorf("failed to lock call: %w", err)
+					}
+					ctx["callState"] = state
+					return nil
+				},
+				PostRunCb: func(_ batching.Context) error {
+					p.unlockCall(channelID)
+					return nil
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("failed to create batcher: %w", err)
+			}
+			p.addSessionsBatchers[channelID] = batcher
+			batcher.Start()
+		}
+
+		err = batcher.Push(func(ctx batching.Context) {
+			ctx["callState"] = addSessionToCall(ctx["callState"].(*callState))
+		})
+		if err != nil {
+			return fmt.Errorf("failed to push to batcher: %w", err)
+		}
+
+		return nil
+	}
+
+	// Non-batching case
+	p.mut.Unlock()
+
+	p.LogDebug("no need to batch sessions joining operations",
+		"channelID", channelID,
+		"membersCount", channelStats.MemberCount,
+		"threshold", minMembersCountForBatching,
+	)
+
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		return fmt.Errorf("failed to lock call: %w", err)
+	}
+	addSessionToCall(state)
+	p.unlockCall(channelID)
 
 	return nil
 }
