@@ -76,7 +76,8 @@ type Plugin struct {
 	store *db.Store
 
 	// Batchers
-	addSessionsBatchers map[string]*batching.Batcher
+	addSessionsBatchers    map[string]*batching.Batcher
+	removeSessionsBatchers map[string]*batching.Batcher
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {

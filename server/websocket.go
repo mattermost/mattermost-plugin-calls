@@ -674,7 +674,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		p.LogDebug("creating new batcher for call", "channelID", channelID)
 		batcher, err = batching.NewBatcher(batching.Config{
 			Interval: time.Second,
-			Size:     100,
+			Size:     1000,
 			PreRunCb: func(ctx batching.Context) error {
 				p.LogDebug("performing batch", "channelID", channelID, "batchSize", ctx[batching.ContextBatchSizeKey])
 
@@ -691,6 +691,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			},
 		})
 		if err != nil {
+			p.mut.Unlock()
 			return fmt.Errorf("failed to create batcher: %w", err)
 		}
 		p.addSessionsBatchers[channelID] = batcher

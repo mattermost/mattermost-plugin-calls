@@ -28,7 +28,6 @@ import (
 const (
 	rtcdConfigKey           = "rtcd_config"
 	maxReconnectAttempts    = 8
-	lockTimeout             = 5 * time.Second
 	resolveTimeout          = 2 * time.Second
 	dialingTimeout          = 4 * time.Second
 	hostCheckInterval       = 10 * time.Second

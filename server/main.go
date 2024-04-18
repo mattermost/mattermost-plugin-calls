@@ -26,13 +26,14 @@ const clusterEventQueueSize = 4096
 
 func main() {
 	p := &Plugin{
-		stopCh:              make(chan struct{}),
-		clusterEvCh:         make(chan model.PluginClusterEvent, clusterEventQueueSize),
-		sessions:            map[string]*session{},
-		metrics:             performance.NewMetrics(),
-		apiLimiters:         map[string]*rate.Limiter{},
-		callsClusterLocks:   map[string]*cluster.Mutex{},
-		addSessionsBatchers: map[string]*batching.Batcher{},
+		stopCh:                 make(chan struct{}),
+		clusterEvCh:            make(chan model.PluginClusterEvent, clusterEventQueueSize),
+		sessions:               map[string]*session{},
+		metrics:                performance.NewMetrics(),
+		apiLimiters:            map[string]*rate.Limiter{},
+		callsClusterLocks:      map[string]*cluster.Mutex{},
+		addSessionsBatchers:    map[string]*batching.Batcher{},
+		removeSessionsBatchers: map[string]*batching.Batcher{},
 	}
 	p.apiRouter = p.newAPIRouter()
 	plugin.ClientMain(p)
