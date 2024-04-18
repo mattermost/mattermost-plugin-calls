@@ -6,9 +6,7 @@
 import './component.scss';
 
 import {mosThreshold} from '@calls/common';
-import {
-    UserSessionState,
-} from '@calls/common/lib/types';
+import {UserSessionState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
@@ -16,24 +14,20 @@ import {UserProfile} from '@mattermost/types/users';
 import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
-import React, {CSSProperties} from 'react';
+import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
-import {
-    stopCallRecording,
-} from 'src/actions';
-import Avatar from 'src/components/avatar/avatar';
-import {Badge, HostBadge} from 'src/components/badge';
+import {stopCallRecording} from 'src/actions';
+import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
-import {Emoji} from 'src/components/emoji/emoji';
+import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
 import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
 import CCIcon from 'src/components/icons/cc_icon';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CollapseIcon from 'src/components/icons/collapse';
 import CompassIcon from 'src/components/icons/compassIcon';
-import HandEmoji from 'src/components/icons/hand';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
 import ParticipantsIcon from 'src/components/icons/participants';
@@ -45,9 +39,7 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
-import {
-    CallAlertConfigs,
-} from 'src/constants';
+import {CallAlertConfigs} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -62,12 +54,7 @@ import {
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
 import * as Telemetry from 'src/types/telemetry';
-import {
-    AudioDevices,
-    CallAlertStates,
-    CallAlertStatesDefault,
-    CallJobReduxState,
-} from 'src/types/types';
+import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallJobReduxState} from 'src/types/types';
 import {
     getCallsClient,
     getScreenStream,
@@ -870,118 +857,29 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     isSpeaking={isSpeaking}
                     isHandRaised={isHandRaised}
                     reaction={session?.reaction}
+                    isYou={session.session_id === this.props.currentSession?.session_id}
                     isHost={profile.id === this.props.callHostID}
+                    iAmHost={this.props.currentSession?.user_id === this.props.callHostID}
+                    callID={this.props.channel?.id}
+                    userID={session.user_id}
                 />
             );
         });
     };
 
     renderParticipantsRHSList = () => {
-        const {formatMessage} = this.props.intl;
-        return this.props.sessions.map((session) => {
-            const isMuted = !session.unmuted;
-            const isSpeaking = Boolean(session.voice);
-            const isHandRaised = Boolean(session.raised_hand > 0);
-            const profile = this.props.profiles[session.user_id];
-            const isYou = session.session_id === this.props.currentSession?.session_id;
-            const isHost = this.props.callHostID === session.user_id;
-            let youStyle: CSSProperties = {color: 'rgba(var(--center-channel-color-rgb), 0.56)'};
-            if (isYou && isHost) {
-                youStyle = {...youStyle, marginLeft: '2px'};
-            }
-
-            if (!profile) {
-                return null;
-            }
-
-            const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
-
-            return (
-                <li
-                    key={'participants_rhs_profile_' + session.session_id}
-                    style={{display: 'flex', alignItems: 'center', padding: '8px 16px', gap: '8px'}}
-                >
-                    <Avatar
-                        size={24}
-                        fontSize={10}
-                        border={false}
-                        borderGlowWidth={isSpeaking ? 2 : 0}
-                        url={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
-                    />
-
-                    <span
-                        style={{
-                            display: 'block',
-                            whiteSpace: 'pre',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            fontWeight: 600,
-                            fontSize: '14px',
-                            lineHeight: '20px',
-                        }}
-                    >
-                        {getUserDisplayName(profile)}
-                    </span>
-
-                    {(isYou || isHost) &&
-                        <span style={{marginLeft: -4, display: 'flex', alignItems: 'baseline', gap: 5}}>
-                            {isYou &&
-                                <span style={youStyle}>
-                                    {formatMessage({defaultMessage: '(you)'})}
-                                </span>
-                            }
-                            {isHost && <HostBadge onWhiteBg={true}/>}
-                        </span>
-                    }
-
-                    <div
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            marginLeft: 'auto',
-                            gap: '12px',
-                        }}
-                    >
-                        {session?.reaction &&
-                            <div
-                                style={{
-                                    marginBottom: 4,
-                                    marginRight: 2,
-                                }}
-                            >
-                                <Emoji
-                                    emoji={session.reaction.emoji}
-                                    size={16}
-                                />
-                            </div>
-                        }
-                        {isHandRaised &&
-                            <HandEmoji
-                                style={{
-                                    fill: 'var(--away-indicator)',
-                                    width: '16px',
-                                    height: '16px',
-                                }}
-                            />
-                        }
-
-                        {this.props.screenSharingSession?.session_id === session.session_id &&
-                            <ScreenIcon
-                                fill={'rgb(var(--dnd-indicator-rgb))'}
-                                style={{width: '16px', height: '16px'}}
-                            />
-                        }
-
-                        <MuteIcon
-                            fill={isMuted ? '#C4C4C4' : '#3DB887'}
-                            style={{width: '16px', height: '16px'}}
-                        />
-
-                    </div>
-                </li>
-            );
-        });
+        return this.props.sessions.map((session) => (
+            <CallParticipantRHS
+                key={'participants_rhs_profile_' + session.session_id}
+                session={session}
+                profile={this.props.profiles[session.user_id]}
+                isYou={this.props.currentSession?.session_id === session.session_id}
+                isHost={this.props.callHostID === session.user_id}
+                isSharingScreen={this.props.screenSharingSession?.session_id === session.session_id}
+                iAmHost={this.props.currentSession?.user_id === this.props.callHostID}
+                callID={this.props.channel?.id}
+            />
+        ));
     };
 
     renderRecordingBadge = () => {
