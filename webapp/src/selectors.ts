@@ -66,7 +66,7 @@ export const channelForCurrentCall: (state: GlobalState) => Channel | undefined 
         (channels, id) => channels[id],
     );
 
-export const calls = (state: GlobalState): { [channelID: string]: callState} =>
+export const calls = (state: GlobalState): { [channelID: string]: callState } =>
     pluginState(state).calls;
 
 export const idForCurrentCall: (state: GlobalState) => string | undefined =
@@ -99,7 +99,7 @@ export const teamForCurrentCall: (state: GlobalState) => Team | null =
 
 const profilesInCalls = (state: GlobalState) => pluginState(state).profiles;
 
-export const profilesInCurrentCall : (state: GlobalState) => UserProfile[] =
+export const profilesInCurrentCall: (state: GlobalState) => UserProfile[] =
     createSelector(
         'profilesInCurrentCall',
         profilesInCalls,
@@ -499,6 +499,16 @@ export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
     const enterprise = license.SkuShortName === LicenseSkus.E20 || license.SkuShortName === LicenseSkus.Enterprise;
     return !isCloud(state) && !enterprise;
 };
+
+export const isAtLeastProfessional = (state: GlobalState): boolean => {
+    const sku = callsConfig(state).sku_short_name;
+    const enterprise = sku === LicenseSkus.E20 || sku === LicenseSkus.Enterprise;
+    const professional = sku === LicenseSkus.E10 || sku === LicenseSkus.Professional;
+
+    return enterprise || professional || isCloudProfessionalOrEnterpriseOrTrial(state);
+};
+
+export const areHostControlsAllowed = (state: GlobalState): boolean => isAtLeastProfessional(state);
 
 export const adminStats = (state: GlobalState) => state.entities.admin.analytics;
 

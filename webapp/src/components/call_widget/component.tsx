@@ -15,11 +15,10 @@ import {compareSemVer} from 'semver-parser';
 import {navigateToURL} from 'src/browser_routing';
 import {AudioInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
-import {Badge, HostBadge} from 'src/components/badge';
-import {Emoji} from 'src/components/emoji/emoji';
+import {Badge} from 'src/components/badge';
+import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ExpandIcon from 'src/components/icons/expand';
-import HandEmoji from 'src/components/icons/hand';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
@@ -27,7 +26,6 @@ import ParticipantsIcon from 'src/components/icons/participants';
 import PopOutIcon from 'src/components/icons/popout';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
 import RecordCircleIcon from 'src/components/icons/record_circle';
-import ScreenIcon from 'src/components/icons/screen_icon';
 import SettingsWheelIcon from 'src/components/icons/settings_wheel';
 import ShareScreenIcon from 'src/components/icons/share_screen';
 import ShowMoreIcon from 'src/components/icons/show_more';
@@ -188,7 +186,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 position: 'absolute',
                 bottom: 'calc(100% + 4px)',
                 width: '100%',
-                zIndex: -1,
                 appRegion: 'drag',
             },
             screenSharingPanel: {
@@ -217,27 +214,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 borderRadius: '8px',
                 border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
                 boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
-            },
-            participantsList: {
-                width: '100%',
-                minWidth: 'revert',
-                maxWidth: 'revert',
-                maxHeight: '200px',
-                overflow: 'auto',
-                position: 'relative',
-                borderRadius: '8px',
-                border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
-                boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
-                appRegion: 'no-drag',
-            },
-            participantsListHeader: {
-                position: 'sticky',
-                top: '0',
-                transform: 'translateY(-8px)',
-                paddingTop: '16px',
-                color: 'var(--center-channel-color)',
-                background: 'var(--center-channel-bg)',
-                appRegion: 'drag',
             },
             callsIncoming: {
                 display: 'flex',
@@ -966,139 +942,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={{fontWeight: 400}}
                     >{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
                 </span>
-            </div>
-        );
-    };
-
-    renderParticipantsList = () => {
-        if (!this.state.showParticipantsList) {
-            return null;
-        }
-
-        const {formatMessage} = this.props.intl;
-
-        const renderParticipants = () => {
-            return this.props.sessions.map((session) => {
-                const isMuted = !session.unmuted;
-                const isSpeaking = Boolean(session.voice);
-                const isHandRaised = Boolean(session.raised_hand > 0);
-                const isYou = session.session_id === this.props.currentSession?.session_id;
-                const isHost = this.props.callHostID === session.user_id;
-                let youStyle: CSSProperties = {color: 'rgba(var(--center-channel-color-rgb), 0.56)'};
-                if (isYou && isHost) {
-                    youStyle = {...youStyle, marginLeft: '2px'};
-                }
-
-                const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
-
-                const profile = this.props.profiles[session.user_id];
-                if (!profile) {
-                    return null;
-                }
-
-                return (
-                    <li
-                        className='MenuItem'
-                        data-testid={isHost && 'participant-list-host'}
-                        key={'participants_profile_' + session.session_id}
-                        style={{padding: '11px 16px', gap: '12px'}}
-                    >
-                        <Avatar
-                            size={20}
-                            fontSize={14}
-                            url={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
-                            borderGlowWidth={isSpeaking ? 2 : 0}
-                        />
-
-                        <span
-                            className='MenuItem__primary-text'
-                            style={{
-                                display: 'block',
-                                whiteSpace: 'pre',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                padding: '0',
-                                lineHeight: '20px',
-                                fontSize: '14px',
-                            }}
-                        >
-                            {getUserDisplayName(profile)}
-                        </span>
-
-                        {(isYou || isHost) &&
-                            <span style={{marginLeft: -8, display: 'flex', alignItems: 'baseline', gap: 5}}>
-                                {isYou &&
-                                    <span style={youStyle}>
-                                        {formatMessage({defaultMessage: '(you)'})}
-                                    </span>
-                                }
-                                {isHost &&
-                                    <HostBadge
-                                        data-testid={'participant-list-host-badge'}
-                                        onWhiteBg={true}
-                                    />
-                                }
-                            </span>
-                        }
-
-                        <span
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                marginLeft: 'auto',
-                                gap: '14px',
-                            }}
-                        >
-                            {session?.reaction &&
-                                <Emoji
-                                    emoji={session.reaction.emoji}
-                                    size={14}
-                                />
-                            }
-                            {isHandRaised &&
-                                <HandEmoji
-                                    fill='var(--away-indicator)'
-                                    style={{width: '14px', height: '14px'}}
-                                />
-                            }
-
-                            {this.props.screenSharingSession?.session_id === session.session_id &&
-                                <ScreenIcon
-                                    fill={'rgb(var(--dnd-indicator-rgb))'}
-                                    style={{width: '14px', height: '14px'}}
-                                />
-                            }
-
-                            <MuteIcon
-                                fill={isMuted ? 'rgba(var(--center-channel-color-rgb), 0.56)' : '#3DB887'}
-                                style={{width: '14px', height: '14px'}}
-                            />
-
-                        </span>
-                    </li>
-                );
-            });
-        };
-
-        return (
-            <div
-                id='calls-widget-participants-menu'
-                className='Menu'
-            >
-                <ul
-                    id='calls-widget-participants-list'
-                    className='Menu__content dropdown-menu'
-                    style={this.style.participantsList}
-                >
-                    <li
-                        className='MenuHeader'
-                        style={this.style.participantsListHeader}
-                    >
-                        {formatMessage({defaultMessage: 'Participants'})}
-                    </li>
-                    {renderParticipants()}
-                </ul>
             </div>
         );
     };
@@ -1937,7 +1780,16 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {this.renderAlertBanners()}
                     {this.renderRecordingDisclaimer()}
                     {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
-                    {this.renderParticipantsList()}
+                    {this.state.showParticipantsList &&
+                        <ParticipantsList
+                            sessions={this.props.sessions}
+                            profiles={this.props.profiles}
+                            callHostID={this.props.callHostID}
+                            currentSession={this.props.currentSession}
+                            screenSharingSession={this.props.screenSharingSession}
+                            callID={this.props.channel.id}
+                        />
+                    }
                     {this.renderMenu()}
                 </div>
 
