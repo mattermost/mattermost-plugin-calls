@@ -1,6 +1,6 @@
 import React from 'react';
 import {useIntl} from 'react-intl';
-import {makeHost, muteSession} from 'src/actions';
+import {makeHost, muteSession, stopScreenshare} from 'src/actions';
 import {DropdownMenuItem} from 'src/components/dot_menu/dot_menu';
 import {StyledMonitorAccount} from 'src/components/expanded_view/styled_components';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -11,9 +11,10 @@ type Props = {
     userID: string;
     sessionID: string;
     isMuted: boolean;
+    isSharingScreen: boolean;
 }
 
-export const HostControlsMenu = ({callID, userID, sessionID, isMuted}: Props) => {
+export const HostControlsMenu = ({callID, userID, sessionID, isMuted, isSharingScreen}: Props) => {
     const {formatMessage} = useIntl();
 
     if (!callID) {
@@ -31,6 +32,12 @@ export const HostControlsMenu = ({callID, userID, sessionID, isMuted}: Props) =>
     return (
         <>
             {muteUnmute}
+            {isSharingScreen &&
+                <DropdownMenuItem onClick={() => stopScreenshare(callID, sessionID)}>
+                    <StyledCompassIcon icon={'monitor-off'}/>
+                    {formatMessage({defaultMessage: 'Stop screen share'})}
+                </DropdownMenuItem>
+            }
             <DropdownMenuItem onClick={() => makeHost(callID, userID)}>
                 <StyledMonitorAccount/>
                 {formatMessage({defaultMessage: 'Make host'})}
@@ -42,7 +49,7 @@ export const HostControlsMenu = ({callID, userID, sessionID, isMuted}: Props) =>
 const StyledCompassIcon = styled(CompassIcon)`
     color: var(--center-channel-color-56);
     font-size: 16px;
-    margin-right: 7px;
-    margin-left: -1px;
+    margin-right: 8px;
+    margin-left: -2px;
     margin-top: 2px;
 `;
