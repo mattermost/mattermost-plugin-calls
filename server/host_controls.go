@@ -74,7 +74,6 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	}
 
 	ust, ok := state.sessions[sessionID]
-
 	if !ok {
 		return errors.New("session is not in the call")
 	}
