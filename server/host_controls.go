@@ -112,7 +112,7 @@ func (p *Plugin) stopScreenshare(requesterID, channelID, sessionID string) error
 	}
 
 	if state.Props.ScreenSharingSessionID != sessionID {
-		return errors.New("user is not sharing screen")
+		return nil
 	}
 
 	p.publishWebSocketEvent(wsEventHostStopScreenshare, map[string]interface{}{
