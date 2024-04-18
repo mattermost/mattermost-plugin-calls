@@ -526,6 +526,11 @@ func (p *Plugin) removeSession(us *session) error {
 	shouldBatch := batcher != nil || sessionsCount >= minMembersCountForBatching
 	if shouldBatch {
 		defer p.mut.Unlock()
+		p.LogDebug("will batch sessions leaving operations",
+			"channelID", us.channelID,
+			"sessionsCount", sessionsCount,
+			"threshold", minMembersCountForBatching,
+		)
 		var err error
 		if batcher == nil {
 			p.LogDebug("creating new batcher for call", "channelID", us.channelID)
@@ -533,7 +538,7 @@ func (p *Plugin) removeSession(us *session) error {
 				Interval: joinLeaveBatchingInterval,
 				Size:     sessionsCount,
 				PreRunCb: func(ctx batching.Context) error {
-					p.LogDebug("performing batch", "channelID", us.channelID, "batchSize", ctx[batching.ContextBatchSizeKey])
+					p.LogDebug("performing removeSessionFromCall batch", "channelID", us.channelID, "batchSize", ctx[batching.ContextBatchSizeKey])
 
 					state, err := p.lockCallReturnState(us.channelID)
 					if err != nil {
@@ -567,6 +572,13 @@ func (p *Plugin) removeSession(us *session) error {
 
 	// Non-batching case
 	p.mut.Unlock()
+
+	p.LogDebug("no need to batch sessions leaving operations",
+		"channelID", us.channelID,
+		"sessionsCount", sessionsCount,
+		"threshold", minMembersCountForBatching,
+	)
+
 	state, err := p.lockCallReturnState(us.channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)

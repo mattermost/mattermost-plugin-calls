@@ -910,7 +910,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 				Interval: joinLeaveBatchingInterval,
 				Size:     batchMaxSize,
 				PreRunCb: func(ctx batching.Context) error {
-					p.LogDebug("performing batch", "channelID", channelID, "batchSize", ctx[batching.ContextBatchSizeKey])
+					p.LogDebug("performing addSessionToCall batch", "channelID", channelID, "batchSize", ctx[batching.ContextBatchSizeKey])
 
 					state, err := p.lockCallReturnState(channelID)
 					if err != nil {
