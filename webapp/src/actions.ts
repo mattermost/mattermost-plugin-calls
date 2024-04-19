@@ -586,7 +586,7 @@ export const muteSession = async (callID: string, sessionID: string) => {
 
 export const stopScreenshare = async (callID: string, sessionID: string) => {
     return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/stop-screenshare`,
+        `${getPluginPath()}/calls/${callID}/host/screen-off`,
         {
             method: 'post',
             body: JSON.stringify({session_id: sessionID}),

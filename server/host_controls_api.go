@@ -61,9 +61,9 @@ func (p *Plugin) handleMuteSession(w http.ResponseWriter, r *http.Request) {
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleStopScreenshare(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleScreenOff(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
-	defer p.httpAudit("handleStopScreenshare", &res, w, r)
+	defer p.httpAudit("handleScreenOff", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 	callID := mux.Vars(r)["call_id"]
@@ -77,8 +77,8 @@ func (p *Plugin) handleStopScreenshare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := p.stopScreenshare(userID, callID, params.SessionID); err != nil {
-		p.LogError("handleStopScreenshare: failed", "err", err.Error())
+	if err := p.screenOff(userID, callID, params.SessionID); err != nil {
+		p.LogError("handleScreenOff: failed", "err", err.Error())
 		res.Code = http.StatusInternalServerError
 		res.Err = err.Error()
 		return

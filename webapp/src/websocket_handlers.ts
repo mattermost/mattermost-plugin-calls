@@ -459,7 +459,7 @@ export function handleHostMute(store: Store, ev: WebSocketMessage<{ channel_id: 
     client.mute();
 }
 
-export function handleHostStopScreenshare(store: Store, ev: WebSocketMessage<{ channel_id: string, session_id: string }>) {
+export function handleHostScreenOff(store: Store, ev: WebSocketMessage<{ channel_id: string, session_id: string }>) {
     const channelID = ev.data.channel_id;
     const client = getCallsClient();
     if (!client || client?.channelID !== channelID) {

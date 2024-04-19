@@ -90,7 +90,7 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	return nil
 }
 
-func (p *Plugin) stopScreenshare(requesterID, channelID, sessionID string) error {
+func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func (p *Plugin) stopScreenshare(requesterID, channelID, sessionID string) error
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to stop screenshare")
+			return errors.New("no permissions to set screenOff")
 		}
 	}
 
@@ -115,7 +115,7 @@ func (p *Plugin) stopScreenshare(requesterID, channelID, sessionID string) error
 		return errors.New("session is not in the call")
 	}
 
-	p.publishWebSocketEvent(wsEventHostStopScreenshare, map[string]interface{}{
+	p.publishWebSocketEvent(wsEventHostScreenOff, map[string]interface{}{
 		"channel_id": channelID,
 		"session_id": sessionID,
 	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
