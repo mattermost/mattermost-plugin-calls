@@ -54,6 +54,7 @@ const (
 	wsEventHostLowerHand             = "host_lower_hand"
 	wsEventHostRemoved               = "host_removed"
 	wsReconnectionTimeout            = 10 * time.Second
+	wsEventSummonAI                  = "summon_ai"
 
 	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 	wsEventCallRecordingState = "call_recording_state"

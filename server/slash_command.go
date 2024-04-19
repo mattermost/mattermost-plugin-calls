@@ -25,6 +25,7 @@ const (
 	endCommandTrigger          = "end"
 	recordingCommandTrigger    = "recording"
 	hostCommandTrigger         = "host"
+	aiCommandTrigger           = "ai"
 )
 
 var subCommands = []string{
@@ -36,6 +37,7 @@ var subCommands = []string{
 	endCommandTrigger,
 	statsCommandTrigger,
 	recordingCommandTrigger,
+	aiCommandTrigger,
 }
 
 func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
@@ -64,6 +66,10 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 		hostCmdData.AddTextArgument("@username", "", "@*")
 		data.AddCommand(hostCmdData)
 	}
+
+	aiCmdData := model.NewAutocompleteData(aiCommandTrigger, "", "Summon the AI bot into the call")
+	aiCmdData.AddTextArgument("Available options: summon", "", "summon")
+	data.AddCommand(aiCmdData)
 
 	return data
 }
@@ -192,6 +198,25 @@ func (p *Plugin) handleHostCommand(args *model.CommandArgs, fields []string) (*m
 	return &model.CommandResponse{}, nil
 }
 
+func (p *Plugin) handleAICommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("Invalid number of arguments provided")
+	}
+
+	if subCmd := fields[2]; subCmd != "summon" {
+		return nil, fmt.Errorf("Invalid subcommand %q", subCmd)
+	}
+
+	if err := p.summonAI(args.UserId, args.ChannelId); err != nil {
+		return nil, fmt.Errorf("Failed to run command: %w", err)
+	}
+
+	return &model.CommandResponse{
+		ResponseType: model.CommandResponseTypeEphemeral,
+		Text:         "AI was summoned into the call. It should be there shortly.",
+	}, nil
+}
+
 func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
@@ -269,6 +294,17 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == hostCommandTrigger && p.licenseChecker.HostControlsAllowed() {
 		resp, err := p.handleHostCommand(args, fields)
+		if err != nil {
+			return &model.CommandResponse{
+				ResponseType: model.CommandResponseTypeEphemeral,
+				Text:         fmt.Sprintf("Error: %s", err.Error()),
+			}, nil
+		}
+		return resp, nil
+	}
+
+	if subCmd == aiCommandTrigger {
+		resp, err := p.handleAICommand(args, fields)
 		if err != nil {
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,
