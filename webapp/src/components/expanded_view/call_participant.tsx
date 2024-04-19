@@ -27,6 +27,7 @@ export type Props = {
     callID?: string,
     userID: string,
     sessionID: string,
+    isSharingScreen?: boolean,
 }
 
 export default function CallParticipant({
@@ -42,6 +43,7 @@ export default function CallParticipant({
     callID,
     userID,
     sessionID,
+    isSharingScreen = false,
 }: Props) {
     const {formatMessage} = useIntl();
     const {hoverOn, hoverOff, onOpenChange, hostControlsAvailable, showHostControls} = useHostControls(isYou, isHost, iAmHost);
@@ -129,6 +131,7 @@ export default function CallParticipant({
                             userID={userID}
                             sessionID={sessionID}
                             isMuted={isMuted}
+                            isSharingScreen={isSharingScreen}
                         />
                     </StyledDotMenu>
                 }

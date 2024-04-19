@@ -863,6 +863,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     callID={this.props.channel?.id}
                     userID={session.user_id}
                     sessionID={session.session_id}
+                    isSharingScreen={this.props.screenSharingSession?.session_id === session.session_id}
                 />
             );
         });
