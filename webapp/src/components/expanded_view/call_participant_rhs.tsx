@@ -141,6 +141,7 @@ const CallParticipantRHS = ({session, profile, isYou, isHost, iAmHost, isSharing
                             userID={session.user_id}
                             sessionID={session.session_id}
                             isMuted={isMuted}
+                            isSharingScreen={isSharingScreen}
                         />
                     </StyledDotMenu>
                 }
