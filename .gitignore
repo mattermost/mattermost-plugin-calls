@@ -31,3 +31,4 @@ server/data/
 config/
 dotenv/
 logs/
+e2e/plugin.json
