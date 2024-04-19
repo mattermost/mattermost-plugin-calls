@@ -122,3 +122,38 @@ func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 
 	return nil
 }
+
+func (p *Plugin) unraiseHand(requesterID, channelID, sessionID string) error {
+	state, err := p.getCallState(channelID, false)
+	if err != nil {
+		return err
+	}
+
+	if state == nil {
+		return errors.New("no call ongoing")
+	}
+
+	if requesterID != state.Call.GetHostID() {
+		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
+			return errors.New("no permissions to stop screenshare")
+		}
+	}
+
+	ust, ok := state.sessions[sessionID]
+	if !ok {
+		return errors.New("session is not in the call")
+	}
+
+	if ust.RaisedHand == 0 {
+		return nil
+	}
+
+	p.publishWebSocketEvent(wsEventHostUnraiseHand, map[string]interface{}{
+		"call_id":    state.Call.ID,
+		"channel_id": channelID,
+		"session_id": sessionID,
+		"host_id":    requesterID,
+	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+
+	return nil
+}

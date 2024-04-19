@@ -587,9 +587,19 @@ export const muteSession = async (callID: string, sessionID: string) => {
     );
 };
 
-export const stopScreenshare = async (callID: string, sessionID: string) => {
+export const screenOff = async (callID: string, sessionID: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/host/screen-off`,
+        {
+            method: 'post',
+            body: JSON.stringify({session_id: sessionID}),
+        },
+    );
+};
+
+export const unraiseHand = async (callID: string, sessionID: string) => {
+    return RestClient.fetch(
+        `${getPluginPath()}/calls/${callID}/host/unraise-hand`,
         {
             method: 'post',
             body: JSON.stringify({session_id: sessionID}),
