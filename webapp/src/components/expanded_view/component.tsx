@@ -862,6 +862,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     iAmHost={this.props.currentSession?.user_id === this.props.callHostID}
                     callID={this.props.channel?.id}
                     userID={session.user_id}
+                    sessionID={session.session_id}
                 />
             );
         });
