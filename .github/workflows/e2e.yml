@@ -3,6 +3,10 @@ name: E2E Testing
 on:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
 env:
   COMPOSE_PROJECT_NAME: "${{ github.run_id }}_playwright_1"
   # Control testing parallelism
