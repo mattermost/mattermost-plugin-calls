@@ -25,7 +25,8 @@ export type Props = {
     isHost: boolean,
     iAmHost: boolean,
     callID?: string,
-    userID?: string,
+    userID: string,
+    sessionID: string,
 }
 
 export default function CallParticipant({
@@ -40,6 +41,7 @@ export default function CallParticipant({
     iAmHost,
     callID,
     userID,
+    sessionID,
 }: Props) {
     const {formatMessage} = useIntl();
     const {hoverOn, hoverOff, onOpenChange, hostControlsAvailable, showHostControls} = useHostControls(isYou, isHost, iAmHost);
@@ -125,6 +127,8 @@ export default function CallParticipant({
                         <HostControlsMenu
                             callID={callID}
                             userID={userID}
+                            sessionID={sessionID}
+                            isMuted={isMuted}
                         />
                     </StyledDotMenu>
                 }
@@ -177,7 +181,7 @@ const Participant = styled.li<{ $hover?: boolean }>`
     align-items: center;
     gap: 12px;
     padding: 16px;
-    
+
     ${({$hover}) => $hover && css`
         border-radius: 8px;
         background: rgba(var(--sidebar-text-rgb), 0.08);

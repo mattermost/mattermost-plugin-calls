@@ -443,3 +443,18 @@ export function handleCaption(store: Store, ev: WebSocketMessage<LiveCaptionData
     }, LIVE_CAPTION_TIMEOUT);
 }
 
+// TODO: MM-57919, refactor wsmsg data to calls-common
+export function handleHostMute(store: Store, ev: WebSocketMessage<{ channel_id: string, session_id: string }>) {
+    const channelID = ev.data.channel_id;
+    const client = getCallsClient();
+    if (!client || client?.channelID !== channelID) {
+        return;
+    }
+
+    const sessionID = client.getSessionID();
+    if (ev.data.session_id !== sessionID) {
+        return;
+    }
+
+    client.mute();
+}
