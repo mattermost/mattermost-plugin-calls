@@ -106,13 +106,13 @@ func (p *Plugin) stopScreenshare(requesterID, channelID, sessionID string) error
 		}
 	}
 
+	if state.Props.ScreenSharingSessionID != sessionID {
+		return nil
+	}
+
 	ust, ok := state.sessions[sessionID]
 	if !ok {
 		return errors.New("session is not in the call")
-	}
-
-	if state.Props.ScreenSharingSessionID != sessionID {
-		return nil
 	}
 
 	p.publishWebSocketEvent(wsEventHostStopScreenshare, map[string]interface{}{
