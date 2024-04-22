@@ -685,20 +685,15 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		callsEnabled = model.NewBool(callsChannel.Enabled)
 	}
 
-	addSessionToCall := func(state *callState) (retState *callState) {
+	addSessionToCall := func(state *callState) *callState {
 		var err error
-
-		retState = state
 
 		state, err = p.addUserSession(state, callsEnabled, userID, connID, channelID, joinData.JobID)
 		if err != nil {
 			p.LogError("failed to add user session", "err", err.Error())
-			return
+			return state
 		} else if len(state.sessions) == 1 {
 			// new call has started
-
-			// Setting the state as it would have been nil.
-			retState = state
 
 			// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
 			if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
@@ -773,7 +768,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 						p.LogError(err.Error())
 					}
 				}()
-				return
+				return state
 			}
 		} else {
 			if handlerID == p.nodeID {
@@ -797,7 +792,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 							p.LogError(err.Error())
 						}
 					}()
-					return
+					return state
 				}
 			} else {
 				if err := p.sendClusterMessage(clusterMessage{
@@ -813,7 +808,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 							p.LogError(err.Error())
 						}
 					}()
-					return
+					return state
 				}
 			}
 		}
@@ -883,7 +878,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			}
 		}()
 
-		return
+		return state
 	}
 
 	p.mut.Lock()

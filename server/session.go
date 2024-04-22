@@ -82,6 +82,18 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 		p.metrics.ObserveAppHandlersTime("addUserSession", time.Since(start).Seconds())
 	}(time.Now())
 
+	// We need to make sure to keep the state consistent in case of error since it can be shared
+	// with other operations in the same batch. To do this we make a deep copy so that we can
+	// return the original state in case of error.
+	originalState := state
+	state = state.Clone()
+	defer func() {
+		// In case of error we return the original, un-mutated state.
+		if retErr != nil {
+			retState = originalState
+		}
+	}()
+
 	// If there is an ongoing call, we can let anyone join.
 	if state == nil && !p.userCanStartOrJoin(userID, callsEnabled) {
 		return nil, fmt.Errorf("calls are not enabled")
@@ -173,14 +185,6 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 		UserID: userID,
 		JoinAt: time.Now().UnixMilli(),
 	}
-	defer func() {
-		// We need to make sure and keep the state consistent in case of error since it can be shared
-		// with other operations in the same batch.
-		if retErr != nil {
-			// Undo in case of error
-			delete(state.sessions, connID)
-		}
-	}()
 
 	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
 		state.Call.Props.Hosts = []string{newHostID}
@@ -193,9 +197,6 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 					ReliableClusterSend: true,
 					UserIDs:             getUserIDsFromSessions(state.sessions),
 				})
-			} else {
-				// Undo in case of error
-				state.Call.Props.Hosts = []string{}
 			}
 		}()
 	}
@@ -206,12 +207,6 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 
 	if userID != p.getBotID() {
 		state.Call.Props.Participants[userID] = struct{}{}
-		// Undo in case of error
-		defer func() {
-			if retErr != nil {
-				delete(state.Call.Props.Participants, userID)
-			}
-		}()
 	}
 
 	if len(state.sessions) == 1 {
