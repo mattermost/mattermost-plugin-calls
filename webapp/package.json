@@ -1,8 +1,8 @@
 {
   "private": true,
   "engines": {
-    "node": "^18.10.0",
-    "npm": "^9.0.0"
+    "node": ">=18.10.0",
+    "npm": "^9.0.0 || ^10.0.0"
   },
   "scripts": {
     "preinstall": "./install_mattermost_webapp.sh",
@@ -17,6 +17,27 @@
     "test-ci": "jest --forceExit --detectOpenHandles --maxWorkers=2",
     "check-types": "tsc",
     "extract": "formatjs extract 'src/**/*.{ts,tsx}' --ignore 'src/**/*.d.ts' --out-file i18n/temp.json --id-interpolation-pattern '[sha512:contenthash:base64:6]' && formatjs compile 'i18n/temp.json' --out-file i18n/en.json && rm i18n/temp.json"
+  },
+  "dependencies": {
+    "@calls/common": "github:mattermost/calls-common#v0.26.0",
+    "@floating-ui/react": "0.26.12",
+    "@msgpack/msgpack": "2.7.1",
+    "@redux-devtools/extension": "3.2.3",
+    "core-js": "3.26.1",
+    "css-vars-ponyfill": "2.4.8",
+    "emoji-picker-react": "4.4.7",
+    "highlight.js": "11.6.0",
+    "media-chrome": "0.16.0",
+    "pako": "2.0.4",
+    "react": "17.0.2",
+    "react-dom": "17.0.2",
+    "react-redux": "7.2.4",
+    "react-router-dom": "5.3.4",
+    "redux": "4.2.0",
+    "redux-batched-actions": "0.5.0",
+    "semver-parser": "4.0.0",
+    "styled-components": "6.1.8",
+    "stylis": "4.3.1"
   },
   "devDependencies": {
     "@babel/core": "7.16.0",
@@ -48,10 +69,10 @@
     "babel-loader": "8.2.3",
     "babel-plugin-formatjs": "10.3.7",
     "babel-plugin-styled-components": "2.1.4",
-    "babel-plugin-typescript-to-proptypes": "2.0.0",
+    "babel-plugin-typescript-to-proptypes": "2.1.0",
     "css-loader": "5.2.6",
     "eslint": "8.49.0",
-    "eslint-import-resolver-webpack": "0.13.1",
+    "eslint-import-resolver-webpack": "0.13.8",
     "eslint-plugin-formatjs": "4.6.0",
     "eslint-plugin-react": "7.32.2",
     "eslint-plugin-react-hooks": "4.6.0",
@@ -65,35 +86,19 @@
     "luxon": "3.3.0",
     "mattermost-webapp": "file:mattermost-webapp/webapp/channels",
     "process": "0.11.10",
-    "react-intl": "5.20.12",
+    "react-intl": "6.6.5",
     "redux-thunk": "2.4.1",
     "sass": "1.66.1",
     "sass-loader": "13.2.0",
     "style-loader": "3.0.0",
-    "typescript": "4.9.5",
+    "typescript": "5.3.3",
     "webpack": "5.74.0",
     "webpack-cli": "4.10.0"
   },
-  "dependencies": {
-    "@calls/common": "github:mattermost/calls-common#v0.26.0",
-    "@floating-ui/react": "0.26.10",
-    "@msgpack/msgpack": "2.7.1",
-    "@redux-devtools/extension": "3.2.3",
-    "core-js": "3.26.1",
-    "css-vars-ponyfill": "2.4.8",
-    "emoji-picker-react": "4.4.7",
-    "highlight.js": "11.6.0",
-    "media-chrome": "0.16.0",
-    "pako": "2.0.4",
-    "react": "17.0.2",
-    "react-dom": "17.0.2",
-    "react-redux": "7.2.4",
-    "react-router-dom": "5.3.4",
-    "redux": "4.2.0",
-    "redux-batched-actions": "0.5.0",
-    "semver-parser": "4.0.0",
-    "styled-components": "6.1.8",
-    "stylis": "4.3.1"
+  "overrides": {
+    "@mattermost/desktop-api": {
+      "typescript": "$typescript"
+    }
   },
   "jest": {
     "testPathIgnorePatterns": [
