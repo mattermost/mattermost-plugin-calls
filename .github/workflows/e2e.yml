@@ -162,9 +162,15 @@ jobs:
           docker build --quiet -t mm-playwright -f Playwright.Dockerfile .
 
       - name: e2e/test
+        id: test
         run: |
           mkdir -p ${{ github.workspace }}/results
           ${{ github.workspace }}/e2e/scripts/run.sh
+
+          ## Check if we have an early failures in order to upload logs
+          NUM_FAILURES=0
+          NUM_FAILURES=$((NUM_FAILURES + $(jq '.suites[].suites[].specs[].tests[] | last(.results[]) | select(.status != "passed").status' < ${{ github.workspace }}/results/pw-results-${{ matrix.run_id }}.json | wc -l)))
+          echo "FAILURES=${NUM_FAILURES}" >> ${GITHUB_OUTPUT}
 
       - name: e2e/persist-report-results
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
@@ -173,6 +179,15 @@ jobs:
           path: ${{ github.workspace }}/results
           compression-level: 0
           retention-days: 1
+
+      - name: e2e/persist-report-logs
+        if: ${{ fromJson(steps.test.outputs.FAILURES) > 0 }}
+        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
+        with:
+          name: e2e-playwright-logs-${{ matrix.run_id }}
+          path: ${{ github.workspace }}/logs
+          compression-level: 0
+          retention-days: 5
 
   generate-report:
     runs-on: ubuntu-22.04
