@@ -104,6 +104,7 @@ const ReactionStreamList = styled.div`
     gap: 8px;
     -webkit-mask: -webkit-gradient(#0000, #000);
     mask: linear-gradient(#0000, #0003, #000f);
+    pointer-events: none;
 `;
 
 interface chipProps {
