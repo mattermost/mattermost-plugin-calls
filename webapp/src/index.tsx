@@ -109,6 +109,7 @@ import {JOIN_CALL, keyToAction} from './shortcuts';
 import {DesktopNotificationArgs, PluginRegistry, Store, WebAppUtils} from './types/mattermost-webapp';
 import {
     followThread,
+    getCallsClient,
     getChannelURL,
     getPluginPath,
     getProfilesForSessions,
@@ -812,7 +813,7 @@ export default class Plugin {
                 // eslint-disable-next-line max-nested-callbacks
                 this.registerReconnectHandler(registry, store, () => {
                     logDebug('websocket reconnect handler');
-                    if (!window.callsClient) {
+                    if (!getCallsClient()) {
                         logDebug('resetting state');
                         store.dispatch({
                             type: UNINIT,
