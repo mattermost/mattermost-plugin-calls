@@ -507,11 +507,13 @@ func (p *Plugin) handleConfig(w http.ResponseWriter) error {
 
 	type config struct {
 		clientConfig
-		SkuShortName string `json:"sku_short_name"`
+		SkuShortName        string `json:"sku_short_name"`
+		HostControlsAllowed bool
 	}
 	ret := config{
-		clientConfig: p.getConfiguration().getClientConfig(),
-		SkuShortName: skuShortName,
+		clientConfig:        p.getConfiguration().getClientConfig(),
+		SkuShortName:        skuShortName,
+		HostControlsAllowed: p.licenseChecker.HostControlsAllowed(),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
