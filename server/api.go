@@ -499,22 +499,7 @@ func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request
 // handleConfig returns the client configuration, and cloud license information
 // that isn't exposed to clients yet on the webapp
 func (p *Plugin) handleConfig(w http.ResponseWriter) error {
-	skuShortName := "starter"
-	license := p.API.GetLicense()
-	if license != nil {
-		skuShortName = license.SkuShortName
-	}
-
-	type config struct {
-		clientConfig
-		SkuShortName        string `json:"sku_short_name"`
-		HostControlsAllowed bool
-	}
-	ret := config{
-		clientConfig:        p.getConfiguration().getClientConfig(),
-		SkuShortName:        skuShortName,
-		HostControlsAllowed: p.licenseChecker.HostControlsAllowed(),
-	}
+	ret := p.getClientConfig()
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(ret); err != nil {
