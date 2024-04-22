@@ -109,6 +109,7 @@ import {JOIN_CALL, keyToAction} from './shortcuts';
 import {DesktopNotificationArgs, PluginRegistry, Store, WebAppUtils} from './types/mattermost-webapp';
 import {
     followThread,
+    getCallsClient,
     getChannelURL,
     getPluginPath,
     getProfilesForSessions,
@@ -145,9 +146,11 @@ import {
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
+    private wsClient: WebSocketClient | null;
 
     constructor() {
         this.unsubscribers = [];
+        this.wsClient = null;
     }
 
     private registerReconnectHandler(registry: PluginRegistry, _store: Store, handler: () => void) {
@@ -806,13 +809,14 @@ export default class Plugin {
         // WebSocket client through the provided hook. Just lovely.
         registry.registerGlobalComponent(() => {
             const client = window.ProductApi.useWebSocketClient();
+            this.wsClient = client;
 
             useEffect(() => {
                 logDebug('registering ws reconnect handler');
                 // eslint-disable-next-line max-nested-callbacks
                 this.registerReconnectHandler(registry, store, () => {
                     logDebug('websocket reconnect handler');
-                    if (!window.callsClient) {
+                    if (!getCallsClient()) {
                         logDebug('resetting state');
                         store.dispatch({
                             type: UNINIT,
