@@ -60,7 +60,7 @@
     "babel-loader": "8.2.3",
     "babel-plugin-formatjs": "10.4.0",
     "babel-plugin-styled-components": "2.1.4",
-    "babel-plugin-typescript-to-proptypes": "2.0.0",
+    "babel-plugin-typescript-to-proptypes": "2.1.0",
     "css-loader": "5.2.6",
     "css-vars-ponyfill": "2.4.8",
     "eslint": "8.49.0",
@@ -76,14 +76,19 @@
     "jest-canvas-mock": "2.3.1",
     "jest-junit": "12.2.0",
     "process": "0.11.10",
-    "react-intl": "5.20.12",
+    "react-intl": "6.6.5",
     "redux-devtools-extension": "2.13.9",
     "redux-thunk": "2.4.1",
     "sass": "1.66.1",
     "sass-loader": "13.2.0",
     "style-loader": "3.0.0",
-    "typescript": "4.9.5",
+    "typescript": "5.3.3",
     "webpack": "5.74.0",
     "webpack-cli": "4.10.0"
+  },
+  "overrides": {
+    "@mattermost/desktop-api": {
+      "typescript": "$typescript"
+    }
   }
 }
