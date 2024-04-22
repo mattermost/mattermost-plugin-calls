@@ -12,6 +12,7 @@ import {Emoji} from 'src/components/emoji/emoji';
 import {HostNotifications} from 'src/components/host_notifications';
 import HandEmoji from 'src/components/icons/hand';
 import {
+    hostControlNotificationsForCurrentCall,
     profilesInCurrentCallMap,
     reactionsInCurrentCall,
     sessionsInCurrentCall,
@@ -27,6 +28,7 @@ export const ReactionStream = () => {
     const sessions = useSelector(sessionsInCurrentCall);
     const profileMap = useSelector(profilesInCurrentCallMap);
     const vReactions = useSelector(reactionsInCurrentCall);
+    const notifications = useSelector(hostControlNotificationsForCurrentCall);
 
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
@@ -86,7 +88,7 @@ export const ReactionStream = () => {
 
     return (
         <ReactionStreamList>
-            <HostNotifications/>
+            {notifications.length > 0 && <HostNotifications/>}
             {handsUp}
             {reactions}
         </ReactionStreamList>

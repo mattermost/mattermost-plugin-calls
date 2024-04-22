@@ -9,10 +9,10 @@ import {HostControlNotificationType} from 'src/types/types';
 import styled, {css, keyframes} from 'styled-components';
 
 type Props = {
-    small?: boolean;
+    onWidget?: boolean;
 }
 
-export const HostNotifications = ({small = false}: Props) => {
+export const HostNotifications = ({onWidget = false}: Props) => {
     const {formatMessage} = useIntl();
     const notifications = useSelector(hostControlNotificationsForCurrentCall);
 
@@ -25,13 +25,13 @@ export const HostNotifications = ({small = false}: Props) => {
                         <Notification
                             key={n.notificationID}
                             $highlight={true}
-                            $small={small}
+                            $onWidget={onWidget}
                         >
                             <StyledCompassIcon
                                 icon={'hand-right-outline-off'}
-                                $small={small}
+                                $onWidget={onWidget}
                             />
-                            <Text $small={small}>
+                            <Text $onWidget={onWidget}>
                                 {formatMessage({defaultMessage: '{host} lowered your hand'},
                                     {host: n.displayName})}
                             </Text>
@@ -60,10 +60,10 @@ const slideInAnimation = keyframes`
     }
 `;
 
-const Notification = styled(ReactionChip)<{ $small?: boolean }>`
+const Notification = styled(ReactionChip)<{ $onWidget?: boolean }>`
     animation: ${slideInAnimation} ${HOST_CONTROL_NOTIFICATION_TIMEOUT}ms ease-in-out 0.2s both;
 
-    ${({$small}) => $small && css`
+    ${({$onWidget}) => $onWidget && css`
         width: 100%;
         border-radius: 6px;
         padding: 2px 4px;
@@ -75,15 +75,15 @@ const Notification = styled(ReactionChip)<{ $small?: boolean }>`
     `}
 `;
 
-const StyledCompassIcon = styled(CompassIcon)<{ $small?: boolean }>`
+const StyledCompassIcon = styled(CompassIcon)<{ $onWidget?: boolean }>`
     color: var(--away-indicator);
-    font-size: ${({$small}) => ($small ? 16 : 18)}px;
+    font-size: ${({$onWidget}) => ($onWidget ? 16 : 18)}px;
     margin-right: -5px;
     margin-left: -3px;
 `;
 
-const Text = styled.span<{ $small?: boolean }>`
-    ${({$small}) => $small && css`
+const Text = styled.span<{ $onWidget?: boolean }>`
+    ${({$onWidget}) => $onWidget && css`
         overflow: hidden;
         text-overflow: ellipsis;
     `}
