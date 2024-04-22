@@ -797,6 +797,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 style={{
                     display: 'flex',
                     position: 'relative',
+                    zIndex: 1000,
                 }}
             >
                 {isSharing &&

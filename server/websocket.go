@@ -49,6 +49,8 @@ const (
 	wsEventCallJobState              = "call_job_state"
 	wsEventUserDismissedNotification = "user_dismissed_notification"
 	wsEventJobStop                   = "job_stop"
+	wsEventHostMute                  = "host_mute"
+	wsEventHostScreenOff             = "host_screen_off"
 	wsReconnectionTimeout            = 10 * time.Second
 
 	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0

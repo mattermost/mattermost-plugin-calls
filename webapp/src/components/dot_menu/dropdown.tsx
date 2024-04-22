@@ -64,6 +64,9 @@ const Dropdown = (props: DropdownProps) => {
             {...getFloatingProps({
                 ref: refs.setFloating,
                 style: {
+
+                    // @ts-ignore
+                    appRegion: 'no-drag',
                     position: strategy,
                     top: y ?? 0,
                     left: x ?? 0,

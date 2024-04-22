@@ -1,0 +1,291 @@
+name: E2E Testing
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
+env:
+  COMPOSE_PROJECT_NAME: "${{ github.run_id }}_playwright_1"
+  # Control testing parallelism
+  PARALLELISM: 10
+
+jobs:
+  build-mattermost-plugin-calls:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: e2e/checkout-mattermost-plugin-calls-repo
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+
+      - name: e2e/setup-go
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: e2e/setup-node
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: e2e/build-mattermost-plugin-calls
+        env:
+          MM_SERVICESETTINGS_ENABLEDEVELOPER: 1
+        run: make dist
+
+      - name: e2e/persist-mattermost-plugin-calls-package
+        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
+        with:
+          name: mattermost-plugin-calls-package
+          path: ${{ github.workspace }}/dist/*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  generate-matrix:
+    runs-on: ubuntu-22.04
+    outputs:
+      parallelism-matrix: ${{ steps.calculation.outputs.PARALLELISM }}
+      parallelism: ${{ env.PARALLELISM }}
+    steps:
+      - name: e2e/generate-e2e-matrix
+        id: calculation
+        run: |
+          RANGE=$(( ${{ env.PARALLELISM }}+1 ))
+          echo PARALLELISM=$(jq -n "{ run_id: [range(1;${RANGE})]}") > ${GITHUB_OUTPUT}
+
+  e2e-playwright-test:
+    runs-on: ubuntu-22.04
+    needs:
+      - build-mattermost-plugin-calls
+      - generate-matrix
+    env:
+      COMPOSE_PROJECT_NAME: playwright_tests
+      DOCKER_NETWORK: playwright_tests
+      CONTAINER_SERVER: playwright_tests_server
+      IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.8.0
+      IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.7.1
+      IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.2.1
+      IMAGE_SERVER: mattermostdevelopment/mattermost-enterprise-edition:master
+      IMAGE_CURL: curlimages/curl:8.7.1
+      CI_NODE_INDEX: ${{ matrix.run_id }}
+      CI_NODE_TOTAL: ${{ needs.generate-matrix.outputs.parallelism }}
+    strategy:
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.parallelism-matrix) }}
+    steps:
+      - name: e2e/checkout-mattermost-plugin-calls-repo
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: e2e/checkout-mattermost-repo
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          repository: mattermost/mattermost
+          path: mattermost
+
+      - name: e2e/setup-docker-buildx
+        uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb # v3.3.0
+
+      - name: e2e/setup-go
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        with:
+          go-version-file: mattermost/server/go.mod
+
+      - name: e2e/generate-configuration
+        working-directory: ./mattermost/server/scripts/config_generator
+        env:
+          OUTPUT_CONFIG: ${{ github.workspace }}/config/config.json
+        run: |
+          mkdir -p ${{ github.workspace }}/config
+          go run main.go
+
+      - name: e2e/patch-generated-configuration
+        env:
+          OUTPUT_CONFIG: ${{ github.workspace }}/config/config.json
+        run: |
+          cp ${OUTPUT_CONFIG} ${OUTPUT_CONFIG}.orig
+          jq -f ${{ github.workspace }}/e2e/overlay-config.jq ${OUTPUT_CONFIG}.orig > ${OUTPUT_CONFIG}
+          diff ${OUTPUT_CONFIG}.orig ${OUTPUT_CONFIG} || true
+
+      - name: e2e/download-mattermost-plugin-calls-package
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          name: mattermost-plugin-calls-package
+          path: dist
+
+      - name: e2e/prepare-server
+        env:
+          DOCKER_CLIENT_TIMEOUT: 120
+          COMPOSE_HTTP_TIMEOUT: 120
+          ## Should relative to mattermost/server/build/
+          DOCKER_COMPOSE_FILE: gitlab-dc.postgres.yml
+          DOCKER_COMPOSE_TEST_DATA: ../tests/test-data.ldif
+        run: |
+          mkdir -p ${{ github.workspace }}/logs
+          mkdir -p ${{ github.workspace }}/config
+          mkdir -p ${{ github.workspace }}/dotenv
+
+          ## Navigate to mattermost server build folder to spawn the environment
+          cd mattermost/server/build/
+          ${{ github.workspace }}/e2e/scripts/prepare-server.sh
+          cd -
+
+          ## Add extra environment variables for mattermost server
+          echo "MM_LICENSE=${{ secrets.MM_PLUGIN_CALLS_TEST_LICENSE }}" >> dotenv/app.private.env
+          echo "MM_FEATUREFLAGS_BoardsProduct=true" >> dotenv/app.private.env
+          echo "MM_SERVICEENVIRONMENT=test" >> dotenv/app.private.env
+
+          sudo chown -R 2000:2000 ${{ github.workspace }}/logs
+          sudo chown -R 2000:2000 ${{ github.workspace }}/config
+
+          # Spawn mattermost server
+          echo "Spawning mattermost server ... "
+          docker run -d --quiet --name ${CONTAINER_SERVER} \
+          --net ${DOCKER_NETWORK} \
+          --net-alias mm-server \
+          --user mattermost:mattermost \
+          --env-file="${{ github.workspace }}/dotenv/app.private.env" \
+          -v ${{ github.workspace }}/config:/mattermost/config:rw \
+          -v ${{ github.workspace }}/logs:/mattermost/logs:rw \
+          ${IMAGE_SERVER} \
+          sh -c "/mattermost/bin/mattermost server"
+
+      - name: e2e/build-e2e-image
+        working-directory: e2e
+        run: |
+          echo "Building playwright test image ... "
+          cp ${{ github.workspace }}/plugin.json plugin.json
+          docker build --quiet -t mm-playwright -f Playwright.Dockerfile .
+
+      - name: e2e/test
+        id: test
+        run: |
+          mkdir -p ${{ github.workspace }}/results
+          ${{ github.workspace }}/e2e/scripts/run.sh
+
+          ## Check if we have an early failures in order to upload logs
+          NUM_FAILURES=0
+          NUM_FAILURES=$((NUM_FAILURES + $(jq '.suites[].suites[].specs[].tests[] | last(.results[]) | select(.status != "passed").status' < ${{ github.workspace }}/results/pw-results-${{ matrix.run_id }}.json | wc -l)))
+          echo "FAILURES=${NUM_FAILURES}" >> ${GITHUB_OUTPUT}
+          sudo chown -R 1001:1001 ${{ github.workspace }}/logs
+
+      - name: e2e/persist-report-results
+        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
+        with:
+          name: e2e-playwright-results-${{ matrix.run_id }}
+          path: ${{ github.workspace }}/results
+          compression-level: 0
+          retention-days: 1
+
+      - name: e2e/persist-report-logs
+        if: ${{ fromJson(steps.test.outputs.FAILURES) > 0 }}
+        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
+        with:
+          name: e2e-playwright-logs-${{ matrix.run_id }}
+          path: ${{ github.workspace }}/logs
+          compression-level: 0
+          retention-days: 5
+
+  generate-report:
+    runs-on: ubuntu-22.04
+    needs:
+      - generate-matrix
+      - e2e-playwright-test
+    steps:
+      - name: e2e/checkout-mattermost-plugin-calls-repo
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: e2e/download-paywright-report-results
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          path: e2e-playwright-results
+          pattern: e2e-playwright-results-*
+          merge-multiple: true
+
+      - name: e2e/setup-node
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version-file: .nvmrc
+
+      - name: e2e/generate-reporting
+        id: stats
+        working-directory: e2e-playwright-results/
+        env:
+          AWS_DEFAULT_REGION: us-east-1
+          AWS_S3_BUCKET: mattermost-cypress-report
+          AWS_ACCESS_KEY_ID: ${{ secrets.MM_PLUGIN_CALLS_AWS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.MM_PLUGIN_CALLS_AWS_SECRET_ACCESS_KEY }}
+        run: |
+          DATETIME="$(date '+%Y_%m_%d__%H_%M_%S')"
+
+          echo "Generating the e2e report ... "
+          cp ${{ github.workspace }}/e2e/scripts/merge-reports.js .
+          npm install --include=dev @playwright/test playwright-merge-html-reports fs
+          node merge-reports.js
+
+          echo "Upload playwright report to S3 ... "
+          aws s3 sync merged-html-report/ s3://${AWS_S3_BUCKET}/calls-pw/${DATETIME} --no-progress --cache-control no-cache
+
+          NUM_FAILURES=0
+          NUM_SUCCESSES=0
+
+          for i in $(seq 1 ${{ needs.generate-matrix.outputs.parallelism }})
+            do
+              # can be `failed`, `flaky`, `timedOut`
+              NUM_FAILURES=$((NUM_FAILURES + $(jq '.suites[].suites[].specs[].tests[] | last(.results[]) | select(.status != "passed").status' < ./pw-results-${i}.json | wc -l)))
+              NUM_SUCCESSES=$((NUM_SUCCESSES + $(jq '.suites[].suites[].specs[].tests[] | last(.results[]) | select(.status == "passed").status' < ./pw-results-${i}.json | wc -l)))
+          done
+
+          echo "S3_REPORT=https://${AWS_S3_BUCKET}.s3.us-east-1.amazonaws.com/calls-pw/${DATETIME}/index.html" >> ${GITHUB_OUTPUT}
+          echo "FAILURES=${NUM_FAILURES}" >> ${GITHUB_OUTPUT}
+          echo "SUCCESSES=${NUM_SUCCESSES}" >> ${GITHUB_OUTPUT}
+          echo "TOTAL=$(( ${NUM_SUCCESSES}+${NUM_FAILURES} ))" >> ${GITHUB_OUTPUT}
+
+      - name: e2e/generate-summary
+        run: |
+          echo "### Playwright Results for [${{ github.event.pull_request.head.sha || github.sha }}](https://github.com/mattermost/mattermost-plugin-calls/commit/${{ github.event.pull_request.head.sha || github.sha }})" >> "${GITHUB_STEP_SUMMARY}"
+          echo "We had ${{ steps.stats.outputs.FAILURES }} failures" >> "${GITHUB_STEP_SUMMARY}"
+          echo "We had ${{ steps.stats.outputs.SUCCESSES }} successes" >> "${GITHUB_STEP_SUMMARY}"
+          echo "You can find the report [here](${{ steps.stats.outputs.S3_REPORT }})" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: e2e/block-PR-upon-failure-with-report-URL
+        if: ${{ fromJson(steps.stats.outputs.FAILURES) > 0 }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # 7.0.1
+        with:
+          script: |
+            try {
+              await github.rest.repos.createCommitStatus({
+                owner: 'mattermost',
+                repo: 'mattermost-plugin-calls',
+                sha: '${{ github.event.pull_request.head.sha || github.sha }}',
+                context: 'e2e/report-summary',
+                description: '${{ steps.stats.outputs.FAILURES }}/${{ steps.stats.outputs.TOTAL }} E2E tests failed',
+                state: 'failure',
+                target_url: '${{ steps.stats.outputs.S3_REPORT }}'
+              });
+            } catch (err) {
+              core.setFailed(`Action failed with error: ${err}`);
+            }
+
+      - name: e2e/send-success-status
+        if: ${{ fromJson(steps.stats.outputs.FAILURES) == 0 }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # 7.0.1
+        with:
+          script: |
+            try {
+              await github.rest.repos.createCommitStatus({
+                owner: 'mattermost',
+                repo: 'mattermost-plugin-calls',
+                sha: '${{ github.event.pull_request.head.sha || github.sha }}',
+                context: 'e2e/report-summary',
+                description: '${{ steps.stats.outputs.SUCCESSES }}/${{ steps.stats.outputs.TOTAL }} E2E tests passed',
+                state: 'success',
+                target_url: '${{ steps.stats.outputs.S3_REPORT }}'
+              });
+            } catch (err) {
+              core.setFailed(`Action failed with error: ${err}`);
+            }

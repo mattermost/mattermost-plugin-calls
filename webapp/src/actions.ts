@@ -576,3 +576,23 @@ export const makeHost = async (callID: string, newHostID: string) => {
         },
     );
 };
+
+export const muteSession = async (callID: string, sessionID: string) => {
+    return RestClient.fetch(
+        `${getPluginPath()}/calls/${callID}/host/mute`,
+        {
+            method: 'post',
+            body: JSON.stringify({session_id: sessionID}),
+        },
+    );
+};
+
+export const stopScreenshare = async (callID: string, sessionID: string) => {
+    return RestClient.fetch(
+        `${getPluginPath()}/calls/${callID}/host/screen-off`,
+        {
+            method: 'post',
+            body: JSON.stringify({session_id: sessionID}),
+        },
+    );
+};

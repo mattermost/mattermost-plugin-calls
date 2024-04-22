@@ -139,6 +139,9 @@ const CallParticipantRHS = ({session, profile, isYou, isHost, iAmHost, isSharing
                         <HostControlsMenu
                             callID={callID}
                             userID={session.user_id}
+                            sessionID={session.session_id}
+                            isMuted={isMuted}
+                            isSharingScreen={isSharingScreen}
                         />
                     </StyledDotMenu>
                 }
@@ -159,7 +162,7 @@ const ParticipantListItem = styled.li<{ $hover: boolean }>`
     padding: 6px 16px;
     gap: 8px;
     height: 40px;
-    
+
     ${({$hover}) => $hover && css`
         background: rgba(var(--center-channel-color-rgb), 0.08);
     `}

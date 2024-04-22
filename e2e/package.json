@@ -1,8 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "lint": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js --ext .jsx --ext tsx --ext ts . --quiet --cache",
-    "fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js --ext .jsx --ext tsx --ext ts . --quiet --fix --cache",
+    "lint": "eslint --ignore-pattern node_modules --ignore-pattern dist --ignore-pattern merge-reports.js --ext .js --ext .jsx --ext tsx --ext ts . --quiet --cache",
+    "fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ignore-pattern merge-reports.js --ext .js --ext .jsx --ext tsx --ext ts . --quiet --fix --cache",
     "check-types": "tsc"
   },
   "devDependencies": {

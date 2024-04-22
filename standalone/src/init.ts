@@ -54,6 +54,8 @@ import {
     handleCallJobState,
     handleCallStart,
     handleCallState,
+    handleHostMute,
+    handleHostScreenOff,
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
@@ -268,6 +270,13 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_call_state`:
             await handleCallState(store, ev as WebSocketMessage<CallStateData>);
+            break;
+        case `custom_${pluginId}_host_mute`:
+            // TODO: MM-57919, use refactored wsmsg data in calls-common
+            handleHostMute(store, ev as WebSocketMessage);
+            break;
+        case `custom_${pluginId}_host_screen_off`:
+            handleHostScreenOff(store, ev as WebSocketMessage);
             break;
         case 'user_removed':
             handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);

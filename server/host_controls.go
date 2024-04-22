@@ -56,3 +56,69 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 
 	return nil
 }
+
+func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
+	state, err := p.getCallState(channelID, false)
+	if err != nil {
+		return err
+	}
+
+	if state == nil {
+		return errors.New("no call ongoing")
+	}
+
+	if requesterID != state.Call.GetHostID() {
+		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
+			return errors.New("no permissions to mute session")
+		}
+	}
+
+	ust, ok := state.sessions[sessionID]
+	if !ok {
+		return errors.New("session is not in the call")
+	}
+
+	if !ust.Unmuted {
+		return nil
+	}
+
+	p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
+		"channel_id": channelID,
+		"session_id": sessionID,
+	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+
+	return nil
+}
+
+func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
+	state, err := p.getCallState(channelID, false)
+	if err != nil {
+		return err
+	}
+
+	if state == nil {
+		return errors.New("no call ongoing")
+	}
+
+	if requesterID != state.Call.GetHostID() {
+		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
+			return errors.New("no permissions to set screenOff")
+		}
+	}
+
+	if state.Props.ScreenSharingSessionID != sessionID {
+		return nil
+	}
+
+	ust, ok := state.sessions[sessionID]
+	if !ok {
+		return errors.New("session is not in the call")
+	}
+
+	p.publishWebSocketEvent(wsEventHostScreenOff, map[string]interface{}{
+		"channel_id": channelID,
+		"session_id": sessionID,
+	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+
+	return nil
+}
