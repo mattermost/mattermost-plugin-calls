@@ -146,9 +146,11 @@ import {
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
+    private wsClient: WebSocketClient | null;
 
     constructor() {
         this.unsubscribers = [];
+        this.wsClient = null;
     }
 
     private registerReconnectHandler(registry: PluginRegistry, _store: Store, handler: () => void) {
@@ -807,6 +809,7 @@ export default class Plugin {
         // WebSocket client through the provided hook. Just lovely.
         registry.registerGlobalComponent(() => {
             const client = window.ProductApi.useWebSocketClient();
+            this.wsClient = client;
 
             useEffect(() => {
                 logDebug('registering ws reconnect handler');
