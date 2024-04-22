@@ -171,6 +171,7 @@ jobs:
           NUM_FAILURES=0
           NUM_FAILURES=$((NUM_FAILURES + $(jq '.suites[].suites[].specs[].tests[] | last(.results[]) | select(.status != "passed").status' < ${{ github.workspace }}/results/pw-results-${{ matrix.run_id }}.json | wc -l)))
           echo "FAILURES=${NUM_FAILURES}" >> ${GITHUB_OUTPUT}
+          sudo chown -R 1001:1001 ${{ github.workspace }}/logs
 
       - name: e2e/persist-report-results
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
