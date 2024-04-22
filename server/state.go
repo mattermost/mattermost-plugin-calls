@@ -20,6 +20,65 @@ type callState struct {
 	LiveCaptions  *public.CallJob
 }
 
+// Clone performs a deep copy of the call state.
+func (cs *callState) Clone() *callState {
+	if cs == nil {
+		return nil
+	}
+
+	csCopy := new(callState)
+
+	csCopy.Call = cs.Call
+
+	if cs.Participants != nil {
+		csCopy.Participants = make([]string, len(cs.Call.Participants))
+		copy(csCopy.Call.Participants, cs.Call.Participants)
+	}
+
+	// Props
+	if cs.Props.Hosts != nil {
+		csCopy.Props.Hosts = make([]string, len(cs.Call.Props.Hosts))
+		copy(csCopy.Call.Props.Hosts, cs.Call.Props.Hosts)
+	}
+	if cs.Props.DismissedNotification != nil {
+		csCopy.Props.DismissedNotification = make(map[string]bool, len(cs.Call.Props.DismissedNotification))
+		for k, v := range cs.Call.Props.DismissedNotification {
+			csCopy.Props.DismissedNotification[k] = v
+		}
+	}
+	if cs.Props.Participants != nil {
+		csCopy.Props.Participants = make(map[string]struct{}, len(cs.Call.Props.Participants))
+		for k, v := range cs.Call.Props.Participants {
+			csCopy.Props.Participants[k] = v
+		}
+	}
+
+	// Sessions
+	if cs.sessions != nil {
+		csCopy.sessions = make(map[string]*public.CallSession, len(cs.sessions))
+		for k := range cs.sessions {
+			csCopy.sessions[k] = new(public.CallSession)
+			*csCopy.sessions[k] = *cs.sessions[k]
+		}
+	}
+
+	// Jobs
+	if cs.Recording != nil {
+		csCopy.Recording = new(public.CallJob)
+		*csCopy.Recording = *cs.Recording
+	}
+	if cs.Transcription != nil {
+		csCopy.Transcription = new(public.CallJob)
+		*csCopy.Transcription = *cs.Transcription
+	}
+	if cs.LiveCaptions != nil {
+		csCopy.LiveCaptions = new(public.CallJob)
+		*csCopy.LiveCaptions = *cs.LiveCaptions
+	}
+
+	return csCopy
+}
+
 type UserStateClient struct {
 	SessionID  string `json:"session_id"`
 	UserID     string `json:"user_id"`
