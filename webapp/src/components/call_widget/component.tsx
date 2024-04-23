@@ -17,7 +17,6 @@ import {AudioInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
-import {HostNotifications} from 'src/components/host_notifications';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ExpandIcon from 'src/components/icons/expand';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
@@ -53,7 +52,6 @@ import {
     CallAlertStates,
     CallAlertStatesDefault,
     CallJobReduxState,
-    HostControlNotification,
     IncomingCallNotification,
 } from 'src/types/types';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
@@ -92,7 +90,6 @@ interface Props {
         left: number,
     },
     recentlyJoinedUsers: string[],
-    hostNotifications: HostControlNotification[],
     wider: boolean,
     callsIncoming: IncomingCallNotification[],
     transcriptionsEnabled: boolean,
@@ -1528,7 +1525,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     visible={!this.props.clientConnecting}
                     isMuted={this.isMuted()}
                 />
-                <HostNotifications small={true}/>
                 {joinedUsers}
             </div>
         );

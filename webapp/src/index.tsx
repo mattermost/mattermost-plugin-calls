@@ -129,7 +129,6 @@ import {
     handleCaption,
     handleHostMute,
     handleHostScreenOff,
-    handleHostUnraiseHand,
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
@@ -256,10 +255,6 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_host_screen_off`, (ev) => {
             handleHostScreenOff(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_host_unraise_hand`, (ev) => {
-            handleHostUnraiseHand(store, ev);
         });
     }
 

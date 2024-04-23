@@ -132,7 +132,6 @@ export default function CallParticipant({
                             sessionID={sessionID}
                             isMuted={isMuted}
                             isSharingScreen={isSharingScreen}
-                            isHandRaised={isHandRaised}
                         />
                     </StyledDotMenu>
                 }

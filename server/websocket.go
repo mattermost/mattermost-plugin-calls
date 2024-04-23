@@ -51,7 +51,6 @@ const (
 	wsEventJobStop                   = "job_stop"
 	wsEventHostMute                  = "host_mute"
 	wsEventHostScreenOff             = "host_screen_off"
-	wsEventHostUnraiseHand           = "host_unraise_hand"
 	wsReconnectionTimeout            = 10 * time.Second
 
 	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0

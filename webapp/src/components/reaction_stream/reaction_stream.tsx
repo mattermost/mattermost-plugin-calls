@@ -9,7 +9,6 @@ import React from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {Emoji} from 'src/components/emoji/emoji';
-import {HostNotifications} from 'src/components/host_notifications';
 import HandEmoji from 'src/components/icons/hand';
 import {
     profilesInCurrentCallMap,
@@ -36,7 +35,9 @@ export const ReactionStream = () => {
                 size={18}
             />
         );
-        const user = reaction.user_id === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[reaction.user_id], true) || formatMessage({defaultMessage: 'Someone'});
+        const user = reaction.user_id === currentUserID ?
+            formatMessage({defaultMessage: 'You'}) :
+            getUserDisplayName(profileMap[reaction.user_id], true) || formatMessage({defaultMessage: 'Someone'});
 
         return (
             <ReactionChipOverlay key={reaction.timestamp + reaction.user_id}>
@@ -86,7 +87,6 @@ export const ReactionStream = () => {
 
     return (
         <ReactionStreamList>
-            <HostNotifications/>
             {handsUp}
             {reactions}
         </ReactionStreamList>
@@ -114,7 +114,7 @@ const ReactionChipOverlay = styled.div`
     width: fit-content;
 `;
 
-export const ReactionChip = styled.div<chipProps>`
+const ReactionChip = styled.div<chipProps>`
     display: flex;
     align-items: center;
     padding: 6px 16px 6px 8px;
@@ -130,7 +130,7 @@ export const ReactionChip = styled.div<chipProps>`
     ${(props) => props.$highlight && css`
         background: #FFFFFF;
         color: #090A0B;
-    `}
+  `}
 `;
 
 const Bold = styled.span`

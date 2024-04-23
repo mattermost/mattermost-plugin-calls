@@ -9,8 +9,6 @@ import {
     CallsUserPreferencesDefault,
     ChannelState,
     ChannelType,
-    HostControlNotification,
-    HostControlNotificationTimeout,
     IncomingCallNotification,
     LiveCaptions,
 } from 'src/types/types';
@@ -32,8 +30,6 @@ import {
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
-    HOST_CONTROL_NOTIFICATION,
-    HOST_CONTROL_NOTIFICATION_TIMEOUT_EVENT,
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
     LIVE_CAPTIONS_ENABLED,
@@ -1007,53 +1003,6 @@ const clientConnecting = (state = false, action: { type: string, data: boolean }
     }
 };
 
-type hostControlNotificationAction = {
-    type: string;
-    data: HostControlNotification;
-}
-
-type hostControlNotificationTimeoutAction = {
-    type: string;
-    data: HostControlNotificationTimeout;
-}
-
-export type hostControlNotificationsState = {
-    [callID: string]: HostControlNotification[];
-}
-
-const addHostControlNotification = (notifications: HostControlNotification[] | undefined,
-    notification: HostControlNotification) => {
-    const ret = notifications?.length ? [...notifications] : [];
-    ret.push(notification);
-    return ret;
-};
-
-const removeHostControlNotification = (notifications: HostControlNotification[], notificationID: string) => {
-    return notifications.filter((n) => n.notificationID !== notificationID);
-};
-
-const hostControlNotifications = (state: hostControlNotificationsState = {},
-    action: hostControlNotificationAction | hostControlNotificationTimeoutAction) => {
-    switch (action.type) {
-    case HOST_CONTROL_NOTIFICATION: {
-        const data = action.data as HostControlNotification;
-        return {
-            ...state,
-            [data.callID]: addHostControlNotification(state[data.callID], data),
-        };
-    }
-    case HOST_CONTROL_NOTIFICATION_TIMEOUT_EVENT: {
-        const data = action.data as HostControlNotificationTimeout;
-        return {
-            ...state,
-            [data.callID]: removeHostControlNotification(state[data.callID], data.notificationID),
-        };
-    }
-    default:
-        return state;
-    }
-};
-
 export default combineReducers({
     channels,
     clientStateReducer,
@@ -1085,5 +1034,4 @@ export default combineReducers({
     dismissedCalls,
     liveCaptions,
     clientConnecting,
-    hostControlNotifications,
 });
