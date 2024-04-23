@@ -1,3 +1,5 @@
+/* eslint-disable max-lines */
+
 import {
     CallHostChangedData,
     CallJobStateData,
@@ -23,10 +25,7 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {generateId} from 'mattermost-redux/utils/helpers';
 import {incomingCallOnChannel, loadCallState, removeIncomingCallNotification, userLeft} from 'src/actions';
-import {
-    userLeftChannelErr,
-    userRemovedFromChannelErr,
-} from 'src/client';
+import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/client';
 import {
     JOB_TYPE_CAPTIONING,
     JOB_TYPE_RECORDING,
@@ -472,4 +471,24 @@ export function handleHostScreenOff(store: Store, ev: WebSocketMessage<{ channel
     }
 
     client.unshareScreen();
+}
+
+export function handleHostUnraiseHand(store: Store, ev: WebSocketMessage<{
+    call_id: string,
+    channel_id: string,
+    session_id: string,
+    host_id: string
+}>) {
+    const channelID = ev.data.channel_id;
+    const client = getCallsClient();
+    if (!client || client?.channelID !== channelID) {
+        return;
+    }
+
+    const sessionID = client.getSessionID();
+    if (ev.data.session_id !== sessionID) {
+        return;
+    }
+
+    client.unraiseHand();
 }
