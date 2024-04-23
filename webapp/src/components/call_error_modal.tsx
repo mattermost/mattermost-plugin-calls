@@ -55,7 +55,8 @@ export const CallErrorModal = (props: Props) => {
     };
 
     const troubleShootingMsg = (
-        <React.Fragment>
+        <>
+            {/*@ts-ignore*/}
             { formatMessage(
                 {
                     defaultMessage: 'Check the <troubleShootingLink>troubleshooting section</troubleShootingLink> if the problem persists.',
@@ -68,7 +69,7 @@ export const CallErrorModal = (props: Props) => {
                         >{text}</a>
                     ),
                 })}
-        </React.Fragment>
+        </>
     );
 
     const genericMsg = (
@@ -95,6 +96,7 @@ export const CallErrorModal = (props: Props) => {
         );
         msg = (
             <span>
+                {/*@ts-ignore*/}
                 {formatMessage({defaultMessage: 'We couldn\'t join the call because the connection timed out. Please check your network connection and try again.'}, {
                     joinLink: (text: string) => (
                         <a
@@ -115,6 +117,7 @@ export const CallErrorModal = (props: Props) => {
         );
         msg = (
             <span>
+                {/*@ts-ignore*/}
                 {formatMessage({defaultMessage: 'There was an error with the connection to the call. Try to <joinLink>re-join</joinLink> the call.'}, {
                     joinLink: (text: string) => (
                         <a

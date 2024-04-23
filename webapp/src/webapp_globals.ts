@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {GlobalState} from '@mattermost/types/store';
-import {Thunk} from 'mattermost-redux/types/actions';
+import {ActionFunc, ActionFuncAsync} from 'mattermost-redux/types/actions';
 import {WebAppUtils} from 'src/types/mattermost-webapp';
 
 export const {
@@ -24,8 +24,8 @@ export const {
     getIsRhsOpen,
 
 }: {
-    closeRhs?: () => Thunk;
-    selectRhsPost?: (postId: string) => Thunk;
+    closeRhs?: () => ActionFunc;
+    selectRhsPost?: (postId: string) => ActionFuncAsync;
     getRhsSelectedPostId?: (state: GlobalState) => string | undefined;
     getIsRhsOpen?: (state: GlobalState) => boolean;
 
