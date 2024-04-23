@@ -27,12 +27,14 @@ import {generateId} from 'mattermost-redux/utils/helpers';
 import {incomingCallOnChannel, loadCallState, removeIncomingCallNotification, userLeft} from 'src/actions';
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/client';
 import {
+    HOST_CONTROL_NOTIFICATION_TIMEOUT,
     JOB_TYPE_CAPTIONING,
     JOB_TYPE_RECORDING,
     JOINED_USER_NOTIFICATION_TIMEOUT,
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
+import {HostControlNotification, HostControlNotificationType} from 'src/types/types';
 
 import {
     CALL_END,
@@ -41,6 +43,8 @@ import {
     CALL_RECORDING_STATE,
     CALL_STATE,
     DISMISS_CALL,
+    HOST_CONTROL_NOTIFICATION,
+    HOST_CONTROL_NOTIFICATION_TIMEOUT_EVENT,
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
     PROFILE_JOINED,
@@ -491,4 +495,28 @@ export function handleHostUnraiseHand(store: Store, ev: WebSocketMessage<{
     }
 
     client.unraiseHand();
+
+    const profiles = profilesInCurrentCallMap(store.getState());
+    const displayName = getUserDisplayName(profiles[ev.data.host_id]);
+
+    const hostNotification: HostControlNotification = {
+        type: HostControlNotificationType.UnraisedHand,
+        callID: ev.data.call_id,
+        notificationID: generateId(),
+        displayName,
+    };
+
+    store.dispatch({
+        type: HOST_CONTROL_NOTIFICATION,
+        data: hostNotification,
+    });
+    setTimeout(() => {
+        store.dispatch({
+            type: HOST_CONTROL_NOTIFICATION_TIMEOUT_EVENT,
+            data: {
+                callID: ev.data.call_id,
+                notificationID: hostNotification.notificationID,
+            },
+        });
+    }, HOST_CONTROL_NOTIFICATION_TIMEOUT);
 }
