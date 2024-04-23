@@ -86,7 +86,6 @@ const Prompt = styled.div`
   padding: 24px 22px;
   max-width: 480px;
   z-index: 1;
-  pointer-events: all;
 `;
 
 const Main = styled.div`
