@@ -33,7 +33,7 @@ type Store struct {
 
 var ErrNotFound = errors.New("not found")
 
-func NewStore(settings model.SqlSettings, wConnector, rConnector driver.Connector, log mlog.LoggerIFace, metrics interfaces.StoreMetrics) (*Store, error) {
+func NewStore(settings model.SqlSettings, rConnector driver.Connector, log mlog.LoggerIFace, metrics interfaces.StoreMetrics) (*Store, error) {
 	if settings.DriverName == nil {
 		return nil, fmt.Errorf("invalid nil DriverName")
 	}
@@ -48,15 +48,6 @@ func NewStore(settings model.SqlSettings, wConnector, rConnector driver.Connecto
 
 	if settings.MigrationsStatementTimeoutSeconds == nil {
 		return nil, fmt.Errorf("invalid nil MigrationsStatementTimeoutSeconds")
-	}
-
-	if wConnector == nil {
-		return nil, fmt.Errorf("invalid nil writer connector")
-	}
-
-	if rConnector == nil {
-		log.Info("store: no reader connector passed, using writer")
-		rConnector = wConnector
 	}
 
 	if log == nil {
@@ -82,19 +73,27 @@ func NewStore(settings model.SqlSettings, wConnector, rConnector driver.Connecto
 		st.binaryParams = binaryParams
 	}
 
-	st.wDB = sql.OpenDB(wConnector)
-	if err := st.wDB.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping writer DB: %w", err)
+	db, err := st.setupDBConn(*settings.DataSource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup db connection: %w", err)
 	}
+
+	st.wDB = db
 	st.wDBx = sqlx.NewDb(st.wDB, st.driverName)
 	if st.driverName == model.DatabaseDriverMysql {
 		st.wDBx.MapperFunc(func(s string) string { return s })
 	}
 
-	st.rDB = sql.OpenDB(rConnector)
-	if err := st.rDB.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping reader DB: %w", err)
+	if rConnector == nil {
+		log.Info("store: no reader connector passed, using writer")
+		st.rDB = st.wDB
+	} else {
+		st.rDB = sql.OpenDB(rConnector)
+		if err := st.rDB.Ping(); err != nil {
+			return nil, fmt.Errorf("failed to ping reader DB: %w", err)
+		}
 	}
+
 	st.rDBx = sqlx.NewDb(st.rDB, st.driverName)
 	if st.driverName == model.DatabaseDriverMysql {
 		st.rDBx.MapperFunc(func(s string) string { return s })

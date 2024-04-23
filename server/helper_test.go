@@ -17,7 +17,6 @@ import (
 
 	"github.com/mattermost/morph/models"
 
-	"github.com/lib/pq"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -90,10 +89,6 @@ func NewTestStore(t *testing.T) (*db.Store, func()) {
 	settings.DataSource = model.NewString(dsn)
 	settings.DriverName = model.NewString(model.DatabaseDriverPostgres)
 
-	conn, err := pq.NewConnector(dsn)
-	require.NoError(t, err)
-	require.NotNil(t, conn)
-
 	mockLogger.On("Info", mock.Anything).Run(func(args mock.Arguments) {
 		log.Printf(args.Get(0).(string))
 	})
@@ -103,7 +98,9 @@ func NewTestStore(t *testing.T) (*db.Store, func()) {
 	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
 	mockMetrics.On("ObserveStoreMethodsTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
 
-	store, err := db.NewStore(settings, conn, nil, mockLogger, mockMetrics)
+	mockLogger.On("Debug", "db opened", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Once()
+
+	store, err := db.NewStore(settings, nil, mockLogger, mockMetrics)
 	require.NoError(t, err)
 	require.NotNil(t, store)
 

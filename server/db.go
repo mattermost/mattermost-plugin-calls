@@ -18,8 +18,7 @@ func (p *Plugin) initDB() error {
 		return fmt.Errorf("server config should not be nil")
 	}
 
-	store, err := db.NewStore(serverCfg.SqlSettings,
-		driver.NewConnector(p.Driver, true), driver.NewConnector(p.Driver, false), newLogger(p), p.metrics)
+	store, err := db.NewStore(serverCfg.SqlSettings, driver.NewConnector(p.Driver, false), newLogger(p), p.metrics)
 	if err != nil {
 		p.LogError(err.Error())
 		return fmt.Errorf("failed to create db store: %w", err)

@@ -71,7 +71,7 @@ func (s *Store) initMorph(dryRun bool, timeoutSecs int) (*morph.Morph, error) {
 			return nil, fmt.Errorf("failed to append multiple statements flag: %w", dsnErr)
 		}
 
-		db, connErr := s.setupConnForMigrations(dsn)
+		db, connErr := s.setupDBConn(dsn)
 		if connErr != nil {
 			return nil, fmt.Errorf("failed to setup db connection: %w", connErr)
 		}

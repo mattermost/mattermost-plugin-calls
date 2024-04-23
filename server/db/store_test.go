@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/lib/pq"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,13 +36,11 @@ func TestNewStore(t *testing.T) {
 		settings.DriverName = model.NewString(model.DatabaseDriverPostgres)
 
 		t.Run("writer only", func(t *testing.T) {
-			conn, err := pq.NewConnector(dsn)
-			require.NoError(t, err)
-			require.NotNil(t, conn)
-
 			mockLogger.On("Info", "store: no reader connector passed, using writer").Once()
 
-			store, err := NewStore(settings, conn, nil, mockLogger, mockMetrics)
+			mockLogger.On("Debug", "db opened", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Once()
+
+			store, err := NewStore(settings, nil, mockLogger, mockMetrics)
 			require.NoError(t, err)
 			require.NotNil(t, store)
 
@@ -49,15 +48,13 @@ func TestNewStore(t *testing.T) {
 		})
 
 		t.Run("writer and reader", func(t *testing.T) {
-			wConn, err := pq.NewConnector(dsn)
-			require.NoError(t, err)
-			require.NotNil(t, wConn)
-
 			rConn, err := pq.NewConnector(dsn)
 			require.NoError(t, err)
 			require.NotNil(t, rConn)
 
-			store, err := NewStore(settings, wConn, rConn, mockLogger, mockMetrics)
+			mockLogger.On("Debug", "db opened", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Once()
+
+			store, err := NewStore(settings, rConn, mockLogger, mockMetrics)
 			require.NoError(t, err)
 			require.NotNil(t, store)
 
@@ -76,16 +73,11 @@ func TestNewStore(t *testing.T) {
 		settings.DriverName = model.NewString(model.DatabaseDriverMysql)
 
 		t.Run("writer only", func(t *testing.T) {
-			config, err := mysql.ParseDSN(dsn)
-			require.NoError(t, err)
-
-			conn, err := mysql.NewConnector(config)
-			require.NoError(t, err)
-			require.NotNil(t, conn)
-
 			mockLogger.On("Info", "store: no reader connector passed, using writer").Once()
 
-			store, err := NewStore(settings, conn, nil, mockLogger, mockMetrics)
+			mockLogger.On("Debug", "db opened", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Once()
+
+			store, err := NewStore(settings, nil, mockLogger, mockMetrics)
 			require.NoError(t, err)
 			require.NotNil(t, store)
 
@@ -96,15 +88,13 @@ func TestNewStore(t *testing.T) {
 			config, err := mysql.ParseDSN(dsn)
 			require.NoError(t, err)
 
-			wConn, err := mysql.NewConnector(config)
-			require.NoError(t, err)
-			require.NotNil(t, wConn)
-
 			rConn, err := mysql.NewConnector(config)
 			require.NoError(t, err)
 			require.NotNil(t, rConn)
 
-			store, err := NewStore(settings, wConn, rConn, mockLogger, mockMetrics)
+			mockLogger.On("Debug", "db opened", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Once()
+
+			store, err := NewStore(settings, rConn, mockLogger, mockMetrics)
 			require.NoError(t, err)
 			require.NotNil(t, store)
 
