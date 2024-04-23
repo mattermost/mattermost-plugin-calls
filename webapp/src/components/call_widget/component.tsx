@@ -1528,7 +1528,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     visible={!this.props.clientConnecting}
                     isMuted={this.isMuted()}
                 />
-                {this.props.hostNotifications.length > 0 && <HostNotifications onWidget={true}/>}
+                <HostNotifications small={true}/>
                 {joinedUsers}
             </div>
         );
