@@ -20,6 +20,7 @@ import {
     displayFreeTrial,
     getCallsConfig,
     incomingCallOnChannel,
+    loadProfilesByIdsIfMissing,
     setClientConnecting,
     showScreenSourceModal,
     showSwitchCallModal,
@@ -62,13 +63,13 @@ import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/ty
 import {
     CALL_STATE,
     DISMISS_CALL,
-    PROFILES_JOINED,
     RECEIVED_CHANNEL_STATE,
     UNINIT,
     USER_LOWER_HAND,
     USER_MUTED,
     USER_RAISE_HAND,
     USER_UNMUTED,
+    USERS_STATES,
 } from './action_types';
 import CallsClient from './client';
 import CallWidget from './components/call_widget';
@@ -112,8 +113,9 @@ import {
     getCallsClient,
     getChannelURL,
     getPluginPath,
-    getProfilesForSessions,
+    getSessionsMapFromSessions,
     getTranslations,
+    getUserIDsForSessions,
     getWSConnectionURL,
     isCallsPopOut,
     playSound,
@@ -683,18 +685,11 @@ export default class Plugin {
 
                     const call = data[i].call;
 
-                    if (!call || !call.users?.length) {
+                    if (!call || !call.sessions?.length) {
                         continue;
                     }
 
-                    actions.push({
-                        type: PROFILES_JOINED,
-                        data: {
-                            // eslint-disable-next-line no-await-in-loop
-                            profiles: await getProfilesForSessions(store.getState(), call.sessions),
-                            channelID: data[i].channel_id,
-                        },
-                    });
+                    store.dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(call.sessions)));
 
                     if (!callStartAtForCallInChannel(store.getState(), data[i].channel_id)) {
                         actions.push({
@@ -705,6 +700,14 @@ export default class Plugin {
                                 startAt: call.start_at,
                                 ownerID: call.owner_id,
                                 threadID: call.thread_id,
+                            },
+                        });
+
+                        actions.push({
+                            type: USERS_STATES,
+                            data: {
+                                states: getSessionsMapFromSessions(call.sessions),
+                                channelID: data[i].channel_id,
                             },
                         });
 

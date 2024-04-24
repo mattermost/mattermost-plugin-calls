@@ -97,43 +97,62 @@ export const teamForCurrentCall: (state: GlobalState) => Team | null =
         },
     );
 
-const profilesInCalls = (state: GlobalState) => pluginState(state).profiles;
+const sessionsInCalls = (state: GlobalState): sessionsState => {
+    return pluginState(state).sessions;
+};
+
+const userProfiles = (state: GlobalState) => state.entities.users.profiles;
+
+const getProfilesMapFromSessions = (sessions: Record<string, UserSessionState>, profiles: Record<string, UserProfile>) => {
+    const profilesMap: Record<string, UserProfile> = {};
+    for (const session of Object.values(sessions || {})) {
+        if (profiles[session.user_id]) {
+            profilesMap[session.user_id] = profiles[session.user_id];
+        }
+    }
+    return profilesMap;
+};
 
 export const profilesInCurrentCall: (state: GlobalState) => UserProfile[] =
     createSelector(
         'profilesInCurrentCall',
-        profilesInCalls,
+        userProfiles,
+        sessionsInCalls,
         channelIDForCurrentCall,
-        (profiles, channelID) => (Object.values(profiles[channelID] || {}) as UserProfile[]).filter((el, idx, arr) => arr.indexOf(el) === idx),
+        (profiles, sessions, channelID) => {
+            return Object.values(getProfilesMapFromSessions(sessions[channelID], profiles));
+        },
     );
 
 export const profilesInCallInCurrentChannel: (state: GlobalState) => UserProfile[] =
     createSelector(
         'profilesInCallInCurrentChannel',
-        profilesInCalls,
+        userProfiles,
+        sessionsInCalls,
         getCurrentChannelId,
-        (profiles, currChannelId) => (Object.values(profiles[currChannelId] || {}) as UserProfile[]).filter((el, idx, arr) => arr.indexOf(el) === idx),
+        (profiles, sessions, currChannelId) => {
+            return Object.values(getProfilesMapFromSessions(sessions[currChannelId], profiles));
+        },
     );
 
 // profilesInCurrentCallMap creates an id->UserProfile object for the currently connected call.
 export const profilesInCurrentCallMap: (state: GlobalState) => { [id: string]: UserProfile } =
     createSelector(
         'profilesInCurrentCallMap',
-        profilesInCurrentCall,
-        (profiles) => makeIdToObject(profiles),
+        userProfiles,
+        sessionsInCalls,
+        channelIDForCurrentCall,
+        (profiles, sessions, channelID) => {
+            return getProfilesMapFromSessions(sessions[channelID], profiles);
+        },
     );
 
-export const profilesInCallInChannel: (state: GlobalState, channelId: string) => UserProfile[] =
-    (state, channelID) => {
-        return (Object.values(profilesInCalls(state)[channelID] || {}) as UserProfile[]).filter((el, idx, arr) => arr.indexOf(el) === idx);
-    };
+export const profilesInCallInChannel = (state: GlobalState, channelID: string): UserProfile[] => {
+    return Object.values(getProfilesMapFromSessions(sessionsInCalls(state)[channelID], userProfiles(state)));
+};
 
 export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
     return profilesInCallInChannel(state, channelId).length > 0;
-};
-
-const sessionsInCalls = (state: GlobalState): sessionsState => {
-    return pluginState(state).sessions;
 };
 
 export const sessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
@@ -543,13 +562,6 @@ export const getStatusForCurrentUser: (state: GlobalState) => string =
         getUserStatuses,
         (id, statuses) => statuses[id],
     );
-
-export function makeIdToObject<HasId extends { id: string }>(arr: HasId[]) {
-    return arr.reduce((acc: { [id: string]: HasId }, e) => {
-        acc[e.id] = e;
-        return acc;
-    }, {});
-}
 
 // modals
 
