@@ -74,7 +74,7 @@ test.describe('join call', () => {
         await userPage.leaveCall();
     });
 
-    test.only('user profile popover', async ({page}) => {
+    test('user profile popover', async ({page}) => {
         const userAPage = page;
         const userADevPage = new PlaywrightDevPage(page);
         await userADevPage.gotoDM(usernames[1]);
