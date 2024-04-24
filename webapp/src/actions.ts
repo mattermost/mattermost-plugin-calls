@@ -483,7 +483,6 @@ export const loadProfilesByIdsIfMissing = (ids: string[]) => {
             }
         }
         if (missingIds.length > 0) {
-            console.log('dispatching profiles');
             dispatch({type: UserTypes.RECEIVED_PROFILES, data: await RestClient.getProfilesByIds(missingIds)});
         }
     };
