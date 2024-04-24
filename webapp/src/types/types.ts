@@ -18,6 +18,7 @@ export const CallsConfigDefault: CallsConfig = {
     EnableRinging: true,
     EnableTranscriptions: false,
     EnableLiveCaptions: false,
+    HostControlsAllowed: false,
 };
 
 export type ChannelState = {

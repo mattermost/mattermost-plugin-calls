@@ -508,7 +508,7 @@ export const isAtLeastProfessional = (state: GlobalState): boolean => {
     return enterprise || professional || isCloudProfessionalOrEnterpriseOrTrial(state);
 };
 
-export const areHostControlsAllowed = (state: GlobalState): boolean => isAtLeastProfessional(state);
+export const areHostControlsAllowed = (state: GlobalState): boolean => callsConfig(state).HostControlsAllowed;
 
 export const adminStats = (state: GlobalState) => state.entities.admin.analytics;
 
