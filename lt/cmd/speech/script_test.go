@@ -16,7 +16,7 @@ func TestImportScript(t *testing.T) {
 	}{
 		{
 			name: "basic script",
-			script: `Alice Bob
+			script: `Alice-F Bob-M
 
 2s
 Alice
@@ -31,7 +31,6 @@ Bob
 Hi also. Jinx.
 Alice
 Hi again.
-
 `,
 			want: Script{
 				users:     []string{"Alice", "Bob"},
@@ -60,6 +59,8 @@ Hi again.
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := importScript(strings.NewReader(tt.script))
+			// ignore the randomized voiceIDs
+			got.voiceIDs = nil
 			if (err != nil) != tt.wantErr {
 				t.Errorf("importScript() error = %v, wantErr %v", err, tt.wantErr)
 				return

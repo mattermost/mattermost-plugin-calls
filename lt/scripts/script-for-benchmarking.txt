@@ -60,38 +60,6 @@ Let's talk over one another for a few sentences to see how the transcriber handl
 Dartagnan
 Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me.
 
-1s
-Alice
-Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
-
-1s
-Alice
-That was nuts.
-
-1s
-Alice
-Let's do it again.
-
-10ms
-Alice
-After these quick sentences.
-
-10ms
-Alice
-To see how well the transcriber.
-
-10ms
-Alice
-Handles short breaks.
-
-10ms
-Alice
-If we can do that.
-
-10ms
-Alice
-Not sure how quick it will be.
-
 10ms
 Alice
 Let's do it again.
@@ -102,11 +70,7 @@ Let's talk over one another for a few sentences to see how the transcriber handl
 Dartagnan
 Usually you wouldn't have three people talking over one another like this.
 
-1s
-Alice
-Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
-
-2s
+500ms
 Alice
 Let's do it again. This time with longer sentences.
 
@@ -115,10 +79,6 @@ Bilbo
 Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure. Let's talk over one another for a few sentences to see how the transcriber handles it. Or then it might merge in and then fail. That could be solved with a merge queue, but that's a whole other thing we need to configure.
 Dartagnan
 Usually you wouldn't have three people talking over one another like this. Seems a little crazy to me.
-
-1s
-Alice
-Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable. Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable. Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
 
 2s
 Cercei
@@ -131,22 +91,10 @@ Cercei
 That may be problematic. So I definitely acknowledge there is a potential problem there. But it's eventually is really about process.
 
 1s
-Alice
-Yeah, and I guess I'll depend a bit on the PR because sometimes you might run into the-- like I'm expecting to run into with some of the various brief actions I've been doing things that cause conflict without causing a git conflict.
-
-1s
 Bilbo
 Or then it might merge in and then fail.
 Dartagnan
 That could be solved with a merge queue, but that's a whole other thing we need to configure.
-
-1s
-Alice
-Yeah, generally I think I think exactly what Gabe said in the chat like yeah, if there's nothing explicitly saying do not merge then yeah, it's mergeable.
-
-1s
-Cercei
-Right, yeah. Or in the past, if there's something I want to merge myself, I'll assign it to myself. I just know some people prefer all of their PRs get merged by themselves.
 
 5s
 Bilbo
@@ -202,10 +150,6 @@ I figured maybe it was just bad, um, a code path that we hadn't fully tested.
 Cercei
 It turns out that in CI, at least as before I merged, the way we do license-based testing is there's an mm_license environment variable that, um, just, you know, exposure to the license to the.
 
-1s
-Bilbo
-Matter-mosture running the CI tests. And you cannot uninstall your license if you have an environment-defined license. Matter-mosture just immediately reinstalls the version because it's like, oh, there's a license
-
 100ms
 Cercei
 Available and puts it right back. Um, so all of my tests that were trying to remove it and prove that metrics got disabled, um, because in an enterprise edition just would fail in that mindset because
@@ -218,7 +162,7 @@ They never actually got disabled. So if anyone's writing any tests that involved
 Bilbo
 You know, why I didn't get merged quite so quickly. So I was hoping to figure out the source of that. Um, that also means that the test that is merged is actually still failing and we agree that.
 
-3s
+200ms
 Dartagnan
 Was okay for now. Obviously if you see that, that's, that's my fault. Um, yeah. Anyway, just in case you're looking for metrics, they're in the honor repo and it's all merged and hopefully this is the the beginning of a new thing, that's it for me.
 
@@ -242,17 +186,9 @@ Distributes their enterprise source code, which is also in their motor repo, and
 Cercei
 but to use it in a production environment, as to how the license is written, requires in our case a matter most enterprise addition license, a valid one. So that explicitly
 
-3s
-Bilbo
-Allows the use of that code in developer environments and in testing environments, just not in production. That's really the extent of it. We used in playbooks, that's where
-
-200ms
-Bilbo
-it kind of originated three years ago, to continue to develop in that single repository, mindset, and I think it's red to a full of other repositories as well. You can apply it
-
 300ms
-Cercei
-On the entire repo, that's one way of deploying it to a plugin or to a code base, but you can also apply it to a single folder. And in the playbooks case, like total transparency, the code inside the enterprise folder is nothing more than if it is licensed than do something
+Bilbo
+Allows the use of that code in developer environments and in testing environments, just not in production. That's really the extent of it. We used in playbooks, that's where it kind of originated three years ago, to continue to develop in that single repository, mindset, and I think it's red to a full of other repositories as well.
 
 1s
 Dartagnan
@@ -261,5 +197,5 @@ Alice
 Businesses are willing to use products and code in various environments.
 
 1s
-Bilbo
-And so the goal is not to make a bullet proof, can't be cracked, kind of modeled, but to more create a, frankly,
+Alice
+The end.

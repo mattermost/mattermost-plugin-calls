@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	duration = 10 * time.Minute
+	duration = 11 * time.Minute
 )
 
 var script, siteURL, wsURL, channelID, teamID, userPassword, profile string
