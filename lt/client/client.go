@@ -291,16 +291,20 @@ func (u *User) transmitSpeech() {
 		log.Fatalf("%s: failed to create opus encoder: %s", u.cfg.Username, err.Error())
 	}
 
-	if err := u.callsClient.Unmute(track); err != nil {
-		log.Fatalf(err.Error())
-	}
-
 	for text := range u.speechTextCh {
 		func() {
 			defer func() {
+				time.Sleep(100 * time.Millisecond)
+				u.Mute()
+				log.Printf("muted")
 				u.doneSpeakingCh <- struct{}{}
 			}()
 			log.Printf("%s: received text to speak: %q", u.cfg.Username, text)
+
+			if err := u.callsClient.Unmute(track); err != nil {
+				log.Fatalf(err.Error())
+			}
+			log.Printf("unmuted")
 
 			var rd io.Reader
 			var rate int

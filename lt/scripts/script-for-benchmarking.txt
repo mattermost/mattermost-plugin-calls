@@ -1,68 +1,34 @@
 Alice-F Bilbo-M Cercei-F Dartagnan-M
 
-1s
-Alice
-Test 1
-
-1s
-Alice
-Test 1 again
-
-1s
-Bilbo
-Test 1
-
-1s
-Cercei
-Test 1
-
-1s
-Dartagnan
-Test 1
-
-1s
-Alice
-Test 2
-
-1s
-Bilbo
-Test 2
-
-1s
-Cercei
-Test 2
-
-1s
-Dartagnan
-Test 2
-
-1s
-Alice
-Test 3
-
-1s
-Bilbo
-Test 3
-
-1s
-Cercei
-Test 3
-
-1s
-Dartagnan
-Test 3
-
 2s
 Alice
-We're going to try an experiment to see how quickly the transcriber can work through simultaneous audio tracks. It's pretty unrealistic to have two people talking over one another for an extended period of time, since you can't understand what they're saying. But sometimes you'll have overlapping audio as someone interrupts a speaker. But in the case let's try three speakers to see what it looks like as an edge case. Ready set go.
+We're going to try an experiment to see how quickly the transcriber can work through simultaneous audio tracks. It's pretty unrealistic to have two people talking over one another for an extended period of time, since you can't understand what they're saying. But sometimes you'll have overlapping audio as someone interrupts a speaker.
 
 1s
 Bilbo
 April is the cruelest month, breeding Lilacs out of the dead land, mixing Memory and desire, stirring Dull roots with spring rain. Winter kept us warm, covering Earth in forgetful snow, feeding A little life with dried tubers. Summer surprised us, coming over the Starnbergersee With a shower of rain; we stopped in the colonnade, And went on in sunlight, into the Hofgarten, And drank coffee, and talked for an hour.
 Cercei
-And when we were children, staying at the archduke’s, My cousin’s, he took me out on a sled, And I was frightened. He said, Marie, Marie, hold on tight. And down we went. In the mountains, there you feel free. I read, much of the night, and go south in the winter. What are the roots that clutch, what branches grow Out of this stony rubbish? Son of man, You cannot say, or guess, for you know only
+And when we were children, staying at the archduke’s, My cousin’s, he took me out on a sled, And I was frightened.
+
+1s
+Bilbo
+He said, Marie, Marie, hold on tight. And down we went. In the mountains, there you feel free.
+
+500ms
+Bilbo
+I read, much of the night, and go south in the winter. What are the roots that clutch, what branches grow Out of this stony rubbish? Son of man, You cannot say, or guess, for you know only
 Dartagnan
-A heap of broken images, where the sun beats, And the dead tree gives no shelter, the cricket no relief, And the dry stone no sound of water. Only There is shadow under this red rock, (Come in under the shadow of this red rock), And I will show you something different from either Your shadow at morning striding behind you Or your shadow at evening rising to meet you; I will show you fear in a handful of dust.
+A heap of broken images, where the sun beats
+
+100ms
+Dartagnan
+And the dead tree gives no shelter, the cricket no relief, And the dry stone no sound of water.
+
+2s
+Cercei
+Only There is shadow under this red rock, (Come in under the shadow of this red rock), And I will show you something different from either Your shadow at morning striding behind you Or your shadow at evening rising to meet you; I will show you fear in a handful of dust.
+Dartagnan
+And the dead tree gives no shelter, the cricket no relief.
 
 1s
 Alice
@@ -74,7 +40,7 @@ And when we were children, staying at the archduke’s, My cousin’s, he took m
 
 1s
 Alice
-Ok, back to the regular transcript from a dev meeting, which we've cut up and assigned to different speakers.
+Ok, back to the regular transcript from a dev meeting, which we've cut up and assigned to different speakers. There is some crosstalk.
 
 2s
 Alice

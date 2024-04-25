@@ -111,7 +111,6 @@ func performScript(filename string) error {
 				doneCh := userClients[userIdx].Speak(block.text[i])
 				go func(idx int) {
 					<-doneCh
-					userClients[idx].Mute()
 					blockWg.Done()
 				}(userIdx)
 			}
