@@ -214,6 +214,40 @@
         "hosting": "on-prem"
       },
       {
+        "key": "TranscribeAPI",
+        "display_name": "Call transcriber API",
+        "type": "dropdown",
+        "default": "whisper.cpp",
+        "help_text": "The speech-to-text API to use for post-call transcriptions.",
+        "options": [
+          {
+            "display_name": "Whisper.CPP",
+            "value": "whisper.cpp"
+          },
+          {
+            "display_name": "Azure AI",
+            "value": "azure"
+          }
+        ],
+        "hosting": "on-prem"
+      },
+      {
+        "key": "TranscribeAPIAzureSpeechKey",
+        "display_name": "Azure Speech Services API Key",
+        "type": "text",
+        "help_text": "The API key for Azure Speech Services",
+        "default": "",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "TranscribeAPIAzureSpeechRegion",
+        "display_name": "Azure Speech Services API Region",
+        "type": "text",
+        "help_text": "The API region for Azure Speech Services",
+        "default": "",
+        "hosting": "on-prem"
+      },
+      {
         "key": "TranscriberNumThreads",
         "display_name": "Call transcriber threads",
         "type": "number",

@@ -42,6 +42,7 @@ import LiveCaptionsNumTranscribers
     from 'src/components/admin_console_settings/recordings/live_captions_num_transcribers';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
 import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
+import TranscribeAPI from 'src/components/admin_console_settings/recordings/transcriber_api';
 import TranscriberModelSize from 'src/components/admin_console_settings/recordings/transcriber_model_size';
 import TranscriberNumThreads from 'src/components/admin_console_settings/recordings/transcriber_num_threads';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
@@ -411,6 +412,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
         registry.registerAdminConsoleCustomSetting('EnableTranscriptions', EnableTranscriptions);
         registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
+        registry.registerAdminConsoleCustomSetting('TranscribeAPI', TranscribeAPI);
         registry.registerAdminConsoleCustomSetting('TranscriberNumThreads', TranscriberNumThreads);
         registry.registerAdminConsoleCustomSetting('EnableLiveCaptions', EnableLiveCaptions);
         registry.registerAdminConsoleCustomSetting('LiveCaptionsModelSize', LiveCaptionsModelSize);

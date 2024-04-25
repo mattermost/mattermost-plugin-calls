@@ -329,6 +329,13 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		transcriberConfig.TranscriptionID = jobID
 		transcriberConfig.AuthToken = authToken
 		transcriberConfig.ModelSize = cfg.TranscriberModelSize
+		transcriberConfig.TranscribeAPI = cfg.TranscribeAPI
+		if cfg.TranscribeAPI == transcriber.TranscribeAPIAzure {
+			transcriberConfig.TranscribeAPIOptions = map[string]any{
+				"AZURE_SPEECH_KEY":    cfg.TranscribeAPIAzureSpeechKey,
+				"AZURE_SPEECH_REGION": cfg.TranscribeAPIAzureSpeechRegion,
+			}
+		}
 		transcriberConfig.LiveCaptionsOn = cfg.liveCaptionsEnabled()
 		transcriberConfig.LiveCaptionsModelSize = cfg.LiveCaptionsModelSize
 		transcriberConfig.LiveCaptionsNumTranscribers = *cfg.LiveCaptionsNumTranscribers
