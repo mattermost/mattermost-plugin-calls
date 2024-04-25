@@ -506,10 +506,16 @@ export function handleHostUnraiseHand(store: Store, ev: WebSocketMessage<{
         displayName,
     };
 
-    store.dispatch({
-        type: HOST_CONTROL_NOTIFICATION,
-        data: hostNotification,
-    });
+    // Put the notification on the end of the event loop so that unraiseHand can be processed before
+    // we continue. This prevents the "raised hand" and "host has lowered your hand" reaction chips
+    // from being shown at the same time.
+    setTimeout(() => {
+        store.dispatch({
+            type: HOST_CONTROL_NOTIFICATION,
+            data: hostNotification,
+        });
+    }, 0);
+
     setTimeout(() => {
         store.dispatch({
             type: HOST_CONTROL_NOTIFICATION_TIMEOUT_EVENT,
