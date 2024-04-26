@@ -2,15 +2,16 @@ import React, {ChangeEvent} from 'react';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
-import {isCloud, isOnPremNotEnterprise, transcriptionsEnabled} from 'src/selectors';
+import {isCloud, isOnPremNotEnterprise, recordingsEnabled, transcriptionsEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const TranscriberNumThreads = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const hasTranscriptions = useSelector(transcriptionsEnabled);
+    const recordingEnabled = useSelector(recordingsEnabled);
 
-    if (cloud || restricted || !hasTranscriptions) {
+    if (cloud || restricted || !hasTranscriptions || !recordingEnabled) {
         return null;
     }
 
