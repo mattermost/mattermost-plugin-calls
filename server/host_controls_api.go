@@ -88,9 +88,9 @@ func (p *Plugin) handleScreenOff(w http.ResponseWriter, r *http.Request) {
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleUnraiseHand(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleLowerHand(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
-	defer p.httpAudit("handleUnraiseHand", &res, w, r)
+	defer p.httpAudit("handleLowerHand", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 	callID := mux.Vars(r)["call_id"]
@@ -104,8 +104,8 @@ func (p *Plugin) handleUnraiseHand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := p.unraiseHand(userID, callID, params.SessionID); err != nil {
-		p.LogError("handleUnraiseHand: failed", "err", err.Error())
+	if err := p.lowerHand(userID, callID, params.SessionID); err != nil {
+		p.LogError("handleLowerHand: failed", "err", err.Error())
 		res.Code = http.StatusInternalServerError
 		res.Err = err.Error()
 		return

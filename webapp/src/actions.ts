@@ -599,7 +599,7 @@ export const screenOff = async (callID: string, sessionID: string) => {
 
 export const unraiseHand = async (callID: string, sessionID: string) => {
     return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/unraise-hand`,
+        `${getPluginPath()}/calls/${callID}/host/lower-hand`,
         {
             method: 'post',
             body: JSON.stringify({session_id: sessionID}),

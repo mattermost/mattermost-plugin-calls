@@ -123,7 +123,7 @@ func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 	return nil
 }
 
-func (p *Plugin) unraiseHand(requesterID, channelID, sessionID string) error {
+func (p *Plugin) lowerHand(requesterID, channelID, sessionID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -135,7 +135,7 @@ func (p *Plugin) unraiseHand(requesterID, channelID, sessionID string) error {
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to stop screenshare")
+			return errors.New("no permissions to lower hand")
 		}
 	}
 
