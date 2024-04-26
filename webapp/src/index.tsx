@@ -127,9 +127,9 @@ import {
     handleCallStart,
     handleCallState,
     handleCaption,
+    handleHostLowerHand,
     handleHostMute,
     handleHostScreenOff,
-    handleHostUnraiseHand,
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
@@ -258,8 +258,8 @@ export default class Plugin {
             handleHostScreenOff(store, ev);
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_host_unraise_hand`, (ev) => {
-            handleHostUnraiseHand(store, ev);
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_host_lower_hand`, (ev) => {
+            handleHostLowerHand(store, ev);
         });
     }
 

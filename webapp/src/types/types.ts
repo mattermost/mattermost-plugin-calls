@@ -164,7 +164,7 @@ export type IncomingCallNotification = {
 }
 
 export enum HostControlNotificationType {
-    UnraisedHand
+    LowerHand
 }
 
 export type HostControlNotification = {

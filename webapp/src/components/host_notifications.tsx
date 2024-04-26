@@ -19,7 +19,7 @@ export const HostNotifications = ({onWidget = false}: Props) => {
         <>
             {notifications.map((n) => {
                 switch (n.type) {
-                case HostControlNotificationType.UnraisedHand:
+                case HostControlNotificationType.LowerHand:
                     return (
                         <Notification
                             key={n.notificationID}

@@ -477,7 +477,7 @@ export function handleHostScreenOff(store: Store, ev: WebSocketMessage<{ channel
     client.unshareScreen();
 }
 
-export function handleHostUnraiseHand(store: Store, ev: WebSocketMessage<{
+export function handleHostLowerHand(store: Store, ev: WebSocketMessage<{
     call_id: string,
     channel_id: string,
     session_id: string,
@@ -500,7 +500,7 @@ export function handleHostUnraiseHand(store: Store, ev: WebSocketMessage<{
     const displayName = getUserDisplayName(profiles[ev.data.host_id]);
 
     const hostNotification: HostControlNotification = {
-        type: HostControlNotificationType.UnraisedHand,
+        type: HostControlNotificationType.LowerHand,
         callID: ev.data.call_id,
         notificationID: generateId(),
         displayName,

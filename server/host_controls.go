@@ -148,7 +148,7 @@ func (p *Plugin) unraiseHand(requesterID, channelID, sessionID string) error {
 		return nil
 	}
 
-	p.publishWebSocketEvent(wsEventHostUnraiseHand, map[string]interface{}{
+	p.publishWebSocketEvent(wsEventHostLowerHand, map[string]interface{}{
 		"call_id":    state.Call.ID,
 		"channel_id": channelID,
 		"session_id": sessionID,
