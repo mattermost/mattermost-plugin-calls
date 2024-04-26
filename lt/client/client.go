@@ -274,10 +274,20 @@ func (u *User) transmitAudio() {
 	}
 }
 
-func (u *User) Mute() {
-	if err := u.callsClient.Mute(); err != nil {
+func (u *User) Mute() error {
+	err := u.callsClient.Mute()
+	if err != nil {
 		log.Printf("%s: failed to mute: %s", u.cfg.Username, err.Error())
 	}
+	return err
+}
+
+func (u *User) Unmute(track webrtc.TrackLocal) error {
+	err := u.callsClient.Unmute(track)
+	if err != nil {
+		log.Printf("%s: failed to mute: %s", u.cfg.Username, err.Error())
+	}
+	return err
 }
 
 func (u *User) transmitSpeech() {
@@ -285,10 +295,6 @@ func (u *User) transmitSpeech() {
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
-	if err := u.callsClient.Unmute(track); err != nil {
-		log.Fatalf(err.Error())
-	}
-	log.Printf("unmuted")
 
 	enc, err := opus.NewEncoder(24000, 1, opus.AppVoIP)
 	if err != nil {
@@ -299,18 +305,18 @@ func (u *User) transmitSpeech() {
 		func() {
 			defer func() {
 				time.Sleep(100 * time.Millisecond)
-				// When we fix muting/unmuting issues, uncomment:
-				//u.Mute()
-				//log.Printf("muted")
+				if err := u.Mute(); err != nil {
+					log.Fatalf(err.Error())
+				}
+				log.Printf("muted")
 				u.doneSpeakingCh <- struct{}{}
 			}()
 			log.Printf("%s: received text to speak: %q", u.cfg.Username, text)
 
-			// When we fix muting/unmuting issues, uncomment (and remove initial unmute above):
-			//if err := u.callsClient.Unmute(track); err != nil {
-			//	log.Fatalf(err.Error())
-			//}
-			//log.Printf("unmuted")
+			if err := u.Unmute(track); err != nil {
+				log.Fatalf(err.Error())
+			}
+			log.Printf("unmuted")
 
 			var rd io.Reader
 			var rate int

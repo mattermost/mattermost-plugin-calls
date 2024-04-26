@@ -1,5 +1,57 @@
 Alice-F Bilbo-M Cercei-F Dartagnan-M
 
+1s
+Alice
+Test 1
+
+1s
+Alice
+Test 1 again
+
+1s
+Bilbo
+Test 1
+
+1s
+Cercei
+Test 1
+
+1s
+Dartagnan
+Test 1
+
+1s
+Alice
+Test 2
+
+1s
+Bilbo
+Test 2
+
+1s
+Cercei
+Test 2
+
+1s
+Dartagnan
+Test 2
+
+1s
+Alice
+Test 3
+
+1s
+Bilbo
+Test 3
+
+1s
+Cercei
+Test 3
+
+1s
+Dartagnan
+Test 3
+
 2s
 Alice
 We're going to try an experiment to see how quickly the transcriber can work through simultaneous audio tracks. It's pretty unrealistic to have two people talking over one another for an extended period of time, since you can't understand what they're saying. But sometimes you'll have overlapping audio as someone interrupts a speaker. But in the case let's try three speakers to see what it looks like as an edge case. Ready set go.
