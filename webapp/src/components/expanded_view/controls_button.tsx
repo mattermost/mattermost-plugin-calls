@@ -102,9 +102,9 @@ const ButtonContainer = styled.button<ButtonContainerProps>`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: ${({$margin}) => $margin || '0 8px'};
+    margin: ${({$margin}) => $margin || '0'};
     border-radius: 8px;
-    padding: 12px;
+    padding: 10px;
     border: none;
     background: ${({$bgColor}) => $bgColor || 'rgba(var(--button-color-rgb), 0.08)'};
 

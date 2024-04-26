@@ -3,8 +3,6 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import './component.scss';
-
 import {mosThreshold} from '@calls/common';
 import {UserSessionState} from '@calls/common/lib/types';
 import {Channel} from '@mattermost/types/channels';
@@ -177,14 +175,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             headerSpreader: {
                 marginRight: 'auto',
             },
-            closeViewButton: {
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '40px',
-                height: '40px',
-                borderRadius: '4px',
-            },
             participants: {
                 display: 'grid',
                 overflow: 'auto',
@@ -195,23 +185,26 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '16px 8px',
+                padding: '12px',
                 width: '100%',
             },
             centerControls: {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                gap: '8px',
             },
             topContainer: {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '16px',
-                lineHeight: '24px',
+                fontSize: '14px',
+                lineHeight: '20px',
                 fontWeight: 600,
+                padding: '8px',
+                margin: '0 12px',
+                gap: '4px',
                 height: '56px',
-                padding: '0 20px',
             },
             screenContainer: {
                 display: 'flex',
@@ -904,19 +897,46 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return null;
         }
 
-        return (
+        const badge = (
             <Badge
                 id={'calls-recording-badge'}
                 text={'REC'}
                 textSize={12}
-                gap={6}
-                margin={'0 12px 0 0'}
-                padding={'8px 6px'}
+                lineHeight={16}
+                gap={4}
+                margin={'0 8px 0 0'}
+                padding={'6px 8px'}
                 icon={(<RecordCircleIcon style={{width: '12px', height: '12px'}}/>)}
+                hoverIcon={(<RecordSquareIcon style={{width: '12px', height: '12px'}}/>)}
                 bgColor={hasRecStarted ? '#D24B4E' : 'rgba(221, 223, 228, 0.04)'}
                 loading={!hasRecStarted}
             />
         );
+
+        if (hasRecStarted) {
+            const {formatMessage} = this.props.intl;
+            return (
+                <OverlayTrigger
+                    placement='bottom'
+                    key={'badge-stop-recording'}
+                    overlay={
+                        <Tooltip id='tooltip-badge-stop-recording'>
+                            {formatMessage({defaultMessage: 'Click to stop'})}
+                        </Tooltip>
+                    }
+                >
+
+                    <button
+                        className='style--none'
+                        onClick={() => this.onRecordToggle()}
+                    >
+                        {badge}
+                    </button>
+                </OverlayTrigger>
+            );
+        }
+
+        return badge;
     };
 
     render() {
@@ -1006,11 +1026,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <div style={this.style.topContainer}>
                         {this.renderRecordingBadge()}
                         <CallDuration
-                            style={{margin: '4px'}}
                             startAt={this.props.callStartAt}
                         />
-                        <span style={{margin: '4px'}}>{untranslatable('•')}</span>
-                        <span style={{margin: '4px', whiteSpace: 'nowrap'}}>
+                        <span>{untranslatable('•')}</span>
+                        <span style={{whiteSpace: 'nowrap'}}>
                             {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.sessions.length})}
                         </span>
 
@@ -1025,19 +1044,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 </Tooltip>
                             }
                         >
-                            <button
-                                className='button-close'
-                                style={this.style.closeViewButton}
+                            <CloseViewButton
+                                className='style--none'
                                 onClick={this.onCloseViewClick}
                             >
                                 <CollapseIcon
                                     style={{
                                         width: '24px',
                                         height: '24px',
-                                        fill: 'white',
                                     }}
                                 />
-                            </button>
+                            </CloseViewButton>
                         </OverlayTrigger>
                     </div>
 
@@ -1065,7 +1082,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         id='calls-expanded-view-controls'
                         style={this.style.controls}
                     >
-                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start', marginLeft: '16px'}}>
+                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start'}}>
                             <ControlsButton
                                 id='calls-popout-participants-button'
                                 onToggle={() => this.onParticipantsListToggle()}
@@ -1078,12 +1095,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 icon={
                                     <ParticipantsIcon
                                         style={{
-                                            width: '28px',
-                                            height: '28px',
+                                            width: '24px',
+                                            height: '24px',
                                         }}
                                     />
                                 }
-                                margin='0'
                             />
                         </div>
 
@@ -1103,8 +1119,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 icon={
                                     <MuteIcon
                                         style={{
-                                            width: '28px',
-                                            height: '28px',
+                                            width: '24px',
+                                            height: '24px',
                                         }}
                                     />
                                 }
@@ -1126,8 +1142,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={
                                         <ShareIcon
                                             style={{
-                                                width: '28px',
-                                                height: '28px',
+                                                width: '24px',
+                                                height: '24px',
                                             }}
                                         />
                                     }
@@ -1147,7 +1163,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     bgColorHover={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.20)' : ''}
                                     iconFill={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.80)' : ''}
                                     iconFillHover={isRecording ? 'var(--dnd-indicator)' : ''}
-                                    icon={<RecordIcon style={{width: '28px', height: '28px'}}/>}
+                                    icon={<RecordIcon style={{width: '24px', height: '24px'}}/>}
                                 />
                             }
 
@@ -1183,7 +1199,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={
                                         <div style={{position: 'relative'}}>
                                             <ChatThreadIcon
-                                                style={{width: '28px', height: '28px'}}
+                                                style={{width: '24px', height: '24px'}}
                                             />
                                             {!chatDisabled && isChatUnread && (
                                                 <UnreadIndicator mentions={this.props.threadUnreadMentions}/>
@@ -1194,7 +1210,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 />
                             )}
                         </div>
-                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
+                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
                             <ControlsButton
                                 id='calls-popout-leave-button'
                                 onToggle={() => this.onDisconnectClick()}
@@ -1206,10 +1222,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 iconFillHover={'white'}
                                 icon={
                                     <LeaveCallIcon
-                                        style={{width: '28px', height: '28px'}}
+                                        style={{width: '24px', height: '24px'}}
                                     />
                                 }
-                                margin='0'
                             />
                         </div>
                     </div>
@@ -1259,7 +1274,9 @@ const isActiveElementInteractable = () => {
 
 const UnreadIndicator = ({mentions}: { mentions?: number }) => {
     return (
-        <UnreadDot>
+        <UnreadDot
+            $padding={mentions ? '0.5px 2px' : ''}
+        >
             {mentions &&
                 <MentionsCounter>{mentions > 99 ? untranslatable('99+') : mentions}</MentionsCounter>
             }
@@ -1269,11 +1286,13 @@ const UnreadIndicator = ({mentions}: { mentions?: number }) => {
 
 const MentionsCounter = styled.span`
     font-weight: 700;
-    font-size: 8px;
+    font-size: 10px;
+    line-height: 11px;
     color: var(--button-color);
+    padding: 0 2.5px;
 `;
 
-const UnreadDot = styled.span`
+const UnreadDot = styled.span<{$padding: string}>`
     position: absolute;
     display: flex;
     justify-content: center;
@@ -1281,11 +1300,11 @@ const UnreadDot = styled.span`
     z-index: 1;
     top: -4px;
     right: -4px;
-    width: 15px;
-    height: 12px;
-    background: var(--button-bg);
+    min-width: 8px;
+    min-height: 8px;
+    padding: ${({$padding}) => $padding || 0};
+    background: var(--sidebar-text-active-border);
     border-radius: 8px;
-    border: 2px solid white;
 `;
 
 const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean }>`
@@ -1344,12 +1363,43 @@ const CloseButton = styled.button`
     }
 `;
 
+const CloseViewButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+
+    svg {
+      fill: rgba(255, 255, 255, 0.64);
+    }
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.08);
+
+        svg {
+          fill: rgba(255, 255, 255, 0.72);
+        }
+    }
+
+    &:active {
+        background: rgba(255, 255, 255, 0.16);
+
+        svg {
+          fill: rgba(255, 255, 255, 0.80);
+        }
+    }
+`;
+
 const ReactionOverlay = styled.div`
     position: absolute;
     bottom: 96px;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    pointer-events: none;
 `;
 
 const LiveCaptionsOverlay = styled.div`
