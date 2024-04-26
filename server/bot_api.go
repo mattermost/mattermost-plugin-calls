@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -28,6 +29,11 @@ func (p *Plugin) isBot(userID string) bool {
 	if userID != "" && userID == p.getBotID() {
 		return true
 	}
+
+	if bot, err := p.getAIBot(); err == nil && userID == bot.UserId {
+		return true
+	}
+
 	return false
 }
 
@@ -608,6 +614,63 @@ func (p *Plugin) handleBotGetFilenameForCall(w http.ResponseWriter, r *http.Requ
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"filename": p.genFilenameForCall(callID),
 	}); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
+func (p *Plugin) handleBotPostAI(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleBotPostInAICallThread", &res, w, r)
+
+	channelID := mux.Vars(r)["call_id"]
+
+	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{})
+	if err != nil {
+		res.Code = http.StatusBadRequest
+		res.Err = err.Error()
+		return
+	}
+
+	if call.StartAt == 0 || call.EndAt > 0 {
+		res.Err = "no call ongoing"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	var post *model.Post
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&post); err != nil {
+		res.Err = "failed to decode request body: " + err.Error()
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	aiBot, err := p.getAIBot()
+	if err != nil {
+		res.Err = "failed to get ai bot: " + err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	channel, appErr := p.API.GetDirectChannel(p.getBotID(), aiBot.UserId)
+	if appErr != nil {
+		res.Err = "failed to get channel: " + appErr.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	post.ChannelId = channel.Id
+	if post.UserId == "" {
+		post.UserId = p.getBotID()
+	}
+	post, appErr = p.API.CreatePost(post)
+	if appErr != nil {
+		res.Err = "failed to create post: " + appErr.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(post); err != nil {
 		p.LogError(err.Error())
 	}
 }

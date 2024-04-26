@@ -12,7 +12,7 @@ import (
 
 const aiPluginID = "mattermost-ai"
 
-func (p *Plugin) createAIBotSession() (*model.Session, error) {
+func (p *Plugin) getAIBot() (*model.Bot, error) {
 	bots, appErr := p.API.GetBots(&model.BotGetOptions{
 		OwnerId: aiPluginID,
 		PerPage: 1,
@@ -22,9 +22,17 @@ func (p *Plugin) createAIBotSession() (*model.Session, error) {
 	} else if len(bots) == 0 {
 		return nil, fmt.Errorf("AI bot not found")
 	}
+	return bots[0], nil
+}
+
+func (p *Plugin) createAIBotSession() (*model.Session, error) {
+	bot, err := p.getAIBot()
+	if err != nil {
+		return nil, err
+	}
 
 	session, appErr := p.API.CreateSession(&model.Session{
-		UserId:    bots[0].UserId,
+		UserId:    bot.UserId,
 		ExpiresAt: time.Now().Add(3 * time.Hour).UnixMilli(),
 	})
 	if appErr != nil {
@@ -63,6 +71,7 @@ func (p *Plugin) summonAI(userID, channelID string) error {
 	}
 
 	p.publishWebSocketEvent(wsEventSummonAI, map[string]interface{}{
+		"channel_id": channelID,
 		"auth_token": session.Token,
 	}, &model.WebsocketBroadcast{ConnectionId: state.Transcription.Props.BotConnID, ReliableClusterSend: true})
 
