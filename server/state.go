@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
@@ -233,10 +234,10 @@ func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClien
 	return users, states
 }
 
-func (cs *callState) onlyUserLeft(userID string) bool {
+func (cs *callState) onlyUsersLeft(userIDs []string) bool {
 	var found bool
 	for _, session := range cs.sessions {
-		if session.UserID != userID {
+		if !slices.Contains(userIDs, session.UserID) {
 			return false
 		}
 		found = true

@@ -25,6 +25,15 @@ func (p *Plugin) getAIBot() (*model.Bot, error) {
 	return bots[0], nil
 }
 
+func (p *Plugin) getAIBotID() string {
+	bot, err := p.getAIBot()
+	if err != nil {
+		p.LogError("failed to get AI bot", "err", err.Error())
+		return ""
+	}
+	return bot.UserId
+}
+
 func (p *Plugin) createAIBotSession() (*model.Session, error) {
 	bot, err := p.getAIBot()
 	if err != nil {

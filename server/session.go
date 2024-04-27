@@ -251,7 +251,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 
 	// If the bot is the only user left in the call we automatically stop any
 	// ongoing jobs.
-	if state.onlyUserLeft(p.getBotID()) {
+	if state.onlyUsersLeft([]string{p.getBotID(), p.getAIBotID()}) {
 		p.LogDebug("all users left call with job(s) in progress, stopping", "channelID", channelID)
 
 		if state.Recording != nil {
