@@ -109,10 +109,10 @@ func performScript(filename string) error {
 			for i, userIdx := range block.speakers {
 				blockWg.Add(1)
 				doneCh := userClients[userIdx].Speak(block.text[i])
-				go func(idx int) {
+				go func() {
 					<-doneCh
 					blockWg.Done()
-				}(userIdx)
+				}()
 			}
 
 			blockWg.Wait()
