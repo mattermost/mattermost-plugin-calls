@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallsConfig, LiveCaption, RTCStats} from '@calls/common/lib/types';
+import {CallsConfig, LiveCaption, RTCStats} from '@mattermost/calls-common/lib/types';
 import {MessageDescriptor} from 'react-intl';
 
 export const CallsConfigDefault: CallsConfig = {

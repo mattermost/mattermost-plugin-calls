@@ -5,8 +5,8 @@
 
 import './component.scss';
 
-import {mosThreshold} from '@calls/common';
-import {UserSessionState} from '@calls/common/lib/types';
+import {mosThreshold} from '@mattermost/calls-common';
+import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';

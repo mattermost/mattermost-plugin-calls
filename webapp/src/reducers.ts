@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import {CallJobState, CallsConfig, LiveCaption, Reaction, UserSessionState} from '@calls/common/lib/types';
+import {CallJobState, CallsConfig, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';

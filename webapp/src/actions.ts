@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 
-import {CallsConfig, CallState, UserSessionState} from '@calls/common/lib/types';
+import {CallsConfig, CallState, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {ClientError} from '@mattermost/client';
 import {Channel} from '@mattermost/types/channels';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';

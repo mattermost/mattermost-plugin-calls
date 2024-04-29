@@ -17,7 +17,7 @@ import {
     UserRemovedData,
     UserScreenOnOffData,
     UserVoiceOnOffData,
-} from '@calls/common/lib/types';
+} from '@mattermost/calls-common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
