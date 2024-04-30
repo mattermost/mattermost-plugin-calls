@@ -1350,6 +1350,7 @@ const ReactionOverlay = styled.div`
     display: flex;
     flex-direction: column;
     gap: 12px;
+    pointer-events: none;
 `;
 
 const LiveCaptionsOverlay = styled.div`

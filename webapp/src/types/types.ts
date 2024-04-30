@@ -18,6 +18,7 @@ export const CallsConfigDefault: CallsConfig = {
     EnableRinging: true,
     EnableTranscriptions: false,
     EnableLiveCaptions: false,
+    HostControlsAllowed: false,
 };
 
 export type ChannelState = {
@@ -160,6 +161,22 @@ export type IncomingCallNotification = {
     callerID: string;
     startAt: number;
     type: ChannelType;
+}
+
+export enum HostControlNotificationType {
+    LowerHand
+}
+
+export type HostControlNotification = {
+    type: HostControlNotificationType;
+    callID: string;
+    notificationID: string;
+    displayName: string;
+}
+
+export type HostControlNotificationTimeout = {
+    callID: string;
+    notificationID: string;
 }
 
 // From webapp because the constants file is not import friendly.
