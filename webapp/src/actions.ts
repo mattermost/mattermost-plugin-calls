@@ -597,7 +597,7 @@ export const screenOff = async (callID: string, sessionID: string) => {
     );
 };
 
-export const unraiseHand = async (callID: string, sessionID: string) => {
+export const lowerHand = async (callID: string, sessionID: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/host/lower-hand`,
         {

@@ -1,6 +1,6 @@
 import React from 'react';
 import {useIntl} from 'react-intl';
-import {makeHost, muteSession, screenOff, unraiseHand} from 'src/actions';
+import {lowerHand, makeHost, muteSession, screenOff} from 'src/actions';
 import {DropdownMenuItem} from 'src/components/dot_menu/dot_menu';
 import {StyledMonitorAccount} from 'src/components/expanded_view/styled_components';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -40,7 +40,7 @@ export const HostControlsMenu = ({callID, userID, sessionID, isMuted, isSharingS
                 </DropdownMenuItem>
             }
             {isHandRaised &&
-                <DropdownMenuItem onClick={() => unraiseHand(callID, sessionID)}>
+                <DropdownMenuItem onClick={() => lowerHand(callID, sessionID)}>
                     <StyledCompassIcon icon={'hand-right-outline-off'}/>
                     {formatMessage({defaultMessage: 'Lower hand'})}
                 </DropdownMenuItem>
