@@ -302,7 +302,10 @@ export function getUserIDsForSessions(sessions: SessionState[]) {
 }
 
 export function getSessionsMapFromSessions(sessions: SessionState[]) {
-    return sessions.reduce((a, v) => ({...a, [v.session_id]: v}), {});
+    return sessions.reduce((map: Record<string, SessionState>, session: SessionState) => {
+        map[session.session_id] = session;
+        return map;
+    }, {});
 }
 
 export function getUserIdFromDM(dmName: string, currentUserId: string) {
