@@ -550,6 +550,8 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
     }
 
     if (call.sessions.length > 0) {
+        // This is async, which is expected as we are okay with setting the state while we wait
+        // for any missing user profiles.
         dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(call.sessions)));
     }
 

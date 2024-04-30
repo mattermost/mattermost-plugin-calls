@@ -199,6 +199,8 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
         notificationsStopRinging(); // And stop ringing for _any_ incoming call.
     }
 
+    // This is async, which is expected as we are okay with setting the state while we wait
+    // for any missing user profiles.
     store.dispatch(loadProfilesByIdsIfMissing([userID]));
 
     store.dispatch({
