@@ -5,13 +5,13 @@ import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import Avatar from 'plugin/components/avatar/avatar';
 import CallParticipant from 'plugin/components/expanded_view/call_participant';
-import {ReactionStream} from 'plugin/components/reaction_stream/reaction_stream';
 import {logErr} from 'plugin/log';
 import {alphaSortSessions, getUserDisplayName, stateSortSessions, untranslatable} from 'plugin/utils';
 import React, {useCallback, useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import ScreenIcon from 'src/components/icons/screen_icon';
+import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import Timestamp from 'src/components/timestamp';
 import {callProfileImages} from 'src/recording/selectors';
 import {
