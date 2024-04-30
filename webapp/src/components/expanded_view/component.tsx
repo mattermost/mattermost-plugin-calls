@@ -67,7 +67,7 @@ import {
 import styled, {createGlobalStyle, css} from 'styled-components';
 
 import CallParticipant from './call_participant';
-import ControlsButton from './controls_button';
+import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './controls_button';
 import GlobalBanner from './global_banner';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 import RecordingInfoPrompt from './recording_info_prompt';
@@ -1197,14 +1197,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     iconFill={showChatThread ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
                                     iconFillHover={showChatThread ? 'var(--calls-bg)' : ''}
                                     icon={
-                                        <div style={{position: 'relative'}}>
+                                        <CallThreadIcon>
                                             <ChatThreadIcon
                                                 style={{width: '20px', height: '20px'}}
                                             />
                                             {!chatDisabled && isChatUnread && (
                                                 <UnreadIndicator mentions={this.props.threadUnreadMentions}/>
                                             )}
-                                        </div>
+                                        </CallThreadIcon>
                                     }
                                     unavailable={chatDisabled}
                                 />
@@ -1220,8 +1220,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 bgColorHover={'linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08))'}
                                 iconFill={'white'}
                                 iconFillHover={'white'}
-
-
 
                                 icon={
                                     <LeaveCallIcon
@@ -1286,29 +1284,6 @@ const UnreadIndicator = ({mentions}: { mentions?: number }) => {
         </UnreadDot>
     );
 };
-
-const MentionsCounter = styled.span`
-    font-weight: 700;
-    font-size: 10px;
-    line-height: 11px;
-    color: var(--button-color);
-    padding: 0 2.5px;
-`;
-
-const UnreadDot = styled.span<{$padding: string}>`
-    position: absolute;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1;
-    top: -4px;
-    right: -4px;
-    min-width: 8px;
-    min-height: 8px;
-    padding: ${({$padding}) => $padding || 0};
-    background: var(--sidebar-text-active-border);
-    border-radius: 8px;
-`;
 
 const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean }>`
     #root {
