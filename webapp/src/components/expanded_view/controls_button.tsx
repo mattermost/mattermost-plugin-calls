@@ -104,12 +104,13 @@ const ButtonContainer = styled.button<ButtonContainerProps>`
     justify-content: center;
     margin: ${({$margin}) => $margin || '0'};
     border-radius: 8px;
-    padding: 10px;
+    padding: 12px;
     border: none;
     background: ${({$bgColor}) => $bgColor || 'rgba(var(--button-color-rgb), 0.08)'};
 
     &:hover {
       background: ${({$bgColorHover}) => $bgColorHover || 'rgba(var(--button-color-rgb), 0.12)'};
+      background-blend-mode: multiply;
 
       svg {
         fill: ${({$fillHover}) => $fillHover || 'var(--button-color)'};

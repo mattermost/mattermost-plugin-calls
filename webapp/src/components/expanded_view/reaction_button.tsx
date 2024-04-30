@@ -207,8 +207,8 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
                 icon={
                     <SmileyIcon
                         style={{
-                            width: '24px',
-                            height: '24px',
+                            width: '20px',
+                            height: '20px',
                         }}
                     />
                 }

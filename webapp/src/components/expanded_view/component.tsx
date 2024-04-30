@@ -1050,8 +1050,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             >
                                 <CollapseIcon
                                     style={{
-                                        width: '24px',
-                                        height: '24px',
+                                        width: '20px',
+                                        height: '20px',
                                     }}
                                 />
                             </CloseViewButton>
@@ -1095,8 +1095,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 icon={
                                     <ParticipantsIcon
                                         style={{
-                                            width: '24px',
-                                            height: '24px',
+                                            width: '20px',
+                                            height: '20px',
                                         }}
                                     />
                                 }
@@ -1119,8 +1119,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 icon={
                                     <MuteIcon
                                         style={{
-                                            width: '24px',
-                                            height: '24px',
+                                            width: '20px',
+                                            height: '20px',
                                         }}
                                     />
                                 }
@@ -1142,8 +1142,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={
                                         <ShareIcon
                                             style={{
-                                                width: '24px',
-                                                height: '24px',
+                                                width: '20px',
+                                                height: '20px',
                                             }}
                                         />
                                     }
@@ -1163,7 +1163,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     bgColorHover={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.20)' : ''}
                                     iconFill={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.80)' : ''}
                                     iconFillHover={isRecording ? 'var(--dnd-indicator)' : ''}
-                                    icon={<RecordIcon style={{width: '24px', height: '24px'}}/>}
+                                    icon={<RecordIcon style={{width: '20px', height: '20px'}}/>}
                                 />
                             }
 
@@ -1199,7 +1199,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={
                                         <div style={{position: 'relative'}}>
                                             <ChatThreadIcon
-                                                style={{width: '24px', height: '24px'}}
+                                                style={{width: '20px', height: '20px'}}
                                             />
                                             {!chatDisabled && isChatUnread && (
                                                 <UnreadIndicator mentions={this.props.threadUnreadMentions}/>
@@ -1217,12 +1217,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 tooltipText={formatMessage({defaultMessage: 'Leave call'})}
                                 shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}
                                 bgColor={'var(--dnd-indicator)'}
-                                bgColorHover={'var(--dnd-indicator)'}
-                                iconFill={'rgba(255, 255, 255, 0.80)'}
+                                bgColorHover={'linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08))'}
+                                iconFill={'white'}
                                 iconFillHover={'white'}
+
+
+
                                 icon={
                                     <LeaveCallIcon
-                                        style={{width: '24px', height: '24px'}}
+                                        style={{width: '20px', height: '20px'}}
                                     />
                                 }
                             />
@@ -1368,8 +1371,7 @@ const CloseViewButton = styled.button`
     align-items: center;
     justify-content: center;
     background: none;
-    width: 40px;
-    height: 40px;
+    padding: 10px;
     border-radius: 4px;
 
     svg {
