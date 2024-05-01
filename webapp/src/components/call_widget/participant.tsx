@@ -1,4 +1,4 @@
-import {UserSessionState} from '@calls/common/lib/types';
+import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
 import {Client4} from 'mattermost-redux/client';
 import React, {CSSProperties} from 'react';

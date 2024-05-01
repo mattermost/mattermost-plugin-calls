@@ -1,5 +1,5 @@
-import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@calls/common';
-import {CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@calls/common/lib/types';
+import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@mattermost/calls-common';
+import {CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
 import {Post} from '@mattermost/types/posts';

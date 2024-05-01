@@ -3,7 +3,7 @@
 
 import {
     UserSessionState,
-} from '@calls/common/lib/types';
+} from '@mattermost/calls-common/lib/types';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import {useIntl} from 'react-intl';

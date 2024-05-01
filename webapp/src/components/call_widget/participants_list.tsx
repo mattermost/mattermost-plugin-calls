@@ -1,6 +1,6 @@
 import './component.scss';
 
-import {UserSessionState} from '@calls/common/lib/types';
+import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import React from 'react';

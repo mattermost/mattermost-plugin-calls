@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {EmojiData} from '@calls/common/lib/types';
+import {EmojiData} from '@mattermost/calls-common/lib/types';
 import EmojiPicker, {
     EmojiClickData,
     EmojiStyle,

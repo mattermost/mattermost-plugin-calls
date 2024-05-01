@@ -1,4 +1,4 @@
-import {CallState, CallStateData, JobStopData, UserJoinedData, WebsocketEventData} from '@calls/common/lib/types';
+import {CallState, CallStateData, JobStopData, UserJoinedData, WebsocketEventData} from '@mattermost/calls-common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {ChannelTypes} from 'mattermost-redux/action_types';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
