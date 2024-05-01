@@ -24,7 +24,7 @@ import {
     UserScreenOnOffData,
     UserVoiceOnOffData,
     WebsocketEventData,
-} from '@calls/common/lib/types';
+} from '@mattermost/calls-common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import {setServerVersion} from 'mattermost-redux/actions/general';

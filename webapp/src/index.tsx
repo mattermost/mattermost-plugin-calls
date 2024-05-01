@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 
-import {CallChannelState} from '@calls/common/lib/types';
+import {CallChannelState} from '@mattermost/calls-common/lib/types';
 import WebSocketClient from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';

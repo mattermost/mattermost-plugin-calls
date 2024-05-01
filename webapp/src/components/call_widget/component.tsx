@@ -1,8 +1,8 @@
 /* eslint-disable max-lines */
 import './component.scss';
 
-import {mosThreshold} from '@calls/common';
-import {UserSessionState} from '@calls/common/lib/types';
+import {mosThreshold} from '@mattermost/calls-common';
+import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
