@@ -23,9 +23,10 @@ require (
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.0.12
 	github.com/mattermost/morph v1.1.0
-	github.com/mattermost/rtcd v0.14.1-0.20240411213408-e373823da2ea
+	github.com/mattermost/rtcd v0.14.1-0.20240502212851-a48099547817
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/procfs v0.11.0
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
 	github.com/testcontainers/testcontainers-go v0.29.1
 	github.com/testcontainers/testcontainers-go/modules/mysql v0.29.1
@@ -113,7 +114,6 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
-	github.com/prometheus/procfs v0.11.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/segmentio/backo-go v1.0.1 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.12 // indirect
