@@ -1,7 +1,7 @@
 /* eslint-disable max-lines */
 // eslint-disable-next-line simple-import-sort/imports
-import {parseRTCStats, RTCMonitor, RTCPeer} from '@calls/common';
-import {EmojiData} from '@calls/common/lib/types';
+import {parseRTCStats, RTCMonitor, RTCPeer} from '@mattermost/calls-common';
+import {EmojiData} from '@mattermost/calls-common/lib/types';
 import {EventEmitter} from 'events';
 
 // @ts-ignore

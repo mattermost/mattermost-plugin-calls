@@ -24,7 +24,7 @@ import {
     UserScreenOnOffData,
     UserVoiceOnOffData,
     WebsocketEventData,
-} from '@calls/common/lib/types';
+} from '@mattermost/calls-common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import {setServerVersion} from 'mattermost-redux/actions/general';
@@ -54,6 +54,7 @@ import {
     handleCallJobState,
     handleCallStart,
     handleCallState,
+    handleHostLowerHand,
     handleHostMute,
     handleHostScreenOff,
     handleUserDismissedNotification,
@@ -277,6 +278,9 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_host_screen_off`:
             handleHostScreenOff(store, ev as WebSocketMessage);
+            break;
+        case `custom_${pluginId}_host_lower_hand`:
+            handleHostLowerHand(store, ev as WebSocketMessage);
             break;
         case 'user_removed':
             handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);
