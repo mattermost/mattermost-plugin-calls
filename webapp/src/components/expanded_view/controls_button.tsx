@@ -87,6 +87,36 @@ export default function ControlsButton(props: Props) {
     );
 }
 
+export const MentionsCounter = styled.span`
+    font-weight: 700;
+    font-size: 11px;
+    line-height: 12px;
+    color: var(--button-color);
+    padding: 0 2.5px;
+`;
+
+export const UnreadDot = styled.span<{$padding: string}>`
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+    top: 0;
+    right: 0;
+    transform: translate(50%, -50%);
+    min-width: 8px;
+    min-height: 8px;
+    padding: ${({$padding}) => $padding || 0};
+    background: var(--sidebar-text-active-border);
+    border-radius: 8px;
+    border: 2px solid color-mix(in srgb, var(--calls-bg), white 8%);
+    box-sizing: content-box;
+`;
+
+export const CallThreadIcon = styled.div`
+  position: relative;
+`;
+
 type ButtonContainerProps = {
     $bgColor: string,
     $bgColorHover?: string,
@@ -102,7 +132,7 @@ const ButtonContainer = styled.button<ButtonContainerProps>`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: ${({$margin}) => $margin || '0 8px'};
+    margin: ${({$margin}) => $margin || '0'};
     border-radius: 8px;
     padding: 12px;
     border: none;
@@ -110,10 +140,15 @@ const ButtonContainer = styled.button<ButtonContainerProps>`
 
     &:hover {
       background: ${({$bgColorHover}) => $bgColorHover || 'rgba(var(--button-color-rgb), 0.12)'};
+      background-blend-mode: multiply;
 
       svg {
         fill: ${({$fillHover}) => $fillHover || 'var(--button-color)'};
       }
+    }
+
+    &:hover ${UnreadDot} {
+      border: 2px solid color-mix(in srgb, var(--calls-bg), white 12%);
     }
 
     svg {

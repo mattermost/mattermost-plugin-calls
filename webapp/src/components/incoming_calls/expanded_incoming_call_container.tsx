@@ -29,10 +29,10 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     align-self: flex-start;
-    margin-top: 8px;
     gap: 5px;
-    margin-right: 7px;
-    z-index: 1;
+    margin-left: auto;
+    margin-right: 4px;
+    z-index: 10;
 `;
 
 const StyledCallIncoming = styled(CallIncomingCondensed)`
