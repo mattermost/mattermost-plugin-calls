@@ -1,6 +1,6 @@
 import React from 'react';
 import {useIntl} from 'react-intl';
-import {makeHost, muteSession, stopScreenshare} from 'src/actions';
+import {lowerHand, makeHost, muteSession, screenOff} from 'src/actions';
 import {DropdownMenuItem} from 'src/components/dot_menu/dot_menu';
 import {StyledMonitorAccount} from 'src/components/expanded_view/styled_components';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -12,9 +12,10 @@ type Props = {
     sessionID: string;
     isMuted: boolean;
     isSharingScreen: boolean;
+    isHandRaised: boolean;
 }
 
-export const HostControlsMenu = ({callID, userID, sessionID, isMuted, isSharingScreen}: Props) => {
+export const HostControlsMenu = ({callID, userID, sessionID, isMuted, isSharingScreen, isHandRaised}: Props) => {
     const {formatMessage} = useIntl();
 
     if (!callID) {
@@ -33,9 +34,15 @@ export const HostControlsMenu = ({callID, userID, sessionID, isMuted, isSharingS
         <>
             {muteUnmute}
             {isSharingScreen &&
-                <DropdownMenuItem onClick={() => stopScreenshare(callID, sessionID)}>
+                <DropdownMenuItem onClick={() => screenOff(callID, sessionID)}>
                     <StyledCompassIcon icon={'monitor-off'}/>
                     {formatMessage({defaultMessage: 'Stop screen share'})}
+                </DropdownMenuItem>
+            }
+            {isHandRaised &&
+                <DropdownMenuItem onClick={() => lowerHand(callID, sessionID)}>
+                    <StyledCompassIcon icon={'hand-right-outline-off'}/>
+                    {formatMessage({defaultMessage: 'Lower hand'})}
                 </DropdownMenuItem>
             }
             <DropdownMenuItem onClick={() => makeHost(callID, userID)}>

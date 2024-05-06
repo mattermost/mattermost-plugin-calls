@@ -3,14 +3,16 @@
 
 import {
     UserSessionState,
-} from '@calls/common/lib/types';
+} from '@mattermost/calls-common/lib/types';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {Emoji} from 'src/components/emoji/emoji';
+import {HostNotifications} from 'src/components/host_notifications';
 import HandEmoji from 'src/components/icons/hand';
 import {
+    hostControlNotificationsForCurrentCall,
     profilesInCurrentCallMap,
     reactionsInCurrentCall,
     sessionsInCurrentCall,
@@ -26,6 +28,7 @@ export const ReactionStream = () => {
     const sessions = useSelector(sessionsInCurrentCall);
     const profileMap = useSelector(profilesInCurrentCallMap);
     const vReactions = useSelector(reactionsInCurrentCall);
+    const notifications = useSelector(hostControlNotificationsForCurrentCall);
 
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
@@ -35,9 +38,7 @@ export const ReactionStream = () => {
                 size={18}
             />
         );
-        const user = reaction.user_id === currentUserID ?
-            formatMessage({defaultMessage: 'You'}) :
-            getUserDisplayName(profileMap[reaction.user_id], true) || formatMessage({defaultMessage: 'Someone'});
+        const user = reaction.user_id === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[reaction.user_id], true) || formatMessage({defaultMessage: 'Someone'});
 
         return (
             <ReactionChipOverlay key={reaction.timestamp + reaction.user_id}>
@@ -87,6 +88,7 @@ export const ReactionStream = () => {
 
     return (
         <ReactionStreamList>
+            {notifications.length > 0 && <HostNotifications/>}
             {handsUp}
             {reactions}
         </ReactionStreamList>
@@ -102,6 +104,7 @@ const ReactionStreamList = styled.div`
     gap: 8px;
     -webkit-mask: -webkit-gradient(#0000, #000);
     mask: linear-gradient(#0000, #0003, #000f);
+    pointer-events: none;
 `;
 
 interface chipProps {
@@ -130,7 +133,7 @@ const ReactionChip = styled.div<chipProps>`
     ${(props) => props.$highlight && css`
         background: #FFFFFF;
         color: #090A0B;
-  `}
+    `}
 `;
 
 const Bold = styled.span`

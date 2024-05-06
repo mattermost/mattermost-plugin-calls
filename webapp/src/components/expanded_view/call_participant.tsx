@@ -1,4 +1,4 @@
-import {Reaction} from '@calls/common/lib/types';
+import {Reaction} from '@mattermost/calls-common/lib/types';
 import React from 'react';
 import {useIntl} from 'react-intl';
 import Avatar from 'src/components/avatar/avatar';
@@ -132,6 +132,7 @@ export default function CallParticipant({
                             sessionID={sessionID}
                             isMuted={isMuted}
                             isSharingScreen={isSharingScreen}
+                            isHandRaised={isHandRaised}
                         />
                     </StyledDotMenu>
                 }

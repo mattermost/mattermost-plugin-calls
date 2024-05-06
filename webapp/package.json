@@ -19,8 +19,8 @@
     "extract": "formatjs extract 'src/**/*.{ts,tsx}' --ignore 'src/**/*.d.ts' --out-file i18n/temp.json --id-interpolation-pattern '[sha512:contenthash:base64:6]' && formatjs compile 'i18n/temp.json' --out-file i18n/en.json && rm i18n/temp.json"
   },
   "dependencies": {
-    "@calls/common": "github:mattermost/calls-common#cc5e65f6c103138fd013d6fa45eb33bfe7544f2a",
     "@floating-ui/react": "0.26.12",
+    "@mattermost/calls-common": "0.27.0",
     "@msgpack/msgpack": "2.7.1",
     "@redux-devtools/extension": "3.2.3",
     "core-js": "3.26.1",
@@ -134,7 +134,7 @@
       "jest-junit"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!react-native|react-router|mattermost-webapp|semver-parser|@calls)"
+      "node_modules/(?!react-native|react-router|mattermost-webapp|semver-parser|@mattermost/calls-common)"
     ],
     "setupFiles": [
       "jest-canvas-mock"

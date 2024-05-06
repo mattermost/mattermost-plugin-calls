@@ -1,8 +1,8 @@
 /* eslint-disable max-lines */
 import './component.scss';
 
-import {mosThreshold} from '@calls/common';
-import {UserSessionState} from '@calls/common/lib/types';
+import {mosThreshold} from '@mattermost/calls-common';
+import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
@@ -17,6 +17,7 @@ import {AudioInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
+import {HostNotifications} from 'src/components/host_notifications';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ExpandIcon from 'src/components/icons/expand';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
@@ -52,6 +53,7 @@ import {
     CallAlertStates,
     CallAlertStatesDefault,
     CallJobReduxState,
+    HostControlNotification,
     IncomingCallNotification,
 } from 'src/types/types';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
@@ -90,6 +92,7 @@ interface Props {
         left: number,
     },
     recentlyJoinedUsers: string[],
+    hostNotifications: HostControlNotification[],
     wider: boolean,
     callsIncoming: IncomingCallNotification[],
     transcriptionsEnabled: boolean,
@@ -1525,6 +1528,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     visible={!this.props.clientConnecting}
                     isMuted={this.isMuted()}
                 />
+                {this.props.hostNotifications.length > 0 && <HostNotifications onWidget={true}/>}
                 {joinedUsers}
             </div>
         );

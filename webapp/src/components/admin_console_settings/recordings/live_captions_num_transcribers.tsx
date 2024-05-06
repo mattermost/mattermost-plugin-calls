@@ -2,15 +2,23 @@ import React, {ChangeEvent} from 'react';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
-import {isCloud, isOnPremNotEnterprise, liveCaptionsEnabled} from 'src/selectors';
+import {
+    isCloud,
+    isOnPremNotEnterprise,
+    liveCaptionsEnabled,
+    recordingsEnabled,
+    transcriptionsEnabled,
+} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const LiveCaptionsNumTranscribers = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
+    const recordingEnabled = useSelector(recordingsEnabled);
+    const transcriptionEnabled = useSelector(transcriptionsEnabled);
     const liveCaptionEnabled = useSelector(liveCaptionsEnabled);
 
-    if (cloud || restricted || !liveCaptionEnabled) {
+    if (cloud || restricted || !recordingEnabled || !transcriptionEnabled || !liveCaptionEnabled) {
         return null;
     }
 
