@@ -145,6 +145,19 @@ const AudioDevices = ({deviceType, isActive, onToggle}: AudioDevicesProps) => {
 
     const handleDeviceChange = (devices: AudioDevices) => {
         setAudioDevices(devices);
+
+        const callsClient = getCallsClient();
+        if (!callsClient) {
+            return;
+        }
+
+        if (callsClient.currentAudioInputDevice !== currentAudioInputDevice) {
+            setCurrentAudioInputDevice(callsClient.currentAudioInputDevice);
+        }
+
+        if (callsClient.currentAudioOutputDevice !== currentAudioOutputDevice) {
+            setCurrentAudioOutputDevice(callsClient.currentAudioOutputDevice);
+        }
     };
 
     useEffect(() => {
