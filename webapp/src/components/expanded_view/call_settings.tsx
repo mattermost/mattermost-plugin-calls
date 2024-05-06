@@ -82,7 +82,7 @@ const AudioDeviceSelectedIcon = styled.div`
 `;
 
 const AudioDeviceName = styled.span`
-  color: rgba(var(--center-channel-color-rgb), 0.56);
+  color: var(--center-channel-color);
   font-size: 14px;
   width: 100%;
   text-overflow: ellipsis;

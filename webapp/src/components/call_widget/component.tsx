@@ -1006,7 +1006,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         <span
                             style={{
-                                color: 'rgba(var(--center-channel-color-rgb), 0.56)',
+                                color: 'var(--center-channel-color)',
                                 fontSize: '14px',
                                 width: '100%',
                                 textOverflow: 'ellipsis',
