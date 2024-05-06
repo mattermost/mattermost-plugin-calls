@@ -11,6 +11,7 @@ type Props = {
     sessions: UserSessionState[];
     profiles: IDMappedObjects<UserProfile>;
     callHostID: string;
+    onRemove: (sessionID: string, userID: string) => void;
     currentSession?: UserSessionState;
     screenSharingSession?: UserSessionState;
     callID?: string;
@@ -20,6 +21,7 @@ export const ParticipantsList = ({
     sessions,
     profiles,
     callHostID,
+    onRemove,
     currentSession,
     screenSharingSession,
     callID,
@@ -37,6 +39,7 @@ export const ParticipantsList = ({
                 iAmHost={currentSession?.user_id === callHostID}
                 isSharingScreen={screenSharingSession?.session_id === session.session_id}
                 callID={callID}
+                onRemove={() => onRemove(session.session_id, session.user_id)}
             />
         ));
     };
@@ -74,6 +77,7 @@ const styles: Record<string, React.CSSProperties> = ({
         borderRadius: '8px',
         border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
         boxShadow: 'none',
+        margin: 0,
 
         /* @ts-ignore */
         appRegion: 'no-drag',

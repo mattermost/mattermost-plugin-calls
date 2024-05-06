@@ -1,7 +1,7 @@
 import React from 'react';
 import {useIntl} from 'react-intl';
-import {lowerHand, makeHost, muteSession, screenOff} from 'src/actions';
-import {DropdownMenuItem} from 'src/components/dot_menu/dot_menu';
+import {hostLowerHand, hostMake, hostMute, hostScreenOff} from 'src/actions';
+import {DropdownMenuItem, DropdownMenuSeparator} from 'src/components/dot_menu/dot_menu';
 import {StyledMonitorAccount} from 'src/components/expanded_view/styled_components';
 import CompassIcon from 'src/components/icons/compassIcon';
 import styled from 'styled-components';
@@ -13,9 +13,18 @@ type Props = {
     isMuted: boolean;
     isSharingScreen: boolean;
     isHandRaised: boolean;
+    onRemove: () => void;
 }
 
-export const HostControlsMenu = ({callID, userID, sessionID, isMuted, isSharingScreen, isHandRaised}: Props) => {
+export const HostControlsMenu = ({
+    callID,
+    userID,
+    sessionID,
+    isMuted,
+    isSharingScreen,
+    isHandRaised,
+    onRemove,
+}: Props) => {
     const {formatMessage} = useIntl();
 
     if (!callID) {
@@ -23,7 +32,7 @@ export const HostControlsMenu = ({callID, userID, sessionID, isMuted, isSharingS
     }
 
     const muteUnmute = isMuted ? null : (
-        <DropdownMenuItem onClick={() => muteSession(callID, sessionID)}>
+        <DropdownMenuItem onClick={() => hostMute(callID, sessionID)}>
             <StyledCompassIcon icon={'microphone-off'}/>
             {formatMessage({defaultMessage: 'Mute participant'})}
         </DropdownMenuItem>
@@ -34,20 +43,25 @@ export const HostControlsMenu = ({callID, userID, sessionID, isMuted, isSharingS
         <>
             {muteUnmute}
             {isSharingScreen &&
-                <DropdownMenuItem onClick={() => screenOff(callID, sessionID)}>
+                <DropdownMenuItem onClick={() => hostScreenOff(callID, sessionID)}>
                     <StyledCompassIcon icon={'monitor-off'}/>
                     {formatMessage({defaultMessage: 'Stop screen share'})}
                 </DropdownMenuItem>
             }
             {isHandRaised &&
-                <DropdownMenuItem onClick={() => lowerHand(callID, sessionID)}>
+                <DropdownMenuItem onClick={() => hostLowerHand(callID, sessionID)}>
                     <StyledCompassIcon icon={'hand-right-outline-off'}/>
                     {formatMessage({defaultMessage: 'Lower hand'})}
                 </DropdownMenuItem>
             }
-            <DropdownMenuItem onClick={() => makeHost(callID, userID)}>
+            <DropdownMenuItem onClick={() => hostMake(callID, userID)}>
                 <StyledMonitorAccount/>
                 {formatMessage({defaultMessage: 'Make host'})}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator/>
+            <DropdownMenuItem onClick={onRemove}>
+                <RedCompassIcon icon={'minus-circle-outline'}/>
+                <RedText>{formatMessage({defaultMessage: 'Remove from call'})}</RedText>
             </DropdownMenuItem>
         </>
     );
@@ -59,4 +73,12 @@ const StyledCompassIcon = styled(CompassIcon)`
     margin-right: 8px;
     margin-left: -2px;
     margin-top: 2px;
+`;
+
+const RedCompassIcon = styled(StyledCompassIcon)`
+    color: var(--dnd-indicator);
+`;
+
+const RedText = styled.span`
+    color: var(--dnd-indicator);
 `;

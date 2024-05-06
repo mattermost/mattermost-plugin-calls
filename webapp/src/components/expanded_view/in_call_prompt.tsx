@@ -3,20 +3,27 @@ import CompassIcon from 'src/components/icons/compassIcon';
 import styled from 'styled-components';
 
 export type Props = {
-    testId: string,
-    icon: string | React.ReactNode,
-    iconFill?: string,
-    iconColor?: string,
-    body: string,
-    error?: string,
-    header: string,
-    confirmText?: string,
-    declineText?: string,
-    onClose?: () => void,
-    onDecline?: () => void,
+    testId: string;
+    icon: string | React.ReactNode;
+    iconFill?: string;
+    iconColor?: string;
+    body: string;
+    error?: string;
+    header: string;
+    leftText?: string;
+    rightText?: string;
+    onLeftButtonClick?: () => void;
+    onRightButtonClick?: () => void;
+    onCloseButtonClick?: () => void;
+    leftButton?: typeof DefaultLeftButton;
+    rightButton?: typeof DefaultRightButton;
 }
 
-export default function InCallPrompt(props: Props) {
+export default function InCallPrompt({
+    leftButton: LeftButton = DefaultLeftButton,
+    rightButton: RightButton = DefaultRightButton,
+    ...props
+}: Props) {
     return (
         <Prompt data-testid={props.testId}>
             <Icon
@@ -37,35 +44,35 @@ export default function InCallPrompt(props: Props) {
                     {props.header}
                 </Header>
                 <Body>
-                    {props.body}
+                    <span>{props.body}</span>
                     { props.error &&
                     <ErrorMsg>{props.error}</ErrorMsg>
                     }
                 </Body>
                 <Footer>
-                    { props.confirmText && props.onClose &&
-                        <ConfirmButton
+                    { props.leftText && props.onLeftButtonClick &&
+                        <LeftButton
                             className='cursor--pointer style--none'
-                            onClick={props.onClose}
+                            onClick={props.onLeftButtonClick}
                         >
-                            {props.confirmText}
-                        </ConfirmButton>
+                            {props.leftText}
+                        </LeftButton>
                     }
 
-                    { props.declineText && props.onDecline &&
-                        <DeclineButton
+                    { props.rightText && props.onRightButtonClick &&
+                        <RightButton
                             className='cursor--pointer style--none'
-                            onClick={props.onDecline}
+                            onClick={props.onRightButtonClick}
                         >
-                            {props.declineText}
-                        </DeclineButton>
+                            {props.rightText}
+                        </RightButton>
                     }
                 </Footer>
             </Main>
 
-            { props.onClose &&
+            { props.onLeftButtonClick &&
                 <CloseButton
-                    onClick={props.onClose}
+                    onClick={props.onCloseButtonClick}
                     data-testid={'popout-prompt-close'}
                 >
                     <CompassIcon icon='close'/>
@@ -111,32 +118,28 @@ const Body = styled.div`
 const Footer = styled.div`
 `;
 
-const ConfirmButton = styled.button`
-  &&& {
+export const DefaultLeftButton = styled.button`
   color: var(--button-color);
   background: var(--button-bg);
   font-weight: 600;
   padding: 10px 16px;
   border-radius: 4px;
   margin-right: 6px;
-  }
 
-  &&&:hover {
+  &:hover {
     background: rgba(var(--button-bg-rgb), 0.9);
   }
 `;
 
-const DeclineButton = styled.button`
-  &&& {
+export const DefaultRightButton = styled.button`
   color: var(--dnd-indicator);
   background: rgba(var(--dnd-indicator-rgb), 0.08);
   font-weight: 600;
   padding: 10px 16px;
   border-radius: 4px;
   margin-left: 6px;
-  }
 
-  &&&:hover {
+  &:hover {
     background: rgba(var(--dnd-indicator-rgb), 0.04);
   }
 `;

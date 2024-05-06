@@ -325,7 +325,7 @@ export const displayCallsTestModeUser = () => {
     };
 };
 
-export const displayGenericErrorModal = (title: MessageDescriptor, message: MessageDescriptor) => {
+export const displayGenericErrorModal = (title: MessageDescriptor, message: MessageDescriptor, confirmText?: MessageDescriptor) => {
     return async (dispatch: DispatchFunc) => {
         dispatch(modals.openModal({
             modalId: IDGenericErrorModal,
@@ -333,6 +333,7 @@ export const displayGenericErrorModal = (title: MessageDescriptor, message: Mess
             dialogProps: {
                 title,
                 message,
+                confirmText,
             },
         }));
 
@@ -567,7 +568,7 @@ export const setClientConnecting = (value: boolean) => (dispatch: Dispatch) => {
     });
 };
 
-export const makeHost = async (callID: string, newHostID: string) => {
+export const hostMake = async (callID: string, newHostID: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/host/make`,
         {
@@ -577,7 +578,7 @@ export const makeHost = async (callID: string, newHostID: string) => {
     );
 };
 
-export const muteSession = async (callID: string, sessionID: string) => {
+export const hostMute = async (callID: string, sessionID: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/host/mute`,
         {
@@ -587,7 +588,7 @@ export const muteSession = async (callID: string, sessionID: string) => {
     );
 };
 
-export const screenOff = async (callID: string, sessionID: string) => {
+export const hostScreenOff = async (callID: string, sessionID: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/host/screen-off`,
         {
@@ -597,9 +598,23 @@ export const screenOff = async (callID: string, sessionID: string) => {
     );
 };
 
-export const lowerHand = async (callID: string, sessionID: string) => {
+export const hostLowerHand = async (callID: string, sessionID: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/host/lower-hand`,
+        {
+            method: 'post',
+            body: JSON.stringify({session_id: sessionID}),
+        },
+    );
+};
+
+export const hostRemove = async (callID?: string, sessionID?: string) => {
+    if (!callID || !sessionID) {
+        return {};
+    }
+
+    return RestClient.fetch(
+        `${getPluginPath()}/calls/${callID}/host/remove`,
         {
             method: 'post',
             body: JSON.stringify({session_id: sessionID}),

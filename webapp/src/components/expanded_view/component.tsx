@@ -11,6 +11,7 @@ import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
+import {IDMappedObjects} from '@mattermost/types/utilities';
 import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
@@ -19,7 +20,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
-import {stopCallRecording} from 'src/actions';
+import {hostRemove, stopCallRecording} from 'src/actions';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
@@ -54,7 +55,13 @@ import {
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
 import * as Telemetry from 'src/types/telemetry';
-import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallJobReduxState} from 'src/types/types';
+import {
+    AudioDevices,
+    CallAlertStates,
+    CallAlertStatesDefault,
+    CallJobReduxState,
+    RemoveConfirmationData,
+} from 'src/types/types';
 import {
     getCallsClient,
     getScreenStream,
@@ -73,6 +80,7 @@ import ControlsButton from './controls_button';
 import GlobalBanner from './global_banner';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 import RecordingInfoPrompt from './recording_info_prompt';
+import {RemoveConfirmation} from './remove_confirmation';
 
 interface Props extends RouteComponentProps {
     intl: IntlShape,
@@ -80,10 +88,9 @@ interface Props extends RouteComponentProps {
     show: boolean,
     currentUserID: string,
     currentTeamID: string,
-    profiles: {
-        [userID: string]: UserProfile,
-    }
+    profiles: IDMappedObjects<UserProfile>,
     sessions: UserSessionState[],
+    sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
     callStartAt: number,
     callHostID: string,
@@ -120,6 +127,7 @@ interface State {
     showParticipantsList: boolean,
     showLiveCaptions: boolean,
     alerts: CallAlertStates,
+    removeConfirmation: RemoveConfirmationData | null,
 }
 
 const StyledMediaController = styled(MediaController)`
@@ -287,6 +295,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             showParticipantsList: false,
             showLiveCaptions: false,
             alerts: CallAlertStatesDefault,
+            removeConfirmation: null,
         };
 
         if (window.opener) {
@@ -730,6 +739,28 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.opener?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
     };
 
+    onRemove = (sessionID: string, userID: string) => {
+        this.setState({
+            removeConfirmation: {
+                sessionID,
+                userID,
+            },
+        });
+    };
+
+    onRemoveConfirm = () => {
+        hostRemove(this.props.channel?.id, this.state.removeConfirmation?.sessionID);
+        this.setState({
+            removeConfirmation: null,
+        });
+    };
+
+    onRemoveCancel = () => {
+        this.setState({
+            removeConfirmation: null,
+        });
+    };
+
     shouldRenderAlertBanner = () => {
         return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
     };
@@ -864,6 +895,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     userID={session.user_id}
                     sessionID={session.session_id}
                     isSharingScreen={this.props.screenSharingSession?.session_id === session.session_id}
+                    onRemove={() => this.onRemove(session.session_id, session.user_id)}
                 />
             );
         });
@@ -880,6 +912,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 isSharingScreen={this.props.screenSharingSession?.session_id === session.session_id}
                 iAmHost={this.props.currentSession?.user_id === this.props.callHostID}
                 callID={this.props.channel?.id}
+                onRemove={() => this.onRemove(session.session_id, session.user_id)}
             />
         ));
     };
@@ -1247,6 +1280,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         promptDismissed={this.dismissRecordingPrompt}
                         transcriptionsEnabled={this.props.transcriptionsEnabled}
                     />
+                    {Boolean(this.state.removeConfirmation) &&
+                        Boolean(this.props.sessionsMap[this.state.removeConfirmation?.sessionID || '']) &&
+                        <RemoveConfirmation
+                            profile={this.props.profiles[this.state.removeConfirmation?.userID || '']}
+                            onConfirm={this.onRemoveConfirm}
+                            onCancel={this.onRemoveCancel}
+                        />
+                    }
                 </ReactionOverlay>
             </div>
         );

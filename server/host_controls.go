@@ -157,3 +157,43 @@ func (p *Plugin) lowerHand(requesterID, channelID, sessionID string) error {
 
 	return nil
 }
+
+func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) error {
+	state, err := p.getCallState(channelID, false)
+	if err != nil {
+		return err
+	}
+
+	if state == nil {
+		return errors.New("no call ongoing")
+	}
+
+	if requesterID != state.Call.GetHostID() {
+		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
+			return errors.New("no permissions to remove session")
+		}
+	}
+
+	ust, ok := state.sessions[sessionID]
+	if !ok {
+		return errors.New("session is not in the call")
+	}
+
+	handlerID, err := p.getHandlerID()
+	if err != nil {
+		p.LogError(err.Error())
+		handlerID = state.Call.Props.NodeID
+	}
+
+	if err := p.closeRTCSession(ust.UserID, sessionID, channelID, handlerID, state.Call.ID); err != nil {
+		p.LogError(err.Error())
+	}
+
+	p.publishWebSocketEvent(wsEventHostRemoved, map[string]interface{}{
+		"call_id":    state.Call.ID,
+		"channel_id": channelID,
+		"session_id": sessionID,
+	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+
+	return nil
+}

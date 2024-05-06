@@ -179,6 +179,11 @@ export type HostControlNotificationTimeout = {
     notificationID: string;
 }
 
+export type RemoveConfirmationData = {
+    sessionID: string;
+    userID: string;
+}
+
 // From webapp because the constants file is not import friendly.
 export const UserStatuses = {
     OUT_OF_OFFICE: 'ooo',

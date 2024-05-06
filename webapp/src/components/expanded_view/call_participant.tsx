@@ -27,6 +27,7 @@ export type Props = {
     callID?: string,
     userID: string,
     sessionID: string,
+    onRemove: () => void,
     isSharingScreen?: boolean,
 }
 
@@ -43,6 +44,7 @@ export default function CallParticipant({
     callID,
     userID,
     sessionID,
+    onRemove,
     isSharingScreen = false,
 }: Props) {
     const {formatMessage} = useIntl();
@@ -133,6 +135,7 @@ export default function CallParticipant({
                             isMuted={isMuted}
                             isSharingScreen={isSharingScreen}
                             isHandRaised={isHandRaised}
+                            onRemove={onRemove}
                         />
                     </StyledDotMenu>
                 }

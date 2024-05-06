@@ -24,8 +24,15 @@ import {WebSocketMessage} from '@mattermost/client/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {generateId} from 'mattermost-redux/utils/helpers';
-import {incomingCallOnChannel, loadCallState, removeIncomingCallNotification, userLeft} from 'src/actions';
+import {
+    displayGenericErrorModal,
+    incomingCallOnChannel,
+    loadCallState,
+    removeIncomingCallNotification,
+    userLeft,
+} from 'src/actions';
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/client';
+import {hostRemovedMsg, removedDismiss, removedMsg, removedMsgTitle} from 'src/components/call_error_modal';
 import {
     HOST_CONTROL_NOTIFICATION_TIMEOUT,
     JOB_TYPE_CAPTIONING,
@@ -75,8 +82,10 @@ import {
     getCallsClient,
     getProfilesByIds,
     getUserDisplayName,
+    isDesktopApp,
     notificationsStopRinging,
     playSound,
+    sendDesktopEvent,
 } from './utils';
 
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
@@ -525,4 +534,38 @@ export function handleHostLowerHand(store: Store, ev: WebSocketMessage<{
             },
         });
     }, HOST_CONTROL_NOTIFICATION_TIMEOUT);
+}
+
+export function handleHostRemoved(store: Store, ev: WebSocketMessage<{
+    call_id: string,
+    channel_id: string,
+    session_id: string,
+}>) {
+    const channelID = ev.data.channel_id;
+    const client = getCallsClient();
+    if (!client || client?.channelID !== channelID) {
+        return;
+    }
+
+    const sessionID = client.getSessionID();
+    if (ev.data.session_id !== sessionID) {
+        return;
+    }
+
+    handleCallEnd(store, {data: {channelID}} as unknown as WebSocketMessage<EmptyData>); // fake the wsMsg
+
+    if (isDesktopApp()) {
+        if (window.desktopAPI?.sendCallsError) {
+            window.desktopAPI.sendCallsError('client-error', channelID, hostRemovedMsg);
+        } else {
+            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+            sendDesktopEvent('calls-error', {
+                err: 'client-error',
+                callID: channelID,
+                errMsg: hostRemovedMsg,
+            });
+        }
+    } else {
+        store.dispatch(displayGenericErrorModal(removedMsgTitle, removedMsg, removedDismiss));
+    }
 }

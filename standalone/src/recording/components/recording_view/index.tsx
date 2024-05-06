@@ -159,6 +159,7 @@ const RecordingView = () => {
                     isYou={false}
                     userID={session.user_id}
                     sessionID={session.session_id}
+                    onRemove={() => null}
                 />
             );
         });

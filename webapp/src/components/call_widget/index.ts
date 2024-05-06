@@ -21,6 +21,7 @@ import {
     screenSharingSessionForCurrentCall,
     sessionForCurrentCall,
     sessionsInCurrentCall,
+    sessionsInCurrentCallMap,
     sortedIncomingCalls,
     transcriptionsEnabled,
 } from 'src/selectors';
@@ -52,6 +53,7 @@ const mapStateToProps = (state: GlobalState) => {
         channelURL,
         channelDisplayName,
         sessions,
+        sessionsMap: sessionsInCurrentCallMap(state),
         currentSession: sessionForCurrentCall(state),
         profiles,
         callStartAt: callStartAtForCurrentCall(state),
