@@ -158,12 +158,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             root: {
                 display: 'flex',
                 width: '100%',
-                height: '100%',
-                zIndex: 1000,
+                height: '100vh',
                 background: 'var(--calls-bg)',
                 color: 'white',
                 gridArea: 'center',
-                overflow: 'auto',
             },
             main: {
                 position: 'relative',
@@ -1278,6 +1276,7 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
         > .team-sidebar,
         > .app-bar,
         > #channel_view .channel__wrap,
+        > button,
         > #SidebarContainer {
             display: none;
         }
@@ -1297,10 +1296,6 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
                 display: none;
             }
         `}
-    }
-
-    #sidebar-right {
-        z-index: 1001;
     }
 `;
 
