@@ -627,3 +627,14 @@ export const hostRemove = async (callID?: string, sessionID?: string) => {
         },
     );
 };
+
+export const hostMuteAll = async (callID?: string) => {
+    if (!callID) {
+        return {};
+    }
+
+    return RestClient.fetch(
+        `${getPluginPath()}/calls/${callID}/host/mute-all`,
+        {method: 'post'},
+    );
+};

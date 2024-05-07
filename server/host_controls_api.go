@@ -58,6 +58,24 @@ func (p *Plugin) handleMuteSession(w http.ResponseWriter, r *http.Request) {
 	res.Msg = "success"
 }
 
+func (p *Plugin) handleMuteAll(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleMuteAll", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	callID := mux.Vars(r)["call_id"]
+
+	if err := p.muteAll(userID, callID); err != nil {
+		p.LogError("handleMuteAll: failed to muteAll", "err", err.Error())
+		res.Code = http.StatusInternalServerError
+		res.Err = err.Error()
+		return
+	}
+
+	res.Code = http.StatusOK
+	res.Msg = "success"
+}
+
 func (p *Plugin) handleScreenOff(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleScreenOff", &res, w, r)
