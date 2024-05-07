@@ -396,7 +396,7 @@ func (u *User) Connect(stopCh chan struct{}) error {
 	cancel()
 
 	if ok && appErr != nil && appErr.Id != "api.user.login.invalid_credentials_email_username" {
-		return err
+		return fmt.Errorf("login failed: %w", err)
 	} else if ok && appErr != nil && appErr.Id == "api.user.login.invalid_credentials_email_username" {
 		if !u.cfg.Setup {
 			return fmt.Errorf("cannot register user with setup disabled")
@@ -411,13 +411,13 @@ func (u *User) Connect(stopCh chan struct{}) error {
 		})
 		cancel()
 		if err != nil {
-			return err
+			return fmt.Errorf("create user failed: %w", err)
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), HTTPRequestTimeout)
 		defer cancel()
 		user, _, err = apiClient.Login(ctx, u.cfg.Username, u.cfg.Password)
 		if err != nil {
-			return err
+			return fmt.Errorf("login failed: %w", err)
 		}
 		cancel()
 	}
@@ -425,13 +425,16 @@ func (u *User) Connect(stopCh chan struct{}) error {
 	log.Printf("%s: logged in", u.cfg.Username)
 	u.userID = user.Id
 
+	// Need to sleep a little here since login can be racy
+	time.Sleep(time.Second)
+
 	// join team
 	if u.cfg.Setup {
 		ctx, cancel = context.WithTimeout(context.Background(), HTTPRequestTimeout)
 		defer cancel()
 		_, _, err = apiClient.AddTeamMember(ctx, u.cfg.TeamID, user.Id)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to add team member: %w", err)
 		}
 		cancel()
 
@@ -439,7 +442,7 @@ func (u *User) Connect(stopCh chan struct{}) error {
 		defer cancel()
 		channel, _, err := apiClient.GetChannel(ctx, u.cfg.ChannelID, "")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get channel: %w", err)
 		}
 		cancel()
 
@@ -449,7 +452,7 @@ func (u *User) Connect(stopCh chan struct{}) error {
 			defer cancel()
 			_, _, err = apiClient.AddChannelMember(ctx, u.cfg.ChannelID, user.Id)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to add channel member: %w", err)
 			}
 			cancel()
 		}

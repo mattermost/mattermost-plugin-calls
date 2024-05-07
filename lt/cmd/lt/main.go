@@ -211,7 +211,7 @@ func main() {
 
 				user := client.NewUser(cfg)
 				if err := user.Connect(stopCh); err != nil {
-					log.Printf("connectUser failed: %s", err.Error())
+					log.Printf("%s: connectUser failed: %s", username, err.Error())
 				}
 			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, i < numUnmuted, i == 0 && j < numScreenSharing, j < numRecordings)
 		}
