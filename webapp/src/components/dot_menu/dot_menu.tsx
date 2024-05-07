@@ -186,7 +186,7 @@ export const DropdownMenuItem = (props: {
     );
 };
 
-export const DropdownMenuSeparator = styled.hr`
+export const DropdownMenuSeparator = styled.div`
     display: flex;
     align-content: center;
     border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.08);

@@ -43,11 +43,15 @@ export const RemoveConfirmation = ({profile, onConfirm, onCancel}: Props) => {
 };
 
 const StyledCompassIcon = styled(CompassIcon)`
-    font-size: 18px;
+    font-size: 24px;
 `;
 
 const StyledLeftButton = styled(DefaultLeftButton)`
     background: var(--dnd-indicator);
+    font-size: 12px;
+    line-height: 16px;
+    padding: 8px 16px;
+    margin-right: 4px;
 
     &:hover {
         background: rgba(var(--dnd-indicator-rgb), 0.9);
@@ -57,6 +61,10 @@ const StyledLeftButton = styled(DefaultLeftButton)`
 const StyledRightButton = styled(DefaultRightButton)`
     color: var(--button-bg);
     background: rgba(var(--button-bg-rgb), 0.08);
+    font-size: 12px;
+    line-height: 16px;
+    padding: 8px 16px;
+    margin-left: 0;
 
     &:hover {
         background: rgba(var(--button-bg-rgb), 0.04);
