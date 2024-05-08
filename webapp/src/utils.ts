@@ -419,6 +419,20 @@ export function sendDesktopEvent(event: string, data?: Record<string, unknown>) 
     );
 }
 
+export function sendDesktopError(channelID?: string, errMsg?: string) {
+    if (window.desktopAPI?.sendCallsError) {
+        logDebug('desktopAPI.sendCallsError');
+        window.desktopAPI.sendCallsError('client-error', channelID, errMsg);
+    } else {
+        // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+        sendDesktopEvent('calls-error', {
+            err: 'client-error',
+            callID: channelID,
+            errMsg,
+        });
+    }
+}
+
 export function capitalize(input: string) {
     return input.charAt(0).toUpperCase() + input.slice(1);
 }

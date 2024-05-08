@@ -85,7 +85,7 @@ import {
     isDesktopApp,
     notificationsStopRinging,
     playSound,
-    sendDesktopEvent,
+    sendDesktopError,
 } from './utils';
 
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
@@ -552,19 +552,10 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<{
         return;
     }
 
-    handleCallEnd(store, {data: {channelID}} as unknown as WebSocketMessage<EmptyData>); // fake the wsMsg
+    getCallsClient()?.disconnect();
 
     if (isDesktopApp()) {
-        if (window.desktopAPI?.sendCallsError) {
-            window.desktopAPI.sendCallsError('client-error', channelID, hostRemovedMsg);
-        } else {
-            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
-            sendDesktopEvent('calls-error', {
-                err: 'client-error',
-                callID: channelID,
-                errMsg: hostRemovedMsg,
-            });
-        }
+        sendDesktopError(channelID, hostRemovedMsg);
     } else {
         store.dispatch(displayGenericErrorModal(removedMsgTitle, removedMsg, removedDismiss));
     }

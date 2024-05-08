@@ -7,6 +7,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	ErrNoCallOngoing = errors.New("no call ongoing")
+	ErrNoPermissions = errors.New("no permissions")
+	ErrNotInCall     = errors.New("requested session or user is not in the call")
+	ErrNotAllowed    = errors.New("not allowed")
+)
+
 func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
@@ -15,17 +22,17 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	defer p.unlockCall(channelID)
 
 	if state == nil {
-		return errors.New("no call ongoing")
+		return ErrNoCallOngoing
 	}
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to change host")
+			return ErrNoPermissions
 		}
 	}
 
 	if newHostID == p.getBotID() {
-		return errors.New("cannot assign the bot to be host")
+		return errors.Wrap(ErrNotAllowed, "cannot assign the bot to be host")
 	}
 
 	if state.Call.GetHostID() == newHostID {
@@ -40,7 +47,7 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	}
 
 	if !state.isUserIDInCall(newHostID) {
-		return errors.New("user is not in the call")
+		return ErrNotInCall
 	}
 
 	state.Call.Props.Hosts = []string{newHostID}
@@ -64,18 +71,18 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	}
 
 	if state == nil {
-		return errors.New("no call ongoing")
+		return ErrNoCallOngoing
 	}
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to mute session")
+			return ErrNoPermissions
 		}
 	}
 
 	ust, ok := state.sessions[sessionID]
 	if !ok {
-		return errors.New("session is not in the call")
+		return ErrNotInCall
 	}
 
 	if !ust.Unmuted {
@@ -97,12 +104,12 @@ func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 	}
 
 	if state == nil {
-		return errors.New("no call ongoing")
+		return ErrNoCallOngoing
 	}
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to set screenOff")
+			return ErrNoPermissions
 		}
 	}
 
@@ -112,7 +119,7 @@ func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 
 	ust, ok := state.sessions[sessionID]
 	if !ok {
-		return errors.New("session is not in the call")
+		return ErrNotInCall
 	}
 
 	p.publishWebSocketEvent(wsEventHostScreenOff, map[string]interface{}{
@@ -130,18 +137,18 @@ func (p *Plugin) lowerHand(requesterID, channelID, sessionID string) error {
 	}
 
 	if state == nil {
-		return errors.New("no call ongoing")
+		return ErrNoCallOngoing
 	}
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to lower hand")
+			return ErrNoPermissions
 		}
 	}
 
 	ust, ok := state.sessions[sessionID]
 	if !ok {
-		return errors.New("session is not in the call")
+		return ErrNotInCall
 	}
 
 	if ust.RaisedHand == 0 {
@@ -165,18 +172,18 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 	}
 
 	if state == nil {
-		return errors.New("no call ongoing")
+		return ErrNoCallOngoing
 	}
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to remove session")
+			return ErrNoPermissions
 		}
 	}
 
 	ust, ok := state.sessions[sessionID]
 	if !ok {
-		return errors.New("session is not in the call")
+		return ErrNotInCall
 	}
 
 	handlerID, err := p.getHandlerID()

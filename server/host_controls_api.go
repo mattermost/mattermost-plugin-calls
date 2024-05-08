@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -24,9 +25,7 @@ func (p *Plugin) handleMakeHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := p.changeHost(userID, callID, payload.NewHostID); err != nil {
-		p.LogError("handleMakeHost: failed to changeHost", "err", err.Error())
-		res.Code = http.StatusInternalServerError
-		res.Err = err.Error()
+		p.handleHostControlsError(err, &res, "handleMakeHost")
 		return
 	}
 
@@ -51,9 +50,7 @@ func (p *Plugin) handleMuteSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := p.muteSession(userID, callID, payload.SessionID); err != nil {
-		p.LogError("handleMuteSession: failed to mute", "err", err.Error())
-		res.Code = http.StatusInternalServerError
-		res.Err = err.Error()
+		p.handleHostControlsError(err, &res, "handleMuteSession")
 		return
 	}
 
@@ -78,9 +75,7 @@ func (p *Plugin) handleScreenOff(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := p.screenOff(userID, callID, payload.SessionID); err != nil {
-		p.LogError("handleScreenOff: failed", "err", err.Error())
-		res.Code = http.StatusInternalServerError
-		res.Err = err.Error()
+		p.handleHostControlsError(err, &res, "handleScreenOff")
 		return
 	}
 
@@ -105,9 +100,7 @@ func (p *Plugin) handleLowerHand(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := p.lowerHand(userID, callID, payload.SessionID); err != nil {
-		p.LogError("handleLowerHand: failed", "err", err.Error())
-		res.Code = http.StatusInternalServerError
-		res.Err = err.Error()
+		p.handleHostControlsError(err, &res, "handleLowerHand")
 		return
 	}
 
@@ -132,12 +125,24 @@ func (p *Plugin) handleRemoveSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := p.hostRemoveSession(userID, callID, payload.SessionID); err != nil {
-		p.LogError("handleRemoveSession: failed to remove", "err", err.Error())
-		res.Code = http.StatusInternalServerError
-		res.Err = err.Error()
+		p.handleHostControlsError(err, &res, "handleRemoveSession")
 		return
 	}
 
 	res.Code = http.StatusOK
 	res.Msg = "success"
+}
+
+func (p *Plugin) handleHostControlsError(err error, res *httpResponse, handlerName string) {
+	p.LogError(handlerName, "err", err.Error())
+
+	res.Code = http.StatusInternalServerError
+	if errors.Is(err, ErrNoCallOngoing) ||
+		errors.Is(err, ErrNoPermissions) ||
+		errors.Is(err, ErrNotInCall) ||
+		errors.Is(err, ErrNotAllowed) {
+		res.Code = http.StatusBadRequest
+	}
+
+	res.Err = err.Error()
 }
