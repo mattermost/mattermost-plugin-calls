@@ -1286,13 +1286,20 @@ const UnreadIndicator = ({mentions}: { mentions?: number }) => {
 };
 
 const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean }>`
-    #root {
+    body.app__body #root {
         > #global-header,
         > .team-sidebar,
         > .app-bar,
         > #channel_view .channel__wrap,
         > #SidebarContainer {
             display: none;
+        }
+
+        > .main-wrapper {
+          margin: 0;
+          padding: 0;
+          border-radius: 0;
+          border: 0;
         }
 
         #sidebar-right #sbrSearchFormContainer {
