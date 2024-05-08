@@ -66,9 +66,7 @@ func (p *Plugin) handleMuteAll(w http.ResponseWriter, r *http.Request) {
 	callID := mux.Vars(r)["call_id"]
 
 	if err := p.muteAll(userID, callID); err != nil {
-		p.LogError("handleMuteAll: failed to muteAll", "err", err.Error())
-		res.Code = http.StatusInternalServerError
-		res.Err = err.Error()
+		p.handleHostControlsError(err, &res, "handleMuteAll")
 		return
 	}
 

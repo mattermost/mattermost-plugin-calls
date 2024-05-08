@@ -105,12 +105,12 @@ func (p *Plugin) muteAll(requesterID, channelID string) error {
 	}
 
 	if state == nil {
-		return errors.New("no call ongoing")
+		return ErrNoCallOngoing
 	}
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to mute session")
+			return ErrNoPermissions
 		}
 	}
 
