@@ -126,7 +126,7 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 	)
 
 	// Open a IVF file and start reading using our IVFReader
-	file, ivfErr := os.Open(fmt.Sprintf("./samples/video_%s.ivf", track.RID()))
+	file, ivfErr := os.Open(fmt.Sprintf("./samples/screen_%s.ivf", track.RID()))
 	if ivfErr != nil {
 		log.Fatalf(ivfErr.Error())
 	}
