@@ -30,6 +30,7 @@ export const ParticipantsList = ({
     callID,
 }: Props) => {
     const {formatMessage} = useIntl();
+    const isHost = currentSession?.user_id === callHostID;
 
     const renderParticipants = () => {
         return sessions.map((session) => (
@@ -39,7 +40,7 @@ export const ParticipantsList = ({
                 profile={profiles[session.user_id]}
                 isYou={session.session_id === currentSession?.session_id}
                 isHost={callHostID === session.user_id}
-                iAmHost={currentSession?.user_id === callHostID}
+                iAmHost={isHost}
                 isSharingScreen={screenSharingSession?.session_id === session.session_id}
                 callID={callID}
                 onRemove={() => onRemove(session.session_id, session.user_id)}
@@ -62,7 +63,7 @@ export const ParticipantsList = ({
                     style={styles.participantsListHeader}
                 >
                     {formatMessage({defaultMessage: 'Participants'})}
-                    {sessions.some((s) => s.unmuted) &&
+                    {sessions.some((s) => s.unmuted) && isHost &&
                         <MuteAllButton onClick={() => hostMuteAll(callID)}>
                             <CompassIcon icon={'microphone-off'}/>
                             {formatMessage({defaultMessage: 'Mute all'})}
