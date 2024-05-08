@@ -256,8 +256,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 fontWeight: 600,
                 fontSize: '16px',
                 padding: '0 16px',
-                height: '63px',
-                lineHeight: '63px',
+                height: '56px',
+                lineHeight: '56px',
             },
             centerView: {
                 display: 'flex',
@@ -1321,6 +1321,7 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
 
     #sidebar-right {
         z-index: 1001;
+        border: 0;
     }
 `;
 

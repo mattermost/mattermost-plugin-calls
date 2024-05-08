@@ -42,7 +42,7 @@ const Container = styled.div<{ $wider: boolean }>`
     flex-direction: column;
     gap: 5px;
     z-index: 102;
-    width: ${(props) => (props.$wider ? '280px' : '216px')};
+    width: ${(props) => (props.$wider ? '306px' : '248px')};
     bottom: 10px;
     left: 12px;
 `;
