@@ -118,6 +118,8 @@ interface Props extends RouteComponentProps {
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     transcriptionsEnabled: boolean,
     liveCaptionsAvailable: boolean,
+    isAdmin: boolean,
+    hostControlsAllowed: boolean,
 }
 
 interface State {
@@ -1034,6 +1036,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
 
         const isHost = this.props.callHostID === this.props.currentUserID;
+        const hostControlsAvailable = this.props.hostControlsAllowed && (isHost || this.props.isAdmin);
 
         const isRecording = isHost && this.props.isRecording;
         const showCCButton = this.props.liveCaptionsAvailable;
@@ -1269,7 +1272,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <div style={this.style.rhsHeader}>
                                 <span>{formatMessage({defaultMessage: 'Participants'})}</span>
                                 <ToTheRight/>
-                                {this.props.sessions.some((s) => s.unmuted) &&
+                                {hostControlsAvailable && this.props.sessions.some((s) => s.unmuted) &&
                                     <MuteAllButton onClick={() => hostMuteAll(this.props.channel?.id)}>
                                         <CompassIcon icon={'microphone-off'}/>
                                         {formatMessage({defaultMessage: 'Mute all'})}

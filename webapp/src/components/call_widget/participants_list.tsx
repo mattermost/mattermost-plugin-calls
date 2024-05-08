@@ -7,6 +7,7 @@ import React from 'react';
 import {useIntl} from 'react-intl';
 import {hostMuteAll} from 'src/actions';
 import {Participant} from 'src/components/call_widget/participant';
+import {useHostControls} from 'src/components/expanded_view/hooks';
 import CompassIcon from 'src/components/icons/compassIcon';
 import styled from 'styled-components';
 
@@ -31,6 +32,7 @@ export const ParticipantsList = ({
 }: Props) => {
     const {formatMessage} = useIntl();
     const isHost = currentSession?.user_id === callHostID;
+    const {hostControlsAvailable} = useHostControls(false, false, isHost);
 
     const renderParticipants = () => {
         return sessions.map((session) => (
@@ -63,7 +65,7 @@ export const ParticipantsList = ({
                     style={styles.participantsListHeader}
                 >
                     {formatMessage({defaultMessage: 'Participants'})}
-                    {sessions.some((s) => s.unmuted) && isHost &&
+                    {hostControlsAvailable && sessions.some((s) => s.unmuted) &&
                         <MuteAllButton onClick={() => hostMuteAll(callID)}>
                             <CompassIcon icon={'microphone-off'}/>
                             {formatMessage({defaultMessage: 'Mute all'})}
