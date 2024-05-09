@@ -58,15 +58,15 @@ func (p *Plugin) handleMuteSession(w http.ResponseWriter, r *http.Request) {
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleMuteAll(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleMuteOthers(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
-	defer p.httpAudit("handleMuteAll", &res, w, r)
+	defer p.httpAudit("handleMuteOthers", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 	callID := mux.Vars(r)["call_id"]
 
-	if err := p.muteAll(userID, callID); err != nil {
-		p.handleHostControlsError(err, &res, "handleMuteAll")
+	if err := p.muteOthers(userID, callID); err != nil {
+		p.handleHostControlsError(err, &res, "handleMuteOthers")
 		return
 	}
 

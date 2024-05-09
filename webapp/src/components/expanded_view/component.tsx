@@ -18,7 +18,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
-import {hostMuteAll, hostRemove, stopCallRecording} from 'src/actions';
+import {hostMuteOthers, hostRemove, stopCallRecording} from 'src/actions';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
@@ -1037,6 +1037,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         const isHost = this.props.callHostID === this.props.currentUserID;
         const hostControlsAvailable = this.props.hostControlsAllowed && (isHost || this.props.isAdmin);
+        const showMuteOthers = hostControlsAvailable && this.props.sessions.some((s) => s.unmuted && s.user_id !== this.props.currentUserID);
 
         const isRecording = isHost && this.props.isRecording;
         const showCCButton = this.props.liveCaptionsAvailable;
@@ -1272,11 +1273,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <div style={this.style.rhsHeader}>
                                 <span>{formatMessage({defaultMessage: 'Participants'})}</span>
                                 <ToTheRight/>
-                                {hostControlsAvailable && this.props.sessions.some((s) => s.unmuted) &&
-                                    <MuteAllButton onClick={() => hostMuteAll(this.props.channel?.id)}>
+                                {showMuteOthers &&
+                                    <MuteOthersButton onClick={() => hostMuteOthers(this.props.channel?.id)}>
                                         <CompassIcon icon={'microphone-off'}/>
-                                        {formatMessage({defaultMessage: 'Mute all'})}
-                                    </MuteAllButton>
+                                        {formatMessage({defaultMessage: 'Mute others'})}
+                                    </MuteOthersButton>
                                 }
                                 <CloseButton
                                     className='style--none'
@@ -1385,7 +1386,7 @@ const ToTheRight = styled.div`
     margin-left: auto;
 `;
 
-const MuteAllButton = styled.button`
+const MuteOthersButton = styled.button`
     display: flex;
     padding: 8px 10px;
     margin-right: 8px;

@@ -98,7 +98,7 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	return nil
 }
 
-func (p *Plugin) muteAll(requesterID, channelID string) error {
+func (p *Plugin) muteOthers(requesterID, channelID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -114,9 +114,10 @@ func (p *Plugin) muteAll(requesterID, channelID string) error {
 		}
 	}
 
-	// Unmute anyone muted. If there are no unmuted sessions, return without doing anything.
+	// Unmute anyone muted (who is not the host/requester).
+	// If there are no unmuted sessions, return without doing anything.
 	for id, s := range state.sessions {
-		if s.Unmuted {
+		if s.Unmuted && s.UserID != requesterID {
 			p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
 				"channel_id": channelID,
 				"session_id": id,

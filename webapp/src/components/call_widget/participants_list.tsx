@@ -5,7 +5,7 @@ import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import React from 'react';
 import {useIntl} from 'react-intl';
-import {hostMuteAll} from 'src/actions';
+import {hostMuteOthers} from 'src/actions';
 import {Participant} from 'src/components/call_widget/participant';
 import {useHostControls} from 'src/components/expanded_view/hooks';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -33,6 +33,7 @@ export const ParticipantsList = ({
     const {formatMessage} = useIntl();
     const isHost = currentSession?.user_id === callHostID;
     const {hostControlsAvailable} = useHostControls(false, false, isHost);
+    const showMuteOthers = hostControlsAvailable && sessions.some((s) => s.unmuted && s.user_id !== currentSession?.user_id);
 
     const renderParticipants = () => {
         return sessions.map((session) => (
@@ -65,11 +66,11 @@ export const ParticipantsList = ({
                     style={styles.participantsListHeader}
                 >
                     {formatMessage({defaultMessage: 'Participants'})}
-                    {hostControlsAvailable && sessions.some((s) => s.unmuted) &&
-                        <MuteAllButton onClick={() => hostMuteAll(callID)}>
+                    {showMuteOthers &&
+                        <MuteOthersButton onClick={() => hostMuteOthers(callID)}>
                             <CompassIcon icon={'microphone-off'}/>
-                            {formatMessage({defaultMessage: 'Mute all'})}
-                        </MuteAllButton>
+                            {formatMessage({defaultMessage: 'Mute others'})}
+                        </MuteOthersButton>
                     }
                 </li>
                 {renderParticipants()}
@@ -107,7 +108,7 @@ const styles: Record<string, React.CSSProperties> = ({
     },
 });
 
-const MuteAllButton = styled.button`
+const MuteOthersButton = styled.button`
     display: flex;
     padding: 4px 10px;
     margin-right: 8px;
