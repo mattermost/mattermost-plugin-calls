@@ -1388,8 +1388,8 @@ const ToTheRight = styled.div`
 
 const MuteOthersButton = styled.button`
     display: flex;
-    padding: 8px 10px;
-    margin-right: 8px;
+    padding: 8px 8px;
+    margin-right: 6px;
     gap: 2px;
     font-family: 'Open Sans', sans-serif;
     font-size: 11px;
