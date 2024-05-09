@@ -119,16 +119,17 @@ func main() {
 			perPage := 100
 			for {
 				ctx, cancel = context.WithTimeout(context.Background(), client.HTTPRequestTimeout)
-				chs, _, err := adminClient.SearchChannels(ctx, teamID, &model.ChannelSearch{
-					Public:  true,
-					PerPage: &perPage,
-					Page:    &page,
-				})
+				chs, _, err := adminClient.GetAllChannels(ctx, page, perPage, "")
 				cancel()
 				if err != nil {
 					log.Fatalf("failed to search channels: %s", err.Error())
 				}
-				channels = append(channels, chs...)
+				for _, c := range chs {
+					if c.Channel.Type == model.ChannelTypeOpen && c.Channel.TeamId == teamID && c.Channel.DeleteAt == 0 {
+					  channels = append(channels, &c.Channel)
+					}
+				}
+
 				if len(channels) >= numCalls || len(chs) < perPage {
 					break
 				}
