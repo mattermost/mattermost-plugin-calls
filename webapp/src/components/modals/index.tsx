@@ -4,7 +4,6 @@
 import React, {ComponentProps} from 'react';
 import {useIntl} from 'react-intl';
 import GenericModal from 'src/components/generic_modal';
-import {VerticalSpacer} from 'src/components/shared';
 import styled from 'styled-components';
 
 type Props = Partial<ComponentProps<typeof GenericModal>>;
@@ -24,8 +23,7 @@ export const CallsInTestModeModal = (modalProps: Props) => {
             onHide={() => null}
             components={{FooterContainer}}
         >
-            <VerticalSpacer $size={22}/>
-            <p>{formatMessage({defaultMessage: 'Calls are currently running in test mode and only system admins can start them. Reach out directly to your system admin for assistance'})}</p>
+            {formatMessage({defaultMessage: 'Calls are currently running in test mode and only system admins can start them. Reach out directly to your system admin for assistance'})}
         </SizedGenericModal>
     );
 };
