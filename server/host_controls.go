@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/pkg/errors"
@@ -192,15 +193,35 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 		handlerID = state.Call.Props.NodeID
 	}
 
-	if err := p.closeRTCSession(ust.UserID, sessionID, channelID, handlerID, state.Call.ID); err != nil {
-		p.LogError(err.Error())
-	}
-
 	p.publishWebSocketEvent(wsEventHostRemoved, map[string]interface{}{
 		"call_id":    state.Call.ID,
 		"channel_id": channelID,
 		"session_id": sessionID,
 	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+
+	go func() {
+		// Wait a few seconds for the client to end their session cleanly. If they don't (like for an
+		// older mobile client) then forcibly end it.
+		time.Sleep(3 * time.Second)
+
+		state, err := p.getCallState(channelID, false)
+		if err != nil {
+			p.LogError("hostRemoveSession: failed to get call state", "err", err.Error())
+		}
+
+		if state == nil {
+			return
+		}
+
+		ust, ok := state.sessions[sessionID]
+		if !ok {
+			return
+		}
+
+		if err := p.closeRTCSession(ust.UserID, sessionID, channelID, handlerID, state.Call.ID); err != nil {
+			p.LogError("hostRemoveSession: failed to close RTC session", "err", err.Error())
+		}
+	}()
 
 	return nil
 }
