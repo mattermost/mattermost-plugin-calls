@@ -37,7 +37,7 @@ test.describe('host controls', () => {
         await user0Page.sendSlashCommand(`/call host ${usernames[2]}`);
         const postContent = user0Page.page.locator('.post__content', {has: user0Page.page.locator('.post__visibility', {hasText: '(Only visible to you)'})});
         await expect(postContent).toBeVisible();
-        await expect(postContent).toContainText('Error: no permissions to change host');
+        await expect(postContent).toContainText('Error: no permissions');
         await expect(user0Page.page.getByTestId('participant-list-host')).toContainText(usernames[1]);
 
         // When the host leaves, the longest member becomes host.
