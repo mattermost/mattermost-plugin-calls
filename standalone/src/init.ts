@@ -216,7 +216,7 @@ export default async function init(cfg: InitConfig) {
         simulcast: callsConfig(store.getState()).EnableSimulcast,
     };
 
-    connectCall(joinData, clientConfig, async (ev) => {
+    connectCall(joinData, clientConfig, (ev) => {
         switch (ev.event) {
         case 'hello':
             store.dispatch(setServerVersion((ev.data as HelloData).server_version));
@@ -270,7 +270,7 @@ export default async function init(cfg: InitConfig) {
             handleUserDismissedNotification(store, ev as WebSocketMessage<UserDismissedNotification>);
             break;
         case `custom_${pluginId}_call_state`:
-            await handleCallState(store, ev as WebSocketMessage<CallStateData>);
+            handleCallState(store, ev as WebSocketMessage<CallStateData>);
             break;
         case `custom_${pluginId}_host_mute`:
             // TODO: MM-57919, use refactored wsmsg data in calls-common

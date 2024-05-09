@@ -28,6 +28,7 @@ import {
     displayGenericErrorModal,
     incomingCallOnChannel,
     loadCallState,
+    loadProfilesByIdsIfMissing,
     removeIncomingCallNotification,
     userLeft,
 } from 'src/actions';
@@ -54,7 +55,6 @@ import {
     HOST_CONTROL_NOTIFICATION_TIMEOUT_EVENT,
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
-    PROFILE_JOINED,
     USER_JOINED,
     USER_JOINED_TIMEOUT,
     USER_LOWER_HAND,
@@ -80,7 +80,6 @@ import {Store} from './types/mattermost-webapp';
 import {
     followThread,
     getCallsClient,
-    getProfilesByIds,
     getUserDisplayName,
     isDesktopApp,
     notificationsStopRinging,
@@ -88,6 +87,8 @@ import {
     sendDesktopError,
 } from './utils';
 
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     if (channelIDForCurrentCall(store.getState()) === channelID) {
@@ -109,15 +110,19 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     }
 }
 
-export async function handleCallState(store: Store, ev: WebSocketMessage<CallStateData>) {
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
+export function handleCallState(store: Store, ev: WebSocketMessage<CallStateData>) {
     try {
         const call: CallState = JSON.parse(ev.data.call);
-        await store.dispatch(loadCallState(ev.data.channel_id, call));
+        store.dispatch(loadCallState(ev.data.channel_id, call));
     } catch (err) {
         logErr(err);
     }
 }
 
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
 export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
@@ -168,13 +173,17 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
     }
 }
 
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
 export function handleUserLeft(store: Store, ev: WebSocketMessage<UserLeftData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
     store.dispatch(userLeft(channelID, ev.data.user_id, ev.data.session_id));
 }
 
-export async function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedData>) {
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
+export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedData>) {
     const userID = ev.data.user_id;
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     const currentUserID = getCurrentUserId(store.getState());
@@ -193,6 +202,10 @@ export async function handleUserJoined(store: Store, ev: WebSocketMessage<UserJo
         store.dispatch(removeIncomingCallNotification(callID));
         notificationsStopRinging(); // And stop ringing for _any_ incoming call.
     }
+
+    // This is async, which is expected as we are okay with setting the state while we wait
+    // for any missing user profiles.
+    store.dispatch(loadProfilesByIdsIfMissing([userID]));
 
     store.dispatch({
         type: USER_JOINED,
@@ -213,21 +226,10 @@ export async function handleUserJoined(store: Store, ev: WebSocketMessage<UserJo
             },
         });
     }, JOINED_USER_NOTIFICATION_TIMEOUT);
-
-    try {
-        store.dispatch({
-            type: PROFILE_JOINED,
-            data: {
-                profile: (await getProfilesByIds(store.getState(), [userID]))[0],
-                session_id: sessionID,
-                channelID,
-            },
-        });
-    } catch (err) {
-        logErr(err);
-    }
 }
 
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
 export function handleUserMuted(store: Store, ev: WebSocketMessage<UserMutedUnmutedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
@@ -240,6 +242,8 @@ export function handleUserMuted(store: Store, ev: WebSocketMessage<UserMutedUnmu
     });
 }
 
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
 export function handleUserUnmuted(store: Store, ev: WebSocketMessage<UserMutedUnmutedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
@@ -276,6 +280,8 @@ export function handleUserVoiceOff(store: Store, ev: WebSocketMessage<UserVoiceO
     });
 }
 
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
 export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreenOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
@@ -288,6 +294,8 @@ export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreen
     });
 }
 
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
 export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScreenOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
@@ -300,6 +308,8 @@ export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScree
     });
 }
 
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
 export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
@@ -313,6 +323,8 @@ export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRais
     });
 }
 
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
 export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
@@ -361,6 +373,8 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
     }, REACTION_TIMEOUT_IN_REACTION_STREAM);
 }
 
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
 export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHostChangedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
@@ -374,6 +388,8 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
     });
 }
 
+// NOTE: it's important this function is kept synchronous in order to guarantee the order of
+// state mutating operations.
 export function handleCallJobState(store: Store, ev: WebSocketMessage<CallJobStateData>) {
     if (ev.data.jobState.err) {
         ev.data.jobState.error_at = Date.now();

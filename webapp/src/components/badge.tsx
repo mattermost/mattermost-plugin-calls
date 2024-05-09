@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {useIntl} from 'react-intl';
 import styled, {css} from 'styled-components';
 
@@ -6,7 +6,9 @@ export type Props = {
     id: string,
     text: string,
     textSize: number,
+    lineHeight?: number,
     icon: React.ReactNode,
+    hoverIcon?: React.ReactNode,
     gap: number,
     iconFill?: string,
     bgColor?: string,
@@ -17,11 +19,20 @@ export type Props = {
 }
 
 export function Badge(props: Props) {
+    const [hoverState, setHoverState] = useState(false);
+
+    const toggleHover = () => {
+        setHoverState(!hoverState);
+    };
+
     return (
         <Container
+            onMouseEnter={toggleHover}
+            onMouseLeave={toggleHover}
             data-testid={props.id}
             $bgColor={props.bgColor}
             $size={props.textSize}
+            $lineHeight={props.lineHeight || props.textSize}
             $margin={props.margin}
             $padding={props.padding}
             $color={props.color}
@@ -29,9 +40,15 @@ export function Badge(props: Props) {
             {props.loading &&
                 <Spinner $size={props.textSize}/>
             }
-            {!props.loading &&
+
+            {!props.loading && !hoverState &&
                 <Icon $fill={props.iconFill}>{props.icon}</Icon>
             }
+
+            {!props.loading && hoverState &&
+                <Icon $fill={props.iconFill}>{props.hoverIcon || props.icon}</Icon>
+            }
+
             <Text $gap={props.gap}>{props.text}</Text>
         </Container>
     );
@@ -40,6 +57,7 @@ export function Badge(props: Props) {
 type ContainerProps = {
     $bgColor?: string,
     $size: number,
+    $lineHeight: number,
     $margin?: string,
     $padding?: string,
     $color?: string,
@@ -54,7 +72,7 @@ const Container = styled.div<ContainerProps>`
     margin: ${({$margin}) => $margin || 0};
     padding: ${({$padding}) => $padding || 0};
     font-size: ${({$size}) => $size}px;
-    line-height: ${({$size}) => $size}px;
+    line-height: ${({$lineHeight}) => $lineHeight}px;
     color: ${({$color}) => $color || 'currentColor'};
 `;
 
