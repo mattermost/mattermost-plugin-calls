@@ -1756,7 +1756,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const mainStyle = {
             ...this.style.main,
-            width: this.props.wider ? '280px' : '216px',
+            width: this.props.wider ? '306px' : '248px',
             ...(this.props.global && {appRegion: 'drag'}),
         };
 
@@ -1806,7 +1806,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         {this.renderSpeakingProfile()}
 
-                        <div style={{width: this.props.wider ? '184px' : '120px'}}>
+                        <div style={{width: this.props.wider ? '210px' : '152px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 {this.renderRecordingBadge()}
