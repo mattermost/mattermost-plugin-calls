@@ -13,10 +13,8 @@ import {
     useOnChannelLinkClick,
     useRingingAndNotification,
 } from 'src/components/incoming_calls/hooks';
-import {pluginId} from 'src/manifest';
 import RestClient from 'src/rest_client';
 import {ChannelType, IncomingCallNotification} from 'src/types/types';
-import {isDesktopApp} from 'src/utils';
 import styled, {css} from 'styled-components';
 
 type Props = {
@@ -36,9 +34,6 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID, onWidget);
     const onContainerClick = useOnChannelLinkClick(call, onWidget);
     useRingingAndNotification(call, onWidget);
-
-    // Do not allow clicks in the webapp expanded view because Safari does not let us switch and focus parent.
-    const onWebappExpanded = !isDesktopApp() && window.location.pathname.includes(`${pluginId}/expanded/`);
 
     useEffect(() => {
         const show = Boolean(messageRef?.current && messageRef.current.clientWidth < messageRef.current.scrollWidth);
@@ -66,7 +61,6 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
             data-testid={onWidget ? 'call-incoming-condensed-widget' : 'call-incoming-condensed'}
             className={className}
             onClick={onContainerClick}
-            disabled={onWebappExpanded}
         >
             <Inner>
                 <Avatar
@@ -88,13 +82,17 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
                     </Message>
                 </OverlayTrigger>
                 <SmallJoinButton
+                    data-testid={'call-incoming-condensed-join'}
                     border={joinButtonBorder}
                     onClick={onJoin}
                 >
                     <CompassIcon icon={'phone-in-talk'}/>
                     {formatMessage({defaultMessage: 'Join'})}
                 </SmallJoinButton>
-                <XButton onClick={onDismiss}>
+                <XButton
+                    data-testid={'call-incoming-condensed-dismiss'}
+                    onClick={onDismiss}
+                >
                     <CompassIcon icon={'close'}/>
                 </XButton>
             </Inner>
