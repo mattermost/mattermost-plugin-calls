@@ -140,6 +140,7 @@ export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharing
                             isMuted={isMuted}
                             isSharingScreen={isSharingScreen}
                             isHandRaised={isHandRaised}
+                            isHost={isHost}
                             onRemove={onRemove}
                         />
                     </StyledDotMenu>

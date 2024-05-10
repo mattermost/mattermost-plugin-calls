@@ -163,20 +163,22 @@ export type IncomingCallNotification = {
     type: ChannelType;
 }
 
-export enum HostControlNotificationType {
-    LowerHand
+export enum HostControlNoticeType {
+    LowerHand,
+    HostChanged,
+    HostRemoved,
 }
 
-export type HostControlNotification = {
-    type: HostControlNotificationType;
+export type HostControlNotice = {
+    type: HostControlNoticeType;
     callID: string;
-    notificationID: string;
+    noticeID: string;
     displayName: string;
 }
 
-export type HostControlNotificationTimeout = {
+export type HostControlNoticeTimeout = {
     callID: string;
-    notificationID: string;
+    noticeID: string;
 }
 
 export type RemoveConfirmationData = {

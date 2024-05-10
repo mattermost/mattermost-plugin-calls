@@ -22,7 +22,7 @@ import {
 } from '@mattermost/calls-common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {generateId} from 'mattermost-redux/utils/helpers';
 import {
     displayGenericErrorModal,
@@ -35,14 +35,14 @@ import {
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/client';
 import {hostRemovedMsg, removedDismiss, removedMsg, removedMsgTitle} from 'src/components/call_error_modal';
 import {
-    HOST_CONTROL_NOTIFICATION_TIMEOUT,
+    HOST_CONTROL_NOTICE_TIMEOUT,
     JOB_TYPE_CAPTIONING,
     JOB_TYPE_RECORDING,
     JOINED_USER_NOTIFICATION_TIMEOUT,
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
-import {HostControlNotification, HostControlNotificationType} from 'src/types/types';
+import {HostControlNotice, HostControlNoticeType} from 'src/types/types';
 
 import {
     CALL_END,
@@ -51,8 +51,8 @@ import {
     CALL_RECORDING_STATE,
     CALL_STATE,
     DISMISS_CALL,
-    HOST_CONTROL_NOTIFICATION,
-    HOST_CONTROL_NOTIFICATION_TIMEOUT_EVENT,
+    HOST_CONTROL_NOTICE,
+    HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
     USER_JOINED,
@@ -373,9 +373,10 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
     }, REACTION_TIMEOUT_IN_REACTION_STREAM);
 }
 
+// TODO: MM-57919, refactor wsmsg data to calls-common
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
-export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHostChangedData>) {
+export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHostChangedData & { call_id: string }>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
     store.dispatch({
@@ -386,6 +387,35 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
             hostChangeAt: Date.now(),
         },
     });
+
+    const profiles = profilesInCurrentCallMap(store.getState());
+    const hostProfile = profiles[ev.data.hostID];
+    if (!hostProfile) {
+        return;
+    }
+    const displayName = getUserDisplayName(hostProfile);
+
+    const hostNotice: HostControlNotice = {
+        type: HostControlNoticeType.HostChanged,
+        callID: ev.data.call_id,
+        noticeID: generateId(),
+        displayName,
+    };
+
+    store.dispatch({
+        type: HOST_CONTROL_NOTICE,
+        data: hostNotice,
+    });
+
+    setTimeout(() => {
+        store.dispatch({
+            type: HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
+            data: {
+                callID: ev.data.call_id,
+                noticeID: hostNotice.noticeID,
+            },
+        });
+    }, HOST_CONTROL_NOTICE_TIMEOUT);
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
@@ -524,10 +554,10 @@ export function handleHostLowerHand(store: Store, ev: WebSocketMessage<{
     const profiles = profilesInCurrentCallMap(store.getState());
     const displayName = getUserDisplayName(profiles[ev.data.host_id]);
 
-    const hostNotification: HostControlNotification = {
-        type: HostControlNotificationType.LowerHand,
+    const hostNotice: HostControlNotice = {
+        type: HostControlNoticeType.LowerHand,
         callID: ev.data.call_id,
-        notificationID: generateId(),
+        noticeID: generateId(),
         displayName,
     };
 
@@ -536,28 +566,28 @@ export function handleHostLowerHand(store: Store, ev: WebSocketMessage<{
     // from being shown at the same time.
     setTimeout(() => {
         store.dispatch({
-            type: HOST_CONTROL_NOTIFICATION,
-            data: hostNotification,
+            type: HOST_CONTROL_NOTICE,
+            data: hostNotice,
         });
     }, 0);
 
     setTimeout(() => {
         store.dispatch({
-            type: HOST_CONTROL_NOTIFICATION_TIMEOUT_EVENT,
+            type: HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
             data: {
                 callID: ev.data.call_id,
-                notificationID: hostNotification.notificationID,
+                noticeID: hostNotice.noticeID,
             },
         });
-    }, HOST_CONTROL_NOTIFICATION_TIMEOUT);
+    }, HOST_CONTROL_NOTICE_TIMEOUT);
 }
 
 export function handleHostRemoved(store: Store, ev: WebSocketMessage<{
     call_id: string,
-    channel_id: string,
     session_id: string,
+    user_id: string,
 }>) {
-    const channelID = ev.data.channel_id;
+    const channelID = ev.broadcast.channel_id;
     const client = getCallsClient();
     if (!client || client?.channelID !== channelID) {
         return;
@@ -565,6 +595,36 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<{
 
     const sessionID = client.getSessionID();
     if (ev.data.session_id !== sessionID) {
+        const profile = profilesInCurrentCallMap(store.getState())[ev.data.user_id] ||
+            getUser(store.getState(), ev.data.user_id);
+        if (!profile) {
+            return;
+        }
+
+        const displayName = getUserDisplayName(profile);
+
+        const hostNotice: HostControlNotice = {
+            type: HostControlNoticeType.HostRemoved,
+            callID: ev.data.call_id,
+            noticeID: generateId(),
+            displayName,
+        };
+
+        store.dispatch({
+            type: HOST_CONTROL_NOTICE,
+            data: hostNotice,
+        });
+
+        setTimeout(() => {
+            store.dispatch({
+                type: HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
+                data: {
+                    callID: ev.data.call_id,
+                    noticeID: hostNotice.noticeID,
+                },
+            });
+        }, HOST_CONTROL_NOTICE_TIMEOUT);
+
         return;
     }
 

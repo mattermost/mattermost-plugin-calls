@@ -135,6 +135,7 @@ export default function CallParticipant({
                             isMuted={isMuted}
                             isSharingScreen={isSharingScreen}
                             isHandRaised={isHandRaised}
+                            isHost={isHost}
                             onRemove={onRemove}
                         />
                     </StyledDotMenu>
