@@ -117,7 +117,7 @@ const Notice = styled.div<{ $onWidget?: boolean }>`
 
     ${({$onWidget}) => $onWidget && css`
         width: 100%;
-        border-radius: 6px;
+        border-radius: 8px;
         padding: 4px 6px;
         font-size: 11px;
         font-weight: 400;
