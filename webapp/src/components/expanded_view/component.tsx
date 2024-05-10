@@ -18,7 +18,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
-import {hostRemove, stopCallRecording} from 'src/actions';
+import {hostMuteOthers, hostRemove, stopCallRecording} from 'src/actions';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
@@ -118,6 +118,8 @@ interface Props extends RouteComponentProps {
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     transcriptionsEnabled: boolean,
     liveCaptionsAvailable: boolean,
+    isAdmin: boolean,
+    hostControlsAllowed: boolean,
 }
 
 interface State {
@@ -1034,6 +1036,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
 
         const isHost = this.props.callHostID === this.props.currentUserID;
+        const hostControlsAvailable = this.props.hostControlsAllowed && (isHost || this.props.isAdmin);
+        const showMuteOthers = hostControlsAvailable && this.props.sessions.some((s) => s.unmuted && s.user_id !== this.props.currentUserID);
 
         const isRecording = isHost && this.props.isRecording;
         const showCCButton = this.props.liveCaptionsAvailable;
@@ -1268,6 +1272,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <div style={this.style.rhsHeaderContainer}>
                             <div style={this.style.rhsHeader}>
                                 <span>{formatMessage({defaultMessage: 'Participants'})}</span>
+                                <ToTheRight/>
+                                {showMuteOthers &&
+                                    <MuteOthersButton onClick={() => hostMuteOthers(this.props.channel?.id)}>
+                                        <CompassIcon icon={'microphone-off'}/>
+                                        {formatMessage({defaultMessage: 'Mute others'})}
+                                    </MuteOthersButton>
+                                }
                                 <CloseButton
                                     className='style--none'
                                     onClick={() => this.onParticipantsListToggle()}
@@ -1371,17 +1382,44 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
     }
 `;
 
+const ToTheRight = styled.div`
+    margin-left: auto;
+`;
+
+const MuteOthersButton = styled.button`
+    display: flex;
+    padding: 8px 8px;
+    margin-right: 6px;
+    gap: 2px;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    color: var(--button-bg);
+
+    border: none;
+    background: none;
+    border-radius: 4px;
+
+    &:hover {
+        background: rgba(var(--button-bg-rgb), 0.08);
+    }
+
+    i {
+        font-size: 14px;
+    }
+`;
+
 const CloseButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-left: auto;
     color: rgba(var(--center-channel-color-rgb), 0.56);
     width: 32px;
     height: 32px;
     border-radius: 4px;
 
-    :hover {
+    &:hover {
         background: rgba(var(--center-channel-color-rgb), 0.08);
         color: rgba(var(--center-channel-color-rgb), 0.72);
         fill: rgba(var(--center-channel-color-rgb), 0.72);
