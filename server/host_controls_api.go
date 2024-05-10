@@ -58,6 +58,22 @@ func (p *Plugin) handleMuteSession(w http.ResponseWriter, r *http.Request) {
 	res.Msg = "success"
 }
 
+func (p *Plugin) handleMuteOthers(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleMuteOthers", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	callID := mux.Vars(r)["call_id"]
+
+	if err := p.muteOthers(userID, callID); err != nil {
+		p.handleHostControlsError(err, &res, "handleMuteOthers")
+		return
+	}
+
+	res.Code = http.StatusOK
+	res.Msg = "success"
+}
+
 func (p *Plugin) handleScreenOff(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleScreenOff", &res, w, r)

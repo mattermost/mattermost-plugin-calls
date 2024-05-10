@@ -98,6 +98,37 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	return nil
 }
 
+func (p *Plugin) muteOthers(requesterID, channelID string) error {
+	state, err := p.getCallState(channelID, false)
+	if err != nil {
+		return err
+	}
+
+	if state == nil {
+		return ErrNoCallOngoing
+	}
+
+	if requesterID != state.Call.GetHostID() {
+		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
+			return ErrNoPermissions
+		}
+	}
+
+	// TODO: MM-53455 - send as a list
+	// Unmute anyone muted (who is not the host/requester).
+	// If there are no unmuted sessions, return without doing anything.
+	for id, s := range state.sessions {
+		if s.Unmuted && s.UserID != requesterID {
+			p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
+				"channel_id": channelID,
+				"session_id": id,
+			}, &model.WebsocketBroadcast{UserId: s.UserID, ReliableClusterSend: true})
+		}
+	}
+
+	return nil
+}
+
 func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
