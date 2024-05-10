@@ -55,7 +55,7 @@ import {
     handleCallStart,
     handleCallState,
     handleHostLowerHand,
-    handleHostMute,
+    handleHostMute, handleHostRemoved,
     handleHostScreenOff,
     handleUserDismissedNotification,
     handleUserJoined,
@@ -281,6 +281,9 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_host_lower_hand`:
             handleHostLowerHand(store, ev as WebSocketMessage);
+            break;
+        case `custom_${pluginId}_host_removed`:
+            handleHostRemoved(store, ev as WebSocketMessage);
             break;
         case 'user_removed':
             handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);

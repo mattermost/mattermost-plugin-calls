@@ -85,8 +85,9 @@ export default function RecordingInfoPrompt(props: Props) {
                 body={formatMessage({
                     defaultMessage: 'Your recording will end in {count, plural, =1 {# minute} other {# minutes}}.'}
                 , {count: getMinutesLeftBeforeEnd()})}
-                confirmText={formatMessage({defaultMessage: 'Dismiss'})}
-                onClose={props.promptDismissed}
+                leftText={formatMessage({defaultMessage: 'Dismiss'})}
+                onLeftButtonClick={props.promptDismissed}
+                onCloseButtonClick={props.promptDismissed}
             />
         );
     }
@@ -191,10 +192,11 @@ export default function RecordingInfoPrompt(props: Props) {
             header={header}
             body={body}
             error={error}
-            confirmText={confirmText}
-            declineText={declineText}
-            onClose={props.promptDismissed}
-            onDecline={props.onDecline}
+            leftText={confirmText}
+            rightText={declineText}
+            onLeftButtonClick={props.promptDismissed}
+            onRightButtonClick={props.onDecline}
+            onCloseButtonClick={props.promptDismissed}
         />
     );
 }

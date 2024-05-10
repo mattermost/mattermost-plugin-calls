@@ -132,6 +132,7 @@ import {
     handleCaption,
     handleHostLowerHand,
     handleHostMute,
+    handleHostRemoved,
     handleHostScreenOff,
     handleUserDismissedNotification,
     handleUserJoined,
@@ -263,6 +264,10 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_host_lower_hand`, (ev) => {
             handleHostLowerHand(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_host_removed`, (ev) => {
+            handleHostRemoved(store, ev);
         });
     }
 

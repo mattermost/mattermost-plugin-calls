@@ -12,11 +12,13 @@ import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from '
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
+import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import {AudioInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
+import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
 import {HostNotifications} from 'src/components/host_notifications';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ExpandIcon from 'src/components/icons/expand';
@@ -55,6 +57,7 @@ import {
     CallJobReduxState,
     HostControlNotification,
     IncomingCallNotification,
+    RemoveConfirmationData,
 } from 'src/types/types';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
 
@@ -73,6 +76,7 @@ interface Props {
     channelURL: string,
     channelDisplayName: string,
     sessions: UserSessionState[],
+    sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
     profiles: IDMappedObjects<UserProfile>,
     callStartAt: number,
@@ -122,6 +126,7 @@ interface State {
     expandedViewWindow: Window | null,
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
+    removeConfirmation: RemoveConfirmationData | null,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -190,6 +195,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 bottom: 'calc(100% + 4px)',
                 width: '100%',
                 appRegion: 'drag',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
             },
             screenSharingPanel: {
                 position: 'relative',
@@ -246,6 +254,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEls: [],
             alerts: CallAlertStatesDefault,
             screenStream: null,
+            removeConfirmation: null,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -773,6 +782,28 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         }
         this.setState({showAudioOutputDevicesMenu: false, currentAudioOutputDevice: device});
+    };
+
+    onRemove = (sessionID: string, userID: string) => {
+        this.setState({
+            removeConfirmation: {
+                sessionID,
+                userID,
+            },
+        });
+    };
+
+    onRemoveConfirm = () => {
+        hostRemove(this.props.channel?.id, this.state.removeConfirmation?.sessionID);
+        this.setState({
+            removeConfirmation: null,
+        });
+    };
+
+    onRemoveCancel = () => {
+        this.setState({
+            removeConfirmation: null,
+        });
     };
 
     renderScreenSharingPanel = () => {
@@ -1357,6 +1388,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         let header = formatMessage(disclaimerStrings[isHost ? 'host' : 'participant'].header);
         let body = formatMessage(disclaimerStrings[isHost ? 'host' : 'participant'].body);
         let confirmText = isHost ? formatMessage({defaultMessage: 'Dismiss'}) : formatMessage({defaultMessage: 'Understood'});
+        // eslint-disable-next-line no-undefined
+        const rightText = isHost ? undefined : formatMessage({defaultMessage: 'Leave call'});
         let icon = (
             <RecordCircleIcon
                 style={{width: '12px', height: '12px'}}
@@ -1402,10 +1435,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 iconColor='rgb(var(--dnd-indicator-rgb))'
                 header={header}
                 body={body}
-                confirmText={confirmText}
-                declineText={isHost ? null : formatMessage({defaultMessage: 'Leave call'})}
-                onClose={this.dismissRecordingPrompt}
-                onDecline={this.onDisconnectClick}
+                leftText={confirmText}
+                rightText={rightText}
+                onLeftButtonClick={this.dismissRecordingPrompt}
+                onRightButtonClick={this.onDisconnectClick}
+                onCloseButtonClick={this.dismissRecordingPrompt}
             />
         );
     };
@@ -1477,7 +1511,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
                     header={formatMessage(alertConfig.bannerText)}
-                    onClose={onClose}
+                    onLeftButtonClick={onClose}
+                    onCloseButtonClick={onClose}
                 />
             );
         });
@@ -1784,6 +1819,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
                     {this.renderRecordingDisclaimer()}
+                    {Boolean(this.state.removeConfirmation) &&
+                        Boolean(this.props.sessionsMap[this.state.removeConfirmation?.sessionID || '']) &&
+                        <RemoveConfirmation
+                            profile={this.props.profiles[this.state.removeConfirmation?.userID || '']}
+                            onConfirm={this.onRemoveConfirm}
+                            onCancel={this.onRemoveCancel}
+                        />
+                    }
                     {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
                     {this.state.showParticipantsList &&
                         <ParticipantsList
@@ -1793,6 +1836,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             currentSession={this.props.currentSession}
                             screenSharingSession={this.props.screenSharingSession}
                             callID={this.props.channel.id}
+                            onRemove={this.onRemove}
                         />
                     }
                     {this.renderMenu()}

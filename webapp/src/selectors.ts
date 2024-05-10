@@ -165,6 +165,14 @@ export const sessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
         (sessions, channelID) => Object.values(sessions[channelID] || {}),
     );
 
+export const sessionsInCurrentCallMap: (state: GlobalState) => { [sessionID: string]: UserSessionState } =
+    createSelector(
+        'sessionsInCurrentCallMap',
+        sessionsInCalls,
+        channelIDForCurrentCall,
+        (sessions, channelID) => sessions[channelID],
+    );
+
 export const sessionForCurrentCall: (state: GlobalState) => UserSessionState =
     createSelector(
         'sessionsInCurrentCall',

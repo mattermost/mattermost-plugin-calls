@@ -29,6 +29,7 @@ import {
     screenSharingSessionForCurrentCall,
     sessionForCurrentCall,
     sessionsInCurrentCall,
+    sessionsInCurrentCallMap,
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
@@ -66,6 +67,7 @@ const mapStateToProps = (state: GlobalState) => {
         currentTeamID,
         profiles,
         sessions,
+        sessionsMap: sessionsInCurrentCallMap(state),
         currentSession: sessionForCurrentCall(state),
         callStartAt: callStartAtForCurrentCall(state),
         callHostID: hostIDForCurrentCall(state),
