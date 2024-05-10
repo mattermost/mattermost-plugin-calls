@@ -10,6 +10,7 @@ import styled from 'styled-components';
 type CustomProps = {
     title: MessageDescriptor,
     message: MessageDescriptor,
+    confirmText?: MessageDescriptor,
 };
 
 type Props = Partial<ComponentProps<typeof GenericModal>> & CustomProps;
@@ -17,49 +18,55 @@ export const IDGenericErrorModal = 'calls_generic_error';
 
 export const GenericErrorModal = (modalProps: Props) => {
     const {formatMessage} = useIntl();
+    const confirmText = modalProps.confirmText ? formatMessage(modalProps.confirmText) : formatMessage({defaultMessage: 'Understood'});
 
     return (
         <StyledGenericModal
             id={IDGenericErrorModal}
             {...modalProps}
             modalHeaderText={formatMessage(modalProps.title)}
-            confirmButtonText={formatMessage({defaultMessage: 'Understood'})}
+            confirmButtonText={confirmText}
             handleConfirm={() => null}
             showCancel={false}
             onHide={() => null}
-            contentPadding={'48px 32px'}
+            contentPadding={'4px 32px 24px 32px'}
             components={{
                 Header: Header as never,
                 FooterContainer,
             }}
         >
             <ColumnContainer>
-                <p>{formatMessage(modalProps.message)}</p>
+                {formatMessage(modalProps.message)}
             </ColumnContainer>
         </StyledGenericModal>
     );
 };
 
-const StyledGenericModal = styled(GenericModal)`
+export const StyledGenericModal = styled(GenericModal)`
     width: 512px;
+
+    // to override GenricModal's specificity
+    &&& {
+        .close {
+            margin: 0;
+        }
+    }
 `;
 
-const Header = styled(ModalHeader)`
+export const Header = styled(ModalHeader)`
     display: flex;
     justify-content: center;
 `;
 
-const FooterContainer = styled.div`
+export const FooterContainer = styled.div`
     display: flex;
     justify-content: center;
+    gap: 8px;
 `;
 
-const ColumnContainer = styled.div`
+export const ColumnContainer = styled.div`
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
 
     span {
         margin: 8px 0;
