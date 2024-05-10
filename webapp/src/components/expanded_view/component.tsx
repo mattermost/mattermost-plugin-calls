@@ -256,8 +256,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 fontWeight: 600,
                 fontSize: '16px',
                 padding: '0 16px',
-                height: '63px',
-                lineHeight: '63px',
+                height: '56px',
+                lineHeight: '56px',
             },
             centerView: {
                 display: 'flex',
@@ -1286,13 +1286,25 @@ const UnreadIndicator = ({mentions}: { mentions?: number }) => {
 };
 
 const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean }>`
-    #root {
+    body.app__body #root {
         > #global-header,
         > .team-sidebar,
         > .app-bar,
         > #channel_view .channel__wrap,
         > #SidebarContainer {
             display: none;
+        }
+
+        display: flex;
+
+        > .main-wrapper {
+          display: flex;
+          margin: 0;
+          padding: 0;
+          border-radius: 0;
+          border: 0;
+          width: 100%;
+          height: 100%;
         }
 
         #sidebar-right #sbrSearchFormContainer {
@@ -1314,6 +1326,7 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
 
     #sidebar-right {
         z-index: 1001;
+        border: 0;
     }
 `;
 
