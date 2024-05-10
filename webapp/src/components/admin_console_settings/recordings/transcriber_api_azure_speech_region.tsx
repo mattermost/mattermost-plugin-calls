@@ -2,34 +2,28 @@ import React, {ChangeEvent} from 'react';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
-import {isCloud, isOnPremNotEnterprise, recordingsEnabled, transcriptionsEnabled} from 'src/selectors';
+import {
+    isCloud,
+    isOnPremNotEnterprise,
+    recordingsEnabled,
+    transcriptionsEnabled,
+} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-const TranscribeAPI = (props: CustomComponentProps) => {
+const TranscribeAPIAzureSpeechRegion = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
-    const hasTranscriptions = useSelector(transcriptionsEnabled);
     const recordingEnabled = useSelector(recordingsEnabled);
+    const transcriptionEnabled = useSelector(transcriptionsEnabled);
 
-    if (cloud || restricted || !hasTranscriptions || !recordingEnabled) {
+    if (cloud || restricted || !recordingEnabled || !transcriptionEnabled) {
         return null;
     }
 
-    // Webapp doesn't pass the options
-    const rawOptions = manifest.settings_schema?.settings.find((e) => e.key === 'TranscribeAPI')?.options || [];
-    const options = [];
-    for (const {display_name, value} of rawOptions) {
-        options.push(
-            <option
-                value={value}
-                key={value}
-            >
-                {display_name}
-            </option>,
-        );
-    }
+    // Webapp doesn't pass the placeholder setting.
+    const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'TranscribeAPIAzureSpeechRegion')?.placeholder || '';
 
-    const handleChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
     };
 
@@ -49,16 +43,16 @@ const TranscribeAPI = (props: CustomComponentProps) => {
                 </LabelRow>
             </div>
             <div className={rightCol}>
-                <select
-                    data-testid={props.id + 'dropdown'}
-                    className='form-control'
+                <input
+                    data-testid={props.id + 'input'}
                     id={props.id}
+                    className='form-control'
+                    type={'input'}
+                    placeholder={placeholder}
                     value={props.value}
                     onChange={handleChange}
                     disabled={props.disabled}
-                >
-                    {options}
-                </select>
+                />
                 <div
                     data-testid={props.id + 'help-text'}
                     className='help-text'
@@ -70,4 +64,4 @@ const TranscribeAPI = (props: CustomComponentProps) => {
     );
 };
 
-export default TranscribeAPI;
+export default TranscribeAPIAzureSpeechRegion;
