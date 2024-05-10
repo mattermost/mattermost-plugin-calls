@@ -227,6 +227,7 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 
 	p.publishWebSocketEvent(wsEventHostRemoved, map[string]interface{}{
 		"call_id":    state.Call.ID,
+		"channel_id": channelID,
 		"session_id": sessionID,
 		"user_id":    ust.UserID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})

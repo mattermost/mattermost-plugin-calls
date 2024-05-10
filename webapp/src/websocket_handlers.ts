@@ -584,10 +584,11 @@ export function handleHostLowerHand(store: Store, ev: WebSocketMessage<{
 
 export function handleHostRemoved(store: Store, ev: WebSocketMessage<{
     call_id: string,
+    channel_id: string,
     session_id: string,
     user_id: string,
 }>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channel_id;
     const client = getCallsClient();
     if (!client || client?.channelID !== channelID) {
         return;
