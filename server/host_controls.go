@@ -114,6 +114,7 @@ func (p *Plugin) muteOthers(requesterID, channelID string) error {
 		}
 	}
 
+	// TODO: MM-53455 - send as a list
 	// Unmute anyone muted (who is not the host/requester).
 	// If there are no unmuted sessions, return without doing anything.
 	for id, s := range state.sessions {
