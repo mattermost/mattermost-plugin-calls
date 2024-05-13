@@ -284,10 +284,10 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_host_lower_hand`:
             // Note: I'm not sure what's making tsc unhappy about the following without the `as unknown`
-            handleHostLowerHand(store, ev as unknown as WebSocketMessage<HostControlLowerHand>);
+            handleHostLowerHand(store, ev as WebSocketMessage<HostControlLowerHand>);
             break;
         case `custom_${pluginId}_host_removed`:
-            handleHostRemoved(store, ev as unknown as WebSocketMessage<HostControlRemoved>);
+            handleHostRemoved(store, ev as WebSocketMessage<HostControlRemoved>);
             break;
         case 'user_removed':
             handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);
