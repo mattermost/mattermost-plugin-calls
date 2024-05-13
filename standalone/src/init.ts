@@ -14,6 +14,9 @@ import {
     CallStateData,
     EmptyData,
     HelloData,
+    HostControlLowerHand,
+    HostControlMsg,
+    HostControlRemoved,
     UserDismissedNotification,
     UserJoinedData,
     UserLeftData,
@@ -55,7 +58,8 @@ import {
     handleCallStart,
     handleCallState,
     handleHostLowerHand,
-    handleHostMute, handleHostRemoved,
+    handleHostMute,
+    handleHostRemoved,
     handleHostScreenOff,
     handleUserDismissedNotification,
     handleUserJoined,
@@ -258,8 +262,7 @@ export default async function init(cfg: InitConfig) {
             handleUserUnraisedHand(store, ev as WebSocketMessage<UserRaiseUnraiseHandData>);
             break;
         case `custom_${pluginId}_call_host_changed`:
-            // TODO: MM-57919, refactor wsmsg data to calls-common
-            handleCallHostChanged(store, ev as WebSocketMessage<CallHostChangedData & { call_id: string }>);
+            handleCallHostChanged(store, ev as WebSocketMessage<CallHostChangedData>);
             break;
         case `custom_${pluginId}_user_reacted`:
             handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);
@@ -274,17 +277,17 @@ export default async function init(cfg: InitConfig) {
             handleCallState(store, ev as WebSocketMessage<CallStateData>);
             break;
         case `custom_${pluginId}_host_mute`:
-            // TODO: MM-57919, use refactored wsmsg data in calls-common
-            handleHostMute(store, ev as WebSocketMessage);
+            handleHostMute(store, ev as WebSocketMessage<HostControlMsg>);
             break;
         case `custom_${pluginId}_host_screen_off`:
-            handleHostScreenOff(store, ev as WebSocketMessage);
+            handleHostScreenOff(store, ev as WebSocketMessage<HostControlMsg>);
             break;
         case `custom_${pluginId}_host_lower_hand`:
-            handleHostLowerHand(store, ev as WebSocketMessage);
+            // Note: I'm not sure what's making tsc unhappy about the following without the `as unknown`
+            handleHostLowerHand(store, ev as unknown as WebSocketMessage<HostControlLowerHand>);
             break;
         case `custom_${pluginId}_host_removed`:
-            handleHostRemoved(store, ev as WebSocketMessage);
+            handleHostRemoved(store, ev as unknown as WebSocketMessage<HostControlRemoved>);
             break;
         case 'user_removed':
             handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);
