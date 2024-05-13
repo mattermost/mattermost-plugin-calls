@@ -138,10 +138,10 @@ const RedStyledCompassIcon = styled(StyledCompassIcon)`
 
 export const StyledMonitorAccount = styled(MonitorAccount)<{ $onWidget?: boolean }>`
     flex: none;
-    margin-left: ${({$onWidget}) => ($onWidget ? 2 : 0)}px;
+    margin-left: ${({$onWidget}) => ($onWidget ? 1 : 0)}px;
     margin-top: 1px;
     fill: var(--center-channel-color-64);
-    width: ${({$onWidget}) => ($onWidget ? 12 : 18)}px;
+    width: ${({$onWidget}) => ($onWidget ? 14 : 18)}px;
 `;
 
 const Text = styled.span<{ $onWidget?: boolean }>`
