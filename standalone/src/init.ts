@@ -258,7 +258,8 @@ export default async function init(cfg: InitConfig) {
             handleUserUnraisedHand(store, ev as WebSocketMessage<UserRaiseUnraiseHandData>);
             break;
         case `custom_${pluginId}_call_host_changed`:
-            handleCallHostChanged(store, ev as WebSocketMessage<CallHostChangedData>);
+            // TODO: MM-57919, refactor wsmsg data to calls-common
+            handleCallHostChanged(store, ev as WebSocketMessage<CallHostChangedData & { call_id: string }>);
             break;
         case `custom_${pluginId}_user_reacted`:
             handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);

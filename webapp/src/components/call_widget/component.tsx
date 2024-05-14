@@ -19,7 +19,7 @@ import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
-import {HostNotifications} from 'src/components/host_notifications';
+import {HostNotices} from 'src/components/host_notices';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ExpandIcon from 'src/components/icons/expand';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
@@ -55,7 +55,7 @@ import {
     CallAlertStates,
     CallAlertStatesDefault,
     CallJobReduxState,
-    HostControlNotification,
+    HostControlNotice,
     IncomingCallNotification,
     RemoveConfirmationData,
 } from 'src/types/types';
@@ -96,7 +96,7 @@ interface Props {
         left: number,
     },
     recentlyJoinedUsers: string[],
-    hostNotifications: HostControlNotification[],
+    hostNotices: HostControlNotice[],
     wider: boolean,
     callsIncoming: IncomingCallNotification[],
     transcriptionsEnabled: boolean,
@@ -1563,7 +1563,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     visible={!this.props.clientConnecting}
                     isMuted={this.isMuted()}
                 />
-                {this.props.hostNotifications.length > 0 && <HostNotifications onWidget={true}/>}
+                {this.props.hostNotices.length > 0 && <HostNotices onWidget={true}/>}
                 {joinedUsers}
             </div>
         );

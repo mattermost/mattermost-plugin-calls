@@ -27,7 +27,7 @@ import {createSelector} from 'reselect';
 import {
     callsJobState,
     callState,
-    hostControlNotificationsState,
+    hostControlNoticeState,
     hostsState,
     liveCaptionState,
     recentlyJoinedUsersState,
@@ -39,7 +39,7 @@ import {
     CallJobReduxState,
     CallsUserPreferences,
     ChannelState,
-    HostControlNotification,
+    HostControlNotice,
     IncomingCallNotification,
     LiveCaptions,
 } from 'src/types/types';
@@ -288,16 +288,16 @@ export const recordingForCurrentCall: (state: GlobalState) => CallJobReduxState 
         (recordings, channelID) => recordings[channelID] || {},
     );
 
-export const hostControlNotificationsForCalls = (state: GlobalState): hostControlNotificationsState => {
-    return pluginState(state).hostControlNotifications;
+export const hostControlNoticesForCalls = (state: GlobalState): hostControlNoticeState => {
+    return pluginState(state).hostControlNotices;
 };
 
-export const hostControlNotificationsForCurrentCall: (state: GlobalState) => HostControlNotification[] =
+export const hostControlNoticesForCurrentCall: (state: GlobalState) => HostControlNotice[] =
     createSelector(
-        'hostControlNotificationsForCurrentCall',
-        hostControlNotificationsForCalls,
+        'hostControlNoticesForCurrentCall',
+        hostControlNoticesForCalls,
         idForCurrentCall,
-        (notifications, id) => (id ? notifications[id] || [] : []),
+        (notices, id) => (id ? notices[id] || [] : []),
     );
 
 const liveCaptionsStateForCalls = (state: GlobalState): callsJobState => {
