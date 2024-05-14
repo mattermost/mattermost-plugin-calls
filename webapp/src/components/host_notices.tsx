@@ -1,3 +1,4 @@
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import {FormattedMessage} from 'react-intl';
 import {useSelector} from 'react-redux';
@@ -13,7 +14,10 @@ type Props = {
 }
 
 export const HostNotices = ({onWidget = false}: Props) => {
+    const currentUserId = useSelector(getCurrentUserId);
     const notices = useSelector(hostControlNoticesForCurrentCall);
+
+    const youAreHostMsg = <FormattedMessage defaultMessage={'You are now the host'}/>;
 
     return (
         <>
@@ -48,13 +52,15 @@ export const HostNotices = ({onWidget = false}: Props) => {
                         >
                             <StyledMonitorAccount $onWidget={onWidget}/>
                             <Text $onWidget={onWidget}>
-                                <FormattedMessage
-                                    defaultMessage={'<b>{name}</b> is now the host'}
-                                    values={{
-                                        b: (text: string) => <b>{text}</b>,
-                                        name: n.displayName,
-                                    }}
-                                />
+                                {n.userID === currentUserId ? youAreHostMsg : (
+                                    <FormattedMessage
+                                        defaultMessage={'<b>{name}</b> is now the host'}
+                                        values={{
+                                            b: (text: string) => <b>{text}</b>,
+                                            name: n.displayName,
+                                        }}
+                                    />)
+                                }
                             </Text>
                         </Notice>
                     );

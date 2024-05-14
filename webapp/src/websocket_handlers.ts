@@ -388,8 +388,8 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
         },
     });
 
-    const profiles = profilesInCurrentCallMap(store.getState());
-    const hostProfile = profiles[ev.data.hostID];
+    const hostProfile = profilesInCurrentCallMap(store.getState())[ev.data.hostID] ||
+        getUser(store.getState(), ev.data.hostID);
     if (!hostProfile) {
         return;
     }
@@ -400,6 +400,7 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
         callID: ev.data.call_id,
         noticeID: generateId(),
         displayName,
+        userID: ev.data.hostID,
     };
 
     store.dispatch({

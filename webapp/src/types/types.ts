@@ -174,6 +174,7 @@ export type HostControlNotice = {
     callID: string;
     noticeID: string;
     displayName: string;
+    userID?: string;
 }
 
 export type HostControlNoticeTimeout = {
