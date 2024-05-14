@@ -24,7 +24,6 @@
   "6XllQM": "Erlaube den Mikrofonzugriff für Mattermost.",
   "6aGJYU": "Es gibt kein laufendes Gespräch im Kanal.",
   "6cjovA": "Du kannst die Aufzeichnung im Chat zum Anruf finden, sobald die Verarbeitung abgeschlossen ist.",
-  "6cy/Zu": "{host} hat deine Hand gesenkt",
   "6ytNw2": "Nicht anwendbar, wenn das Feld <link>RTCD service URL</link> verwendet wird.",
   "7C5R1Z": "Der Echtzeit-Kommunikations-Daemon ist ein Dienst, mit dem du Anrufe auf deinen eigenen WebRTC-Dienste verlagern und skalierbare und sichere Implementierungen effizient unterstützen kannst. <featureLink>Erfahre mehr über diese Funktion</featureLink>.",
   "7YIAur": "Anrufe können bis zu {count, plural, =1 {einer Minute} other {# Minuten}} aufgezeichnet werden.",

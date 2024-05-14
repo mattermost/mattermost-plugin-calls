@@ -24,7 +24,6 @@
   "6XllQM": "Zezwól na dostęp mikrofonu do Mattermost.",
   "6aGJYU": "W kanale nie ma trwającego połączenia.",
   "6cjovA": "Nagranie można znaleźć w wątku czatu tej rozmowy po zakończeniu przetwarzania.",
-  "6cy/Zu": "{host} opuściłeś rękę",
   "6ytNw2": "Nie dotyczy, gdy używane jest pole <link>RTCD service URL</link>.",
   "7C5R1Z": "Komunikacja w czasie rzeczywistym to usługa zbudowana w celu odciążenia połączeń z własnych usług WebRTC i efektywnego wspierania skalowalnych i bezpiecznych wdrożeń. <featureLink>Dowiedz się więcej o tej funkcji</featureLink>.",
   "7YIAur": "Połączenia mogą być nagrywane przez okres {count, plural, =1 {# minuty} other {# minut}}.",
