@@ -823,7 +823,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     ...this.style.screenContainer,
 
                     // Account for when we display an alert banner.
-                    maxHeight: `calc(100vh - ${this.shouldRenderAlertBanner() ? 180 : 140}px)`,
+                    maxHeight: `calc(100vh - ${this.shouldRenderAlertBanner() ? 164 : 124}px)`,
                 }}
             >
                 <StyledMediaController
