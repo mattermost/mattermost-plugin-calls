@@ -13,6 +13,7 @@ type Props = {
     isMuted: boolean;
     isSharingScreen: boolean;
     isHandRaised: boolean;
+    isHost: boolean;
     onRemove: () => void;
 }
 
@@ -23,6 +24,7 @@ export const HostControlsMenu = ({
     isMuted,
     isSharingScreen,
     isHandRaised,
+    isHost,
     onRemove,
 }: Props) => {
     const {formatMessage} = useIntl();
@@ -38,7 +40,8 @@ export const HostControlsMenu = ({
         </DropdownMenuItem>
     );
 
-    // TODO: don't show 'make host' for host; keeping for now bc we will show other menu items next
+    const showingAtLeastOne = !isMuted || isSharingScreen || isHandRaised || !isHost;
+
     return (
         <>
             {muteUnmute}
@@ -54,11 +57,15 @@ export const HostControlsMenu = ({
                     {formatMessage({defaultMessage: 'Lower hand'})}
                 </DropdownMenuItem>
             }
-            <DropdownMenuItem onClick={() => hostMake(callID, userID)}>
-                <StyledMonitorAccount/>
-                {formatMessage({defaultMessage: 'Make host'})}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator/>
+            {!isHost &&
+                <DropdownMenuItem onClick={() => hostMake(callID, userID)}>
+                    <StyledMonitorAccount/>
+                    {formatMessage({defaultMessage: 'Make host'})}
+                </DropdownMenuItem>
+            }
+            {showingAtLeastOne &&
+                <DropdownMenuSeparator/>
+            }
             <DropdownMenuItem onClick={onRemove}>
                 <RedCompassIcon icon={'minus-circle-outline'}/>
                 <RedText>{formatMessage({defaultMessage: 'Remove from call'})}</RedText>

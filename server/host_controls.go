@@ -59,7 +59,8 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	}
 
 	p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
-		"hostID": newHostID,
+		"hostID":  newHostID,
+		"call_id": state.Call.ID,
 	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	return nil
@@ -228,7 +229,8 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 		"call_id":    state.Call.ID,
 		"channel_id": channelID,
 		"session_id": sessionID,
-	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+		"user_id":    ust.UserID,
+	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 
 	go func() {
 		// Wait a few seconds for the client to end their session cleanly. If they don't (like for an

@@ -8,8 +8,8 @@ import {
     CallsUserPreferencesDefault,
     ChannelState,
     ChannelType,
-    HostControlNotification,
-    HostControlNotificationTimeout,
+    HostControlNotice,
+    HostControlNoticeTimeout,
     IncomingCallNotification,
     LiveCaptions,
 } from 'src/types/types';
@@ -31,8 +31,8 @@ import {
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
-    HOST_CONTROL_NOTIFICATION,
-    HOST_CONTROL_NOTIFICATION_TIMEOUT_EVENT,
+    HOST_CONTROL_NOTICE,
+    HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
     LIVE_CAPTIONS_ENABLED,
@@ -940,46 +940,46 @@ const clientConnecting = (state = false, action: { type: string, data: boolean }
     }
 };
 
-type hostControlNotificationAction = {
+type hostControlNoticeAction = {
     type: string;
-    data: HostControlNotification;
+    data: HostControlNotice;
 }
 
-type hostControlNotificationTimeoutAction = {
+type hostControlNoticeTimeoutAction = {
     type: string;
-    data: HostControlNotificationTimeout;
+    data: HostControlNoticeTimeout;
 }
 
-export type hostControlNotificationsState = {
-    [callID: string]: HostControlNotification[];
+export type hostControlNoticeState = {
+    [callID: string]: HostControlNotice[];
 }
 
-const addHostControlNotification = (notifications: HostControlNotification[] | undefined,
-    notification: HostControlNotification) => {
-    const ret = notifications?.length ? [...notifications] : [];
-    ret.push(notification);
+const addHostControlNotice = (notices: HostControlNotice[] | undefined,
+    notice: HostControlNotice) => {
+    const ret = notices?.length ? [...notices] : [];
+    ret.push(notice);
     return ret;
 };
 
-const removeHostControlNotification = (notifications: HostControlNotification[], notificationID: string) => {
-    return notifications.filter((n) => n.notificationID !== notificationID);
+const removeHostControlNotice = (notices: HostControlNotice[], noticeID: string) => {
+    return notices.filter((n) => n.noticeID !== noticeID);
 };
 
-const hostControlNotifications = (state: hostControlNotificationsState = {},
-    action: hostControlNotificationAction | hostControlNotificationTimeoutAction) => {
+const hostControlNotices = (state: hostControlNoticeState = {},
+    action: hostControlNoticeAction | hostControlNoticeTimeoutAction) => {
     switch (action.type) {
-    case HOST_CONTROL_NOTIFICATION: {
-        const data = action.data as HostControlNotification;
+    case HOST_CONTROL_NOTICE: {
+        const data = action.data as HostControlNotice;
         return {
             ...state,
-            [data.callID]: addHostControlNotification(state[data.callID], data),
+            [data.callID]: addHostControlNotice(state[data.callID], data),
         };
     }
-    case HOST_CONTROL_NOTIFICATION_TIMEOUT_EVENT: {
-        const data = action.data as HostControlNotificationTimeout;
+    case HOST_CONTROL_NOTICE_TIMEOUT_EVENT: {
+        const data = action.data as HostControlNoticeTimeout;
         return {
             ...state,
-            [data.callID]: removeHostControlNotification(state[data.callID], data.notificationID),
+            [data.callID]: removeHostControlNotice(state[data.callID], data.noticeID),
         };
     }
     default:
@@ -1012,5 +1012,5 @@ export default combineReducers({
     dismissedCalls,
     liveCaptions,
     clientConnecting,
-    hostControlNotifications,
+    hostControlNotices,
 });
