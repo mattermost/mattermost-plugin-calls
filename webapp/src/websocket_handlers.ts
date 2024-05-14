@@ -7,6 +7,9 @@ import {
     CallState,
     CallStateData,
     EmptyData,
+    HostControlLowerHand,
+    HostControlMsg,
+    HostControlRemoved,
     LiveCaption,
     LiveCaptionData,
     Reaction,
@@ -42,7 +45,10 @@ import {
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
-import {HostControlNotice, HostControlNoticeType} from 'src/types/types';
+import {
+    HostControlNotice,
+    HostControlNoticeType,
+} from 'src/types/types';
 
 import {
     CALL_END,
@@ -373,10 +379,9 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
     }, REACTION_TIMEOUT_IN_REACTION_STREAM);
 }
 
-// TODO: MM-57919, refactor wsmsg data to calls-common
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
-export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHostChangedData & { call_id: string }>) {
+export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHostChangedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
     store.dispatch({
@@ -502,8 +507,7 @@ export function handleCaption(store: Store, ev: WebSocketMessage<LiveCaptionData
     }, LIVE_CAPTION_TIMEOUT);
 }
 
-// TODO: MM-57919, refactor wsmsg data to calls-common
-export function handleHostMute(store: Store, ev: WebSocketMessage<{ channel_id: string, session_id: string }>) {
+export function handleHostMute(store: Store, ev: WebSocketMessage<HostControlMsg>) {
     const channelID = ev.data.channel_id;
     const client = getCallsClient();
     if (!client || client?.channelID !== channelID) {
@@ -518,7 +522,7 @@ export function handleHostMute(store: Store, ev: WebSocketMessage<{ channel_id: 
     client.mute();
 }
 
-export function handleHostScreenOff(store: Store, ev: WebSocketMessage<{ channel_id: string, session_id: string }>) {
+export function handleHostScreenOff(store: Store, ev: WebSocketMessage<HostControlMsg>) {
     const channelID = ev.data.channel_id;
     const client = getCallsClient();
     if (!client || client?.channelID !== channelID) {
@@ -533,12 +537,7 @@ export function handleHostScreenOff(store: Store, ev: WebSocketMessage<{ channel
     client.unshareScreen();
 }
 
-export function handleHostLowerHand(store: Store, ev: WebSocketMessage<{
-    call_id: string,
-    channel_id: string,
-    session_id: string,
-    host_id: string
-}>) {
+export function handleHostLowerHand(store: Store, ev: WebSocketMessage<HostControlLowerHand>) {
     const channelID = ev.data.channel_id;
     const client = getCallsClient();
     if (!client || client?.channelID !== channelID) {
@@ -583,12 +582,7 @@ export function handleHostLowerHand(store: Store, ev: WebSocketMessage<{
     }, HOST_CONTROL_NOTICE_TIMEOUT);
 }
 
-export function handleHostRemoved(store: Store, ev: WebSocketMessage<{
-    call_id: string,
-    channel_id: string,
-    session_id: string,
-    user_id: string,
-}>) {
+export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControlRemoved>) {
     const channelID = ev.data.channel_id;
     const client = getCallsClient();
     if (!client || client?.channelID !== channelID) {
