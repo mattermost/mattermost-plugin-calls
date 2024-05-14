@@ -13,6 +13,7 @@ import {
     trackEvent,
 } from 'src/actions';
 import {
+    aiActivityForCurrentCall,
     allowScreenSharing,
     areHostControlsAllowed,
     areLiveCaptionsAvailableInCurrentCall,
@@ -92,6 +93,7 @@ const mapStateToProps = (state: GlobalState) => {
         liveCaptionsAvailable: areLiveCaptionsAvailableInCurrentCall(state),
         isAdmin: isCurrentUserSystemAdmin(state),
         hostControlsAllowed: areHostControlsAllowed(state),
+        aiActivity: aiActivityForCurrentCall(state),
     };
 };
 

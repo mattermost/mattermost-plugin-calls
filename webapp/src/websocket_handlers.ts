@@ -50,6 +50,7 @@ import {
 } from 'src/types/types';
 
 import {
+    AI_ACTIVITY,
     CALL_END,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
@@ -621,4 +622,16 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControl
             },
         });
     }, HOST_CONTROL_NOTICE_TIMEOUT);
+}
+
+export function handleAIActivity(store: Store, ev: WebSocketMessage<{ channel_id: string, active: boolean }>) {
+    const channelID = ev.data.channel_id;
+
+    store.dispatch({
+        type: AI_ACTIVITY,
+        data: {
+            channel_id: channelID,
+            active: ev.data.active,
+        },
+    });
 }

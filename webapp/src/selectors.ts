@@ -25,6 +25,7 @@ import {
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
 import {
+    aiActivityState,
     callsJobState,
     callState,
     hostControlNoticeState,
@@ -602,3 +603,14 @@ export const screenSourceModal = (state: GlobalState) => {
 export const clientConnecting = (state: GlobalState) => {
     return pluginState(state).clientConnecting;
 };
+
+const aiActivity = (state: GlobalState): aiActivityState =>
+    pluginState(state).aiActivity;
+
+export const aiActivityForCurrentCall: (state: GlobalState) => boolean =
+    createSelector(
+        'aiActivityForCurrentCall',
+        aiActivity,
+        channelIDForCurrentCall,
+        (activity, channelID) => activity[channelID],
+    );

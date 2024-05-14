@@ -52,6 +52,7 @@ import {
     getWSConnectionURL,
 } from 'plugin/utils';
 import {
+    handleAIActivity,
     handleCallEnd,
     handleCallHostChanged,
     handleCallJobState,
@@ -290,6 +291,9 @@ export default async function init(cfg: InitConfig) {
             break;
         case 'user_removed':
             handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);
+            break;
+        case `custom_${pluginId}_ai_activity`:
+            handleAIActivity(store, ev as WebSocketMessage);
             break;
         default:
         }

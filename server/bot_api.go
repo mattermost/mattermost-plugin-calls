@@ -620,7 +620,7 @@ func (p *Plugin) handleBotGetFilenameForCall(w http.ResponseWriter, r *http.Requ
 
 func (p *Plugin) handleBotPostAI(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
-	defer p.httpAudit("handleBotPostInAICallThread", &res, w, r)
+	defer p.httpAudit("handleBotPostAI", &res, w, r)
 
 	channelID := mux.Vars(r)["call_id"]
 
@@ -673,4 +673,41 @@ func (p *Plugin) handleBotPostAI(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(post); err != nil {
 		p.LogError(err.Error())
 	}
+}
+
+func (p *Plugin) handleBotActivateAI(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleBotActivateAI", &res, w, r)
+
+	channelID := mux.Vars(r)["call_id"]
+
+	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{})
+	if err != nil {
+		res.Code = http.StatusBadRequest
+		res.Err = err.Error()
+		return
+	}
+
+	if call.StartAt == 0 || call.EndAt > 0 {
+		res.Err = "no call ongoing"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	var payload map[string]bool
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&payload); err != nil {
+		res.Err = "failed to decode request body: " + err.Error()
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if v, ok := payload["active"]; ok {
+		p.publishWebSocketEvent(wsEventAIActivity, map[string]interface{}{
+			"active":     v,
+			"channel_id": channelID,
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}
+
+	res.Code = http.StatusOK
+	res.Msg = "success"
 }

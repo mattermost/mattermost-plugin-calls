@@ -29,6 +29,7 @@ export type Props = {
     sessionID: string,
     onRemove: () => void,
     isSharingScreen?: boolean,
+    aiActivity?: boolean,
 }
 
 export default function CallParticipant({
@@ -46,6 +47,7 @@ export default function CallParticipant({
     sessionID,
     onRemove,
     isSharingScreen = false,
+    aiActivity = false,
 }: Props) {
     const {formatMessage} = useIntl();
     const {hoverOn, hoverOff, onOpenChange, hostControlsAvailable, showHostControls} = useHostControls(isYou, isHost, iAmHost);
@@ -105,6 +107,17 @@ export default function CallParticipant({
                 }
             </div>
 
+            { aiActivity &&
+            <AIActivity>
+                <div/>
+                <div/>
+                <div/>
+                <div/>
+                <div/>
+                <div/>
+            </AIActivity>
+            }
+
             <span style={{fontWeight: 600, fontSize: '12px', lineHeight: '16px', textAlign: 'center'}}>
                 {name}
             </span>
@@ -153,6 +166,40 @@ export default function CallParticipant({
         </Participant>
     );
 }
+
+const AIActivity = styled.div`
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 2px;
+height: 20px;
+
+> div {
+    background: var(--online-indicator);
+    height: 2px;
+    width: 3px;
+    border-radius: 4px;
+    animation: ai-activity 0ms -500ms linear infinite alternate;
+}
+
+@keyframes ai-activity {
+    0% {
+        opacity: 0.10;
+        height: 2px;
+    }
+    100% {
+        opacity: 0.90;
+        height: 20px;
+    }
+}
+
+:nth-child(1)  { animation-duration: 347ms; }
+:nth-child(2)  { animation-duration: 401ms; }
+:nth-child(3)  { animation-duration: 359ms; }
+:nth-child(4)  { animation-duration: 419ms; }
+:nth-child(5)  { animation-duration: 379ms; }
+:nth-child(6)  { animation-duration: 409ms; }
+`;
 
 const styles: Record<string, CSSObject> = {
     reactionContainer: {

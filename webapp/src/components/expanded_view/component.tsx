@@ -120,6 +120,7 @@ interface Props extends RouteComponentProps {
     liveCaptionsAvailable: boolean,
     isAdmin: boolean,
     hostControlsAllowed: boolean,
+    aiActivity: boolean,
 }
 
 interface State {
@@ -891,6 +892,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     sessionID={session.session_id}
                     isSharingScreen={this.props.screenSharingSession?.session_id === session.session_id}
                     onRemove={() => this.onRemove(session.session_id, session.user_id)}
+                    aiActivity={this.props.aiActivity && profile.username === 'ai'}
                 />
             );
         });

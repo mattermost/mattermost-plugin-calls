@@ -127,6 +127,7 @@ import {
     shouldRenderDesktopWidget,
 } from './utils';
 import {
+    handleAIActivity,
     handleCallEnd,
     handleCallHostChanged,
     handleCallJobState,
@@ -271,6 +272,10 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_host_removed`, (ev) => {
             handleHostRemoved(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_ai_activity`, (ev) => {
+            handleAIActivity(store, ev);
         });
     }
 

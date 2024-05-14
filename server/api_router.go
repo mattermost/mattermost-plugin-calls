@@ -130,6 +130,7 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	botRouter.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/transcriptions", p.handleBotPostTranscriptions).Methods("POST")
 	botRouter.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/jobs/{job_id:[a-z0-9]{26}}/status", p.handleBotPostJobsStatus).Methods("POST")
 	botRouter.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/post-ai", p.handleBotPostAI).Methods("POST")
+	botRouter.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/activate-ai", p.handleBotActivateAI).Methods("POST")
 
 	// TURN
 	router.HandleFunc("/turn-credentials", p.handleGetTURNCredentials).Methods("GET")

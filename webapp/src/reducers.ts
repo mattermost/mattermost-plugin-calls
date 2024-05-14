@@ -16,6 +16,7 @@ import {
 
 import {
     ADD_INCOMING_CALL,
+    AI_ACTIVITY,
     CALL_END,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
@@ -987,6 +988,37 @@ const hostControlNotices = (state: hostControlNoticeState = {},
     }
 };
 
+export type aiActivityState = {
+    [channelID: string]: boolean;
+}
+
+type aiActivityAction = {
+    type: string;
+    data: {
+        channel_id: string;
+        active: boolean;
+    }
+}
+
+const aiActivity = (state: aiActivityState = {}, action: aiActivityAction) => {
+    switch (action.type) {
+    case UNINIT:
+        return {};
+    case AI_ACTIVITY:
+        return {
+            ...state,
+            [action.data.channel_id]: action.data.active,
+        };
+    case CALL_END:
+        return {
+            ...state,
+            [action.data.channel_id]: false,
+        };
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     channels,
     clientStateReducer,
@@ -1013,4 +1045,5 @@ export default combineReducers({
     liveCaptions,
     clientConnecting,
     hostControlNotices,
+    aiActivity,
 });

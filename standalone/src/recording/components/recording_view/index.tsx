@@ -15,6 +15,7 @@ import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import Timestamp from 'src/components/timestamp';
 import {callProfileImages} from 'src/recording/selectors';
 import {
+    aiActivityForCurrentCall,
     hostIDForCurrentCall,
     profilesInCurrentCallMap,
     screenSharingSessionForCurrentCall,
@@ -37,6 +38,8 @@ const RecordingView = () => {
     const profileImages = useSelector((state: GlobalState) => callProfileImages(state, callsClient?.channelID || ''));
 
     const hostID = useSelector((state: GlobalState) => hostIDForCurrentCall(state));
+
+    const aiActivity = useSelector(aiActivityForCurrentCall);
 
     const attachVoiceTracks = (tracks: MediaStreamTrack[]) => {
         for (const track of tracks) {
@@ -160,6 +163,7 @@ const RecordingView = () => {
                     userID={session.user_id}
                     sessionID={session.session_id}
                     onRemove={() => null}
+                    aiActivity={aiActivity && profile.username === 'ai'}
                 />
             );
         });
