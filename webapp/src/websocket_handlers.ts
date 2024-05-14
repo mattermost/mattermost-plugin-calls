@@ -583,7 +583,7 @@ export function handleHostLowerHand(store: Store, ev: WebSocketMessage<HostContr
 }
 
 export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControlRemoved>) {
-    const channelID = ev.broadcast.channel_id;
+    const channelID = ev.data.channel_id;
     const client = getCallsClient();
     if (!client || client?.channelID !== channelID) {
         return;

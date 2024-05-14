@@ -283,7 +283,6 @@ export default async function init(cfg: InitConfig) {
             handleHostScreenOff(store, ev as WebSocketMessage<HostControlMsg>);
             break;
         case `custom_${pluginId}_host_lower_hand`:
-            // Note: I'm not sure what's making tsc unhappy about the following without the `as unknown`
             handleHostLowerHand(store, ev as WebSocketMessage<HostControlLowerHand>);
             break;
         case `custom_${pluginId}_host_removed`:
