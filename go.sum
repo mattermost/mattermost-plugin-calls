@@ -361,8 +361,8 @@ github.com/mattermost/calls-offloader v0.8.0 h1:XCAAMR11V/wSlLIJl1DuUQ8PGT8RRwPF
 github.com/mattermost/calls-offloader v0.8.0/go.mod h1:xmVZZfWM9KfTcOp2Zb8XdFRin4JBNcQqg+vcwtTmdPc=
 github.com/mattermost/calls-recorder v0.6.4 h1:LCS7a8Q4eGUbZmBkgARTwNLOUyJyxkDfrIpx/Gv26Uo=
 github.com/mattermost/calls-recorder v0.6.4/go.mod h1:v/52mE+wIXGJE7ZflpAkoyGd56hbVgC9ZuEBBaRd8KU=
-github.com/mattermost/calls-transcriber v0.2.2 h1:Fr18aYdktGvWhy8cnv+gsrXXZ9MKO1EMwshU8RV3Tao=
-github.com/mattermost/calls-transcriber v0.2.2/go.mod h1:fLUpcelaXlYpicogtpENbP7Rw237jZIi78MoHXpRS0E=
+github.com/mattermost/calls-transcriber v0.3.0-dev2 h1:XoiwbTHx4IIz+EPEPOPhFqUHgzJGZmSRPIBovBHtbtw=
+github.com/mattermost/calls-transcriber v0.3.0-dev2/go.mod h1:sYt5KtIAPpOT580/bYWtbc+SEseGB6/t/gLXWHTgvkk=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 h1:Khvh6waxG1cHc4Cz5ef9n3XVCxRWpAKUtqg9PJl5+y8=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404/go.mod h1:RyS7FDNQlzF1PsjbJWHRI35exqaKGSO9qD4iv8QjE34=
 github.com/mattermost/ldap v3.0.4+incompatible h1:SOeNnz+JNR+foQ3yHkYqijb9MLPhXN2BZP/PdX23VDU=
