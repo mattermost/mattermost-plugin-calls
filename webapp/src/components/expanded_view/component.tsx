@@ -1208,7 +1208,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <ControlsButton
                                     id='calls-popout-cc-button'
                                     onToggle={this.onLiveCaptionsToggle}
-                                    icon={<CCIcon style={{width: '32px', height: '32px'}}/>}
+                                    icon={<CCIcon style={{width: '20px', height: '20px'}}/>}
                                     tooltipText={liveCaptionsText}
                                     bgColor={this.state.showLiveCaptions ? 'white' : ''}
                                     bgColorHover={this.state.showLiveCaptions ? 'rgba(255, 255, 255, 0.92)' : ''}
