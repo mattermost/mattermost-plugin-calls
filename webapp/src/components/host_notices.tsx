@@ -119,7 +119,7 @@ const Notice = styled.div<{ $onWidget?: boolean }>`
     font-weight: 600;
     font-size: 14px;
     line-height: 20px;
-    background: #FFFFFF;
+    background: var(--button-color);
 
     ${({$onWidget}) => $onWidget && css`
         width: 100%;
@@ -128,6 +128,7 @@ const Notice = styled.div<{ $onWidget?: boolean }>`
         font-size: 11px;
         font-weight: 400;
         white-space: pre;
+        background: var(--center-channel-bg);
     `}
 `;
 
@@ -144,17 +145,24 @@ const RedStyledCompassIcon = styled(StyledCompassIcon)`
 
 export const StyledMonitorAccount = styled(MonitorAccount)<{ $onWidget?: boolean }>`
     flex: none;
-    margin-left: ${({$onWidget}) => ($onWidget ? 1 : 0)}px;
+    margin-left: 0;
     margin-top: 1px;
-    fill: var(--center-channel-color-64);
-    width: ${({$onWidget}) => ($onWidget ? 14 : 18)}px;
+    fill: rgba(var(--calls-bg-rgb), 0.56);
+    width: 18px;
+
+    ${({$onWidget}) => $onWidget && css`
+        fill: var(--center-channel-color-64);
+        margin-left: 1px;
+        width: 14px;
+    `};
 `;
 
 const Text = styled.span<{ $onWidget?: boolean }>`
-    color: var(--center-channel-color);
+    color: var(--calls-bg);
 
     ${({$onWidget}) => $onWidget && css`
         overflow: hidden;
         text-overflow: ellipsis;
+        color: var(--center-channel-color);
     `}
 `;
