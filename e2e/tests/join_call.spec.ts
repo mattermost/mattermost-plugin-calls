@@ -89,8 +89,8 @@ test.describe('join call', () => {
         await userBPage.page.locator('[data-testid=SendMessageButton]').click();
 
         await userAPage.locator('.post__header').locator('button.user-popover').last().click();
-        await expect(userAPage.locator('#user-profile-popover')).toBeVisible();
-        await userAPage.locator('#user-profile-popover').locator('#startCallButton').click();
+        await expect(userAPage.locator('div.user-profile-popover')).toBeVisible();
+        await userAPage.locator('div.user-profile-popover').locator('#startCallButton').click();
 
         await expect(userAPage.locator('#calls-widget')).toBeVisible();
         await expect(userAPage.locator('#calls-widget-loading-overlay')).toBeHidden();
@@ -109,8 +109,8 @@ test.describe('join call', () => {
         await userBPage.page.locator('[data-testid=SendMessageButton]').click();
 
         await userAPage.locator('.post__header').locator('button.user-popover').last().click();
-        await expect(userAPage.locator('#user-profile-popover')).toBeVisible();
-        await expect(userAPage.locator('#user-profile-popover').locator('#startCallButton')).toBeDisabled();
+        await expect(userAPage.locator('div.user-profile-popover')).toBeVisible();
+        await expect(userAPage.locator('div.user-profile-popover').locator('#startCallButton')).toBeDisabled();
 
         await userBPage.leaveCall();
 
@@ -125,8 +125,8 @@ test.describe('join call', () => {
         await userBPage.page.locator('[data-testid=SendMessageButton]').click();
 
         await userAPage.locator('.post__header').locator('button.user-popover').last().click();
-        await expect(userAPage.locator('#user-profile-popover')).toBeVisible();
-        await expect(userAPage.locator('#user-profile-popover').locator('#startCallButton')).toBeDisabled();
+        await expect(userAPage.locator('div.user-profile-popover')).toBeVisible();
+        await expect(userAPage.locator('div.user-profile-popover').locator('#startCallButton')).toBeDisabled();
 
         await userADevPage.leaveCall();
     });
