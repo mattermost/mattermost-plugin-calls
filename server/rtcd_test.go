@@ -15,7 +15,6 @@ import (
 	rtcdMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
 
-	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -187,42 +186,30 @@ func TestGetHostForNewCall(t *testing.T) {
 			mockClientC.On("Connected").Return(true).Once()
 
 			mockClientA.On("GetSystemInfo").Return(rtcd.SystemInfo{
-				Load: procfs.LoadAvg{
-					Load1:  1.00,
-					Load5:  5.00,
-					Load15: 5.00,
-				},
+				CPULoad: 1.00,
 			}, nil).Once()
 
 			mockClientB.On("GetSystemInfo").Return(rtcd.SystemInfo{
-				Load: procfs.LoadAvg{
-					Load1:  1.00,
-					Load5:  5.00,
-					Load15: 5.00,
-				},
+				CPULoad: 1.00,
 			}, nil).Once()
 
 			mockClientC.On("GetSystemInfo").Return(rtcd.SystemInfo{
-				Load: procfs.LoadAvg{
-					Load1:  1.00,
-					Load5:  5.00,
-					Load15: 5.00,
-				},
+				CPULoad: 1.00,
 			}, nil).Once()
 
 			mockAPI.On("LogDebug", "got system info for rtcd host", "origin", mock.AnythingOfType("string"),
 				"host", "127.0.0.1",
-				"info", "{Load:{Load1:1 Load5:5 Load15:5}}",
+				"info", "{CPULoad:1}",
 			).Once()
 
 			mockAPI.On("LogDebug", "got system info for rtcd host", "origin", mock.AnythingOfType("string"),
 				"host", "127.0.0.2",
-				"info", "{Load:{Load1:1 Load5:5 Load15:5}}",
+				"info", "{CPULoad:1}",
 			).Once()
 
 			mockAPI.On("LogDebug", "got system info for rtcd host", "origin", mock.AnythingOfType("string"),
 				"host", "127.0.0.3",
-				"info", "{Load:{Load1:1 Load5:5 Load15:5}}",
+				"info", "{CPULoad:1}",
 			).Once()
 
 			host, err := m.GetHostForNewCall()
@@ -236,42 +223,30 @@ func TestGetHostForNewCall(t *testing.T) {
 			mockClientC.On("Connected").Return(true).Once()
 
 			mockClientA.On("GetSystemInfo").Return(rtcd.SystemInfo{
-				Load: procfs.LoadAvg{
-					Load1:  1.00,
-					Load5:  5.00,
-					Load15: 5.00,
-				},
+				CPULoad: 1.00,
 			}, nil).Once()
 
 			mockClientB.On("GetSystemInfo").Return(rtcd.SystemInfo{
-				Load: procfs.LoadAvg{
-					Load1:  0.45,
-					Load5:  5.00,
-					Load15: 5.00,
-				},
+				CPULoad: 0.45,
 			}, nil).Once()
 
 			mockClientC.On("GetSystemInfo").Return(rtcd.SystemInfo{
-				Load: procfs.LoadAvg{
-					Load1:  1.00,
-					Load5:  5.00,
-					Load15: 5.00,
-				},
+				CPULoad: 1.00,
 			}, nil).Once()
 
 			mockAPI.On("LogDebug", "got system info for rtcd host", "origin", mock.AnythingOfType("string"),
 				"host", "127.0.0.1",
-				"info", "{Load:{Load1:1 Load5:5 Load15:5}}",
+				"info", "{CPULoad:1}",
 			).Once()
 
 			mockAPI.On("LogDebug", "got system info for rtcd host", "origin", mock.AnythingOfType("string"),
 				"host", "127.0.0.2",
-				"info", "{Load:{Load1:0.45 Load5:5 Load15:5}}",
+				"info", "{CPULoad:0.45}",
 			).Once()
 
 			mockAPI.On("LogDebug", "got system info for rtcd host", "origin", mock.AnythingOfType("string"),
 				"host", "127.0.0.3",
-				"info", "{Load:{Load1:1 Load5:5 Load15:5}}",
+				"info", "{CPULoad:1}",
 			).Once()
 
 			host, err := m.GetHostForNewCall()
@@ -314,16 +289,12 @@ func TestGetHostForNewCall(t *testing.T) {
 			mockClientB.On("Connected").Return(false).Once()
 			mockClientC.On("Connected").Return(true).Once()
 			mockClientC.On("GetSystemInfo").Return(rtcd.SystemInfo{
-				Load: procfs.LoadAvg{
-					Load1:  1.00,
-					Load5:  5.00,
-					Load15: 5.00,
-				},
+				CPULoad: 1.00,
 			}, nil).Once()
 
 			mockAPI.On("LogDebug", "got system info for rtcd host", "origin", mock.AnythingOfType("string"),
 				"host", "127.0.0.3",
-				"info", "{Load:{Load1:1 Load5:5 Load15:5}}",
+				"info", "{CPULoad:1}",
 			).Once()
 
 			mockAPI.On("LogDebug", "skipping host from selection", "origin", mock.AnythingOfType("string"),

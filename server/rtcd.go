@@ -246,7 +246,7 @@ func (m *rtcdClientManager) GetHostForNewCall() (string, error) {
 		return "", fmt.Errorf("no host available")
 	}
 
-	// Now we want to select the instance with the lowest system load average.
+	// Now we want to select the instance with the lowest system load.
 	var minLoad float64
 	var hostWithMinLoad *rtcdHost
 	for i, host := range hostsAvailable {
@@ -259,10 +259,10 @@ func (m *rtcdClientManager) GetHostForNewCall() (string, error) {
 		m.ctx.LogDebug("got system info for rtcd host", "host", host.ip, "info", fmt.Sprintf("%+v", info))
 
 		if hostWithMinLoad == nil {
-			minLoad = info.Load.Load1
+			minLoad = info.CPULoad
 			hostWithMinLoad = hostsAvailable[i]
-		} else if info.Load.Load1 < minLoad {
-			minLoad = info.Load.Load1
+		} else if info.CPULoad < minLoad {
+			minLoad = info.CPULoad
 			hostWithMinLoad = hostsAvailable[i]
 		}
 	}
