@@ -4,6 +4,22 @@ import {apiGetGroupChannel} from './channels';
 import {baseURL, defaultTeam, pluginID} from './constants';
 import {getChannelNamesForTest} from './utils';
 
+// eslint-disable-next-line no-shadow
+export enum HostControlAction {
+    Mute = 'Mute participant',
+    StopScreenshare = 'Stop screen share',
+    LowerHand = 'Lower hand',
+    MakeHost = 'Make host',
+    Remove = 'Remove from call',
+}
+
+// eslint-disable-next-line no-shadow
+export enum HostNotice {
+    LowerHand = 'notice-lower-hand',
+    HostChanged = 'notice-host-changed',
+    Removed = 'notice-removed',
+}
+
 export default class PlaywrightDevPage {
     readonly page: Page;
 
@@ -123,5 +139,213 @@ export default class PlaywrightDevPage {
     async sendSlashCommand(cmd: string) {
         await this.page.locator('#post_textbox').fill(cmd);
         await this.page.getByTestId('SendMessageButton').click();
+    }
+
+    async expectHostToBe(name: string) {
+        const list = await this.getWidgetParticipantList();
+        await expect(list).toBeVisible();
+
+        await expect(this.page.getByTestId('participant-list-host')).toContainText(name);
+        await expect(this.page.getByTestId('participant-list-host').getByTestId('participant-list-host-badge')).toBeVisible();
+    }
+
+    async expectHostToBeOnPopout(name: string) {
+        await expect(this.page.getByTestId('host-badge').locator('..')).toContainText(name);
+    }
+
+    async getDropdownMenu(name: string) {
+        const list = await this.getWidgetParticipantList();
+        await expect(list).toBeVisible();
+        await list.getByText(name).hover();
+        await list.getByTestId('three-dots-button').click();
+        return list.getByTestId('dropdownmenu');
+    }
+
+    async closeDropdownMenu() {
+        const list = await this.getWidgetParticipantList();
+        await expect(list).toBeVisible();
+        return list.locator('.MenuHeader').click();
+    }
+
+    async clickHostControlOnWidget(name: string, action: HostControlAction) {
+        const menu = await this.getDropdownMenu(name);
+        await menu.getByText(action).click();
+
+        if (action === HostControlAction.Remove) {
+            const banner = this.page.getByTestId('calls-widget-banner-remove');
+            await expect(banner).toBeVisible();
+            await banner.getByText('Yes, remove').click();
+        }
+
+        // wait for the roundtrip and update
+        await this.wait(500);
+    }
+
+    async getDropdownMenuOnPopout(name: string) {
+        const list = this.page.locator('#calls-expanded-view-participants-grid');
+        await list.getByText(name).hover();
+        await list.getByTestId('menuButtonHost controls').click();
+        return list.getByTestId('dropdownmenu');
+    }
+
+    async closeDropdownMenuOnPopout(name: string) {
+        const list = this.page.locator('#calls-expanded-view-participants-grid');
+        await list.getByText(name).click();
+    }
+
+    async clickHostControlOnPopout(name: string, action: HostControlAction) {
+        const menu = await this.getDropdownMenuOnPopout(name);
+        await menu.getByText(action).click();
+
+        if (action === HostControlAction.Remove) {
+            const banner = this.page.getByTestId('remove-confirmation');
+            await expect(banner).toBeVisible();
+            await banner.getByText('Yes, remove').click();
+        }
+
+        // wait for the roundtrip and update
+        await this.wait(500);
+    }
+
+    async getDropdownMenuOnPopoutRHS(name: string) {
+        const list = this.page.getByTestId('rhs-participant-list');
+        await list.getByText(name).hover();
+        await list.getByTestId('menuButtonHost controls').click();
+        return list.getByTestId('dropdownmenu');
+    }
+
+    async closeDropdownMenuOnPopoutRHS(name: string) {
+        const list = this.page.getByTestId('rhs-participant-list');
+        await list.getByText(name).click();
+    }
+
+    async clickHostControlOnPopoutRHS(name: string, action: HostControlAction) {
+        await this.openRHSOnPopout();
+        const menu = await this.getDropdownMenuOnPopoutRHS(name);
+        await menu.getByText(action).click();
+
+        if (action === HostControlAction.Remove) {
+            const banner = this.page.getByTestId('remove-confirmation');
+            await expect(banner).toBeVisible();
+            await banner.getByText('Yes, remove').click();
+        }
+
+        // wait for the roundtrip and update
+        await this.wait(500);
+    }
+
+    async getWidgetParticipantList() {
+        if (!await this.page.locator('#calls-widget-participants-list').isVisible()) {
+            await this.page.locator('#calls-widget-participants-button').click();
+        }
+        return this.page.locator('#calls-widget-participants-list');
+    }
+
+    async muteOthers() {
+        const list = await this.getWidgetParticipantList();
+        await expect(list).toBeVisible();
+        await list.getByRole('button', {name: 'Mute others'}).click();
+    }
+
+    async muteOthersOnPopoutRHS() {
+        const list = this.page.getByTestId('rhs-participant-list');
+        await list.getByRole('button', {name: 'Mute others'}).click();
+    }
+
+    async expectNotice(notice: HostNotice, name: string) {
+        await expect(this.page.getByTestId(notice).first()).toContainText(name);
+    }
+
+    async expectNoticeOnPopout(notice: HostNotice, name: string) {
+        await expect(this.page.getByTestId(notice).last()).toContainText(name);
+    }
+
+    async raiseHand() {
+        await this.page.locator('#raise-hand').click();
+    }
+
+    async expectRaisedHand(name: string) {
+        const list = await this.getWidgetParticipantList();
+        await expect(list).toBeVisible();
+        await expect(list.getByText(name).locator('..').getByTestId('raised-hand')).toBeVisible();
+    }
+
+    async expectRaisedHandOnPopout(name: string) {
+        const list = this.page.locator('#calls-expanded-view-participants-grid');
+        await expect(list.getByText(name).locator('..').getByTestId('raised-hand')).toBeVisible();
+    }
+
+    async expectUnRaisedHand(name: string) {
+        const list = await this.getWidgetParticipantList();
+        await expect(list).toBeVisible();
+        await expect(list.getByText(name).locator('..').getByTestId('raised-hand')).toBeHidden();
+    }
+
+    async expectUnRaisedHandOnPoput(name: string) {
+        const list = this.page.locator('#calls-expanded-view-participants-grid');
+        await expect(list.getByText(name).locator('..').getByTestId('raised-hand')).toBeHidden();
+    }
+
+    async expectMuted(name: string, muted: boolean) {
+        const list = await this.getWidgetParticipantList();
+        await expect(list).toBeVisible();
+        await expect(list.getByText(name).locator('..').getByTestId(muted ? 'muted' : 'unmuted')).toBeVisible();
+    }
+
+    async expectMutedOnPopout(name: string, muted: boolean) {
+        const list = this.page.locator('#calls-expanded-view-participants-grid');
+        await expect(list.getByText(name).locator('..').getByTestId(muted ? 'muted' : 'unmuted')).toBeVisible();
+    }
+
+    async expectRemovedModal() {
+        const modalHeader = this.page.locator('#call-error-modal');
+        await expect(modalHeader).toBeVisible();
+        await expect(modalHeader).toContainText('You were removed from the call');
+        await modalHeader.getByRole('button', {name: 'Close'}).click();
+    }
+
+    async shareScreen() {
+        await this.page.locator('#calls-widget-toggle-menu-button').click();
+        await this.page.locator('#calls-widget-menu-screenshare').click();
+
+        await expect(this.page.locator('#screen-player')).toBeVisible();
+    }
+
+    async expectScreenShared() {
+        await expect(this.page.locator('#screen-player')).toBeVisible();
+
+        const screenStreamID = await (await this.page.waitForFunction(() => {
+            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        })).evaluate(() => {
+            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        });
+        expect(screenStreamID).toContain('screen_');
+    }
+
+    async expectScreenSharedOnPopout() {
+        await expect(this.page.locator('#screen-player')).toBeVisible();
+
+        const screenStreamID = await (await this.page.waitForFunction(() => {
+            const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+            return callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        })).evaluate(() => {
+            const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+            return callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        });
+        expect(screenStreamID).toContain('screen_');
+    }
+
+    async openRHSOnPopout() {
+        if (!await this.page.getByTestId('rhs-participant-list').isVisible()) {
+            await this.page.locator('#calls-popout-participants-button').click();
+        }
+        await expect(this.page.getByTestId('rhs-participant-list')).toBeVisible();
+    }
+
+    async closeRHSOnPopout() {
+        if (await this.page.getByTestId('rhs-participant-list').isVisible()) {
+            await this.page.locator('#calls-popout-participants-button').click();
+        }
+        await expect(this.page.getByTestId('rhs-participant-list')).toBeHidden();
     }
 }

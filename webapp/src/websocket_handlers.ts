@@ -28,7 +28,6 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {generateId} from 'mattermost-redux/utils/helpers';
 import {
-    displayGenericErrorModal,
     incomingCallOnChannel,
     loadCallState,
     loadProfilesByIdsIfMissing,
@@ -36,7 +35,7 @@ import {
     userLeft,
 } from 'src/actions';
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/client';
-import {hostRemovedMsg, removedDismiss, removedMsg, removedMsgTitle} from 'src/components/call_error_modal';
+import {hostRemovedMsg} from 'src/components/call_error_modal';
 import {
     HOST_CONTROL_NOTICE_TIMEOUT,
     JOB_TYPE_CAPTIONING,
@@ -87,10 +86,8 @@ import {
     followThread,
     getCallsClient,
     getUserDisplayName,
-    isDesktopApp,
     notificationsStopRinging,
     playSound,
-    sendDesktopError,
 } from './utils';
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
@@ -590,45 +587,38 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControl
     }
 
     const sessionID = client.getSessionID();
-    if (ev.data.session_id !== sessionID) {
-        const profile = profilesInCurrentCallMap(store.getState())[ev.data.user_id] ||
-            getUser(store.getState(), ev.data.user_id);
-        if (!profile) {
-            return;
-        }
-
-        const displayName = getUserDisplayName(profile);
-
-        const hostNotice: HostControlNotice = {
-            type: HostControlNoticeType.HostRemoved,
-            callID: ev.data.call_id,
-            noticeID: generateId(),
-            displayName,
-        };
-
-        store.dispatch({
-            type: HOST_CONTROL_NOTICE,
-            data: hostNotice,
-        });
-
-        setTimeout(() => {
-            store.dispatch({
-                type: HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
-                data: {
-                    callID: ev.data.call_id,
-                    noticeID: hostNotice.noticeID,
-                },
-            });
-        }, HOST_CONTROL_NOTICE_TIMEOUT);
-
+    if (ev.data.session_id === sessionID) {
+        getCallsClient()?.disconnect(new Error(hostRemovedMsg));
         return;
     }
 
-    getCallsClient()?.disconnect();
-
-    if (isDesktopApp()) {
-        sendDesktopError(channelID, hostRemovedMsg);
-    } else {
-        store.dispatch(displayGenericErrorModal(removedMsgTitle, removedMsg, removedDismiss));
+    const profile = profilesInCurrentCallMap(store.getState())[ev.data.user_id] ||
+        getUser(store.getState(), ev.data.user_id);
+    if (!profile) {
+        return;
     }
+
+    const displayName = getUserDisplayName(profile);
+
+    const hostNotice: HostControlNotice = {
+        type: HostControlNoticeType.HostRemoved,
+        callID: ev.data.call_id,
+        noticeID: generateId(),
+        displayName,
+    };
+
+    store.dispatch({
+        type: HOST_CONTROL_NOTICE,
+        data: hostNotice,
+    });
+
+    setTimeout(() => {
+        store.dispatch({
+            type: HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
+            data: {
+                callID: ev.data.call_id,
+                noticeID: hostNotice.noticeID,
+            },
+        });
+    }, HOST_CONTROL_NOTICE_TIMEOUT);
 }

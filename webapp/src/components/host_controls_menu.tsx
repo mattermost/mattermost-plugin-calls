@@ -35,7 +35,10 @@ export const HostControlsMenu = ({
 
     const muteUnmute = isMuted ? null : (
         <DropdownMenuItem onClick={() => hostMute(callID, sessionID)}>
-            <StyledCompassIcon icon={'microphone-off'}/>
+            <StyledCompassIcon
+                data-testid={'host-mute'}
+                icon={'microphone-off'}
+            />
             {formatMessage({defaultMessage: 'Mute participant'})}
         </DropdownMenuItem>
     );
