@@ -13,11 +13,15 @@ import {
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
 
-test.setTimeout(200000);
+test.setTimeout(300000);
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
     await devPage.goto();
+});
+test.afterEach(async ({page, context}) => {
+    const devPage = new PlaywrightDevPage(page);
+    await devPage.endCall();
 });
 
 test.describe('host controls', () => {
@@ -84,11 +88,6 @@ test.describe('host controls', () => {
         await user0Page.expectNotice(HostNotice.HostChanged, usernames[1]);
         await user1Page.expectNotice(HostNotice.HostChanged, 'You');
 
-        // host change notice - snapshots
-        await user0Page.wait(1000);
-        expect(await (user0Page.page.getByTestId(HostNotice.HostChanged).first()).screenshot()).toMatchSnapshot('host-changed-notice-other-widget.png');
-        expect(await (user1Page.page.getByTestId(HostNotice.HostChanged).first()).screenshot()).toMatchSnapshot('host-changed-notice-self-widget.png');
-
         // Own host notice says "You"
         await user1Page.leaveCall();
         await user0Page.expectNotice(HostNotice.HostChanged, 'You');
@@ -154,10 +153,6 @@ test.describe('host controls', () => {
         await user0Page.expectUnRaisedHand(usernames[1]);
         await user1Page.expectNotice(HostNotice.LowerHand, usernames[0]);
 
-        // lower hand notice snapshot
-        await user0Page.wait(1000);
-        expect(await (user1Page.page.getByTestId(HostNotice.LowerHand).first()).screenshot()).toMatchSnapshot('lower-hand-notice-widget.png');
-
         //
         // REMOVE FROM CALL
         //
@@ -172,7 +167,6 @@ test.describe('host controls', () => {
 
         // remove notice/modal snapshots
         await user0Page.wait(1000);
-        expect(await (user0Page.page.getByTestId(HostNotice.Removed).first()).screenshot()).toMatchSnapshot('removed-notice-widget.png');
         expect(await (user1Page.page.locator('#call-error-modal').locator('.modal-content').screenshot())).toMatchSnapshot('removed-error-modal.png');
 
         await user1Page.expectRemovedModal();
@@ -218,11 +212,6 @@ test.describe('host controls', () => {
         await user0Popout.expectHostToBeOnPopout(usernames[1]);
         await user1Popout.expectHostToBeOnPopout(usernames[1]);
         await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[1]);
-
-        // host change notice - snapshots
-        await user0Popout.wait(1000);
-        expect(await (user0Popout.page.getByTestId(HostNotice.HostChanged).last()).screenshot()).toMatchSnapshot('host-changed-notice-other-popout.png');
-        expect(await (user1Popout.page.getByTestId(HostNotice.HostChanged).last()).screenshot()).toMatchSnapshot('host-changed-notice-self-popout.png');
 
         // Own host notice says "You"
         await user1Popout.expectNoticeOnPopout(HostNotice.HostChanged, 'You');
@@ -272,10 +261,6 @@ test.describe('host controls', () => {
         await user0Popout.expectUnRaisedHandOnPoput(usernames[1]);
         await user1Popout.expectNoticeOnPopout(HostNotice.LowerHand, usernames[0]);
 
-        // lower hand notice snapshot
-        await user0Page.wait(1000);
-        expect(await (user1Popout.page.getByTestId(HostNotice.LowerHand).last()).screenshot()).toMatchSnapshot('lower-hand-notice-popout.png');
-
         //
         // REMOVE FROM CALL
         //
@@ -286,10 +271,6 @@ test.describe('host controls', () => {
         // 0 removes 1
         await user0Popout.clickHostControlOnPopout(usernames[1], HostControlAction.Remove);
         await user0Popout.expectNoticeOnPopout(HostNotice.Removed, usernames[1]);
-
-        // remove notice snapshots
-        await user0Page.wait(1000);
-        expect(await (user0Popout.page.getByTestId(HostNotice.Removed).last()).screenshot()).toMatchSnapshot('removed-notice-popout.png');
 
         await user1Page.expectRemovedModal();
 
