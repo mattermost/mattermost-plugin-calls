@@ -92,6 +92,9 @@ test.describe('join call', () => {
         await expect(userAPage.locator('div.user-profile-popover')).toBeVisible();
         await userAPage.locator('div.user-profile-popover').locator('#startCallButton').click();
 
+        // Close User profile overlay
+        await userAPage.locator('button.closeButtonRelativePosition').click();
+
         await expect(userAPage.locator('#calls-widget')).toBeVisible();
         await expect(userAPage.locator('#calls-widget-loading-overlay')).toBeHidden();
 
@@ -111,6 +114,7 @@ test.describe('join call', () => {
         await userAPage.locator('.post__header').locator('button.user-popover').last().click();
         await expect(userAPage.locator('div.user-profile-popover')).toBeVisible();
         await expect(userAPage.locator('div.user-profile-popover').locator('#startCallButton')).toBeDisabled();
+        await userAPage.locator('button.closeButtonRelativePosition').click();
 
         await userBPage.leaveCall();
 
@@ -127,6 +131,7 @@ test.describe('join call', () => {
         await userAPage.locator('.post__header').locator('button.user-popover').last().click();
         await expect(userAPage.locator('div.user-profile-popover')).toBeVisible();
         await expect(userAPage.locator('div.user-profile-popover').locator('#startCallButton')).toBeDisabled();
+        await userAPage.locator('button.closeButtonRelativePosition').click();
 
         await userADevPage.leaveCall();
     });
