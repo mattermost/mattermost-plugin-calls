@@ -85,6 +85,14 @@ export default class PlaywrightDevPage {
         await expect(this.page.locator('#calls-widget')).toBeVisible();
     }
 
+    async openPopout() {
+        const [popOut, _] = await Promise.all([
+            this.page.context().waitForEvent('page'),
+            this.page.click('#calls-widget-expand-button'),
+        ]);
+        return new PlaywrightDevPage(popOut);
+    }
+
     async enableCalls() {
         const channelHeaderButton = this.page.locator('#channelHeaderDropdownButton');
         await expect(channelHeaderButton).toBeVisible();

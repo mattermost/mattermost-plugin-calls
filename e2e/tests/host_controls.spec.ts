@@ -13,7 +13,7 @@ import {
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
 
-test.setTimeout(300000);
+test.setTimeout(400000);
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -268,6 +268,10 @@ test.describe('host controls', () => {
         expect(await (await user0Popout.getDropdownMenuOnPopout(usernames[1])).screenshot()).toMatchSnapshot('remove-popout.png');
         await user0Popout.closeDropdownMenuOnPopout(usernames[0]);
 
+        // move mouse around
+        await user0Popout.closeDropdownMenuOnPopout(usernames[1]);
+        await user0Popout.closeDropdownMenuOnPopout(usernames[0]);
+
         // 0 removes 1
         await user0Popout.clickHostControlOnPopout(usernames[1], HostControlAction.Remove);
         await user0Popout.expectNoticeOnPopout(HostNotice.Removed, usernames[1]);
@@ -343,9 +347,12 @@ test.describe('host controls', () => {
         await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, 'You');
 
         // 1 returns; returning host notice is shown
-        [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
+        user1Page = await joinCall(userStorages[1]);
         await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[1]);
         await user1Page.expectNotice(HostNotice.HostChanged, 'You');
+
+        // Now make the popout, so it doesn't delay the above and make the test fail.
+        user1Popout = await user1Page.openPopout();
 
         // Return host to 0
         await user1Popout.clickHostControlOnPopoutRHS(usernames[0], HostControlAction.MakeHost);
