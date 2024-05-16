@@ -27,6 +27,7 @@ export const HostNotices = ({onWidget = false}: Props) => {
                     return (
                         <Notice
                             key={n.noticeID}
+                            data-testid={'notice-lower-hand'}
                             $onWidget={onWidget}
                         >
                             <StyledCompassIcon
@@ -48,6 +49,7 @@ export const HostNotices = ({onWidget = false}: Props) => {
                     return (
                         <Notice
                             key={n.noticeID}
+                            data-testid={'notice-host-changed'}
                             $onWidget={onWidget}
                         >
                             <StyledMonitorAccount $onWidget={onWidget}/>
@@ -68,6 +70,7 @@ export const HostNotices = ({onWidget = false}: Props) => {
                     return (
                         <Notice
                             key={n.noticeID}
+                            data-testid={'notice-removed'}
                             $onWidget={onWidget}
                         >
                             <RedStyledCompassIcon
