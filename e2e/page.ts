@@ -209,9 +209,9 @@ export default class PlaywrightDevPage {
         return list.getByTestId('dropdownmenu');
     }
 
-    async closeDropdownMenuOnPopout(name: string) {
-        const list = this.page.locator('#calls-expanded-view-participants-grid');
-        await list.getByText(name).click();
+    async closeDropdownMenuOnPopout() {
+        const list = this.page.getByTestId('calls-expanded-view-top-container');
+        await list.click();
     }
 
     async clickHostControlOnPopout(name: string, action: HostControlAction) {

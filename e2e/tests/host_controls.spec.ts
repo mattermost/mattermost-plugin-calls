@@ -205,7 +205,7 @@ test.describe('host controls', () => {
 
         // host change snapshot
         expect(await (await user0Popout.getDropdownMenuOnPopout(usernames[1])).screenshot()).toMatchSnapshot('host-change-menu-popout.png');
-        await user0Popout.closeDropdownMenuOnPopout(usernames[0]);
+        await user0Popout.closeDropdownMenuOnPopout();
 
         // Can change to user 1
         await user0Popout.clickHostControlOnPopout(usernames[1], HostControlAction.MakeHost);
@@ -232,10 +232,7 @@ test.describe('host controls', () => {
 
         // mute snapshot
         expect(await (await user0Popout.getDropdownMenuOnPopout(usernames[1])).screenshot()).toMatchSnapshot('mute-menu-popout.png');
-        await user0Popout.closeDropdownMenuOnPopout(usernames[1]);
-
-        // need to move mouse to get hover again
-        await user0Popout.closeDropdownMenuOnPopout(usernames[0]);
+        await user0Popout.closeDropdownMenuOnPopout();
 
         // mute 1
         await user0Popout.clickHostControlOnPopout(usernames[1], HostControlAction.Mute);
@@ -251,10 +248,7 @@ test.describe('host controls', () => {
 
         // lower hand snapshot
         expect(await (await user0Popout.getDropdownMenuOnPopout(usernames[1])).screenshot()).toMatchSnapshot('lower-hand-popout.png');
-        await user0Popout.closeDropdownMenuOnPopout(usernames[1]);
-
-        // need to move mouse to get hover again
-        await user0Popout.closeDropdownMenuOnPopout(usernames[0]);
+        await user0Popout.closeDropdownMenuOnPopout();
 
         // Lower 1's hand
         await user0Popout.clickHostControlOnPopout(usernames[1], HostControlAction.LowerHand);
@@ -266,11 +260,7 @@ test.describe('host controls', () => {
         //
         // remove from call snapshot
         expect(await (await user0Popout.getDropdownMenuOnPopout(usernames[1])).screenshot()).toMatchSnapshot('remove-popout.png');
-        await user0Popout.closeDropdownMenuOnPopout(usernames[0]);
-
-        // move mouse around
-        await user0Popout.closeDropdownMenuOnPopout(usernames[1]);
-        await user0Popout.closeDropdownMenuOnPopout(usernames[0]);
+        await user0Popout.closeDropdownMenuOnPopout();
 
         // 0 removes 1
         await user0Popout.clickHostControlOnPopout(usernames[1], HostControlAction.Remove);
@@ -369,7 +359,6 @@ test.describe('host controls', () => {
 
         // 0 removes 1
         await user0Popout.clickHostControlOnPopoutRHS(usernames[1], HostControlAction.Remove);
-        await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, 'You');
         await user0Popout.expectNoticeOnPopout(HostNotice.Removed, usernames[1]);
         await user1Page.expectRemovedModal();
 

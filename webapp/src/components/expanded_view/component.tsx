@@ -1060,7 +1060,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <div style={this.style.main}>
                     {this.renderAlertBanner()}
 
-                    <div style={this.style.topContainer}>
+                    <div
+                        data-testid={'calls-expanded-view-top-container'}
+                        style={this.style.topContainer}
+                    >
                         {this.renderRecordingBadge()}
                         <CallDuration
                             startAt={this.props.callStartAt}
