@@ -1060,7 +1060,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <div style={this.style.main}>
                     {this.renderAlertBanner()}
 
-                    <div style={this.style.topContainer}>
+                    <div
+                        data-testid={'calls-expanded-view-top-container'}
+                        style={this.style.topContainer}
+                    >
                         {this.renderRecordingBadge()}
                         <CallDuration
                             startAt={this.props.callStartAt}
@@ -1268,8 +1271,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     </div>
                 </div>
                 {this.state.showParticipantsList &&
-                    <ul style={this.style.rhs}>
-                        <div style={this.style.rhsHeaderContainer}>
+                    <ul
+                        data-testid={'rhs-participant-list'}
+                        style={this.style.rhs}
+                    >
+                        <div
+                            data-testid={'rhs-participant-list-header'}
+                            style={this.style.rhsHeaderContainer}
+                        >
                             <div style={this.style.rhsHeader}>
                                 <span>{formatMessage({defaultMessage: 'Participants'})}</span>
                                 <ToTheRight/>

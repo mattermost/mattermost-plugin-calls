@@ -25,7 +25,7 @@ export const RemoveConfirmation = ({profile, onConfirm, onCancel}: Props) => {
 
     return (
         <InCallPrompt
-            testId={'remove_confirmation'}
+            testId={'remove-confirmation'}
             icon={<StyledCompassIcon icon='minus-circle-outline'/>}
             iconFill='rgb(var(--dnd-indicator-rgb))'
             iconColor='rgb(var(--dnd-indicator-rgb))'
