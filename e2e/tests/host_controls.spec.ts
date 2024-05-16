@@ -191,7 +191,7 @@ test.describe('host controls', () => {
         await user2Page.leaveCall();
     });
 
-    test('popout - participant card', async ({page, context}) => {
+    test('popout - participant card - make host', async ({page, context}) => {
         const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -216,11 +216,23 @@ test.describe('host controls', () => {
         // Own host notice says "You"
         await user1Popout.expectNoticeOnPopout(HostNotice.HostChanged, 'You');
 
-        // Reset host to user0
-        await user1Popout.clickHostControlOnPopout(usernames[0], HostControlAction.MakeHost);
-        await user0Popout.expectHostToBeOnPopout(usernames[0]);
+        // 1 leaves
+        await user1Page.leaveCall();
         await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, 'You');
-        await user1Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[0]);
+
+        // 1 returns; returning host notice is shown
+        user1Page = await joinCall(userStorages[1]);
+        await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[1]);
+        await user1Page.expectNotice(HostNotice.HostChanged, 'You');
+
+        await user0Page.leaveCall();
+        await user1Page.leaveCall();
+    });
+
+    test('popout - participant card - mute, lower hand', async ({page, context}) => {
+        const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
+        // eslint-disable-next-line prefer-const
+        let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
 
         //
         // MUTE
@@ -255,6 +267,15 @@ test.describe('host controls', () => {
         await user0Popout.expectUnRaisedHandOnPoput(usernames[1]);
         await user1Popout.expectNoticeOnPopout(HostNotice.LowerHand, usernames[0]);
 
+        await user0Page.leaveCall();
+        await user1Page.leaveCall();
+    });
+
+    test('popout - participant card - remove, stop screenshare', async ({page, context}) => {
+        const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
+        // eslint-disable-next-line prefer-const
+        let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
+
         //
         // REMOVE FROM CALL
         //
@@ -281,27 +302,11 @@ test.describe('host controls', () => {
         await expect(user0Popout.page.locator('#screen-player')).toBeHidden();
         await expect(user1Popout.page.locator('#screen-player')).toBeHidden();
 
-        //
-        // Finishing host change
-        //
-        // Change host back to user 1
-        await user0Popout.clickHostControlOnPopout(usernames[1], HostControlAction.MakeHost);
-        await user0Popout.expectHostToBeOnPopout(usernames[1]);
-
-        // 1 leaves
-        await user1Page.leaveCall();
-        await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, 'You');
-
-        // 1 returns; returning host notice is shown
-        user1Page = await joinCall(userStorages[1]);
-        await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[1]);
-        await user1Page.expectNotice(HostNotice.HostChanged, 'You');
-
         await user0Page.leaveCall();
         await user1Page.leaveCall();
     });
 
-    test('popout - RHS pt1', async ({page, context}) => {
+    test('popout - RHS - make host', async ({page, context}) => {
         const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -341,31 +346,11 @@ test.describe('host controls', () => {
         await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[1]);
         await user1Page.expectNotice(HostNotice.HostChanged, 'You');
 
-        // Now make the popout, so it doesn't delay the above and make the test fail.
-        user1Popout = await user1Page.openPopout();
-
-        // Return host to 0
-        await user1Popout.clickHostControlOnPopoutRHS(usernames[0], HostControlAction.MakeHost);
-
-        //
-        // REMOVE FROM CALL
-        //
-        // remove from call snapshot
-        expect(await (await user0Popout.getDropdownMenuOnPopoutRHS(usernames[1])).screenshot()).toMatchSnapshot('remove-popout-rhs.png');
-        await user0Popout.closeDropdownMenuOnPopoutRHS(usernames[1]);
-
-        // move mouse
-        await user0Popout.closeDropdownMenuOnPopoutRHS(usernames[0]);
-
-        // 0 removes 1
-        await user0Popout.clickHostControlOnPopoutRHS(usernames[1], HostControlAction.Remove);
-        await user0Popout.expectNoticeOnPopout(HostNotice.Removed, usernames[1]);
-        await user1Page.expectRemovedModal();
-
         await user0Page.leaveCall();
+        await user1Page.leaveCall();
     });
 
-    test('popout - RHS pt2', async ({page, context}) => {
+    test('popout - RHS - mute, lower hand', async ({page, context}) => {
         const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -413,25 +398,6 @@ test.describe('host controls', () => {
         await user1Popout.expectNoticeOnPopout(HostNotice.LowerHand, usernames[0]);
 
         //
-        // STOP SCREENSHARING
-        //
-        await user1Page.shareScreen();
-        await user0Popout.expectScreenSharedOnPopout();
-
-        // stop screenshare snapshot
-        expect(await (await user0Popout.getDropdownMenuOnPopoutRHS(usernames[1])).screenshot()).toMatchSnapshot('stop-screenshare-popout-rhs.png');
-        await user0Popout.closeDropdownMenuOnPopoutRHS(usernames[1]);
-
-        // move mouse
-        await user0Popout.closeDropdownMenuOnPopoutRHS(usernames[0]);
-
-        // 0 stops 1's screenshare
-        await user0Popout.clickHostControlOnPopoutRHS(usernames[1], HostControlAction.StopScreenshare);
-        await user0Popout.wait(1000);
-        await expect(user0Popout.page.locator('#screen-player')).toBeHidden();
-        await expect(user1Popout.page.locator('#screen-player')).toBeHidden();
-
-        //
         // MUTE OTHERS
         //
         const user2Page = await joinCall(userStorages[2]);
@@ -456,5 +422,54 @@ test.describe('host controls', () => {
         await user0Page.leaveCall();
         await user1Page.leaveCall();
         await user2Page.leaveCall();
+    });
+
+    test('popout - RHS - remove, stop screenshare', async ({page, context}) => {
+        const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
+        // eslint-disable-next-line prefer-const
+        let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
+
+        await user0Popout.openRHSOnPopout();
+        await user1Popout.openRHSOnPopout();
+
+        //
+        // REMOVE FROM CALL
+        //
+        // remove from call snapshot
+        expect(await (await user0Popout.getDropdownMenuOnPopoutRHS(usernames[1])).screenshot()).toMatchSnapshot('remove-popout-rhs.png');
+        await user0Popout.closeDropdownMenuOnPopoutRHS(usernames[1]);
+
+        // move mouse
+        await user0Popout.closeDropdownMenuOnPopoutRHS(usernames[0]);
+
+        // 0 removes 1
+        await user0Popout.clickHostControlOnPopoutRHS(usernames[1], HostControlAction.Remove);
+        await user0Popout.expectNoticeOnPopout(HostNotice.Removed, usernames[1]);
+        await user1Page.expectRemovedModal();
+
+        //
+        // STOP SCREENSHARING
+        //
+        [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
+        await user1Popout.openRHSOnPopout();
+
+        await user1Page.shareScreen();
+        await user0Popout.expectScreenSharedOnPopout();
+
+        // stop screenshare snapshot
+        expect(await (await user0Popout.getDropdownMenuOnPopoutRHS(usernames[1])).screenshot()).toMatchSnapshot('stop-screenshare-popout-rhs.png');
+        await user0Popout.closeDropdownMenuOnPopoutRHS(usernames[1]);
+
+        // move mouse
+        await user0Popout.closeDropdownMenuOnPopoutRHS(usernames[0]);
+
+        // 0 stops 1's screenshare
+        await user0Popout.clickHostControlOnPopoutRHS(usernames[1], HostControlAction.StopScreenshare);
+        await user0Popout.wait(1000);
+        await expect(user0Popout.page.locator('#screen-player')).toBeHidden();
+        await expect(user1Popout.page.locator('#screen-player')).toBeHidden();
+
+        await user0Page.leaveCall();
+        await user1Page.leaveCall();
     });
 });
