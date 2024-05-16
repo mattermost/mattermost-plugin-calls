@@ -1349,7 +1349,12 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
 
         display: flex;
 
+        > .announcement-bar {
+          display: none;
+        }
+
         > .main-wrapper {
+          position: absolute;
           display: flex;
           margin: 0;
           padding: 0;
@@ -1374,11 +1379,11 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
                 display: none;
             }
         `}
-    }
 
-    #sidebar-right {
-        z-index: 1001;
-        border: 0;
+        #sidebar-right {
+          z-index: 1001;
+          border: 0;
+        }
     }
 `;
 
