@@ -70,7 +70,7 @@ const Body = styled.span`
 
 const CloseButton = styled.button`
   cursor: pointer;
-  margin-left: auto;
+  margin: 0 28px 0 auto;
   opacity: 0.56;
 `;
 
