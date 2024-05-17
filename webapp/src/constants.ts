@@ -26,7 +26,7 @@ export const JOB_TYPE_CAPTIONING = 'captioning';
 export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
     missingAudioInput: {
         type: CallAlertType.Error,
-        icon: 'microphone',
+        icon: 'microphone-off',
         bannerText: defineMessage({defaultMessage: 'Unable to find a valid audio input device. Try plugging in an audio input device.'}),
         tooltipText: defineMessage({defaultMessage: 'No audio input devices'}),
         tooltipSubtext: defineMessage({defaultMessage: 'Try plugging in an audio input device.'}),
@@ -34,7 +34,7 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
     },
     missingAudioInputPermissions: {
         type: CallAlertType.Error,
-        icon: 'microphone',
+        icon: 'microphone-off',
         bannerText: defineMessage({defaultMessage: 'Allow microphone access to Mattermost.'}),
         tooltipText: defineMessage({defaultMessage: 'No audio input permissions'}),
         tooltipSubtext: defineMessage({defaultMessage: 'Allow microphone access to Mattermost.'}),
@@ -42,8 +42,8 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
     },
     missingScreenPermissions: {
         type: CallAlertType.Error,
-        icon: 'monitor',
-        bannerText: defineMessage({defaultMessage: 'Screen recording access is not currently allowed or was cancelled.'}),
+        icon: 'monitor-off',
+        bannerText: defineMessage({defaultMessage: 'Screen recording access is not currently allowed or was canceled.'}),
         tooltipText: defineMessage({defaultMessage: 'No screen sharing permissions'}),
         tooltipSubtext: defineMessage({defaultMessage: 'Allow screen recording access to Mattermost.'}),
         dismissable: true,
@@ -52,7 +52,7 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
         type: CallAlertType.Warning,
         icon: 'alert-outline',
         bannerText: defineMessage({defaultMessage: 'Call quality may be degraded due to unstable network conditions.'}),
-        dismissable: false,
+        dismissable: true,
     },
 };
 
