@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -17,6 +18,8 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/lt/client"
 
 	"github.com/mattermost/mattermost/server/public/model"
+
+	"github.com/pion/webrtc/v3/pkg/rtcerr"
 )
 
 const pkgPrefix = "github.com/mattermost/mattermost-plugin-calls/lt/"
@@ -235,9 +238,17 @@ func main() {
 					SpeechFile:    speechFile,
 				}
 
-				user := client.NewUser(cfg, client.WithLogger(userLogger))
-				if err := user.Connect(stopCh); err != nil {
-					userLogger.Error("connectUser failed", slog.String("err", err.Error()))
+				for {
+					user := client.NewUser(cfg, client.WithLogger(userLogger))
+					if err := user.Connect(stopCh); err != nil {
+						userLogger.Error("connectUser failed", slog.String("err", err.Error()))
+						var invalidStateErr *rtcerr.InvalidModificationError
+						if errors.As(err, &invalidStateErr) {
+							userLogger.Error("invalid state error, re-initializing")
+							continue
+						}
+					}
+					return
 				}
 			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, i < numUnmuted, i == 0 && j < numScreenSharing, j < numRecordings)
 		}

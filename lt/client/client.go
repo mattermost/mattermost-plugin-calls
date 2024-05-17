@@ -542,6 +542,15 @@ func (u *User) Connect(stopCh chan struct{}) error {
 		return fmt.Errorf("failed to subscribe to host changed event: %w", err)
 	}
 
+	errCh := make(chan error, 1)
+	err = callsClient.On(client.ErrorEvent, func(ctx any) error {
+		errCh <- ctx.(error)
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to close event: %w", err)
+	}
+
 	if err := callsClient.Connect(); err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
@@ -553,6 +562,9 @@ func (u *User) Connect(stopCh chan struct{}) error {
 	case <-ticker.C:
 	case <-closedCh:
 	case <-stopCh:
+	case err := <-errCh:
+		callsClient.Close()
+		return err
 	}
 
 	u.log.Debug("disconnecting...")
