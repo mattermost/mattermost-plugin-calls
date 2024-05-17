@@ -5,9 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"math/rand"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -17,7 +19,29 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
+const pkgPrefix = "github.com/mattermost/mattermost-plugin-calls/lt/"
+const rtcdPkgPrefix = "github.com/mattermost/rtcd/"
+
+func slogReplaceAttr(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.SourceKey {
+		source := a.Value.Any().(*slog.Source)
+		if idx := strings.Index(source.File, pkgPrefix); idx >= 0 {
+			source.File = source.File[idx+len(pkgPrefix):]
+		} else if idx := strings.Index(source.File, rtcdPkgPrefix); idx >= 0 {
+			source.File = "rtcd/" + source.File[idx+len(rtcdPkgPrefix):]
+		}
+	}
+	return a
+}
+
 func main() {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource:   true,
+		Level:       slog.LevelDebug,
+		ReplaceAttr: slogReplaceAttr,
+	}))
+	slog.SetDefault(logger)
+
 	// TODO: consider using a config file instead.
 	var teamID string
 	var channelID string
@@ -126,7 +150,7 @@ func main() {
 				}
 				for _, c := range chs {
 					if c.Channel.Type == model.ChannelTypeOpen && c.Channel.TeamId == teamID && c.Channel.DeleteAt == 0 {
-					  channels = append(channels, &c.Channel)
+						channels = append(channels, &c.Channel)
 					}
 				}
 
@@ -176,15 +200,16 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(numUsersPerCall * numCalls)
 	for j := 0; j < numCalls; j++ {
-		log.Printf("starting call in %s", channels[j].DisplayName)
+		logger.Debug("starting call in " + channels[j].DisplayName)
 		for i := 0; i < numUsersPerCall; i++ {
 			go func(idx int, channelID string, teamID string, unmuted, screenSharing, recording bool) {
 				username := fmt.Sprintf("%s%d", userPrefix, idx)
+				userLogger := logger.With("username", username)
 				if unmuted {
-					log.Printf("%s: going to transmit voice", username)
+					slog.Debug("going to transmit voice")
 				}
 				if screenSharing {
-					log.Printf("%s: going to transmit screen", username)
+					slog.Debug("going to transmit screen")
 				}
 				defer wg.Done()
 
@@ -210,9 +235,9 @@ func main() {
 					SpeechFile:    speechFile,
 				}
 
-				user := client.NewUser(cfg)
+				user := client.NewUser(cfg, client.WithLogger(userLogger))
 				if err := user.Connect(stopCh); err != nil {
-					log.Printf("%s: connectUser failed: %s", username, err.Error())
+					userLogger.Error("connectUser failed", slog.String("err", err.Error()))
 				}
 			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, i < numUnmuted, i == 0 && j < numScreenSharing, j < numRecordings)
 		}
