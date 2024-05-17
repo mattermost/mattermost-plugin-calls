@@ -358,6 +358,24 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
     }
 
+    private turnOnDegradedCallQualityAlert = throttle((justDelay = false) => {
+        if (justDelay) {
+            return;
+        }
+        this.setState({
+            alerts: {
+                ...this.state.alerts,
+                degradedCallQuality: {
+                    active: true,
+                    show: true,
+                },
+            },
+        });
+    }, DEGRADED_CALL_QUALITY_ALERT_WAIT, {
+        leading: true,
+        trailing: true,
+    });
+
     public componentDidMount() {
         if (!window.callsClient) {
             logErr('callsClient should be defined');
@@ -516,27 +534,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
-        const turnOnDegradedCallQualityAlert = throttle(() => {
-            this.setState({
-                alerts: {
-                    ...this.state.alerts,
-                    degradedCallQuality: {
-                        active: true,
-                        show: true,
-                    },
-                },
-            });
-        }, DEGRADED_CALL_QUALITY_ALERT_WAIT, {
-            leading: true,
-            trailing: true,
-        });
-
         window.callsClient?.on('mos', (mos: number) => {
             if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
-                turnOnDegradedCallQualityAlert();
+                this.turnOnDegradedCallQualityAlert();
             }
             if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
-                turnOnDegradedCallQualityAlert.cancel();
+                this.turnOnDegradedCallQualityAlert.cancel();
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -1516,6 +1519,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             },
                         },
                     });
+                    if (alertID === 'degradedCallQuality') {
+                        this.turnOnDegradedCallQualityAlert.cancel();
+                        this.turnOnDegradedCallQualityAlert(true);
+                    }
                 };
             }
 
