@@ -88,6 +88,7 @@
   "PjoOvw": "You're sharing your screen",
   "Q0W0k5": "Consider letting everyone know that this meeting is being recorded and transcribed.",
   "QtFGiO": "Host",
+  "Refhfu": "Create meeting summary",
   "Ru6jT+": "Please try to record again. You can also contact your system admin for troubleshooting help.",
   "RwD8Ty": "You're unmuted. Select {muteIcon} to mute.",
   "S2W9y3": "You're recording",
@@ -202,7 +203,6 @@
   "xYhChH": "Are you sure you want to remove <b>{userName}</b> from the call?",
   "yL9vD/": "Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. You now have access to <rtcdDocsLink>RTCD services</rtcdDocsLink>, <recordingsDocsLink>call recordings</recordingsDocsLink>, <guestAccountsLink>guest accounts</guestAccountsLink>, <autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and <mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, among many other features. View all features in our <documentationLink>documentation</documentationLink>.",
   "yO68rk": "Calls are currently running in test mode and only system admins can start them. Reach out directly to your system admin for assistance",
-  "yidxQc": "Create meeting summary?",
   "yjQNKt": "Calls are disabled in this channel.",
   "zx0myy": "Participants"
 }
