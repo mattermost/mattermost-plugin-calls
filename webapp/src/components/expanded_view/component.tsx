@@ -10,6 +10,7 @@ import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
+import {throttle} from 'lodash';
 import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
@@ -38,7 +39,7 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
-import {CallAlertConfigs} from 'src/constants';
+import {CallAlertConfigs, DEGRADED_CALL_QUALITY_ALERT_WAIT} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -674,19 +675,27 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
+        const turnOnDegradedCallQualityAlert = throttle(() => {
+            this.setState({
+                alerts: {
+                    ...this.state.alerts,
+                    degradedCallQuality: {
+                        active: true,
+                        show: true,
+                    },
+                },
+            });
+        }, DEGRADED_CALL_QUALITY_ALERT_WAIT, {
+            leading: true,
+            trailing: true,
+        });
+
         callsClient.on('mos', (mos: number) => {
             if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
-                this.setState({
-                    alerts: {
-                        ...this.state.alerts,
-                        degradedCallQuality: {
-                            active: true,
-                            show: true,
-                        },
-                    },
-                });
+                turnOnDegradedCallQualityAlert();
             }
             if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+                turnOnDegradedCallQualityAlert.cancel();
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -1359,18 +1368,18 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
         display: flex;
 
         > .announcement-bar {
-          display: none;
+            display: none;
         }
 
         > .main-wrapper {
-          position: absolute;
-          display: flex;
-          margin: 0;
-          padding: 0;
-          border-radius: 0;
-          border: 0;
-          width: 100%;
-          height: 100%;
+            position: absolute;
+            display: flex;
+            margin: 0;
+            padding: 0;
+            border-radius: 0;
+            border: 0;
+            width: 100%;
+            height: 100%;
         }
 
         #sidebar-right #sbrSearchFormContainer {
@@ -1388,10 +1397,9 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
                 display: none;
             }
         `}
-
         #sidebar-right {
-          z-index: 1001;
-          border: 0;
+            z-index: 1001;
+            border: 0;
         }
     }
 `;
@@ -1456,14 +1464,14 @@ const CloseViewButton = styled.button`
     border-radius: 4px;
 
     svg {
-      fill: rgba(255, 255, 255, 0.64);
+        fill: rgba(255, 255, 255, 0.64);
     }
 
     &:hover {
         background: rgba(255, 255, 255, 0.08);
 
         svg {
-          fill: rgba(255, 255, 255, 0.72);
+            fill: rgba(255, 255, 255, 0.72);
         }
     }
 
@@ -1471,7 +1479,7 @@ const CloseViewButton = styled.button`
         background: rgba(255, 255, 255, 0.16);
 
         svg {
-          fill: rgba(255, 255, 255, 0.80);
+            fill: rgba(255, 255, 255, 0.80);
         }
     }
 `;

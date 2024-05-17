@@ -16,7 +16,7 @@ const hoverMap = {
 
 const bgMap = {
     error: 'var(--dnd-indicator)',
-    warning: 'var(--away-indicator)',
+    warning: 'rgb(255, 188, 31)',
 };
 
 export type Props = {
@@ -78,6 +78,10 @@ const Banner = styled.div<{ $color: string, $bgColor: string }>`
     a, a:hover, a:visited {
         color: ${({$color}) => $color};
     }
+
+    i {
+        font-size: 18px;
+    }
 `;
 
 const Body = styled.span`
@@ -95,10 +99,6 @@ const CloseButton = styled.button<{ $bgHover: string }>`
     &:hover {
         opacity: 0.72;
         background: ${({$bgHover}) => $bgHover};
-    }
-
-    i {
-        font-size: 18px;
     }
 `;
 

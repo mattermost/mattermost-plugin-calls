@@ -12,6 +12,7 @@ export const CALL_RECORDING_POST_TYPE = 'custom_calls_recording';
 export const CALL_TRANSCRIPTION_POST_TYPE = 'custom_calls_transcription';
 export const LIVE_CAPTION_TIMEOUT = 5000;
 export const HOST_CONTROL_NOTICE_TIMEOUT = 5000;
+export const DEGRADED_CALL_QUALITY_ALERT_WAIT = 20000;
 
 // From mattermost-webapp/webapp/channels/src/utils/constants.tsx, importing causes tsc to throw fits.
 export const MESSAGE_DISPLAY = 'message_display';

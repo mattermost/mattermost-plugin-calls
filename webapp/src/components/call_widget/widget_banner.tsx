@@ -21,13 +21,19 @@ type Props = {
 
 const colorMap: { [key: string]: string } = {
     error: 'var(--button-color)',
-    warning: 'var(--center-channel-color)',
+    warning: 'rgb(63, 67, 80)',
     info: 'var(--center-channel-color)',
+};
+
+const hoverMap: { [key: string]: string } = {
+    error: 'rgba(var(--button-color-rgb), 0.08)',
+    warning: 'rgba(63, 67, 80, 0.08)',
+    info: 'rgba(var(--center-channel-color-rgb), 0.08)',
 };
 
 const bgMap: { [key: string]: string } = {
     error: 'var(--dnd-indicator)',
-    warning: 'var(--away-indicator)',
+    warning: 'rgb(255, 188, 31)',
     info: 'var(--center-channel-bg)',
 };
 
@@ -107,6 +113,7 @@ export default function WidgetBanner({
 
             {props.onCloseButtonClick &&
                 <CloseButton
+                    $bgHover={hoverMap[props.type]}
                     data-testid={'calls-widget-banner-close'}
                     onClick={() => setCloseButtoning(true)}
                 >
@@ -220,12 +227,12 @@ const Icon = styled.div<{ $fill?: string, $color?: string }>`
     margin-top: 4px;
 `;
 
-const CloseButton = styled(Icon)`
+const CloseButton = styled(Icon)<{ $bgHover: string }>`
     cursor: pointer;
     margin-top: 4px;
     app-region: no-drag;
 
     &:hover {
-        background: rgba(var(--center-channel-color-rgb), 0.08);
+        background: ${({$bgHover}) => $bgHover};
     }
 `;
