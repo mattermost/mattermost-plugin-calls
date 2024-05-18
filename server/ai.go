@@ -10,19 +10,19 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
-const aiPluginID = "mattermost-ai"
+const aiUsername = "ai"
 
 func (p *Plugin) getAIBot() (*model.Bot, error) {
-	bots, appErr := p.API.GetBots(&model.BotGetOptions{
-		OwnerId: aiPluginID,
-		PerPage: 1,
-	})
+	botUser, appErr := p.API.GetUserByUsername(aiUsername)
 	if appErr != nil {
-		return nil, fmt.Errorf("failed to get bots: %w", appErr)
-	} else if len(bots) == 0 {
-		return nil, fmt.Errorf("AI bot not found")
+		return nil, fmt.Errorf("failed to get AI bot user: %w", appErr)
 	}
-	return bots[0], nil
+	bot, appErr := p.API.GetBot(botUser.Id, false)
+	if appErr != nil {
+		return nil, fmt.Errorf("failed to get AI bot: %w", appErr)
+	}
+
+	return bot, nil
 }
 
 func (p *Plugin) getAIBotID() string {
