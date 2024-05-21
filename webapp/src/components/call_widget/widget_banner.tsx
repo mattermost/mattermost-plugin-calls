@@ -166,6 +166,7 @@ const Banner = styled.div<{ $color: string, $bgColor: string, $fadeIn: boolean }
 const Main = styled.div`
     display: flex;
     flex-direction: column;
+    flex: 1;
 
     font-style: normal;
     font-size: 11px;
@@ -230,6 +231,7 @@ const Icon = styled.div<{ $fill?: string, $color?: string }>`
 const CloseButton = styled(Icon)<{ $bgHover: string }>`
     cursor: pointer;
     margin-top: 4px;
+    border-radius: 2px;
     app-region: no-drag;
 
     &:hover {
