@@ -451,7 +451,7 @@ test.describe('call post', () => {
 
         await page.getByTestId('PostDotMenu-Button-' + postID).click();
 
-        await page.locator('#CENTER_dropdown_' + postID).locator('li', {hasText: 'Edit'}).click();
+        await page.keyboard.type('e');
 
         await page.keyboard.type('Edited');
 
