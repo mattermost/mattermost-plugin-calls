@@ -7,11 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/time/rate"
 	"net/http"
 	"path/filepath"
-	"time"
-
-	"golang.org/x/time/rate"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
@@ -210,80 +208,6 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		p.LogError(err.Error())
 	}
-}
-
-func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
-	var res httpResponse
-	defer p.httpAudit("handleEndCall", &res, w, r)
-
-	userID := r.Header.Get("Mattermost-User-Id")
-	channelID := mux.Vars(r)["channel_id"]
-
-	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
-
-	state, err := p.lockCallReturnState(channelID)
-	if err != nil {
-		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-	defer p.unlockCall(channelID)
-
-	if state == nil {
-		res.Err = "no call ongoing"
-		res.Code = http.StatusBadRequest
-		return
-	}
-
-	if !isAdmin && state.Call.OwnerID != userID {
-		res.Err = "no permissions to end the call"
-		res.Code = http.StatusForbidden
-		return
-	}
-
-	if state.Call.EndAt == 0 {
-		state.Call.EndAt = time.Now().UnixMilli()
-	}
-
-	if err := p.store.UpdateCall(&state.Call); err != nil {
-		res.Err = fmt.Errorf("failed to update call: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-
-	callID := state.Call.ID
-	nodeID := state.Call.Props.NodeID
-
-	go func() {
-		// We wait a few seconds for the call to end cleanly. If this doesn't
-		// happen we force end it.
-		time.Sleep(5 * time.Second)
-
-		call, err := p.store.GetCall(callID, db.GetCallOpts{})
-		if err != nil {
-			p.LogError("failed to get call", "err", err.Error())
-		}
-
-		sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})
-		if err != nil {
-			p.LogError("failed to get call sessions", "err", err.Error())
-		}
-
-		for _, session := range sessions {
-			if err := p.closeRTCSession(session.UserID, session.ID, channelID, nodeID, callID); err != nil {
-				p.LogError(err.Error())
-			}
-		}
-
-		if err := p.cleanCallState(call); err != nil {
-			p.LogError(err.Error())
-		}
-	}()
-
-	res.Code = http.StatusOK
-	res.Msg = "success"
 }
 
 func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Request) {

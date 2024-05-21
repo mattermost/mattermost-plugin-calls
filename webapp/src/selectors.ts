@@ -239,6 +239,10 @@ const hostsInCalls = (state: GlobalState): hostsState => {
     return pluginState(state).hosts;
 };
 
+export const hostIDForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
+    return hostsInCalls(state)[channelID]?.hostID;
+};
+
 export const hostIDForCurrentCall: (state: GlobalState) => string =
     createSelector(
         'hostIDForCurrentCall',

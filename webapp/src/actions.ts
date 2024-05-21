@@ -221,7 +221,7 @@ export const requestOnPremTrialLicense = async (users: number, termsAccepted: bo
 
 export const endCall = (channelID: string) => {
     return RestClient.fetch(
-        `${getPluginPath()}/calls/${channelID}/end`,
+        `${getPluginPath()}/calls/${channelID}/host/end`,
         {method: 'post'},
     );
 };

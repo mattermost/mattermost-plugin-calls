@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -253,6 +254,65 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 
 		if err := p.closeRTCSession(ust.UserID, sessionID, channelID, handlerID, state.Call.ID); err != nil {
 			p.LogError("hostRemoveSession: failed to close RTC session", "err", err.Error())
+		}
+	}()
+
+	return nil
+}
+
+func (p *Plugin) hostEnd(requesterID, channelID string) error {
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		return fmt.Errorf("failed to lock call: %w", err)
+	}
+	defer p.unlockCall(channelID)
+
+	if state == nil {
+		return ErrNoCallOngoing
+	}
+
+	if requesterID != state.Call.GetHostID() {
+		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
+			return ErrNoPermissions
+		}
+	}
+
+	if state.Call.EndAt == 0 {
+		state.Call.EndAt = time.Now().UnixMilli()
+	}
+
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		return fmt.Errorf("failed to update call: %w", err)
+	}
+
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+
+	callID := state.Call.ID
+	nodeID := state.Call.Props.NodeID
+
+	go func() {
+		// We wait a few seconds for the call to end cleanly. If this doesn't
+		// happen we force end it.
+		time.Sleep(5 * time.Second)
+
+		call, err := p.store.GetCall(callID, db.GetCallOpts{})
+		if err != nil {
+			p.LogError("failed to get call", "err", err.Error())
+		}
+
+		sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})
+		if err != nil {
+			p.LogError("failed to get call sessions", "err", err.Error())
+		}
+
+		for _, session := range sessions {
+			if err := p.closeRTCSession(session.UserID, session.ID, channelID, nodeID, callID); err != nil {
+				p.LogError(err.Error())
+			}
+		}
+
+		if err := p.cleanCallState(call); err != nil {
+			p.LogError(err.Error())
 		}
 	}()
 

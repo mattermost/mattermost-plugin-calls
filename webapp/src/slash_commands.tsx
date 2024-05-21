@@ -17,8 +17,8 @@ import * as Telemetry from 'src/types/telemetry';
 
 import {logDebug} from './log';
 import {
-    callOwnerIDForCallInChannel,
     channelIDForCurrentCall,
+    hostIDForCallInChannel,
     hostIDForCurrentCall,
     isRecordingInCurrentCall,
     profilesInCallInChannel,
@@ -125,7 +125,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         if (!isCurrentUserSystemAdmin(store.getState()) &&
-                    getCurrentUserId(store.getState()) !== callOwnerIDForCallInChannel(store.getState(), args.channel_id)) {
+                    getCurrentUserId(store.getState()) !== hostIDForCallInChannel(store.getState(), args.channel_id)) {
             store.dispatch(displayGenericErrorModal(
                 defineMessage({defaultMessage: 'Unable to end the call'}),
                 defineMessage({defaultMessage: 'You don\'t have permission to end the call. Please ask the call owner to end call.'}),

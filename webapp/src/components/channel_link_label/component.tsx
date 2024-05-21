@@ -43,6 +43,7 @@ const ChannelLinkLabel = (props: Props) => {
         >
 
             <span
+                data-testid={'calls-channel-link-label'}
                 style={
                     {
                         display: 'flex',

@@ -27,13 +27,13 @@ const ChannelCallToast = () => {
     const callID = useSelector(callInCurrentChannel)?.ID || '';
     const [onDismiss, onJoin] = useDismissJoin(currChannelID, callID);
 
-    const hasCall = (currChannelID !== connectedID && profiles.length > 0);
+    const hasCall = (call && currChannelID !== connectedID);
 
     if (!hasCall || dismissed || limitRestricted) {
         return null;
     }
 
-    const timestampFn = () => callStartedTimestampFn(intl, call?.startAt);
+    const timestampFn = () => callStartedTimestampFn(intl, call.startAt);
 
     return (
         <div
