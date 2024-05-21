@@ -71,7 +71,7 @@ export const PostTypeTranscription = (props: Props) => {
                 onClick={createMeetingSummary}
             >
                 <IconAI/>
-                <FormattedMessage defaultMessage={'Create meeting summary?'}/>
+                <FormattedMessage defaultMessage={'Create meeting summary'}/>
             </CreateMeetingSummaryButton>
             }
         </div>
