@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"time"
+
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/pkg/errors"
