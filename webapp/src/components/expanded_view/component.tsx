@@ -10,7 +10,6 @@ import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {throttle} from 'lodash';
 import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
@@ -158,6 +157,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private expandedRootRef = React.createRef<HTMLDivElement>();
     private pushToTalk = false;
     private screenPlayer: HTMLVideoElement | null = null;
+    private callQualityBannerLocked = false;
 
     static contextType = window.ProductApi.WebSocketProvider;
 
@@ -675,27 +675,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        const turnOnDegradedCallQualityAlert = throttle(() => {
-            this.setState({
-                alerts: {
-                    ...this.state.alerts,
-                    degradedCallQuality: {
-                        active: true,
-                        show: true,
-                    },
-                },
-            });
-        }, DEGRADED_CALL_QUALITY_ALERT_WAIT, {
-            leading: true,
-            trailing: true,
-        });
-
         callsClient.on('mos', (mos: number) => {
-            if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
-                turnOnDegradedCallQualityAlert();
+            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: true,
+                            show: true,
+                        },
+                    },
+                });
             }
-            if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
-                turnOnDegradedCallQualityAlert.cancel();
+            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -791,6 +783,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             },
                         },
                     });
+                    if (alertID === 'degradedCallQuality') {
+                        this.callQualityBannerLocked = true;
+                        setTimeout(() => {
+                            this.callQualityBannerLocked = false;
+                        }, DEGRADED_CALL_QUALITY_ALERT_WAIT);
+                    }
                 };
             }
 

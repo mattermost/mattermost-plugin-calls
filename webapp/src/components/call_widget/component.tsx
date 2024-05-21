@@ -7,7 +7,6 @@ import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {throttle} from 'lodash';
 import {Client4} from 'mattermost-redux/client';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import React, {CSSProperties} from 'react';
@@ -144,6 +143,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private screenPlayer: HTMLVideoElement | null = null;
     private prevDevicePixelRatio = 0;
     private unsubscribers: (() => void)[] = [];
+    private callQualityBannerLocked = false;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
         return {
@@ -516,27 +516,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
-        const turnOnDegradedCallQualityAlert = throttle(() => {
-            this.setState({
-                alerts: {
-                    ...this.state.alerts,
-                    degradedCallQuality: {
-                        active: true,
-                        show: true,
-                    },
-                },
-            });
-        }, DEGRADED_CALL_QUALITY_ALERT_WAIT, {
-            leading: true,
-            trailing: true,
-        });
-
         window.callsClient?.on('mos', (mos: number) => {
-            if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
-                turnOnDegradedCallQualityAlert();
+            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        degradedCallQuality: {
+                            active: true,
+                            show: true,
+                        },
+                    },
+                });
             }
-            if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
-                turnOnDegradedCallQualityAlert.cancel();
+            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -1516,6 +1508,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             },
                         },
                     });
+                    if (alertID === 'degradedCallQuality') {
+                        this.callQualityBannerLocked = true;
+                        setTimeout(() => {
+                            this.callQualityBannerLocked = false;
+                        }, DEGRADED_CALL_QUALITY_ALERT_WAIT);
+                    }
                 };
             }
 

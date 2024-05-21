@@ -27,7 +27,6 @@
     "css-vars-ponyfill": "2.4.8",
     "emoji-picker-react": "4.4.7",
     "highlight.js": "11.6.0",
-    "lodash.throttle": "4.1.1",
     "media-chrome": "0.16.0",
     "pako": "2.0.4",
     "react": "17.0.2",
