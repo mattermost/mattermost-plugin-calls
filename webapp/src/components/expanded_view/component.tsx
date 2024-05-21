@@ -597,24 +597,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.context.sendMessage('custom_com.mattermost.calls_call_state', {channelID: callsClient.channelID});
     };
 
-    private turnOnDegradedCallQualityAlert = throttle((justDelay = false) => {
-        if (justDelay) {
-            return;
-        }
-        this.setState({
-            alerts: {
-                ...this.state.alerts,
-                degradedCallQuality: {
-                    active: true,
-                    show: true,
-                },
-            },
-        });
-    }, DEGRADED_CALL_QUALITY_ALERT_WAIT, {
-        leading: true,
-        trailing: true,
-    });
-
     public componentDidMount() {
         const callsClient = getCallsClient();
         if (!callsClient) {
@@ -693,12 +675,27 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
+        const turnOnDegradedCallQualityAlert = throttle(() => {
+            this.setState({
+                alerts: {
+                    ...this.state.alerts,
+                    degradedCallQuality: {
+                        active: true,
+                        show: true,
+                    },
+                },
+            });
+        }, DEGRADED_CALL_QUALITY_ALERT_WAIT, {
+            leading: true,
+            trailing: true,
+        });
+
         callsClient.on('mos', (mos: number) => {
             if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
-                this.turnOnDegradedCallQualityAlert();
+                turnOnDegradedCallQualityAlert();
             }
             if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
-                this.turnOnDegradedCallQualityAlert.cancel();
+                turnOnDegradedCallQualityAlert.cancel();
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -794,10 +791,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             },
                         },
                     });
-                    if (alertID === 'degradedCallQuality') {
-                        this.turnOnDegradedCallQualityAlert.cancel();
-                        this.turnOnDegradedCallQualityAlert(true);
-                    }
                 };
             }
 
