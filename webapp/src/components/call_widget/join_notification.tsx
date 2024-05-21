@@ -54,7 +54,9 @@ export default function JoinNotification(props: Props) {
             data-testid={'calls-widget-on-join-notification'}
             onAnimationEnd={onAnimationEnd}
         >
-            {props.isMuted ? muted : unmuted}
+            <span style={{marginLeft: 4}}>
+                {props.isMuted ? muted : unmuted}
+            </span>
         </div>
     );
 }

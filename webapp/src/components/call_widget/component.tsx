@@ -1538,7 +1538,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return (
                 <div
                     className='calls-notification-bar calls-slide-top'
-                    style={{justifyContent: 'flex-start'}}
                     key={profile.id}
                     data-testid={'call-joined-participant-notification'}
                 >
