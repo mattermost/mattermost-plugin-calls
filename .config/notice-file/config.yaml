@@ -5,6 +5,8 @@ description: "This document includes a list of open source components used in Ma
 search:
   - "go.mod"
   - "build/go.mod"
+  - "server/public/go.mod"
+  - "standalone/package.json"
   - "webapp/package.json"
 dependencies: []
 devDependencies: []
