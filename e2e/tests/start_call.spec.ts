@@ -451,6 +451,7 @@ test.describe('call post', () => {
 
         await page.getByTestId('PostDotMenu-Button-' + postID).click();
 
+        // Select the 'edit' option from the dot menu
         await page.keyboard.type('e');
 
         await page.keyboard.type('Edited');
