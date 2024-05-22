@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -29,6 +31,19 @@ func (s *Store) setupDBConn(dsn string) (*sql.DB, error) {
 
 	maxIdleConns := max(*s.settings.MaxIdleConns/10, 5)
 	maxOpenConns := max(*s.settings.MaxOpenConns/10, 10)
+	if val := os.Getenv("MM_CALLS_MAX_IDLE_CONNS"); val != "" {
+		conns, err := strconv.Atoi(val)
+		if err == nil && conns > 0 {
+			maxIdleConns = conns
+		}
+	}
+	if val := os.Getenv("MM_CALLS_MAX_OPEN_CONNS"); val != "" {
+		conns, err := strconv.Atoi(val)
+		if err == nil && conns > 0 {
+			maxOpenConns = conns
+		}
+	}
+
 	connMaxLifetime := time.Duration(*s.settings.ConnMaxLifetimeMilliseconds) * time.Millisecond
 	connMaxIdleTime := time.Duration(*s.settings.ConnMaxIdleTimeMilliseconds) * time.Millisecond
 
