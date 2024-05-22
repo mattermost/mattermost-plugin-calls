@@ -2,7 +2,7 @@ import {chromium, expect, test} from '@playwright/test';
 import {readFile} from 'fs/promises';
 
 import PlaywrightDevPage from '../page';
-import {getUserStoragesForTest} from '../utils';
+import {getUserIdxForTest, getUserStoragesForTest} from '../utils';
 
 test.beforeEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -10,6 +10,7 @@ test.beforeEach(async ({page, context}) => {
 });
 
 test.describe('slash commands', () => {
+    const userIdx = getUserIdxForTest();
     test.use({storageState: getUserStoragesForTest()[0]});
 
     test('end call', async ({page}) => {
@@ -32,6 +33,6 @@ test.describe('slash commands', () => {
         // /call end cleans up all indicators of a running call
         await expect(page.locator('#calls-widget')).toBeHidden();
         await expect(page.locator('#calls-channel-toast')).toBeHidden();
-        await expect(page.getByTestId('calls-channel-link-label')).toBeHidden();
+        await expect(page.locator(`#sidebarItem_calls${userIdx}`).getByTestId('calls-sidebar-active-call-icon')).toBeHidden();
     });
 });
