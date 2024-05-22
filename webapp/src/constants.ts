@@ -12,6 +12,7 @@ export const CALL_RECORDING_POST_TYPE = 'custom_calls_recording';
 export const CALL_TRANSCRIPTION_POST_TYPE = 'custom_calls_transcription';
 export const LIVE_CAPTION_TIMEOUT = 5000;
 export const HOST_CONTROL_NOTICE_TIMEOUT = 5000;
+export const DEGRADED_CALL_QUALITY_ALERT_WAIT = 20000;
 
 // From mattermost-webapp/webapp/channels/src/utils/constants.tsx, importing causes tsc to throw fits.
 export const MESSAGE_DISPLAY = 'message_display';
@@ -26,7 +27,7 @@ export const JOB_TYPE_CAPTIONING = 'captioning';
 export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
     missingAudioInput: {
         type: CallAlertType.Error,
-        icon: 'microphone',
+        icon: 'microphone-off',
         bannerText: defineMessage({defaultMessage: 'Unable to find a valid audio input device. Try plugging in an audio input device.'}),
         tooltipText: defineMessage({defaultMessage: 'No audio input devices'}),
         tooltipSubtext: defineMessage({defaultMessage: 'Try plugging in an audio input device.'}),
@@ -34,7 +35,7 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
     },
     missingAudioInputPermissions: {
         type: CallAlertType.Error,
-        icon: 'microphone',
+        icon: 'microphone-off',
         bannerText: defineMessage({defaultMessage: 'Allow microphone access to Mattermost.'}),
         tooltipText: defineMessage({defaultMessage: 'No audio input permissions'}),
         tooltipSubtext: defineMessage({defaultMessage: 'Allow microphone access to Mattermost.'}),
@@ -42,8 +43,8 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
     },
     missingScreenPermissions: {
         type: CallAlertType.Error,
-        icon: 'monitor',
-        bannerText: defineMessage({defaultMessage: 'Screen recording access is not currently allowed or was cancelled.'}),
+        icon: 'monitor-off',
+        bannerText: defineMessage({defaultMessage: 'Screen recording access is not currently allowed or was canceled.'}),
         tooltipText: defineMessage({defaultMessage: 'No screen sharing permissions'}),
         tooltipSubtext: defineMessage({defaultMessage: 'Allow screen recording access to Mattermost.'}),
         dismissable: true,
@@ -52,7 +53,7 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
         type: CallAlertType.Warning,
         icon: 'alert-outline',
         bannerText: defineMessage({defaultMessage: 'Call quality may be degraded due to unstable network conditions.'}),
-        dismissable: false,
+        dismissable: true,
     },
 };
 
