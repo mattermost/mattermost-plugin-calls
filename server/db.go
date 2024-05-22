@@ -29,6 +29,7 @@ func (p *Plugin) initDB() error {
 	}
 
 	p.store = store
+	p.metrics.RegisterDBMetrics(p.store.WriterDB(), "writer")
 
 	return nil
 }

@@ -4,6 +4,7 @@
 package performance
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/mattermost/rtcd/service/perf"
@@ -23,6 +24,10 @@ const (
 	metricsSubSystemJobs    = "jobs"
 )
 
+type DBStore interface {
+	WriterDB() *sql.DB
+}
+
 type Metrics struct {
 	registry   *prometheus.Registry
 	rtcMetrics *perf.Metrics
@@ -36,8 +41,12 @@ type Metrics struct {
 
 	AppHandlersTimeHistograms *prometheus.HistogramVec
 
-	StoreOpCounters            *prometheus.CounterVec
-	StoreMethodsTimeHistograms *prometheus.HistogramVec
+	StoreOpCounters                      *prometheus.CounterVec
+	StoreMethodsTimeHistograms           *prometheus.HistogramVec
+	StoreDBWriterConnectionsInUseGauge   prometheus.GaugeFunc
+	StoreDBWriterConnectionsIdleGauge    prometheus.GaugeFunc
+	StoreDBWriterConnectionsWaitCount    prometheus.CounterFunc
+	StoreDBWriterConnectionsWaitDuration prometheus.CounterFunc
 
 	LiveCaptionsNewAudioLenHistogram       prometheus.Histogram
 	LiveCaptionsWindowDroppedCounter       prometheus.Counter
@@ -191,6 +200,10 @@ func NewMetrics() *Metrics {
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
+}
+
+func (m *Metrics) RegisterDBMetrics(db *sql.DB, name string) {
+	m.registry.MustRegister(collectors.NewDBStatsCollector(db, name))
 }
 
 func (m *Metrics) RTCMetrics() rtc.Metrics {
