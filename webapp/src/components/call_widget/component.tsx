@@ -10,7 +10,7 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 import {Client4} from 'mattermost-redux/client';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import React, {CSSProperties} from 'react';
-import {IntlShape} from 'react-intl';
+import {FormattedMessage, IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
@@ -1535,8 +1535,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const {formatMessage} = this.props.intl;
-
         const joinedUsers = this.props.recentlyJoinedUsers.map((userID) => {
             if (userID === this.props.currentUserID) {
                 return null;
@@ -1552,7 +1550,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return (
                 <div
                     className='calls-notification-bar calls-slide-top'
-                    style={{justifyContent: 'flex-start'}}
                     key={profile.id}
                     data-testid={'call-joined-participant-notification'}
                 >
@@ -1563,7 +1560,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         border={false}
                     />
                     <span style={{overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                        {formatMessage({defaultMessage: '{participant} has joined the call.'}, {participant: getUserDisplayName(profile)})}
+                        <FormattedMessage
+                            defaultMessage={'<b>{participant}</b> has joined the call.'}
+                            values={{
+                                b: (text: string) => <b>{text}</b>,
+                                participant: getUserDisplayName(profile),
+                            }}
+                        />
                     </span>
                 </div>
             );

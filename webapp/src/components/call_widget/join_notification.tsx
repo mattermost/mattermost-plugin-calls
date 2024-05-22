@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {useIntl} from 'react-intl';
+import {FormattedMessage} from 'react-intl';
 import MutedIcon from 'src/components/icons/muted_icon';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 
@@ -9,7 +9,6 @@ export type Props = {
 }
 
 export default function JoinNotification(props: Props) {
-    const {formatMessage} = useIntl();
     const [animationEnded, setAnimationEnded] = useState(false);
 
     if (!props.visible || animationEnded) {
@@ -32,11 +31,22 @@ export default function JoinNotification(props: Props) {
         />
     );
 
-    const notificationContent = props.isMuted ? formatMessage({
-        defaultMessage: 'You\'re muted. Select {muteIcon} to unmute.',
-    }, {muteIcon}) : formatMessage({
-        defaultMessage: 'You\'re unmuted. Select {muteIcon} to mute.',
-    }, {muteIcon});
+    const muted = (
+        <FormattedMessage
+            defaultMessage={'<b>You\'re muted.</b> Select {muteIcon} to unmute.'}
+            values={{
+                b: (text: string) => <b>{text}</b>,
+                muteIcon,
+            }}
+        />);
+    const unmuted = (
+        <FormattedMessage
+            defaultMessage={'<b>You\'re unmuted.</b> Select {muteIcon} to mute.'}
+            values={{
+                b: (text: string) => <b>{text}</b>,
+                muteIcon,
+            }}
+        />);
 
     return (
         <div
@@ -44,7 +54,9 @@ export default function JoinNotification(props: Props) {
             data-testid={'calls-widget-on-join-notification'}
             onAnimationEnd={onAnimationEnd}
         >
-            {notificationContent}
+            <span style={{marginLeft: 4}}>
+                {props.isMuted ? muted : unmuted}
+            </span>
         </div>
     );
 }
