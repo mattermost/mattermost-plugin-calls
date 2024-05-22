@@ -15,15 +15,7 @@ test.describe('slash commands', () => {
 
     test('end call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
-
-        // Solely needed to wait till the page has loaded.
-        await expect(page.locator('[aria-label="channel header region"] button:has-text("Start call")')).toBeVisible();
-
-        if (process.platform === 'darwin') {
-            await page.keyboard.press('Meta+Alt+S');
-        } else {
-            await page.keyboard.press('Control+Alt+S');
-        }
+        await devPage.startCall();
 
         await expect(page.locator('#calls-widget')).toBeVisible();
         await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
