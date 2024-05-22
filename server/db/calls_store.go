@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -50,7 +51,9 @@ func (s *Store) CreateCall(call *public.Call) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -84,7 +87,9 @@ func (s *Store) UpdateCall(call *public.Call) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -108,7 +113,9 @@ func (s *Store) DeleteCall(callID string) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -132,7 +139,9 @@ func (s *Store) DeleteCallByChannelID(channelID string) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -156,7 +165,9 @@ func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 	}
 
 	var call public.Call
-	if err := s.dbXFromGetOpts(opts).Get(&call, q, args...); err == sql.ErrNoRows {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &call, q, args...); err == sql.ErrNoRows {
 		return nil, fmt.Errorf("call %w", ErrNotFound)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get call: %w", err)
@@ -188,7 +199,9 @@ func (s *Store) GetActiveCallByChannelID(channelID string, opts GetCallOpts) (*p
 	}
 
 	var call public.Call
-	if err := s.dbXFromGetOpts(opts).Get(&call, q, args...); err == sql.ErrNoRows {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &call, q, args...); err == sql.ErrNoRows {
 		return nil, fmt.Errorf("call %w", ErrNotFound)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get call: %w", err)
@@ -219,7 +232,9 @@ func (s *Store) GetAllActiveCalls(opts GetCallOpts) ([]*public.Call, error) {
 	}
 
 	calls := []*public.Call{}
-	if err := s.dbXFromGetOpts(opts).Select(&calls, q, args...); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).SelectContext(ctx, &calls, q, args...); err != nil {
 		return nil, fmt.Errorf("failed to get calls: %w", err)
 	}
 
@@ -247,7 +262,9 @@ func (s *Store) GetRTCDHostForCall(callID string, opts GetCallOpts) (string, err
 	}
 
 	var rtcdHost string
-	if err := s.dbXFromGetOpts(opts).Get(&rtcdHost, q, args...); err == sql.ErrNoRows {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &rtcdHost, q, args...); err == sql.ErrNoRows {
 		return "", fmt.Errorf("call %w", ErrNotFound)
 	} else if err != nil {
 		return "", fmt.Errorf("failed to get rtcdHost for call: %w", err)
