@@ -10,8 +10,6 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
-
-	"github.com/mattermost/mattermost/server/public/model"
 )
 
 type callState struct {
@@ -365,7 +363,7 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 				p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 					"callID":   call.ChannelID,
 					"recState": getClientStateFromCallJob(job).toMap(),
-				}, &model.WebsocketBroadcast{ChannelId: call.ChannelID, ReliableClusterSend: true})
+				}, &WebSocketBroadcast{ChannelID: call.ChannelID, ReliableClusterSend: true})
 			}
 		}
 	}
