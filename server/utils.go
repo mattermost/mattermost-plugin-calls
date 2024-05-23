@@ -17,6 +17,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/Masterminds/semver"
@@ -223,4 +225,16 @@ func (p *Plugin) genFilenameForCall(channelID string) (filename string) {
 	filename = sanitizeFilename(fmt.Sprintf("Call_%s_%s", strings.ReplaceAll(name, " ", "_"), time.Now().UTC().Format("2006-01-02_15-04-05")))
 
 	return
+}
+
+func getUserIDsFromSessions(sessions map[string]*public.CallSession) []string {
+	var userIDs []string
+	dedup := map[string]bool{}
+	for _, session := range sessions {
+		if !dedup[session.UserID] {
+			userIDs = append(userIDs, session.UserID)
+			dedup[session.UserID] = true
+		}
+	}
+	return userIDs
 }

@@ -237,14 +237,14 @@ func (s *jobService) StopJob(channelID, jobID, botUserID, botConnID string) erro
 
 	s.ctx.publishWebSocketEvent(wsEventJobStop, map[string]interface{}{
 		"job_id": jobID,
-	}, &model.WebsocketBroadcast{UserId: botUserID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{UserID: botUserID, ReliableClusterSend: true})
 
 	// DEPRECATED in favor of the new wsEventJobStop event.
 	// Since MM-52346, stopping a job really means signaling the bot it's time to leave
 	// the call. We do this implicitly by sending a fake call end event.
 	s.ctx.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{
 		"channelID": channelID,
-	}, &model.WebsocketBroadcast{ConnectionId: botConnID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ConnectionID: botConnID, ReliableClusterSend: true})
 
 	return nil
 }

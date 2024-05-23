@@ -61,7 +61,11 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 		"hostID":  newHostID,
 		"call_id": state.Call.ID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{
+		ChannelID:           channelID,
+		ReliableClusterSend: true,
+		UserIDs:             getUserIDsFromSessions(state.sessions),
+	})
 
 	return nil
 }
@@ -94,7 +98,7 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
 		"channel_id": channelID,
 		"session_id": sessionID,
-	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{UserID: ust.UserID, ReliableClusterSend: true})
 
 	return nil
 }
@@ -115,7 +119,6 @@ func (p *Plugin) muteOthers(requesterID, channelID string) error {
 		}
 	}
 
-	// TODO: MM-53455 - send as a list
 	// Unmute anyone muted (who is not the host/requester).
 	// If there are no unmuted sessions, return without doing anything.
 	for id, s := range state.sessions {
@@ -123,7 +126,7 @@ func (p *Plugin) muteOthers(requesterID, channelID string) error {
 			p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
 				"channel_id": channelID,
 				"session_id": id,
-			}, &model.WebsocketBroadcast{UserId: s.UserID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{UserID: s.UserID, ReliableClusterSend: true})
 		}
 	}
 
@@ -158,7 +161,7 @@ func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 	p.publishWebSocketEvent(wsEventHostScreenOff, map[string]interface{}{
 		"channel_id": channelID,
 		"session_id": sessionID,
-	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{UserID: ust.UserID, ReliableClusterSend: true})
 
 	return nil
 }
@@ -193,7 +196,7 @@ func (p *Plugin) lowerHand(requesterID, channelID, sessionID string) error {
 		"channel_id": channelID,
 		"session_id": sessionID,
 		"host_id":    requesterID,
-	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{UserID: ust.UserID, ReliableClusterSend: true})
 
 	return nil
 }
@@ -230,7 +233,7 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 		"channel_id": channelID,
 		"session_id": sessionID,
 		"user_id":    ust.UserID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 	go func() {
 		// Wait a few seconds for the client to end their session cleanly. If they don't (like for an

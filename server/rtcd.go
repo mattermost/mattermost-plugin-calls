@@ -18,13 +18,12 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 
 	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/random"
 	"github.com/mattermost/rtcd/service/rtc"
-
-	"github.com/mattermost/mattermost/server/public/model"
 )
 
 const (
@@ -628,10 +627,27 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 		if rtcMsg.Type == rtc.VoiceOnMessage {
 			evType = wsEventUserVoiceOn
 		}
+
+		// TODO: this could be optimized a bit. The only reason we fetch
+		// the call here is to find the respective channelID which is needed in
+		// case the websocket event needs to be sent to the bot client.
+		call, err := m.ctx.store.GetCall(rtcMsg.CallID, db.GetCallOpts{})
+		if err != nil {
+			return fmt.Errorf("failed to get call: %w", err)
+		}
+
+		// TODO: consider if it's worth fetching the unique userIDs list instead of
+		// the whole sessions objects.
+		sessions, err := m.ctx.store.GetCallSessions(rtcMsg.CallID, db.GetCallSessionOpts{})
+		if err != nil {
+			return fmt.Errorf("failed to get call sessions: %w", err)
+		}
+
 		m.ctx.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":     rtcMsg.UserID,
 			"session_id": rtcMsg.SessionID,
-		}, &model.WebsocketBroadcast{ChannelId: rtcMsg.CallID})
+		}, &WebSocketBroadcast{ChannelID: call.ChannelID, UserIDs: getUserIDsFromSessions(sessions)})
+
 		return nil
 	}
 
@@ -639,7 +655,7 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 	m.ctx.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 		"data":   string(rtcMsg.Data),
 		"connID": rtcMsg.SessionID,
-	}, &model.WebsocketBroadcast{UserId: rtcMsg.UserID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{UserID: rtcMsg.UserID, ReliableClusterSend: true})
 
 	return nil
 }
