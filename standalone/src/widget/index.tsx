@@ -14,7 +14,7 @@ import {
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
     fetchTranslationsFile,
-    playSound,
+    playSound, sendDesktopError,
     sendDesktopEvent,
 } from 'plugin/utils';
 import React from 'react';
@@ -102,17 +102,7 @@ function deinitWidget(err?: Error) {
     playSound('leave_self');
 
     if (err) {
-        if (window.desktopAPI?.sendCallsError) {
-            logDebug('desktopAPI.sendCallsError');
-            window.desktopAPI.sendCallsError('client-error', window.callsClient?.channelID, err.message);
-        } else {
-            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
-            sendDesktopEvent('calls-error', {
-                err: 'client-error',
-                callID: window.callsClient?.channelID,
-                errMsg: err.message,
-            });
-        }
+        sendDesktopError(window.callsClient?.channelID, err.message);
     }
 
     // Using setTimeout to give the app enough time to play the sound before

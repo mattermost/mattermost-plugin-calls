@@ -1,7 +1,7 @@
 import {GlobalState} from '@mattermost/types/store';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
-import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {connect} from 'react-redux';
 import {withRouter} from 'react-router-dom';
 import {
@@ -14,6 +14,8 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
+    areHostControlsAllowed,
+    areLiveCaptionsAvailableInCurrentCall,
     callStartAtForCurrentCall,
     channelForCurrentCall,
     expandedView,
@@ -28,6 +30,7 @@ import {
     screenSharingSessionForCurrentCall,
     sessionForCurrentCall,
     sessionsInCurrentCall,
+    sessionsInCurrentCallMap,
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
@@ -65,6 +68,7 @@ const mapStateToProps = (state: GlobalState) => {
         currentTeamID,
         profiles,
         sessions,
+        sessionsMap: sessionsInCurrentCallMap(state),
         currentSession: sessionForCurrentCall(state),
         callStartAt: callStartAtForCurrentCall(state),
         callHostID: hostIDForCurrentCall(state),
@@ -85,6 +89,9 @@ const mapStateToProps = (state: GlobalState) => {
         recordingsEnabled: recordingsEnabled(state),
         recordingMaxDuration: recordingMaxDuration(state),
         transcriptionsEnabled: transcriptionsEnabled(state),
+        liveCaptionsAvailable: areLiveCaptionsAvailableInCurrentCall(state),
+        isAdmin: isCurrentUserSystemAdmin(state),
+        hostControlsAllowed: areHostControlsAllowed(state),
     };
 };
 

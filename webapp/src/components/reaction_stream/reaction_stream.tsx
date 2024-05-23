@@ -9,10 +9,10 @@ import React from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {Emoji} from 'src/components/emoji/emoji';
-import {HostNotifications} from 'src/components/host_notifications';
+import {HostNotices} from 'src/components/host_notices';
 import HandEmoji from 'src/components/icons/hand';
 import {
-    hostControlNotificationsForCurrentCall,
+    hostControlNoticesForCurrentCall,
     profilesInCurrentCallMap,
     reactionsInCurrentCall,
     sessionsInCurrentCall,
@@ -28,7 +28,7 @@ export const ReactionStream = () => {
     const sessions = useSelector(sessionsInCurrentCall);
     const profileMap = useSelector(profilesInCurrentCallMap);
     const vReactions = useSelector(reactionsInCurrentCall);
-    const notifications = useSelector(hostControlNotificationsForCurrentCall);
+    const hostNotices = useSelector(hostControlNoticesForCurrentCall);
 
     const reversed = [...vReactions].reverse();
     const reactions = reversed.map((reaction) => {
@@ -88,7 +88,7 @@ export const ReactionStream = () => {
 
     return (
         <ReactionStreamList>
-            {notifications.length > 0 && <HostNotifications/>}
+            {hostNotices.length > 0 && <HostNotices/>}
             {handsUp}
             {reactions}
         </ReactionStreamList>

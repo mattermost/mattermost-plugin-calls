@@ -14,6 +14,9 @@ import {
     CallStateData,
     EmptyData,
     HelloData,
+    HostControlLowerHand,
+    HostControlMsg,
+    HostControlRemoved,
     UserDismissedNotification,
     UserJoinedData,
     UserLeftData,
@@ -56,6 +59,7 @@ import {
     handleCallState,
     handleHostLowerHand,
     handleHostMute,
+    handleHostRemoved,
     handleHostScreenOff,
     handleUserDismissedNotification,
     handleUserJoined,
@@ -216,7 +220,7 @@ export default async function init(cfg: InitConfig) {
         simulcast: callsConfig(store.getState()).EnableSimulcast,
     };
 
-    connectCall(joinData, clientConfig, async (ev) => {
+    connectCall(joinData, clientConfig, (ev) => {
         switch (ev.event) {
         case 'hello':
             store.dispatch(setServerVersion((ev.data as HelloData).server_version));
@@ -270,17 +274,19 @@ export default async function init(cfg: InitConfig) {
             handleUserDismissedNotification(store, ev as WebSocketMessage<UserDismissedNotification>);
             break;
         case `custom_${pluginId}_call_state`:
-            await handleCallState(store, ev as WebSocketMessage<CallStateData>);
+            handleCallState(store, ev as WebSocketMessage<CallStateData>);
             break;
         case `custom_${pluginId}_host_mute`:
-            // TODO: MM-57919, use refactored wsmsg data in calls-common
-            handleHostMute(store, ev as WebSocketMessage);
+            handleHostMute(store, ev as WebSocketMessage<HostControlMsg>);
             break;
         case `custom_${pluginId}_host_screen_off`:
-            handleHostScreenOff(store, ev as WebSocketMessage);
+            handleHostScreenOff(store, ev as WebSocketMessage<HostControlMsg>);
             break;
         case `custom_${pluginId}_host_lower_hand`:
-            handleHostLowerHand(store, ev as WebSocketMessage);
+            handleHostLowerHand(store, ev as WebSocketMessage<HostControlLowerHand>);
+            break;
+        case `custom_${pluginId}_host_removed`:
+            handleHostRemoved(store, ev as WebSocketMessage<HostControlRemoved>);
             break;
         case 'user_removed':
             handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);

@@ -293,21 +293,19 @@ export async function getProfilesByIds(state: GlobalState, ids: string[]): Promi
     return profiles;
 }
 
-export async function getProfilesForSessions(state: GlobalState, sessions: SessionState[]): Promise<{[sessionID: string]: UserProfile}> {
-    const ids = sessions.map((session) => session.user_id);
-    const profiles = await getProfilesByIds(state, ids);
+export function getUserIDsForSessions(sessions: SessionState[]) {
+    const idsMap: {[id: string]: boolean} = {};
+    for (const session of sessions) {
+        idsMap[session.user_id] = true;
+    }
+    return Object.keys(idsMap);
+}
 
-    // Returned profiles can be deduplicated so we need a map in order to
-    // produce the expected output where each session ID points to a profile.
-    const profilesMap = profiles.reduce((obj, profile) => {
-        obj[profile.id] = profile;
-        return obj;
-    }, {} as {[userID: string]: UserProfile});
-
-    return sessions.reduce((obj, session) => {
-        obj[session.session_id] = profilesMap[session.user_id];
-        return obj;
-    }, {} as {[sessionID: string]: UserProfile});
+export function getSessionsMapFromSessions(sessions: SessionState[]) {
+    return sessions.reduce((map: Record<string, SessionState>, session: SessionState) => {
+        map[session.session_id] = session;
+        return map;
+    }, {});
 }
 
 export function getUserIdFromDM(dmName: string, currentUserId: string) {
@@ -417,6 +415,20 @@ export function sendDesktopEvent(event: string, data?: Record<string, unknown>) 
         },
         win.location.origin,
     );
+}
+
+export function sendDesktopError(channelID?: string, errMsg?: string) {
+    if (window.desktopAPI?.sendCallsError) {
+        logDebug('desktopAPI.sendCallsError');
+        window.desktopAPI.sendCallsError('client-error', channelID, errMsg);
+    } else {
+        // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+        sendDesktopEvent('calls-error', {
+            err: 'client-error',
+            callID: channelID,
+            errMsg,
+        });
+    }
 }
 
 export function capitalize(input: string) {

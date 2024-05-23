@@ -25,10 +25,11 @@ type Props = {
     isHost: boolean;
     iAmHost: boolean,
     isSharingScreen: boolean;
+    onRemove: () => void;
     callID?: string;
 };
 
-const CallParticipantRHS = ({session, profile, isYou, isHost, iAmHost, isSharingScreen, callID}: Props) => {
+const CallParticipantRHS = ({session, profile, isYou, isHost, iAmHost, isSharingScreen, onRemove, callID}: Props) => {
     const {formatMessage} = useIntl();
     const {hoverOn, hoverOff, onOpenChange, showHostControls} = useHostControls(isYou, isHost, iAmHost);
 
@@ -143,6 +144,8 @@ const CallParticipantRHS = ({session, profile, isYou, isHost, iAmHost, isSharing
                             isMuted={isMuted}
                             isSharingScreen={isSharingScreen}
                             isHandRaised={isHandRaised}
+                            isHost={isHost}
+                            onRemove={onRemove}
                         />
                     </StyledDotMenu>
                 }

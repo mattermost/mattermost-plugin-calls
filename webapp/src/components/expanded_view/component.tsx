@@ -9,6 +9,7 @@ import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
+import {IDMappedObjects} from '@mattermost/types/utilities';
 import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
@@ -17,7 +18,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
-import {stopCallRecording} from 'src/actions';
+import {hostMuteOthers, hostRemove, stopCallRecording} from 'src/actions';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
@@ -36,7 +37,7 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
-import {CallAlertConfigs} from 'src/constants';
+import {CallAlertConfigs, DEGRADED_CALL_QUALITY_ALERT_WAIT} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -51,7 +52,13 @@ import {
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
 import * as Telemetry from 'src/types/telemetry';
-import {AudioDevices, CallAlertStates, CallAlertStatesDefault, CallJobReduxState} from 'src/types/types';
+import {
+    AudioDevices,
+    CallAlertStates,
+    CallAlertStatesDefault,
+    CallJobReduxState,
+    RemoveConfirmationData,
+} from 'src/types/types';
 import {
     getCallsClient,
     getScreenStream,
@@ -71,6 +78,7 @@ import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './cont
 import GlobalBanner from './global_banner';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 import RecordingInfoPrompt from './recording_info_prompt';
+import {RemoveConfirmation} from './remove_confirmation';
 
 interface Props extends RouteComponentProps {
     intl: IntlShape,
@@ -78,10 +86,9 @@ interface Props extends RouteComponentProps {
     show: boolean,
     currentUserID: string,
     currentTeamID: string,
-    profiles: {
-        [userID: string]: UserProfile,
-    }
+    profiles: IDMappedObjects<UserProfile>,
     sessions: UserSessionState[],
+    sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
     callStartAt: number,
     callHostID: string,
@@ -110,6 +117,9 @@ interface Props extends RouteComponentProps {
     startCallRecording: (callID: string) => void,
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     transcriptionsEnabled: boolean,
+    liveCaptionsAvailable: boolean,
+    isAdmin: boolean,
+    hostControlsAllowed: boolean,
 }
 
 interface State {
@@ -117,6 +127,7 @@ interface State {
     showParticipantsList: boolean,
     showLiveCaptions: boolean,
     alerts: CallAlertStates,
+    removeConfirmation: RemoveConfirmationData | null,
 }
 
 const StyledMediaController = styled(MediaController)`
@@ -146,6 +157,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private expandedRootRef = React.createRef<HTMLDivElement>();
     private pushToTalk = false;
     private screenPlayer: HTMLVideoElement | null = null;
+    private callQualityBannerLocked = false;
 
     static contextType = window.ProductApi.WebSocketProvider;
 
@@ -253,8 +265,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 fontWeight: 600,
                 fontSize: '16px',
                 padding: '0 16px',
-                height: '63px',
-                lineHeight: '63px',
+                height: '56px',
+                lineHeight: '56px',
             },
             centerView: {
                 display: 'flex',
@@ -277,6 +289,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             showParticipantsList: false,
             showLiveCaptions: false,
             alerts: CallAlertStatesDefault,
+            removeConfirmation: null,
         };
 
         if (window.opener) {
@@ -661,7 +674,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         callsClient.on('mos', (mos: number) => {
-            if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -672,7 +685,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     },
                 });
             }
-            if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -720,6 +733,28 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.opener?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
     };
 
+    onRemove = (sessionID: string, userID: string) => {
+        this.setState({
+            removeConfirmation: {
+                sessionID,
+                userID,
+            },
+        });
+    };
+
+    onRemoveConfirm = () => {
+        hostRemove(this.props.channel?.id, this.state.removeConfirmation?.sessionID);
+        this.setState({
+            removeConfirmation: null,
+        });
+    };
+
+    onRemoveCancel = () => {
+        this.setState({
+            removeConfirmation: null,
+        });
+    };
+
     shouldRenderAlertBanner = () => {
         return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
     };
@@ -746,6 +781,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             },
                         },
                     });
+                    if (alertID === 'degradedCallQuality') {
+                        this.callQualityBannerLocked = true;
+                        setTimeout(() => {
+                            this.callQualityBannerLocked = false;
+                        }, DEGRADED_CALL_QUALITY_ALERT_WAIT);
+                    }
                 };
             }
 
@@ -787,7 +828,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     ...this.style.screenContainer,
 
                     // Account for when we display an alert banner.
-                    maxHeight: `calc(100vh - ${this.shouldRenderAlertBanner() ? 180 : 140}px)`,
+                    maxHeight: `calc(100vh - ${this.shouldRenderAlertBanner() ? 164 : 124}px)`,
                 }}
             >
                 <StyledMediaController
@@ -854,6 +895,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     userID={session.user_id}
                     sessionID={session.session_id}
                     isSharingScreen={this.props.screenSharingSession?.session_id === session.session_id}
+                    onRemove={() => this.onRemove(session.session_id, session.user_id)}
                 />
             );
         });
@@ -870,6 +912,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 isSharingScreen={this.props.screenSharingSession?.session_id === session.session_id}
                 iAmHost={this.props.currentSession?.user_id === this.props.callHostID}
                 callID={this.props.channel?.id}
+                onRemove={() => this.onRemove(session.session_id, session.user_id)}
             />
         ));
     };
@@ -996,6 +1039,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
 
         const isHost = this.props.callHostID === this.props.currentUserID;
+        const hostControlsAvailable = this.props.hostControlsAllowed && (isHost || this.props.isAdmin);
+        const showMuteOthers = hostControlsAvailable && this.props.sessions.some((s) => s.unmuted && s.user_id !== this.props.currentUserID);
 
         const isRecording = isHost && this.props.isRecording;
 
@@ -1017,7 +1062,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <div style={this.style.main}>
                     {this.renderAlertBanner()}
 
-                    <div style={this.style.topContainer}>
+                    <div
+                        data-testid={'calls-expanded-view-top-container'}
+                        style={this.style.topContainer}
+                    >
                         {this.renderRecordingBadge()}
                         <CallDuration
                             startAt={this.props.callStartAt}
@@ -1216,10 +1264,23 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     </div>
                 </div>
                 {this.state.showParticipantsList &&
-                    <ul style={this.style.rhs}>
-                        <div style={this.style.rhsHeaderContainer}>
+                    <ul
+                        data-testid={'rhs-participant-list'}
+                        style={this.style.rhs}
+                    >
+                        <div
+                            data-testid={'rhs-participant-list-header'}
+                            style={this.style.rhsHeaderContainer}
+                        >
                             <div style={this.style.rhsHeader}>
                                 <span>{formatMessage({defaultMessage: 'Participants'})}</span>
+                                <ToTheRight/>
+                                {showMuteOthers &&
+                                    <MuteOthersButton onClick={() => hostMuteOthers(this.props.channel?.id)}>
+                                        <CompassIcon icon={'microphone-off'}/>
+                                        {formatMessage({defaultMessage: 'Mute others'})}
+                                    </MuteOthersButton>
+                                }
                                 <CloseButton
                                     className='style--none'
                                     onClick={() => this.onParticipantsListToggle()}
@@ -1248,6 +1309,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         promptDismissed={this.dismissRecordingPrompt}
                         transcriptionsEnabled={this.props.transcriptionsEnabled}
                     />
+                    {Boolean(this.state.removeConfirmation) &&
+                        Boolean(this.props.sessionsMap[this.state.removeConfirmation?.sessionID || '']) &&
+                        <RemoveConfirmation
+                            profile={this.props.profiles[this.state.removeConfirmation?.userID || '']}
+                            onConfirm={this.onRemoveConfirm}
+                            onCancel={this.onRemoveCancel}
+                        />
+                    }
                 </ReactionOverlay>
             </div>
         );
@@ -1271,7 +1340,7 @@ const UnreadIndicator = ({mentions}: { mentions?: number }) => {
 };
 
 const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean }>`
-    #root {
+    body.app__body #root {
         > #global-header,
         > .team-sidebar,
         > .app-bar,
@@ -1279,6 +1348,23 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
         > button,
         > #SidebarContainer {
             display: none;
+        }
+
+        display: flex;
+
+        > .announcement-bar {
+            display: none;
+        }
+
+        > .main-wrapper {
+            position: absolute;
+            display: flex;
+            margin: 0;
+            padding: 0;
+            border-radius: 0;
+            border: 0;
+            width: 100%;
+            height: 100%;
         }
 
         #sidebar-right #sbrSearchFormContainer {
@@ -1296,20 +1382,52 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
                 display: none;
             }
         `}
+        #sidebar-right {
+            z-index: 1001;
+            border: 0;
+        }
     }
+`;
+
+const ToTheRight = styled.div`
+    margin-left: auto;
+`;
+
+const MuteOthersButton = styled.button`
+    display: flex;
+    padding: 8px 8px;
+    margin-right: 6px;
+    gap: 2px;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    color: var(--button-bg);
+
+    border: none;
+    background: none;
+    border-radius: 4px;
+
+    &:hover {
+        background: rgba(var(--button-bg-rgb), 0.08);
+    }
+
+    i {
+        font-size: 14px;
+    }
+>>>>>>> origin/main
 `;
 
 const CloseButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-left: auto;
     color: rgba(var(--center-channel-color-rgb), 0.56);
     width: 32px;
     height: 32px;
     border-radius: 4px;
 
-    :hover {
+    &:hover {
         background: rgba(var(--center-channel-color-rgb), 0.08);
         color: rgba(var(--center-channel-color-rgb), 0.72);
         fill: rgba(var(--center-channel-color-rgb), 0.72);
@@ -1332,14 +1450,14 @@ const CloseViewButton = styled.button`
     border-radius: 4px;
 
     svg {
-      fill: rgba(255, 255, 255, 0.64);
+        fill: rgba(255, 255, 255, 0.64);
     }
 
     &:hover {
         background: rgba(255, 255, 255, 0.08);
 
         svg {
-          fill: rgba(255, 255, 255, 0.72);
+            fill: rgba(255, 255, 255, 0.72);
         }
     }
 
@@ -1347,7 +1465,7 @@ const CloseViewButton = styled.button`
         background: rgba(255, 255, 255, 0.16);
 
         svg {
-          fill: rgba(255, 255, 255, 0.80);
+            fill: rgba(255, 255, 255, 0.80);
         }
     }
 `;

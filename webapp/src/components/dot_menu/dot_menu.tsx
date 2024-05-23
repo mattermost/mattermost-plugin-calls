@@ -140,31 +140,29 @@ const DotMenu = ({
     );
 };
 
-export const DropdownMenuItemStyled = styled.div`
-    && {
-        font-family: 'Open Sans';
-        font-style: normal;
-        font-weight: normal;
-        font-size: 14px;
+const DropdownMenuItemStyled = styled.div`
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: normal;
+    font-size: 14px;
+    color: var(--center-channel-color);
+    padding: 6px 16px;
+    text-decoration: unset;
+    display: inline-flex;
+    align-items: center;
+
+    > .icon {
+        margin-right: 8px;
+    }
+
+    &:hover {
+        background: rgba(var(--center-channel-color-rgb), 0.08);
         color: var(--center-channel-color);
-        padding: 10px 20px;
-        text-decoration: unset;
-        display: inline-flex;
-        align-items: center;
+    }
 
-        > .icon {
-            margin-right: 8px;
-        }
-
-        &:hover {
-            background: rgba(var(--center-channel-color-rgb), 0.08);
-            color: var(--center-channel-color);
-        }
-
-        &&:focus {
-            text-decoration: none;
-            color: inherit;
-        }
+    &&:focus {
+        text-decoration: none;
+        color: inherit;
     }
 `;
 
@@ -187,5 +185,13 @@ export const DropdownMenuItem = (props: {
         </DropdownMenuItemStyled>
     );
 };
+
+export const DropdownMenuSeparator = styled.div`
+    display: flex;
+    align-content: center;
+    border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+    margin: 8px auto;
+    width: 100%;
+`;
 
 export default DotMenu;
