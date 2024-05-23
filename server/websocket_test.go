@@ -44,6 +44,7 @@ func TestHandleBotWSReconnect(t *testing.T) {
 	mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
 	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64"))
+	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
 	mockMetrics.On("IncStoreOp", "KVGet")
 	mockMetrics.On("IncStoreOp", "KVSet")
 
@@ -382,6 +383,7 @@ func TestHandleCallStateRequest(t *testing.T) {
 	mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
 	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64"))
+	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
 	mockMetrics.On("IncStoreOp", "KVGet")
 	mockMetrics.On("IncStoreOp", "KVSet")
 

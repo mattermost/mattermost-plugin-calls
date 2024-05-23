@@ -82,6 +82,7 @@ func newPostgresStore(t *testing.T, binaryParams bool) (*Store, func()) {
 		log.Printf(args.Get(0).(string))
 	})
 	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
+	mockMetrics.On("ObserveStoreMethodsTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
 
 	store, err := NewStore(settings, conn, nil, mockLogger, mockMetrics)
 	require.NoError(t, err)
@@ -121,6 +122,7 @@ func newMySQLStore(t *testing.T) (*Store, func()) {
 		log.Printf(args.Get(0).(string))
 	})
 	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
+	mockMetrics.On("ObserveStoreMethodsTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
 
 	store, err := NewStore(settings, conn, nil, mockLogger, mockMetrics)
 	require.NoError(t, err)
