@@ -10,14 +10,16 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 import {Client4} from 'mattermost-redux/client';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import React, {CSSProperties} from 'react';
-import {IntlShape} from 'react-intl';
+import {FormattedMessage, IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
+import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import {AudioInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
-import {HostNotifications} from 'src/components/host_notifications';
+import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
+import {HostNotices} from 'src/components/host_notices';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ExpandIcon from 'src/components/icons/expand';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
@@ -36,7 +38,12 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
-import {CallAlertConfigs, CallRecordingDisclaimerStrings, CallTranscribingDisclaimerStrings} from 'src/constants';
+import {
+    CallAlertConfigs,
+    CallRecordingDisclaimerStrings,
+    CallTranscribingDisclaimerStrings,
+    DEGRADED_CALL_QUALITY_ALERT_WAIT,
+} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -53,8 +60,9 @@ import {
     CallAlertStates,
     CallAlertStatesDefault,
     CallJobReduxState,
-    HostControlNotification,
+    HostControlNotice,
     IncomingCallNotification,
+    RemoveConfirmationData,
 } from 'src/types/types';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
 
@@ -73,6 +81,7 @@ interface Props {
     channelURL: string,
     channelDisplayName: string,
     sessions: UserSessionState[],
+    sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
     profiles: IDMappedObjects<UserProfile>,
     callStartAt: number,
@@ -92,7 +101,7 @@ interface Props {
         left: number,
     },
     recentlyJoinedUsers: string[],
-    hostNotifications: HostControlNotification[],
+    hostNotices: HostControlNotice[],
     wider: boolean,
     callsIncoming: IncomingCallNotification[],
     transcriptionsEnabled: boolean,
@@ -122,6 +131,7 @@ interface State {
     expandedViewWindow: Window | null,
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
+    removeConfirmation: RemoveConfirmationData | null,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -133,6 +143,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private screenPlayer: HTMLVideoElement | null = null;
     private prevDevicePixelRatio = 0;
     private unsubscribers: (() => void)[] = [];
+    private callQualityBannerLocked = false;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
         return {
@@ -190,6 +201,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 bottom: 'calc(100% + 4px)',
                 width: '100%',
                 appRegion: 'drag',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
             },
             screenSharingPanel: {
                 position: 'relative',
@@ -246,6 +260,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             audioEls: [],
             alerts: CallAlertStatesDefault,
             screenStream: null,
+            removeConfirmation: null,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -438,7 +453,20 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient.on('devicechange', (devices: AudioDevices) => {
+            const state = {} as State;
+
+            if (window.callsClient) {
+                if (window.callsClient.currentAudioInputDevice !== this.state.currentAudioInputDevice) {
+                    state.currentAudioInputDevice = window.callsClient.currentAudioInputDevice;
+                }
+
+                if (window.callsClient.currentAudioOutputDevice !== this.state.currentAudioOutputDevice) {
+                    state.currentAudioOutputDevice = window.callsClient.currentAudioOutputDevice;
+                }
+            }
+
             this.setState({
+                ...state,
                 devices,
                 alerts: {
                     ...this.state.alerts,
@@ -502,7 +530,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient?.on('mos', (mos: number) => {
-            if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -513,7 +541,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     },
                 });
             }
-            if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -775,6 +803,28 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showAudioOutputDevicesMenu: false, currentAudioOutputDevice: device});
     };
 
+    onRemove = (sessionID: string, userID: string) => {
+        this.setState({
+            removeConfirmation: {
+                sessionID,
+                userID,
+            },
+        });
+    };
+
+    onRemoveConfirm = () => {
+        hostRemove(this.props.channel?.id, this.state.removeConfirmation?.sessionID);
+        this.setState({
+            removeConfirmation: null,
+        });
+    };
+
+    onRemoveCancel = () => {
+        this.setState({
+            removeConfirmation: null,
+        });
+    };
+
     renderScreenSharingPanel = () => {
         if (!this.props.screenSharingSession) {
             return null;
@@ -1006,7 +1056,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         <span
                             style={{
-                                color: 'rgba(var(--center-channel-color-rgb), 0.56)',
+                                color: 'var(--center-channel-color)',
                                 fontSize: '14px',
                                 width: '100%',
                                 textOverflow: 'ellipsis',
@@ -1357,6 +1407,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         let header = formatMessage(disclaimerStrings[isHost ? 'host' : 'participant'].header);
         let body = formatMessage(disclaimerStrings[isHost ? 'host' : 'participant'].body);
         let confirmText = isHost ? formatMessage({defaultMessage: 'Dismiss'}) : formatMessage({defaultMessage: 'Understood'});
+        // eslint-disable-next-line no-undefined
+        const rightText = isHost ? undefined : formatMessage({defaultMessage: 'Leave call'});
         let icon = (
             <RecordCircleIcon
                 style={{width: '12px', height: '12px'}}
@@ -1402,10 +1454,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 iconColor='rgb(var(--dnd-indicator-rgb))'
                 header={header}
                 body={body}
-                confirmText={confirmText}
-                declineText={isHost ? null : formatMessage({defaultMessage: 'Leave call'})}
-                onClose={this.dismissRecordingPrompt}
-                onDecline={this.onDisconnectClick}
+                leftText={confirmText}
+                rightText={rightText}
+                onLeftButtonClick={this.dismissRecordingPrompt}
+                onRightButtonClick={this.onDisconnectClick}
+                onCloseButtonClick={this.dismissRecordingPrompt}
             />
         );
     };
@@ -1468,6 +1521,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             },
                         },
                     });
+                    if (alertID === 'degradedCallQuality') {
+                        this.callQualityBannerLocked = true;
+                        setTimeout(() => {
+                            this.callQualityBannerLocked = false;
+                        }, DEGRADED_CALL_QUALITY_ALERT_WAIT);
+                    }
                 };
             }
 
@@ -1477,7 +1536,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
                     header={formatMessage(alertConfig.bannerText)}
-                    onClose={onClose}
+                    onLeftButtonClick={onClose}
+                    onCloseButtonClick={onClose}
                 />
             );
         });
@@ -1487,8 +1547,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (!this.props.currentUserID) {
             return null;
         }
-
-        const {formatMessage} = this.props.intl;
 
         const joinedUsers = this.props.recentlyJoinedUsers.map((userID) => {
             if (userID === this.props.currentUserID) {
@@ -1505,7 +1563,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return (
                 <div
                     className='calls-notification-bar calls-slide-top'
-                    style={{justifyContent: 'flex-start'}}
                     key={profile.id}
                     data-testid={'call-joined-participant-notification'}
                 >
@@ -1516,7 +1573,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         border={false}
                     />
                     <span style={{overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                        {formatMessage({defaultMessage: '{participant} has joined the call.'}, {participant: getUserDisplayName(profile)})}
+                        <FormattedMessage
+                            defaultMessage={'<b>{participant}</b> has joined the call.'}
+                            values={{
+                                b: (text: string) => <b>{text}</b>,
+                                participant: getUserDisplayName(profile),
+                            }}
+                        />
                     </span>
                 </div>
             );
@@ -1528,7 +1591,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     visible={!this.props.clientConnecting}
                     isMuted={this.isMuted()}
                 />
-                {this.props.hostNotifications.length > 0 && <HostNotifications onWidget={true}/>}
+                {this.props.hostNotices.length > 0 && <HostNotices onWidget={true}/>}
                 {joinedUsers}
             </div>
         );
@@ -1756,7 +1819,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const mainStyle = {
             ...this.style.main,
-            width: this.props.wider ? '280px' : '216px',
+            width: this.props.wider ? '306px' : '248px',
             ...(this.props.global && {appRegion: 'drag'}),
         };
 
@@ -1784,6 +1847,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
                     {this.renderRecordingDisclaimer()}
+                    {Boolean(this.state.removeConfirmation) &&
+                        Boolean(this.props.sessionsMap[this.state.removeConfirmation?.sessionID || '']) &&
+                        <RemoveConfirmation
+                            profile={this.props.profiles[this.state.removeConfirmation?.userID || '']}
+                            onConfirm={this.onRemoveConfirm}
+                            onCancel={this.onRemoveCancel}
+                        />
+                    }
                     {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
                     {this.state.showParticipantsList &&
                         <ParticipantsList
@@ -1793,6 +1864,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             currentSession={this.props.currentSession}
                             screenSharingSession={this.props.screenSharingSession}
                             callID={this.props.channel.id}
+                            onRemove={this.onRemove}
                         />
                     }
                     {this.renderMenu()}
@@ -1806,7 +1878,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         {this.renderSpeakingProfile()}
 
-                        <div style={{width: this.props.wider ? '184px' : '120px'}}>
+                        <div style={{width: this.props.wider ? '210px' : '152px'}}>
                             {this.renderSpeaking()}
                             <div style={this.style.callInfo}>
                                 {this.renderRecordingBadge()}

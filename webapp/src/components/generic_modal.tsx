@@ -121,7 +121,7 @@ export default class GenericModal extends React.PureComponent<Props, State> {
 
         return (
             <StyledModal
-                dialogClassName={classNames('a11y__modal GenericModal', this.props.className)}
+                dialogClassName={classNames('a11y__modal', this.props.className)}
                 show={this.props.show ?? this.state.show}
                 onHide={this.onHide}
                 onExited={this.props.onExited || this.onHide}
@@ -130,14 +130,19 @@ export default class GenericModal extends React.PureComponent<Props, State> {
                 role='dialog'
                 aria-labelledby={`${this.props.id}_heading`}
                 id={this.props.id}
-                $contentPadding={this.props.contentPadding || '24px'}
+                $contentPadding={this.props.contentPadding || '0px'}
             >
                 <Header
                     className='GenericModal__header'
                     closeButton={true}
                 >
                     {Boolean(this.props.modalHeaderText) && (
-                        <ModalHeading id={`${this.props.id}_heading`}>{this.props.modalHeaderText}</ModalHeading>
+                        <h1
+                            className='modal-title'
+                            id={`${this.props.id}_heading`}
+                        >
+                            {this.props.modalHeaderText}
+                        </h1>
                     )}
                 </Header>
                 <form>
@@ -157,26 +162,8 @@ export default class GenericModal extends React.PureComponent<Props, State> {
 
 export const StyledModal = styled(Modal)<{ $contentPadding: string}>`
     &&& {
-        /* content-spacing */
-
-        .modal-header {
-            padding: 0 0 24px 0;
-        }
-
         .modal-body {
             overflow: visible;
-        }
-
-        .modal-content {
-            padding: ${({$contentPadding}) => $contentPadding};
-        }
-
-        .modal-footer {
-            padding: 24px 0 0 0;
-        }
-
-        .close {
-            margin: 12px 12px 0 0;
         }
 
         .modal-dialog {
