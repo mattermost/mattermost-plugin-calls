@@ -1,10 +1,7 @@
 package client
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -25,7 +22,6 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media/oggreader"
 
 	"github.com/aws/aws-sdk-go/service/polly"
-	"gopkg.in/hraban/opus.v2"
 )
 
 var (
@@ -312,84 +308,6 @@ func (u *User) Mute() {
 	}
 }
 
-func (u *User) transmitSpeech() {
-	track, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
-	if err != nil {
-		u.log.Error(err.Error())
-		os.Exit(1)
-	}
-
-	enc, err := opus.NewEncoder(24000, 1, opus.AppVoIP)
-	if err != nil {
-		u.log.Error("failed to create opus encoder", slog.String("err", err.Error()))
-	}
-
-	if err := u.callsClient.Unmute(track); err != nil {
-		u.log.Error(err.Error())
-		os.Exit(1)
-	}
-
-	for text := range u.speechTextCh {
-		func() {
-			defer func() {
-				u.doneSpeakingCh <- struct{}{}
-			}()
-			u.log.Debug("received text to speak: " + text)
-
-			var rd io.Reader
-			var rate int
-			var err error
-			if u.pollySession != nil {
-				rd, rate, err = u.pollyToSpeech(text)
-			}
-			if err != nil {
-				u.log.Error("textToSpeech failed", slog.String("err", err.Error()))
-				return
-			}
-
-			u.log.Debug("raw speech samples decoded", slog.Int("rate", rate))
-
-			audioSamplesDataBuf := bytes.NewBuffer([]byte{})
-			if _, err := audioSamplesDataBuf.ReadFrom(rd); err != nil {
-				u.log.Error("failed to read samples data", slog.String("err", err.Error()))
-				return
-			}
-
-			u.log.Debug("read samples bytes", slog.Int("len", audioSamplesDataBuf.Len()))
-
-			sampleDuration := time.Millisecond * 20
-			ticker := time.NewTicker(sampleDuration)
-			audioSamplesData := make([]byte, 480*4)
-			audioSamples := make([]int16, 480)
-			opusData := make([]byte, 8192)
-			for ; true; <-ticker.C {
-				n, err := audioSamplesDataBuf.Read(audioSamplesData)
-				if err != nil {
-					if !errors.Is(err, io.EOF) {
-						u.log.Error("failed to read audio samples", slog.String("err", err.Error()))
-					}
-					break
-				}
-
-				// Convert []byte to []int16
-				for i := 0; i < n; i += 4 {
-					audioSamples[i/4] = int16(binary.LittleEndian.Uint16(audioSamplesData[i : i+4]))
-				}
-
-				n, err = enc.Encode(audioSamples, opusData)
-				if err != nil {
-					u.log.Error("failed to encode: %s", u.cfg.Username, err.Error())
-					continue
-				}
-
-				if err := track.WriteSample(media.Sample{Data: opusData[:n], Duration: sampleDuration}); err != nil {
-					u.log.Error("failed to write audio sample: %s", u.cfg.Username, err.Error())
-				}
-			}
-		}()
-	}
-}
-
 func (u *User) Speak(text string) chan struct{} {
 	u.speechTextCh <- text
 	return u.doneSpeakingCh
@@ -398,8 +316,6 @@ func (u *User) Speak(text string) chan struct{} {
 func (u *User) onConnect() {
 	if u.cfg.Unmuted {
 		go u.transmitAudio()
-	} else if u.cfg.Speak {
-		go u.transmitSpeech()
 	}
 	if u.cfg.ScreenSharing {
 		go u.transmitScreen()

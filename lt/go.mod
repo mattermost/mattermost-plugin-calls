@@ -9,7 +9,6 @@ require (
 	github.com/mattermost/rtcd v0.15.1-0.20240523001840-903a7b83a7e4
 	github.com/pion/rtp v1.8.6
 	github.com/pion/webrtc/v3 v3.2.40
-	gopkg.in/hraban/opus.v2 v2.0.0-20230925203106-0188a62cb302
 )
 
 require (
