@@ -41,12 +41,8 @@ type Metrics struct {
 
 	AppHandlersTimeHistograms *prometheus.HistogramVec
 
-	StoreOpCounters                      *prometheus.CounterVec
-	StoreMethodsTimeHistograms           *prometheus.HistogramVec
-	StoreDBWriterConnectionsInUseGauge   prometheus.GaugeFunc
-	StoreDBWriterConnectionsIdleGauge    prometheus.GaugeFunc
-	StoreDBWriterConnectionsWaitCount    prometheus.CounterFunc
-	StoreDBWriterConnectionsWaitDuration prometheus.CounterFunc
+	StoreOpCounters            *prometheus.CounterVec
+	StoreMethodsTimeHistograms *prometheus.HistogramVec
 
 	LiveCaptionsNewAudioLenHistogram       prometheus.Histogram
 	LiveCaptionsWindowDroppedCounter       prometheus.Counter
