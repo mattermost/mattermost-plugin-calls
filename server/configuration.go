@@ -657,10 +657,7 @@ func (p *Plugin) isSingleHandler() bool {
 		return false
 	}
 
-	isHA := cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
-	hasEnvVar := os.Getenv("MM_CALLS_IS_HANDLER") != ""
-
-	return !isHA || (isHA && hasEnvVar)
+	return !p.isHA()
 }
 
 func (p *Plugin) isHA() bool {
