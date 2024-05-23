@@ -15,7 +15,6 @@ import {
 import {
     allowScreenSharing,
     areHostControlsAllowed,
-    areLiveCaptionsAvailableInCurrentCall,
     callStartAtForCurrentCall,
     channelForCurrentCall,
     expandedView,
@@ -89,7 +88,6 @@ const mapStateToProps = (state: GlobalState) => {
         recordingsEnabled: recordingsEnabled(state),
         recordingMaxDuration: recordingMaxDuration(state),
         transcriptionsEnabled: transcriptionsEnabled(state),
-        liveCaptionsAvailable: areLiveCaptionsAvailableInCurrentCall(state),
         isAdmin: isCurrentUserSystemAdmin(state),
         hostControlsAllowed: areHostControlsAllowed(state),
     };

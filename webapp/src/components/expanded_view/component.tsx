@@ -23,7 +23,6 @@ import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
 import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
-import CCIcon from 'src/components/icons/cc_icon';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CollapseIcon from 'src/components/icons/collapse';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -74,6 +73,7 @@ import {
 import styled, {createGlobalStyle, css} from 'styled-components';
 
 import CallParticipant from './call_participant';
+import {CallSettingsButton} from './call_settings';
 import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './controls_button';
 import GlobalBanner from './global_banner';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
@@ -117,7 +117,6 @@ interface Props extends RouteComponentProps {
     startCallRecording: (callID: string) => void,
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     transcriptionsEnabled: boolean,
-    liveCaptionsAvailable: boolean,
     isAdmin: boolean,
     hostControlsAllowed: boolean,
 }
@@ -170,12 +169,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             root: {
                 display: 'flex',
                 width: '100%',
-                height: '100%',
-                zIndex: 1000,
+                height: '100vh',
                 background: 'var(--calls-bg)',
                 color: 'white',
                 gridArea: 'center',
-                overflow: 'auto',
             },
             main: {
                 position: 'relative',
@@ -406,7 +403,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     };
 
-    setDevices = (devices: AudioDevices) => {
+    setAudioDevices = (devices: AudioDevices) => {
         this.setState({
             alerts: {
                 ...this.state.alerts,
@@ -631,7 +628,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 screenStream: stream,
             });
         });
-        callsClient.on('devicechange', this.setDevices);
+        callsClient.on('devicechange', this.setAudioDevices);
         callsClient.on('initaudio', () => {
             this.setState({
                 alerts: {
@@ -644,7 +641,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         });
 
-        this.setDevices(callsClient.getAudioDevices());
+        this.setAudioDevices(callsClient.getAudioDevices());
 
         const screenStream = callsClient.getLocalScreenStream() || callsClient.getRemoteScreenStream();
 
@@ -1036,8 +1033,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         }
 
-        const liveCaptionsText = this.state.showLiveCaptions ? formatMessage({defaultMessage: 'Turn off live captions'}) : formatMessage({defaultMessage: 'Turn on live captions'});
-
         const globalRhsSupported = Boolean(this.props.selectRhsPost);
 
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
@@ -1047,7 +1042,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const showMuteOthers = hostControlsAvailable && this.props.sessions.some((s) => s.unmuted && s.user_id !== this.props.currentUserID);
 
         const isRecording = isHost && this.props.isRecording;
-        const showCCButton = this.props.liveCaptionsAvailable;
 
         const recordTooltipText = isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
         const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
@@ -1214,19 +1208,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 />
                             }
 
-                            {showCCButton &&
-                                <ControlsButton
-                                    id='calls-popout-cc-button'
-                                    onToggle={this.onLiveCaptionsToggle}
-                                    icon={<CCIcon style={{width: '20px', height: '20px'}}/>}
-                                    tooltipText={liveCaptionsText}
-                                    bgColor={this.state.showLiveCaptions ? 'white' : ''}
-                                    bgColorHover={this.state.showLiveCaptions ? 'rgba(255, 255, 255, 0.92)' : ''}
-                                    iconFill={this.state.showLiveCaptions ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
-                                    iconFillHover={this.state.showLiveCaptions ? 'var(--calls-bg)' : ''}
-                                />
-                            }
-
                             <ReactionButton
                                 ref={this.emojiButtonRef}
                                 trackEvent={this.props.trackEvent}
@@ -1256,6 +1237,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     unavailable={chatDisabled}
                                 />
                             )}
+
+                            <CallSettingsButton
+                                onLiveCaptionsToggle={this.onLiveCaptionsToggle}
+                                showLiveCaptions={this.state.showLiveCaptions}
+                            />
                         </div>
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
                             <ControlsButton
@@ -1359,6 +1345,7 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
         > .team-sidebar,
         > .app-bar,
         > #channel_view .channel__wrap,
+        > button,
         > #SidebarContainer {
             display: none;
         }
@@ -1428,6 +1415,7 @@ const MuteOthersButton = styled.button`
     i {
         font-size: 14px;
     }
+>>>>>>> origin/main
 `;
 
 const CloseButton = styled.button`

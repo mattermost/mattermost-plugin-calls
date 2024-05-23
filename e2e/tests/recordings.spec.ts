@@ -151,6 +151,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(popOut.getByTestId('banner-recording')).toBeHidden();
 
         // verify we do not have the [cc] button
+        await popOut.locator('#calls-popout-settings-button').click();
         await expect(popOut.locator('#calls-popout-cc-button')).toBeHidden();
 
         // stop recording
@@ -195,6 +196,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(popOut.getByTestId('banner-recording')).toBeHidden();
 
         // verify we have the [cc] button
+        await popOut.locator('#calls-popout-settings-button').click();
         await expect(popOut.locator('#calls-popout-cc-button')).toBeVisible();
 
         // toggle closed captioning
