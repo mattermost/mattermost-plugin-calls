@@ -1,4 +1,4 @@
-import {Caption} from '@calls/common/lib/types';
+import {Caption} from '@mattermost/calls-common/lib/types';
 import {FileInfo} from '@mattermost/types/files';
 import {Post} from '@mattermost/types/posts';
 import {Client4} from 'mattermost-redux/client';

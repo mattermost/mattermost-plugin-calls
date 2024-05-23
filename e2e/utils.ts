@@ -53,6 +53,20 @@ export async function startCall(userState: string) {
     return userPage;
 }
 
+export async function startCallAndPopout(userState: string) {
+    const userPage = await newUserPage(userState);
+    await userPage.goto();
+    await userPage.startCall();
+
+    const [popOut, _] = await Promise.all([
+        userPage.page.context().waitForEvent('page'),
+        userPage.page.click('#calls-widget-expand-button'),
+    ]);
+    const userPopout = new PlaywrightDevPage(popOut);
+
+    return [userPage, userPopout];
+}
+
 export async function startDMWith(userState: string, targetUserName: string) {
     const userPage = await newUserPage(userState);
     await userPage.gotoDM(targetUserName);
@@ -70,6 +84,20 @@ export async function joinCall(userState: string) {
     await userPage.goto();
     await userPage.joinCall();
     return userPage;
+}
+
+export async function joinCallAndPopout(userState: string) {
+    const userPage = await newUserPage(userState);
+    await userPage.goto();
+    await userPage.joinCall();
+
+    const [popOut, _] = await Promise.all([
+        userPage.page.context().waitForEvent('page'),
+        userPage.page.click('#calls-widget-expand-button'),
+    ]);
+    const userPopout = new PlaywrightDevPage(popOut);
+
+    return [userPage, userPopout];
 }
 
 export function getChannelURL(channelName: string) {

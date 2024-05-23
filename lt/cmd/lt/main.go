@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -35,7 +34,6 @@ func main() {
 	var numCalls int
 	var numUsersPerCall int
 	var numRecordings int
-	var simulcast bool
 	var setup bool
 	var speechFile string
 
@@ -54,9 +52,8 @@ func main() {
 	flag.StringVar(&joinDuration, "join-duration", "30s", "The amount of time it takes for all participants to join their calls")
 	flag.StringVar(&adminUsername, "admin-username", "sysadmin", "The username of a system admin account")
 	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "The password of a system admin account")
-	flag.BoolVar(&simulcast, "simulcast", false, "Whether or not to enable simulcast for screen")
 	flag.BoolVar(&setup, "setup", true, "Whether or not setup actions like creating users, channels, teams and/or members should be executed.")
-	flag.StringVar(&speechFile, "speech-file", "./lt/samples/speech_0.ogg", "The path to a speech OGG file to read to simulate real voice samples")
+	flag.StringVar(&speechFile, "speech-file", "./samples/speech_0.ogg", "The path to a speech OGG file to read to simulate real voice samples")
 
 	flag.Parse()
 
@@ -92,17 +89,6 @@ func main() {
 	joinDur, err := time.ParseDuration(joinDuration)
 	if err != nil {
 		log.Fatalf(err.Error())
-	}
-
-	var wsURL string
-	u, err := url.Parse(siteURL)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	if u.Scheme == "https" {
-		wsURL = "wss://" + u.Host
-	} else {
-		wsURL = "ws://" + u.Host
 	}
 
 	if numUnmuted > numUsersPerCall {
@@ -215,12 +201,10 @@ func main() {
 					TeamID:        teamID,
 					ChannelID:     channelID,
 					SiteURL:       siteURL,
-					WsURL:         wsURL,
 					Duration:      dur,
 					Unmuted:       unmuted,
 					ScreenSharing: screenSharing,
 					Recording:     recording,
-					Simulcast:     simulcast,
 					Setup:         setup,
 					SpeechFile:    speechFile,
 				}

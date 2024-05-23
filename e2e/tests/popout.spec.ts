@@ -262,6 +262,35 @@ test.describe('popout window', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
         await expect(popOut.isClosed()).toEqual(true);
     });
+
+    test('webapp ws reconnect', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.goto();
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+
+        // Trigger ws disconnect.
+        await popOut.evaluate(() => {
+            const wsClient = window.plugins['com.mattermost.calls'].wsClient;
+            wsClient.conn.close();
+        });
+
+        // Wait a few seconds to let the reconnect handler run.
+        await devPage.wait(5000);
+
+        // Make sure participants are visibile.
+        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+        expect(await popOut.locator('#calls-expanded-view-participants-grid').screenshot()).toMatchSnapshot('expanded-view-participants-grid.png');
+
+        // leave call
+        await page.locator('#calls-widget-leave-button').click();
+        await expect(page.locator('#calls-widget')).toBeHidden();
+    });
 });
 
 test.describe('popout window - reactions', () => {
