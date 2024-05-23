@@ -222,12 +222,6 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 		return ErrNotInCall
 	}
 
-	handlerID, err := p.getHandlerID()
-	if err != nil {
-		p.LogError(err.Error())
-		handlerID = state.Call.Props.NodeID
-	}
-
 	p.publishWebSocketEvent(wsEventHostRemoved, map[string]interface{}{
 		"call_id":    state.Call.ID,
 		"channel_id": channelID,
@@ -254,7 +248,7 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 			return
 		}
 
-		if err := p.closeRTCSession(ust.UserID, sessionID, channelID, handlerID, state.Call.ID); err != nil {
+		if err := p.closeRTCSession(ust.UserID, sessionID, channelID, state.Call.Props.NodeID, state.Call.ID); err != nil {
 			p.LogError("hostRemoveSession: failed to close RTC session", "err", err.Error())
 		}
 	}()

@@ -25,30 +25,12 @@ import (
 )
 
 const (
-	handlerKey              = "handler"
-	handlerKeyCheckInterval = 5 * time.Second
-	channelNameMaxLength    = 24
+	channelNameMaxLength = 24
 )
 
 var (
 	filenameSanitizationRE = regexp.MustCompile(`[\\:*?\"<>|\n\s/]`)
 )
-
-func (p *Plugin) getHandlerID() (string, error) {
-	data, appErr := p.KVGet(handlerKey, false)
-	if appErr != nil {
-		return "", fmt.Errorf("failed to get handler id: %w", appErr)
-	}
-	return string(data), nil
-}
-
-func (p *Plugin) setHandlerID(nodeID string) error {
-	p.metrics.IncStoreOp("KVSetWithExpiry")
-	if appErr := p.API.KVSetWithExpiry(handlerKey, []byte(nodeID), int64(handlerKeyCheckInterval.Seconds()*2)); appErr != nil {
-		return fmt.Errorf("failed to set handler id: %w", appErr)
-	}
-	return nil
-}
 
 func (p *Plugin) getNotificationNameFormat(userID string) string {
 	config := p.API.GetConfig()

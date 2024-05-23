@@ -299,18 +299,6 @@ func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, er
 func (p *Plugin) cleanUpState() error {
 	p.LogDebug("cleaning up calls state")
 
-	handlerID, err := p.getHandlerID()
-	if err != nil {
-		p.LogError(err.Error())
-	}
-
-	if handlerID != "" && p.nodeID == handlerID {
-		p.metrics.IncStoreOp("KVDelete")
-		if appErr := p.API.KVDelete(handlerKey); appErr != nil {
-			p.LogError(appErr.Error())
-		}
-	}
-
 	calls, err := p.store.GetAllActiveCalls(db.GetCallOpts{FromWriter: true})
 	if err != nil {
 		return fmt.Errorf("failed to get all active calls: %w", err)
