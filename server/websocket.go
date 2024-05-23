@@ -389,6 +389,20 @@ func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 		} else {
 			p.LogError("ws channel already closed", "userID", userID, "connID", connID, "channelID", us.channelID)
 		}
+	} else {
+		// If we don't find the session it's usually an expected case as this hook tracks all MM connections, not just Calls ones.
+		// However, there's a small chance the session has yet to be created (a race with handleJoin).
+		// To work around this edge case, we check again after a few seconds to unblock any potentially stuck wsReader goroutines.
+		go func() {
+			time.Sleep(wsReconnectionTimeout)
+			p.mut.RLock()
+			us := p.sessions[connID]
+			p.mut.RUnlock()
+			if us != nil && atomic.CompareAndSwapInt32(&us.wsClosed, 0, 1) {
+				p.LogDebug("race: closing ws channel for session", "userID", userID, "connID", connID, "channelID", us.channelID)
+				close(us.wsCloseCh)
+			}
+		}()
 	}
 }
 
