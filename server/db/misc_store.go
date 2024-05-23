@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
 
@@ -11,6 +12,9 @@ import (
 
 func (s *Store) KVGet(pluginID, key string, fromWriter bool) ([]byte, error) {
 	s.metrics.IncStoreOp("KVGet")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("KVGet", time.Since(start).Seconds())
+	}(time.Now())
 
 	db := s.wDB
 	if !fromWriter {
@@ -43,6 +47,9 @@ func (s *Store) KVGet(pluginID, key string, fromWriter bool) ([]byte, error) {
 // advanced logic needed by clients like populating reply counts.
 func (s *Store) GetPost(postID string) (*model.Post, error) {
 	s.metrics.IncStoreOp("GetPost")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetPost", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).
 		Select("*").
@@ -64,6 +71,11 @@ func (s *Store) GetPost(postID string) (*model.Post, error) {
 }
 
 func (s *Store) UpdateFileInfoPostID(fileID, channelID, postID string) error {
+	s.metrics.IncStoreOp("UpdateFileInfoPostID")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("UpdateFileInfoPostID", time.Since(start).Seconds())
+	}(time.Now())
+
 	qb := getQueryBuilder(s.driverName).Update("FileInfo").
 		Set("ChannelId", channelID).
 		Set("PostId", postID).

@@ -27,10 +27,13 @@ type Metrics interface {
 	IncLiveCaptionsWindowDropped()
 	IncLiveCaptionsTranscriberBufFull()
 	IncLiveCaptionsPktPayloadChBufFull()
+	ObserveAppHandlersTime(handler string, elapsed float64)
+	ObserveStoreMethodsTime(method string, elapsed float64)
 }
 
 type StoreMetrics interface {
 	IncStoreOp(op string)
+	ObserveStoreMethodsTime(method string, elapsed float64)
 }
 
 type Store interface {

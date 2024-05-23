@@ -4,6 +4,8 @@
 package db
 
 import (
+	"database/sql"
+
 	"github.com/jmoiron/sqlx"
 )
 
@@ -49,4 +51,11 @@ func (s *Store) dbXFromGetOpts(opts getOpts) *sqlx.DB {
 		return s.wDBx
 	}
 	return s.rDBx
+}
+
+func (s *Store) dbFromGetOpts(opts getOpts) *sql.DB {
+	if opts.UseWriter() {
+		return s.wDB
+	}
+	return s.rDB
 }

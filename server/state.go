@@ -278,6 +278,10 @@ func (p *Plugin) getCallStateFromCall(call *public.Call, fromWriter bool) (*call
 }
 
 func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, error) {
+	defer func(start time.Time) {
+		p.metrics.ObserveAppHandlersTime("getCallState", time.Since(start).Seconds())
+	}(time.Now())
+
 	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{
 		FromWriter: fromWriter,
 	})
