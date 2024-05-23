@@ -351,12 +351,12 @@ const CallSettingsMenuButtonWrapper = styled.button`
 
 type CallSettingsProps = {
     onLiveCaptionsToggle: () => void;
+    showLiveCaptions: boolean;
 }
 
-export function CallSettings({onLiveCaptionsToggle}: CallSettingsProps) {
+export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSettingsProps) {
     const [showAudioInputs, setShowAudioInputs] = useState(false);
     const [showAudioOutputs, setShowAudioOutputs] = useState(false);
-    const [ccButtonState, setCCButtonState] = useState(false);
     const showCCButton = useSelector(areLiveCaptionsAvailableInCurrentCall);
     const {formatMessage} = useIntl();
 
@@ -368,11 +368,6 @@ export function CallSettings({onLiveCaptionsToggle}: CallSettingsProps) {
             setShowAudioOutputs(!showAudioOutputs);
             setShowAudioInputs(false);
         }
-    };
-
-    const onCCButtonToggle = () => {
-        setCCButtonState(!ccButtonState);
-        onLiveCaptionsToggle();
     };
 
     return (
@@ -396,8 +391,8 @@ export function CallSettings({onLiveCaptionsToggle}: CallSettingsProps) {
                     <CallSettingsMenuButton
                         id='calls-popout-cc-button'
                         icon={<CCIcon/>}
-                        label={ccButtonState ? formatMessage({defaultMessage: 'Hide live captions'}) : formatMessage({defaultMessage: 'Show live captions'})}
-                        onClick={onCCButtonToggle}
+                        label={showLiveCaptions ? formatMessage({defaultMessage: 'Hide live captions'}) : formatMessage({defaultMessage: 'Show live captions'})}
+                        onClick={onLiveCaptionsToggle}
                     />
                 </>
                 }
@@ -422,9 +417,10 @@ const MenuList = styled.ul`
 
 type CallSettingsButtonProps = {
     onLiveCaptionsToggle: () => void;
+    showLiveCaptions: boolean;
 };
 
-export function CallSettingsButton({onLiveCaptionsToggle}: CallSettingsButtonProps) {
+export function CallSettingsButton({onLiveCaptionsToggle, showLiveCaptions}: CallSettingsButtonProps) {
     const [showCallSettings, setShowCallSettings] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const {formatMessage} = useIntl();
@@ -464,6 +460,7 @@ export function CallSettingsButton({onLiveCaptionsToggle}: CallSettingsButtonPro
             {showCallSettings && (
                 <CallSettings
                     onLiveCaptionsToggle={onCCButtonToggle}
+                    showLiveCaptions={showLiveCaptions}
                 />
             )}
             <ControlsButton

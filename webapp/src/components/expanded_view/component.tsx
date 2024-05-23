@@ -117,7 +117,6 @@ interface Props extends RouteComponentProps {
     startCallRecording: (callID: string) => void,
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     transcriptionsEnabled: boolean,
-    liveCaptionsAvailable: boolean,
     isAdmin: boolean,
     hostControlsAllowed: boolean,
 }
@@ -1241,6 +1240,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                             <CallSettingsButton
                                 onLiveCaptionsToggle={this.onLiveCaptionsToggle}
+                                showLiveCaptions={this.state.showLiveCaptions}
                             />
                         </div>
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
