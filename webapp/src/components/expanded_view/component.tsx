@@ -3,37 +3,30 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import './component.scss';
-
-import {mosThreshold} from '@calls/common';
-import {
-    UserSessionState,
-} from '@calls/common/lib/types';
+import {mosThreshold} from '@mattermost/calls-common';
+import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
+import {IDMappedObjects} from '@mattermost/types/utilities';
 import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
-import React, {CSSProperties} from 'react';
+import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
-import {
-    stopCallRecording,
-} from 'src/actions';
-import Avatar from 'src/components/avatar/avatar';
-import {Badge, HostBadge} from 'src/components/badge';
+import {hostMuteOthers, hostRemove, stopCallRecording} from 'src/actions';
+import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
-import {Emoji} from 'src/components/emoji/emoji';
+import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
 import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
 import CCIcon from 'src/components/icons/cc_icon';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CollapseIcon from 'src/components/icons/collapse';
 import CompassIcon from 'src/components/icons/compassIcon';
-import HandEmoji from 'src/components/icons/hand';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
 import ParticipantsIcon from 'src/components/icons/participants';
@@ -45,9 +38,7 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
-import {
-    CallAlertConfigs,
-} from 'src/constants';
+import {CallAlertConfigs, DEGRADED_CALL_QUALITY_ALERT_WAIT} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -67,6 +58,7 @@ import {
     CallAlertStates,
     CallAlertStatesDefault,
     CallJobReduxState,
+    RemoveConfirmationData,
 } from 'src/types/types';
 import {
     getCallsClient,
@@ -82,10 +74,11 @@ import {
 import styled, {createGlobalStyle, css} from 'styled-components';
 
 import CallParticipant from './call_participant';
-import ControlsButton from './controls_button';
+import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './controls_button';
 import GlobalBanner from './global_banner';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 import RecordingInfoPrompt from './recording_info_prompt';
+import {RemoveConfirmation} from './remove_confirmation';
 
 interface Props extends RouteComponentProps {
     intl: IntlShape,
@@ -93,10 +86,9 @@ interface Props extends RouteComponentProps {
     show: boolean,
     currentUserID: string,
     currentTeamID: string,
-    profiles: {
-        [userID: string]: UserProfile,
-    }
+    profiles: IDMappedObjects<UserProfile>,
     sessions: UserSessionState[],
+    sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
     callStartAt: number,
     callHostID: string,
@@ -126,6 +118,8 @@ interface Props extends RouteComponentProps {
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     transcriptionsEnabled: boolean,
     liveCaptionsAvailable: boolean,
+    isAdmin: boolean,
+    hostControlsAllowed: boolean,
 }
 
 interface State {
@@ -133,6 +127,7 @@ interface State {
     showParticipantsList: boolean,
     showLiveCaptions: boolean,
     alerts: CallAlertStates,
+    removeConfirmation: RemoveConfirmationData | null,
 }
 
 const StyledMediaController = styled(MediaController)`
@@ -162,6 +157,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private expandedRootRef = React.createRef<HTMLDivElement>();
     private pushToTalk = false;
     private screenPlayer: HTMLVideoElement | null = null;
+    private callQualityBannerLocked = false;
 
     static contextType = window.ProductApi.WebSocketProvider;
 
@@ -190,14 +186,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             headerSpreader: {
                 marginRight: 'auto',
             },
-            closeViewButton: {
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '40px',
-                height: '40px',
-                borderRadius: '4px',
-            },
             participants: {
                 display: 'grid',
                 overflow: 'auto',
@@ -208,23 +196,26 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '16px 8px',
+                padding: '12px',
                 width: '100%',
             },
             centerControls: {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                gap: '8px',
             },
             topContainer: {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '16px',
-                lineHeight: '24px',
+                fontSize: '14px',
+                lineHeight: '20px',
                 fontWeight: 600,
+                padding: '8px',
+                margin: '0 12px',
+                gap: '4px',
                 height: '56px',
-                padding: '0 20px',
             },
             screenContainer: {
                 display: 'flex',
@@ -276,8 +267,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 fontWeight: 600,
                 fontSize: '16px',
                 padding: '0 16px',
-                height: '63px',
-                lineHeight: '63px',
+                height: '56px',
+                lineHeight: '56px',
             },
             centerView: {
                 display: 'flex',
@@ -300,6 +291,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             showParticipantsList: false,
             showLiveCaptions: false,
             alerts: CallAlertStatesDefault,
+            removeConfirmation: null,
         };
 
         if (window.opener) {
@@ -684,7 +676,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         callsClient.on('mos', (mos: number) => {
-            if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -695,7 +687,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     },
                 });
             }
-            if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -743,6 +735,28 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.opener?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
     };
 
+    onRemove = (sessionID: string, userID: string) => {
+        this.setState({
+            removeConfirmation: {
+                sessionID,
+                userID,
+            },
+        });
+    };
+
+    onRemoveConfirm = () => {
+        hostRemove(this.props.channel?.id, this.state.removeConfirmation?.sessionID);
+        this.setState({
+            removeConfirmation: null,
+        });
+    };
+
+    onRemoveCancel = () => {
+        this.setState({
+            removeConfirmation: null,
+        });
+    };
+
     shouldRenderAlertBanner = () => {
         return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
     };
@@ -769,6 +783,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             },
                         },
                     });
+                    if (alertID === 'degradedCallQuality') {
+                        this.callQualityBannerLocked = true;
+                        setTimeout(() => {
+                            this.callQualityBannerLocked = false;
+                        }, DEGRADED_CALL_QUALITY_ALERT_WAIT);
+                    }
                 };
             }
 
@@ -810,7 +830,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     ...this.style.screenContainer,
 
                     // Account for when we display an alert banner.
-                    maxHeight: `calc(100vh - ${this.shouldRenderAlertBanner() ? 180 : 140}px)`,
+                    maxHeight: `calc(100vh - ${this.shouldRenderAlertBanner() ? 164 : 124}px)`,
                 }}
             >
                 <StyledMediaController
@@ -870,118 +890,33 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     isSpeaking={isSpeaking}
                     isHandRaised={isHandRaised}
                     reaction={session?.reaction}
+                    isYou={session.session_id === this.props.currentSession?.session_id}
                     isHost={profile.id === this.props.callHostID}
+                    iAmHost={this.props.currentSession?.user_id === this.props.callHostID}
+                    callID={this.props.channel?.id}
+                    userID={session.user_id}
+                    sessionID={session.session_id}
+                    isSharingScreen={this.props.screenSharingSession?.session_id === session.session_id}
+                    onRemove={() => this.onRemove(session.session_id, session.user_id)}
                 />
             );
         });
     };
 
     renderParticipantsRHSList = () => {
-        const {formatMessage} = this.props.intl;
-        return this.props.sessions.map((session) => {
-            const isMuted = !session.unmuted;
-            const isSpeaking = Boolean(session.voice);
-            const isHandRaised = Boolean(session.raised_hand > 0);
-            const profile = this.props.profiles[session.user_id];
-            const isYou = session.session_id === this.props.currentSession?.session_id;
-            const isHost = this.props.callHostID === session.user_id;
-            let youStyle: CSSProperties = {color: 'rgba(var(--center-channel-color-rgb), 0.56)'};
-            if (isYou && isHost) {
-                youStyle = {...youStyle, marginLeft: '2px'};
-            }
-
-            if (!profile) {
-                return null;
-            }
-
-            const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
-
-            return (
-                <li
-                    key={'participants_rhs_profile_' + session.session_id}
-                    style={{display: 'flex', alignItems: 'center', padding: '8px 16px', gap: '8px'}}
-                >
-                    <Avatar
-                        size={24}
-                        fontSize={10}
-                        border={false}
-                        borderGlowWidth={isSpeaking ? 2 : 0}
-                        url={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
-                    />
-
-                    <span
-                        style={{
-                            display: 'block',
-                            whiteSpace: 'pre',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            fontWeight: 600,
-                            fontSize: '14px',
-                            lineHeight: '20px',
-                        }}
-                    >
-                        {getUserDisplayName(profile)}
-                    </span>
-
-                    {(isYou || isHost) &&
-                        <span style={{marginLeft: -4, display: 'flex', alignItems: 'baseline', gap: 5}}>
-                            {isYou &&
-                                <span style={youStyle}>
-                                    {formatMessage({defaultMessage: '(you)'})}
-                                </span>
-                            }
-                            {isHost && <HostBadge onWhiteBg={true}/>}
-                        </span>
-                    }
-
-                    <div
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            marginLeft: 'auto',
-                            gap: '12px',
-                        }}
-                    >
-                        {session?.reaction &&
-                            <div
-                                style={{
-                                    marginBottom: 4,
-                                    marginRight: 2,
-                                }}
-                            >
-                                <Emoji
-                                    emoji={session.reaction.emoji}
-                                    size={16}
-                                />
-                            </div>
-                        }
-                        {isHandRaised &&
-                            <HandEmoji
-                                style={{
-                                    fill: 'var(--away-indicator)',
-                                    width: '16px',
-                                    height: '16px',
-                                }}
-                            />
-                        }
-
-                        {this.props.screenSharingSession?.session_id === session.session_id &&
-                            <ScreenIcon
-                                fill={'rgb(var(--dnd-indicator-rgb))'}
-                                style={{width: '16px', height: '16px'}}
-                            />
-                        }
-
-                        <MuteIcon
-                            fill={isMuted ? '#C4C4C4' : '#3DB887'}
-                            style={{width: '16px', height: '16px'}}
-                        />
-
-                    </div>
-                </li>
-            );
-        });
+        return this.props.sessions.map((session) => (
+            <CallParticipantRHS
+                key={'participants_rhs_profile_' + session.session_id}
+                session={session}
+                profile={this.props.profiles[session.user_id]}
+                isYou={this.props.currentSession?.session_id === session.session_id}
+                isHost={this.props.callHostID === session.user_id}
+                isSharingScreen={this.props.screenSharingSession?.session_id === session.session_id}
+                iAmHost={this.props.currentSession?.user_id === this.props.callHostID}
+                callID={this.props.channel?.id}
+                onRemove={() => this.onRemove(session.session_id, session.user_id)}
+            />
+        ));
     };
 
     renderRecordingBadge = () => {
@@ -1004,19 +939,46 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return null;
         }
 
-        return (
+        const badge = (
             <Badge
                 id={'calls-recording-badge'}
                 text={'REC'}
                 textSize={12}
-                gap={6}
-                margin={'0 12px 0 0'}
-                padding={'8px 6px'}
+                lineHeight={16}
+                gap={4}
+                margin={'0 8px 0 0'}
+                padding={'6px 8px'}
                 icon={(<RecordCircleIcon style={{width: '12px', height: '12px'}}/>)}
+                hoverIcon={(<RecordSquareIcon style={{width: '12px', height: '12px'}}/>)}
                 bgColor={hasRecStarted ? '#D24B4E' : 'rgba(221, 223, 228, 0.04)'}
                 loading={!hasRecStarted}
             />
         );
+
+        if (hasRecStarted) {
+            const {formatMessage} = this.props.intl;
+            return (
+                <OverlayTrigger
+                    placement='bottom'
+                    key={'badge-stop-recording'}
+                    overlay={
+                        <Tooltip id='tooltip-badge-stop-recording'>
+                            {formatMessage({defaultMessage: 'Click to stop'})}
+                        </Tooltip>
+                    }
+                >
+
+                    <button
+                        className='style--none'
+                        onClick={() => this.onRecordToggle()}
+                    >
+                        {badge}
+                    </button>
+                </OverlayTrigger>
+            );
+        }
+
+        return badge;
     };
 
     render() {
@@ -1081,6 +1043,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isChatUnread = Boolean(this.props.threadUnreadReplies);
 
         const isHost = this.props.callHostID === this.props.currentUserID;
+        const hostControlsAvailable = this.props.hostControlsAllowed && (isHost || this.props.isAdmin);
+        const showMuteOthers = hostControlsAvailable && this.props.sessions.some((s) => s.unmuted && s.user_id !== this.props.currentUserID);
 
         const isRecording = isHost && this.props.isRecording;
         const showCCButton = this.props.liveCaptionsAvailable;
@@ -1103,14 +1067,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <div style={this.style.main}>
                     {this.renderAlertBanner()}
 
-                    <div style={this.style.topContainer}>
+                    <div
+                        data-testid={'calls-expanded-view-top-container'}
+                        style={this.style.topContainer}
+                    >
                         {this.renderRecordingBadge()}
                         <CallDuration
-                            style={{margin: '4px'}}
                             startAt={this.props.callStartAt}
                         />
-                        <span style={{margin: '4px'}}>{untranslatable('•')}</span>
-                        <span style={{margin: '4px', whiteSpace: 'nowrap'}}>
+                        <span>{untranslatable('•')}</span>
+                        <span style={{whiteSpace: 'nowrap'}}>
                             {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.sessions.length})}
                         </span>
 
@@ -1125,19 +1091,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 </Tooltip>
                             }
                         >
-                            <button
-                                className='button-close'
-                                style={this.style.closeViewButton}
+                            <CloseViewButton
+                                className='style--none'
                                 onClick={this.onCloseViewClick}
                             >
                                 <CollapseIcon
                                     style={{
-                                        width: '24px',
-                                        height: '24px',
-                                        fill: 'white',
+                                        width: '20px',
+                                        height: '20px',
                                     }}
                                 />
-                            </button>
+                            </CloseViewButton>
                         </OverlayTrigger>
                     </div>
 
@@ -1165,7 +1129,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         id='calls-expanded-view-controls'
                         style={this.style.controls}
                     >
-                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start', marginLeft: '16px'}}>
+                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start'}}>
                             <ControlsButton
                                 id='calls-popout-participants-button'
                                 onToggle={() => this.onParticipantsListToggle()}
@@ -1178,12 +1142,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 icon={
                                     <ParticipantsIcon
                                         style={{
-                                            width: '28px',
-                                            height: '28px',
+                                            width: '20px',
+                                            height: '20px',
                                         }}
                                     />
                                 }
-                                margin='0'
                             />
                         </div>
 
@@ -1203,8 +1166,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 icon={
                                     <MuteIcon
                                         style={{
-                                            width: '28px',
-                                            height: '28px',
+                                            width: '20px',
+                                            height: '20px',
                                         }}
                                     />
                                 }
@@ -1226,8 +1189,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={
                                         <ShareIcon
                                             style={{
-                                                width: '28px',
-                                                height: '28px',
+                                                width: '20px',
+                                                height: '20px',
                                             }}
                                         />
                                     }
@@ -1247,7 +1210,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     bgColorHover={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.20)' : ''}
                                     iconFill={isRecording ? 'rgba(var(--dnd-indicator-rgb), 0.80)' : ''}
                                     iconFillHover={isRecording ? 'var(--dnd-indicator)' : ''}
-                                    icon={<RecordIcon style={{width: '28px', height: '28px'}}/>}
+                                    icon={<RecordIcon style={{width: '20px', height: '20px'}}/>}
                                 />
                             }
 
@@ -1255,7 +1218,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <ControlsButton
                                     id='calls-popout-cc-button'
                                     onToggle={this.onLiveCaptionsToggle}
-                                    icon={<CCIcon style={{width: '32px', height: '32px'}}/>}
+                                    icon={<CCIcon style={{width: '20px', height: '20px'}}/>}
                                     tooltipText={liveCaptionsText}
                                     bgColor={this.state.showLiveCaptions ? 'white' : ''}
                                     bgColorHover={this.state.showLiveCaptions ? 'rgba(255, 255, 255, 0.92)' : ''}
@@ -1281,44 +1244,57 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     iconFill={showChatThread ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
                                     iconFillHover={showChatThread ? 'var(--calls-bg)' : ''}
                                     icon={
-                                        <div style={{position: 'relative'}}>
+                                        <CallThreadIcon>
                                             <ChatThreadIcon
-                                                style={{width: '28px', height: '28px'}}
+                                                style={{width: '20px', height: '20px'}}
                                             />
                                             {!chatDisabled && isChatUnread && (
                                                 <UnreadIndicator mentions={this.props.threadUnreadMentions}/>
                                             )}
-                                        </div>
+                                        </CallThreadIcon>
                                     }
                                     unavailable={chatDisabled}
                                 />
                             )}
                         </div>
-                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end', marginRight: '16px'}}>
+                        <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
                             <ControlsButton
                                 id='calls-popout-leave-button'
                                 onToggle={() => this.onDisconnectClick()}
                                 tooltipText={formatMessage({defaultMessage: 'Leave call'})}
                                 shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}
                                 bgColor={'var(--dnd-indicator)'}
-                                bgColorHover={'var(--dnd-indicator)'}
-                                iconFill={'rgba(255, 255, 255, 0.80)'}
+                                bgColorHover={'linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08))'}
+                                iconFill={'white'}
                                 iconFillHover={'white'}
+
                                 icon={
                                     <LeaveCallIcon
-                                        style={{width: '28px', height: '28px'}}
+                                        style={{width: '20px', height: '20px'}}
                                     />
                                 }
-                                margin='0'
                             />
                         </div>
                     </div>
                 </div>
                 {this.state.showParticipantsList &&
-                    <ul style={this.style.rhs}>
-                        <div style={this.style.rhsHeaderContainer}>
+                    <ul
+                        data-testid={'rhs-participant-list'}
+                        style={this.style.rhs}
+                    >
+                        <div
+                            data-testid={'rhs-participant-list-header'}
+                            style={this.style.rhsHeaderContainer}
+                        >
                             <div style={this.style.rhsHeader}>
                                 <span>{formatMessage({defaultMessage: 'Participants'})}</span>
+                                <ToTheRight/>
+                                {showMuteOthers &&
+                                    <MuteOthersButton onClick={() => hostMuteOthers(this.props.channel?.id)}>
+                                        <CompassIcon icon={'microphone-off'}/>
+                                        {formatMessage({defaultMessage: 'Mute others'})}
+                                    </MuteOthersButton>
+                                }
                                 <CloseButton
                                     className='style--none'
                                     onClick={() => this.onParticipantsListToggle()}
@@ -1347,6 +1323,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         promptDismissed={this.dismissRecordingPrompt}
                         transcriptionsEnabled={this.props.transcriptionsEnabled}
                     />
+                    {Boolean(this.state.removeConfirmation) &&
+                        Boolean(this.props.sessionsMap[this.state.removeConfirmation?.sessionID || '']) &&
+                        <RemoveConfirmation
+                            profile={this.props.profiles[this.state.removeConfirmation?.userID || '']}
+                            onConfirm={this.onRemoveConfirm}
+                            onCancel={this.onRemoveCancel}
+                        />
+                    }
                 </ReactionOverlay>
             </div>
         );
@@ -1359,7 +1343,9 @@ const isActiveElementInteractable = () => {
 
 const UnreadIndicator = ({mentions}: { mentions?: number }) => {
     return (
-        <UnreadDot>
+        <UnreadDot
+            $padding={mentions ? '0.5px 2px' : ''}
+        >
             {mentions &&
                 <MentionsCounter>{mentions > 99 ? untranslatable('99+') : mentions}</MentionsCounter>
             }
@@ -1367,35 +1353,31 @@ const UnreadIndicator = ({mentions}: { mentions?: number }) => {
     );
 };
 
-const MentionsCounter = styled.span`
-    font-weight: 700;
-    font-size: 8px;
-    color: var(--button-color);
-`;
-
-const UnreadDot = styled.span`
-    position: absolute;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1;
-    top: -4px;
-    right: -4px;
-    width: 15px;
-    height: 12px;
-    background: var(--button-bg);
-    border-radius: 8px;
-    border: 2px solid white;
-`;
-
 const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean }>`
-    #root {
+    body.app__body #root {
         > #global-header,
         > .team-sidebar,
         > .app-bar,
         > #channel_view .channel__wrap,
         > #SidebarContainer {
             display: none;
+        }
+
+        display: flex;
+
+        > .announcement-bar {
+            display: none;
+        }
+
+        > .main-wrapper {
+            position: absolute;
+            display: flex;
+            margin: 0;
+            padding: 0;
+            border-radius: 0;
+            border: 0;
+            width: 100%;
+            height: 100%;
         }
 
         #sidebar-right #sbrSearchFormContainer {
@@ -1413,10 +1395,38 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
                 display: none;
             }
         `}
+        #sidebar-right {
+            z-index: 1001;
+            border: 0;
+        }
+    }
+`;
+
+const ToTheRight = styled.div`
+    margin-left: auto;
+`;
+
+const MuteOthersButton = styled.button`
+    display: flex;
+    padding: 8px 8px;
+    margin-right: 6px;
+    gap: 2px;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    color: var(--button-bg);
+
+    border: none;
+    background: none;
+    border-radius: 4px;
+
+    &:hover {
+        background: rgba(var(--button-bg-rgb), 0.08);
     }
 
-    #sidebar-right {
-        z-index: 1001;
+    i {
+        font-size: 14px;
     }
 `;
 
@@ -1424,13 +1434,12 @@ const CloseButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-left: auto;
     color: rgba(var(--center-channel-color-rgb), 0.56);
     width: 32px;
     height: 32px;
     border-radius: 4px;
 
-    :hover {
+    &:hover {
         background: rgba(var(--center-channel-color-rgb), 0.08);
         color: rgba(var(--center-channel-color-rgb), 0.72);
         fill: rgba(var(--center-channel-color-rgb), 0.72);
@@ -1444,12 +1453,42 @@ const CloseButton = styled.button`
     }
 `;
 
+const CloseViewButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    padding: 10px;
+    border-radius: 4px;
+
+    svg {
+        fill: rgba(255, 255, 255, 0.64);
+    }
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.08);
+
+        svg {
+            fill: rgba(255, 255, 255, 0.72);
+        }
+    }
+
+    &:active {
+        background: rgba(255, 255, 255, 0.16);
+
+        svg {
+            fill: rgba(255, 255, 255, 0.80);
+        }
+    }
+`;
+
 const ReactionOverlay = styled.div`
     position: absolute;
     bottom: 96px;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    pointer-events: none;
 `;
 
 const LiveCaptionsOverlay = styled.div`

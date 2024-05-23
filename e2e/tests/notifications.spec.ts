@@ -1,4 +1,3 @@
-
 import {expect, test} from '@playwright/test';
 
 import {apiChannelNotifyProps} from '../channels';
@@ -7,7 +6,9 @@ import PlaywrightDevPage from '../page';
 import {apiPatchNotifyProps, apiPutStatus} from '../users';
 import {
     getChannelNamesForTest,
+    getChannelURL,
     getUserIDsForTest,
+    getUserIdxForTest,
     getUsernamesForTest,
     getUserStoragesForTest,
     newUserPage,
@@ -787,5 +788,72 @@ test.describe('notifications', () => {
         await devPage.expectNotifications(0, 0, 0, 0);
 
         await user1.leaveCall();
+    });
+
+    test('expanded view notification: change channel, dismiss, join new call', async ({page, context}) => {
+        const userIdx = getUserIdxForTest();
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.goto();
+        await devPage.startCall();
+
+        const [popOut, _] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+
+        let user1 = await startDMWith(userStorages[1], usernames[0]);
+        await user1.startCall();
+
+        // Expect to see the notification
+        let condensedNotification = popOut.getByTestId('call-incoming-condensed');
+        await expect(condensedNotification).toBeVisible();
+
+        // Assert we're not in the DM channel yet
+        await expect(page.locator('#channelHeaderTitle')).toContainText(getChannelNamesForTest()[0]);
+
+        // Expect to go to DM when clicking on notification body.
+        await condensedNotification.click();
+        await expect(page.url()).not.toEqual(getChannelURL(getChannelNamesForTest()[0]));
+        await expect(page.locator('#channelHeaderTitle')).toContainText(usernames[1]);
+
+        // return
+        await page.locator(`#sidebarItem_calls${userIdx}`).click();
+        await expect(page.locator('#channelHeaderTitle')).toContainText(getChannelNamesForTest()[0]);
+
+        // Expect to see join call modal when clicking notification join.
+        await popOut.getByTestId('call-incoming-condensed-join').click();
+        await expect(popOut.locator('#calls-switch-call-modal')).toBeVisible();
+        await expect(popOut.locator('#calls-switch-call-modal')).toContainText('You\'re already in a call');
+        await popOut.getByRole('button', {name: 'Cancel'}).click();
+
+        // Expect to dismiss notification.
+        await popOut.getByTestId('call-incoming-condensed-dismiss').click();
+        await expect(popOut.locator('#calls-switch-call-modal')).toBeHidden();
+        await expect(popOut.getByTestId('call-incoming-condensed')).toBeHidden();
+
+        // Start a new call to get a new notification.
+        await user1.leaveCall();
+        user1 = await startDMWith(userStorages[1], usernames[0]);
+        await user1.startCall();
+
+        // Expect to see the notification
+        condensedNotification = popOut.getByTestId('call-incoming-condensed');
+        await expect(condensedNotification).toBeVisible();
+
+        // Assert we're not in the DM call yet
+        await expect(page.locator('.calls-channel-link')).toContainText(getChannelNamesForTest()[0]);
+
+        // Join the new call
+        await popOut.getByTestId('call-incoming-condensed-join').click();
+        await expect(popOut.locator('#calls-switch-call-modal')).toBeVisible();
+        await expect(popOut.locator('#calls-switch-call-modal')).toContainText('You\'re already in a call');
+        await popOut.getByRole('button', {name: 'Leave and join new call'}).click();
+        await expect(popOut.isClosed()).toBeTruthy();
+
+        // Expect to be in the new DM call
+        await expect(page.locator('.calls-channel-link')).toContainText(usernames[1]);
+
+        await user1.leaveCall();
+        await devPage.leaveCall();
     });
 });
