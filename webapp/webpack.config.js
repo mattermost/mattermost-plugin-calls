@@ -17,7 +17,7 @@ if (NPM_TARGET === 'debug' || NPM_TARGET === 'debug:watch') {
 
 const plugins = [
     new webpack.ProvidePlugin({
-        process: 'process/browser',
+        process: 'process/browser.js',
     }),
 ];
 

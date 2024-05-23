@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {EmojiData} from '@calls/common/lib/types';
+import {EmojiData} from '@mattermost/calls-common/lib/types';
 import EmojiPicker, {
     EmojiClickData,
     EmojiStyle,
@@ -207,8 +207,8 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
                 icon={
                     <SmileyIcon
                         style={{
-                            width: '28px',
-                            height: '28px',
+                            width: '20px',
+                            height: '20px',
                         }}
                     />
                 }

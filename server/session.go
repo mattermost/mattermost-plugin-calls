@@ -172,7 +172,8 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
 		state.Call.Props.Hosts = []string{newHostID}
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
-			"hostID": newHostID,
+			"hostID":  newHostID,
+			"call_id": state.Call.ID,
 		}, &WebSocketBroadcast{
 			ChannelID:           channelID,
 			ReliableClusterSend: true,
@@ -394,7 +395,8 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 				state.Call.Props.Hosts = []string{newHostID}
 			}
 			p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
-				"hostID": newHostID,
+				"hostID":  newHostID,
+				"call_id": state.Call.ID,
 			}, &WebSocketBroadcast{
 				ChannelID:           channelID,
 				ReliableClusterSend: true,

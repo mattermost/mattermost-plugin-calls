@@ -1,6 +1,5 @@
 /* eslint-disable max-lines */
-import {CallJobState, CallsConfig, LiveCaption, Reaction, UserSessionState} from '@calls/common/lib/types';
-import {UserProfile} from '@mattermost/types/users';
+import {CallJobState, CallsConfig, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {
@@ -9,6 +8,8 @@ import {
     CallsUserPreferencesDefault,
     ChannelState,
     ChannelType,
+    HostControlNotice,
+    HostControlNoticeTimeout,
     IncomingCallNotification,
     LiveCaptions,
 } from 'src/types/types';
@@ -30,11 +31,11 @@ import {
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
+    HOST_CONTROL_NOTICE,
+    HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
     LIVE_CAPTIONS_ENABLED,
-    PROFILE_JOINED,
-    PROFILES_JOINED,
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CHANNEL_STATE,
@@ -79,72 +80,6 @@ const channels = (state: channelsState = {}, action: channelsStateAction) => {
         return {
             ...state,
             [action.data.id]: action.data,
-        };
-    default:
-        return state;
-    }
-};
-
-type profilesState = {
-    [channelID: string]: {
-        [sessionID: string]: UserProfile;
-    };
-}
-
-type profilesAction = {
-    type: string;
-    data: {
-        channelID: string;
-        session_id: string;
-        userID?: string;
-        profile?: UserProfile;
-        profiles?: {[sessionID: string]: UserProfile};
-    };
-}
-
-// Profiles (as in whole User objects) connected to calls.
-const profiles = (state: profilesState = {}, action: profilesAction) => {
-    switch (action.type) {
-    case UNINIT:
-        return {};
-    case PROFILES_JOINED:
-        return {
-            ...state,
-            [action.data.channelID]: action.data.profiles,
-        };
-    case PROFILE_JOINED:
-        if (!state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    [action.data.session_id]: action.data.profile,
-                },
-            };
-        }
-
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: action.data.profile,
-            },
-        };
-    case USER_LEFT: {
-        if (!state[action.data.channelID]) {
-            return state;
-        }
-
-        const nextState = {...state[action.data.channelID]};
-        delete nextState[action.data.session_id];
-        return {
-            ...state,
-            [action.data.channelID]: nextState,
-        };
-    }
-    case CALL_END:
-        return {
-            ...state,
-            [action.data.channelID]: {},
         };
     default:
         return state;
@@ -214,22 +149,19 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
     case UNINIT:
         return {};
     case USER_JOINED:
-        if (state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    ...state[action.data.channelID],
-                    [action.data.session_id]: {
-                        session_id: action.data.session_id,
-                        user_id: action.data.userID,
-                        unmuted: false,
-                        voice: false,
-                        raised_hand: 0,
-                    },
+        return {
+            ...state,
+            [action.data.channelID]: {
+                ...state[action.data.channelID],
+                [action.data.session_id]: {
+                    session_id: action.data.session_id,
+                    user_id: action.data.userID,
+                    unmuted: false,
+                    voice: false,
+                    raised_hand: 0,
                 },
-            };
-        }
-        return state;
+            },
+        };
     case USER_LEFT:
         if (state[action.data.channelID]) {
             // eslint-disable-next-line
@@ -689,6 +621,11 @@ const calls = (state: callsState = {}, action: callStateAction) => {
                 ...action.data,
             },
         };
+    case CALL_END: {
+        const nextState = {...state};
+        delete nextState[action.data.channelID];
+        return nextState;
+    }
     default:
         return state;
     }
@@ -1003,15 +940,56 @@ const clientConnecting = (state = false, action: { type: string, data: boolean }
     }
 };
 
+type hostControlNoticeAction = {
+    type: string;
+    data: HostControlNotice;
+}
+
+type hostControlNoticeTimeoutAction = {
+    type: string;
+    data: HostControlNoticeTimeout;
+}
+
+export type hostControlNoticeState = {
+    [callID: string]: HostControlNotice[];
+}
+
+const addHostControlNotice = (notices: HostControlNotice[] | undefined,
+    notice: HostControlNotice) => {
+    const ret = notices?.length ? [...notices] : [];
+    ret.push(notice);
+    return ret;
+};
+
+const removeHostControlNotice = (notices: HostControlNotice[], noticeID: string) => {
+    return notices.filter((n) => n.noticeID !== noticeID);
+};
+
+const hostControlNotices = (state: hostControlNoticeState = {},
+    action: hostControlNoticeAction | hostControlNoticeTimeoutAction) => {
+    switch (action.type) {
+    case HOST_CONTROL_NOTICE: {
+        const data = action.data as HostControlNotice;
+        return {
+            ...state,
+            [data.callID]: addHostControlNotice(state[data.callID], data),
+        };
+    }
+    case HOST_CONTROL_NOTICE_TIMEOUT_EVENT: {
+        const data = action.data as HostControlNoticeTimeout;
+        return {
+            ...state,
+            [data.callID]: removeHostControlNotice(state[data.callID], data.noticeID),
+        };
+    }
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
     channels,
     clientStateReducer,
-    profiles,
-
-    // DEPRECATED - Needed to keep compatibility with older MM server
-    // version.
-    voiceConnectedProfiles: profiles,
-
     reactions,
     sessions,
     calls,
@@ -1034,4 +1012,5 @@ export default combineReducers({
     dismissedCalls,
     liveCaptions,
     clientConnecting,
+    hostControlNotices,
 });

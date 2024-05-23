@@ -6,6 +6,10 @@ package main
 import (
 	"testing"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
+	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/mattermost/mattermost/server/public/plugin"
+
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/stretchr/testify/require"
 )
@@ -208,19 +212,40 @@ func TestConfigurationIsValid(t *testing.T) {
 }
 
 func TestGetClientConfig(t *testing.T) {
-	cfg := &configuration{}
-	cfg.SetDefaults()
-	clientCfg := cfg.getClientConfig()
+	mockAPI := &pluginMocks.MockAPI{}
+
+	p := &Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		licenseChecker: enterprise.NewLicenseChecker(mockAPI),
+	}
+
+	mockAPI.On("GetLicense").Return(&model.License{
+		SkuShortName: "starter",
+	})
+	mockAPI.On("GetConfig").Return(&model.Config{})
+
+	clientCfg := p.getClientConfig()
 
 	// defaults
 	require.Equal(t, model.NewBool(true), clientCfg.AllowEnableCalls)
-	require.Equal(t, cfg.AllowEnableCalls, clientCfg.AllowEnableCalls)
+	require.Equal(t, p.getConfiguration().AllowEnableCalls, clientCfg.AllowEnableCalls)
 	require.Equal(t, model.NewBool(false), clientCfg.DefaultEnabled)
-	require.Equal(t, cfg.DefaultEnabled, clientCfg.DefaultEnabled)
+	require.Equal(t, p.getConfiguration().DefaultEnabled, clientCfg.DefaultEnabled)
 
-	*cfg.AllowEnableCalls = false
-	*cfg.DefaultEnabled = true
-	clientCfg = cfg.getClientConfig()
+	*p.configuration.AllowEnableCalls = false
+	*p.configuration.DefaultEnabled = true
+	clientCfg = p.getClientConfig()
 	require.Equal(t, true, *clientCfg.AllowEnableCalls)
-	require.Equal(t, cfg.DefaultEnabled, clientCfg.DefaultEnabled)
+	require.Equal(t, p.getConfiguration().DefaultEnabled, clientCfg.DefaultEnabled)
+
+	// Host controls
+	require.Equal(t, false, clientCfg.HostControlsAllowed)
+	mockAPI.On("GetLicense").Unset()
+	mockAPI.On("GetLicense").Return(&model.License{
+		SkuShortName: "professional",
+	})
+	clientCfg = p.getClientConfig()
+	require.Equal(t, true, clientCfg.HostControlsAllowed)
 }
