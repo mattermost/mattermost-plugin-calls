@@ -285,7 +285,7 @@ func (u *User) Mute() error {
 func (u *User) Unmute(track webrtc.TrackLocal) error {
 	err := u.callsClient.Unmute(track)
 	if err != nil {
-		log.Printf("%s: failed to mute: %s", u.cfg.Username, err.Error())
+		log.Printf("%s: failed to unmute: %s", u.cfg.Username, err.Error())
 	}
 	return err
 }
@@ -308,7 +308,7 @@ func (u *User) transmitSpeech() {
 				if err := u.Mute(); err != nil {
 					log.Fatalf(err.Error())
 				}
-				log.Printf("muted")
+				log.Printf("%s: muted", u.cfg.Username)
 				u.doneSpeakingCh <- struct{}{}
 			}()
 			log.Printf("%s: received text to speak: %q", u.cfg.Username, text)
@@ -316,7 +316,7 @@ func (u *User) transmitSpeech() {
 			if err := u.Unmute(track); err != nil {
 				log.Fatalf(err.Error())
 			}
-			log.Printf("unmuted")
+			log.Printf("%s: unmuted", u.cfg.Username)
 
 			var rd io.Reader
 			var rate int
