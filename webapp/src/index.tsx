@@ -1,8 +1,9 @@
 /* eslint-disable max-lines */
 
-import {CallChannelState} from '@calls/common/lib/types';
+import {CallChannelState} from '@mattermost/calls-common/lib/types';
 import WebSocketClient from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
+import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
@@ -20,6 +21,7 @@ import {
     displayFreeTrial,
     getCallsConfig,
     incomingCallOnChannel,
+    loadProfilesByIdsIfMissing,
     setClientConnecting,
     showScreenSourceModal,
     showSwitchCallModal,
@@ -62,13 +64,13 @@ import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/ty
 import {
     CALL_STATE,
     DISMISS_CALL,
-    PROFILES_JOINED,
     RECEIVED_CHANNEL_STATE,
     UNINIT,
     USER_LOWER_HAND,
     USER_MUTED,
     USER_RAISE_HAND,
     USER_UNMUTED,
+    USERS_STATES,
 } from './action_types';
 import CallsClient from './client';
 import CallWidget from './components/call_widget';
@@ -112,8 +114,9 @@ import {
     getCallsClient,
     getChannelURL,
     getPluginPath,
-    getProfilesForSessions,
+    getSessionsMapFromSessions,
     getTranslations,
+    getUserIDsForSessions,
     getWSConnectionURL,
     isCallsPopOut,
     playSound,
@@ -127,7 +130,9 @@ import {
     handleCallStart,
     handleCallState,
     handleCaption,
+    handleHostLowerHand,
     handleHostMute,
+    handleHostRemoved,
     handleHostScreenOff,
     handleUserDismissedNotification,
     handleUserJoined,
@@ -256,12 +261,24 @@ export default class Plugin {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_host_screen_off`, (ev) => {
             handleHostScreenOff(store, ev);
         });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_host_lower_hand`, (ev) => {
+            handleHostLowerHand(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_host_removed`, (ev) => {
+            handleHostRemoved(store, ev);
+        });
     }
 
     private initialize(registry: PluginRegistry, store: Store) {
         // Setting the base URL if present, in case MM is running under a subpath.
         if (window.basename) {
+            // If present, we need to set the basename on both the client we use (RestClient)
+            // and the default one (Client4) used by internal Redux actions. Not doing so
+            // would break Calls widget on installations served under a subpath.
             RestClient.setUrl(window.basename);
+            Client4.setUrl(window.basename);
         }
 
         // Register root DOM element for Calls. This is where the widget will render.
@@ -683,18 +700,11 @@ export default class Plugin {
 
                     const call = data[i].call;
 
-                    if (!call || !call.users?.length) {
+                    if (!call || !call.sessions?.length) {
                         continue;
                     }
 
-                    actions.push({
-                        type: PROFILES_JOINED,
-                        data: {
-                            // eslint-disable-next-line no-await-in-loop
-                            profiles: await getProfilesForSessions(store.getState(), call.sessions),
-                            channelID: data[i].channel_id,
-                        },
-                    });
+                    store.dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(call.sessions)));
 
                     if (!callStartAtForCallInChannel(store.getState(), data[i].channel_id)) {
                         actions.push({
@@ -705,6 +715,14 @@ export default class Plugin {
                                 startAt: call.start_at,
                                 ownerID: call.owner_id,
                                 threadID: call.thread_id,
+                            },
+                        });
+
+                        actions.push({
+                            type: USERS_STATES,
+                            data: {
+                                states: getSessionsMapFromSessions(call.sessions),
+                                channelID: data[i].channel_id,
                             },
                         });
 

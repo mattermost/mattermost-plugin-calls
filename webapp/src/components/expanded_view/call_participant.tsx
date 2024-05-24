@@ -1,4 +1,4 @@
-import {Reaction} from '@calls/common/lib/types';
+import {Reaction} from '@mattermost/calls-common/lib/types';
 import React from 'react';
 import {useIntl} from 'react-intl';
 import Avatar from 'src/components/avatar/avatar';
@@ -27,6 +27,7 @@ export type Props = {
     callID?: string,
     userID: string,
     sessionID: string,
+    onRemove: () => void,
     isSharingScreen?: boolean,
 }
 
@@ -43,6 +44,7 @@ export default function CallParticipant({
     callID,
     userID,
     sessionID,
+    onRemove,
     isSharingScreen = false,
 }: Props) {
     const {formatMessage} = useIntl();
@@ -79,6 +81,7 @@ export default function CallParticipant({
                     }}
                 >
                     <MuteIcon
+                        data-testid={isMuted ? 'muted' : 'unmuted'}
                         fill='white'
                         style={{width: '14px', height: '14px'}}
                     />
@@ -86,6 +89,7 @@ export default function CallParticipant({
                 {isHandRaised &&
                     <div style={styles.handRaisedContainer}>
                         <HandEmoji
+                            data-testid={'raised-hand'}
                             style={{
                                 fill: 'var(--away-indicator)',
                                 width: '20px',
@@ -105,7 +109,7 @@ export default function CallParticipant({
                 {name}
             </span>
 
-            {isHost && <HostBadge/>}
+            {isHost && <HostBadge data-testid={'host-badge'}/>}
         </>
     );
 
@@ -118,7 +122,7 @@ export default function CallParticipant({
             >
                 {showHostControls &&
                     <StyledDotMenu
-                        icon={<StyledThreeDotsButton/>}
+                        icon={<StyledThreeDotsButton data-testid={'three-dots-button'}/>}
                         dotMenuButton={StyledDotMenuButton}
                         dropdownMenu={StyledDropdownMenu}
                         title={formatMessage({defaultMessage: 'Host controls'})}
@@ -132,6 +136,9 @@ export default function CallParticipant({
                             sessionID={sessionID}
                             isMuted={isMuted}
                             isSharingScreen={isSharingScreen}
+                            isHandRaised={isHandRaised}
+                            isHost={isHost}
+                            onRemove={onRemove}
                         />
                     </StyledDotMenu>
                 }

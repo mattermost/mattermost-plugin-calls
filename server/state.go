@@ -10,8 +10,6 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
-
-	"github.com/mattermost/mattermost/server/public/model"
 )
 
 type callState struct {
@@ -280,6 +278,10 @@ func (p *Plugin) getCallStateFromCall(call *public.Call, fromWriter bool) (*call
 }
 
 func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, error) {
+	defer func(start time.Time) {
+		p.metrics.ObserveAppHandlersTime("getCallState", time.Since(start).Seconds())
+	}(time.Now())
+
 	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{
 		FromWriter: fromWriter,
 	})
@@ -296,18 +298,6 @@ func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, er
 
 func (p *Plugin) cleanUpState() error {
 	p.LogDebug("cleaning up calls state")
-
-	handlerID, err := p.getHandlerID()
-	if err != nil {
-		p.LogError(err.Error())
-	}
-
-	if handlerID != "" && p.nodeID == handlerID {
-		p.metrics.IncStoreOp("KVDelete")
-		if appErr := p.API.KVDelete(handlerKey); appErr != nil {
-			p.LogError(appErr.Error())
-		}
-	}
 
 	calls, err := p.store.GetAllActiveCalls(db.GetCallOpts{FromWriter: true})
 	if err != nil {
@@ -365,7 +355,7 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 				p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 					"callID":   call.ChannelID,
 					"recState": getClientStateFromCallJob(job).toMap(),
-				}, &model.WebsocketBroadcast{ChannelId: call.ChannelID, ReliableClusterSend: true})
+				}, &WebSocketBroadcast{ChannelID: call.ChannelID, ReliableClusterSend: true})
 			}
 		}
 	}

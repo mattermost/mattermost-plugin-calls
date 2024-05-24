@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
@@ -143,29 +142,6 @@ func (p *Plugin) OnActivate() error {
 		return nil
 	}
 
-	if os.Getenv("MM_CALLS_IS_HANDLER") != "" {
-		go func() {
-			p.LogInfo("calls handler, setting state", "clusterID", status.ClusterId)
-			if err := p.setHandlerID(status.ClusterId); err != nil {
-				p.LogError(err.Error())
-				return
-			}
-			ticker := time.NewTicker(handlerKeyCheckInterval)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ticker.C:
-					if err := p.setHandlerID(status.ClusterId); err != nil {
-						p.LogError(err.Error())
-						return
-					}
-				case <-p.stopCh:
-					return
-				}
-			}
-		}()
-	}
-
 	rtcServerConfig := rtc.ServerConfig{
 		ICEAddressUDP:   cfg.UDPServerAddress,
 		ICEAddressTCP:   cfg.TCPServerAddress,
@@ -182,7 +158,7 @@ func (p *Plugin) OnActivate() error {
 		rtcServerConfig.TURNConfig.StaticAuthSecret = cfg.TURNStaticAuthSecret
 	}
 	if cfg.ICEHostPortOverride != nil {
-		rtcServerConfig.ICEHostPortOverride = *cfg.ICEHostPortOverride
+		rtcServerConfig.ICEHostPortOverride = rtc.ICEHostPortOverride(fmt.Sprintf("%d", *cfg.ICEHostPortOverride))
 	}
 	rtcServer, err := rtc.NewServer(rtcServerConfig, newLogger(p), p.metrics.RTCMetrics())
 	if err != nil {

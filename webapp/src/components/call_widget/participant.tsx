@@ -1,4 +1,4 @@
-import {UserSessionState} from '@calls/common/lib/types';
+import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
 import {Client4} from 'mattermost-redux/client';
 import React, {CSSProperties} from 'react';
@@ -25,10 +25,11 @@ type Props = {
     isHost: boolean;
     iAmHost: boolean,
     isSharingScreen: boolean;
+    onRemove: () => void;
     callID?: string;
 };
 
-export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharingScreen, callID}: Props) => {
+export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharingScreen, onRemove, callID}: Props) => {
     const {formatMessage} = useIntl();
     const {hoverOn, hoverOff, onOpenChange, showHostControls} = useHostControls(isYou, isHost, iAmHost);
 
@@ -110,6 +111,7 @@ export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharing
                 }
                 {isHandRaised &&
                     <HandEmoji
+                        data-testid={'raised-hand'}
                         fill='var(--away-indicator)'
                         style={{width: '14px', height: '14px'}}
                     />
@@ -124,7 +126,7 @@ export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharing
 
                 {showHostControls &&
                     <StyledDotMenu
-                        icon={<StyledThreeDotsButton/>}
+                        icon={<StyledThreeDotsButton data-testid={'three-dots-button'}/>}
                         dotMenuButton={StyledDotMenuButton}
                         dropdownMenu={StyledDropdownMenu}
                         title={formatMessage({defaultMessage: 'Host controls'})}
@@ -138,11 +140,15 @@ export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharing
                             sessionID={session.session_id}
                             isMuted={isMuted}
                             isSharingScreen={isSharingScreen}
+                            isHandRaised={isHandRaised}
+                            isHost={isHost}
+                            onRemove={onRemove}
                         />
                     </StyledDotMenu>
                 }
 
                 <MuteIcon
+                    data-testid={isMuted ? 'muted' : 'unmuted'}
                     fill={isMuted ? 'rgba(var(--center-channel-color-rgb), 0.56)' : '#3DB887'}
                     style={{width: '14px', height: '14px'}}
                 />

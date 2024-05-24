@@ -1,7 +1,7 @@
 import {chromium, expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {getUsernamesForTest, getUserStoragesForTest, joinCall, newUserPage, startCall} from '../utils';
+import {getUsernamesForTest, getUserStoragesForTest, joinCall, newUserPage, startCall, startDMWith} from '../utils';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
@@ -76,8 +76,10 @@ test.describe('join call', () => {
 
     test('user profile popover', async ({page}) => {
         const userAPage = page;
-        const userBPage = await newUserPage(userStorages[1]);
-        await userBPage.goto();
+        const userADevPage = new PlaywrightDevPage(page);
+        await userADevPage.gotoDM(usernames[1]);
+
+        const userBPage = await startDMWith(userStorages[1], usernames[0]);
 
         // We have both users send a message so it's much easier to
         // consistently find the proper selector to open the profile.
@@ -87,8 +89,11 @@ test.describe('join call', () => {
         await userBPage.page.locator('[data-testid=SendMessageButton]').click();
 
         await userAPage.locator('.post__header').locator('button.user-popover').last().click();
-        await expect(userAPage.locator('#user-profile-popover')).toBeVisible();
-        await userAPage.locator('#user-profile-popover').locator('#startCallButton').click();
+        await expect(userAPage.locator('div.user-profile-popover')).toBeVisible();
+        await userAPage.locator('div.user-profile-popover').locator('#startCallButton').click();
+
+        // Close User profile overlay
+        await userAPage.locator('button.closeButtonRelativePosition').click();
 
         await expect(userAPage.locator('#calls-widget')).toBeVisible();
         await expect(userAPage.locator('#calls-widget-loading-overlay')).toBeHidden();
@@ -96,7 +101,7 @@ test.describe('join call', () => {
         await userAPage.locator('#calls-widget-leave-button').click();
         await expect(userAPage.locator('#calls-widget')).toBeHidden();
 
-        // We then verify that join button is disabled if the other user is already in a call.
+        // We then verify that call button is disabled if the other user is already in a call with us.
         await userBPage.startCall();
 
         // We have both users send a message so it's much easier to
@@ -107,10 +112,28 @@ test.describe('join call', () => {
         await userBPage.page.locator('[data-testid=SendMessageButton]').click();
 
         await userAPage.locator('.post__header').locator('button.user-popover').last().click();
-        await expect(userAPage.locator('#user-profile-popover')).toBeVisible();
-        await expect(userAPage.locator('#user-profile-popover').locator('#startCallButton')).toBeDisabled();
+        await expect(userAPage.locator('div.user-profile-popover')).toBeVisible();
+        await expect(userAPage.locator('div.user-profile-popover').locator('#startCallButton')).toBeDisabled();
+        await userAPage.locator('button.closeButtonRelativePosition').click();
 
         await userBPage.leaveCall();
+
+        // We also verify that call button is disabled if we are already in a call with the other user.
+        await userADevPage.startCall();
+
+        // We have both users send a message so it's much easier to
+        // consistently find the proper selector to open the profile.
+        await userAPage.locator('#post_textbox').fill('messageA');
+        await userAPage.locator('[data-testid=SendMessageButton]').click();
+        await userBPage.page.locator('#post_textbox').fill('messageB');
+        await userBPage.page.locator('[data-testid=SendMessageButton]').click();
+
+        await userAPage.locator('.post__header').locator('button.user-popover').last().click();
+        await expect(userAPage.locator('div.user-profile-popover')).toBeVisible();
+        await expect(userAPage.locator('div.user-profile-popover').locator('#startCallButton')).toBeDisabled();
+        await userAPage.locator('button.closeButtonRelativePosition').click();
+
+        await userADevPage.leaveCall();
     });
 
     test('multiple sessions per user', async ({page}) => {

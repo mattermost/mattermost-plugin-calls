@@ -7,6 +7,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/gorilla/mux"
+	godeltaprof "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
 )
 
 func (p *Plugin) newAPIRouter() *mux.Router {
@@ -71,6 +72,9 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	debugRouter.HandleFunc("/pprof/profile", pprof.Profile).Methods("GET")
 	debugRouter.HandleFunc("/pprof/trace", pprof.Trace).Methods("GET")
 	debugRouter.HandleFunc("/pprof/", pprof.Index).Methods("GET")
+	debugRouter.HandleFunc("/pprof/delta_heap", godeltaprof.Heap).Methods("GET")
+	debugRouter.HandleFunc("/pprof/delta_block", godeltaprof.Block).Methods("GET")
+	debugRouter.HandleFunc("/pprof/delta_mutex", godeltaprof.Mutex).Methods("GET")
 	debugRouter.HandleFunc("/pprof/{profile}", pprof.Index).Methods("GET")
 
 	// Config
@@ -98,6 +102,9 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	hostCtrlRouter.HandleFunc("/make", p.handleMakeHost).Methods("POST")
 	hostCtrlRouter.HandleFunc("/mute", p.handleMuteSession).Methods("POST")
 	hostCtrlRouter.HandleFunc("/screen-off", p.handleScreenOff).Methods("POST")
+	hostCtrlRouter.HandleFunc("/lower-hand", p.handleLowerHand).Methods("POST")
+	hostCtrlRouter.HandleFunc("/remove", p.handleRemoveSession).Methods("POST")
+	hostCtrlRouter.HandleFunc("/mute-others", p.handleMuteOthers).Methods("POST")
 
 	// Bot
 	botRouter := router.PathPrefix("/bot").Subrouter()

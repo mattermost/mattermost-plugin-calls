@@ -30,6 +30,9 @@ var callsColumns = []string{
 
 func (s *Store) CreateCall(call *public.Call) error {
 	s.metrics.IncStoreOp("CreateCall")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("CreateCall", time.Since(start).Seconds())
+	}(time.Now())
 
 	if err := call.IsValid(); err != nil {
 		return fmt.Errorf("invalid call: %w", err)
@@ -57,6 +60,9 @@ func (s *Store) CreateCall(call *public.Call) error {
 
 func (s *Store) UpdateCall(call *public.Call) error {
 	s.metrics.IncStoreOp("UpdateCall")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("UpdateCall", time.Since(start).Seconds())
+	}(time.Now())
 
 	if err := call.IsValid(); err != nil {
 		return fmt.Errorf("invalid call: %w", err)
@@ -88,6 +94,9 @@ func (s *Store) UpdateCall(call *public.Call) error {
 
 func (s *Store) DeleteCall(callID string) error {
 	s.metrics.IncStoreOp("DeleteCall")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("DeleteCall", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).
 		Update("calls").
@@ -109,6 +118,9 @@ func (s *Store) DeleteCall(callID string) error {
 
 func (s *Store) DeleteCallByChannelID(channelID string) error {
 	s.metrics.IncStoreOp("DeleteCallByChannelID")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("DeleteCallByChannelID", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).
 		Update("calls").
@@ -130,6 +142,9 @@ func (s *Store) DeleteCallByChannelID(channelID string) error {
 
 func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 	s.metrics.IncStoreOp("GetCall")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetCall", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls").
@@ -152,6 +167,9 @@ func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 
 func (s *Store) GetActiveCallByChannelID(channelID string, opts GetCallOpts) (*public.Call, error) {
 	s.metrics.IncStoreOp("GetActiveCallByChannelID")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetActiveCallByChannelID", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls").
@@ -181,6 +199,9 @@ func (s *Store) GetActiveCallByChannelID(channelID string, opts GetCallOpts) (*p
 
 func (s *Store) GetAllActiveCalls(opts GetCallOpts) ([]*public.Call, error) {
 	s.metrics.IncStoreOp("GetAllActiveCalls")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetAllActiveCalls", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls").
@@ -207,6 +228,9 @@ func (s *Store) GetAllActiveCalls(opts GetCallOpts) ([]*public.Call, error) {
 
 func (s *Store) GetRTCDHostForCall(callID string, opts GetCallOpts) (string, error) {
 	s.metrics.IncStoreOp("GetRTCDHostForCall")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetRTCDHostForCall", time.Since(start).Seconds())
+	}(time.Now())
 
 	selectProp := "COALESCE(props->>'rtcd_host', '')"
 	if s.driverName == model.DatabaseDriverMysql {

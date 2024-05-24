@@ -13,6 +13,7 @@ type Props = {
 export default function MutedIcon(props: Props) {
     return (
         <svg
+            {...props}
             style={props.style}
             className={props.className}
             fill={props.fill}

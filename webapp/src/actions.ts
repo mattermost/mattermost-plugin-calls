@@ -1,8 +1,9 @@
 /* eslint-disable max-lines */
 
-import {CallsConfig, CallState, UserSessionState} from '@calls/common/lib/types';
+import {CallsConfig, CallState} from '@mattermost/calls-common/lib/types';
 import {ClientError} from '@mattermost/client';
 import {Channel} from '@mattermost/types/channels';
+import {UserTypes} from 'mattermost-redux/action_types';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
@@ -37,7 +38,8 @@ import * as Telemetry from 'src/types/telemetry';
 import {ChannelType} from 'src/types/types';
 import {
     getPluginPath,
-    getProfilesForSessions,
+    getSessionsMapFromSessions,
+    getUserIDsForSessions,
     isDesktopApp,
     isDMChannel,
     isGMChannel,
@@ -60,7 +62,6 @@ import {
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
     LIVE_CAPTIONS_ENABLED,
-    PROFILES_JOINED,
     RECEIVED_CALLS_CONFIG,
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
@@ -325,7 +326,7 @@ export const displayCallsTestModeUser = () => {
     };
 };
 
-export const displayGenericErrorModal = (title: MessageDescriptor, message: MessageDescriptor) => {
+export const displayGenericErrorModal = (title: MessageDescriptor, message: MessageDescriptor, confirmText?: MessageDescriptor) => {
     return async (dispatch: DispatchFunc) => {
         dispatch(modals.openModal({
             modalId: IDGenericErrorModal,
@@ -333,6 +334,7 @@ export const displayGenericErrorModal = (title: MessageDescriptor, message: Mess
             dialogProps: {
                 title,
                 message,
+                confirmText,
             },
         }));
 
@@ -473,7 +475,21 @@ export const stopRingingForCall = (callID: string): ActionFuncAsync => {
     };
 };
 
-export const loadCallState = (channelID: string, call: CallState) => async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export const loadProfilesByIdsIfMissing = (ids: string[]) => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const missingIds = [];
+        for (const id of ids) {
+            if (!getState().entities.users.profiles[id]) {
+                missingIds.push(id);
+            }
+        }
+        if (missingIds.length > 0) {
+            dispatch({type: UserTypes.RECEIVED_PROFILES, data: await RestClient.getProfilesByIds(missingIds)});
+        }
+    };
+};
+
+export const loadCallState = (channelID: string, call: CallState) => (dispatch: DispatchFunc, getState: GetStateFunc) => {
     const actions: AnyAction[] = [];
 
     actions.push({
@@ -534,25 +550,16 @@ export const loadCallState = (channelID: string, call: CallState) => async (disp
         }
     }
 
-    const states: Record<string, UserSessionState> = {};
-    for (let i = 0; i < call.sessions.length; i++) {
-        states[call.sessions[i].session_id] = call.sessions[i];
-    }
-
     if (call.sessions.length > 0) {
-        actions.push({
-            type: PROFILES_JOINED,
-            data: {
-                profiles: await getProfilesForSessions(getState(), call.sessions),
-                channelID,
-            },
-        });
+        // This is async, which is expected as we are okay with setting the state while we wait
+        // for any missing user profiles.
+        dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(call.sessions)));
     }
 
     actions.push({
         type: USERS_STATES,
         data: {
-            states,
+            states: getSessionsMapFromSessions(call.sessions),
             channelID,
         },
     });
@@ -567,7 +574,7 @@ export const setClientConnecting = (value: boolean) => (dispatch: Dispatch) => {
     });
 };
 
-export const makeHost = async (callID: string, newHostID: string) => {
+export const hostMake = async (callID: string, newHostID: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/host/make`,
         {
@@ -577,7 +584,7 @@ export const makeHost = async (callID: string, newHostID: string) => {
     );
 };
 
-export const muteSession = async (callID: string, sessionID: string) => {
+export const hostMute = async (callID: string, sessionID: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/host/mute`,
         {
@@ -587,12 +594,47 @@ export const muteSession = async (callID: string, sessionID: string) => {
     );
 };
 
-export const stopScreenshare = async (callID: string, sessionID: string) => {
+export const hostScreenOff = async (callID: string, sessionID: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${callID}/host/screen-off`,
         {
             method: 'post',
             body: JSON.stringify({session_id: sessionID}),
         },
+    );
+};
+
+export const hostLowerHand = async (callID: string, sessionID: string) => {
+    return RestClient.fetch(
+        `${getPluginPath()}/calls/${callID}/host/lower-hand`,
+        {
+            method: 'post',
+            body: JSON.stringify({session_id: sessionID}),
+        },
+    );
+};
+
+export const hostRemove = async (callID?: string, sessionID?: string) => {
+    if (!callID || !sessionID) {
+        return {};
+    }
+
+    return RestClient.fetch(
+        `${getPluginPath()}/calls/${callID}/host/remove`,
+        {
+            method: 'post',
+            body: JSON.stringify({session_id: sessionID}),
+        },
+    );
+};
+
+export const hostMuteOthers = async (callID?: string) => {
+    if (!callID) {
+        return {};
+    }
+
+    return RestClient.fetch(
+        `${getPluginPath()}/calls/${callID}/host/mute-others`,
+        {method: 'post'},
     );
 };

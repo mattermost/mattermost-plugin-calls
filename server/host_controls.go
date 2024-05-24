@@ -2,9 +2,17 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/pkg/errors"
+)
+
+var (
+	ErrNoCallOngoing = errors.New("no call ongoing")
+	ErrNoPermissions = errors.New("no permissions")
+	ErrNotInCall     = errors.New("requested session or user is not in the call")
+	ErrNotAllowed    = errors.New("not allowed")
 )
 
 func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
@@ -15,17 +23,17 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	defer p.unlockCall(channelID)
 
 	if state == nil {
-		return errors.New("no call ongoing")
+		return ErrNoCallOngoing
 	}
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to change host")
+			return ErrNoPermissions
 		}
 	}
 
 	if newHostID == p.getBotID() {
-		return errors.New("cannot assign the bot to be host")
+		return errors.Wrap(ErrNotAllowed, "cannot assign the bot to be host")
 	}
 
 	if state.Call.GetHostID() == newHostID {
@@ -40,7 +48,7 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	}
 
 	if !state.isUserIDInCall(newHostID) {
-		return errors.New("user is not in the call")
+		return ErrNotInCall
 	}
 
 	state.Call.Props.Hosts = []string{newHostID}
@@ -51,8 +59,13 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	}
 
 	p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
-		"hostID": newHostID,
-	}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		"hostID":  newHostID,
+		"call_id": state.Call.ID,
+	}, &WebSocketBroadcast{
+		ChannelID:           channelID,
+		ReliableClusterSend: true,
+		UserIDs:             getUserIDsFromSessions(state.sessions),
+	})
 
 	return nil
 }
@@ -64,18 +77,18 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	}
 
 	if state == nil {
-		return errors.New("no call ongoing")
+		return ErrNoCallOngoing
 	}
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to mute session")
+			return ErrNoPermissions
 		}
 	}
 
 	ust, ok := state.sessions[sessionID]
 	if !ok {
-		return errors.New("session is not in the call")
+		return ErrNotInCall
 	}
 
 	if !ust.Unmuted {
@@ -85,7 +98,37 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
 		"channel_id": channelID,
 		"session_id": sessionID,
-	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{UserID: ust.UserID, ReliableClusterSend: true})
+
+	return nil
+}
+
+func (p *Plugin) muteOthers(requesterID, channelID string) error {
+	state, err := p.getCallState(channelID, false)
+	if err != nil {
+		return err
+	}
+
+	if state == nil {
+		return ErrNoCallOngoing
+	}
+
+	if requesterID != state.Call.GetHostID() {
+		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
+			return ErrNoPermissions
+		}
+	}
+
+	// Unmute anyone muted (who is not the host/requester).
+	// If there are no unmuted sessions, return without doing anything.
+	for id, s := range state.sessions {
+		if s.Unmuted && s.UserID != requesterID {
+			p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
+				"channel_id": channelID,
+				"session_id": id,
+			}, &WebSocketBroadcast{UserID: s.UserID, ReliableClusterSend: true})
+		}
+	}
 
 	return nil
 }
@@ -97,12 +140,12 @@ func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 	}
 
 	if state == nil {
-		return errors.New("no call ongoing")
+		return ErrNoCallOngoing
 	}
 
 	if requesterID != state.Call.GetHostID() {
 		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
-			return errors.New("no permissions to set screenOff")
+			return ErrNoPermissions
 		}
 	}
 
@@ -112,13 +155,103 @@ func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 
 	ust, ok := state.sessions[sessionID]
 	if !ok {
-		return errors.New("session is not in the call")
+		return ErrNotInCall
 	}
 
 	p.publishWebSocketEvent(wsEventHostScreenOff, map[string]interface{}{
 		"channel_id": channelID,
 		"session_id": sessionID,
-	}, &model.WebsocketBroadcast{UserId: ust.UserID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{UserID: ust.UserID, ReliableClusterSend: true})
+
+	return nil
+}
+
+func (p *Plugin) lowerHand(requesterID, channelID, sessionID string) error {
+	state, err := p.getCallState(channelID, false)
+	if err != nil {
+		return err
+	}
+
+	if state == nil {
+		return ErrNoCallOngoing
+	}
+
+	if requesterID != state.Call.GetHostID() {
+		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
+			return ErrNoPermissions
+		}
+	}
+
+	ust, ok := state.sessions[sessionID]
+	if !ok {
+		return ErrNotInCall
+	}
+
+	if ust.RaisedHand == 0 {
+		return nil
+	}
+
+	p.publishWebSocketEvent(wsEventHostLowerHand, map[string]interface{}{
+		"call_id":    state.Call.ID,
+		"channel_id": channelID,
+		"session_id": sessionID,
+		"host_id":    requesterID,
+	}, &WebSocketBroadcast{UserID: ust.UserID, ReliableClusterSend: true})
+
+	return nil
+}
+
+func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) error {
+	state, err := p.getCallState(channelID, false)
+	if err != nil {
+		return err
+	}
+
+	if state == nil {
+		return ErrNoCallOngoing
+	}
+
+	if requesterID != state.Call.GetHostID() {
+		if isAdmin := p.API.HasPermissionTo(requesterID, model.PermissionManageSystem); !isAdmin {
+			return ErrNoPermissions
+		}
+	}
+
+	ust, ok := state.sessions[sessionID]
+	if !ok {
+		return ErrNotInCall
+	}
+
+	p.publishWebSocketEvent(wsEventHostRemoved, map[string]interface{}{
+		"call_id":    state.Call.ID,
+		"channel_id": channelID,
+		"session_id": sessionID,
+		"user_id":    ust.UserID,
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+
+	go func() {
+		// Wait a few seconds for the client to end their session cleanly. If they don't (like for an
+		// older mobile client) then forcibly end it.
+		time.Sleep(3 * time.Second)
+
+		state, err := p.getCallState(channelID, false)
+		if err != nil {
+			p.LogError("hostRemoveSession: failed to get call state", "err", err.Error())
+		}
+
+		if state == nil {
+			return
+		}
+
+		ust, ok := state.sessions[sessionID]
+		if !ok {
+			return
+		}
+
+		if err := p.closeRTCSession(ust.UserID, sessionID, channelID, state.Call.Props.NodeID, state.Call.ID); err != nil {
+			p.LogError("hostRemoveSession: failed to close RTC session", "err", err.Error())
+		}
+	}()
 
 	return nil
 }

@@ -1,14 +1,18 @@
-import {CallStateData, JobStopData, UserConnectedData, WebsocketEventData} from '@calls/common/lib/types';
+import {CallState, CallStateData, JobStopData, UserJoinedData, WebsocketEventData} from '@mattermost/calls-common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
-import {UserProfile} from '@mattermost/types/users';
 import {ChannelTypes} from 'mattermost-redux/action_types';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {logErr, logInfo} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
-import {profilesInCallInChannel} from 'plugin/selectors';
 import {Store} from 'plugin/types/mattermost-webapp';
-import {fetchTranslationsFile, getPluginPath, getProfilesByIds, runWithRetry, setCallsGlobalCSSVars} from 'plugin/utils';
+import {
+    fetchTranslationsFile,
+    getPluginPath,
+    getUserIDsForSessions,
+    runWithRetry,
+    setCallsGlobalCSSVars,
+} from 'plugin/utils';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
@@ -23,19 +27,19 @@ import {
 } from './action_types';
 import RecordingView from './components/recording_view';
 
-async function fetchProfileImages(profiles: UserProfile[]) {
+async function fetchProfileImages(ids: string[]) {
     const profileImages: {[userID: string]: string} = {};
     const promises = [];
-    for (const profile of profiles) {
+    for (const id of ids) {
         promises.push(
             runWithRetry(() => {
-                return fetch(`${getPluginPath()}/bot/users/${profile.id}/image`, RestClient.getOptions({method: 'get'})).then((res) => {
+                return fetch(`${getPluginPath()}/bot/users/${id}/image`, RestClient.getOptions({method: 'get'})).then((res) => {
                     if (!res.ok) {
                         throw new Error('image fetch failed');
                     }
                     return res.blob();
                 }).then((data) => {
-                    profileImages[profile.id] = URL.createObjectURL(data);
+                    profileImages[id] = URL.createObjectURL(data);
                 });
             }),
         );
@@ -95,38 +99,44 @@ async function initRecording(store: Store, theme: Theme) {
     );
 }
 
-async function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventData>) {
+function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventData>) {
     switch (ev.event) {
-    case `custom_${pluginId}_user_connected`: {
-        const data = ev.data as UserConnectedData;
+    case `custom_${pluginId}_user_joined`: {
+        const data = ev.data as UserJoinedData;
 
-        try {
-            const profiles = await runWithRetry(() => getProfilesByIds(store.getState(), [data.userID]));
+        runWithRetry(() => {
+            return fetchProfileImages([data.user_id]);
+        }).then((images) => {
             store.dispatch({
                 type: RECEIVED_CALL_PROFILE_IMAGES,
                 data: {
                     channelID: data.channelID,
-                    profileImages: await fetchProfileImages(profiles),
+                    profileImages: images,
                 },
             });
-        } catch (err) {
+        }).catch((err) => {
             logErr('failed to fetch user profiles', err);
-        }
+        });
 
         break;
     }
     case `custom_${pluginId}_call_state`: {
         const data = ev.data as CallStateData;
+        const call: CallState = JSON.parse(data.call);
 
-        const profiles = profilesInCallInChannel(store.getState(), data.channel_id);
-
-        if (profiles?.length > 0) {
-            store.dispatch({
-                type: RECEIVED_CALL_PROFILE_IMAGES,
-                data: {
-                    channelID: data.channel_id,
-                    profileImages: await fetchProfileImages(profiles),
-                },
+        if (call.sessions?.length > 0) {
+            runWithRetry(() => {
+                return fetchProfileImages(getUserIDsForSessions(call.sessions));
+            }).then((images) => {
+                store.dispatch({
+                    type: RECEIVED_CALL_PROFILE_IMAGES,
+                    data: {
+                        channelID: data.channel_id,
+                        profileImages: images,
+                    },
+                });
+            }).catch((err) => {
+                logErr('failed to fetch profile images', err);
             });
         }
 
