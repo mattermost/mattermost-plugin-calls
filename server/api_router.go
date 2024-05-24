@@ -92,6 +92,9 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/dismiss-notification", p.handleDismissNotification).Methods("POST")
 	router.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/recording/{action}", p.handleRecordingAction).Methods("POST")
 
+	// Deprecated for hostCtrlRounder /end, but needed for mobile backward compatibility (pre 2.18)
+	router.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/end", p.handleEnd).Methods("POST")
+
 	// Host Controls
 	hostCtrlRouter := router.PathPrefix("/calls/{call_id:[a-z0-9]{26}}/host").Subrouter()
 	hostCtrlRouter.HandleFunc("/make", p.handleMakeHost).Methods("POST")
