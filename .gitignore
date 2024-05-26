@@ -32,3 +32,6 @@ config/
 dotenv/
 logs/
 e2e/plugin.json
+
+# notice
+.notice-work

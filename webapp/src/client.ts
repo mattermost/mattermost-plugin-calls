@@ -343,6 +343,9 @@ export default class CallsClient extends EventEmitter {
         window.localStorage.setItem('calls_default_audio_input', device.deviceId);
         this.currentAudioInputDevice = device;
 
+        // We emit this event so it's easier to keep state in sync between widget and pop out.
+        this.emit('devicechange', this.audioDevices);
+
         // If no track/stream exists we need to initialize again.
         // This edge case can happen if the default input device failed
         // but there are potentially more valid ones to choose (MM-48822).
@@ -389,6 +392,9 @@ export default class CallsClient extends EventEmitter {
         }
         window.localStorage.setItem('calls_default_audio_output', device.deviceId);
         this.currentAudioOutputDevice = device;
+
+        // We emit this event so it's easier to keep state in sync between widget and pop out.
+        this.emit('devicechange', this.audioDevices);
     }
 
     public disconnect(err?: Error) {
