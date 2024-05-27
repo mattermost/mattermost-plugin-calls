@@ -17,7 +17,7 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/lt/client"
 )
 
-var script, siteURL, wsURL, channelID, teamID, userPassword, profile, timeLimit string
+var script, siteURL, wsURL, channelID, teamID, userPassword, profile string
 var setup bool
 var duration time.Duration
 
@@ -30,7 +30,6 @@ func main() {
 	flag.BoolVar(&setup, "setup", false, "setup users (needs teamID and valid sysadmin login)")
 	flag.StringVar(&userPassword, "userPassword", "testPass123$", "password for users (default testPass123$)")
 	flag.StringVar(&profile, "profile", "default", "named aws profile, located in .aws/config, see https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/")
-	flag.StringVar(&timeLimit, "timeLimit", "11m", "The maximum duration of the test, even if the script isn't finished")
 	flag.Parse()
 
 	if channelID == "" {
@@ -43,12 +42,6 @@ func main() {
 
 	if setup && teamID == "" {
 		log.Fatalf("need a -teamID flag")
-	}
-
-	var err error
-	duration, err = time.ParseDuration(timeLimit)
-	if err != nil {
-		log.Fatalf(err.Error())
 	}
 
 	if err := performScript(script); err != nil {
@@ -84,7 +77,7 @@ func performScript(filename string) error {
 			ChannelID:    channelID,
 			SiteURL:      siteURL,
 			WsURL:        wsURL,
-			Duration:     duration,
+			Duration:     24 * time.Hour,
 			Speak:        true,
 			Setup:        setup,
 			TeamID:       teamID,
