@@ -283,7 +283,7 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 		return fmt.Errorf("failed to update call: %w", err)
 	}
 
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 	callID := state.Call.ID
 	nodeID := state.Call.Props.NodeID
