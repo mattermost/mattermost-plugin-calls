@@ -4,6 +4,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -33,7 +34,9 @@ func (s *Store) CreateCallJob(job *public.CallJob) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -63,7 +66,9 @@ func (s *Store) UpdateCallJob(job *public.CallJob) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -91,7 +96,9 @@ func (s *Store) GetCallJob(id string, opts GetCallJobOpts) (*public.CallJob, err
 	}
 
 	var job public.CallJob
-	if err := s.dbXFromGetOpts(opts).Get(&job, q, args...); err == sql.ErrNoRows {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &job, q, args...); err == sql.ErrNoRows {
 		return nil, fmt.Errorf("call job not found")
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get call job: %w", err)
@@ -119,7 +126,9 @@ func (s *Store) GetActiveCallJobs(callID string, opts GetCallJobOpts) (map[publi
 	}
 
 	jobs := []*public.CallJob{}
-	if err := s.dbXFromGetOpts(opts).Select(&jobs, q, args...); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).SelectContext(ctx, &jobs, q, args...); err != nil {
 		return nil, fmt.Errorf("failed to get call jobs: %w", err)
 	}
 

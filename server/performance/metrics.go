@@ -4,6 +4,7 @@
 package performance
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/mattermost/rtcd/service/perf"
@@ -22,6 +23,10 @@ const (
 	metricsSubSystemStore   = "store"
 	metricsSubSystemJobs    = "jobs"
 )
+
+type DBStore interface {
+	WriterDB() *sql.DB
+}
 
 type Metrics struct {
 	registry   *prometheus.Registry
@@ -191,6 +196,10 @@ func NewMetrics() *Metrics {
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
+}
+
+func (m *Metrics) RegisterDBMetrics(db *sql.DB, name string) {
+	m.registry.MustRegister(collectors.NewDBStatsCollector(db, name))
 }
 
 func (m *Metrics) RTCMetrics() rtc.Metrics {
