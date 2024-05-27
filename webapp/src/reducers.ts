@@ -148,6 +148,11 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
+    case CALL_END: {
+        const nextState = {...state};
+        delete nextState[action.data.channelID];
+        return nextState;
+    }
     case USER_JOINED:
         return {
             ...state,

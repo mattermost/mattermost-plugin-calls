@@ -31,6 +31,7 @@ import {
     hostChangeAtForCurrentCall,
     idForCurrentCall,
     incomingCalls,
+    numSessionsInCallInChannel,
     ringingEnabled,
     ringingForCall,
 } from 'src/selectors';
@@ -49,6 +50,7 @@ import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
     ADD_INCOMING_CALL,
+    CALL_END,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
@@ -404,6 +406,15 @@ export const userLeft = (channelID: string, userID: string, sessionID: string) =
 
         if (ringingEnabled(getState()) && !channelHasCall(getState(), channelID)) {
             await dispatch(removeIncomingCallNotification(callID));
+        }
+
+        if (numSessionsInCallInChannel(getState(), channelID) === 0) {
+            dispatch({
+                type: CALL_END,
+                data: {
+                    channelID,
+                },
+            });
         }
     };
 };
