@@ -4,6 +4,7 @@
 package interfaces
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -29,6 +30,7 @@ type Metrics interface {
 	IncLiveCaptionsPktPayloadChBufFull()
 	ObserveAppHandlersTime(handler string, elapsed float64)
 	ObserveStoreMethodsTime(method string, elapsed float64)
+	RegisterDBMetrics(db *sql.DB, name string)
 }
 
 type StoreMetrics interface {

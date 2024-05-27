@@ -16,7 +16,6 @@ import (
 	"github.com/mattermost/morph/models"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/lib/pq"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -71,10 +70,6 @@ func newPostgresStore(t *testing.T, binaryParams bool) (*Store, func()) {
 	settings.DataSource = model.NewString(dsn)
 	settings.DriverName = model.NewString(model.DatabaseDriverPostgres)
 
-	conn, err := pq.NewConnector(dsn)
-	require.NoError(t, err)
-	require.NotNil(t, conn)
-
 	mockLogger.On("Info", mock.Anything).Run(func(args mock.Arguments) {
 		log.Printf(args.Get(0).(string))
 	})
@@ -84,7 +79,9 @@ func newPostgresStore(t *testing.T, binaryParams bool) (*Store, func()) {
 	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
 	mockMetrics.On("ObserveStoreMethodsTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
 
-	store, err := NewStore(settings, conn, nil, mockLogger, mockMetrics)
+	mockLogger.On("Debug", "db opened", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Once()
+
+	store, err := NewStore(settings, nil, mockLogger, mockMetrics)
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -124,7 +121,9 @@ func newMySQLStore(t *testing.T) (*Store, func()) {
 	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
 	mockMetrics.On("ObserveStoreMethodsTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
 
-	store, err := NewStore(settings, conn, nil, mockLogger, mockMetrics)
+	mockLogger.On("Debug", "db opened", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Times(5)
+
+	store, err := NewStore(settings, nil, mockLogger, mockMetrics)
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
