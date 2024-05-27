@@ -19,7 +19,6 @@ import (
 
 var script, siteURL, wsURL, channelID, teamID, userPassword, profile string
 var setup bool
-var duration time.Duration
 
 func main() {
 	flag.StringVar(&script, "script", "script.txt", "Script for the tts, to be found in lt/scripts; assumes you will be running the lt program from the repo/lt directory")
