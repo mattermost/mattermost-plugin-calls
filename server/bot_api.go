@@ -529,24 +529,40 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   callID,
 			"jobState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{
+			ChannelID:           callID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
 
 		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 			"callID":   callID,
 			"recState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{
+			ChannelID:           callID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
 	} else {
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   callID,
 			"jobState": getClientStateFromCallJob(state.Transcription).toMap(),
-		}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{
+			ChannelID:           callID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
 
 		if lcState != nil {
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 				"callID":   callID,
 				"jobState": getClientStateFromCallJob(state.LiveCaptions).toMap(),
-			}, &model.WebsocketBroadcast{ChannelId: callID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{
+				ChannelID:           callID,
+				ReliableClusterSend: true,
+				UserIDs:             getUserIDsFromSessions(state.sessions),
+			})
 		}
 	}
 

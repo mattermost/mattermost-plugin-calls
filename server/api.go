@@ -247,7 +247,7 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 	p.publishWebSocketEvent(wsEventUserDismissedNotification, map[string]interface{}{
 		"userID": userID,
 		"callID": state.Call.ID,
-	}, &model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
 
 	res.Code = http.StatusOK
 	res.Msg = "success"
@@ -380,7 +380,7 @@ func (p *Plugin) handlePostCallsChannel(w http.ResponseWriter, r *http.Request) 
 		evType = "channel_disable_voice"
 	}
 
-	p.publishWebSocketEvent(evType, nil, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+	p.publishWebSocketEvent(evType, nil, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 }
 
 func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request) {

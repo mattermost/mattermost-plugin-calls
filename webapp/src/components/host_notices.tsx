@@ -132,6 +132,8 @@ const Notice = styled.div<{ $onWidget?: boolean }>`
         font-weight: 400;
         white-space: pre;
         background: var(--center-channel-bg);
+        border: solid 1px rgba(var(--center-channel-color-rgb), 0.16);
+        box-shadow: 0 6px 14px 0 rgba(0, 0, 0, 0.12);
     `}
 `;
 

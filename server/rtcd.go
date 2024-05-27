@@ -18,12 +18,12 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
+	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 
 	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/random"
 	"github.com/mattermost/rtcd/service/rtc"
-
-	"github.com/mattermost/mattermost/server/public/model"
 )
 
 const (
@@ -39,11 +39,10 @@ const (
 var errClientReplaced = errors.New("client replaced")
 
 type rtcdHost struct {
-	ip           string
-	client       *rtcd.Client
-	callsCounter uint64
-	flagged      bool
-	mut          sync.RWMutex
+	ip      string
+	client  interfaces.RTCDClient
+	flagged bool
+	mut     sync.RWMutex
 }
 
 type rtcdClientManager struct {
@@ -215,42 +214,70 @@ func (m *rtcdClientManager) getHost(ip string) *rtcdHost {
 	return m.hosts[ip]
 }
 
-// GetHostForNewCall returns the host to which a new call should be routed.
-// It performs a simple round-robin strategy based on number of calls.
-// New calls are routed to the non-flagged host with the smaller count.
+// GetHostForNewCall returns the host to which a new call should be routed to.
+// It requests system load information from all the host available (not flagged and connected)
+// and selects the one with the lower load which is assigned for the call.
 func (m *rtcdClientManager) GetHostForNewCall() (string, error) {
 	m.mut.RLock()
 	defer m.mut.RUnlock()
 
-	var h *rtcdHost
-	var minCounter uint64
-	for _, host := range m.hosts {
+	var hostsAvailable []*rtcdHost
+	for ip, host := range m.hosts {
 		host.mut.RLock()
-		// TODO: this only takes into consideration the calls started from this
-		// instance. A better strategy would be to ask rtcd for a global count (coming soon).
-		// TODO: consider also checking if the client is currently connected.
-		if !host.flagged && (h == nil || host.callsCounter < minCounter) {
-			h = host
-			minCounter = host.callsCounter
-		}
+		flagged := host.flagged
 		host.mut.RUnlock()
+
+		offline := !host.client.Connected()
+
+		// Can't assign flagged (e.g in draining process) nor offline hosts.
+		if flagged || offline {
+			m.ctx.LogDebug("skipping host from selection",
+				"host", host.ip,
+				"flagged", fmt.Sprintf("%t", flagged),
+				"offline", fmt.Sprintf("%t", offline))
+			continue
+		}
+
+		hostsAvailable = append(hostsAvailable, m.hosts[ip])
 	}
 
-	if h == nil {
+	if len(hostsAvailable) == 0 {
 		return "", fmt.Errorf("no host available")
 	}
 
-	h.mut.Lock()
-	h.callsCounter++
-	h.mut.Unlock()
+	// Now we want to select the instance with the lowest system load.
+	var minLoad float64
+	var hostWithMinLoad *rtcdHost
+	for i, host := range hostsAvailable {
+		info, err := host.client.GetSystemInfo()
+		if err != nil {
+			m.ctx.LogError("failed to get rtcd system info", "host", host.ip, "err", err.Error())
+			continue
+		}
 
-	return h.ip, nil
+		m.ctx.LogDebug("got system info for rtcd host", "host", host.ip, "info", fmt.Sprintf("%+v", info))
+
+		if hostWithMinLoad == nil {
+			minLoad = info.CPULoad
+			hostWithMinLoad = hostsAvailable[i]
+		} else if info.CPULoad < minLoad {
+			minLoad = info.CPULoad
+			hostWithMinLoad = hostsAvailable[i]
+		}
+	}
+
+	// Fallback to random choice if we couldn't get system info.
+	if hostWithMinLoad == nil {
+		hostWithMinLoad = hostsAvailable[rand.Intn(len(hostsAvailable))]
+	}
+
+	return hostWithMinLoad.ip, nil
 }
 
 // Send routes the message to the appropriate host that's handling the given
 // call. If this is missing a new client is created and added to the mapping.
 func (m *rtcdClientManager) Send(msg rtcd.ClientMessage, host string) error {
-	var client *rtcd.Client
+	var client interfaces.RTCDClient
 
 	if host == "" {
 		return fmt.Errorf("host should not be empty")
@@ -600,10 +627,27 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 		if rtcMsg.Type == rtc.VoiceOnMessage {
 			evType = wsEventUserVoiceOn
 		}
+
+		// TODO: this could be optimized a bit. The only reason we fetch
+		// the call here is to find the respective channelID which is needed in
+		// case the websocket event needs to be sent to the bot client.
+		call, err := m.ctx.store.GetCall(rtcMsg.CallID, db.GetCallOpts{})
+		if err != nil {
+			return fmt.Errorf("failed to get call: %w", err)
+		}
+
+		// TODO: consider if it's worth fetching the unique userIDs list instead of
+		// the whole sessions objects.
+		sessions, err := m.ctx.store.GetCallSessions(rtcMsg.CallID, db.GetCallSessionOpts{})
+		if err != nil {
+			return fmt.Errorf("failed to get call sessions: %w", err)
+		}
+
 		m.ctx.publishWebSocketEvent(evType, map[string]interface{}{
 			"userID":     rtcMsg.UserID,
 			"session_id": rtcMsg.SessionID,
-		}, &model.WebsocketBroadcast{ChannelId: rtcMsg.CallID})
+		}, &WebSocketBroadcast{ChannelID: call.ChannelID, UserIDs: getUserIDsFromSessions(sessions)})
+
 		return nil
 	}
 
@@ -611,7 +655,7 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 	m.ctx.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 		"data":   string(rtcMsg.Data),
 		"connID": rtcMsg.SessionID,
-	}, &model.WebsocketBroadcast{UserId: rtcMsg.UserID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{UserID: rtcMsg.UserID, ReliableClusterSend: true})
 
 	return nil
 }

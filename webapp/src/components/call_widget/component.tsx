@@ -10,7 +10,7 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 import {Client4} from 'mattermost-redux/client';
 import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import React, {CSSProperties} from 'react';
-import {IntlShape} from 'react-intl';
+import {FormattedMessage, IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
@@ -38,7 +38,12 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
-import {CallAlertConfigs, CallRecordingDisclaimerStrings, CallTranscribingDisclaimerStrings} from 'src/constants';
+import {
+    CallAlertConfigs,
+    CallRecordingDisclaimerStrings,
+    CallTranscribingDisclaimerStrings,
+    DEGRADED_CALL_QUALITY_ALERT_WAIT,
+} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -138,6 +143,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private screenPlayer: HTMLVideoElement | null = null;
     private prevDevicePixelRatio = 0;
     private unsubscribers: (() => void)[] = [];
+    private callQualityBannerLocked = false;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
         return {
@@ -447,7 +453,20 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient.on('devicechange', (devices: AudioDevices) => {
+            const state = {} as State;
+
+            if (window.callsClient) {
+                if (window.callsClient.currentAudioInputDevice !== this.state.currentAudioInputDevice) {
+                    state.currentAudioInputDevice = window.callsClient.currentAudioInputDevice;
+                }
+
+                if (window.callsClient.currentAudioOutputDevice !== this.state.currentAudioOutputDevice) {
+                    state.currentAudioOutputDevice = window.callsClient.currentAudioOutputDevice;
+                }
+            }
+
             this.setState({
+                ...state,
                 devices,
                 alerts: {
                     ...this.state.alerts,
@@ -511,7 +530,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient?.on('mos', (mos: number) => {
-            if (!this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -522,7 +541,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     },
                 });
             }
-            if (this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -1037,7 +1056,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         <span
                             style={{
-                                color: 'rgba(var(--center-channel-color-rgb), 0.56)',
+                                color: 'var(--center-channel-color)',
                                 fontSize: '14px',
                                 width: '100%',
                                 textOverflow: 'ellipsis',
@@ -1502,6 +1521,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             },
                         },
                     });
+                    if (alertID === 'degradedCallQuality') {
+                        this.callQualityBannerLocked = true;
+                        setTimeout(() => {
+                            this.callQualityBannerLocked = false;
+                        }, DEGRADED_CALL_QUALITY_ALERT_WAIT);
+                    }
                 };
             }
 
@@ -1523,8 +1548,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        const {formatMessage} = this.props.intl;
-
         const joinedUsers = this.props.recentlyJoinedUsers.map((userID) => {
             if (userID === this.props.currentUserID) {
                 return null;
@@ -1540,7 +1563,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return (
                 <div
                     className='calls-notification-bar calls-slide-top'
-                    style={{justifyContent: 'flex-start'}}
                     key={profile.id}
                     data-testid={'call-joined-participant-notification'}
                 >
@@ -1551,7 +1573,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         border={false}
                     />
                     <span style={{overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                        {formatMessage({defaultMessage: '{participant} has joined the call.'}, {participant: getUserDisplayName(profile)})}
+                        <FormattedMessage
+                            defaultMessage={'<b>{participant}</b> has joined the call.'}
+                            values={{
+                                b: (text: string) => <b>{text}</b>,
+                                participant: getUserDisplayName(profile),
+                            }}
+                        />
                     </span>
                 </div>
             );
