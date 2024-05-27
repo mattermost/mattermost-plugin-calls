@@ -276,7 +276,7 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 	}
 
 	if state.Call.EndAt == 0 {
-		state.Call.EndAt = time.Now().UnixMilli()
+		setCallEnded(&state.Call)
 	}
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
