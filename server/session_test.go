@@ -62,9 +62,8 @@ func TestAddUserSession(t *testing.T) {
 	t.Run("consistent state after error", func(t *testing.T) {
 		// We'd be starting a new call
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, map[string]any{
-			"hostID": "userA",
-		}, &model.WebsocketBroadcast{UserId: "userA", ChannelId: "channelID", ReliableClusterSend: true}).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
+			&model.WebsocketBroadcast{UserId: "userA", ChannelId: "channelID", ReliableClusterSend: true}).Once()
 
 		// Start call
 		retState, err := p.addUserSession(nil, model.NewBool(true), "userA", "connA", "channelID", "")

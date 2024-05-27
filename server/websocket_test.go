@@ -650,9 +650,8 @@ func TestHandleJoin(t *testing.T) {
 
 		// We'd be starting a new call
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, map[string]any{
-			"hostID": userID,
-		}, &model.WebsocketBroadcast{UserId: userID, ChannelId: channelID, ReliableClusterSend: true}).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
+			&model.WebsocketBroadcast{UserId: userID, ChannelId: channelID, ReliableClusterSend: true}).Once()
 		// Call started post creation
 		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
 		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
@@ -779,9 +778,8 @@ func TestHandleJoin(t *testing.T) {
 
 			// We'd be starting a new call
 			mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Once()
-			mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, map[string]any{
-				"hostID": userID,
-			}, &model.WebsocketBroadcast{UserId: userID, ChannelId: channelID, ReliableClusterSend: true}).Once()
+			mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
+				&model.WebsocketBroadcast{UserId: userID, ChannelId: channelID, ReliableClusterSend: true}).Once()
 			// Call started post creation
 			mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
 			mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()

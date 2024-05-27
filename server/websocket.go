@@ -593,7 +593,7 @@ func (p *Plugin) wsWriter() {
 	}
 }
 
-func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) error {
+func (p *Plugin) handleLeave(us *session, userID, connID, channelID, handlerID string) error {
 	p.LogDebug("handleLeave", "userID", userID, "connID", connID, "channelID", channelID)
 
 	select {
@@ -618,19 +618,6 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 		p.LogDebug("timeout waiting for reconnection", "userID", userID, "connID", connID, "channelID", channelID)
 	}
 
-	state, err := p.getCallState(channelID, false)
-	if err != nil {
-		return err
-	}
-
-	handlerID, err := p.getHandlerID()
-	if err != nil {
-		p.LogError(err.Error())
-	}
-	if handlerID == "" && state != nil {
-		handlerID = state.Call.Props.NodeID
-	}
-
 	if err := p.closeRTCSession(userID, us.originalConnID, channelID, handlerID, us.callID); err != nil {
 		p.LogError(err.Error())
 	}
@@ -639,13 +626,11 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 		p.LogError(err.Error())
 	}
 
-	if state != nil {
-		p.track(evCallUserLeft, map[string]interface{}{
-			"ParticipantID": userID,
-			"ChannelID":     channelID,
-			"CallID":        state.Call.ID,
-		})
-	}
+	p.track(evCallUserLeft, map[string]interface{}{
+		"ParticipantID": userID,
+		"ChannelID":     channelID,
+		"CallID":        us.callID,
+	})
 
 	return nil
 }
@@ -757,13 +742,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			})
 		}
 
-		handlerID, err := p.getHandlerID()
-		if err != nil {
-			p.LogError(err.Error())
-		}
-		if handlerID == "" {
-			handlerID = state.Call.Props.NodeID
-		}
+		handlerID := state.Call.Props.NodeID
 		p.LogDebug("got handlerID", "handlerID", handlerID)
 
 		us := newUserSession(userID, channelID, connID, state.Call.ID, p.rtcdManager == nil && handlerID == p.nodeID)
@@ -783,7 +762,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
 				p.LogError("failed to send client join message", "err", err.Error())
 				go func() {
-					if err := p.handleLeave(us, userID, connID, channelID); err != nil {
+					if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
 						p.LogError(err.Error())
 					}
 				}()
@@ -807,7 +786,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 				}); err != nil {
 					p.LogError("failed to init session", "err", err.Error())
 					go func() {
-						if err := p.handleLeave(us, userID, connID, channelID); err != nil {
+						if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
 							p.LogError(err.Error())
 						}
 					}()
@@ -823,7 +802,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 				}, clusterMessageTypeConnect, handlerID); err != nil {
 					p.LogError("failed to send connect message", "err", err.Error())
 					go func() {
-						if err := p.handleLeave(us, userID, connID, channelID); err != nil {
+						if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
 							p.LogError(err.Error())
 						}
 					}()
@@ -892,7 +871,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		go func() {
 			defer p.metrics.DecWebSocketConn()
 			p.wsReader(us, authSessionID, handlerID)
-			if err := p.handleLeave(us, userID, connID, channelID); err != nil {
+			if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
 				p.LogError(err.Error())
 			}
 		}()
@@ -1061,17 +1040,9 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		}
 	}
 
-	handlerID, err := p.getHandlerID()
-	if err != nil {
-		p.LogError(err.Error())
-	}
-	if handlerID == "" {
-		handlerID = state.Call.Props.NodeID
-	}
+	p.wsReader(us, authSessionID, state.Call.Props.NodeID)
 
-	p.wsReader(us, authSessionID, handlerID)
-
-	if err := p.handleLeave(us, userID, connID, channelID); err != nil {
+	if err := p.handleLeave(us, userID, connID, channelID, state.Call.Props.NodeID); err != nil {
 		p.LogError(err.Error())
 	}
 
