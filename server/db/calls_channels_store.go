@@ -1,8 +1,10 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
@@ -11,6 +13,9 @@ import (
 
 func (s *Store) CreateCallsChannel(channel *public.CallsChannel) error {
 	s.metrics.IncStoreOp("CreateCallsChannel")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("CreateCallsChannel", time.Since(start).Seconds())
+	}(time.Now())
 
 	if err := channel.IsValid(); err != nil {
 		return fmt.Errorf("invalid channel: %w", err)
@@ -26,7 +31,9 @@ func (s *Store) CreateCallsChannel(channel *public.CallsChannel) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -36,6 +43,9 @@ func (s *Store) CreateCallsChannel(channel *public.CallsChannel) error {
 
 func (s *Store) GetCallsChannel(channelID string, opts GetCallsChannelOpts) (*public.CallsChannel, error) {
 	s.metrics.IncStoreOp("GetCallsChannel")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetCallsChannel", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls_channels").
@@ -47,7 +57,9 @@ func (s *Store) GetCallsChannel(channelID string, opts GetCallsChannelOpts) (*pu
 	}
 
 	var channel public.CallsChannel
-	if err := s.dbXFromGetOpts(opts).Get(&channel, q, args...); err == sql.ErrNoRows {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &channel, q, args...); err == sql.ErrNoRows {
 		return nil, fmt.Errorf("calls channel %w", ErrNotFound)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get calls channel: %w", err)
@@ -58,6 +70,9 @@ func (s *Store) GetCallsChannel(channelID string, opts GetCallsChannelOpts) (*pu
 
 func (s *Store) GetAllCallsChannels(opts GetCallsChannelOpts) ([]*public.CallsChannel, error) {
 	s.metrics.IncStoreOp("GetAllCallsChannels")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetAllCallsChannels", time.Since(start).Seconds())
+	}(time.Now())
 
 	// TODO: consider implementing paging
 	// This should be fine for now as we wouldn't expect to have more than a few
@@ -70,7 +85,9 @@ func (s *Store) GetAllCallsChannels(opts GetCallsChannelOpts) ([]*public.CallsCh
 	}
 
 	channels := []*public.CallsChannel{}
-	if err := s.dbXFromGetOpts(opts).Select(&channels, q, args...); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).SelectContext(ctx, &channels, q, args...); err != nil {
 		return nil, fmt.Errorf("failed to get calls channels: %w", err)
 	}
 
@@ -79,6 +96,9 @@ func (s *Store) GetAllCallsChannels(opts GetCallsChannelOpts) ([]*public.CallsCh
 
 func (s *Store) UpdateCallsChannel(channel *public.CallsChannel) error {
 	s.metrics.IncStoreOp("UpdateCallsChannel")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("UpdateCallsChannel", time.Since(start).Seconds())
+	}(time.Now())
 
 	if err := channel.IsValid(); err != nil {
 		return fmt.Errorf("invalid channel: %w", err)
@@ -95,7 +115,9 @@ func (s *Store) UpdateCallsChannel(channel *public.CallsChannel) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}

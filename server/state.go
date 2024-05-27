@@ -10,8 +10,6 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
-
-	"github.com/mattermost/mattermost/server/public/model"
 )
 
 type callState struct {
@@ -20,6 +18,65 @@ type callState struct {
 	Recording     *public.CallJob
 	Transcription *public.CallJob
 	LiveCaptions  *public.CallJob
+}
+
+// Clone performs a deep copy of the call state.
+func (cs *callState) Clone() *callState {
+	if cs == nil {
+		return nil
+	}
+
+	csCopy := new(callState)
+
+	csCopy.Call = cs.Call
+
+	if cs.Participants != nil {
+		csCopy.Participants = make([]string, len(cs.Call.Participants))
+		copy(csCopy.Call.Participants, cs.Call.Participants)
+	}
+
+	// Props
+	if cs.Props.Hosts != nil {
+		csCopy.Props.Hosts = make([]string, len(cs.Call.Props.Hosts))
+		copy(csCopy.Call.Props.Hosts, cs.Call.Props.Hosts)
+	}
+	if cs.Props.DismissedNotification != nil {
+		csCopy.Props.DismissedNotification = make(map[string]bool, len(cs.Call.Props.DismissedNotification))
+		for k, v := range cs.Call.Props.DismissedNotification {
+			csCopy.Props.DismissedNotification[k] = v
+		}
+	}
+	if cs.Props.Participants != nil {
+		csCopy.Props.Participants = make(map[string]struct{}, len(cs.Call.Props.Participants))
+		for k, v := range cs.Call.Props.Participants {
+			csCopy.Props.Participants[k] = v
+		}
+	}
+
+	// Sessions
+	if cs.sessions != nil {
+		csCopy.sessions = make(map[string]*public.CallSession, len(cs.sessions))
+		for k := range cs.sessions {
+			csCopy.sessions[k] = new(public.CallSession)
+			*csCopy.sessions[k] = *cs.sessions[k]
+		}
+	}
+
+	// Jobs
+	if cs.Recording != nil {
+		csCopy.Recording = new(public.CallJob)
+		*csCopy.Recording = *cs.Recording
+	}
+	if cs.Transcription != nil {
+		csCopy.Transcription = new(public.CallJob)
+		*csCopy.Transcription = *cs.Transcription
+	}
+	if cs.LiveCaptions != nil {
+		csCopy.LiveCaptions = new(public.CallJob)
+		*csCopy.LiveCaptions = *cs.LiveCaptions
+	}
+
+	return csCopy
 }
 
 type UserStateClient struct {
@@ -280,6 +337,10 @@ func (p *Plugin) getCallStateFromCall(call *public.Call, fromWriter bool) (*call
 }
 
 func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, error) {
+	defer func(start time.Time) {
+		p.metrics.ObserveAppHandlersTime("getCallState", time.Since(start).Seconds())
+	}(time.Now())
+
 	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{
 		FromWriter: fromWriter,
 	})
@@ -296,18 +357,6 @@ func (p *Plugin) getCallState(channelID string, fromWriter bool) (*callState, er
 
 func (p *Plugin) cleanUpState() error {
 	p.LogDebug("cleaning up calls state")
-
-	handlerID, err := p.getHandlerID()
-	if err != nil {
-		p.LogError(err.Error())
-	}
-
-	if handlerID != "" && p.nodeID == handlerID {
-		p.metrics.IncStoreOp("KVDelete")
-		if appErr := p.API.KVDelete(handlerKey); appErr != nil {
-			p.LogError(appErr.Error())
-		}
-	}
 
 	calls, err := p.store.GetAllActiveCalls(db.GetCallOpts{FromWriter: true})
 	if err != nil {
@@ -341,7 +390,7 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 	}
 
 	if call.EndAt == 0 {
-		call.EndAt = time.Now().UnixMilli()
+		setCallEnded(call)
 	}
 
 	if err := p.store.DeleteCallsSessions(call.ID); err != nil {
@@ -365,10 +414,20 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 				p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
 					"callID":   call.ChannelID,
 					"recState": getClientStateFromCallJob(job).toMap(),
-				}, &model.WebsocketBroadcast{ChannelId: call.ChannelID, ReliableClusterSend: true})
+				}, &WebSocketBroadcast{ChannelID: call.ChannelID, ReliableClusterSend: true})
 			}
 		}
 	}
 
 	return p.store.UpdateCall(call)
+}
+
+func setCallEnded(call *public.Call) {
+	call.EndAt = time.Now().UnixMilli()
+	call.Participants = mapKeys(call.Props.Participants)
+	call.Props.RTCDHost = ""
+	call.Props.DismissedNotification = nil
+	call.Props.NodeID = ""
+	call.Props.Hosts = nil
+	call.Props.Participants = nil
 }

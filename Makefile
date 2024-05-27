@@ -279,6 +279,8 @@ ifeq ($(CI),true)
 test-ci: apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./...
+	cd ./server/public && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
+	cd ./lt && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
 endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;
@@ -288,6 +290,7 @@ test: apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/...
 	cd ./server/public && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
+	cd ./lt && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
 endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;
@@ -378,7 +381,7 @@ endif
 
 ## Create plugin server mock files
 server-mocks:
-	$(GO) install github.com/vektra/mockery/v2/...@v2.38.0
+	$(GO) install github.com/vektra/mockery/v2/...@v2.40.3
 	$(GOBIN)/mockery
 
 ## To generate db migrations list

@@ -4,6 +4,7 @@
 package performance
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/mattermost/rtcd/service/perf"
@@ -18,21 +19,31 @@ const (
 	metricsNamespace        = "mattermost_plugin_calls"
 	metricsSubSystemWS      = "websocket"
 	metricsSubSystemCluster = "cluster"
+	metricsSubSystemApp     = "app"
 	metricsSubSystemStore   = "store"
 	metricsSubSystemJobs    = "jobs"
 )
+
+type DBStore interface {
+	WriterDB() *sql.DB
+}
 
 type Metrics struct {
 	registry   *prometheus.Registry
 	rtcMetrics *perf.Metrics
 
-	WebSocketConnections                   prometheus.Gauge
-	WebSocketEventCounters                 *prometheus.CounterVec
-	ClusterEventCounters                   *prometheus.CounterVec
-	StoreOpCounters                        *prometheus.CounterVec
-	ClusterMutexGrabTimeHistograms         *prometheus.HistogramVec
-	ClusterMutexLockedTimeHistograms       *prometheus.HistogramVec
-	ClusterMutexLockRetriesCounters        *prometheus.CounterVec
+	WebSocketConnections             prometheus.Gauge
+	WebSocketEventCounters           *prometheus.CounterVec
+	ClusterEventCounters             *prometheus.CounterVec
+	ClusterMutexGrabTimeHistograms   *prometheus.HistogramVec
+	ClusterMutexLockedTimeHistograms *prometheus.HistogramVec
+	ClusterMutexLockRetriesCounters  *prometheus.CounterVec
+
+	AppHandlersTimeHistograms *prometheus.HistogramVec
+
+	StoreOpCounters            *prometheus.CounterVec
+	StoreMethodsTimeHistograms *prometheus.HistogramVec
+
 	LiveCaptionsNewAudioLenHistogram       prometheus.Histogram
 	LiveCaptionsWindowDroppedCounter       prometheus.Counter
 	LiveCaptionsTranscriberBufFullCounter  prometheus.Counter
@@ -128,7 +139,7 @@ func NewMetrics() *Metrics {
 			Subsystem: metricsSubSystemJobs,
 			Name:      "live_captions_new_audio_len_ms",
 			Help:      "Length (in ms) of new audio transcribed for live captions",
-			Buckets:   prometheus.LinearBuckets(1000, 250, 25),
+			Buckets:   prometheus.LinearBuckets(2000, 2000, 4),
 		},
 	)
 	m.registry.MustRegister(m.LiveCaptionsNewAudioLenHistogram)
@@ -160,9 +171,35 @@ func NewMetrics() *Metrics {
 		})
 	m.registry.MustRegister(m.LiveCaptionsPktPayloadChBufFullCounter)
 
+	m.AppHandlersTimeHistograms = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemApp,
+			Name:      "handlers_time",
+			Help:      "Time to execute app handlers",
+		},
+		[]string{"handler"},
+	)
+	m.registry.MustRegister(m.AppHandlersTimeHistograms)
+
+	m.StoreMethodsTimeHistograms = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemStore,
+			Name:      "methods_time",
+			Help:      "Time to execute store methods",
+		},
+		[]string{"method"},
+	)
+	m.registry.MustRegister(m.StoreMethodsTimeHistograms)
+
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
+}
+
+func (m *Metrics) RegisterDBMetrics(db *sql.DB, name string) {
+	m.registry.MustRegister(collectors.NewDBStatsCollector(db, name))
 }
 
 func (m *Metrics) RTCMetrics() rtc.Metrics {
@@ -219,4 +256,12 @@ func (m *Metrics) IncLiveCaptionsTranscriberBufFull() {
 
 func (m *Metrics) IncLiveCaptionsPktPayloadChBufFull() {
 	m.LiveCaptionsPktPayloadChBufFullCounter.Inc()
+}
+
+func (m *Metrics) ObserveAppHandlersTime(handler string, elapsed float64) {
+	m.AppHandlersTimeHistograms.With(prometheus.Labels{"handler": handler}).Observe(elapsed)
+}
+
+func (m *Metrics) ObserveStoreMethodsTime(method string, elapsed float64) {
+	m.StoreMethodsTimeHistograms.With(prometheus.Labels{"method": method}).Observe(elapsed)
 }

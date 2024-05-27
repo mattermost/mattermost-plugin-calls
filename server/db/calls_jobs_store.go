@@ -4,8 +4,10 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
@@ -14,6 +16,9 @@ import (
 
 func (s *Store) CreateCallJob(job *public.CallJob) error {
 	s.metrics.IncStoreOp("CreateCallJob")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("CreateCallJob", time.Since(start).Seconds())
+	}(time.Now())
 
 	if err := job.IsValid(); err != nil {
 		return fmt.Errorf("invalid call job: %w", err)
@@ -29,7 +34,9 @@ func (s *Store) CreateCallJob(job *public.CallJob) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -39,6 +46,9 @@ func (s *Store) CreateCallJob(job *public.CallJob) error {
 
 func (s *Store) UpdateCallJob(job *public.CallJob) error {
 	s.metrics.IncStoreOp("UpdateCallJob")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("UpdateCallJob", time.Since(start).Seconds())
+	}(time.Now())
 
 	if err := job.IsValid(); err != nil {
 		return fmt.Errorf("invalid call job: %w", err)
@@ -56,7 +66,9 @@ func (s *Store) UpdateCallJob(job *public.CallJob) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -66,6 +78,9 @@ func (s *Store) UpdateCallJob(job *public.CallJob) error {
 
 func (s *Store) GetCallJob(id string, opts GetCallJobOpts) (*public.CallJob, error) {
 	s.metrics.IncStoreOp("GetCallJob")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetCallJob", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls_jobs").
@@ -81,7 +96,9 @@ func (s *Store) GetCallJob(id string, opts GetCallJobOpts) (*public.CallJob, err
 	}
 
 	var job public.CallJob
-	if err := s.dbXFromGetOpts(opts).Get(&job, q, args...); err == sql.ErrNoRows {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &job, q, args...); err == sql.ErrNoRows {
 		return nil, fmt.Errorf("call job not found")
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get call job: %w", err)
@@ -92,6 +109,9 @@ func (s *Store) GetCallJob(id string, opts GetCallJobOpts) (*public.CallJob, err
 
 func (s *Store) GetActiveCallJobs(callID string, opts GetCallJobOpts) (map[public.JobType]*public.CallJob, error) {
 	s.metrics.IncStoreOp("GetActiveCallJobs")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetActiveCallJobs", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls_jobs").
@@ -106,7 +126,9 @@ func (s *Store) GetActiveCallJobs(callID string, opts GetCallJobOpts) (map[publi
 	}
 
 	jobs := []*public.CallJob{}
-	if err := s.dbXFromGetOpts(opts).Select(&jobs, q, args...); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).SelectContext(ctx, &jobs, q, args...); err != nil {
 		return nil, fmt.Errorf("failed to get call jobs: %w", err)
 	}
 

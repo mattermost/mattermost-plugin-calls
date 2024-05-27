@@ -4,9 +4,14 @@
 package main
 
 import (
+	"fmt"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
+	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/stretchr/testify/require"
 )
@@ -337,4 +342,206 @@ func TestGetClientStateFromCallJob(t *testing.T) {
 
 		require.Equal(t, recState, getClientStateFromCallJob(job))
 	})
+}
+
+func samePointer(t testing.TB, a, b interface{}) bool {
+	t.Helper()
+	return reflect.ValueOf(a).Pointer() == reflect.ValueOf(b).Pointer()
+}
+
+func TestCallStateClone(t *testing.T) {
+	t.Run("nil", func(t *testing.T) {
+		var cs *callState
+		csCopy := cs.Clone()
+		require.Nil(t, csCopy)
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		cs := new(callState)
+		csCopy := cs.Clone()
+		require.Equal(t, cs, csCopy)
+	})
+
+	t.Run("full", func(t *testing.T) {
+		cs := &callState{
+			Call: public.Call{
+				ID:           model.NewId(),
+				ChannelID:    model.NewId(),
+				StartAt:      time.Now().UnixMilli(),
+				PostID:       model.NewId(),
+				ThreadID:     model.NewId(),
+				OwnerID:      model.NewId(),
+				Participants: []string{model.NewId(), model.NewId(), model.NewId()},
+				Stats: public.CallStats{
+					ScreenDuration: 45,
+				},
+				Props: public.CallProps{
+					Hosts:                  []string{model.NewId()},
+					RTCDHost:               model.NewId(),
+					ScreenSharingSessionID: model.NewId(),
+					DismissedNotification: map[string]bool{
+						model.NewId(): true,
+						model.NewId(): true,
+						model.NewId(): false,
+					},
+					Participants: map[string]struct{}{
+						model.NewId(): {},
+						model.NewId(): {},
+						model.NewId(): {},
+					},
+				},
+			},
+			sessions: map[string]*public.CallSession{
+				model.NewId(): {
+					ID:         model.NewId(),
+					CallID:     model.NewId(),
+					UserID:     model.NewId(),
+					JoinAt:     time.Now().UnixMilli(),
+					RaisedHand: time.Now().UnixMilli(),
+				},
+				model.NewId(): {
+					ID:      model.NewId(),
+					CallID:  model.NewId(),
+					UserID:  model.NewId(),
+					JoinAt:  time.Now().UnixMilli(),
+					Unmuted: true,
+				},
+				model.NewId(): {
+					ID:     model.NewId(),
+					CallID: model.NewId(),
+					UserID: model.NewId(),
+					JoinAt: time.Now().UnixMilli(),
+				},
+			},
+			Recording: &public.CallJob{
+				ID:        model.NewId(),
+				CallID:    model.NewId(),
+				CreatorID: model.NewId(),
+				InitAt:    time.Now().UnixMilli(),
+				StartAt:   time.Now().UnixMilli(),
+				Props: public.CallJobProps{
+					JobID:     model.NewId(),
+					BotConnID: model.NewId(),
+				},
+			},
+			Transcription: &public.CallJob{
+				ID:        model.NewId(),
+				CallID:    model.NewId(),
+				CreatorID: model.NewId(),
+				InitAt:    time.Now().UnixMilli(),
+				StartAt:   time.Now().UnixMilli(),
+				Props: public.CallJobProps{
+					JobID:     model.NewId(),
+					BotConnID: model.NewId(),
+				},
+			},
+			LiveCaptions: &public.CallJob{
+				ID:        model.NewId(),
+				CallID:    model.NewId(),
+				CreatorID: model.NewId(),
+				InitAt:    time.Now().UnixMilli(),
+				StartAt:   time.Now().UnixMilli(),
+				Props: public.CallJobProps{
+					JobID:     model.NewId(),
+					BotConnID: model.NewId(),
+				},
+			},
+		}
+
+		csCopy := cs.Clone()
+		require.Equal(t, cs, csCopy)
+
+		require.False(t, samePointer(t, cs.sessions, csCopy.sessions))
+
+		for k := range cs.sessions {
+			require.False(t, samePointer(t, cs.sessions[k], csCopy.sessions[k]))
+		}
+	})
+}
+
+func BenchmarkCallStateClone(b *testing.B) {
+	cs := &callState{
+		Call: public.Call{
+			ID:        model.NewId(),
+			ChannelID: model.NewId(),
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  model.NewId(),
+			OwnerID:   model.NewId(),
+			Stats: public.CallStats{
+				ScreenDuration: 45,
+			},
+			Props: public.CallProps{},
+		},
+		Recording: &public.CallJob{
+			ID:        model.NewId(),
+			CallID:    model.NewId(),
+			CreatorID: model.NewId(),
+			InitAt:    time.Now().UnixMilli(),
+			StartAt:   time.Now().UnixMilli(),
+			Props: public.CallJobProps{
+				JobID:     model.NewId(),
+				BotConnID: model.NewId(),
+			},
+		},
+		Transcription: &public.CallJob{
+			ID:        model.NewId(),
+			CallID:    model.NewId(),
+			CreatorID: model.NewId(),
+			InitAt:    time.Now().UnixMilli(),
+			StartAt:   time.Now().UnixMilli(),
+			Props: public.CallJobProps{
+				JobID:     model.NewId(),
+				BotConnID: model.NewId(),
+			},
+		},
+		LiveCaptions: &public.CallJob{
+			ID:        model.NewId(),
+			CallID:    model.NewId(),
+			CreatorID: model.NewId(),
+			InitAt:    time.Now().UnixMilli(),
+			StartAt:   time.Now().UnixMilli(),
+			Props: public.CallJobProps{
+				JobID:     model.NewId(),
+				BotConnID: model.NewId(),
+			},
+		},
+	}
+
+	m := map[int]*callState{
+		0:     cs.Clone(),
+		10:    cs.Clone(),
+		100:   cs.Clone(),
+		1000:  cs.Clone(),
+		10000: cs.Clone(),
+	}
+
+	for k := range m {
+		cs := m[k]
+		cs.sessions = make(map[string]*public.CallSession)
+		for i := 0; i < k; i++ {
+			id := model.NewId()
+			cs.sessions[id] = &public.CallSession{
+				ID:     id,
+				CallID: model.NewId(),
+				UserID: model.NewId(),
+				JoinAt: time.Now().UnixMilli(),
+			}
+		}
+	}
+
+	b.ResetTimer()
+	for k := range m {
+		b.Run(fmt.Sprintf("%d sessions", k), func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				cs = m[k]
+				csCopy := cs.Clone()
+				b.StopTimer()
+				require.Equal(b, cs, csCopy)
+				require.False(b, samePointer(b, cs, csCopy))
+				b.StartTimer()
+			}
+		})
+	}
 }

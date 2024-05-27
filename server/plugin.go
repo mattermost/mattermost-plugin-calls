@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/time/rate"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/batching"
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
@@ -73,12 +74,16 @@ type Plugin struct {
 
 	// Database
 	store *db.Store
+
+	// Batchers
+	addSessionsBatchers    map[string]*batching.Batcher
+	removeSessionsBatchers map[string]*batching.Batcher
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {
 	cfg := rtc.SessionConfig{
 		GroupID:   "default",
-		CallID:    us.channelID,
+		CallID:    us.callID,
 		UserID:    us.userID,
 		SessionID: us.connID,
 	}
@@ -425,7 +430,7 @@ func (p *Plugin) UserHasLeftChannel(_ *plugin.Context, cm *model.ChannelMember, 
 				"user_id":    session.UserID,
 				"session_id": connID,
 				"channelID":  cm.ChannelId,
-			}, &model.WebsocketBroadcast{UserId: cm.UserId, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{UserID: cm.UserId, ReliableClusterSend: true})
 		}
 	}
 }

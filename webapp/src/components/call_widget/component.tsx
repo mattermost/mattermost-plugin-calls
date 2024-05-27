@@ -453,7 +453,20 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient.on('devicechange', (devices: AudioDevices) => {
+            const state = {} as State;
+
+            if (window.callsClient) {
+                if (window.callsClient.currentAudioInputDevice !== this.state.currentAudioInputDevice) {
+                    state.currentAudioInputDevice = window.callsClient.currentAudioInputDevice;
+                }
+
+                if (window.callsClient.currentAudioOutputDevice !== this.state.currentAudioOutputDevice) {
+                    state.currentAudioOutputDevice = window.callsClient.currentAudioOutputDevice;
+                }
+            }
+
             this.setState({
+                ...state,
                 devices,
                 alerts: {
                     ...this.state.alerts,
@@ -1043,7 +1056,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     >
                         <span
                             style={{
-                                color: 'rgba(var(--center-channel-color-rgb), 0.56)',
+                                color: 'var(--center-channel-color)',
                                 fontSize: '14px',
                                 width: '100%',
                                 textOverflow: 'ellipsis',

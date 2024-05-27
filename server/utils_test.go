@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/stretchr/testify/assert"
@@ -244,4 +246,61 @@ func TestPlugin_canSendPushNotifications(t *testing.T) {
 			assert.Equalf(t, tt.want, p.canSendPushNotifications(tt.config, tt.license), "test: %s", tt.name)
 		})
 	}
+}
+
+func TestGetUserIDsFromSessions(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		userIDs := getUserIDsFromSessions(nil)
+		require.Empty(t, userIDs)
+
+		userIDs = getUserIDsFromSessions(map[string]*public.CallSession{})
+		require.Empty(t, userIDs)
+	})
+
+	t.Run("no duplicates", func(t *testing.T) {
+		userIDs := getUserIDsFromSessions(map[string]*public.CallSession{
+			"connUserA": {
+				UserID: "userA",
+			},
+			"connUserB": {
+				UserID: "userB",
+			},
+			"connUserC": {
+				UserID: "userC",
+			},
+		})
+		require.ElementsMatch(t, []string{
+			"userA",
+			"userB",
+			"userC",
+		}, userIDs)
+	})
+
+	t.Run("duplicates", func(t *testing.T) {
+		userIDs := getUserIDsFromSessions(map[string]*public.CallSession{
+			"connUserA": {
+				UserID: "userA",
+			},
+			"connUserB": {
+				UserID: "userB",
+			},
+			"conn2UserA": {
+				UserID: "userA",
+			},
+			"connUserC": {
+				UserID: "userC",
+			},
+			"conn2UserC": {
+				UserID: "userC",
+			},
+			"conn3UserC": {
+				UserID: "userC",
+			},
+		})
+		require.ElementsMatch(t, []string{
+			"userA",
+			"userB",
+			"userC",
+		}, userIDs)
+	})
 }

@@ -17,10 +17,6 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/lt/client"
 )
 
-const (
-	duration = 10 * time.Minute
-)
-
 var script, siteURL, wsURL, channelID, teamID, userPassword, profile string
 var setup bool
 
@@ -80,7 +76,7 @@ func performScript(filename string) error {
 			ChannelID:    channelID,
 			SiteURL:      siteURL,
 			WsURL:        wsURL,
-			Duration:     duration,
+			Duration:     24 * time.Hour,
 			Speak:        true,
 			Setup:        setup,
 			TeamID:       teamID,
@@ -109,11 +105,10 @@ func performScript(filename string) error {
 			for i, userIdx := range block.speakers {
 				blockWg.Add(1)
 				doneCh := userClients[userIdx].Speak(block.text[i])
-				go func(idx int) {
+				go func() {
 					<-doneCh
-					userClients[idx].Mute()
 					blockWg.Done()
-				}(userIdx)
+				}()
 			}
 
 			blockWg.Wait()

@@ -1,8 +1,10 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
 
@@ -11,6 +13,9 @@ import (
 
 func (s *Store) KVGet(pluginID, key string, fromWriter bool) ([]byte, error) {
 	s.metrics.IncStoreOp("KVGet")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("KVGet", time.Since(start).Seconds())
+	}(time.Now())
 
 	db := s.wDB
 	if !fromWriter {
@@ -28,7 +33,9 @@ func (s *Store) KVGet(pluginID, key string, fromWriter bool) ([]byte, error) {
 	}
 
 	var data []byte
-	row := db.QueryRow(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	row := db.QueryRowContext(ctx, q, args...)
 	if err := row.Scan(&data); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -43,6 +50,9 @@ func (s *Store) KVGet(pluginID, key string, fromWriter bool) ([]byte, error) {
 // advanced logic needed by clients like populating reply counts.
 func (s *Store) GetPost(postID string) (*model.Post, error) {
 	s.metrics.IncStoreOp("GetPost")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetPost", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).
 		Select("*").
@@ -54,7 +64,9 @@ func (s *Store) GetPost(postID string) (*model.Post, error) {
 	}
 
 	var post model.Post
-	if err := s.wDBx.Get(&post, q, args...); err == sql.ErrNoRows {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.wDBx.GetContext(ctx, &post, q, args...); err == sql.ErrNoRows {
 		return nil, fmt.Errorf("post not found (id=%s)", postID)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get post (id=%s): %w", postID, err)
@@ -64,6 +76,11 @@ func (s *Store) GetPost(postID string) (*model.Post, error) {
 }
 
 func (s *Store) UpdateFileInfoPostID(fileID, channelID, postID string) error {
+	s.metrics.IncStoreOp("UpdateFileInfoPostID")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("UpdateFileInfoPostID", time.Since(start).Seconds())
+	}(time.Now())
+
 	qb := getQueryBuilder(s.driverName).Update("FileInfo").
 		Set("ChannelId", channelID).
 		Set("PostId", postID).
@@ -72,7 +89,9 @@ func (s *Store) UpdateFileInfoPostID(fileID, channelID, postID string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := s.wDB.Exec(q, args...); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if _, err := s.wDB.ExecContext(ctx, q, args...); err != nil {
 		return err
 	}
 

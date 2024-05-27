@@ -4,10 +4,12 @@
 package interfaces
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/morph/models"
+	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 )
 
@@ -26,10 +28,14 @@ type Metrics interface {
 	IncLiveCaptionsWindowDropped()
 	IncLiveCaptionsTranscriberBufFull()
 	IncLiveCaptionsPktPayloadChBufFull()
+	ObserveAppHandlersTime(handler string, elapsed float64)
+	ObserveStoreMethodsTime(method string, elapsed float64)
+	RegisterDBMetrics(db *sql.DB, name string)
 }
 
 type StoreMetrics interface {
 	IncStoreOp(op string)
+	ObserveStoreMethodsTime(method string, elapsed float64)
 }
 
 type Store interface {
@@ -38,4 +44,12 @@ type Store interface {
 	GetPost(postID string) (*model.Post, error)
 	UpdateFileInfoPostID(fileID, channelID, postID string) error
 	KVGet(pluginID, key string, fromWriter bool) ([]byte, error)
+}
+
+type RTCDClient interface {
+	Connected() bool
+	Send(msg rtcd.ClientMessage) error
+	Close() error
+	GetVersionInfo() (rtcd.VersionInfo, error)
+	GetSystemInfo() (rtcd.SystemInfo, error)
 }

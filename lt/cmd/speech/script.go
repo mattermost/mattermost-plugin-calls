@@ -110,6 +110,10 @@ func importScript(r io.Reader) (Script, error) {
 			curBlock.speakers = append(curBlock.speakers, speakerIdx)
 			curBlock.text = append(curBlock.text, speakerText)
 		}
+		if len(curBlock.text) != 0 {
+			// add final block in case we didn't end on a blank line
+			script.blocks = append(script.blocks, curBlock)
+		}
 	}
 
 	return script, nil

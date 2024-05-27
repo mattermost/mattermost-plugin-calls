@@ -4,8 +4,10 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
@@ -14,6 +16,9 @@ import (
 
 func (s *Store) CreateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("CreateCallSession")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("CreateCallSession", time.Since(start).Seconds())
+	}(time.Now())
 
 	if err := session.IsValid(); err != nil {
 		return fmt.Errorf("invalid call session: %w", err)
@@ -29,7 +34,9 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -39,6 +46,9 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 
 func (s *Store) UpdateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("UpdateCallSession")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("UpdateCallSession", time.Since(start).Seconds())
+	}(time.Now())
 
 	if err := session.IsValid(); err != nil {
 		return fmt.Errorf("invalid call session: %w", err)
@@ -55,7 +65,9 @@ func (s *Store) UpdateCallSession(session *public.CallSession) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -65,6 +77,9 @@ func (s *Store) UpdateCallSession(session *public.CallSession) error {
 
 func (s *Store) DeleteCallSession(id string) error {
 	s.metrics.IncStoreOp("DeleteCallSession")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("DeleteCallSession", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).
 		Delete("calls_sessions").
@@ -75,7 +90,9 @@ func (s *Store) DeleteCallSession(id string) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -85,6 +102,9 @@ func (s *Store) DeleteCallSession(id string) error {
 
 func (s *Store) GetCallSession(id string, opts GetCallSessionOpts) (*public.CallSession, error) {
 	s.metrics.IncStoreOp("GetCallSession")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetCallSession", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls_sessions").
@@ -96,7 +116,9 @@ func (s *Store) GetCallSession(id string, opts GetCallSessionOpts) (*public.Call
 	}
 
 	var session public.CallSession
-	if err := s.dbXFromGetOpts(opts).Get(&session, q, args...); err == sql.ErrNoRows {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &session, q, args...); err == sql.ErrNoRows {
 		return nil, fmt.Errorf("call session not found")
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get call session: %w", err)
@@ -107,6 +129,9 @@ func (s *Store) GetCallSession(id string, opts GetCallSessionOpts) (*public.Call
 
 func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[string]*public.CallSession, error) {
 	s.metrics.IncStoreOp("GetCallSessions")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetCallSessions", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).Select("*").
 		From("calls_sessions").
@@ -117,14 +142,25 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 		return nil, fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	sessions := []*public.CallSession{}
-	if err := s.dbXFromGetOpts(opts).Select(&sessions, q, args...); err != nil {
+	sessionsMap := make(map[string]*public.CallSession)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	rows, err := s.dbFromGetOpts(opts).QueryContext(ctx, q, args...)
+	if err != nil {
 		return nil, fmt.Errorf("failed to get call sessions: %w", err)
 	}
+	defer rows.Close()
 
-	sessionsMap := make(map[string]*public.CallSession, len(sessions))
-	for _, session := range sessions {
-		sessionsMap[session.ID] = session
+	for rows.Next() {
+		var session public.CallSession
+		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.Unmuted, &session.RaisedHand); err != nil {
+			return nil, fmt.Errorf("failed to scan rows: %w", err)
+		}
+		sessionsMap[session.ID] = &session
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read rows: %w", err)
 	}
 
 	return sessionsMap, nil
@@ -132,6 +168,9 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 
 func (s *Store) DeleteCallsSessions(callID string) error {
 	s.metrics.IncStoreOp("DeleteCallsSessions")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("DeleteCallsSessions", time.Since(start).Seconds())
+	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).
 		Delete("calls_sessions").
@@ -142,10 +181,37 @@ func (s *Store) DeleteCallsSessions(callID string) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
 
 	return nil
+}
+
+func (s *Store) GetCallSessionsCount(callID string, opts GetCallSessionOpts) (int, error) {
+	s.metrics.IncStoreOp("GetCallSessionsCount")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetCallSessionsCount", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder(s.driverName).Select("COUNT(*)").
+		From("calls_sessions").
+		Where(sq.Eq{"CallID": callID})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var count int
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &count, q, args...); err != nil {
+		return 0, fmt.Errorf("failed to get call sessions count: %w", err)
+	}
+
+	return count, nil
 }

@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
@@ -50,7 +49,7 @@ func (p *Plugin) createBotSession() (*model.Session, error) {
 	return session, nil
 }
 
-func (p *Plugin) OnActivate() error {
+func (p *Plugin) OnActivate() (retErr error) {
 	p.LogDebug("activating")
 
 	if os.Getenv("MM_CALLS_DISABLE") == "true" {
@@ -62,6 +61,13 @@ func (p *Plugin) OnActivate() error {
 		p.LogError(err.Error())
 		return err
 	}
+	defer func() {
+		if retErr != nil {
+			if err := p.store.Close(); err != nil {
+				p.LogError("failed to close store", "err", err.Error())
+			}
+		}
+	}()
 
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
 
@@ -141,29 +147,6 @@ func (p *Plugin) OnActivate() error {
 		p.LogDebug("activated", "ClusterID", status.ClusterId)
 
 		return nil
-	}
-
-	if os.Getenv("MM_CALLS_IS_HANDLER") != "" {
-		go func() {
-			p.LogInfo("calls handler, setting state", "clusterID", status.ClusterId)
-			if err := p.setHandlerID(status.ClusterId); err != nil {
-				p.LogError(err.Error())
-				return
-			}
-			ticker := time.NewTicker(handlerKeyCheckInterval)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ticker.C:
-					if err := p.setHandlerID(status.ClusterId); err != nil {
-						p.LogError(err.Error())
-						return
-					}
-				case <-p.stopCh:
-					return
-				}
-			}
-		}()
 	}
 
 	rtcServerConfig := rtc.ServerConfig{

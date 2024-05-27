@@ -11,6 +11,10 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 )
 
+const (
+	lockTimeout = 10 * time.Second
+)
+
 // lockCall locks the global (cluster) mutex for the given channelID.
 func (p *Plugin) lockCall(channelID string) error {
 	p.callsClusterLocksMut.Lock()
