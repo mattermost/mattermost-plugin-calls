@@ -10,13 +10,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/batching"
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	serverMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
-	"github.com/mattermost/mattermost-plugin-calls/server/public"
+	rtcMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
+
+	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -565,5 +570,337 @@ func TestPublishWebSocketEvent(t *testing.T) {
 		}).Once()
 
 		p.publishWebSocketEvent(wsEventUserMuted, data, bc)
+	})
+}
+
+func TestHandleJoin(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	mockMetrics := &serverMocks.MockMetrics{}
+	mockRTCMetrics := &rtcMocks.MockMetrics{}
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		callsClusterLocks: map[string]*cluster.Mutex{},
+		metrics:           mockMetrics,
+		configuration: &configuration{
+			clientConfig: clientConfig{
+				DefaultEnabled: model.NewBool(true),
+			},
+		},
+		sessions:               map[string]*session{},
+		addSessionsBatchers:    map[string]*batching.Batcher{},
+		removeSessionsBatchers: map[string]*batching.Batcher{},
+	}
+
+	mockMetrics.On("RTCMetrics").Return(mockRTCMetrics).Once()
+	mockAPI.On("LogDebug", mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	mockAPI.On("LogInfo", mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
+	rtcServer, err := rtc.NewServer(rtc.ServerConfig{
+		ICEPortUDP: 33443,
+		ICEPortTCP: 33443,
+	}, newLogger(&p), p.metrics.RTCMetrics())
+	require.NoError(t, err)
+
+	err = rtcServer.Start()
+	require.NoError(t, err)
+
+	p.rtcServer = rtcServer
+	defer func() {
+		err := p.rtcServer.Stop()
+		require.NoError(t, err)
+	}()
+
+	store, tearDown := NewTestStore(t)
+	t.Cleanup(tearDown)
+	p.store = store
+
+	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))
+	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64"))
+	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
+	mockMetrics.On("IncStoreOp", "KVGet")
+	mockMetrics.On("IncStoreOp", "KVSet")
+
+	t.Run("no batching", func(t *testing.T) {
+		channelID := model.NewId()
+		userID := model.NewId()
+		connID := model.NewId()
+		authSessionID := ""
+		postID := model.NewId()
+
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id: channelID,
+		}, nil).Once()
+
+		mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
+			MemberCount: 10,
+		}, nil).Once()
+
+		mockAPI.On("HasPermissionTo", userID, model.PermissionManageSystem).Return(false).Once()
+
+		// Call lock
+		mockAPI.On("KVSetWithOptions", "mutex_call_"+channelID, []byte{0x1}, mock.Anything).Return(true, nil)
+
+		// We'd be starting a new call
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
+			&model.WebsocketBroadcast{UserId: userID, ChannelId: channelID, ReliableClusterSend: true}).Once()
+		// Call started post creation
+		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+		mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
+		createPost(t, store, postID, userID, channelID)
+
+		mockAPI.On("GetLicense").Return(&model.License{}, nil)
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id: channelID,
+		}, nil).Once()
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockRTCMetrics.On("IncRTCSessions", "default").Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
+			&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}).Once()
+
+		// DEPRECATED
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserConnected, map[string]any{"userID": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, map[string]any{"session_id": connID, "user_id": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallState).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallState, mock.Anything,
+			&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketConn").Once()
+
+		// Call unlock
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+
+		err := p.handleJoin(userID, connID, authSessionID, CallsClientJoinData{
+			ChannelID: channelID,
+		})
+		require.NoError(t, err)
+
+		// Verify user session was successfully added.
+		require.NotNil(t, p.sessions[connID])
+
+		// Verify call was started
+		state, err := p.getCallState(channelID, true)
+		require.NoError(t, err)
+		require.NotNil(t, state)
+
+		// Verify session was added to call.
+		require.Len(t, state.sessions, 1)
+		require.Equal(t, connID, state.sessions[connID].ID)
+
+		// Verify no batching was needed
+		require.Empty(t, p.addSessionsBatchers)
+
+		// Session leaving call path
+
+		// Trigger leave call
+		p.mut.RLock()
+		close(p.sessions[connID].leaveCh)
+		p.mut.RUnlock()
+
+		mockMetrics.On("DecWebSocketConn").Once()
+		mockRTCMetrics.On("DecRTCSessions", "default").Once()
+		mockRTCMetrics.On("IncRTCConnState", "closed").Once()
+
+		// DEPRECATED
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserDisconnected, map[string]any{"userID": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
+
+		// Call unlock
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+
+		// Verify no batching was needed
+		p.mut.RLock()
+		require.Empty(t, p.removeSessionsBatchers)
+		p.mut.RUnlock()
+
+		// We need to give it some time as leaving happens in a goroutine.
+		time.Sleep(5 * time.Second)
+
+		// Verify user session was removed.
+		p.mut.RLock()
+		require.Empty(t, p.sessions)
+		p.mut.RUnlock()
+
+		// Verify call ended
+		state, err = p.getCallState(channelID, true)
+		require.NoError(t, err)
+		require.Nil(t, state)
+	})
+
+	t.Run("batching", func(t *testing.T) {
+		channelID := model.NewId()
+		postID := model.NewId()
+		for i := 0; i < 10; i++ {
+			userID := model.NewId()
+			connID := model.NewId()
+			authSessionID := ""
+
+			mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
+			mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+				Id: channelID,
+			}, nil).Once()
+
+			mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
+				MemberCount: int64(minMembersCountForBatching),
+			}, nil).Once()
+
+			mockAPI.On("HasPermissionTo", userID, model.PermissionManageSystem).Return(false).Once()
+
+			// Call lock
+			mockAPI.On("KVSetWithOptions", "mutex_call_"+channelID, []byte{0x1}, mock.Anything).Return(true, nil)
+
+			// We'd be starting a new call
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Once()
+			mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
+				&model.WebsocketBroadcast{UserId: userID, ChannelId: channelID, ReliableClusterSend: true}).Once()
+			// Call started post creation
+			mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
+			mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+			mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
+			createPost(t, store, postID, userID, channelID)
+
+			mockAPI.On("GetLicense").Return(&model.License{}, nil)
+			mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+				Id: channelID,
+			}, nil).Once()
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Once()
+			mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
+				&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+			mockRTCMetrics.On("IncRTCSessions", "default").Once()
+
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Once()
+			mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
+				&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}).Once()
+
+			// DEPRECATED
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected).Once()
+			mockAPI.On("PublishWebSocketEvent", wsEventUserConnected, map[string]any{"userID": userID},
+				&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined).Once()
+			mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, map[string]any{"session_id": connID, "user_id": userID},
+				&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventCallState).Once()
+			mockAPI.On("PublishWebSocketEvent", wsEventCallState, mock.Anything,
+				&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}).Once()
+
+			mockMetrics.On("IncWebSocketConn").Once()
+
+			// Call unlock
+			mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+
+			err := p.handleJoin(userID, connID, authSessionID, CallsClientJoinData{
+				ChannelID: channelID,
+			})
+			require.NoError(t, err)
+		}
+
+		// Verify batching was used
+		p.mut.RLock()
+		require.NotNil(t, p.addSessionsBatchers[channelID])
+		p.mut.RUnlock()
+
+		// Give enough time for the batch to run
+		time.Sleep(5 * time.Second)
+
+		// Verify user sessions were successfully added
+		p.mut.RLock()
+		require.Len(t, p.sessions, 10)
+		p.mut.RUnlock()
+
+		// Verify call was started
+		state, err := p.getCallState(channelID, true)
+		require.NoError(t, err)
+		require.NotNil(t, state)
+
+		// Verify session was added to call
+		require.Len(t, state.sessions, 10)
+
+		// Session leaving call path
+
+		mockMetrics.On("DecWebSocketConn").Times(10)
+		mockRTCMetrics.On("DecRTCSessions", "default").Times(10)
+		mockRTCMetrics.On("IncRTCConnState", "closed").Times(10)
+
+		// DEPRECATED
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected).Times(10)
+		mockAPI.On("PublishWebSocketEvent", wsEventUserDisconnected, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Times(10)
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Times(10)
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Times(10)
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
+			mock.Anything).Times(10)
+
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
+
+		// Call unlock
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+
+		minMembersCountForBatching = 10
+
+		p.mut.RLock()
+		for _, us := range p.sessions {
+			close(us.leaveCh)
+		}
+		p.mut.RUnlock()
+
+		// We need to give it some time as leaving happens in a goroutine
+		time.Sleep(time.Second)
+
+		// Verify batching was used
+		p.mut.RLock()
+		require.NotNil(t, p.removeSessionsBatchers[channelID])
+		p.mut.RUnlock()
+
+		// Give enough time for the batch to run
+		time.Sleep(5 * time.Second)
+
+		// Verify user sessions were removed
+		p.mut.RLock()
+		require.Empty(t, p.sessions)
+		p.mut.RUnlock()
+
+		// Verify call ended
+		state, err = p.getCallState(channelID, true)
+		require.NoError(t, err)
+		require.Nil(t, state)
+
+		p.mut.RLock()
+		require.Empty(t, p.removeSessionsBatchers)
+		require.Empty(t, p.addSessionsBatchers)
+		p.mut.RUnlock()
 	})
 }

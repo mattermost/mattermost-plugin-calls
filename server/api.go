@@ -242,7 +242,7 @@ func (p *Plugin) handleEndCall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if state.Call.EndAt == 0 {
-		state.Call.EndAt = time.Now().UnixMilli()
+		setCallEnded(&state.Call)
 	}
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
