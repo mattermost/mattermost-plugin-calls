@@ -599,7 +599,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 		p.LogDebug("timeout waiting for reconnection", "userID", userID, "connID", connID, "channelID", channelID)
 	}
 
-	state, err := p.getCallState(channelID, false)
+	state, err := p.getCallState(channelID, true)
 	if err != nil {
 		return err
 	}
