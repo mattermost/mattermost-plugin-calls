@@ -1,7 +1,9 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import React, {ReactNode} from 'react';
 import GenericModal from 'src/components/generic_modal';
+import CompassIcon from 'src/components/icons/compassIcon';
 import styled from 'styled-components';
 
 export const leftCol = 'col-sm-4';
@@ -11,11 +13,18 @@ export const LabelRow = styled.div`
     display: flex;
 `;
 
-export const UpgradePill = styled.div`
+export const UpgradePill = ({children}: {children: ReactNode}) => (
+    <Upgrade>
+        <CompassIcon icon={'key-variant'}/>
+        {children}
+    </Upgrade>
+);
+
+const Upgrade = styled.div`
     position: relative;
     display: flex;
     align-items: center;
-    padding: 3px 8px 3px 22px;
+    padding: 3px 8px 3px 4px;
     margin-left: 8px;
     background: var(--button-bg);
     border-radius: 10px;
@@ -26,25 +35,21 @@ export const UpgradePill = styled.div`
     line-height: 15px;
     color: var(--center-channel-bg);
 
-    &:before {
-        left: 7px;
-        top: 3px;
-        position: absolute;
-        content: '\f030b';
+    >i {
         font-size: 12px;
-        font-family: 'compass-icons', mattermosticons;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
     }
 `;
 
-export const EnterprisePill = styled(UpgradePill)`
+export const EnterprisePill = ({children}: {children: ReactNode}) => (
+    <Enterprise>
+        <CompassIcon icon={'lightning-bolt-outline'}/>
+        {children}
+    </Enterprise>
+);
+
+const Enterprise = styled(Upgrade)`
     background: rgba(var(--button-bg-rgb), 0.16);
     color: var(--button-bg);
-
-    &:before {
-        content: '\f140c';
-    }
 `;
 
 export const LeftBox = styled.div`
