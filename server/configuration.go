@@ -119,6 +119,10 @@ type clientConfig struct {
 	EnableSimulcast *bool
 	// When set to true it enables ringing for DM/GM channels.
 	EnableRinging *bool
+	// (Cloud) License information that isn't exposed to clients yet on the webapp
+	SkuShortName string `json:"sku_short_name"`
+	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
+	HostControlsAllowed bool
 }
 
 const (
@@ -165,24 +169,6 @@ func (is *ICEServers) UnmarshalJSON(data []byte) error {
 	}
 	*is = strings.Split(strings.TrimSpace(unquoted), ",")
 	return nil
-}
-
-func (c *configuration) getClientConfig() clientConfig {
-	return clientConfig{
-		AllowEnableCalls:     model.NewBool(true), // always true
-		DefaultEnabled:       c.DefaultEnabled,
-		ICEServers:           c.ICEServers,
-		ICEServersConfigs:    c.getICEServers(true),
-		MaxCallParticipants:  c.MaxCallParticipants,
-		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
-		AllowScreenSharing:   c.AllowScreenSharing,
-		EnableRecordings:     c.EnableRecordings,
-		EnableTranscriptions: c.EnableTranscriptions,
-		EnableLiveCaptions:   c.EnableLiveCaptions,
-		MaxRecordingDuration: c.MaxRecordingDuration,
-		EnableSimulcast:      c.EnableSimulcast,
-		EnableRinging:        c.EnableRinging,
-	}
 }
 
 func (c *configuration) SetDefaults() {
@@ -468,6 +454,34 @@ func (c *configuration) liveCaptionsEnabled() bool {
 	return false
 }
 
+func (p *Plugin) getClientConfig() clientConfig {
+	c := p.getConfiguration()
+
+	skuShortName := "starter"
+	license := p.API.GetLicense()
+	if license != nil {
+		skuShortName = license.SkuShortName
+	}
+
+	return clientConfig{
+		AllowEnableCalls:     model.NewBool(true), // always true
+		DefaultEnabled:       c.DefaultEnabled,
+		ICEServers:           c.ICEServers,
+		ICEServersConfigs:    c.getICEServers(true),
+		MaxCallParticipants:  c.MaxCallParticipants,
+		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
+		AllowScreenSharing:   c.AllowScreenSharing,
+		EnableRecordings:     c.EnableRecordings,
+		EnableTranscriptions: c.EnableTranscriptions,
+		EnableLiveCaptions:   c.EnableLiveCaptions,
+		MaxRecordingDuration: c.MaxRecordingDuration,
+		EnableSimulcast:      c.EnableSimulcast,
+		EnableRinging:        c.EnableRinging,
+		SkuShortName:         skuShortName,
+		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
+	}
+}
+
 // getConfiguration retrieves the active configuration under lock, making it safe to use
 // concurrently. The active configuration may change underneath the client of this method, but
 // the struct returned by this API call is considered immutable.
@@ -643,10 +657,7 @@ func (p *Plugin) isSingleHandler() bool {
 		return false
 	}
 
-	isHA := cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
-	hasEnvVar := os.Getenv("MM_CALLS_IS_HANDLER") != ""
-
-	return !isHA || (isHA && hasEnvVar)
+	return !p.isHA()
 }
 
 func (p *Plugin) isHA() bool {

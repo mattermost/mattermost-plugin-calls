@@ -1,4 +1,3 @@
-
 import './component.scss';
 
 import {Channel} from '@mattermost/types/channels';
@@ -135,16 +134,27 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
             return null;
         }
 
+        // @ts-ignore
+        const dmMsg = formatMessage({defaultMessage: 'Are you sure you want to end a call with <participant>{name}</participant>?'},
+            {
+                name: getUserDisplayName(this.props.connectedDMUser),
+                participant: (name: string) => (<span style={{fontWeight: 600}}>{name}</span>),
+            });
+
+        // @ts-ignore
+        const gmMsg = formatMessage({defaultMessage: 'Are you sure you want to end a call with <participants>{names}</participants>?'},
+            {
+                names: this.props.channel.display_name,
+                participants: (names: string) => (<span style={{fontWeight: 600}}>{names}</span>),
+            });
         let msg;
         if (isDMChannel(this.props.channel)) {
             msg = (<React.Fragment>
-                {formatMessage({defaultMessage: 'Are you sure you want to end a call with <participant>{name}</participant>?'},
-                    {name: getUserDisplayName(this.props.connectedDMUser), participant: (name: string) => (<span style={{fontWeight: 600}}>{name}</span>)})}
+                {dmMsg}
             </React.Fragment>);
         } else if (isGMChannel(this.props.channel)) {
             msg = (<React.Fragment>
-                {formatMessage({defaultMessage: 'Are you sure you want to end a call with <participants>{names}</participants>?'},
-                    {names: this.props.channel.display_name, participants: (names: string) => (<span style={{fontWeight: 600}}>{names}</span>)})}
+                {gmMsg}
             </React.Fragment>);
         } else {
             msg = (<React.Fragment>
@@ -172,13 +182,13 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
                         </span>
                     </div>
                     <div style={this.style.body as CSSProperties}>
-                        { msg }
+                        {msg}
                     </div>
 
-                    { this.state.errorMsg &&
-                    <div style={this.style.error as CSSProperties}>
-                        { formatMessage({defaultMessage: 'An error has occurred: {errorMsg}'}, {errorMsg: this.state.errorMsg}) }
-                    </div>
+                    {this.state.errorMsg &&
+                        <div style={this.style.error as CSSProperties}>
+                            {formatMessage({defaultMessage: 'An error has occurred: {errorMsg}'}, {errorMsg: this.state.errorMsg})}
+                        </div>
                     }
 
                     <div style={this.style.footer}>

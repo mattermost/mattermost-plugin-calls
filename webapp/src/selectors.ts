@@ -1,4 +1,4 @@
-import {CallsConfig, Reaction, UserSessionState} from '@calls/common/lib/types';
+import {CallsConfig, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
@@ -27,6 +27,7 @@ import {createSelector} from 'reselect';
 import {
     callsJobState,
     callState,
+    hostControlNoticeState,
     hostsState,
     liveCaptionState,
     recentlyJoinedUsersState,
@@ -38,6 +39,7 @@ import {
     CallJobReduxState,
     CallsUserPreferences,
     ChannelState,
+    HostControlNotice,
     IncomingCallNotification,
     LiveCaptions,
 } from 'src/types/types';
@@ -66,7 +68,7 @@ export const channelForCurrentCall: (state: GlobalState) => Channel | undefined 
         (channels, id) => channels[id],
     );
 
-export const calls = (state: GlobalState): { [channelID: string]: callState} =>
+export const calls = (state: GlobalState): { [channelID: string]: callState } =>
     pluginState(state).calls;
 
 export const idForCurrentCall: (state: GlobalState) => string | undefined =
@@ -97,43 +99,62 @@ export const teamForCurrentCall: (state: GlobalState) => Team | null =
         },
     );
 
-const profilesInCalls = (state: GlobalState) => pluginState(state).profiles;
+const sessionsInCalls = (state: GlobalState): sessionsState => {
+    return pluginState(state).sessions;
+};
 
-export const profilesInCurrentCall : (state: GlobalState) => UserProfile[] =
+const userProfiles = (state: GlobalState) => state.entities.users.profiles;
+
+const getProfilesMapFromSessions = (sessions: Record<string, UserSessionState>, profiles: Record<string, UserProfile>) => {
+    const profilesMap: Record<string, UserProfile> = {};
+    for (const session of Object.values(sessions || {})) {
+        if (profiles[session.user_id]) {
+            profilesMap[session.user_id] = profiles[session.user_id];
+        }
+    }
+    return profilesMap;
+};
+
+export const profilesInCurrentCall: (state: GlobalState) => UserProfile[] =
     createSelector(
         'profilesInCurrentCall',
-        profilesInCalls,
+        userProfiles,
+        sessionsInCalls,
         channelIDForCurrentCall,
-        (profiles, channelID) => (Object.values(profiles[channelID] || {}) as UserProfile[]).filter((el, idx, arr) => arr.indexOf(el) === idx),
+        (profiles, sessions, channelID) => {
+            return Object.values(getProfilesMapFromSessions(sessions[channelID], profiles));
+        },
     );
 
 export const profilesInCallInCurrentChannel: (state: GlobalState) => UserProfile[] =
     createSelector(
         'profilesInCallInCurrentChannel',
-        profilesInCalls,
+        userProfiles,
+        sessionsInCalls,
         getCurrentChannelId,
-        (profiles, currChannelId) => (Object.values(profiles[currChannelId] || {}) as UserProfile[]).filter((el, idx, arr) => arr.indexOf(el) === idx),
+        (profiles, sessions, currChannelId) => {
+            return Object.values(getProfilesMapFromSessions(sessions[currChannelId], profiles));
+        },
     );
 
 // profilesInCurrentCallMap creates an id->UserProfile object for the currently connected call.
 export const profilesInCurrentCallMap: (state: GlobalState) => { [id: string]: UserProfile } =
     createSelector(
         'profilesInCurrentCallMap',
-        profilesInCurrentCall,
-        (profiles) => makeIdToObject(profiles),
+        userProfiles,
+        sessionsInCalls,
+        channelIDForCurrentCall,
+        (profiles, sessions, channelID) => {
+            return getProfilesMapFromSessions(sessions[channelID], profiles);
+        },
     );
 
-export const profilesInCallInChannel: (state: GlobalState, channelId: string) => UserProfile[] =
-    (state, channelID) => {
-        return (Object.values(profilesInCalls(state)[channelID] || {}) as UserProfile[]).filter((el, idx, arr) => arr.indexOf(el) === idx);
-    };
+export const profilesInCallInChannel = (state: GlobalState, channelID: string): UserProfile[] => {
+    return Object.values(getProfilesMapFromSessions(sessionsInCalls(state)[channelID], userProfiles(state)));
+};
 
 export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
     return profilesInCallInChannel(state, channelId).length > 0;
-};
-
-const sessionsInCalls = (state: GlobalState): sessionsState => {
-    return pluginState(state).sessions;
 };
 
 export const sessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
@@ -142,6 +163,14 @@ export const sessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
         sessionsInCalls,
         channelIDForCurrentCall,
         (sessions, channelID) => Object.values(sessions[channelID] || {}),
+    );
+
+export const sessionsInCurrentCallMap: (state: GlobalState) => { [sessionID: string]: UserSessionState } =
+    createSelector(
+        'sessionsInCurrentCallMap',
+        sessionsInCalls,
+        channelIDForCurrentCall,
+        (sessions, channelID) => sessions[channelID],
     );
 
 export const sessionForCurrentCall: (state: GlobalState) => UserSessionState =
@@ -257,6 +286,18 @@ export const recordingForCurrentCall: (state: GlobalState) => CallJobReduxState 
         recordingsForCalls,
         channelIDForCurrentCall,
         (recordings, channelID) => recordings[channelID] || {},
+    );
+
+export const hostControlNoticesForCalls = (state: GlobalState): hostControlNoticeState => {
+    return pluginState(state).hostControlNotices;
+};
+
+export const hostControlNoticesForCurrentCall: (state: GlobalState) => HostControlNotice[] =
+    createSelector(
+        'hostControlNoticesForCurrentCall',
+        hostControlNoticesForCalls,
+        idForCurrentCall,
+        (notices, id) => (id ? notices[id] || [] : []),
     );
 
 const liveCaptionsStateForCalls = (state: GlobalState): callsJobState => {
@@ -500,6 +541,16 @@ export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
     return !isCloud(state) && !enterprise;
 };
 
+export const isAtLeastProfessional = (state: GlobalState): boolean => {
+    const sku = callsConfig(state).sku_short_name;
+    const enterprise = sku === LicenseSkus.E20 || sku === LicenseSkus.Enterprise;
+    const professional = sku === LicenseSkus.E10 || sku === LicenseSkus.Professional;
+
+    return enterprise || professional || isCloudProfessionalOrEnterpriseOrTrial(state);
+};
+
+export const areHostControlsAllowed = (state: GlobalState): boolean => callsConfig(state).HostControlsAllowed;
+
 export const adminStats = (state: GlobalState) => state.entities.admin.analytics;
 
 export const getChannelUrlAndDisplayName = (state: GlobalState, channel?: Channel) => {
@@ -533,13 +584,6 @@ export const getStatusForCurrentUser: (state: GlobalState) => string =
         getUserStatuses,
         (id, statuses) => statuses[id],
     );
-
-export function makeIdToObject<HasId extends { id: string }>(arr: HasId[]) {
-    return arr.reduce((acc: { [id: string]: HasId }, e) => {
-        acc[e.id] = e;
-        return acc;
-    }, {});
-}
 
 // modals
 

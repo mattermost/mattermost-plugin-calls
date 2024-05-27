@@ -220,6 +220,41 @@ func (_c *MockMetrics_IncRTPTracks_Call) RunAndReturn(run func(string, string, s
 	return _c
 }
 
+// ObserveRTPTracksWrite provides a mock function with given fields: groupID, trackType, dur
+func (_m *MockMetrics) ObserveRTPTracksWrite(groupID string, trackType string, dur float64) {
+	_m.Called(groupID, trackType, dur)
+}
+
+// MockMetrics_ObserveRTPTracksWrite_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObserveRTPTracksWrite'
+type MockMetrics_ObserveRTPTracksWrite_Call struct {
+	*mock.Call
+}
+
+// ObserveRTPTracksWrite is a helper method to define mock.On call
+//   - groupID string
+//   - trackType string
+//   - dur float64
+func (_e *MockMetrics_Expecter) ObserveRTPTracksWrite(groupID interface{}, trackType interface{}, dur interface{}) *MockMetrics_ObserveRTPTracksWrite_Call {
+	return &MockMetrics_ObserveRTPTracksWrite_Call{Call: _e.mock.On("ObserveRTPTracksWrite", groupID, trackType, dur)}
+}
+
+func (_c *MockMetrics_ObserveRTPTracksWrite_Call) Run(run func(groupID string, trackType string, dur float64)) *MockMetrics_ObserveRTPTracksWrite_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(float64))
+	})
+	return _c
+}
+
+func (_c *MockMetrics_ObserveRTPTracksWrite_Call) Return() *MockMetrics_ObserveRTPTracksWrite_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockMetrics_ObserveRTPTracksWrite_Call) RunAndReturn(run func(string, string, float64)) *MockMetrics_ObserveRTPTracksWrite_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockMetrics creates a new instance of MockMetrics. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockMetrics(t interface {

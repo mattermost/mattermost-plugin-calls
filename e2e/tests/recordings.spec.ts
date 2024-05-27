@@ -111,7 +111,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         const resp = await request.get(`${baseURL}${src}`);
         expect(resp.status()).toEqual(200);
         const transcriptionData = await resp.body();
-        await expect(transcriptionData.toString()).toContain('This is a test transcription sample');
+        await expect(transcriptionData.toString().toLowerCase()).toContain('this is a test transcription sample');
 
         // exit preview
         await page.keyboard.press('Escape');
@@ -151,6 +151,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(popOut.getByTestId('banner-recording')).toBeHidden();
 
         // verify we do not have the [cc] button
+        await popOut.locator('#calls-popout-settings-button').click();
         await expect(popOut.locator('#calls-popout-cc-button')).toBeHidden();
 
         // stop recording
@@ -195,6 +196,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(popOut.getByTestId('banner-recording')).toBeHidden();
 
         // verify we have the [cc] button
+        await popOut.locator('#calls-popout-settings-button').click();
         await expect(popOut.locator('#calls-popout-cc-button')).toBeVisible();
 
         // toggle closed captioning
@@ -204,7 +206,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await popOut.locator('#calls-popout-mute-button').click();
 
         // Wait for the closed captioning
-        await expect(popOut.locator('[class^="Caption-"]')).toContainText('This is a test transcription sample');
+        await expect(popOut.locator('[class^="Caption-"]')).toContainText('This is a test transcription sample', {ignoreCase: true});
 
         // stop recording
         await popOut.locator('#calls-popout-record-button').click();

@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallsConfig, LiveCaption, RTCStats} from '@calls/common/lib/types';
+import {CallsConfig, LiveCaption, RTCStats} from '@mattermost/calls-common/lib/types';
 import {MessageDescriptor} from 'react-intl';
 
 export const CallsConfigDefault: CallsConfig = {
@@ -18,6 +18,7 @@ export const CallsConfigDefault: CallsConfig = {
     EnableRinging: true,
     EnableTranscriptions: false,
     EnableLiveCaptions: false,
+    HostControlsAllowed: false,
 };
 
 export type ChannelState = {
@@ -160,6 +161,30 @@ export type IncomingCallNotification = {
     callerID: string;
     startAt: number;
     type: ChannelType;
+}
+
+export enum HostControlNoticeType {
+    LowerHand,
+    HostChanged,
+    HostRemoved,
+}
+
+export type HostControlNotice = {
+    type: HostControlNoticeType;
+    callID: string;
+    noticeID: string;
+    displayName: string;
+    userID?: string;
+}
+
+export type HostControlNoticeTimeout = {
+    callID: string;
+    noticeID: string;
+}
+
+export type RemoveConfirmationData = {
+    sessionID: string;
+    userID: string;
 }
 
 // From webapp because the constants file is not import friendly.
