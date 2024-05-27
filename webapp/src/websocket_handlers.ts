@@ -92,7 +92,7 @@ import {
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
-export async function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
+export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     if (channelIDForCurrentCall(store.getState()) === channelID) {
         window.callsClient?.disconnect();
