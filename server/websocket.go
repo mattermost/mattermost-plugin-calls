@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/batching"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
@@ -59,6 +60,19 @@ const (
 
 	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
 	wsEventCallRecordingState = "call_recording_state"
+)
+
+var (
+	minMembersCountForBatching = 100
+	// This is a reasonable upper bound which should match our official
+	// target for max supported participants in a single call.
+	// It's meant to handle the worst case scenario of everyone joining or leaving at the same exact time.
+	maxJoinLeaveOpsBatchSize = 1000
+
+	// TODO: consider making this dynamic. Higher interval values will make the batching more efficient
+	// at the cost of added latency when joining. Maybe we could make it a function of the members count.
+	// One step further could be an adaptive algorithm but it may be a little overcomplicating.
+	joinLeaveBatchingInterval = time.Second
 )
 
 var (
@@ -642,6 +656,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 	if channel.DeleteAt > 0 {
 		return fmt.Errorf("cannot join call in archived channel")
 	}
+	channelStats, appErr := p.API.GetChannelStats(channelID)
+	if appErr != nil {
+		return appErr
+	}
 
 	if joinData.ThreadID != "" {
 		post, appErr := p.API.GetPost(joinData.ThreadID)
@@ -671,183 +689,266 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 		callsEnabled = model.NewBool(callsChannel.Enabled)
 	}
 
+	addSessionToCall := func(state *callState) *callState {
+		var err error
+
+		state, err = p.addUserSession(state, callsEnabled, userID, connID, channelID, joinData.JobID)
+		if err != nil {
+			p.LogError("failed to add user session", "err", err.Error())
+			return state
+		} else if len(state.sessions) == 1 {
+			// new call has started
+
+			// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
+			if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
+				p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+				p.API.SendEphemeralPost(
+					userID,
+					&model.Post{
+						UserId:    p.botSession.UserId,
+						ChannelId: channelID,
+						Message:   "Currently calls are not enabled for non-admin users. You can change the setting through the system console",
+					},
+				)
+			}
+
+			postID, threadID, err := p.createCallStartedPost(state, userID, channelID, joinData.Title, joinData.ThreadID)
+			if err != nil {
+				p.LogError(err.Error())
+			}
+
+			state.Call.PostID = postID
+			state.Call.ThreadID = threadID
+			if err := p.store.UpdateCall(&state.Call); err != nil {
+				p.LogError(err.Error())
+			}
+
+			// TODO: send all the info attached to a call.
+			p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
+				"id":        state.Call.ID,
+				"channelID": channelID,
+				"start_at":  state.Call.StartAt,
+				"thread_id": threadID,
+				"post_id":   postID,
+				"owner_id":  state.Call.OwnerID,
+				"host_id":   state.Call.GetHostID(),
+			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+
+			p.track(evCallStarted, map[string]interface{}{
+				"ParticipantID": userID,
+				"CallID":        state.Call.ID,
+				"ChannelID":     channelID,
+				"ChannelType":   channel.Type,
+			})
+		}
+
+		handlerID := state.Call.Props.NodeID
+		p.LogDebug("got handlerID", "handlerID", handlerID)
+
+		us := newUserSession(userID, channelID, connID, state.Call.ID, p.rtcdManager == nil && handlerID == p.nodeID)
+		p.mut.Lock()
+		p.sessions[connID] = us
+		p.mut.Unlock()
+
+		if p.rtcdManager != nil {
+			msg := rtcd.ClientMessage{
+				Type: rtcd.ClientMessageJoin,
+				Data: map[string]string{
+					"callID":    us.callID,
+					"userID":    userID,
+					"sessionID": connID,
+				},
+			}
+			if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
+				p.LogError("failed to send client join message", "err", err.Error())
+				go func() {
+					if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
+						p.LogError(err.Error())
+					}
+				}()
+				return state
+			}
+		} else {
+			if handlerID == p.nodeID {
+				cfg := rtc.SessionConfig{
+					GroupID:   "default",
+					CallID:    us.callID,
+					UserID:    userID,
+					SessionID: connID,
+				}
+				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID, "callID", us.callID)
+				if err = p.rtcServer.InitSession(cfg, func() error {
+					if atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
+						close(us.rtcCloseCh)
+						return p.removeSession(us)
+					}
+					return nil
+				}); err != nil {
+					p.LogError("failed to init session", "err", err.Error())
+					go func() {
+						if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
+							p.LogError(err.Error())
+						}
+					}()
+					return state
+				}
+			} else {
+				if err := p.sendClusterMessage(clusterMessage{
+					ConnID:    connID,
+					UserID:    userID,
+					ChannelID: channelID,
+					CallID:    us.callID,
+					SenderID:  p.nodeID,
+				}, clusterMessageTypeConnect, handlerID); err != nil {
+					p.LogError("failed to send connect message", "err", err.Error())
+					go func() {
+						if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
+							p.LogError(err.Error())
+						}
+					}()
+					return state
+				}
+			}
+		}
+
+		// send successful join response
+		p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
+			"connID": connID,
+		}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
+
+		if len(state.sessionsForUser(userID)) == 1 {
+			// Only send event on first session join.
+			// This is to keep backwards compatibility with clients not supporting
+			// multi-sessions.
+			p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
+				"userID": userID,
+			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+		}
+
+		p.publishWebSocketEvent(wsEventUserJoined, map[string]interface{}{
+			"user_id":    userID,
+			"session_id": connID,
+		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+
+		if userID == p.getBotID() && state.Recording != nil {
+			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
+				"callID":   channelID,
+				"jobState": getClientStateFromCallJob(state.Recording).toMap(),
+			}, &WebSocketBroadcast{
+				ChannelID:           channelID,
+				ReliableClusterSend: true,
+				UserIDs:             getUserIDsFromSessions(state.sessions),
+			})
+
+			// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
+			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+				"callID":   channelID,
+				"recState": getClientStateFromCallJob(state.Recording).toMap(),
+			}, &WebSocketBroadcast{
+				ChannelID:           channelID,
+				ReliableClusterSend: true,
+				UserIDs:             getUserIDsFromSessions(state.sessions),
+			})
+		}
+
+		clientStateData, err := json.Marshal(state.getClientState(p.getBotID(), userID))
+		if err != nil {
+			p.LogError("failed to marshal client state", "err", err.Error())
+		} else {
+			p.publishWebSocketEvent(wsEventCallState, map[string]interface{}{
+				"channel_id": channelID,
+				"call":       string(clientStateData),
+			}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
+		}
+
+		p.metrics.IncWebSocketConn()
+		p.track(evCallUserJoined, map[string]interface{}{
+			"ParticipantID": userID,
+			"ChannelID":     channelID,
+			"CallID":        state.Call.ID,
+		})
+
+		go func() {
+			defer p.metrics.DecWebSocketConn()
+			p.wsReader(us, authSessionID, handlerID)
+			if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
+				p.LogError(err.Error())
+			}
+		}()
+
+		return state
+	}
+
+	p.mut.Lock()
+	batcher := p.addSessionsBatchers[channelID]
+
+	// It's not worth the overhead of batching join operations in small calls.
+	// Of course we need to make an assumption that the members count of a channel
+	// reasonably maps to the expected participants count.
+	// In the future we could think of more accurate estimates such as looking at statistics from previous calls.
+	shouldBatch := batcher != nil || int(channelStats.MemberCount) >= minMembersCountForBatching
+
+	if shouldBatch {
+		defer p.mut.Unlock()
+		p.LogDebug("will batch sessions joining operations",
+			"channelID", channelID,
+			"membersCount", channelStats.MemberCount,
+			"threshold", minMembersCountForBatching,
+		)
+
+		if batcher == nil {
+			batchMaxSize := min(int(channelStats.MemberCount), maxJoinLeaveOpsBatchSize)
+			p.LogDebug("creating new addSessionsBatcher for call", "channelID", channelID, "batchMaxSize", batchMaxSize)
+			batcher, err = batching.NewBatcher(batching.Config{
+				Interval: joinLeaveBatchingInterval,
+				Size:     batchMaxSize,
+				PreRunCb: func(ctx batching.Context) error {
+					p.LogDebug("performing addSessionToCall batch", "channelID", channelID, "batchSize", ctx[batching.ContextBatchSizeKey])
+
+					state, err := p.lockCallReturnState(channelID)
+					if err != nil {
+						return fmt.Errorf("failed to lock call: %w", err)
+					}
+					ctx["callState"] = state
+					return nil
+				},
+				PostRunCb: func(_ batching.Context) error {
+					p.unlockCall(channelID)
+					return nil
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("failed to create batcher: %w", err)
+			}
+			p.addSessionsBatchers[channelID] = batcher
+			batcher.Start()
+		}
+
+		err = batcher.Push(func(ctx batching.Context) {
+			ctx["callState"] = addSessionToCall(ctx["callState"].(*callState))
+		})
+		if err != nil {
+			return fmt.Errorf("failed to push to batcher: %w", err)
+		}
+
+		return nil
+	}
+
+	// Non-batching case
+	p.mut.Unlock()
+
+	p.LogDebug("no need to batch sessions joining operations",
+		"channelID", channelID,
+		"membersCount", channelStats.MemberCount,
+		"threshold", minMembersCountForBatching,
+	)
+
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
-
-	state, err = p.addUserSession(state, callsEnabled, userID, connID, channelID, joinData.JobID)
-	if err != nil {
-		p.unlockCall(channelID)
-		return fmt.Errorf("failed to add user session: %w", err)
-	} else if state == nil {
-		p.unlockCall(channelID)
-		return fmt.Errorf("state should not be nil")
-	} else if len(state.sessions) == 1 {
-		// new call has started
-		// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
-		if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
-			p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-			p.API.SendEphemeralPost(
-				userID,
-				&model.Post{
-					UserId:    p.botSession.UserId,
-					ChannelId: channelID,
-					Message:   "Currently calls are not enabled for non-admin users. You can change the setting through the system console",
-				},
-			)
-		}
-
-		postID, threadID, err := p.createCallStartedPost(state, userID, channelID, joinData.Title, joinData.ThreadID)
-		if err != nil {
-			p.LogError(err.Error())
-		}
-
-		state.Call.PostID = postID
-		state.Call.ThreadID = threadID
-		if err := p.store.UpdateCall(&state.Call); err != nil {
-			p.LogError(err.Error())
-		}
-
-		// TODO: send all the info attached to a call.
-		p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
-			"id":        state.Call.ID,
-			"channelID": channelID,
-			"start_at":  state.Call.StartAt,
-			"thread_id": threadID,
-			"post_id":   postID,
-			"owner_id":  state.Call.OwnerID,
-			"host_id":   state.Call.GetHostID(),
-		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
-
-		p.track(evCallStarted, map[string]interface{}{
-			"ParticipantID": userID,
-			"CallID":        state.Call.ID,
-			"ChannelID":     channelID,
-			"ChannelType":   channel.Type,
-		})
-	}
-
-	handlerID := state.Call.Props.NodeID
-	p.LogDebug("got handlerID", "handlerID", handlerID)
-
-	us := newUserSession(userID, channelID, connID, state.Call.ID, p.rtcdManager == nil && handlerID == p.nodeID)
-	p.mut.Lock()
-	p.sessions[connID] = us
-	p.mut.Unlock()
-	defer func() {
-		if retErr != nil {
-			p.unlockCall(channelID)
-		}
-		if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
-			p.LogError(err.Error())
-		}
-	}()
-
-	if p.rtcdManager != nil {
-		msg := rtcd.ClientMessage{
-			Type: rtcd.ClientMessageJoin,
-			Data: map[string]string{
-				"callID":    us.callID,
-				"userID":    userID,
-				"sessionID": connID,
-			},
-		}
-		if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
-			return fmt.Errorf("failed to send client join message: %w", err)
-		}
-	} else {
-		if handlerID == p.nodeID {
-			cfg := rtc.SessionConfig{
-				GroupID:   "default",
-				CallID:    us.callID,
-				UserID:    userID,
-				SessionID: connID,
-			}
-			p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID, "callID", us.callID)
-			if err = p.rtcServer.InitSession(cfg, func() error {
-				if atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
-					close(us.rtcCloseCh)
-					return p.removeSession(us)
-				}
-				return nil
-			}); err != nil {
-				return fmt.Errorf("failed to init session: %w", err)
-			}
-		} else {
-			if err := p.sendClusterMessage(clusterMessage{
-				ConnID:    connID,
-				UserID:    userID,
-				ChannelID: channelID,
-				CallID:    us.callID,
-				SenderID:  p.nodeID,
-			}, clusterMessageTypeConnect, handlerID); err != nil {
-				return fmt.Errorf("failed to send connect message: %w", err)
-			}
-		}
-	}
-
-	// send successful join response
-	p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
-		"connID": connID,
-	}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
-
-	if len(state.sessionsForUser(userID)) == 1 {
-		// Only send event on first session join.
-		// This is to keep backwards compatibility with clients not supporting
-		// multi-sessions.
-		p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
-			"userID": userID,
-		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
-	}
-
-	p.publishWebSocketEvent(wsEventUserJoined, map[string]interface{}{
-		"user_id":    userID,
-		"session_id": connID,
-	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
-
-	if userID == p.getBotID() && state.Recording != nil {
-		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-			"callID":   channelID,
-			"jobState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &WebSocketBroadcast{
-			ChannelID:           channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
-
-		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-			"callID":   channelID,
-			"recState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &WebSocketBroadcast{
-			ChannelID:           channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
-	}
-
-	clientStateData, err := json.Marshal(state.getClientState(p.getBotID(), userID))
-	if err != nil {
-		p.LogError("failed to marshal client state", "err", err.Error())
-	} else {
-		p.publishWebSocketEvent(wsEventCallState, map[string]interface{}{
-			"channel_id": channelID,
-			"call":       string(clientStateData),
-		}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
-	}
-
+	addSessionToCall(state)
 	p.unlockCall(channelID)
-
-	p.metrics.IncWebSocketConn()
-	defer p.metrics.DecWebSocketConn()
-	p.track(evCallUserJoined, map[string]interface{}{
-		"ParticipantID": userID,
-		"ChannelID":     channelID,
-		"CallID":        state.Call.ID,
-	})
-
-	p.wsReader(us, authSessionID, handlerID)
 
 	return nil
 }

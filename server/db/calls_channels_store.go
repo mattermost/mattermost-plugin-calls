@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -30,7 +31,9 @@ func (s *Store) CreateCallsChannel(channel *public.CallsChannel) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}
@@ -54,7 +57,9 @@ func (s *Store) GetCallsChannel(channelID string, opts GetCallsChannelOpts) (*pu
 	}
 
 	var channel public.CallsChannel
-	if err := s.dbXFromGetOpts(opts).Get(&channel, q, args...); err == sql.ErrNoRows {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &channel, q, args...); err == sql.ErrNoRows {
 		return nil, fmt.Errorf("calls channel %w", ErrNotFound)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get calls channel: %w", err)
@@ -80,7 +85,9 @@ func (s *Store) GetAllCallsChannels(opts GetCallsChannelOpts) ([]*public.CallsCh
 	}
 
 	channels := []*public.CallsChannel{}
-	if err := s.dbXFromGetOpts(opts).Select(&channels, q, args...); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).SelectContext(ctx, &channels, q, args...); err != nil {
 		return nil, fmt.Errorf("failed to get calls channels: %w", err)
 	}
 
@@ -108,7 +115,9 @@ func (s *Store) UpdateCallsChannel(channel *public.CallsChannel) error {
 		return fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	_, err = s.wDB.Exec(q, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	_, err = s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %w", err)
 	}

@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/time/rate"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/batching"
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
@@ -73,6 +74,10 @@ type Plugin struct {
 
 	// Database
 	store *db.Store
+
+	// Batchers
+	addSessionsBatchers    map[string]*batching.Batcher
+	removeSessionsBatchers map[string]*batching.Batcher
 }
 
 func (p *Plugin) startSession(us *session, senderID string) {

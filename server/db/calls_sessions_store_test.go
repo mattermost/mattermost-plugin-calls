@@ -17,12 +17,13 @@ import (
 func TestCallsSessionsStore(t *testing.T) {
 	t.Parallel()
 	testStore(t, map[string]func(t *testing.T, store *Store){
-		"TestCreateCallSession":   testCreateCallSession,
-		"TestDeleteCallSession":   testDeleteCallSession,
-		"TestUpdateCallSession":   testUpdateCallSession,
-		"TestGetCallSession":      testGetCallSession,
-		"TestGetCallSessions":     testGetCallSessions,
-		"TestDeleteCallsSessions": testDeleteCallsSessions,
+		"TestCreateCallSession":    testCreateCallSession,
+		"TestDeleteCallSession":    testDeleteCallSession,
+		"TestUpdateCallSession":    testUpdateCallSession,
+		"TestGetCallSession":       testGetCallSession,
+		"TestGetCallSessions":      testGetCallSessions,
+		"TestDeleteCallsSessions":  testDeleteCallsSessions,
+		"TestGetCallSessionsCount": testGetCallSessionsCount,
 	})
 }
 
@@ -220,5 +221,35 @@ func testDeleteCallsSessions(t *testing.T, store *Store) {
 		sessions, err := store.GetCallSessions(callID, GetCallSessionOpts{})
 		require.NoError(t, err)
 		require.Empty(t, sessions)
+	})
+}
+
+func testGetCallSessionsCount(t *testing.T, store *Store) {
+	t.Run("no sessions", func(t *testing.T) {
+		cnt, err := store.GetCallSessionsCount(model.NewId(), GetCallSessionOpts{})
+		require.NoError(t, err)
+		require.Zero(t, cnt)
+	})
+
+	t.Run("multiple sessions", func(t *testing.T) {
+		sessions := map[string]*public.CallSession{}
+		callID := model.NewId()
+		for i := 0; i < 10; i++ {
+			session := &public.CallSession{
+				ID:     model.NewId(),
+				CallID: callID,
+				UserID: model.NewId(),
+				JoinAt: time.Now().UnixMilli(),
+			}
+
+			err := store.CreateCallSession(session)
+			require.NoError(t, err)
+
+			sessions[session.ID] = session
+		}
+
+		cnt, err := store.GetCallSessionsCount(callID, GetCallSessionOpts{})
+		require.NoError(t, err)
+		require.Equal(t, 10, cnt)
 	})
 }
