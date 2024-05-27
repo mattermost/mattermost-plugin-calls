@@ -274,10 +274,20 @@ func (u *User) transmitAudio() {
 	}
 }
 
-func (u *User) Mute() {
-	if err := u.callsClient.Mute(); err != nil {
+func (u *User) Mute() error {
+	err := u.callsClient.Mute()
+	if err != nil {
 		log.Printf("%s: failed to mute: %s", u.cfg.Username, err.Error())
 	}
+	return err
+}
+
+func (u *User) Unmute(track webrtc.TrackLocal) error {
+	err := u.callsClient.Unmute(track)
+	if err != nil {
+		log.Printf("%s: failed to unmute: %s", u.cfg.Username, err.Error())
+	}
+	return err
 }
 
 func (u *User) transmitSpeech() {
@@ -291,16 +301,22 @@ func (u *User) transmitSpeech() {
 		log.Fatalf("%s: failed to create opus encoder: %s", u.cfg.Username, err.Error())
 	}
 
-	if err := u.callsClient.Unmute(track); err != nil {
-		log.Fatalf(err.Error())
-	}
-
 	for text := range u.speechTextCh {
 		func() {
 			defer func() {
+				time.Sleep(100 * time.Millisecond)
+				if err := u.Mute(); err != nil {
+					log.Fatalf(err.Error())
+				}
+				log.Printf("%s: muted", u.cfg.Username)
 				u.doneSpeakingCh <- struct{}{}
 			}()
 			log.Printf("%s: received text to speak: %q", u.cfg.Username, text)
+
+			if err := u.Unmute(track); err != nil {
+				log.Fatalf(err.Error())
+			}
+			log.Printf("%s: unmuted", u.cfg.Username)
 
 			var rd io.Reader
 			var rate int
