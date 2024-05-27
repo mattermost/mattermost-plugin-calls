@@ -96,7 +96,7 @@ test.describe('join call', () => {
         await userAPage.getByLabel('Start call').click();
 
         // Verify that the call button is disabled while the call is started
-        await expect(userAPage.locator('#startCallButton')).toBeDisabled();
+        await expect(userAPage.getByLabel(`Call with ${usernames[1]} is ongoing`)).toBeDisabled();
 
         // Close User profile overlay
         await userAPage.getByLabel('Close user profile popover').click();
