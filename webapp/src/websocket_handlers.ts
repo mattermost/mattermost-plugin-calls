@@ -92,25 +92,21 @@ import {
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
-export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
+export async function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     if (channelIDForCurrentCall(store.getState()) === channelID) {
         window.callsClient?.disconnect();
     }
 
+    const callID = calls(store.getState())[channelID]?.ID || '';
+
     store.dispatch({
         type: CALL_END,
         data: {
             channelID,
+            callID,
         },
     });
-
-    if (ringingEnabled(store.getState())) {
-        const call = calls(store.getState())[channelID];
-        if (call) {
-            store.dispatch(removeIncomingCallNotification(call.ID));
-        }
-    }
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of

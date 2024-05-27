@@ -41,7 +41,7 @@ export const DID_RING_FOR_CALL = pluginId + '_did_ring_for_call';
 export const DID_NOTIFY_FOR_CALL = pluginId + '_did_notify_for_call';
 
 // CALL_END is sent when the `/call end` command is used,
-//  and when you (as the last session in the call) leave the call
+//  and when the last session in the call leaves the call
 export const CALL_END = pluginId + '_call_end';
 
 export const RECEIVED_CALLS_CONFIG = pluginId + '_received_calls_config';

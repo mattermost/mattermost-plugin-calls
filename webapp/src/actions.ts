@@ -27,12 +27,10 @@ import RestClient from 'src/rest_client';
 import {
     callDismissedNotification,
     calls,
-    channelHasCall,
     hostChangeAtForCurrentCall,
     idForCurrentCall,
     incomingCalls,
     numSessionsInCallInChannel,
-    ringingEnabled,
     ringingForCall,
 } from 'src/selectors';
 import * as Telemetry from 'src/types/telemetry';
@@ -404,15 +402,12 @@ export const userLeft = (channelID: string, userID: string, sessionID: string) =
             },
         });
 
-        if (ringingEnabled(getState()) && !channelHasCall(getState(), channelID)) {
-            await dispatch(removeIncomingCallNotification(callID));
-        }
-
         if (numSessionsInCallInChannel(getState(), channelID) === 0) {
             dispatch({
                 type: CALL_END,
                 data: {
                     channelID,
+                    callID,
                 },
             });
         }
