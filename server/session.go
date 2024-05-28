@@ -433,24 +433,6 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 		setCallEnded(&state.Call)
 
-		p.mut.Lock()
-		if batcher := p.addSessionsBatchers[channelID]; batcher != nil {
-			p.LogDebug("stopping batcher for call", "channelID", channelID)
-			p.addSessionsBatchers[channelID] = nil
-			delete(p.addSessionsBatchers, channelID)
-			// stop needs to happen asynchronously since this method is executed as part of a batch.
-			go batcher.Stop()
-		}
-
-		if batcher := p.removeSessionsBatchers[channelID]; batcher != nil {
-			p.LogDebug("stopping batcher for call", "channelID", channelID)
-			p.removeSessionsBatchers[channelID] = nil
-			delete(p.removeSessionsBatchers, channelID)
-			// stop needs to happen asynchronously since this method is executed as part of a batch.
-			go batcher.Stop()
-		}
-		p.mut.Unlock()
-
 		defer func() {
 			dur, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))
 			if err != nil {
@@ -511,6 +493,36 @@ func (p *Plugin) removeSession(us *session) error {
 
 		p.mut.Lock()
 		delete(p.sessions, us.connID)
+
+		channelID := us.channelID
+		callID := us.callID
+
+		// If all locally stored sessions for the call have been removed, we should stop any associated batcher.
+		if !p.hasSessionsForCall(callID) {
+			p.LogDebug("no more local sessions for this call", "channelID", channelID, "callID", callID)
+
+			if batcher := p.addSessionsBatchers[channelID]; batcher != nil {
+				p.LogDebug("stopping addSessionsBatcher for call", "channelID", channelID, "callID", callID)
+				p.addSessionsBatchers[channelID] = nil
+				delete(p.addSessionsBatchers, channelID)
+				// stop needs to happen asynchronously since this method is executed as part of a batch.
+				go func() {
+					batcher.Stop()
+					p.LogDebug("stopped addSessionsBatcher for call", "channelID", channelID, "callID", callID)
+				}()
+			}
+
+			if batcher := p.removeSessionsBatchers[channelID]; batcher != nil {
+				p.LogDebug("stopping removeSessionsBatcher for call", "channelID", channelID, "callID", callID)
+				p.removeSessionsBatchers[channelID] = nil
+				delete(p.removeSessionsBatchers, channelID)
+				// stop needs to happen asynchronously since this method is executed as part of a batch.
+				go func() {
+					batcher.Stop()
+					p.LogDebug("stopped removeSessionsBatcher for call", "channelID", channelID, "callID", callID)
+				}()
+			}
+		}
 		p.mut.Unlock()
 
 		if err := p.removeUserSession(state, us.userID, us.originalConnID, us.connID, us.channelID); err != nil {
@@ -530,7 +542,8 @@ func (p *Plugin) removeSession(us *session) error {
 		)
 		var err error
 		if batcher == nil {
-			p.LogDebug("creating new batcher for call", "channelID", us.channelID)
+			p.LogDebug("creating new removeSessionsBatcher for call", "channelID", us.channelID, "batchMaxSize", sessionsCount)
+
 			batcher, err = batching.NewBatcher(batching.Config{
 				Interval: joinLeaveBatchingInterval,
 				Size:     sessionsCount,
@@ -609,4 +622,13 @@ func (p *Plugin) getSessionByOriginalID(sessionID string) *session {
 	}
 
 	return nil
+}
+
+func (p *Plugin) hasSessionsForCall(callID string) bool {
+	for _, s := range p.sessions {
+		if s.callID == callID {
+			return true
+		}
+	}
+	return false
 }
