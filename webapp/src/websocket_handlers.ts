@@ -98,19 +98,15 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
         window.callsClient?.disconnect();
     }
 
+    const callID = calls(store.getState())[channelID]?.ID || '';
+
     store.dispatch({
         type: CALL_END,
         data: {
             channelID,
+            callID,
         },
     });
-
-    if (ringingEnabled(store.getState())) {
-        const call = calls(store.getState())[channelID];
-        if (call) {
-            store.dispatch(removeIncomingCallNotification(call.ID));
-        }
-    }
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of

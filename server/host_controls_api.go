@@ -149,6 +149,22 @@ func (p *Plugin) handleRemoveSession(w http.ResponseWriter, r *http.Request) {
 	res.Msg = "success"
 }
 
+func (p *Plugin) handleEnd(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleEnd", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	callID := mux.Vars(r)["call_id"]
+
+	if err := p.hostEnd(userID, callID); err != nil {
+		p.handleHostControlsError(err, &res, "handleEnd")
+		return
+	}
+
+	res.Code = http.StatusOK
+	res.Msg = "success"
+}
+
 func (p *Plugin) handleHostControlsError(err error, res *httpResponse, handlerName string) {
 	p.LogError(handlerName, "err", err.Error())
 

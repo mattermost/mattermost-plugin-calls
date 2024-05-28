@@ -27,11 +27,10 @@ import RestClient from 'src/rest_client';
 import {
     callDismissedNotification,
     calls,
-    channelHasCall,
     hostChangeAtForCurrentCall,
     idForCurrentCall,
     incomingCalls,
-    ringingEnabled,
+    numSessionsInCallInChannel,
     ringingForCall,
 } from 'src/selectors';
 import * as Telemetry from 'src/types/telemetry';
@@ -49,6 +48,7 @@ import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
     ADD_INCOMING_CALL,
+    CALL_END,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
@@ -221,7 +221,7 @@ export const requestOnPremTrialLicense = async (users: number, termsAccepted: bo
 
 export const endCall = (channelID: string) => {
     return RestClient.fetch(
-        `${getPluginPath()}/calls/${channelID}/end`,
+        `${getPluginPath()}/calls/${channelID}/host/end`,
         {method: 'post'},
     );
 };
@@ -388,7 +388,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
 }
 
 export const userLeft = (channelID: string, userID: string, sessionID: string) => {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
         // save for later
         const callID = calls(getState())[channelID]?.ID || '';
 
@@ -402,8 +402,14 @@ export const userLeft = (channelID: string, userID: string, sessionID: string) =
             },
         });
 
-        if (ringingEnabled(getState()) && !channelHasCall(getState(), channelID)) {
-            await dispatch(removeIncomingCallNotification(callID));
+        if (numSessionsInCallInChannel(getState(), channelID) === 0) {
+            dispatch({
+                type: CALL_END,
+                data: {
+                    channelID,
+                    callID,
+                },
+            });
         }
     };
 };

@@ -148,6 +148,11 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
+    case CALL_END: {
+        const nextState = {...state};
+        delete nextState[action.data.channelID];
+        return nextState;
+    }
     case USER_JOINED:
         return {
             ...state,
@@ -862,6 +867,8 @@ const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingC
     case ADD_INCOMING_CALL:
         return [...state, {...action.data}];
     case REMOVE_INCOMING_CALL:
+        return state.filter((ic) => ic.callID !== action.data.callID);
+    case CALL_END:
         return state.filter((ic) => ic.callID !== action.data.callID);
     default:
         return state;

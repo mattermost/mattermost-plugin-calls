@@ -5,7 +5,7 @@ import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
 
 import {hideEndCallModal} from '../../actions';
-import {endCallModal, profilesInCallInChannel} from '../../selectors';
+import {endCallModal, numProfilesInCallInChannel} from '../../selectors';
 import {getUserIdFromDM, isDMChannel} from '../../utils';
 import EndCallModal from './component';
 
@@ -21,7 +21,7 @@ const mapStateToProps = (state: GlobalState) => {
 
     return {
         show: endCallModal(state).show,
-        numParticipants: profilesInCallInChannel(state, endCallState.targetID).length,
+        numParticipants: numProfilesInCallInChannel(state, endCallState.targetID),
         connectedDMUser,
         channel,
     };

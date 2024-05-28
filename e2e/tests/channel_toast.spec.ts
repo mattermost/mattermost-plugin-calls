@@ -54,4 +54,16 @@ test.describe('channel toast', () => {
 
         await userPage.leaveCall();
     });
+
+    test('does not reappear after leaving call (call ends)', async () => {
+        const user0Page = await startCall(userStorages[0]);
+
+        await expect(user0Page.page.locator('#calls-channel-toast')).toBeHidden();
+
+        await user0Page.leaveCall();
+
+        await user0Page.wait(3000);
+
+        await expect(user0Page.page.locator('#calls-channel-toast')).toBeHidden();
+    });
 });
