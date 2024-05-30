@@ -18,8 +18,31 @@ env:
   PARALLELISM: 10
 
 jobs:
+  generate-pending-report-status-check:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: e2e/generate-report-status-check
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # 7.0.1
+        with:
+          script: |
+            try {
+              await github.rest.repos.createCommitStatus({
+                owner: 'mattermost',
+                repo: 'mattermost-plugin-calls',
+                sha: '${{ github.event.pull_request.head.sha || github.sha }}',
+                context: 'e2e/report-summary',
+                description: 'E2E tests are running',
+                state: 'pending',
+                target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+              });
+            } catch (err) {
+              core.setFailed(`Action failed with error: ${err}`);
+            }
+
   build-mattermost-plugin-calls:
     runs-on: ubuntu-22.04
+    needs:
+      - generate-pending-report-status-check
     steps:
       - name: e2e/checkout-mattermost-plugin-calls-repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -194,3 +217,27 @@ jobs:
           path: ${{ github.workspace }}/logs
           compression-level: 0
           retention-days: 5
+
+  generate-failed-report-status-check:
+    runs-on: ubuntu-22.04
+    if: failure() || cancelled()
+    needs:
+      - e2e-playwright-test
+    steps:
+      - name: e2e/generate-failed-report-status-check
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # 7.0.1
+        with:
+          script: |
+            try {
+              await github.rest.repos.createCommitStatus({
+                owner: 'mattermost',
+                repo: 'mattermost-plugin-calls',
+                sha: '${{ github.event.pull_request.head.sha || github.sha }}',
+                context: 'e2e/report-summary',
+                description: 'E2E tests failed before the report generation',
+                state: 'failure',
+                target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+              });
+            } catch (err) {
+              core.setFailed(`Action failed with error: ${err}`);
+            }
