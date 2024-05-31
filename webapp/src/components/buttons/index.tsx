@@ -67,15 +67,11 @@ export const DestructiveButton = styled(Button)`
     background: var(--dnd-indicator);
     color: var(--button-color);
 
-    :hover:enabled {
-        background: linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08)), var(--dnd-indicator);
+    &:hover {
+        background: rgba(var(--dnd-indicator-rgb), 0.88)
     }
 
-    :active, :hover:active {
-        background: linear-gradient(0deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16)), var(--dnd-indicator);
-    }
-
-    :disabled {
+    &:disabled {
         background: rgba(var(--center-channel-color-rgb), 0.08);
     }
 `;
