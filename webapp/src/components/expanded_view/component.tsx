@@ -465,10 +465,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 dialogType: StopRecordingConfirmation,
                 dialogProps: {
                     channelID: this.props.channel.id,
-                    trackEvent: this.props.trackEvent,
-                    fromShortcut,
                 },
             });
+            this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
             await this.props.startCallRecording(this.props.channel.id);
             this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});

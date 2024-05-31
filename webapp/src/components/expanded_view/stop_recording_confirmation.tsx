@@ -2,18 +2,15 @@ import React, {ComponentProps} from 'react';
 import {useIntl} from 'react-intl';
 import {stopCallRecording} from 'src/actions';
 import GenericModal from 'src/components/generic_modal';
-import * as Telemetry from 'src/types/telemetry';
 import styled from 'styled-components';
 
 export const IDStopRecordingConfirmation = 'stop_recording_confirmation';
 
 type Props = Partial<ComponentProps<typeof GenericModal>> & {
     channelID: string;
-    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
-    fromShortcut?: boolean;
 };
 
-export const StopRecordingConfirmation = ({channelID, trackEvent, fromShortcut, ...modalProps}: Props) => {
+export const StopRecordingConfirmation = ({channelID, ...modalProps}: Props) => {
     const {formatMessage} = useIntl();
 
     const stopRecordingText = formatMessage({defaultMessage: 'Stop recording'});
@@ -28,10 +25,7 @@ export const StopRecordingConfirmation = ({channelID, trackEvent, fromShortcut, 
             confirmButtonText={stopRecordingText}
             cancelButtonText={cancelText}
             isConfirmDestructive={true}
-            handleConfirm={() => {
-                stopCallRecording(channelID);
-                trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
-            }}
+            handleConfirm={() => stopCallRecording(channelID)}
             showCancel={true}
             onHide={() => null}
             components={{FooterContainer}}
