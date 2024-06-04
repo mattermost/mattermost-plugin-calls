@@ -3,15 +3,17 @@
 import {CallChannelState} from '@mattermost/calls-common/lib/types';
 import WebSocketClient from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
+import {AnalyticsVisualizationType, PluginAnalyticsRow} from '@mattermost/types/admin';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
+import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {isMinimumServerVersion} from 'mattermost-redux/utils/helpers';
 import React, {useEffect} from 'react';
 import ReactDOM from 'react-dom';
-import {injectIntl, IntlProvider} from 'react-intl';
+import {FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {AnyAction} from 'redux';
 import {batchActions} from 'redux-batched-actions';
@@ -20,6 +22,7 @@ import {
     displayCallsTestModeUser,
     displayFreeTrial,
     getCallsConfig,
+    getCallsStats,
     incomingCallOnChannel,
     loadProfilesByIdsIfMissing,
     setClientConnecting,
@@ -428,6 +431,107 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
         registry.registerAdminConsoleCustomSetting('ICEHostPortOverride', ICEHostPortOverride);
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
+
+        registry.registerSiteStatisticsHandler(async () => {
+            const stats: Record<string, PluginAnalyticsRow> = {};
+            try {
+                const data = await getCallsStats();
+
+                stats.total_calls = {
+                    visualizationType: AnalyticsVisualizationType.Count,
+                    name: <FormattedMessage defaultMessage='Total Calls'/>,
+                    icon: 'fa-phone',
+                    id: 'total_calls',
+                    value: data.total_calls,
+                };
+
+                stats.total_active_calls = {
+                    visualizationType: AnalyticsVisualizationType.Count,
+                    name: <FormattedMessage defaultMessage='Total Active Calls'/>,
+                    icon: 'fa-phone',
+                    id: 'total_active_calls',
+                    value: data.total_active_calls,
+                };
+
+                stats.total_active_sessions = {
+                    visualizationType: AnalyticsVisualizationType.Count,
+                    name: <FormattedMessage defaultMessage='Total Active Sessions'/>,
+                    icon: 'fa-desktop',
+                    id: 'total_active_sessions',
+                    value: data.total_active_sessions,
+                };
+
+                stats.avg_call_duration = {
+                    visualizationType: AnalyticsVisualizationType.Count,
+                    name: <FormattedMessage defaultMessage='Avg Call Duration (minutes)'/>,
+                    icon: 'fa-clock',
+                    id: 'avg_call_duration',
+                    value: Math.round((data.avg_duration / 60) * 100) / 100,
+                };
+
+                stats.avg_call_participants = {
+                    visualizationType: AnalyticsVisualizationType.Count,
+                    name: <FormattedMessage defaultMessage='Avg Call Participants'/>,
+                    icon: 'fa-users',
+                    id: 'avg_call_participants',
+                    value: Math.round(data.avg_participants),
+                };
+
+                if (isMinimumServerVersion(getServerVersion(store.getState()), 9, 10)) {
+                    const lineChartStyle = {
+                        fillColor: 'rgba(151,187,205,0.2)',
+                        borderColor: 'rgba(151,187,205,1)',
+                        pointBackgroundColor: 'rgba(151,187,205,1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(151,187,205,1)',
+                    };
+
+                    stats.calls_by_day = {
+                        visualizationType: AnalyticsVisualizationType.LineChart,
+                        name: <FormattedMessage defaultMessage='Daily Calls'/>,
+                        id: 'calls_by_day',
+                        value: {
+                            labels: Object.keys(data.calls_by_day),
+                            datasets: [{
+                                ...lineChartStyle,
+                                data: Object.values(data.calls_by_day),
+                            }],
+                        },
+                    };
+
+                    stats.calls_by_month = {
+                        visualizationType: AnalyticsVisualizationType.LineChart,
+                        name: <FormattedMessage defaultMessage='Monthly Calls'/>,
+                        id: 'calls_by_month',
+                        value: {
+                            labels: Object.keys(data.calls_by_month),
+                            datasets: [{
+                                ...lineChartStyle,
+                                data: Object.values(data.calls_by_month),
+                            }],
+                        },
+                    };
+
+                    stats.calls_by_channel_type = {
+                        visualizationType: AnalyticsVisualizationType.DoughnutChart,
+                        name: <FormattedMessage defaultMessage='Calls by Channel Type'/>,
+                        id: 'calls_by_channel_type',
+                        value: {
+                            labels: Object.keys(data.calls_by_channel_type),
+                            datasets: [{
+                                data: Object.values(data.calls_by_channel_type),
+                                backgroundColor: ['#46BFBD', '#FDB45C', '#3CB470', '#502D86'],
+                                hoverBackgroundColor: ['#5AD3D1', '#FFC870', '#3CB470', '#502D86'],
+                            }],
+                        },
+                    };
+                }
+            } catch (err) {
+                logErr(err);
+            }
+            return stats;
+        });
 
         // Desktop API handlers
         if (window.desktopAPI?.onOpenScreenShareModal) {

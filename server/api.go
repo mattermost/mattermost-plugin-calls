@@ -534,3 +534,19 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	p.apiRouter.ServeHTTP(w, r)
 }
+
+func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
+	stats, err := p.store.GetCallsStats()
+	if err != nil {
+		return fmt.Errorf("failed to get stats from store: %w", err)
+	}
+
+	// TODO: consider implementing some caching for heaviest queries
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		return fmt.Errorf("failed to marshal: %w", err)
+	}
+
+	return nil
+}

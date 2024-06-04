@@ -35,7 +35,7 @@ import {
     ringingForCall,
 } from 'src/selectors';
 import * as Telemetry from 'src/types/telemetry';
-import {ChannelType} from 'src/types/types';
+import {CallsStats, ChannelType} from 'src/types/types';
 import {
     getPluginPath,
     getSessionsMapFromSessions,
@@ -637,4 +637,8 @@ export const hostMuteOthers = async (callID?: string) => {
         `${getPluginPath()}/calls/${callID}/host/mute-others`,
         {method: 'post'},
     );
+};
+
+export const getCallsStats = async () => {
+    return RestClient.fetch<CallsStats>(`${getPluginPath()}/stats`, {method: 'get'});
 };
