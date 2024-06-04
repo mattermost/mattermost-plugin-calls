@@ -66,9 +66,12 @@ test.describe('join call', () => {
 
         expect(await page.locator('data-testid=call-thread').last().screenshot()).toMatchSnapshot('call-thread-leave.png');
 
-        const leaveCallButton = page.locator('.post__body').last().locator('button:has-text("Leave")');
+        const leaveCallButton = page.locator('.post__body').last().getByRole('button', {name: 'Leave'});
         await expect(leaveCallButton).toBeVisible();
         await leaveCallButton.click();
+        const menu = page.getByTestId('dropdownmenu');
+        await menu.getByText('Leave call').click();
+
         await expect(page.locator('#calls-widget')).toBeHidden();
 
         await userPage.leaveCall();

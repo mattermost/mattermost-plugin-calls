@@ -1149,7 +1149,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <div style={this.style.centerControls}>
                             <ControlsButton
                                 id='calls-popout-mute-button'
-                                data-testid={isMuted ? 'calls-popout-muted' : 'calls-popout-unmuted'}
+                                dataTestId={isMuted ? 'calls-popout-muted' : 'calls-popout-unmuted'}
                                 // eslint-disable-next-line no-undefined
                                 onToggle={noInputDevices ? undefined : this.onMuteToggle}
                                 tooltipText={muteTooltipText}

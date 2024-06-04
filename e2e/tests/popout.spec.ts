@@ -9,13 +9,14 @@ test.describe('popout window', () => {
     test.use({storageState: userStorages[0]});
 
     test('popout opens muted', async () => {
-        const [_, popOut] = await startCallAndPopout(userStorages[0]);
+        const [page, popOut] = await startCallAndPopout(userStorages[0]);
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
         expect(await popOut.page.locator('#calls-expanded-view-participants-grid').screenshot()).toMatchSnapshot('expanded-view-participants-grid.png');
         expect(await popOut.page.locator('#calls-expanded-view-controls').screenshot()).toMatchSnapshot('expanded-view-controls.png');
         await expect(popOut.page.locator('#calls-popout-mute-button')).toBeVisible();
         await expect(popOut.page.getByTestId('calls-popout-muted')).toBeVisible();
         await popOut.leaveFromPopout();
+        await expect(page.page.locator('#calls-widget')).toBeHidden();
     });
 
     test('popout opens in a DM channel', async () => {
@@ -30,10 +31,11 @@ test.describe('popout window', () => {
         await expect(popOut.page).toHaveTitle(`Call - ${getChannelNamesForTest()[0]}`);
         await expect(page.page).not.toHaveTitle(`Call - ${getChannelNamesForTest()[0]}`);
         await popOut.leaveFromPopout();
+        await expect(page.page.locator('#calls-widget')).toBeHidden();
     });
 
     test('supports chat', async () => {
-        const [_, popOut] = await startCallAndPopout(userStorages[0]);
+        const [page, popOut] = await startCallAndPopout(userStorages[0]);
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
 
         await popOut.page.click('#calls-popout-chat-button');
@@ -50,10 +52,11 @@ test.describe('popout window', () => {
         await expect(popOut.page.locator('#sidebar-right')).not.toBeVisible();
 
         await popOut.leaveFromPopout();
+        await expect(page.page.locator('#calls-widget')).toBeHidden();
     });
 
     test('supports chat in a DM channel', async () => {
-        const [_, popOut] = await startCallAndPopout(userStorages[0]);
+        const [page, popOut] = await startCallAndPopout(userStorages[0]);
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
 
         await popOut.page.click('#calls-popout-chat-button');
@@ -70,6 +73,7 @@ test.describe('popout window', () => {
         await expect(popOut.page.locator('#sidebar-right')).not.toBeVisible();
 
         await popOut.leaveFromPopout();
+        await expect(page.page.locator('#calls-widget')).toBeHidden();
     });
 
     test('recording banner dismissed works cross-window and is remembered - clicked on widget', async ({
