@@ -464,8 +464,8 @@ export const endCallModal = (state: GlobalState) => {
     return pluginState(state).endCallModal;
 };
 
-export const callsShowButton = (state: GlobalState, channelId: string): boolean =>
-    !callsExplicitlyDisabled(state, channelId);
+export const callsShowButton = (state: GlobalState, channelId?: string): boolean =>
+    !callsExplicitlyDisabled(state, channelId || '');
 
 export const hasPermissionsToEnableCalls = (state: GlobalState, channelId: string): boolean => {
     if (isCurrentUserSystemAdmin(state)) {
@@ -477,6 +477,10 @@ export const hasPermissionsToEnableCalls = (state: GlobalState, channelId: strin
 
     const channelRoles = getMyChannelRoles(state);
     const channel = getChannel(state, channelId);
+    if (!channel) {
+        return false;
+    }
+
     const teamRoles = getMyTeamRoles(state)[channel.team_id];
     const cm = getMyChannelMemberships(state)[channelId];
 

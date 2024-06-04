@@ -26,7 +26,7 @@ import {
 import {Store} from './types/mattermost-webapp';
 import {getCallsClient, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
-type joinCallFn = (channelId: string, teamId: string, title?: string, rootId?: string) => void;
+type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string) => void;
 
 export default async function slashCommandsHandler(store: Store, joinCall: joinCallFn, message: string, args: CommandArgs) {
     const fullCmd = message.trim();

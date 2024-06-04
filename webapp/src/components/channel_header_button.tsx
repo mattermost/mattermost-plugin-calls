@@ -23,10 +23,10 @@ import styled, {css} from 'styled-components';
 const ChannelHeaderButton = () => {
     const channel = useSelector(getCurrentChannel);
     const currentUserID = useSelector(getCurrentUserId);
-    const otherUserID = getUserIdFromDM(channel?.name, currentUserID);
+    const otherUserID = getUserIdFromDM(channel?.name || '', currentUserID);
     const otherUser = useSelector((state: GlobalState) => getUser(state, otherUserID));
     const isDeactivatedDM = isDMChannel(channel) && otherUser?.delete_at > 0;
-    const show = useSelector((state: GlobalState) => callsShowButton(state, channel?.id));
+    const show = useSelector((state: GlobalState) => callsShowButton(state, channel?.id || ''));
     const inCall = useSelector(channelIDForCurrentCall) === channel?.id;
     const hasCall = useSelector(profilesInCallInCurrentChannel).length > 0;
     const isAdmin = useSelector(isCurrentUserSystemAdmin);
@@ -34,7 +34,7 @@ const ChannelHeaderButton = () => {
     const isCloudPaid = useSelector(isCloudProfessionalOrEnterpriseOrTrial);
     const limitRestricted = useSelector(isLimitRestricted);
     const maxCallParticipants = useSelector(maxParticipants);
-    const isChannelArchived = channel?.delete_at > 0;
+    const isChannelArchived = channel && channel.delete_at > 0;
     const isClientConnecting = useSelector(clientConnecting);
 
     const {formatMessage} = useIntl();

@@ -324,7 +324,7 @@ export default class Plugin {
             return desktopNotificationHandler(store, post, msgProps, channel, args);
         });
 
-        const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
+        const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
             if (!channelIDForCurrentCall(store.getState())) {
                 connectCall(channelId, title, rootId);
 
@@ -338,7 +338,7 @@ export default class Plugin {
             }
         };
 
-        const joinCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
+        const joinCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
             // Anyone can join a call already in progress.
             // If explicitly enabled, everyone can start calls.
             // In LiveMode (DefaultEnabled=true):

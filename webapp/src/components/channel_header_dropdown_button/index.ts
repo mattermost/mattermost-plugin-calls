@@ -26,7 +26,7 @@ const mapStateToProps = (state: GlobalState) => {
         isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),
         isLimitRestricted: isLimitRestricted(state),
         maxParticipants: maxParticipants(state),
-        isChannelArchived: channel?.delete_at > 0,
+        isChannelArchived: Boolean(channel && channel.delete_at > 0),
     };
 };
 

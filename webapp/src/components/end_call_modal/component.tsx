@@ -6,12 +6,13 @@ import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import {endCall} from 'src/actions';
 import CompassIcon from 'src/components/icons/compassIcon';
+import {logErr} from 'src/log';
 import {getUserDisplayName, isDMChannel, isGMChannel} from 'src/utils';
 
 interface Props {
     intl: IntlShape,
     show: boolean,
-    channel: Channel,
+    channel?: Channel,
     connectedDMUser: UserProfile | undefined,
     numParticipants: number,
     hideEndCallModal: () => void,
@@ -103,6 +104,11 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
     };
 
     private endCall = () => {
+        if (!this.props.channel) {
+            logErr('missing channel');
+            return;
+        }
+
         endCall(this.props.channel.id).then(() => {
             this.hideModal();
         }).catch((err: any) => {
@@ -130,7 +136,7 @@ export default class EndCallModal extends React.PureComponent<Props, State> {
     render() {
         const {formatMessage} = this.props.intl;
 
-        if (!this.props.show) {
+        if (!this.props.show || !this.props.channel) {
             return null;
         }
 
