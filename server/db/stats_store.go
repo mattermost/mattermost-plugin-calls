@@ -1,3 +1,6 @@
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package db
 
 import (
@@ -36,14 +39,18 @@ func (s *Store) GetAvgCallParticipants() (int64, error) {
 		return 0, fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	var count float64
+	var count *float64
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
 	defer cancel()
 	if err := s.rDBx.GetContext(ctx, &count, q, args...); err != nil {
 		return 0, fmt.Errorf("failed to get average call participants: %w", err)
 	}
 
-	return int64(math.Round(count)), nil
+	if count == nil {
+		return 0, nil
+	}
+
+	return int64(math.Round(*count)), nil
 }
 
 func (s *Store) GetAvgCallDuration() (int64, error) {
@@ -64,14 +71,18 @@ func (s *Store) GetAvgCallDuration() (int64, error) {
 		return 0, fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	var count float64
+	var count *float64
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
 	defer cancel()
 	if err := s.rDBx.GetContext(ctx, &count, q, args...); err != nil {
 		return 0, fmt.Errorf("failed to get average call duration: %w", err)
 	}
 
-	return int64(math.Round(count)), nil
+	if count == nil {
+		return 0, nil
+	}
+
+	return int64(math.Round(*count)), nil
 }
 
 func (s *Store) GetTotalActiveSessions() (int64, error) {
@@ -84,7 +95,7 @@ func (s *Store) GetTotalActiveSessions() (int64, error) {
 		From("calls_sessions").
 		Join("calls ON calls_sessions.CallID = calls.ID").
 		Where(sq.And{
-			sq.Expr("calls.EndAt > calls.StartAt"),
+			sq.Eq{"calls.EndAt": 0},
 			sq.Eq{"calls.DeleteAt": 0},
 		})
 
@@ -112,6 +123,11 @@ func (s *Store) GetTotalCalls(active bool) (int64, error) {
 	qb := getQueryBuilder(s.driverName).Select("COUNT(*)").From("calls")
 
 	if active {
+		qb = qb.Where(sq.And{
+			sq.Eq{"EndAt": 0},
+			sq.Eq{"DeleteAt": 0},
+		})
+	} else {
 		qb = qb.Where(sq.And{
 			sq.Expr("EndAt > StartAt"),
 			sq.Eq{"DeleteAt": 0},
