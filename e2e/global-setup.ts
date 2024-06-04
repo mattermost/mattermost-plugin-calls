@@ -1,3 +1,5 @@
+/* eslint-disable no-await-in-loop */
+
 import {expect, FullConfig, request} from '@playwright/test';
 import {readFile} from 'fs/promises';
 

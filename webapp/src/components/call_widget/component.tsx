@@ -19,6 +19,7 @@ import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
+import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
 import {HostNotices} from 'src/components/host_notices';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ExpandIcon from 'src/components/icons/expand';
@@ -38,6 +39,7 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
+import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {
     CallAlertConfigs,
     CallRecordingDisclaimerStrings,
@@ -65,6 +67,7 @@ import {
     RemoveConfirmationData,
 } from 'src/types/types';
 import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
+import styled from 'styled-components';
 
 import CallDuration from './call_duration';
 import JoinNotification from './join_notification';
@@ -132,6 +135,7 @@ interface State {
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
+    leaveMenuOpen: boolean,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -237,6 +241,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 flexDirection: 'column',
                 gap: '5px',
             },
+            leaveMenuShim: {
+                height: 70,
+            },
         };
     };
 
@@ -261,6 +268,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             alerts: CallAlertStatesDefault,
             screenStream: null,
             removeConfirmation: null,
+            leaveMenuOpen: false,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -1679,6 +1687,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
+    onLeaveMenuOpen = (open: boolean) => {
+        this.setState({leaveMenuOpen: open});
+    };
+
     onExpandClick = () => {
         if (this.state.expandedViewWindow && !this.state.expandedViewWindow.closed) {
             if (this.props.global) {
@@ -1831,6 +1843,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const handTooltipText = this.isHandRaised() ? formatMessage({defaultMessage: 'Lower hand'}) : formatMessage({defaultMessage: 'Raise hand'});
 
+        const isHost = this.props.callHostID === this.props.currentUserID;
+        const showLeaveMenuShim = !(this.state.showMenu || this.state.showParticipantsList || this.props.screenSharingSession) && this.state.leaveMenuOpen;
+
         return (
             <div
                 id='calls-widget'
@@ -1843,6 +1858,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     ref={this.menuNode}
                     style={this.style.menu}
                 >
+                    {showLeaveMenuShim && <div style={this.style.leaveMenuShim}/>}
                     {this.renderIncomingCalls()}
                     {this.renderNotificationBar()}
                     {this.renderAlertBanners()}
@@ -1894,6 +1910,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             id='calls-widget-expand-button'
                             onToggle={this.onExpandClick}
                             tooltipText={formatMessage({defaultMessage: 'Open in new window'})}
+                            tooltipPosition='left'
                             bgColor=''
                             icon={
                                 <ShowIcon
@@ -1983,23 +2000,42 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             }
                             bgColor={this.state.showMenu ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
                         />
-
-                        <WidgetButton
+                        <DotMenu
                             id='calls-widget-leave-button'
-                            onToggle={this.onDisconnectClick}
-                            icon={
-                                <LeaveCallIcon
-                                    style={{fill: 'white'}}
-                                />
-                            }
-                            bgColor='var(--dnd-indicator)'
-                            bgColorHover='var(--dnd-indicator)'
+                            icon={<LeaveCallIcon style={{fill: 'white'}}/>}
+                            dotMenuButton={LeaveCallButton}
+                            placement={'top-start'}
+                            strategy={'fixed'}
+                            onOpenChange={this.onLeaveMenuOpen}
                             shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
                             tooltipText={formatMessage({defaultMessage: 'Leave call'})}
-                        />
+                        >
+                            <LeaveCallMenu
+                                callID={this.props.channel.id}
+                                isHost={isHost}
+                                leaveCall={this.onDisconnectClick}
+                            />
+                        </DotMenu>
                     </div>
                 </div>
             </div>
         );
     }
 }
+
+const LeaveCallButton = styled(DotMenuButton)<{ $isActive: boolean }>`
+    display: inline-flex;
+    border: none;
+    border-radius: 4px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: var(--dnd-indicator);
+    padding: 5px;
+    app-region: no-drag;
+
+    &:hover {
+        background: linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
+        background-blend-mode: multiply;
+    }
+`;

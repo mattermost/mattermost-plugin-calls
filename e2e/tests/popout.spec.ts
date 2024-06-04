@@ -1,113 +1,75 @@
 import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {getChannelNamesForTest, getUsernamesForTest, getUserStoragesForTest} from '../utils';
+import {getChannelNamesForTest, getUserStoragesForTest, startCallAndPopout} from '../utils';
 
 const userStorages = getUserStoragesForTest();
-const usernames = getUsernamesForTest();
 
 test.describe('popout window', () => {
     test.use({storageState: userStorages[0]});
 
-    test('popout opens muted', async ({page, context}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.goto();
-        await devPage.startCall();
-
-        const [popOut, _] = await Promise.all([
-            context.waitForEvent('page'),
-            page.click('#calls-widget-expand-button'),
-        ]);
-        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
-        expect(await popOut.locator('#calls-expanded-view-participants-grid').screenshot()).toMatchSnapshot('expanded-view-participants-grid.png');
-        expect(await popOut.locator('#calls-expanded-view-controls').screenshot()).toMatchSnapshot('expanded-view-controls.png');
-        await expect(popOut.locator('#calls-popout-mute-button')).toBeVisible();
-        const text = await popOut.textContent('#calls-popout-mute-button');
-
-        await popOut.locator('#calls-popout-leave-button').click();
+    test('popout opens muted', async () => {
+        const [_, popOut] = await startCallAndPopout(userStorages[0]);
+        await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
+        expect(await popOut.page.locator('#calls-expanded-view-participants-grid').screenshot()).toMatchSnapshot('expanded-view-participants-grid.png');
+        expect(await popOut.page.locator('#calls-expanded-view-controls').screenshot()).toMatchSnapshot('expanded-view-controls.png');
+        await expect(popOut.page.locator('#calls-popout-mute-button')).toBeVisible();
+        await expect(popOut.page.getByTestId('calls-popout-muted')).toBeVisible();
+        await popOut.leaveFromPopout();
     });
 
-    test('popout opens in a DM channel', async ({page, context}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(usernames[1]);
-        await devPage.startCall();
-
-        const [popOut, _] = await Promise.all([
-            context.waitForEvent('page'),
-            page.click('#calls-widget-expand-button'),
-        ]);
-        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
-        await popOut.locator('#calls-popout-leave-button').click();
+    test('popout opens in a DM channel', async () => {
+        const [_, popOut] = await startCallAndPopout(userStorages[0]);
+        await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
+        await popOut.leaveFromPopout();
     });
 
-    test('window title matches', async ({page, context}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.goto();
-        await devPage.startCall();
-
-        const [popOut, _] = await Promise.all([
-            context.waitForEvent('page'),
-            page.click('#calls-widget-expand-button'),
-        ]);
-        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
-        await expect(popOut).toHaveTitle(`Call - ${getChannelNamesForTest()[0]}`);
-        await expect(page).not.toHaveTitle(`Call - ${getChannelNamesForTest()[0]}`);
-
-        await popOut.locator('#calls-popout-leave-button').click();
+    test('window title matches', async () => {
+        const [page, popOut] = await startCallAndPopout(userStorages[0]);
+        await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
+        await expect(popOut.page).toHaveTitle(`Call - ${getChannelNamesForTest()[0]}`);
+        await expect(page.page).not.toHaveTitle(`Call - ${getChannelNamesForTest()[0]}`);
+        await popOut.leaveFromPopout();
     });
 
-    test('supports chat', async ({page, context}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.goto();
-        await devPage.startCall();
+    test('supports chat', async () => {
+        const [_, popOut] = await startCallAndPopout(userStorages[0]);
+        await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
 
-        const [popOut, _] = await Promise.all([
-            context.waitForEvent('page'),
-            page.click('#calls-widget-expand-button'),
-        ]);
-        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+        await popOut.page.click('#calls-popout-chat-button');
 
-        await popOut.click('#calls-popout-chat-button');
+        await expect(popOut.page.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
 
-        await expect(popOut.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
-
-        const replyTextbox = popOut.locator('#reply_textbox');
+        const replyTextbox = popOut.page.locator('#reply_textbox');
         const msg = 'Hello World, first call thread reply';
         await replyTextbox.type(msg);
         await replyTextbox.press('Enter');
-        await expect(popOut.locator(`p:has-text("${msg}")`)).toBeVisible();
+        await expect(popOut.page.locator(`p:has-text("${msg}")`)).toBeVisible();
 
-        await popOut.click('#calls-popout-chat-button');
-        await expect(popOut.locator('#sidebar-right')).not.toBeVisible();
+        await popOut.page.click('#calls-popout-chat-button');
+        await expect(popOut.page.locator('#sidebar-right')).not.toBeVisible();
 
-        await popOut.locator('#calls-popout-leave-button').click();
+        await popOut.leaveFromPopout();
     });
 
-    test('supports chat in a DM channel', async ({page, context}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.gotoDM(usernames[1]);
-        await devPage.startCall();
+    test('supports chat in a DM channel', async () => {
+        const [_, popOut] = await startCallAndPopout(userStorages[0]);
+        await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
 
-        const [popOut, _] = await Promise.all([
-            context.waitForEvent('page'),
-            page.click('#calls-widget-expand-button'),
-        ]);
-        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+        await popOut.page.click('#calls-popout-chat-button');
 
-        await popOut.click('#calls-popout-chat-button');
+        await expect(popOut.page.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
 
-        await expect(popOut.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
-
-        const replyTextbox = popOut.locator('#reply_textbox');
+        const replyTextbox = popOut.page.locator('#reply_textbox');
         const msg = 'Hello World, first call thread reply';
         await replyTextbox.type(msg);
         await replyTextbox.press('Enter');
-        await expect(popOut.locator(`p:has-text("${msg}")`)).toBeVisible();
+        await expect(popOut.page.locator(`p:has-text("${msg}")`)).toBeVisible();
 
-        await popOut.click('#calls-popout-chat-button');
-        await expect(popOut.locator('#sidebar-right')).not.toBeVisible();
+        await popOut.page.click('#calls-popout-chat-button');
+        await expect(popOut.page.locator('#sidebar-right')).not.toBeVisible();
 
-        await popOut.locator('#calls-popout-leave-button').click();
+        await popOut.leaveFromPopout();
     });
 
     test('recording banner dismissed works cross-window and is remembered - clicked on widget', async ({
@@ -171,7 +133,7 @@ test.describe('popout window', () => {
         await expect(popOut2.getByTestId('banner-recording-stopped')).toBeHidden();
 
         // leave call
-        await page.locator('#calls-widget-leave-button').click();
+        await devPage.leaveFromWidget();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
@@ -236,7 +198,7 @@ test.describe('popout window', () => {
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeHidden();
 
         // leave call
-        await page.locator('#calls-widget-leave-button').click();
+        await devPage.leaveFromWidget();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
@@ -288,7 +250,7 @@ test.describe('popout window', () => {
         expect(await popOut.locator('#calls-expanded-view-participants-grid').screenshot()).toMatchSnapshot('expanded-view-participants-grid.png');
 
         // leave call
-        await page.locator('#calls-widget-leave-button').click();
+        await devPage.leaveFromWidget();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 });

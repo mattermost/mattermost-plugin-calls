@@ -8,11 +8,13 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import ConnectedProfiles from 'src/components/connected_profiles';
+import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
 import CompassIcon from 'src/components/icons/compassIcon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import {useDismissJoin} from 'src/components/incoming_calls/hooks';
+import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {Header, SubHeader} from 'src/components/shared';
 import Timestamp from 'src/components/timestamp';
 import {idForCallInChannel} from 'src/selectors';
@@ -36,6 +38,7 @@ interface Props {
     militaryTime: boolean,
     compactDisplay: boolean,
     isRHS: boolean,
+    isHost: boolean,
 }
 
 const PostType = ({
@@ -47,6 +50,7 @@ const PostType = ({
     militaryTime,
     compactDisplay,
     isRHS,
+    isHost,
 }: Props) => {
     const intl = useIntl();
     const {formatMessage} = intl;
@@ -157,14 +161,25 @@ const PostType = ({
     const title = callProps.title ? <h3 className='markdown__heading'>{callProps.title}</h3> : compactTitle;
     const callActive = !callProps.end_at;
     const inCall = connectedID === post.channel_id;
-    const button = inCall ? (
-        <LeaveButton onClick={onLeaveButtonClick}>
-            <LeaveCallIcon
-                fill='var(--button-color)'
-                style={{width: '18px', height: '16px'}}
-            />
+    const iconAndText = (
+        <>
+            <LeaveCallIcon style={{fill: 'var(--button-color)', width: '18px', height: '16px'}}/>
             <ButtonText>{formatMessage({defaultMessage: 'Leave'})}</ButtonText>
-        </LeaveButton>
+        </>
+    );
+    const button = inCall ? (
+        <DotMenu
+            icon={iconAndText}
+            dotMenuButton={LeaveButton}
+            placement={'top'}
+            portal={true}
+        >
+            <LeaveCallMenu
+                callID={post.channel_id}
+                isHost={isHost}
+                leaveCall={onLeaveButtonClick}
+            />
+        </DotMenu>
     ) : joinButton;
 
     return (
@@ -367,7 +382,16 @@ const JoinButton = styled(Button)`
     }
 `;
 
-const LeaveButton = styled(Button)`
+const LeaveButton = styled(DotMenuButton)`
+    display: flex;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 16px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    width: unset;
+    height: unset;
     font-size: 14px;
     line-height: 20px;
     color: var(--button-color);
@@ -377,12 +401,14 @@ const LeaveButton = styled(Button)`
         background: linear-gradient(0deg, var(--error-text), var(--error-text)),
             linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
         background-blend-mode: multiply;
+        color: var(--button-color);
     }
 
     &:active {
         background: linear-gradient(0deg, var(--error-text), var(--error-text)),
             linear-gradient(0deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16));
         background-blend-mode: multiply;
+        color: var(--button-color);
     }
 `;
 

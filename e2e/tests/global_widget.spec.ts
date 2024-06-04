@@ -1,22 +1,21 @@
 import {expect, test} from '@playwright/test';
 
-import {baseURL, defaultTeam, pluginID} from '../constants';
 import PlaywrightDevPage from '../page';
 import {getChannelNamesForTest, getUserStoragesForTest} from '../utils';
 
 test.describe('global widget', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('start call', async ({page, request}) => {
+    test('start call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.openWidget(getChannelNamesForTest()[0]);
 
         await expect(page.locator('#calls-widget-leave-button')).toBeVisible();
-        await page.locator('#calls-widget-leave-button').click();
+        await devPage.leaveFromWidget();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('recording widget banner', async ({page, request, context}) => {
+    test('recording widget banner', async ({page, context}) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
         await devPage.openWidget(getChannelNamesForTest()[0]);
@@ -48,13 +47,12 @@ test.describe('global widget', () => {
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing…');
 
         // leave call
-        await page.locator('#calls-widget-leave-button').click();
+        await devPage.leaveFromWidget();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
     test('recording banner dismissed works cross-window and is remembered - clicked on widget', async ({
         page,
-        request,
         context,
     }) => {
         // start call
@@ -62,7 +60,7 @@ test.describe('global widget', () => {
         await devPage.openWidget(getChannelNamesForTest()[0]);
 
         // open popout to control recording
-        let [popOut, _] = await Promise.all([
+        let [popOut] = await Promise.all([
             context.waitForEvent('page'),
             page.click('#calls-widget-expand-button'),
         ]);
@@ -90,7 +88,7 @@ test.describe('global widget', () => {
         // close and reopen popout
         await popOut.close();
         await expect(popOut.isClosed()).toBeTruthy();
-        [popOut, _] = await Promise.all([
+        [popOut] = await Promise.all([
             context.waitForEvent('page'),
             page.click('#calls-widget-expand-button'),
         ]);
@@ -117,21 +115,20 @@ test.describe('global widget', () => {
         await expect(popOut.getByTestId('banner-recording-stopped')).toBeHidden();
 
         // leave call
-        await page.locator('#calls-widget-leave-button').click();
+        await devPage.leaveFromWidget();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
     test('recording banner dismissed works cross-window and is remembered - clicked on popout', async ({
         page,
-        request,
         context,
     }) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
-        devPage.openWidget(getChannelNamesForTest()[0]);
+        await devPage.openWidget(getChannelNamesForTest()[0]);
 
         // open popout to control recording
-        let [popOut, _] = await Promise.all([
+        let [popOut] = await Promise.all([
             context.waitForEvent('page'),
             page.click('#calls-widget-expand-button'),
         ]);
@@ -159,7 +156,7 @@ test.describe('global widget', () => {
         // close and reopen popout
         await popOut.close();
         await expect(popOut.isClosed()).toBeTruthy();
-        [popOut, _] = await Promise.all([
+        [popOut] = await Promise.all([
             context.waitForEvent('page'),
             page.click('#calls-widget-expand-button'),
         ]);
@@ -186,7 +183,7 @@ test.describe('global widget', () => {
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeHidden();
 
         // leave call
-        await page.locator('#calls-widget-leave-button').click();
+        await devPage.leaveFromWidget();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 });

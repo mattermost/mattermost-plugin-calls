@@ -21,6 +21,7 @@ import {compareSemVer} from 'semver-parser';
 import {hostMuteOthers, hostRemove, stopCallRecording} from 'src/actions';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
+import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
 import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
@@ -36,6 +37,7 @@ import ShareScreenIcon from 'src/components/icons/share_screen';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
+import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import {CallAlertConfigs, DEGRADED_CALL_QUALITY_ALERT_WAIT} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
@@ -1147,6 +1149,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <div style={this.style.centerControls}>
                             <ControlsButton
                                 id='calls-popout-mute-button'
+                                data-testid={isMuted ? 'calls-popout-muted' : 'calls-popout-unmuted'}
                                 // eslint-disable-next-line no-undefined
                                 onToggle={noInputDevices ? undefined : this.onMuteToggle}
                                 tooltipText={muteTooltipText}
@@ -1244,22 +1247,21 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         </div>
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
-                            <ControlsButton
+                            <DotMenu
                                 id='calls-popout-leave-button'
-                                onToggle={() => this.onDisconnectClick()}
+                                icon={<LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>}
+                                dotMenuButton={LeaveCallButton}
+                                placement={'top'}
+                                strategy={'fixed'}
+                                shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
                                 tooltipText={formatMessage({defaultMessage: 'Leave call'})}
-                                shortcut={reverseKeyMappings.popout[LEAVE_CALL][0]}
-                                bgColor={'var(--dnd-indicator)'}
-                                bgColorHover={'linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08))'}
-                                iconFill={'white'}
-                                iconFillHover={'white'}
-
-                                icon={
-                                    <LeaveCallIcon
-                                        style={{width: '20px', height: '20px'}}
-                                    />
-                                }
-                            />
+                            >
+                                <LeaveCallMenu
+                                    callID={callsClient.channelID}
+                                    isHost={isHost}
+                                    leaveCall={this.onDisconnectClick}
+                                />
+                            </DotMenu>
                         </div>
                     </div>
                 </div>
@@ -1415,7 +1417,6 @@ const MuteOthersButton = styled.button`
     i {
         font-size: 14px;
     }
->>>>>>> origin/main
 `;
 
 const CloseButton = styled.button`
@@ -1486,4 +1487,22 @@ const LiveCaptionsOverlay = styled.div`
     justify-content: center;
     bottom: 96px;
     z-index: auto;
+`;
+
+const LeaveCallButton = styled(DotMenuButton)`
+    display: inline-flex;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: var(--dnd-indicator);
+    width: unset;
+    height: unset;
+
+    &:hover {
+        background: linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
+        background-blend-mode: multiply;
+    }
 `;

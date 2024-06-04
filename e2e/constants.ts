@@ -1,5 +1,6 @@
 import {UserState} from './types';
 
+// eslint-disable-next-line no-process-env
 export const baseURL = process.env.MM_SITE_URL || 'http://localhost:8065';
 export const defaultTeam = 'calls';
 export const adminState: UserState = {

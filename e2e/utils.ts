@@ -1,3 +1,5 @@
+/* eslint-disable no-process-env */
+
 import {chromium} from '@playwright/test';
 import * as fs from 'fs';
 
