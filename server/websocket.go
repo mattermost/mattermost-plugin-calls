@@ -742,6 +742,8 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			})
 		}
 
+		p.LogDebug("session has joined call", "userID", userID, "sessionID", connID, "channelID", channelID, "callID", state.Call.ID)
+
 		handlerID := state.Call.Props.NodeID
 		p.LogDebug("got handlerID", "handlerID", handlerID)
 
@@ -757,6 +759,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 					"callID":    us.callID,
 					"userID":    userID,
 					"sessionID": connID,
+					"channelID": channelID,
 				},
 			}
 			if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
@@ -775,6 +778,9 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 					CallID:    us.callID,
 					UserID:    userID,
 					SessionID: connID,
+					Props: map[string]any{
+						"channelID": us.channelID,
+					},
 				}
 				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID, "callID", us.callID)
 				if err = p.rtcServer.InitSession(cfg, func() error {
