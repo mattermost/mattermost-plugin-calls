@@ -1837,7 +1837,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 style={mainStyle}
                 ref={this.node}
             >
-                <LoadingOverlay visible={this.props.clientConnecting}/>
+                <LoadingOverlay
+                    visible={this.props.clientConnecting}
+                    joining={this.props.sessions.length > 0}
+                    onDesktop={Boolean(this.props.global)}
+                />
 
                 <div
                     ref={this.menuNode}

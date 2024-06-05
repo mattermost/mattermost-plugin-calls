@@ -173,6 +173,7 @@
   "neS8Zu": "You're viewing {presenterName}'s screen",
   "o1mCbV": "Stop presenting",
   "oCnRcJ": "Raise hand",
+  "oHaYeq": "Starting call…",
   "oHffQz": "There was an error with the connection to the call. Try to <joinLink>re-join</joinLink> the call.",
   "oNH4AW": "Close window",
   "ogJ7x+": "Upgrade to Cloud Professional or Cloud Enterprise to enable group calls with more than {count, plural, =1 {# participant} other {# participants}}.",

@@ -1,17 +1,22 @@
-import React, {useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {Spinner} from 'src/components/shared';
 import styled, {css} from 'styled-components';
 
 export type Props = {
     visible: boolean,
+    joining: boolean,
+    onDesktop: boolean,
 }
 
-export default function LoadingOverlay(props: Props) {
+export default function LoadingOverlay({visible, joining, onDesktop}: Props) {
     const {formatMessage} = useIntl();
     const [animationEnded, setAnimationEnded] = useState(false);
+    const wasJoining = useMemo(() => {
+        return joining || onDesktop;
+    }, [/* intentionally empty */]);
 
-    if (!props.visible && animationEnded) {
+    if (!visible && animationEnded) {
         return null;
     }
 
@@ -19,15 +24,17 @@ export default function LoadingOverlay(props: Props) {
         setAnimationEnded(true);
     };
 
+    const text = wasJoining ? formatMessage({defaultMessage: 'Joining call…'}) : formatMessage({defaultMessage: 'Starting call…'});
+
     return (
         <Container
             data-testid={'calls-widget-loading-overlay'}
             onAnimationEnd={onAnimationEnd}
-            $visible={props.visible}
+            $visible={visible}
         >
             <Body>
                 <Spinner $size={16}/>
-                <Text>{formatMessage({defaultMessage: 'Joining call…'})}</Text>
+                <Text>{text}</Text>
             </Body>
         </Container>
     );
