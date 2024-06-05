@@ -13,43 +13,37 @@ export const LabelRow = styled.div`
     display: flex;
 `;
 
-export const UpgradePill = ({children}: {children: ReactNode}) => (
-    <Upgrade>
-        <CompassIcon icon={'key-variant'}/>
-        {children}
-    </Upgrade>
-);
-
-const Upgrade = styled.div`
-    position: relative;
-    display: flex;
-    align-items: center;
-    padding: 3px 8px 3px 4px;
-    margin-left: 8px;
-    background: var(--button-bg);
-    border-radius: 10px;
-    height: 20px;
-
-    font-size: 10px;
-    font-weight: 600;
-    line-height: 15px;
-    color: var(--center-channel-bg);
-
-    >i {
-        font-size: 12px;
-    }
+export const Label = styled.span`
+    margin-right: 8px;
 `;
 
 export const EnterprisePill = ({children}: {children: ReactNode}) => (
     <Enterprise>
-        <CompassIcon icon={'lightning-bolt-outline'}/>
+        <CompassIcon icon={'key-variant'}/>
         {children}
     </Enterprise>
 );
 
-const Enterprise = styled(Upgrade)`
-    background: rgba(var(--button-bg-rgb), 0.16);
+const Enterprise = styled.div`
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 2px 6px 2px 2px;
+    border-radius: 4px;
+    height: 20px;
+    gap: 1px;  // compass-icons have a 2.4px horizontal margin
+
+    font-family: 'Open Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+
+    background: rgba(var(--button-bg-rgb), 0.12);
     color: var(--button-bg);
+
+    >i {
+        font-size: 12px;
+    }
 `;
 
 export const LeftBox = styled.div`
