@@ -541,7 +541,7 @@ func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 		return fmt.Errorf("failed to get stats from store: %w", err)
 	}
 
-	// TODO: consider implementing some caching for heaviest queries
+	// TODO (MM-58565): consider implementing some caching for heaviest queries.
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(stats); err != nil {
