@@ -1259,6 +1259,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <LeaveCallMenu
                                     callID={callsClient.channelID}
                                     isHost={isHost}
+                                    numParticipants={this.props.sessions.length}
                                     leaveCall={this.onDisconnectClick}
                                 />
                             </DotMenu>

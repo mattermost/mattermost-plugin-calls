@@ -9,16 +9,18 @@ import styled from 'styled-components';
 type Props = {
     callID: string;
     isHost: boolean;
+    numParticipants: number;
     leaveCall: () => void;
 }
 
-export const LeaveCallMenu = ({callID, isHost, leaveCall}: Props) => {
+export const LeaveCallMenu = ({callID, isHost, numParticipants, leaveCall}: Props) => {
     const {formatMessage} = useIntl();
     const isAdmin = useSelector(isCurrentUserSystemAdmin);
+    const showEndCall = (isHost || isAdmin) && numParticipants > 1;
 
     return (
         <>
-            {(isHost || isAdmin) &&
+            {showEndCall &&
                 <>
                     <DropdownMenuItem onClick={() => endCall(callID)}>
                         <RedText>{formatMessage({defaultMessage: 'End call for everyone'})}</RedText>

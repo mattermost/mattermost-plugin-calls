@@ -177,6 +177,7 @@ const PostType = ({
             <LeaveCallMenu
                 callID={post.channel_id}
                 isHost={isHost}
+                numParticipants={profiles.length}
                 leaveCall={onLeaveButtonClick}
             />
         </DotMenu>
