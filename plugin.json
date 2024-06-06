@@ -4,6 +4,7 @@
   "description": "Integrates real-time voice communication in Mattermost",
   "homepage_url": "https://github.com/mattermost/mattermost-plugin-calls/",
   "support_url": "https://github.com/mattermost/mattermost-plugin-calls/issues",
+  "icon_path": "server/assets/plugin_icon.svg",
   "min_server_version": "9.5.0",
   "server": {
     "executables": {

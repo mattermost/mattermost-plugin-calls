@@ -119,6 +119,10 @@ func (p *Plugin) OnActivate() (retErr error) {
 	}
 	p.botSession = session
 
+	if appErr := p.API.SetProfileImage(session.UserId, pluginIconData); appErr != nil {
+		p.LogError(appErr.Error())
+	}
+
 	if p.licenseChecker.RecordingsAllowed() && cfg.recordingsEnabled() {
 		go func() {
 			if err := p.initJobService(); err != nil {
