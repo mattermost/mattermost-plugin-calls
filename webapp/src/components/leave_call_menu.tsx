@@ -1,5 +1,7 @@
+import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import {useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
 import {endCall} from 'src/actions';
 import {DropdownMenuItem, DropdownMenuSeparator} from 'src/components/dot_menu/dot_menu';
 import styled from 'styled-components';
@@ -12,10 +14,11 @@ type Props = {
 
 export const LeaveCallMenu = ({callID, isHost, leaveCall}: Props) => {
     const {formatMessage} = useIntl();
+    const isAdmin = useSelector(isCurrentUserSystemAdmin);
 
     return (
         <>
-            {isHost &&
+            {(isHost || isAdmin) &&
                 <>
                     <DropdownMenuItem onClick={() => endCall(callID)}>
                         <RedText>{formatMessage({defaultMessage: 'End call for everyone'})}</RedText>
