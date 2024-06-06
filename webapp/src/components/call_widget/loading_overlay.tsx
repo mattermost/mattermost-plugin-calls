@@ -6,14 +6,13 @@ import styled, {css} from 'styled-components';
 export type Props = {
     visible: boolean,
     joining: boolean,
-    onDesktop: boolean,
 }
 
-export default function LoadingOverlay({visible, joining, onDesktop}: Props) {
+export default function LoadingOverlay({visible, joining}: Props) {
     const {formatMessage} = useIntl();
     const [animationEnded, setAnimationEnded] = useState(false);
     const wasJoining = useMemo(() => {
-        return joining || onDesktop;
+        return joining;
     }, [/* intentionally empty */]);
 
     if (!visible && animationEnded) {

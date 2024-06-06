@@ -83,6 +83,7 @@ import {
     getCallTitle,
     getJobID,
     getRootID,
+    getStartingCall,
     getToken,
 } from './common';
 import {applyTheme} from './theme_utils';
@@ -138,9 +139,16 @@ function connectCall(
     }
 }
 
+export type InitCbProps = {
+    store: Store;
+    theme: Theme;
+    channelID: string;
+    startingCall: boolean;
+}
+
 type InitConfig = {
     name: string,
-    initCb: (store: Store, theme: Theme, channelID: string) => void,
+    initCb: (props: InitCbProps) => void,
     closeCb?: () => void,
     reducer?: Reducer,
     wsHandler?: (store: Store, ev: WebSocketMessage<WebsocketEventData>) => void,
@@ -301,9 +309,10 @@ export default async function init(cfg: InitConfig) {
 
     const theme = getTheme(store.getState());
     applyTheme(theme);
+    const startingCall = getStartingCall() === 'true';
 
     try {
-        await cfg.initCb(store, theme, channelID);
+        cfg.initCb({store, theme, channelID, startingCall});
     } catch (err) {
         window.callsClient?.destroy();
         throw new Error(`initCb failed: ${err}`);

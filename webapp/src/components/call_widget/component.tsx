@@ -96,6 +96,7 @@ interface Props {
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     allowScreenSharing: boolean,
     global?: true,
+    startingCall?: boolean,
     position?: {
         bottom: number,
         left: number,
@@ -1839,8 +1840,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             >
                 <LoadingOverlay
                     visible={this.props.clientConnecting}
-                    joining={this.props.sessions.length > 0}
-                    onDesktop={Boolean(this.props.global)}
+                    joining={this.props.global ? !this.props.startingCall : this.props.sessions.length > 0}
                 />
 
                 <div
