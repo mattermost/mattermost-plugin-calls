@@ -64,11 +64,19 @@ export const PrimaryButton = styled(Button)`
 `;
 
 export const DestructiveButton = styled(Button)`
-    background: var(--dnd-indicator);
+    background: var(--error-text);
     color: var(--button-color);
 
     &:hover {
-        background: rgba(var(--dnd-indicator-rgb), 0.88)
+        background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+        linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
+        background-blend-mode: multiply;
+    }
+
+    &:active {
+        background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+        linear-gradient(0deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16));
+        background-blend-mode: multiply;
     }
 
     &:disabled {
