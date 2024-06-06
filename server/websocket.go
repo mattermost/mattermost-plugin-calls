@@ -137,12 +137,9 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 
 		// Prevent sending this event to the bot twice.
 		if broadcast.OmitUsers == nil {
-			broadcast.OmitUsers = map[string]bool{
-				botID: true,
-			}
-		} else {
-			broadcast.OmitUsers[botID] = true
+			broadcast.OmitUsers = map[string]bool{}
 		}
+		broadcast.OmitUsers[botID] = true
 	}
 
 	p.metrics.IncWebSocketEvent("out", ev)
@@ -151,6 +148,11 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 	// call participants).
 	if broadcast != nil && len(broadcast.UserIDs) > 0 {
 		for _, userID := range broadcast.UserIDs {
+			if userID == botID {
+				// Bot user is a special case handled above. We don't want to send events twice
+				// as setting broadcast.UserID will override any broadcast.OmitUsers entry.
+				continue
+			}
 			broadcast.UserID = userID
 			p.API.PublishWebSocketEvent(ev, data, broadcast.ToModel())
 		}
