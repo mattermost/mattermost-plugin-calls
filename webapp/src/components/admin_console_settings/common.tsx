@@ -1,7 +1,9 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import React, {ReactNode} from 'react';
 import GenericModal from 'src/components/generic_modal';
+import CompassIcon from 'src/components/icons/compassIcon';
 import styled from 'styled-components';
 
 export const leftCol = 'col-sm-4';
@@ -11,39 +13,36 @@ export const LabelRow = styled.div`
     display: flex;
 `;
 
-export const UpgradePill = styled.div`
+export const Label = styled.span`
+    margin-right: 8px;
+`;
+
+export const EnterprisePill = ({children}: {children: ReactNode}) => (
+    <Enterprise>
+        <CompassIcon icon={'key-variant'}/>
+        {children}
+    </Enterprise>
+);
+
+const Enterprise = styled.div`
     position: relative;
     display: flex;
     align-items: center;
-    padding: 3px 8px 3px 22px;
-    margin-left: 8px;
-    background: var(--button-bg);
-    border-radius: 10px;
+    padding: 2px 6px 2px 2px;
+    border-radius: 4px;
     height: 20px;
+    gap: 1px;  // compass-icons have a 2.4px horizontal margin
 
-    font-size: 10px;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 12px;
     font-weight: 600;
-    line-height: 15px;
-    color: var(--center-channel-bg);
+    line-height: 16px;
 
-    &:before {
-        left: 7px;
-        top: 3px;
-        position: absolute;
-        content: '\f030b';
-        font-size: 12px;
-        font-family: 'compass-icons', mattermosticons;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-    }
-`;
-
-export const EnterprisePill = styled(UpgradePill)`
-    background: rgba(var(--button-bg-rgb), 0.16);
+    background: rgba(var(--button-bg-rgb), 0.12);
     color: var(--button-bg);
 
-    &:before {
-        content: '\f140c';
+    >i {
+        font-size: 12px;
     }
 `;
 

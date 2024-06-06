@@ -14,7 +14,6 @@ import {
     leftCol, rightCol,
     Text,
     Title,
-    UpgradePill,
 } from 'src/components/admin_console_settings/common';
 import {
     IDOnPremTrialError,
@@ -84,7 +83,8 @@ const EnableRecordings = (props: CustomComponentProps) => {
                 <div className={'control-label ' + leftCol}>
                     <LabelRow>
                         <span>{props.label}</span>
-                        <UpgradePill>{untranslatable('Enterprise')}</UpgradePill>
+                        <HorizontalSpacer $size={8}/>
+                        <EnterprisePill>{untranslatable('Enterprise')}</EnterprisePill>
                     </LabelRow>
                 </div>
                 <div className={rightCol}>
@@ -165,7 +165,10 @@ const EnableRecordings = (props: CustomComponentProps) => {
                         {props.label}
                     </label>
                     {!cloud &&
-                        <EnterprisePill>{untranslatable('Enterprise')}</EnterprisePill>
+                        <>
+                            <HorizontalSpacer $size={8}/>
+                            <EnterprisePill>{untranslatable('Enterprise')}</EnterprisePill>
+                        </>
                     }
                 </LabelRow>
             </div>
