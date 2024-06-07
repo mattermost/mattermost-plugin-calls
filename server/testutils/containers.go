@@ -60,7 +60,7 @@ func RunPostgresContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (
 		tc.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
-				WithStartupTimeout(5 * time.Second)),
+				WithStartupTimeout(15 * time.Second)),
 	}, opts...)
 
 	cnt, err := postgres.RunContainer(ctx, opts...)

@@ -36,7 +36,7 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {getCallsConfig, setClientConnecting} from 'plugin/actions';
+import {getCallOngoing, getCallsConfig, setClientConnecting} from 'plugin/actions';
 import CallsClient from 'plugin/client';
 import {
     logDebug,
@@ -83,7 +83,6 @@ import {
     getCallTitle,
     getJobID,
     getRootID,
-    getStartingCall,
     getToken,
 } from './common';
 import {applyTheme} from './theme_utils';
@@ -203,9 +202,11 @@ export default async function init(cfg: InitConfig) {
         return;
     }
 
+    let ongoing = false;
     try {
-        await Promise.all([
+        [, ongoing] = await Promise.all([
             store.dispatch(getCallsConfig()),
+            getCallOngoing(channelID),
         ]);
     } catch (err) {
         throw new Error(`failed to fetch channel data: ${err}`);
@@ -309,10 +310,9 @@ export default async function init(cfg: InitConfig) {
 
     const theme = getTheme(store.getState());
     applyTheme(theme);
-    const startingCall = getStartingCall() === 'true';
 
     try {
-        cfg.initCb({store, theme, channelID, startingCall});
+        cfg.initCb({store, theme, channelID, startingCall: !ongoing});
     } catch (err) {
         window.callsClient?.destroy();
         throw new Error(`initCb failed: ${err}`);

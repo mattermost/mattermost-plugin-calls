@@ -13,11 +13,6 @@ export function getRootID() {
     return params.get('root_id') || '';
 }
 
-export function getStartingCall() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('starting_call') || '';
-}
-
 export function getJobID() {
     const params = new URLSearchParams(window.location.search);
     return params.get('job_id') || '';

@@ -601,6 +601,9 @@ func TestHandleJoin(t *testing.T) {
 	mockAPI.On("LogInfo", mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	mockAPI.On("LogWarn", mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
 	rtcServer, err := rtc.NewServer(rtc.ServerConfig{
 		ICEPortUDP: 33443,

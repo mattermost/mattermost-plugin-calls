@@ -99,6 +99,31 @@ func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (p *Plugin) handleGetCallOngoing(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
+
+	// We should go through only if the user has permissions to the requested channel
+	// or if the user is the Calls bot.
+	if !(p.isBotSession(r) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	ongoing, err := p.store.GetCallOngoing(channelID, db.GetCallOpts{FromWriter: true})
+	if err != nil {
+		p.LogError(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]bool{"ongoing": ongoing}); err != nil {
+		p.LogError(err.Error())
+	}
+	return
+}
+
 func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Permission) bool {
 	if cm == nil {
 		return false

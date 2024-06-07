@@ -246,6 +246,94 @@ func testGetCall(t *testing.T, store *Store) {
 	})
 }
 
+func testGetCallOngoing(t *testing.T, store *Store) {
+	t.Run("none", func(t *testing.T) {
+		ongoing, err := store.GetCallOngoing("callID", GetCallOpts{})
+		require.NoError(t, err)
+		require.False(t, ongoing)
+	})
+
+	t.Run("ongoing", func(t *testing.T) {
+		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
+			ChannelID:    model.NewId(),
+			StartAt:      time.Now().UnixMilli(),
+			PostID:       model.NewId(),
+			ThreadID:     model.NewId(),
+			OwnerID:      model.NewId(),
+			Participants: []string{model.NewId(), model.NewId()},
+			Stats: public.CallStats{
+				ScreenDuration: 45,
+			},
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
+			},
+		}
+
+		err := store.CreateCall(call)
+		require.NoError(t, err)
+
+		ongoing, err := store.GetCallOngoing(call.ChannelID, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.True(t, ongoing)
+	})
+
+	t.Run("ended", func(t *testing.T) {
+		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
+			ChannelID:    model.NewId(),
+			StartAt:      time.Now().UnixMilli(),
+			EndAt:        time.Now().UnixMilli() + 1,
+			PostID:       model.NewId(),
+			ThreadID:     model.NewId(),
+			OwnerID:      model.NewId(),
+			Participants: []string{model.NewId(), model.NewId()},
+			Stats: public.CallStats{
+				ScreenDuration: 45,
+			},
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
+			},
+		}
+
+		err := store.CreateCall(call)
+		require.NoError(t, err)
+
+		ongoing, err := store.GetCallOngoing(call.ChannelID, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.False(t, ongoing)
+	})
+
+	t.Run("deleted", func(t *testing.T) {
+		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
+			ChannelID:    model.NewId(),
+			StartAt:      time.Now().UnixMilli(),
+			DeleteAt:     time.Now().UnixMilli() + 1,
+			PostID:       model.NewId(),
+			ThreadID:     model.NewId(),
+			OwnerID:      model.NewId(),
+			Participants: []string{model.NewId(), model.NewId()},
+			Stats: public.CallStats{
+				ScreenDuration: 45,
+			},
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
+			},
+		}
+
+		err := store.CreateCall(call)
+		require.NoError(t, err)
+
+		ongoing, err := store.GetCallOngoing(call.ChannelID, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.False(t, ongoing)
+	})
+}
+
 func testGetActiveCallByChannelID(t *testing.T, store *Store) {
 	t.Run("missing", func(t *testing.T) {
 		call, err := store.GetActiveCallByChannelID("channelID", GetCallOpts{})
