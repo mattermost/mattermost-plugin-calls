@@ -25,6 +25,7 @@ func TestCallsStore(t *testing.T) {
 		"TestGetActiveCallByChannelID": testGetActiveCallByChannelID,
 		"TestGetRTCDHostForCall":       testGetRTCDHostForCall,
 		"TestGetAllActiveCalls":        testGetAllActiveCalls,
+		"TestGetCallOngoing":           testGetCallOngoing,
 	})
 }
 
@@ -312,7 +313,6 @@ func testGetCallOngoing(t *testing.T, store *Store) {
 			CreateAt:     time.Now().UnixMilli(),
 			ChannelID:    model.NewId(),
 			StartAt:      time.Now().UnixMilli(),
-			DeleteAt:     time.Now().UnixMilli() + 1,
 			PostID:       model.NewId(),
 			ThreadID:     model.NewId(),
 			OwnerID:      model.NewId(),
@@ -329,6 +329,13 @@ func testGetCallOngoing(t *testing.T, store *Store) {
 		require.NoError(t, err)
 
 		ongoing, err := store.GetCallOngoing(call.ChannelID, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.True(t, ongoing)
+
+		err = store.DeleteCall(call.ID)
+		require.NoError(t, err)
+
+		ongoing, err = store.GetCallOngoing(call.ChannelID, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.False(t, ongoing)
 	})

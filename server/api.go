@@ -121,7 +121,6 @@ func (p *Plugin) handleGetCallOngoing(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(map[string]bool{"ongoing": ongoing}); err != nil {
 		p.LogError(err.Error())
 	}
-	return
 }
 
 func (p *Plugin) hasPermissionToChannel(cm *model.ChannelMember, perm *model.Permission) bool {
