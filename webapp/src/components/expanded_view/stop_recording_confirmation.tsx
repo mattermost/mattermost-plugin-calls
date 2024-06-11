@@ -8,21 +8,28 @@ export const IDStopRecordingConfirmation = 'stop_recording_confirmation';
 
 type Props = Partial<ComponentProps<typeof GenericModal>> & {
     channelID: string;
+    transcriptionsEnabled: boolean;
 };
 
-export const StopRecordingConfirmation = ({channelID, ...modalProps}: Props) => {
+export const StopRecordingConfirmation = ({channelID, transcriptionsEnabled, ...modalProps}: Props) => {
     const {formatMessage} = useIntl();
 
-    const stopRecordingText = formatMessage({defaultMessage: 'Stop recording'});
-    const bodyText = formatMessage({defaultMessage: 'The call recording will be processed and posted in the call thread. Are you sure you want to stop the recording?'});
+    let stopRecordingText = formatMessage({defaultMessage: 'Stop recording'});
+    let bodyText = formatMessage({defaultMessage: 'The call recording will be processed and posted in the call thread. Are you sure you want to stop the recording?'});
     const cancelText = formatMessage({defaultMessage: 'Cancel'});
+    const confirmText = formatMessage({defaultMessage: 'Stop recording'});
+
+    if (transcriptionsEnabled) {
+        stopRecordingText = formatMessage({defaultMessage: 'Stop recording and transcription'});
+        bodyText = formatMessage({defaultMessage: 'The call recording and transcription files will be processed and posted in the call thread. Are you sure you want to stop the recording and transcription?'});
+    }
 
     return (
         <SizedGenericModal
             id={IDStopRecordingConfirmation}
             {...modalProps}
             modalHeaderText={stopRecordingText}
-            confirmButtonText={stopRecordingText}
+            confirmButtonText={confirmText}
             cancelButtonText={cancelText}
             isConfirmDestructive={true}
             handleConfirm={() => stopCallRecording(channelID)}
