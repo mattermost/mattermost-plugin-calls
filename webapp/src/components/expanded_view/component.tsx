@@ -21,7 +21,7 @@ import {compareSemVer} from 'semver-parser';
 import {hostMuteOthers, hostRemove, stopCallRecording} from 'src/actions';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
-import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
+import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
 import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
@@ -1251,7 +1251,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 id='calls-popout-leave-button'
                                 icon={<LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>}
                                 dotMenuButton={LeaveCallButton}
-                                placement={'top'}
+                                dropdownMenu={StyledDropdownMenu}
+                                placement={'top-end'}
                                 strategy={'fixed'}
                                 shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
                                 tooltipText={formatMessage({defaultMessage: 'Leave call'})}
@@ -1506,4 +1507,9 @@ const LeaveCallButton = styled(DotMenuButton)`
         background: linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
         background-blend-mode: multiply;
     }
+`;
+
+const StyledDropdownMenu = styled(DropdownMenu)`
+    margin-bottom: 2px;
+    border-radius: 8px;
 `;

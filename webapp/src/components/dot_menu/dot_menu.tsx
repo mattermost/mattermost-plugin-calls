@@ -172,12 +172,12 @@ const DotMenu = ({
 };
 
 const DropdownMenuItemStyled = styled.div`
-    font-family: 'Open Sans';
+    font-family: 'Open Sans',sans-serif;
     font-style: normal;
     font-weight: normal;
     font-size: 14px;
     color: var(--center-channel-color);
-    padding: 6px 16px;
+    padding: 8px 16px;
     text-decoration: unset;
     display: inline-flex;
     align-items: center;
