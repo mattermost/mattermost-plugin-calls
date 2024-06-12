@@ -2,7 +2,6 @@ import {CallState, CallStateData, JobStopData, UserJoinedData, WebsocketEventDat
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {ChannelTypes} from 'mattermost-redux/action_types';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
-import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {logErr, logInfo} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {Store} from 'plugin/types/mattermost-webapp';
@@ -21,7 +20,7 @@ import {getJobID} from 'src/common';
 import recordingReducer from 'src/recording/reducers';
 import RestClient from 'src/rest_client';
 
-import init from '../init';
+import init, {InitCbProps} from '../init';
 import {
     RECEIVED_CALL_PROFILE_IMAGES,
 } from './action_types';
@@ -71,7 +70,7 @@ async function initRecordingStore(store: Store, channelID: string) {
     }
 }
 
-async function initRecording(store: Store, theme: Theme) {
+async function initRecording({store, theme}: InitCbProps) {
     setCallsGlobalCSSVars(theme.sidebarBg);
 
     const locale = getCurrentUserLocale(store.getState()) || 'en';

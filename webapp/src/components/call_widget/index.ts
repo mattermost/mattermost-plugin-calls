@@ -80,4 +80,3 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
 }, dispatch);
 
 export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(CallWidget));
-

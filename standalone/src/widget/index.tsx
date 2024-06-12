@@ -22,9 +22,9 @@ import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 
-import init from '../init';
+import init, {InitCbProps} from '../init';
 
-async function initWidget(store: Store) {
+async function initWidget({store, startingCall}: InitCbProps) {
     if (window.desktopAPI?.getAppInfo) {
         logDebug('desktopAPI.getAppInfo');
         window.desktop = await window.desktopAPI.getAppInfo();
@@ -66,6 +66,7 @@ async function initWidget(store: Store) {
             >
                 <CallWidget
                     global={true}
+                    startingCall={startingCall}
                     position={{bottom: 4, left: 2}}
                 />
             </IntlProvider>

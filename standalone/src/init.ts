@@ -36,7 +36,7 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {getCallsConfig, setClientConnecting} from 'plugin/actions';
+import {getCallActive, getCallsConfig, setClientConnecting} from 'plugin/actions';
 import CallsClient from 'plugin/client';
 import {
     logDebug,
@@ -138,9 +138,16 @@ function connectCall(
     }
 }
 
+export type InitCbProps = {
+    store: Store;
+    theme: Theme;
+    channelID: string;
+    startingCall: boolean;
+}
+
 type InitConfig = {
     name: string,
-    initCb: (store: Store, theme: Theme, channelID: string) => void,
+    initCb: (props: InitCbProps) => void,
     closeCb?: () => void,
     reducer?: Reducer,
     wsHandler?: (store: Store, ev: WebSocketMessage<WebsocketEventData>) => void,
@@ -195,9 +202,11 @@ export default async function init(cfg: InitConfig) {
         return;
     }
 
+    let active = false;
     try {
-        await Promise.all([
+        [, active] = await Promise.all([
             store.dispatch(getCallsConfig()),
+            getCallActive(channelID),
         ]);
     } catch (err) {
         throw new Error(`failed to fetch channel data: ${err}`);
@@ -303,7 +312,7 @@ export default async function init(cfg: InitConfig) {
     applyTheme(theme);
 
     try {
-        await cfg.initCb(store, theme, channelID);
+        cfg.initCb({store, theme, channelID, startingCall: !active});
     } catch (err) {
         window.callsClient?.destroy();
         throw new Error(`initCb failed: ${err}`);
