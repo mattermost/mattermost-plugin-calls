@@ -123,6 +123,10 @@ test.describe('popout window', () => {
         // stop recording
         await popOut2.locator('#calls-popout-record-button').click();
 
+        // stop recording confirmation
+        await expect(popOut2.locator('#stop_recording_confirmation')).toBeVisible();
+        await popOut2.getByTestId('modal-confirm-button').click();
+
         // verify recording ended prompt renders correctly on widget and in popout
         await expect(popOut2.getByTestId('banner-recording-stopped')).toBeVisible();
         await expect(popOut2.getByTestId('banner-recording-stopped')).toContainText('Recording has stopped. Processing…');
@@ -187,6 +191,10 @@ test.describe('popout window', () => {
 
         // stop recording
         await popOut2.locator('#calls-popout-record-button').click();
+
+        // stop recording confirmation
+        await expect(popOut2.locator('#stop_recording_confirmation')).toBeVisible();
+        await popOut2.getByTestId('modal-confirm-button').click();
 
         // verify recording ended prompt renders correctly on widget and in popout
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();

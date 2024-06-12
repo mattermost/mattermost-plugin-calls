@@ -20,6 +20,7 @@
   "4lj46b": "You can find the recording and transcription in this call's chat thread once it has finished processing.",
   "5+bTjM": "Mattermost Cloud Professional feature",
   "5ClUrE": "Something went wrong with the recording",
+  "5yUTF3": "The call recording and transcription files will be processed and posted in the call thread. Are you sure you want to stop the recording and transcription?",
   "6AKf56": "Join call",
   "6XllQM": "Allow microphone access to Mattermost.",
   "6aGJYU": "There's no ongoing call in the channel.",
@@ -186,6 +187,7 @@
   "rjM2Q9": "Unable to leave the call",
   "s/N5tn": "You're not connected to a call in the current channel.",
   "sCBCDq": "Stop recording",
+  "sCoM27": "Stop recording and transcription",
   "sQHg4y": "Are you sure you want to end a call with {count, plural, =1 {# participant} other {# participants}} in {channelName}?",
   "sb3k8n": "Lasted {callDuration}",
   "tBbQCQ": "<b>{name}</b> was removed from the call",
@@ -206,5 +208,6 @@
   "yL9vD/": "Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. You now have access to <rtcdDocsLink>RTCD services</rtcdDocsLink>, <recordingsDocsLink>call recordings</recordingsDocsLink>, <guestAccountsLink>guest accounts</guestAccountsLink>, <autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and <mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, among many other features. View all features in our <documentationLink>documentation</documentationLink>.",
   "yO68rk": "Calls are currently running in test mode and only system admins can start them. Reach out directly to your system admin for assistance",
   "yjQNKt": "Calls are disabled in this channel.",
+  "zUH89x": "The call recording will be processed and posted in the call thread. Are you sure you want to stop the recording?",
   "zx0myy": "Participants"
 }

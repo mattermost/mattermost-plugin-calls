@@ -157,6 +157,10 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         // stop recording
         await popOut.locator('#calls-popout-record-button').click();
 
+        // stop recording confirmation
+        await expect(popOut.locator('#stop_recording_confirmation')).toBeVisible();
+        await popOut.getByTestId('modal-confirm-button').click();
+
         // verify recording ended prompt renders correctly
         await expect(popOut.getByTestId('banner-recording-stopped')).toBeVisible();
         await expect(popOut.getByTestId('banner-recording-stopped')).toContainText('Recording and transcription has stopped. Processing…');
@@ -211,6 +215,10 @@ test.describe('call recordings, transcriptions, live-captions', () => {
 
         // stop recording
         await popOut.locator('#calls-popout-record-button').click();
+
+        // stop recording confirmation
+        await expect(popOut.locator('#stop_recording_confirmation')).toBeVisible();
+        await popOut.getByTestId('modal-confirm-button').click();
 
         // verify recording ended prompt renders correctly
         await expect(popOut.getByTestId('banner-recording-stopped')).toBeVisible();
