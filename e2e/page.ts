@@ -51,7 +51,7 @@ export default class PlaywrightDevPage {
     }
 
     async leaveCall() {
-        await this.page.locator('#calls-widget-leave-button').click();
+        await this.leaveFromWidget();
         await this.page.waitForFunction(() => !window.callsClient || window.callsClient.closed);
         await expect(this.page.locator('#calls-widget')).toBeHidden();
     }
@@ -368,5 +368,17 @@ export default class PlaywrightDevPage {
             await this.page.locator('#calls-popout-participants-button').click();
         }
         await expect(this.page.getByTestId('rhs-participant-list')).toBeHidden();
+    }
+
+    async leaveFromPopout() {
+        await this.page.locator('#calls-popout-leave-button').click();
+        const menu = this.page.getByTestId('dropdownmenu');
+        await menu.getByText('Leave call').click();
+    }
+
+    async leaveFromWidget() {
+        await this.page.locator('#calls-widget-leave-button').click();
+        const menu = this.page.getByTestId('dropdownmenu');
+        await menu.getByText('Leave call').click();
     }
 }

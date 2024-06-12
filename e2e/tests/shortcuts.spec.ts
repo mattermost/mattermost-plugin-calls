@@ -1,10 +1,9 @@
-import {chromium, expect, test} from '@playwright/test';
-import {readFile} from 'fs/promises';
+import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {getUserStoragesForTest} from '../utils';
 
-test.beforeEach(async ({page, context}) => {
+test.beforeEach(async ({page}) => {
     const devPage = new PlaywrightDevPage(page);
     await devPage.goto();
 });
@@ -13,8 +12,6 @@ test.describe('keyboard shortcuts', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
     test('join/leave call', async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-
         // Solely needed to wait till the page has loaded.
         await expect(page.locator('[aria-label="channel header region"] button:has-text("Start call")')).toBeVisible();
 

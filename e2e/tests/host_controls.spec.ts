@@ -15,11 +15,11 @@ const usernames = getUsernamesForTest();
 
 test.setTimeout(400000);
 
-test.beforeEach(async ({page, context}) => {
+test.beforeEach(async ({page}) => {
     const devPage = new PlaywrightDevPage(page);
     await devPage.goto();
 });
-test.afterEach(async ({page, context}) => {
+test.afterEach(async ({page}) => {
     const devPage = new PlaywrightDevPage(page);
     await devPage.slashCallEnd();
 });
@@ -27,7 +27,7 @@ test.afterEach(async ({page, context}) => {
 test.describe('host controls', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('host change', async ({page}) => {
+    test('host change', async () => {
         const user0Page = await startCall(userStorages[0]);
         let user1Page = await joinCall(userStorages[1]);
         const user2Page = await joinCall(userStorages[2]);
@@ -67,7 +67,7 @@ test.describe('host controls', () => {
         await user2Page.leaveCall();
     });
 
-    test('widget', async ({page}) => {
+    test('widget', async () => {
         const user0Page = await startCall(userStorages[0]);
         let user1Page = await joinCall(userStorages[1]);
 
@@ -191,7 +191,7 @@ test.describe('host controls', () => {
         await user2Page.leaveCall();
     });
 
-    test('popout - participant card - make host', async ({page, context}) => {
+    test('popout - participant card - make host', async () => {
         const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -229,7 +229,7 @@ test.describe('host controls', () => {
         await user1Page.leaveCall();
     });
 
-    test('popout - participant card - mute, lower hand', async ({page, context}) => {
+    test('popout - participant card - mute, lower hand', async () => {
         const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -271,7 +271,7 @@ test.describe('host controls', () => {
         await user1Page.leaveCall();
     });
 
-    test('popout - participant card - remove, stop screenshare', async ({page, context}) => {
+    test('popout - participant card - remove, stop screenshare', async () => {
         const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -306,7 +306,7 @@ test.describe('host controls', () => {
         await user1Page.leaveCall();
     });
 
-    test('popout - RHS - make host', async ({page, context}) => {
+    test('popout - RHS - make host', async () => {
         const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -350,7 +350,7 @@ test.describe('host controls', () => {
         await user1Page.leaveCall();
     });
 
-    test('popout - RHS - mute, lower hand', async ({page, context}) => {
+    test('popout - RHS - mute, lower hand', async () => {
         const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -424,7 +424,7 @@ test.describe('host controls', () => {
         await user2Page.leaveCall();
     });
 
-    test('popout - RHS - remove, stop screenshare', async ({page, context}) => {
+    test('popout - RHS - remove, stop screenshare', async () => {
         const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);

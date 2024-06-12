@@ -63,7 +63,7 @@ test.afterEach(async ({page, request}) => {
 test.describe('notifications', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('dm channel notification', async ({page, request}) => {
+    test('dm channel notification', async ({page}) => {
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -152,7 +152,7 @@ test.describe('notifications', () => {
         await expect(notification).not.toBeVisible();
     });
 
-    test('gm channel notification', async ({page, request}) => {
+    test('gm channel notification', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
         await page.evaluate(() => {
@@ -239,7 +239,7 @@ test.describe('notifications', () => {
         await user1.leaveCall();
     });
 
-    test('two notifications stacked, do not ring for second call when first is ringing', async ({page, request}) => {
+    test('two notifications stacked, do not ring for second call when first is ringing', async ({page}) => {
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -301,15 +301,13 @@ test.describe('notifications', () => {
         await expect(notificationsSoundedAt.length).toEqual(1);
     });
 
-    test('two notifications stacked, ring for second call when first is finished ringing', async ({page, request}) => {
+    test('two notifications stacked, ring for second call when first is finished ringing', async ({page}) => {
         await page.evaluate(() => {
             window.e2eNotificationsSoundedAt = [];
             window.e2eRingLength = 500;
         });
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
-
-        const devPage = new PlaywrightDevPage(page);
 
         const user2 = await openGM(userStorages[2], usernames[2]);
         await user2.startCall();
@@ -329,7 +327,7 @@ test.describe('notifications', () => {
         await user2.leaveCall();
     });
 
-    test('stacked notifications while in a call - webapp', async ({page, request}) => {
+    test('stacked notifications while in a call - webapp', async ({page}) => {
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -393,7 +391,7 @@ test.describe('notifications', () => {
         await user2.leaveCall();
     });
 
-    test('stacked notifications while in a call - global widget', async ({page, request}) => {
+    test('stacked notifications while in a call - global widget', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.openWidget(getChannelNamesForTest()[0]);
 
@@ -423,7 +421,7 @@ test.describe('notifications', () => {
         await expect(notification).not.toBeVisible();
     });
 
-    test('reloading and new client, user will see notifications immediately', async ({page, request}) => {
+    test('reloading and new client, user will see notifications immediately', async ({page}) => {
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
 
@@ -468,7 +466,7 @@ test.describe('notifications', () => {
         await user2.leaveCall();
     });
 
-    test('dismiss works across clients and is recorded (reloading and new client)', async ({page, request}) => {
+    test('dismiss works across clients and is recorded (reloading and new client)', async ({page}) => {
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
 
@@ -524,7 +522,7 @@ test.describe('notifications', () => {
         await user2.leaveCall();
     });
 
-    test('do not ring twice for same call, lhs -> widget', async ({page, request}) => {
+    test('do not ring twice for same call, lhs -> widget', async ({page}) => {
         // Notification appears in LHS, then user starts a call, the notification moves to above the widget (no sound for second appearance)
         await page.evaluate(() => {
             window.e2eNotificationsSoundedAt = [];
@@ -565,7 +563,7 @@ test.describe('notifications', () => {
         await user1.leaveCall();
     });
 
-    test('do not ring twice for same call, widget -> lhs', async ({page, request}) => {
+    test('do not ring twice for same call, widget -> lhs', async ({page}) => {
         // User is in a call, notification appears above widget (no sound), then user ends call, the notification moves to LHS (no sound for second appearance)
         await page.evaluate(() => {
             window.e2eNotificationsSoundedAt = [];
@@ -602,7 +600,7 @@ test.describe('notifications', () => {
         await user1.leaveCall();
     });
 
-    test('stop ringing immediately when joining any call', async ({page, request}) => {
+    test('stop ringing immediately when joining any call', async ({page}) => {
         await page.evaluate(() => {
             window.e2eNotificationsSoundedAt = [];
             window.e2eNotificationsSoundStoppedAt = [];

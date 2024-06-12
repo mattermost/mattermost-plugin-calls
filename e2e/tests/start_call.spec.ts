@@ -1,5 +1,4 @@
 import {expect, Response, test} from '@playwright/test';
-import {readFile} from 'fs/promises';
 
 import {
     apiGetChannelByName,
@@ -19,7 +18,7 @@ import {
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
 
-test.beforeEach(async ({page, context}, info) => {
+test.beforeEach(async ({page}, info) => {
     // Small optimization to avoid loading an unnecessary channel.
     if (info.title === 'system console') {
         return;
@@ -70,7 +69,7 @@ test.describe('start new call', () => {
         await devPage.leaveCall();
     });
 
-    test('slash command', async ({page, context}) => {
+    test('slash command', async ({page}) => {
         await page.locator('#post_textbox').fill('/call join');
         await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeVisible();
@@ -80,7 +79,7 @@ test.describe('start new call', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('dm channel', async ({page, context}) => {
+    test('dm channel', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.gotoDM(usernames[1]);
         await devPage.startCall();
@@ -88,7 +87,7 @@ test.describe('start new call', () => {
         await devPage.leaveCall();
     });
 
-    test('cannot start call twice', async ({page, context}) => {
+    test('cannot start call twice', async ({page}) => {
         await page.locator('#post_textbox').fill('/call start');
         await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeVisible();
@@ -106,7 +105,7 @@ test.describe('start new call', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('slash command from existing thread', async ({page, context}) => {
+    test('slash command from existing thread', async ({page}) => {
         // create a test thread
         await page.locator('#post_textbox').fill('test thread');
         await page.getByTestId('SendMessageButton').click();
@@ -165,7 +164,7 @@ test.describe('start new call', () => {
 test.describe('auto join link', () => {
     test.use({storageState: userStorages[0]});
 
-    test('public channel', async ({page, context}) => {
+    test('public channel', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
 
         await page.locator('#post_textbox').fill('/call link');
@@ -190,7 +189,7 @@ test.describe('auto join link', () => {
         await devPage.leaveCall();
     });
 
-    test('dm channel', async ({page, context}) => {
+    test('dm channel', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.gotoDM(usernames[1]);
 
@@ -438,7 +437,6 @@ test.describe('ux', () => {
 });
 
 test.describe('call post', () => {
-    const userIdx = getUserIdxForTest();
     test.use({storageState: userStorages[0]});
 
     test('user starting call should not be allowed to edit the call post', async ({page}) => {

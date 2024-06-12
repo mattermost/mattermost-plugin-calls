@@ -1,8 +1,6 @@
 import {expect, request} from '@playwright/test';
-import {APIRequestContext} from 'playwright-core';
 
 import {adminState, baseURL, pluginID} from './constants';
-import {headers, newUserPage} from './utils';
 
 type CallsConfig = {
     enabletranscriptions?: boolean;

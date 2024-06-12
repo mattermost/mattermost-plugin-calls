@@ -1,5 +1,4 @@
-import {chromium, expect, test} from '@playwright/test';
-import {readFile} from 'fs/promises';
+import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {getUserIdxForTest, getUsernamesForTest, getUserStoragesForTest, joinCall, startCall} from '../utils';
@@ -7,7 +6,7 @@ import {getUserIdxForTest, getUsernamesForTest, getUserStoragesForTest, joinCall
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
 
-test.beforeEach(async ({page, context}) => {
+test.beforeEach(async ({page}) => {
     const devPage = new PlaywrightDevPage(page);
     await devPage.goto();
 });

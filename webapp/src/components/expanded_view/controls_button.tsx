@@ -20,6 +20,7 @@ export type Props = {
     iconFillHover?: string,
     shortcut?: string,
     margin?: string,
+    dataTestId?: string,
 }
 
 export default function ControlsButton(props: Props) {
@@ -61,6 +62,7 @@ export default function ControlsButton(props: Props) {
         >
             <ButtonContainer
                 id={props.id}
+                data-testid={props.dataTestId}
                 onClick={onClick}
                 disabled={props.disabled}
                 $bgColor={props.bgColor}
