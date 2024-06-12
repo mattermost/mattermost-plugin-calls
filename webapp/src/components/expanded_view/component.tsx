@@ -18,11 +18,15 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {compareSemVer} from 'semver-parser';
-import {hostMuteOthers, hostRemove, stopCallRecording} from 'src/actions';
+import {hostMuteOthers, hostRemove} from 'src/actions';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
 import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
+import {
+    IDStopRecordingConfirmation,
+    StopRecordingConfirmation,
+} from 'src/components/expanded_view/stop_recording_confirmation';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CollapseIcon from 'src/components/icons/collapse';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -51,6 +55,7 @@ import {
     reverseKeyMappings,
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
+import {ModalData} from 'src/types/mattermost-webapp';
 import * as Telemetry from 'src/types/telemetry';
 import {
     AudioDevices,
@@ -119,6 +124,7 @@ interface Props extends RouteComponentProps {
     transcriptionsEnabled: boolean,
     isAdmin: boolean,
     hostControlsAllowed: boolean,
+    openModal: <P>(modalData: ModalData<P>) => void;
 }
 
 interface State {
@@ -454,7 +460,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         if (this.props.isRecording) {
-            await stopCallRecording(this.props.channel.id);
+            this.props.openModal({
+                modalId: IDStopRecordingConfirmation,
+                dialogType: StopRecordingConfirmation,
+                dialogProps: {
+                    channelID: this.props.channel.id,
+                    transcriptionsEnabled: this.props.transcriptionsEnabled,
+                },
+            });
             this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
             await this.props.startCallRecording(this.props.channel.id);
@@ -1415,7 +1428,6 @@ const MuteOthersButton = styled.button`
     i {
         font-size: 14px;
     }
->>>>>>> origin/main
 `;
 
 const CloseButton = styled.button`
