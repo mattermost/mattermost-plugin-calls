@@ -86,6 +86,9 @@ func (p *Plugin) startSession(us *session, senderID string) {
 		CallID:    us.callID,
 		UserID:    us.userID,
 		SessionID: us.connID,
+		Props: map[string]any{
+			"channelID": us.channelID,
+		},
 	}
 	if err := p.rtcServer.InitSession(cfg, func() error {
 		p.LogDebug("rtc session close cb", "sessionID", us.connID)

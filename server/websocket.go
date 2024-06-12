@@ -137,12 +137,9 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 
 		// Prevent sending this event to the bot twice.
 		if broadcast.OmitUsers == nil {
-			broadcast.OmitUsers = map[string]bool{
-				botID: true,
-			}
-		} else {
-			broadcast.OmitUsers[botID] = true
+			broadcast.OmitUsers = map[string]bool{}
 		}
+		broadcast.OmitUsers[botID] = true
 	}
 
 	p.metrics.IncWebSocketEvent("out", ev)
@@ -151,6 +148,11 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 	// call participants).
 	if broadcast != nil && len(broadcast.UserIDs) > 0 {
 		for _, userID := range broadcast.UserIDs {
+			if userID == botID {
+				// Bot user is a special case handled above. We don't want to send events twice
+				// as setting broadcast.UserID will override any broadcast.OmitUsers entry.
+				continue
+			}
 			broadcast.UserID = userID
 			p.API.PublishWebSocketEvent(ev, data, broadcast.ToModel())
 		}
@@ -742,6 +744,8 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			})
 		}
 
+		p.LogDebug("session has joined call", "userID", userID, "sessionID", connID, "channelID", channelID, "callID", state.Call.ID)
+
 		handlerID := state.Call.Props.NodeID
 		p.LogDebug("got handlerID", "handlerID", handlerID)
 
@@ -757,6 +761,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 					"callID":    us.callID,
 					"userID":    userID,
 					"sessionID": connID,
+					"channelID": channelID,
 				},
 			}
 			if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
@@ -775,6 +780,9 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 					CallID:    us.callID,
 					UserID:    userID,
 					SessionID: connID,
+					Props: map[string]any{
+						"channelID": us.channelID,
+					},
 				}
 				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID, "callID", us.callID)
 				if err = p.rtcServer.InitSession(cfg, func() error {

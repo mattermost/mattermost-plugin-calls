@@ -16,7 +16,7 @@ test.describe('global widget', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('recording widget banner', async ({page, request, context}) => {
+    test('recording widget banner and stop confirmation modal', async ({page, request, context}) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
         await devPage.openWidget(getChannelNamesForTest()[0]);
@@ -34,6 +34,7 @@ test.describe('global widget', () => {
 
         // verify recording banner renders correctly
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
+
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('You\'re recording');
 
         // close prompt
@@ -43,8 +44,13 @@ test.describe('global widget', () => {
         // stop recording
         await popOut.locator('#calls-popout-record-button').click();
 
-        // very recording ended prompt renders correctly
+        // verify stop recording confirmation banner renders
+        await expect(popOut.locator('#stop_recording_confirmation')).toBeVisible();
+        await popOut.getByTestId('modal-confirm-button').click();
+
+        // verify recording ended prompt renders correctly
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
+
         await expect(page.getByTestId('calls-widget-banner-recording')).toContainText('Recording has stopped. Processing…');
 
         // leave call
@@ -102,6 +108,10 @@ test.describe('global widget', () => {
 
         // stop recording
         await popOut.locator('#calls-popout-record-button').click();
+
+        // stop recording confirmation
+        await expect(popOut.locator('#stop_recording_confirmation')).toBeVisible();
+        await popOut.getByTestId('modal-confirm-button').click();
 
         // very recording ended prompt renders correctly on widget and in popout
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
@@ -171,6 +181,10 @@ test.describe('global widget', () => {
 
         // stop recording
         await popOut.locator('#calls-popout-record-button').click();
+
+        // stop recording confirmation
+        await expect(popOut.locator('#stop_recording_confirmation')).toBeVisible();
+        await popOut.getByTestId('modal-confirm-button').click();
 
         // very recording ended prompt renders correctly on widget and in popout
         await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();

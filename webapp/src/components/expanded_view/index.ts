@@ -34,7 +34,7 @@ import {
     transcriptionsEnabled,
 } from 'src/selectors';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
-import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, selectRhsPost} from 'src/webapp_globals';
+import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, modals, selectRhsPost} from 'src/webapp_globals';
 
 import ExpandedView from './component';
 
@@ -102,6 +102,7 @@ const mapDispatchToProps = {
     trackEvent,
     startCallRecording,
     recordingPromptDismissedAt,
+    openModal: modals.openModal,
 };
 
 export default withRouter(connect(mapStateToProps, mapDispatchToProps)(ExpandedView));

@@ -524,6 +524,45 @@ func TestPublishWebSocketEvent(t *testing.T) {
 
 			p.publishWebSocketEvent(wsEventUserMuted, data, bc)
 		})
+
+		t.Run("specified users, including bot", func(_ *testing.T) {
+			data := map[string]any{}
+			bc := &WebSocketBroadcast{
+				ChannelID: callChannelID,
+				UserIDs: []string{
+					"userA",
+					"userB",
+					botUserID,
+				},
+			}
+
+			// Event to bot
+			mockAPI.On("PublishWebSocketEvent", wsEventUserReacted, data, &model.WebsocketBroadcast{
+				UserId: botUserID,
+			}).Once()
+
+			// Event to userA
+			mockAPI.On("PublishWebSocketEvent", wsEventUserReacted, data, &model.WebsocketBroadcast{
+				ChannelId: callChannelID,
+				UserId:    "userA",
+				OmitUsers: map[string]bool{
+					botUserID: true,
+				},
+			}).Once()
+
+			// Event to userB
+			mockAPI.On("PublishWebSocketEvent", wsEventUserReacted, data, &model.WebsocketBroadcast{
+				ChannelId: callChannelID,
+				UserId:    "userB",
+				OmitUsers: map[string]bool{
+					botUserID: true,
+				},
+			}).Once()
+
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserReacted).Times(3)
+
+			p.publishWebSocketEvent(wsEventUserReacted, data, bc)
+		})
 	})
 
 	t.Run("connection specific", func(_ *testing.T) {
