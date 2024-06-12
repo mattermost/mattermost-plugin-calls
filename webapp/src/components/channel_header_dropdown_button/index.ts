@@ -5,11 +5,11 @@ import {connect} from 'react-redux';
 import {
     callsShowButton,
     channelIDForCurrentCall,
+    currentChannelHasCall,
     isCloudProfessionalOrEnterpriseOrTrial,
     isCloudStarter,
     isLimitRestricted,
     maxParticipants,
-    profilesInCallInCurrentChannel,
 } from 'src/selectors';
 
 import ChannelHeaderDropdownButton from './component';
@@ -20,7 +20,7 @@ const mapStateToProps = (state: GlobalState) => {
     return {
         show: callsShowButton(state, channel?.id),
         inCall: Boolean(channelIDForCurrentCall(state) && channelIDForCurrentCall(state) === channel?.id),
-        hasCall: profilesInCallInCurrentChannel(state).length > 0,
+        hasCall: currentChannelHasCall(state),
         isAdmin: isCurrentUserSystemAdmin(state),
         isCloudStarter: isCloudStarter(state),
         isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),

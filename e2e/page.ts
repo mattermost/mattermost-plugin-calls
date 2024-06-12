@@ -64,7 +64,7 @@ export default class PlaywrightDevPage {
         await expect(this.page.locator('#calls-widget')).toBeVisible();
     }
 
-    async endCall() {
+    async slashCallEnd() {
         await this.sendSlashCommand('/call end');
         let modal = this.page.locator('#calls-end-call-modal');
         if (await modal.isVisible()) {

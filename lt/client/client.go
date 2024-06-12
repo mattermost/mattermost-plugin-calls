@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -92,16 +92,36 @@ type User struct {
 	pollyVoiceID   *string
 	speechTextCh   chan string
 	doneSpeakingCh chan struct{}
+
+	log *slog.Logger
 }
 
-func NewUser(cfg Config) *User {
-	return &User{
+type Option func(u *User)
+
+func WithLogger(log *slog.Logger) Option {
+	return func(u *User) {
+		u.log = log
+	}
+}
+
+func NewUser(cfg Config, opts ...Option) *User {
+	u := &User{
 		cfg:            cfg,
 		speechTextCh:   make(chan string, 8),
 		doneSpeakingCh: make(chan struct{}),
 		pollySession:   cfg.PollySession,
 		pollyVoiceID:   cfg.PollyVoiceID,
 	}
+
+	for _, opt := range opts {
+		opt(u)
+	}
+
+	if u.log == nil {
+		u.log = slog.Default()
+	}
+
+	return u
 }
 
 func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPTransceiver) {
@@ -126,15 +146,17 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 	)
 
 	// Open a IVF file and start reading using our IVFReader
-	file, ivfErr := os.Open(fmt.Sprintf("./samples/video_%s.ivf", track.RID()))
+	file, ivfErr := os.Open(fmt.Sprintf("./samples/screen_%s.ivf", track.RID()))
 	if ivfErr != nil {
-		log.Fatalf(ivfErr.Error())
+		u.log.Error(ivfErr.Error())
+		os.Exit(1)
 	}
 	defer file.Close()
 
 	ivf, header, ivfErr := ivfreader.NewWith(file)
 	if ivfErr != nil {
-		log.Fatalf(ivfErr.Error())
+		u.log.Error(ivfErr.Error())
+		os.Exit(1)
 	}
 
 	// Send our video file frame at a time. Pace our sending so we send it at the same speed it should be played back as.
@@ -155,30 +177,32 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 				_, _ = file.Seek(0, 0)
 				ivf, header, ivfErr = ivfreader.NewWith(file)
 				if ivfErr != nil {
-					log.Fatalf(ivfErr.Error())
+					u.log.Error(ivfErr.Error())
+					os.Exit(1)
 				}
 				return file
 			})
 			frame, _, ivfErr = ivf.ParseNextFrame()
 		}
 		if ivfErr != nil {
-			log.Fatalf(ivfErr.Error())
+			u.log.Error(ivfErr.Error())
+			os.Exit(1)
 		}
 
 		packets := packetizer.Packetize(frame, rtpVideoCodecVP8.ClockRate/header.TimebaseDenominator)
 		for _, p := range packets {
 			if u.callsConfig["EnableSimulcast"].(bool) {
 				if err := p.Header.SetExtension(getExtensionID(rtpVideoExtensions[0]), []byte(trx.Mid())); err != nil {
-					log.Printf("failed to set header extension: %s", err.Error())
+					u.log.Error("failed to set header extension", slog.String("err", err.Error()))
 				}
 
 				if err := p.Header.SetExtension(getExtensionID(rtpVideoExtensions[1]), []byte(track.RID())); err != nil {
-					log.Printf("failed to set header extension: %s", err.Error())
+					u.log.Error("failed to set header extension", slog.String("err", err.Error()))
 				}
 			}
 
 			if err := track.WriteRTP(p); err != nil {
-				log.Printf("failed to write video sample: %s", err.Error())
+				u.log.Error("failed to write video sample", slog.String("err", err.Error()))
 				return
 			}
 		}
@@ -190,7 +214,8 @@ func (u *User) transmitScreen() {
 
 	trackHigh, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelHigh))
 	if err != nil {
-		log.Fatalf(err.Error())
+		u.log.Error(err.Error())
+		os.Exit(1)
 	}
 
 	tracks := []webrtc.TrackLocal{trackHigh}
@@ -199,14 +224,16 @@ func (u *User) transmitScreen() {
 	if u.callsConfig["EnableSimulcast"].(bool) {
 		trackLow, err = webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelLow))
 		if err != nil {
-			log.Fatalf(err.Error())
+			u.log.Error(err.Error())
+			os.Exit(1)
 		}
 		tracks = []webrtc.TrackLocal{trackLow, trackHigh}
 	}
 
 	trx, err := u.callsClient.StartScreenShare(tracks)
 	if err != nil {
-		log.Fatalf(err.Error())
+		u.log.Error(err.Error())
+		os.Exit(1)
 	}
 
 	if u.callsConfig["EnableSimulcast"].(bool) {
@@ -219,24 +246,28 @@ func (u *User) transmitScreen() {
 func (u *User) transmitAudio() {
 	track, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice_"+model.NewId())
 	if err != nil {
-		log.Fatalf(err.Error())
+		u.log.Error(err.Error())
+		os.Exit(1)
 	}
 
 	// Open a OGG file and start reading using our OGGReader
 	file, oggErr := os.Open(u.cfg.SpeechFile)
 	if oggErr != nil {
-		log.Fatalf(oggErr.Error())
+		u.log.Error(oggErr.Error())
+		os.Exit(1)
 	}
 	defer file.Close()
 
 	// Open on oggfile in non-checksum mode.
 	ogg, _, oggErr := oggreader.NewWith(file)
 	if oggErr != nil {
-		log.Fatalf(oggErr.Error())
+		u.log.Error(oggErr.Error())
+		os.Exit(1)
 	}
 
 	if err := u.callsClient.Unmute(track); err != nil {
-		log.Fatalf(err.Error())
+		u.log.Error(oggErr.Error())
+		os.Exit(1)
 	}
 
 	// Keep track of last granule, the difference is the amount of samples in the buffer
@@ -260,7 +291,8 @@ func (u *User) transmitAudio() {
 			pageData, pageHeader, oggErr = ogg.ParseNextPage()
 		}
 		if oggErr != nil {
-			log.Fatalf(oggErr.Error())
+			u.log.Error(oggErr.Error())
+			os.Exit(1)
 		}
 
 		// The amount of samples is the difference between the last and current timestamp
@@ -269,23 +301,23 @@ func (u *User) transmitAudio() {
 		sampleDuration := time.Duration((sampleCount/48000)*1000) * time.Millisecond
 
 		if err := track.WriteSample(media.Sample{Data: pageData, Duration: sampleDuration}); err != nil {
-			log.Printf("failed to write audio sample: %s", err.Error())
+			u.log.Error("failed to write audio sample", slog.String("err", err.Error()))
 		}
 	}
 }
 
 func (u *User) Mute() error {
-	err := u.callsClient.Mute()
-	if err != nil {
-		log.Printf("%s: failed to mute: %s", u.cfg.Username, err.Error())
+	if err := u.callsClient.Mute(); err != nil {
+		u.log.Error("failed to mute", slog.String("err", err.Error()))
+		return err
 	}
-	return err
+	return nil
 }
 
 func (u *User) Unmute(track webrtc.TrackLocal) error {
 	err := u.callsClient.Unmute(track)
 	if err != nil {
-		log.Printf("%s: failed to unmute: %s", u.cfg.Username, err.Error())
+		u.log.Error("failed to unmute", slog.String("err", err.Error()))
 	}
 	return err
 }
@@ -293,12 +325,13 @@ func (u *User) Unmute(track webrtc.TrackLocal) error {
 func (u *User) transmitSpeech() {
 	track, err := webrtc.NewTrackLocalStaticSample(rtpAudioCodec, "audio", "voice"+model.NewId())
 	if err != nil {
-		log.Fatalf(err.Error())
+		u.log.Error(err.Error())
+		os.Exit(1)
 	}
 
 	enc, err := opus.NewEncoder(24000, 1, opus.AppVoIP)
 	if err != nil {
-		log.Fatalf("%s: failed to create opus encoder: %s", u.cfg.Username, err.Error())
+		u.log.Error("failed to create opus encoder", slog.String("err", err.Error()))
 	}
 
 	for text := range u.speechTextCh {
@@ -306,17 +339,19 @@ func (u *User) transmitSpeech() {
 			defer func() {
 				time.Sleep(100 * time.Millisecond)
 				if err := u.Mute(); err != nil {
-					log.Fatalf(err.Error())
+					u.log.Error(err.Error())
+					os.Exit(1)
 				}
-				log.Printf("%s: muted", u.cfg.Username)
+				u.log.Debug("muted")
 				u.doneSpeakingCh <- struct{}{}
 			}()
-			log.Printf("%s: received text to speak: %q", u.cfg.Username, text)
+			u.log.Debug("received text to speak: " + text)
 
 			if err := u.Unmute(track); err != nil {
-				log.Fatalf(err.Error())
+				u.log.Error(err.Error())
+				os.Exit(1)
 			}
-			log.Printf("%s: unmuted", u.cfg.Username)
+			u.log.Debug("unmuted")
 
 			var rd io.Reader
 			var rate int
@@ -325,19 +360,19 @@ func (u *User) transmitSpeech() {
 				rd, rate, err = u.pollyToSpeech(text)
 			}
 			if err != nil {
-				log.Printf("%s: textToSpeech failed: %s", u.cfg.Username, err.Error())
+				u.log.Error("textToSpeech failed", slog.String("err", err.Error()))
 				return
 			}
 
-			log.Printf("%s: raw speech samples decoded (%d)", u.cfg.Username, rate)
+			u.log.Debug("raw speech samples decoded", slog.Int("rate", rate))
 
 			audioSamplesDataBuf := bytes.NewBuffer([]byte{})
 			if _, err := audioSamplesDataBuf.ReadFrom(rd); err != nil {
-				log.Printf("%s: failed to read samples data: %s", u.cfg.Username, err.Error())
+				u.log.Error("failed to read samples data", slog.String("err", err.Error()))
 				return
 			}
 
-			log.Printf("read %d samples bytes", audioSamplesDataBuf.Len())
+			u.log.Debug("read samples bytes", slog.Int("len", audioSamplesDataBuf.Len()))
 
 			sampleDuration := time.Millisecond * 20
 			ticker := time.NewTicker(sampleDuration)
@@ -348,7 +383,7 @@ func (u *User) transmitSpeech() {
 				n, err := audioSamplesDataBuf.Read(audioSamplesData)
 				if err != nil {
 					if !errors.Is(err, io.EOF) {
-						log.Printf("%s: failed to read audio samples: %s", u.cfg.Username, err.Error())
+						u.log.Error("failed to read audio samples", slog.String("err", err.Error()))
 					}
 					break
 				}
@@ -360,12 +395,12 @@ func (u *User) transmitSpeech() {
 
 				n, err = enc.Encode(audioSamples, opusData)
 				if err != nil {
-					log.Printf("%s: failed to encode: %s", u.cfg.Username, err.Error())
+					u.log.Error("failed to encode: %s", u.cfg.Username, err.Error())
 					continue
 				}
 
 				if err := track.WriteSample(media.Sample{Data: opusData[:n], Duration: sampleDuration}); err != nil {
-					log.Printf("%s: failed to write audio sample: %s", u.cfg.Username, err.Error())
+					u.log.Error("failed to write audio sample: %s", u.cfg.Username, err.Error())
 				}
 			}
 		}()
@@ -388,15 +423,16 @@ func (u *User) onConnect() {
 	}
 
 	if u.cfg.Recording && u.hostID.Load() == u.userID {
-		log.Printf("%s: I am host, starting recording", u.cfg.Username)
+		u.log.Debug("I am host, starting recording")
 		if err := u.callsClient.StartRecording(); err != nil {
-			log.Fatalf("failed to start recording: %s", err.Error())
+			u.log.Error("failed to start recording", slog.String("err", err.Error()))
+			os.Exit(1)
 		}
 	}
 }
 
 func (u *User) Connect(stopCh chan struct{}) error {
-	log.Printf("%s: connecting user", u.cfg.Username)
+	u.log.Debug("connecting user")
 
 	var user *model.User
 	apiClient := model.NewAPIv4Client(u.cfg.SiteURL)
@@ -412,13 +448,13 @@ func (u *User) Connect(stopCh chan struct{}) error {
 	cancel()
 
 	if ok && appErr != nil && appErr.Id != "api.user.login.invalid_credentials_email_username" {
-		return err
+		return fmt.Errorf("login failed: %w", err)
 	} else if ok && appErr != nil && appErr.Id == "api.user.login.invalid_credentials_email_username" {
 		if !u.cfg.Setup {
 			return fmt.Errorf("cannot register user with setup disabled")
 		}
 
-		log.Printf("%s: registering user", u.cfg.Username)
+		u.log.Debug("registering user")
 		ctx, cancel := context.WithTimeout(context.Background(), HTTPRequestTimeout)
 		_, _, err = apiClient.CreateUser(ctx, &model.User{
 			Username: u.cfg.Username,
@@ -427,19 +463,22 @@ func (u *User) Connect(stopCh chan struct{}) error {
 		})
 		cancel()
 		if err != nil {
-			return err
+			return fmt.Errorf("create user failed: %w", err)
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), HTTPRequestTimeout)
 		defer cancel()
 		user, _, err = apiClient.Login(ctx, u.cfg.Username, u.cfg.Password)
 		if err != nil {
-			return err
+			return fmt.Errorf("login failed: %w", err)
 		}
 		cancel()
 	}
 
-	log.Printf("%s: logged in", u.cfg.Username)
+	u.log.Debug("logged in")
 	u.userID = user.Id
+
+	// Need to sleep a little here since login can be racy
+	time.Sleep(time.Second)
 
 	// join team
 	if u.cfg.Setup {
@@ -447,7 +486,7 @@ func (u *User) Connect(stopCh chan struct{}) error {
 		defer cancel()
 		_, _, err = apiClient.AddTeamMember(ctx, u.cfg.TeamID, user.Id)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to add team member: %w", err)
 		}
 		cancel()
 
@@ -455,7 +494,7 @@ func (u *User) Connect(stopCh chan struct{}) error {
 		defer cancel()
 		channel, _, err := apiClient.GetChannel(ctx, u.cfg.ChannelID, "")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get channel: %w", err)
 		}
 		cancel()
 
@@ -465,19 +504,19 @@ func (u *User) Connect(stopCh chan struct{}) error {
 			defer cancel()
 			_, _, err = apiClient.AddChannelMember(ctx, u.cfg.ChannelID, user.Id)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to add channel member: %w", err)
 			}
 			cancel()
 		}
 	}
 
-	log.Printf("%s: creating calls client", u.cfg.Username)
+	u.log.Debug("creating calls client")
 
 	callsClient, err := client.New(client.Config{
 		SiteURL:   u.cfg.SiteURL,
 		AuthToken: apiClient.AuthToken,
 		ChannelID: u.cfg.ChannelID,
-	})
+	}, client.WithLogger(u.log))
 	if err != nil {
 		return fmt.Errorf("failed to create calls client: %w", err)
 	}
@@ -490,11 +529,11 @@ func (u *User) Connect(stopCh chan struct{}) error {
 	u.callsClient = callsClient
 	u.callsConfig = callsConfig
 
-	log.Printf("%s: connecting to call", u.cfg.Username)
+	u.log.Debug("connecting to call")
 
 	var connectOnce sync.Once
 	err = callsClient.On(client.RTCConnectEvent, func(_ any) error {
-		log.Printf("%s: connected to call", u.cfg.Username)
+		u.log.Debug("connected to call")
 		connectOnce.Do(u.onConnect)
 		return nil
 	})
@@ -504,7 +543,7 @@ func (u *User) Connect(stopCh chan struct{}) error {
 
 	closedCh := make(chan struct{})
 	err = callsClient.On(client.CloseEvent, func(_ any) error {
-		log.Printf("%s: disconnected from call", u.cfg.Username)
+		u.log.Debug("disconnected from call")
 		close(closedCh)
 		return nil
 	})
@@ -520,6 +559,15 @@ func (u *User) Connect(stopCh chan struct{}) error {
 		return fmt.Errorf("failed to subscribe to host changed event: %w", err)
 	}
 
+	errCh := make(chan error, 1)
+	err = callsClient.On(client.ErrorEvent, func(ctx any) error {
+		errCh <- ctx.(error)
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to close event: %w", err)
+	}
+
 	if err := callsClient.Connect(); err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
@@ -531,9 +579,12 @@ func (u *User) Connect(stopCh chan struct{}) error {
 	case <-ticker.C:
 	case <-closedCh:
 	case <-stopCh:
+	case err := <-errCh:
+		callsClient.Close()
+		return err
 	}
 
-	log.Printf("%s: disconnecting...", u.cfg.Username)
+	u.log.Debug("disconnecting...")
 
 	if err := callsClient.Close(); err != nil {
 		return fmt.Errorf("failed to close calls client: %w", err)
@@ -545,7 +596,7 @@ func (u *User) Connect(stopCh chan struct{}) error {
 		return fmt.Errorf("timed out waiting for close event")
 	}
 
-	log.Printf("%s: disconnected", u.cfg.Username)
+	u.log.Debug("disconnected")
 
 	return nil
 }

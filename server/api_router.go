@@ -93,9 +93,11 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	// router.HandleFunc("/channels/{channel_id:[a-z0-9]{26}}", p.handlePostCallsChannel).Methods("POST")
 
 	// Calls
-	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/end", p.handleEndCall).Methods("POST")
 	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/dismiss-notification", p.handleDismissNotification).Methods("POST")
 	router.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/recording/{action}", p.handleRecordingAction).Methods("POST")
+
+	// Deprecated for hostCtrlRounder /end, but needed for mobile backward compatibility (pre 2.18)
+	router.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/end", p.handleEnd).Methods("POST")
 
 	// Host Controls
 	hostCtrlRouter := router.PathPrefix("/calls/{call_id:[a-z0-9]{26}}/host").Subrouter()
@@ -105,6 +107,7 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	hostCtrlRouter.HandleFunc("/lower-hand", p.handleLowerHand).Methods("POST")
 	hostCtrlRouter.HandleFunc("/remove", p.handleRemoveSession).Methods("POST")
 	hostCtrlRouter.HandleFunc("/mute-others", p.handleMuteOthers).Methods("POST")
+	hostCtrlRouter.HandleFunc("/end", p.handleEnd).Methods("POST")
 
 	// Bot
 	botRouter := router.PathPrefix("/bot").Subrouter()

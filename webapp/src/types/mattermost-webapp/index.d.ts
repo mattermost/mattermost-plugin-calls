@@ -103,6 +103,12 @@ export type Store = BaseStore<GlobalState> & { dispatch: Dispatch }
 // eslint-disable-next-line
 export type Dispatch = ThunkDispatch<GlobalState, any, any>
 
+export type ModalData<ModalProps> = {
+    modalId: string;
+    dialogProps?: Omit<ModalProps, 'onHide' | 'onExited'> & {onHide?: () => void; onExited?: () => void};
+    dialogType: React.ElementType<ModalProps>;
+}
+
 export type WebAppUtils = {
 
     // @ts-ignore

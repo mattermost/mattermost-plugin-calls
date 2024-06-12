@@ -106,7 +106,6 @@ import {
     isCloudStarter,
     isLimitRestricted,
     needsTURNCredentials,
-    profilesInCallInChannel,
     ringingEnabled,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
@@ -330,7 +329,7 @@ export default class Plugin {
 
                 // following the thread only on join. On call start
                 // this is done in the call_start ws event handler.
-                if (profilesInCallInChannel(store.getState(), channelId).length > 0) {
+                if (channelHasCall(store.getState(), channelId)) {
                     followThread(store, channelId, teamId);
                 }
             } else if (channelIDForCurrentCall(store.getState()) !== channelId) {

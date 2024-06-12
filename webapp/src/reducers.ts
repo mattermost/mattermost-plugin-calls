@@ -90,37 +90,51 @@ type clientState = {
     channelID: string;
     sessionID: string;
 } | null;
-
 type clientStateAction = {
     type: string;
-    data: {
-        channel_id: string;
-        session_id: string;
-    };
+    data: clientStateData;
+}
+type clientStateData = {
+    channel_id: string;
+    session_id: string;
+}
+type callEndAction = {
+    type: string;
+    data: callEndData;
+}
+type callEndData = {
+    channelID: string;
+    callID: string;
 }
 
 // clientStateReducer holds the channel and session ID for the call the current user is connected to.
 // This reducer is only needed by the Desktop app client to be aware that the user is
 // connected through the global widget.
-const clientStateReducer = (state: clientState = null, action: clientStateAction) => {
+const clientStateReducer = (state: clientState = null, action: clientStateAction | callEndAction) => {
     switch (action.type) {
     case UNINIT:
         return null;
-    case DESKTOP_WIDGET_CONNECTED:
+    case DESKTOP_WIDGET_CONNECTED: {
+        const data = action.data as clientStateData;
         return {
-            channelID: action.data.channel_id,
-            sessionID: action.data.session_id,
+            channelID: data.channel_id,
+            sessionID: data.session_id,
         };
-    case USER_LEFT:
-        if (action.data.session_id === state?.sessionID) {
+    }
+    case USER_LEFT: {
+        const data = action.data as clientStateData;
+        if (data.session_id === state?.sessionID) {
             return null;
         }
         return state;
-    case CALL_END:
-        if (action.data.channel_id === state?.channelID) {
+    }
+    case CALL_END: {
+        const data = action.data as callEndData;
+        if (data.channelID === state?.channelID) {
             return null;
         }
         return state;
+    }
     default:
         return state;
     }
@@ -148,6 +162,11 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
+    case CALL_END: {
+        const nextState = {...state};
+        delete nextState[action.data.channelID];
+        return nextState;
+    }
     case USER_JOINED:
         return {
             ...state,
@@ -862,6 +881,8 @@ const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingC
     case ADD_INCOMING_CALL:
         return [...state, {...action.data}];
     case REMOVE_INCOMING_CALL:
+        return state.filter((ic) => ic.callID !== action.data.callID);
+    case CALL_END:
         return state.filter((ic) => ic.callID !== action.data.callID);
     default:
         return state;

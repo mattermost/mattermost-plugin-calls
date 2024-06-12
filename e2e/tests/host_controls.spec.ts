@@ -21,7 +21,7 @@ test.beforeEach(async ({page, context}) => {
 });
 test.afterEach(async ({page, context}) => {
     const devPage = new PlaywrightDevPage(page);
-    await devPage.endCall();
+    await devPage.slashCallEnd();
 });
 
 test.describe('host controls', () => {

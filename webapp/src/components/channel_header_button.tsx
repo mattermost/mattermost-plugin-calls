@@ -11,11 +11,11 @@ import {
     callsShowButton,
     channelIDForCurrentCall,
     clientConnecting,
+    currentChannelHasCall,
     isCloudProfessionalOrEnterpriseOrTrial,
     isCloudStarter,
     isLimitRestricted,
     maxParticipants,
-    profilesInCallInCurrentChannel,
 } from 'src/selectors';
 import {getUserIdFromDM, isDMChannel} from 'src/utils';
 import styled, {css} from 'styled-components';
@@ -28,7 +28,7 @@ const ChannelHeaderButton = () => {
     const isDeactivatedDM = isDMChannel(channel) && otherUser?.delete_at > 0;
     const show = useSelector((state: GlobalState) => callsShowButton(state, channel?.id || ''));
     const inCall = useSelector(channelIDForCurrentCall) === channel?.id;
-    const hasCall = useSelector(profilesInCallInCurrentChannel).length > 0;
+    const hasCall = useSelector(currentChannelHasCall);
     const isAdmin = useSelector(isCurrentUserSystemAdmin);
     const cloudStarter = useSelector(isCloudStarter);
     const isCloudPaid = useSelector(isCloudProfessionalOrEnterpriseOrTrial);

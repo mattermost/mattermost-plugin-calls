@@ -153,9 +153,25 @@ export const profilesInCallInChannel = (state: GlobalState, channelID: string): 
     return Object.values(getProfilesMapFromSessions(sessionsInCalls(state)[channelID], userProfiles(state)));
 };
 
-export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
-    return profilesInCallInChannel(state, channelId).length > 0;
+export const numProfilesInCallInChannel = (state: GlobalState, channelID: string): number => {
+    return profilesInCallInChannel(state, channelID).length;
 };
+
+export const numSessionsInCallInChannel = (state: GlobalState, channelID: string): number => {
+    return Object.keys(sessionsInCalls(state)[channelID] || {}).length;
+};
+
+export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
+    return Boolean(calls(state)[channelId]);
+};
+
+export const currentChannelHasCall: (state: GlobalState) => boolean =
+    createSelector(
+        'currentChannelHasCall',
+        calls,
+        getCurrentChannelId,
+        (callsStates, currChannelId) => Boolean(callsStates[currChannelId]),
+    );
 
 export const sessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
     createSelector(
@@ -237,6 +253,10 @@ export const callOwnerIDForCallInChannel = (state: GlobalState, channelID: strin
 
 const hostsInCalls = (state: GlobalState): hostsState => {
     return pluginState(state).hosts;
+};
+
+export const hostIDForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
+    return hostsInCalls(state)[channelID]?.hostID;
 };
 
 export const hostIDForCurrentCall: (state: GlobalState) => string =

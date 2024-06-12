@@ -90,10 +90,16 @@ test.describe('join call', () => {
 
         await userAPage.locator('.post__header').locator('button.user-popover').last().click();
         await expect(userAPage.locator('div.user-profile-popover')).toBeVisible();
-        await userAPage.locator('div.user-profile-popover').locator('#startCallButton').click();
+
+        // Start the call with the button
+        await expect(userAPage.getByLabel('Start call')).toBeEnabled();
+        await userAPage.getByLabel('Start call').click();
+
+        // Verify that the call button is disabled while the call is started
+        await expect(userAPage.getByLabel(`Call with ${usernames[1]} is ongoing`)).toBeDisabled();
 
         // Close User profile overlay
-        await userAPage.locator('button.closeButtonRelativePosition').click();
+        await userAPage.getByLabel('Close user profile popover').click();
 
         await expect(userAPage.locator('#calls-widget')).toBeVisible();
         await expect(userAPage.locator('#calls-widget-loading-overlay')).toBeHidden();
