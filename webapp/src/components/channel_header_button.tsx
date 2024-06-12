@@ -1,7 +1,7 @@
 import {GlobalState} from '@mattermost/types/store';
 import {getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
-import React from 'react';
+import React, {useState} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
@@ -39,6 +39,9 @@ const ChannelHeaderButton = () => {
 
     const {formatMessage} = useIntl();
 
+    const [joining, setJoining] = useState(false); // doesn't matter, will be set below
+    const onClick = () => setJoining(hasCall);
+
     if (!show || !channel) {
         return null;
     }
@@ -53,8 +56,10 @@ const ChannelHeaderButton = () => {
         callButtonText = formatMessage({defaultMessage: 'Start call'});
     }
 
-    if (isClientConnecting) {
+    if (isClientConnecting && joining) {
         callButtonText = formatMessage({defaultMessage: 'Joining call…'});
+    } else if (isClientConnecting) {
+        callButtonText = formatMessage({defaultMessage: 'Starting call…'});
     }
 
     const button = (
@@ -65,10 +70,11 @@ const ChannelHeaderButton = () => {
             $restricted={restricted}
             $isCloudPaid={isCloudPaid}
             $isClientConnecting={isClientConnecting}
+            onClick={onClick}
         >
             {isClientConnecting ? <Spinner $size={12}/> : <CompassIcon icon='phone'/>}
             <CallButtonText>
-                { callButtonText }
+                {callButtonText}
             </CallButtonText>
             {withUpsellIcon &&
                 <UpsellIcon className={'icon icon-key-variant'}/>
