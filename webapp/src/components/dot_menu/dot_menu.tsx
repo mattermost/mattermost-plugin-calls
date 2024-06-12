@@ -1,8 +1,11 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {ComponentProps, useState} from 'react';
+import React, {ComponentProps, useRef, useState} from 'react';
+import {Overlay} from 'react-bootstrap';
 import {PrimaryButton} from 'src/components/buttons';
+import {StyledTooltip} from 'src/components/shared';
+import Shortcut from 'src/components/shortcut';
 import styled from 'styled-components';
 
 import Dropdown from './dropdown';
@@ -64,6 +67,10 @@ type DotMenuProps = {
     isActive?: boolean;
     closeOnClick?: boolean;
     onOpenChange?: (open: boolean) => void;
+    id?: string;
+    shortcut?: string,
+    tooltipText?: string,
+    tooltipSubtext?: string,
 };
 
 type DropdownProps = Omit<ComponentProps<typeof Dropdown>, 'target' | 'children' | 'isOpen'>;
@@ -79,9 +86,15 @@ const DotMenu = ({
     closeOnClick = true,
     dotMenuButton: MenuButton = DotMenuButton,
     dropdownMenu: Menu = DropdownMenu,
+    id,
+    shortcut,
+    tooltipText,
+    tooltipSubtext,
     ...props
 }: DotMenuProps & DropdownProps) => {
     const [isOpen, setOpen] = useState(false);
+    const [isHover, setIsHover] = useState(false);
+    const target = useRef<HTMLDivElement>(null);
     const setOpenWrapper = (open: boolean) => {
         onOpenChange?.(open);
         setOpen(open);
@@ -91,31 +104,49 @@ const DotMenu = ({
     };
 
     const button = (
-
-        // @ts-ignore
-        <MenuButton
-            title={title}
-            $isActive={(isActive ?? false) || isOpen}
-            onClick={(e: MouseEvent) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleOpen();
-            }}
-            onKeyUp={(e: KeyboardEvent) => {
-                // Handle Enter and Space as clicking on the button
-                if (e.key === 'Space' || e.key === 'Enter') {
+        <div
+            className={className}
+            onMouseEnter={() => setIsHover(true)}
+            onMouseLeave={() => setIsHover(false)}
+        >
+            {/*@ts-ignore*/}
+            <MenuButton
+                ref={target}
+                id={id}
+                title={title}
+                $isActive={(isActive ?? false) || isOpen}
+                onClick={(e: MouseEvent) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     toggleOpen();
-                }
-            }}
-            tabIndex={0}
-            className={className}
-            role={'button'}
-            disabled={disabled ?? false}
-            data-testid={'menuButton' + (title ?? '')}
-        >
-            {icon}
-        </MenuButton>
+                }}
+                role={'button'}
+                disabled={disabled ?? false}
+                data-testid={'menuButton' + (title ?? '')}
+            >
+                {icon}
+            </MenuButton>
+            {tooltipText && isHover && !isOpen &&
+                <Overlay
+                    key={id}
+                    target={target.current as HTMLDivElement}
+                    show={isHover}
+                    placement={'top'}
+                >
+                    <StyledTooltip id={`tooltip-${id}`}>
+                        <div>{tooltipText}</div>
+                        {tooltipSubtext &&
+                            <TooltipSubtext>
+                                {tooltipSubtext}
+                            </TooltipSubtext>
+                        }
+                        {shortcut &&
+                            <Shortcut shortcut={shortcut}/>
+                        }
+                    </StyledTooltip>
+                </Overlay>
+            }
+        </div>
     );
 
     return (
@@ -141,12 +172,12 @@ const DotMenu = ({
 };
 
 const DropdownMenuItemStyled = styled.div`
-    font-family: 'Open Sans';
+    font-family: 'Open Sans',sans-serif;
     font-style: normal;
     font-weight: normal;
     font-size: 14px;
     color: var(--center-channel-color);
-    padding: 6px 16px;
+    padding: 8px 16px;
     text-decoration: unset;
     display: inline-flex;
     align-items: center;
@@ -192,6 +223,10 @@ export const DropdownMenuSeparator = styled.div`
     border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
     margin: 8px auto;
     width: 100%;
+`;
+
+const TooltipSubtext = styled.div`
+    opacity: 0.56;
 `;
 
 export default DotMenu;

@@ -13,6 +13,7 @@ export type Props = {
     bgColorHover?: string,
     tooltipText?: string,
     tooltipSubtext?: string,
+    tooltipPosition?: string,
     onToggle?: () => void,
     unavailable?: boolean,
     disabled?: boolean,
@@ -53,7 +54,7 @@ export default function WidgetButton(props: Props) {
                 key={props.id}
                 target={target.current as HTMLButtonElement}
                 show={show}
-                placement='top'
+                placement={props.tooltipPosition || 'top'}
             >
                 <StyledTooltip
                     id={`tooltip-${props.id}`}

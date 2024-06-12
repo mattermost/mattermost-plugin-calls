@@ -1,11 +1,11 @@
-import {chromium, expect, test} from '@playwright/test';
+import {expect, test} from '@playwright/test';
 
 import {apiSetEnableLiveCaptions, apiSetEnableTranscriptions} from '../config';
-import {adminState, baseURL, defaultTeam, pluginID} from '../constants';
+import {baseURL} from '../constants';
 import PlaywrightDevPage from '../page';
-import {getUserStoragesForTest, newUserPage} from '../utils';
+import {getUserStoragesForTest} from '../utils';
 
-test.beforeEach(async ({page, context}) => {
+test.beforeEach(async ({page}) => {
     const devPage = new PlaywrightDevPage(page);
     await devPage.goto();
 });
@@ -129,7 +129,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         // start call
         await devPage.startCall();
 
-        let [popOut, _] = await Promise.all([
+        let [popOut] = await Promise.all([
             context.waitForEvent('page'),
             page.click('#calls-widget-expand-button'),
         ]);
@@ -166,7 +166,8 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(popOut.getByTestId('banner-recording-stopped')).toContainText('Recording and transcription has stopped. Processing…');
 
         // leave call
-        await popOut.locator('#calls-popout-leave-button').click();
+        let popOutDev = new PlaywrightDevPage(popOut);
+        await popOutDev.leaveFromPopout();
 
         //
         // Lice captions tests.
@@ -178,7 +179,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         // start call
         await devPage.startCall();
 
-        [popOut, _] = await Promise.all([
+        [popOut] = await Promise.all([
             context.waitForEvent('page'),
             page.click('#calls-widget-expand-button'),
         ]);
@@ -224,10 +225,11 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(popOut.getByTestId('banner-recording-stopped')).toContainText('Recording and transcription has stopped. Processing…');
 
         // leave call
-        await popOut.locator('#calls-popout-leave-button').click();
+        popOutDev = new PlaywrightDevPage(popOut);
+        await popOutDev.leaveFromPopout();
     });
 
-    test('recording - no participants left', async ({page, request}) => {
+    test('recording - no participants left', async ({page}) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
 
@@ -253,7 +255,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
     });
 
-    test('recording - call end', async ({page, request}) => {
+    test('recording - call end', async ({page}) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
 

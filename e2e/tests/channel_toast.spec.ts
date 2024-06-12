@@ -1,12 +1,11 @@
 import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {getUserIdxForTest, getUsernamesForTest, getUserStoragesForTest, startCall} from '../utils';
+import {getUserIdxForTest, getUserStoragesForTest, startCall} from '../utils';
 
 const userStorages = getUserStoragesForTest();
-const usernames = getUsernamesForTest();
 
-test.beforeEach(async ({page, context}) => {
+test.beforeEach(async ({page}) => {
     const devPage = new PlaywrightDevPage(page);
     await devPage.goto();
 });
@@ -15,7 +14,7 @@ test.describe('channel toast', () => {
     const userIdx = getUserIdxForTest();
     test.use({storageState: userStorages[0]});
 
-    test('dismissed and remains dismissed when leaving and returning to channel', async ({page, context}) => {
+    test('dismissed and remains dismissed when leaving and returning to channel', async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         await page.locator('.post__body').last().scrollIntoViewIfNeeded();
@@ -36,7 +35,7 @@ test.describe('channel toast', () => {
         await userPage.leaveCall();
     });
 
-    test('dismissed and reappears for next call while remaining in channel', async ({page, context}) => {
+    test('dismissed and reappears for next call while remaining in channel', async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         await page.locator('.post__body').last().scrollIntoViewIfNeeded();
