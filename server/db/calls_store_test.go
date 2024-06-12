@@ -25,7 +25,7 @@ func TestCallsStore(t *testing.T) {
 		"TestGetActiveCallByChannelID": testGetActiveCallByChannelID,
 		"TestGetRTCDHostForCall":       testGetRTCDHostForCall,
 		"TestGetAllActiveCalls":        testGetAllActiveCalls,
-		"TestGetCallOngoing":           testGetCallOngoing,
+		"TestGetCallActive":            testGetCallActive,
 	})
 }
 
@@ -247,14 +247,14 @@ func testGetCall(t *testing.T, store *Store) {
 	})
 }
 
-func testGetCallOngoing(t *testing.T, store *Store) {
+func testGetCallActive(t *testing.T, store *Store) {
 	t.Run("none", func(t *testing.T) {
-		ongoing, err := store.GetCallOngoing("callID", GetCallOpts{})
+		active, err := store.GetCallActive("callID", GetCallOpts{})
 		require.NoError(t, err)
-		require.False(t, ongoing)
+		require.False(t, active)
 	})
 
-	t.Run("ongoing", func(t *testing.T) {
+	t.Run("active", func(t *testing.T) {
 		call := &public.Call{
 			ID:           model.NewId(),
 			CreateAt:     time.Now().UnixMilli(),
@@ -275,9 +275,9 @@ func testGetCallOngoing(t *testing.T, store *Store) {
 		err := store.CreateCall(call)
 		require.NoError(t, err)
 
-		ongoing, err := store.GetCallOngoing(call.ChannelID, GetCallOpts{FromWriter: true})
+		active, err := store.GetCallActive(call.ChannelID, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
-		require.True(t, ongoing)
+		require.True(t, active)
 	})
 
 	t.Run("ended", func(t *testing.T) {
@@ -302,9 +302,9 @@ func testGetCallOngoing(t *testing.T, store *Store) {
 		err := store.CreateCall(call)
 		require.NoError(t, err)
 
-		ongoing, err := store.GetCallOngoing(call.ChannelID, GetCallOpts{FromWriter: true})
+		active, err := store.GetCallActive(call.ChannelID, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
-		require.False(t, ongoing)
+		require.False(t, active)
 	})
 
 	t.Run("deleted", func(t *testing.T) {
@@ -328,16 +328,16 @@ func testGetCallOngoing(t *testing.T, store *Store) {
 		err := store.CreateCall(call)
 		require.NoError(t, err)
 
-		ongoing, err := store.GetCallOngoing(call.ChannelID, GetCallOpts{FromWriter: true})
+		active, err := store.GetCallActive(call.ChannelID, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
-		require.True(t, ongoing)
+		require.True(t, active)
 
 		err = store.DeleteCall(call.ID)
 		require.NoError(t, err)
 
-		ongoing, err = store.GetCallOngoing(call.ChannelID, GetCallOpts{FromWriter: true})
+		active, err = store.GetCallActive(call.ChannelID, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
-		require.False(t, ongoing)
+		require.False(t, active)
 	})
 }
 

@@ -131,13 +131,13 @@ export const getCallsConfig = (): ActionFuncAsync<CallsConfig> => {
     });
 };
 
-export const getCallOngoing = async (channelID: string) => {
+export const getCallActive = async (channelID: string) => {
     try {
-        const res = await RestClient.fetch<{ongoing: boolean}>(
-            `${getPluginPath()}/calls/${channelID}/ongoing`,
+        const res = await RestClient.fetch<{active: boolean}>(
+            `${getPluginPath()}/calls/${channelID}/active`,
             {method: 'get'},
         );
-        return res.ongoing;
+        return res.active;
     } catch (e) {
         return false;
     }

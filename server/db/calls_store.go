@@ -176,13 +176,13 @@ func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 	return &call, nil
 }
 
-func (s *Store) GetCallOngoing(channelID string, opts GetCallOpts) (bool, error) {
-	s.metrics.IncStoreOp("GetCallOngoing")
+func (s *Store) GetCallActive(channelID string, opts GetCallOpts) (bool, error) {
+	s.metrics.IncStoreOp("GetCallActive")
 	defer func(start time.Time) {
-		s.metrics.ObserveStoreMethodsTime("GetCallOngoing", time.Since(start).Seconds())
+		s.metrics.ObserveStoreMethodsTime("GetCallActive", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("COUNT(1)").
+	qb := getQueryBuilder(s.driverName).Select("1").
 		From("calls").
 		Where(
 			sq.And{
@@ -197,16 +197,16 @@ func (s *Store) GetCallOngoing(channelID string, opts GetCallOpts) (bool, error)
 		return false, fmt.Errorf("failed to prepare query: %w", err)
 	}
 
-	var num int
+	var active bool
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
 	defer cancel()
-	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &num, q, args...); err == sql.ErrNoRows {
+	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &active, q, args...); err == sql.ErrNoRows {
 		return false, nil
 	} else if err != nil {
 		return false, fmt.Errorf("failed to get call: %w", err)
 	}
 
-	return num >= 1, nil
+	return active, nil
 }
 
 func (s *Store) GetActiveCallByChannelID(channelID string, opts GetCallOpts) (*public.Call, error) {

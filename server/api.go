@@ -99,7 +99,7 @@ func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (p *Plugin) handleGetCallOngoing(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleGetCallActive(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
 	channelID := mux.Vars(r)["channel_id"]
 
@@ -110,7 +110,7 @@ func (p *Plugin) handleGetCallOngoing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ongoing, err := p.store.GetCallOngoing(channelID, db.GetCallOpts{FromWriter: true})
+	active, err := p.store.GetCallActive(channelID, db.GetCallOpts{FromWriter: true})
 	if err != nil {
 		p.LogError(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -118,7 +118,7 @@ func (p *Plugin) handleGetCallOngoing(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]bool{"ongoing": ongoing}); err != nil {
+	if err := json.NewEncoder(w).Encode(map[string]bool{"active": active}); err != nil {
 		p.LogError(err.Error())
 	}
 }
