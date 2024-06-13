@@ -23,7 +23,7 @@ export GO111MODULE=on
 export GOBIN ?= $(PWD)/bin
 
 # You can include assets this directory into the bundle. This can be e.g. used to include profile pictures.
-ASSETS_DIR ?= assets
+ASSETS_DIR ?= server/assets
 
 ## Define the default target (make all)
 .PHONY: default
