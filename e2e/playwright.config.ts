@@ -1,3 +1,5 @@
+/* eslint-disable no-process-env */
+
 import {devices, PlaywrightTestConfig} from '@playwright/test';
 
 const config: PlaywrightTestConfig = {

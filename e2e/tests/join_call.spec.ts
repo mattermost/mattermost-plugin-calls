@@ -1,12 +1,12 @@
-import {chromium, expect, test} from '@playwright/test';
+import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {getUsernamesForTest, getUserStoragesForTest, joinCall, newUserPage, startCall, startDMWith} from '../utils';
+import {getUsernamesForTest, getUserStoragesForTest, joinCall, startCall, startDMWith} from '../utils';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
 
-test.beforeEach(async ({page, context}) => {
+test.beforeEach(async ({page}) => {
     const devPage = new PlaywrightDevPage(page);
     await devPage.goto();
 });
@@ -66,9 +66,12 @@ test.describe('join call', () => {
 
         expect(await page.locator('data-testid=call-thread').last().screenshot()).toMatchSnapshot('call-thread-leave.png');
 
-        const leaveCallButton = page.locator('.post__body').last().locator('button:has-text("Leave")');
+        const leaveCallButton = page.locator('.post__body').last().getByRole('button', {name: 'Leave'});
         await expect(leaveCallButton).toBeVisible();
         await leaveCallButton.click();
+        const menu = page.getByTestId('dropdownmenu');
+        await menu.getByText('Leave call').click();
+
         await expect(page.locator('#calls-widget')).toBeHidden();
 
         await userPage.leaveCall();
@@ -104,7 +107,7 @@ test.describe('join call', () => {
         await expect(userAPage.locator('#calls-widget')).toBeVisible();
         await expect(userAPage.locator('#calls-widget-loading-overlay')).toBeHidden();
 
-        await userAPage.locator('#calls-widget-leave-button').click();
+        await userADevPage.leaveFromWidget();
         await expect(userAPage.locator('#calls-widget')).toBeHidden();
 
         // We then verify that call button is disabled if the other user is already in a call with us.
@@ -142,7 +145,7 @@ test.describe('join call', () => {
         await userADevPage.leaveCall();
     });
 
-    test('multiple sessions per user', async ({page}) => {
+    test('multiple sessions per user', async () => {
         test.setTimeout(180000);
 
         // start a call

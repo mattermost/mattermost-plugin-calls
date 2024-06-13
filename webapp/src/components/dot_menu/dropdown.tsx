@@ -4,7 +4,7 @@
 import {
     autoUpdate,
     flip,
-    FloatingFocusManager,
+    FloatingFocusManager, FloatingPortal,
     offset,
     Placement,
     shift,
@@ -19,7 +19,7 @@ import styled from 'styled-components';
 
 const FloatingContainer = styled.div`
     min-width: 16rem;
-    z-index: 50;
+    z-index: 10002;
 `;
 
 type DropdownProps = {
@@ -30,6 +30,7 @@ type DropdownProps = {
     flip?: Parameters<typeof flip>[0];
     shift?: Parameters<typeof shift>[0];
     focusManager?: boolean | Omit<ComponentProps<typeof FloatingFocusManager>, 'context' | 'children'>;
+    portal?: boolean;
     strategy?: Strategy;
     isOpen: boolean;
     onOpenChange?: ((open: boolean) => void);
@@ -85,6 +86,14 @@ const Dropdown = (props: DropdownProps) => {
             >
                 {content}
             </FloatingFocusManager>
+        );
+    }
+
+    if (props.portal) {
+        content = (
+            <FloatingPortal>
+                {content}
+            </FloatingPortal>
         );
     }
 

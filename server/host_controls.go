@@ -275,14 +275,7 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 		}
 	}
 
-	if state.Call.EndAt == 0 {
-		setCallEnded(&state.Call)
-	}
-
-	if err := p.store.UpdateCall(&state.Call); err != nil {
-		return fmt.Errorf("failed to update call: %w", err)
-	}
-
+	// Ask clients to disconnect themselves. The last to disconnect will cause the call to end, as usual.
 	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 	callID := state.Call.ID

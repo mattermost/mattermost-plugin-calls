@@ -131,6 +131,18 @@ export const getCallsConfig = (): ActionFuncAsync<CallsConfig> => {
     });
 };
 
+export const getCallActive = async (channelID: string) => {
+    try {
+        const res = await RestClient.fetch<{active: boolean}>(
+            `${getPluginPath()}/calls/${channelID}/active`,
+            {method: 'get'},
+        );
+        return res.active;
+    } catch (e) {
+        return false;
+    }
+};
+
 export const setRecordingsEnabled = (enabled: boolean) => (dispatch: Dispatch) => {
     dispatch({
         type: RECORDINGS_ENABLED,

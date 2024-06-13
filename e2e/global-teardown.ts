@@ -1,3 +1,5 @@
+/* eslint-disable no-await-in-loop */
+
 import {FullConfig} from '@playwright/test';
 import * as fs from 'fs/promises';
 

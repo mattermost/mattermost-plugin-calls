@@ -25,6 +25,7 @@ func TestCallsStore(t *testing.T) {
 		"TestGetActiveCallByChannelID": testGetActiveCallByChannelID,
 		"TestGetRTCDHostForCall":       testGetRTCDHostForCall,
 		"TestGetAllActiveCalls":        testGetAllActiveCalls,
+		"TestGetCallActive":            testGetCallActive,
 	})
 }
 
@@ -243,6 +244,100 @@ func testGetCall(t *testing.T, store *Store) {
 		require.NoError(t, err)
 		require.NotNil(t, gotCall)
 		require.Equal(t, call, gotCall)
+	})
+}
+
+func testGetCallActive(t *testing.T, store *Store) {
+	t.Run("none", func(t *testing.T) {
+		active, err := store.GetCallActive("callID", GetCallOpts{})
+		require.NoError(t, err)
+		require.False(t, active)
+	})
+
+	t.Run("active", func(t *testing.T) {
+		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
+			ChannelID:    model.NewId(),
+			StartAt:      time.Now().UnixMilli(),
+			PostID:       model.NewId(),
+			ThreadID:     model.NewId(),
+			OwnerID:      model.NewId(),
+			Participants: []string{model.NewId(), model.NewId()},
+			Stats: public.CallStats{
+				ScreenDuration: 45,
+			},
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
+			},
+		}
+
+		err := store.CreateCall(call)
+		require.NoError(t, err)
+
+		active, err := store.GetCallActive(call.ChannelID, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.True(t, active)
+	})
+
+	t.Run("ended", func(t *testing.T) {
+		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
+			ChannelID:    model.NewId(),
+			StartAt:      time.Now().UnixMilli(),
+			EndAt:        time.Now().UnixMilli() + 1,
+			PostID:       model.NewId(),
+			ThreadID:     model.NewId(),
+			OwnerID:      model.NewId(),
+			Participants: []string{model.NewId(), model.NewId()},
+			Stats: public.CallStats{
+				ScreenDuration: 45,
+			},
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
+			},
+		}
+
+		err := store.CreateCall(call)
+		require.NoError(t, err)
+
+		active, err := store.GetCallActive(call.ChannelID, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.False(t, active)
+	})
+
+	t.Run("deleted", func(t *testing.T) {
+		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     time.Now().UnixMilli(),
+			ChannelID:    model.NewId(),
+			StartAt:      time.Now().UnixMilli(),
+			PostID:       model.NewId(),
+			ThreadID:     model.NewId(),
+			OwnerID:      model.NewId(),
+			Participants: []string{model.NewId(), model.NewId()},
+			Stats: public.CallStats{
+				ScreenDuration: 45,
+			},
+			Props: public.CallProps{
+				Hosts: []string{"userA", "userB"},
+			},
+		}
+
+		err := store.CreateCall(call)
+		require.NoError(t, err)
+
+		active, err := store.GetCallActive(call.ChannelID, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.True(t, active)
+
+		err = store.DeleteCall(call.ID)
+		require.NoError(t, err)
+
+		active, err = store.GetCallActive(call.ChannelID, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.False(t, active)
 	})
 }
 

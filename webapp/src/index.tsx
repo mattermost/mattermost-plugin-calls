@@ -476,6 +476,7 @@ export default class Plugin {
                 title: title || '',
                 channelURL: getChannelURL(store.getState(), getChannel(store.getState(), channelID), getCurrentTeamId(store.getState())),
                 rootID: rootId || '',
+                startingCall: !channelHasCall(store.getState(), channelID),
             };
             if (window.desktopAPI?.joinCall) {
                 logDebug('desktopAPI.joinCall');
