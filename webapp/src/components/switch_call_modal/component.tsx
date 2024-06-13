@@ -9,7 +9,7 @@ import {getUserDisplayName, isDMChannel, isGMChannel, untranslatable} from 'src/
 
 interface Props {
     intl: IntlShape,
-    currentChannel: Channel,
+    currentChannel?: Channel,
     connectedChannel?: Channel,
     currentDMUser: UserProfile | undefined,
     connectedDMUser: UserProfile | undefined,
@@ -101,7 +101,7 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
         this.props.hideSwitchCallModal();
         const win = window.opener ? window.opener : window;
         win.callsClient?.disconnect();
-        win.postMessage({type: 'connectCall', channelID: this.props.currentChannel.id}, win.origin);
+        win.postMessage({type: 'connectCall', channelID: this.props.currentChannel?.id}, win.origin);
     };
 
     componentDidMount() {
@@ -153,13 +153,13 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
         } else if (isGMChannel(this.props.currentChannel)) {
             message2 = (<React.Fragment>
                 {formatMessage({defaultMessage: 'Do you want to leave and join a call with {users}?'}, {
-                    users: (<span style={{fontWeight: 600}}>{this.props.currentChannel.display_name}</span>),
+                    users: (<span style={{fontWeight: 600}}>{this.props.currentChannel?.display_name}</span>),
                 })}
             </React.Fragment>);
         } else {
             message2 = (<React.Fragment>
                 {formatMessage({defaultMessage: 'Do you want to leave and join a call in {channel}?'}, {
-                    channel: (<span style={{fontWeight: 600}}>{this.props.currentChannel.display_name}</span>),
+                    channel: (<span style={{fontWeight: 600}}>{this.props.currentChannel?.display_name}</span>),
                 })}
             </React.Fragment>);
         }

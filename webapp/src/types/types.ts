@@ -211,6 +211,18 @@ export type LiveCaptions = {
     [sessionID: string]: LiveCaption;
 }
 
+// Matching the type in server/public/stats.go
+export type CallsStats = {
+    total_calls: number;
+    total_active_calls: number;
+    total_active_sessions: number;
+    calls_by_day: Record<string, number>;
+    calls_by_month: Record<string, number>;
+    calls_by_channel_type: Record<string, number>;
+    avg_duration: number;
+    avg_participants: number;
+};
+
 // Desktop types
 
 export type CallsDesktopJoinResponse = {

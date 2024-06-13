@@ -11,7 +11,7 @@ import styled from 'styled-components';
 
 interface Props {
     text: string;
-    team: Team;
+    team?: Team;
     children?: ReactNode | ReactNodeArray;
     className?: string;
 }

@@ -2,6 +2,7 @@ import {Channel} from '@mattermost/types/channels';
 import {CommandArgs} from '@mattermost/types/integrations';
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
+import {PluginSiteStatsHandler} from '@mattermost/types/store/plugin';
 import {Store as BaseStore} from 'redux';
 import {ThunkDispatch} from 'redux-thunk';
 import {RealNewPostMessageProps} from 'src/types/types';
@@ -70,6 +71,8 @@ export interface PluginRegistry {
     registerTranslations(handler: (locale: string) => Translations | Promise<Translations>);
 
     registerFilePreviewComponent(overrideFn: (fi: FileInfo, post?: Post) => boolean, component: React.ElementType);
+
+    registerSiteStatisticsHandler(handler: PluginSiteStatsHandler);
 }
 
 export type SlashCommandWillBePostedReturn = { error: string } | { message: string, args: CommandArgs } | unknown;

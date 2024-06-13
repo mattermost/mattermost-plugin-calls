@@ -32,8 +32,8 @@ export const PostTypeCloudTrialRequest = ({post}: Props) => {
     const isCloudLicense = useSelector(isCloud);
     const attachments = post.props.attachments[0];
 
-    const channel = useSelector<GlobalState, Channel>((state) => getChannel(state, post.channel_id));
-    const team = useSelector<GlobalState, Team>((state) => getTeam(state, channel.team_id));
+    const channel = useSelector<GlobalState, Channel|undefined>((state) => getChannel(state, post.channel_id));
+    const team = useSelector<GlobalState, Team|undefined>((state) => getTeam(state, channel?.team_id || ''));
 
     // Shouldn't happen, but just in case:
     if (!isCloudLicense) {
