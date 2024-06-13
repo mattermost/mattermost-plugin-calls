@@ -76,6 +76,25 @@ test.describe('popout window', () => {
         await expect(page.page.locator('#calls-widget')).toBeHidden();
     });
 
+    test('expanding chat', async () => {
+        const [page, popOut] = await startCallAndPopout(userStorages[0]);
+        await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
+
+        // Open chat thread
+        await popOut.page.click('#calls-popout-chat-button');
+        await expect(popOut.page.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
+
+        // Expand call thread
+        await popOut.page.locator('[aria-label="Expand"]').click();
+
+        // Verify leave button can be clicked. Checking for visibility would work even
+        // if there's an element showing on top
+        await popOut.page.locator('#calls-popout-leave-button').click();
+        await popOut.page.getByText('Leave call').click();
+
+        await expect(page.page.locator('#calls-widget')).toBeHidden();
+    });
+
     test('recording banner dismissed works cross-window and is remembered - clicked on widget', async ({
         page,
         context,
