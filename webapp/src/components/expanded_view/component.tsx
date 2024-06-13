@@ -205,6 +205,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 justifyContent: 'center',
                 padding: '12px',
                 width: '100%',
+                gap: '8px',
             },
             centerControls: {
                 display: 'flex',
