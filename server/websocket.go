@@ -90,6 +90,12 @@ type CallsClientJoinData struct {
 	JobID string
 }
 
+type callsJoinData struct {
+	CallsClientJoinData
+	remoteAddr string
+	xff        string
+}
+
 type WebSocketBroadcast struct {
 	ChannelID           string
 	UserID              string
@@ -637,7 +643,7 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID, handlerID s
 	return nil
 }
 
-func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData CallsClientJoinData) (retErr error) {
+func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData callsJoinData) (retErr error) {
 	channelID := joinData.ChannelID
 	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
 
@@ -744,7 +750,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData Calls
 			})
 		}
 
-		p.LogDebug("session has joined call", "userID", userID, "sessionID", connID, "channelID", channelID, "callID", state.Call.ID)
+		p.LogDebug("session has joined call",
+			"userID", userID, "sessionID", connID, "channelID", channelID, "callID", state.Call.ID,
+			"remoteAddr", joinData.remoteAddr, "xForwardedFor", joinData.xff,
+		)
 
 		handlerID := state.Call.Props.NodeID
 		p.LogDebug("got handlerID", "handlerID", handlerID)
@@ -1134,11 +1143,18 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		// it will be an empty string.
 		jobID, _ := req.Data["jobID"].(string)
 
-		joinData := CallsClientJoinData{
-			channelID,
-			title,
-			threadID,
-			jobID,
+		remoteAddr, _ := req.Data[model.WebSocketRemoteAddr].(string)
+		xff, _ := req.Data[model.WebSocketXForwardedFor].(string)
+
+		joinData := callsJoinData{
+			CallsClientJoinData{
+				channelID,
+				title,
+				threadID,
+				jobID,
+			},
+			remoteAddr,
+			xff,
 		}
 
 		go func() {
