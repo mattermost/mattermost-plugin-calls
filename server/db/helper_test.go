@@ -34,6 +34,32 @@ CREATE TABLE IF NOT EXISTS pluginkeyvaluestore (
 );
 		`)
 		require.NoError(t, err)
+
+		_, err = store.wDB.Exec(`
+CREATE TYPE channel_type AS ENUM ('P', 'G', 'O', 'D');
+CREATE TABLE IF NOT EXISTS channels (
+    id character varying(26) NOT NULL,
+    createat bigint,
+    updateat bigint,
+    deleteat bigint,
+    teamid character varying(26),
+    type channel_type,
+    displayname character varying(64),
+    name character varying(64),
+    header character varying(1024),
+    purpose character varying(250),
+    lastpostat bigint,
+    totalmsgcount bigint,
+    extraupdateat bigint,
+    creatorid character varying(26),
+    schemeid character varying(26),
+    groupconstrained boolean,
+    shared boolean,
+    totalmsgcountroot bigint,
+    lastrootpostat bigint DEFAULT '0'::bigint
+);
+`)
+		require.NoError(t, err)
 	} else {
 		_, err := store.wDB.Exec(`
 CREATE TABLE IF NOT EXISTS PluginKeyValueStore (
@@ -42,6 +68,40 @@ CREATE TABLE IF NOT EXISTS PluginKeyValueStore (
   PValue mediumblob,
   ExpireAt bigint(20) DEFAULT 0,
   PRIMARY KEY (PluginId, PKey)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`)
+		require.NoError(t, err)
+
+		_, err = store.wDB.Exec(`
+CREATE TABLE IF NOT EXISTS Channels (
+  Id varchar(26) NOT NULL,
+  CreateAt bigint DEFAULT NULL,
+  UpdateAt bigint DEFAULT NULL,
+  DeleteAt bigint DEFAULT NULL,
+  TeamId varchar(26) DEFAULT NULL,
+  Type enum('D','O','G','P') DEFAULT NULL,
+  DisplayName varchar(64) DEFAULT NULL,
+  Name varchar(64) DEFAULT NULL,
+  Header text,
+  Purpose varchar(250) DEFAULT NULL,
+  LastPostAt bigint DEFAULT NULL,
+  TotalMsgCount bigint DEFAULT NULL,
+  ExtraUpdateAt bigint DEFAULT NULL,
+  CreatorId varchar(26) DEFAULT NULL,
+  SchemeId varchar(26) DEFAULT NULL,
+  GroupConstrained tinyint(1) DEFAULT NULL,
+  Shared tinyint(1) DEFAULT NULL,
+  TotalMsgCountRoot bigint DEFAULT NULL,
+  LastRootPostAt bigint DEFAULT '0',
+  PRIMARY KEY (Id),
+  UNIQUE KEY Name (Name,TeamId),
+  KEY idx_channels_update_at (UpdateAt),
+  KEY idx_channels_create_at (CreateAt),
+  KEY idx_channels_delete_at (DeleteAt),
+  KEY idx_channels_scheme_id (SchemeId),
+  KEY idx_channels_team_id_display_name (TeamId,DisplayName),
+  KEY idx_channels_team_id_type (TeamId,Type),
+  FULLTEXT KEY idx_channel_search_txt (Name,DisplayName,Purpose)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `)
 		require.NoError(t, err)
@@ -151,6 +211,8 @@ func resetStore(t *testing.T, store *Store) {
 	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_channels`)
 	require.NoError(t, err)
 	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_sessions`)
+	require.NoError(t, err)
+	_, err = store.wDB.Exec(`TRUNCATE TABLE Channels`)
 	require.NoError(t, err)
 }
 

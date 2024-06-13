@@ -1,4 +1,4 @@
-readonly COMMITHASH=79b1e9d20081504a6caf57cdb9e9cb4a8d0552f5
+readonly COMMITHASH=d2c3710265c293281c2b445d4f72f27871c2e127
 
 echo "\n\nInstalling mattermost-webapp from the mattermost repo, using commit hash $COMMITHASH\n"
 

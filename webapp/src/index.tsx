@@ -3,9 +3,10 @@
 import {CallChannelState} from '@mattermost/calls-common/lib/types';
 import WebSocketClient from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
+import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
+import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
@@ -20,6 +21,7 @@ import {
     displayCallsTestModeUser,
     displayFreeTrial,
     getCallsConfig,
+    getCallsStats,
     incomingCallOnChannel,
     loadProfilesByIdsIfMissing,
     setClientConnecting,
@@ -107,6 +109,7 @@ import {
     ringingEnabled,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
+import {convertStatsToPanels} from './stats';
 import {DesktopNotificationArgs, PluginRegistry, Store, WebAppUtils} from './types/mattermost-webapp';
 import {
     followThread,
@@ -320,7 +323,7 @@ export default class Plugin {
             return desktopNotificationHandler(store, post, msgProps, channel, args);
         });
 
-        const connectToCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
+        const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
             if (!channelIDForCurrentCall(store.getState())) {
                 connectCall(channelId, title, rootId);
 
@@ -334,7 +337,7 @@ export default class Plugin {
             }
         };
 
-        const joinCall = async (channelId: string, teamId: string, title?: string, rootId?: string) => {
+        const joinCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
             // Anyone can join a call already in progress.
             // If explicitly enabled, everyone can start calls.
             // In LiveMode (DefaultEnabled=true):
@@ -427,6 +430,16 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
         registry.registerAdminConsoleCustomSetting('ICEHostPortOverride', ICEHostPortOverride);
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
+
+        registry.registerSiteStatisticsHandler(async () => {
+            let stats: Record<string, PluginAnalyticsRow> = {};
+            try {
+                stats = convertStatsToPanels(await getCallsStats(), getServerVersion(store.getState()));
+            } catch (err) {
+                logErr(err);
+            }
+            return stats;
+        });
 
         // Desktop API handlers
         if (window.desktopAPI?.onOpenScreenShareModal) {

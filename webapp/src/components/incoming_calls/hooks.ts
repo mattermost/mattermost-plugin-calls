@@ -16,7 +16,7 @@ import {DID_NOTIFY_FOR_CALL, DID_RING_FOR_CALL} from 'src/action_types';
 import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal, trackEvent} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import {DEFAULT_RING_SOUND} from 'src/constants';
-import {logDebug} from 'src/log';
+import {logDebug, logWarn} from 'src/log';
 import {
     channelIDForCurrentCall,
     currentlyRinging,
@@ -74,7 +74,7 @@ export const useDismissJoin = (channelID: string, callID: string, onWidget = fal
                 } else {
                     logDebug('sending calls-widget-channel-link-click and calls-joined-call message to desktop app');
                     const currentChannel = getChannel(store.getState(), connectedID);
-                    const channelURL = getChannelURL(store.getState(), currentChannel, currentChannel.team_id);
+                    const channelURL = getChannelURL(store.getState(), currentChannel, currentChannel?.team_id);
 
                     // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                     sendDesktopEvent('calls-widget-channel-link-click', {pathName: channelURL});
@@ -189,7 +189,7 @@ export const useNotification = (call: IncomingCallNotification) => {
     const channel = useSelector((state: GlobalState) => getChannel(state, call.channelID));
     const currentUser = useSelector(getCurrentUser);
     const myChannelMember = useSelector((state: GlobalState) => getMyChannelMember(state, call.channelID));
-    const url = useSelector((state: GlobalState) => getChannelURL(state, channel, channel.team_id));
+    const url = useSelector((state: GlobalState) => getChannelURL(state, channel, channel?.team_id));
     const didNotify = useSelector((state: GlobalState) => didNotifyForCall(state, call.callID));
     const [_, shouldDesktopNotificationSound, shouldDesktopNotification] = useNotificationSettings(call.channelID, currentUser);
     const serverVersion = useSelector(getServerVersion);
@@ -205,6 +205,12 @@ export const useNotification = (call: IncomingCallNotification) => {
                     // MM <8.1 will send its own generic channel notification for DMs
                     return;
                 }
+
+                if (!channel) {
+                    logWarn('channel should be defined');
+                    return;
+                }
+
                 const soundName = getNotificationSoundFromChannelMemberAndUser(myChannelMember, currentUser);
                 dispatch(sendDesktopNotificationToMe(title, body, channel, channel.team_id, !shouldDesktopNotificationSound, soundName, url));
 
@@ -254,7 +260,7 @@ export const useOnChannelLinkClick = (call: IncomingCallNotification, onWidget =
     const global = Boolean(isDesktopApp() && getCallsClient());
     const defaultTeam = useSelector(teamForCurrentCall);
     const channel = useSelector((state: GlobalState) => getChannel(state, call.channelID));
-    let channelURL = useSelector((state: GlobalState) => getChannelURL(state, channel, channel.team_id));
+    let channelURL = useSelector((state: GlobalState) => getChannelURL(state, channel, channel?.team_id));
     const source = telemetrySource(onWidget);
 
     if (global && channelURL.startsWith('/channels')) {

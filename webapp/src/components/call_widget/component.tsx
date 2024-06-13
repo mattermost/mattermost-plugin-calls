@@ -8,7 +8,6 @@ import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import {Client4} from 'mattermost-redux/client';
-import {isDirectChannel, isGroupChannel, isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import React, {CSSProperties} from 'react';
 import {FormattedMessage, IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
@@ -66,7 +65,17 @@ import {
     IncomingCallNotification,
     RemoveConfirmationData,
 } from 'src/types/types';
-import {getPopOutURL, getUserDisplayName, hasExperimentalFlag, sendDesktopEvent, untranslatable} from 'src/utils';
+import {
+    getPopOutURL,
+    getUserDisplayName,
+    hasExperimentalFlag,
+    isDMChannel,
+    isGMChannel,
+    isPrivateChannel,
+    isPublicChannel,
+    sendDesktopEvent,
+    untranslatable,
+} from 'src/utils';
 import styled from 'styled-components';
 
 import CallDuration from './call_duration';
@@ -79,8 +88,8 @@ import WidgetButton from './widget_button';
 interface Props {
     intl: IntlShape,
     currentUserID: string,
-    channel: Channel,
-    team: Team,
+    channel?: Channel,
+    team?: Team,
     channelURL: string,
     channelDisplayName: string,
     sessions: UserSessionState[],
@@ -504,7 +513,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }
             }
 
-            if (isDirectChannel(this.props.channel) || isGroupChannel(this.props.channel)) {
+            if (isDMChannel(this.props.channel) || isGMChannel(this.props.channel)) {
                 callsClient?.unmute();
             }
 
@@ -675,6 +684,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     dismissRecordingPrompt = () => {
+        if (!this.props.channel) {
+            logErr('missing channel');
+            return;
+        }
+
         // Dismiss our prompt.
         this.props.recordingPromptDismissedAt(this.props.channel.id, Date.now());
 
@@ -1715,6 +1729,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (window.desktop && !this.props.global) {
             this.props.showExpandedView();
         } else {
+            if (!this.props.team || !this.props.channel) {
+                logErr('missing team or channel');
+                return;
+            }
+
             const expandedViewWindow = window.open(
                 getPopOutURL(this.props.team, this.props.channel),
                 'ExpandedView',
@@ -1786,10 +1805,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='calls-channel-link'
                     style={{appRegion: 'no-drag', padding: '0', minWidth: 0} as CSSProperties}
                 >
-                    {isOpenChannel(this.props.channel) && <CompassIcon icon='globe'/>}
+                    {isPublicChannel(this.props.channel) && <CompassIcon icon='globe'/>}
                     {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
-                    {isDirectChannel(this.props.channel) && <CompassIcon icon='account-outline'/>}
-                    {isGroupChannel(this.props.channel) && <CompassIcon icon='account-multiple-outline'/>}
+                    {isDMChannel(this.props.channel) && <CompassIcon icon='account-outline'/>}
+                    {isGMChannel(this.props.channel) && <CompassIcon icon='account-multiple-outline'/>}
                     <span
                         style={{
                             overflow: 'hidden',
@@ -1972,7 +1991,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             unavailable={noInputDevices || noAudioPermissions}
                         />
 
-                        {!isDirectChannel(this.props.channel) &&
+                        {!isDMChannel(this.props.channel) &&
                             <WidgetButton
                                 id='raise-hand'
                                 onToggle={() => this.onRaiseHandToggle()}
@@ -1989,7 +2008,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             />
                         }
 
-                        {this.props.allowScreenSharing && (this.props.wider || isDirectChannel(this.props.channel)) && this.renderScreenShareButton()}
+                        {this.props.allowScreenSharing && (this.props.wider || isDMChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <WidgetButton
                             id='calls-widget-toggle-menu-button'

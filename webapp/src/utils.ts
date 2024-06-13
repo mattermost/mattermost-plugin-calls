@@ -43,7 +43,7 @@ export function getWSConnectionURL(config: Partial<ClientConfig>): string {
     return `${baseURL}${RestClient.getUrlVersion()}/websocket`;
 }
 
-export function getTeamRelativeURL(team: Team) {
+export function getTeamRelativeURL(team?: Team) {
     if (!team) {
         return '';
     }
@@ -55,11 +55,11 @@ export function getPopOutURL(team: Team, channel: Channel) {
     return `${window.basename || ''}/${team.name}/${pluginId}/expanded/${channel.id}`;
 }
 
-export function getChannelURL(state: GlobalState, channel: Channel, teamId: string) {
+export function getChannelURL(state: GlobalState, channel?: Channel, teamId?: string) {
     let channelURL;
     if (channel && (channel.type === 'D' || channel.type === 'G')) {
         channelURL = getCurrentRelativeTeamUrl(state) + '/channels/' + channel.name;
-    } else if (channel) {
+    } else if (channel && teamId) {
         const team = getTeam(state, teamId);
         channelURL = getTeamRelativeURL(team) + '/channels/' + channel.name;
     } else if (teamId) {
@@ -256,24 +256,24 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
     return screenStream;
 }
 
-export function isDMChannel(channel: Channel) {
+export function isDMChannel(channel?: Channel) {
     return channel?.type === General.DM_CHANNEL;
 }
 
-export function isGMChannel(channel: Channel) {
-    return channel.type === General.GM_CHANNEL;
+export function isGMChannel(channel?: Channel) {
+    return channel?.type === General.GM_CHANNEL;
 }
 
-export function isDmGmChannel(channel: Channel) {
+export function isDmGmChannel(channel?: Channel) {
     return isDMChannel(channel) || isGMChannel(channel);
 }
 
-export function isPublicChannel(channel: Channel) {
-    return channel.type === 'O';
+export function isPublicChannel(channel?: Channel) {
+    return channel?.type === 'O';
 }
 
-export function isPrivateChannel(channel: Channel) {
-    return channel.type === 'P';
+export function isPrivateChannel(channel?: Channel) {
+    return channel?.type === 'P';
 }
 
 export async function getProfilesByIds(state: GlobalState, ids: string[]): Promise<UserProfile[]> {
@@ -373,7 +373,7 @@ export function playSound(name: string) {
     };
 }
 
-export async function followThread(store: Store, channelID: string, teamID: string) {
+export async function followThread(store: Store, channelID: string, teamID?: string) {
     if (!teamID) {
         logDebug('followThread: no team for channel');
         return;
