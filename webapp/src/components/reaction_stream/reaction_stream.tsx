@@ -99,7 +99,7 @@ const ReactionStreamList = styled.div`
     height: 75vh;
     display: flex;
     flex-direction: column-reverse;
-    z-index: 1;
+    z-index: 102;
     margin: 0 24px;
     gap: 8px;
     -webkit-mask: -webkit-gradient(#0000, #000);
