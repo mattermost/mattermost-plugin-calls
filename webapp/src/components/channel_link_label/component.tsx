@@ -48,14 +48,17 @@ const ChannelLinkLabel = (props: Props) => {
                     {
                         display: 'flex',
                         alignItems: 'center',
-                        marginLeft: 'auto',
+                        justifyContent: 'center',
                         height: 'auto',
+                        minWidth: '20px',
+                        marginLeft: 'auto',
+                        marginRight: '4px',
                     }
                 }
             >
                 <ActiveCallIcon
                     fill={props.theme.sidebarText}
-                    style={{width: '12px', height: '12px'}}
+                    style={{minWidth: '12px', maxWidth: '12px', minHeight: '12px', maxHeight: '12px'}}
                 />
             </span>
         </OverlayTrigger>
