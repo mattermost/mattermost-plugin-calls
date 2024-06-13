@@ -4450,6 +4450,66 @@ func (_c *MockAPI_GetPostsSince_Call) RunAndReturn(run func(string, int64) (*mod
 	return _c
 }
 
+// GetPreferenceForUser provides a mock function with given fields: userID, category, name
+func (_m *MockAPI) GetPreferenceForUser(userID string, category string, name string) (model.Preference, *model.AppError) {
+	ret := _m.Called(userID, category, name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPreferenceForUser")
+	}
+
+	var r0 model.Preference
+	var r1 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, string, string) (model.Preference, *model.AppError)); ok {
+		return rf(userID, category, name)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, string) model.Preference); ok {
+		r0 = rf(userID, category, name)
+	} else {
+		r0 = ret.Get(0).(model.Preference)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, string) *model.AppError); ok {
+		r1 = rf(userID, category, name)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockAPI_GetPreferenceForUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPreferenceForUser'
+type MockAPI_GetPreferenceForUser_Call struct {
+	*mock.Call
+}
+
+// GetPreferenceForUser is a helper method to define mock.On call
+//   - userID string
+//   - category string
+//   - name string
+func (_e *MockAPI_Expecter) GetPreferenceForUser(userID interface{}, category interface{}, name interface{}) *MockAPI_GetPreferenceForUser_Call {
+	return &MockAPI_GetPreferenceForUser_Call{Call: _e.mock.On("GetPreferenceForUser", userID, category, name)}
+}
+
+func (_c *MockAPI_GetPreferenceForUser_Call) Run(run func(userID string, category string, name string)) *MockAPI_GetPreferenceForUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_GetPreferenceForUser_Call) Return(_a0 model.Preference, _a1 *model.AppError) *MockAPI_GetPreferenceForUser_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_GetPreferenceForUser_Call) RunAndReturn(run func(string, string, string) (model.Preference, *model.AppError)) *MockAPI_GetPreferenceForUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetPreferencesForUser provides a mock function with given fields: userID
 func (_m *MockAPI) GetPreferencesForUser(userID string) ([]model.Preference, *model.AppError) {
 	ret := _m.Called(userID)
@@ -5968,6 +6028,66 @@ func (_c *MockAPI_GetUsers_Call) RunAndReturn(run func(*model.UserGetOptions) ([
 	return _c
 }
 
+// GetUsersByIds provides a mock function with given fields: userIDs
+func (_m *MockAPI) GetUsersByIds(userIDs []string) ([]*model.User, *model.AppError) {
+	ret := _m.Called(userIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUsersByIds")
+	}
+
+	var r0 []*model.User
+	var r1 *model.AppError
+	if rf, ok := ret.Get(0).(func([]string) ([]*model.User, *model.AppError)); ok {
+		return rf(userIDs)
+	}
+	if rf, ok := ret.Get(0).(func([]string) []*model.User); ok {
+		r0 = rf(userIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func([]string) *model.AppError); ok {
+		r1 = rf(userIDs)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockAPI_GetUsersByIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUsersByIds'
+type MockAPI_GetUsersByIds_Call struct {
+	*mock.Call
+}
+
+// GetUsersByIds is a helper method to define mock.On call
+//   - userIDs []string
+func (_e *MockAPI_Expecter) GetUsersByIds(userIDs interface{}) *MockAPI_GetUsersByIds_Call {
+	return &MockAPI_GetUsersByIds_Call{Call: _e.mock.On("GetUsersByIds", userIDs)}
+}
+
+func (_c *MockAPI_GetUsersByIds_Call) Run(run func(userIDs []string)) *MockAPI_GetUsersByIds_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_GetUsersByIds_Call) Return(_a0 []*model.User, _a1 *model.AppError) *MockAPI_GetUsersByIds_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_GetUsersByIds_Call) RunAndReturn(run func([]string) ([]*model.User, *model.AppError)) *MockAPI_GetUsersByIds_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUsersByUsernames provides a mock function with given fields: usernames
 func (_m *MockAPI) GetUsersByUsernames(usernames []string) ([]*model.User, *model.AppError) {
 	ret := _m.Called(usernames)
@@ -6353,6 +6473,55 @@ func (_c *MockAPI_InstallPlugin_Call) Return(_a0 *model.Manifest, _a1 *model.App
 }
 
 func (_c *MockAPI_InstallPlugin_Call) RunAndReturn(run func(io.Reader, bool) (*model.Manifest, *model.AppError)) *MockAPI_InstallPlugin_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InviteRemoteToChannel provides a mock function with given fields: channelID, remoteID, userID, shareIfNotShared
+func (_m *MockAPI) InviteRemoteToChannel(channelID string, remoteID string, userID string, shareIfNotShared bool) error {
+	ret := _m.Called(channelID, remoteID, userID, shareIfNotShared)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InviteRemoteToChannel")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, string, bool) error); ok {
+		r0 = rf(channelID, remoteID, userID, shareIfNotShared)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAPI_InviteRemoteToChannel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InviteRemoteToChannel'
+type MockAPI_InviteRemoteToChannel_Call struct {
+	*mock.Call
+}
+
+// InviteRemoteToChannel is a helper method to define mock.On call
+//   - channelID string
+//   - remoteID string
+//   - userID string
+//   - shareIfNotShared bool
+func (_e *MockAPI_Expecter) InviteRemoteToChannel(channelID interface{}, remoteID interface{}, userID interface{}, shareIfNotShared interface{}) *MockAPI_InviteRemoteToChannel_Call {
+	return &MockAPI_InviteRemoteToChannel_Call{Call: _e.mock.On("InviteRemoteToChannel", channelID, remoteID, userID, shareIfNotShared)}
+}
+
+func (_c *MockAPI_InviteRemoteToChannel_Call) Run(run func(channelID string, remoteID string, userID string, shareIfNotShared bool)) *MockAPI_InviteRemoteToChannel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string), args[3].(bool))
+	})
+	return _c
+}
+
+func (_c *MockAPI_InviteRemoteToChannel_Call) Return(_a0 error) *MockAPI_InviteRemoteToChannel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_InviteRemoteToChannel_Call) RunAndReturn(run func(string, string, string, bool) error) *MockAPI_InviteRemoteToChannel_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -7458,6 +7627,55 @@ func (_c *MockAPI_PatchBot_Call) RunAndReturn(run func(string, *model.BotPatch) 
 	return _c
 }
 
+// PatchChannelMembersNotifications provides a mock function with given fields: members, notifyProps
+func (_m *MockAPI) PatchChannelMembersNotifications(members []*model.ChannelMemberIdentifier, notifyProps map[string]string) *model.AppError {
+	ret := _m.Called(members, notifyProps)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PatchChannelMembersNotifications")
+	}
+
+	var r0 *model.AppError
+	if rf, ok := ret.Get(0).(func([]*model.ChannelMemberIdentifier, map[string]string) *model.AppError); ok {
+		r0 = rf(members, notifyProps)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AppError)
+		}
+	}
+
+	return r0
+}
+
+// MockAPI_PatchChannelMembersNotifications_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PatchChannelMembersNotifications'
+type MockAPI_PatchChannelMembersNotifications_Call struct {
+	*mock.Call
+}
+
+// PatchChannelMembersNotifications is a helper method to define mock.On call
+//   - members []*model.ChannelMemberIdentifier
+//   - notifyProps map[string]string
+func (_e *MockAPI_Expecter) PatchChannelMembersNotifications(members interface{}, notifyProps interface{}) *MockAPI_PatchChannelMembersNotifications_Call {
+	return &MockAPI_PatchChannelMembersNotifications_Call{Call: _e.mock.On("PatchChannelMembersNotifications", members, notifyProps)}
+}
+
+func (_c *MockAPI_PatchChannelMembersNotifications_Call) Run(run func(members []*model.ChannelMemberIdentifier, notifyProps map[string]string)) *MockAPI_PatchChannelMembersNotifications_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]*model.ChannelMemberIdentifier), args[1].(map[string]string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_PatchChannelMembersNotifications_Call) Return(_a0 *model.AppError) *MockAPI_PatchChannelMembersNotifications_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_PatchChannelMembersNotifications_Call) RunAndReturn(run func([]*model.ChannelMemberIdentifier, map[string]string) *model.AppError) *MockAPI_PatchChannelMembersNotifications_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PermanentDeleteBot provides a mock function with given fields: botUserId
 func (_m *MockAPI) PermanentDeleteBot(botUserId string) *model.AppError {
 	ret := _m.Called(botUserId)
@@ -7835,6 +8053,62 @@ func (_c *MockAPI_RegisterCommand_Call) Return(_a0 error) *MockAPI_RegisterComma
 }
 
 func (_c *MockAPI_RegisterCommand_Call) RunAndReturn(run func(*model.Command) error) *MockAPI_RegisterCommand_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RegisterPluginForSharedChannels provides a mock function with given fields: opts
+func (_m *MockAPI) RegisterPluginForSharedChannels(opts model.RegisterPluginOpts) (string, error) {
+	ret := _m.Called(opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RegisterPluginForSharedChannels")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(model.RegisterPluginOpts) (string, error)); ok {
+		return rf(opts)
+	}
+	if rf, ok := ret.Get(0).(func(model.RegisterPluginOpts) string); ok {
+		r0 = rf(opts)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(model.RegisterPluginOpts) error); ok {
+		r1 = rf(opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_RegisterPluginForSharedChannels_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterPluginForSharedChannels'
+type MockAPI_RegisterPluginForSharedChannels_Call struct {
+	*mock.Call
+}
+
+// RegisterPluginForSharedChannels is a helper method to define mock.On call
+//   - opts model.RegisterPluginOpts
+func (_e *MockAPI_Expecter) RegisterPluginForSharedChannels(opts interface{}) *MockAPI_RegisterPluginForSharedChannels_Call {
+	return &MockAPI_RegisterPluginForSharedChannels_Call{Call: _e.mock.On("RegisterPluginForSharedChannels", opts)}
+}
+
+func (_c *MockAPI_RegisterPluginForSharedChannels_Call) Run(run func(opts model.RegisterPluginOpts)) *MockAPI_RegisterPluginForSharedChannels_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(model.RegisterPluginOpts))
+	})
+	return _c
+}
+
+func (_c *MockAPI_RegisterPluginForSharedChannels_Call) Return(remoteID string, err error) *MockAPI_RegisterPluginForSharedChannels_Call {
+	_c.Call.Return(remoteID, err)
+	return _c
+}
+
+func (_c *MockAPI_RegisterPluginForSharedChannels_Call) RunAndReturn(run func(model.RegisterPluginOpts) (string, error)) *MockAPI_RegisterPluginForSharedChannels_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -8981,6 +9255,157 @@ func (_c *MockAPI_SetUserStatusTimedDND_Call) RunAndReturn(run func(string, int6
 	return _c
 }
 
+// ShareChannel provides a mock function with given fields: sc
+func (_m *MockAPI) ShareChannel(sc *model.SharedChannel) (*model.SharedChannel, error) {
+	ret := _m.Called(sc)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ShareChannel")
+	}
+
+	var r0 *model.SharedChannel
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*model.SharedChannel) (*model.SharedChannel, error)); ok {
+		return rf(sc)
+	}
+	if rf, ok := ret.Get(0).(func(*model.SharedChannel) *model.SharedChannel); ok {
+		r0 = rf(sc)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.SharedChannel)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*model.SharedChannel) error); ok {
+		r1 = rf(sc)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_ShareChannel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ShareChannel'
+type MockAPI_ShareChannel_Call struct {
+	*mock.Call
+}
+
+// ShareChannel is a helper method to define mock.On call
+//   - sc *model.SharedChannel
+func (_e *MockAPI_Expecter) ShareChannel(sc interface{}) *MockAPI_ShareChannel_Call {
+	return &MockAPI_ShareChannel_Call{Call: _e.mock.On("ShareChannel", sc)}
+}
+
+func (_c *MockAPI_ShareChannel_Call) Run(run func(sc *model.SharedChannel)) *MockAPI_ShareChannel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*model.SharedChannel))
+	})
+	return _c
+}
+
+func (_c *MockAPI_ShareChannel_Call) Return(_a0 *model.SharedChannel, _a1 error) *MockAPI_ShareChannel_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_ShareChannel_Call) RunAndReturn(run func(*model.SharedChannel) (*model.SharedChannel, error)) *MockAPI_ShareChannel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SyncSharedChannel provides a mock function with given fields: channelID
+func (_m *MockAPI) SyncSharedChannel(channelID string) error {
+	ret := _m.Called(channelID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SyncSharedChannel")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(channelID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAPI_SyncSharedChannel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SyncSharedChannel'
+type MockAPI_SyncSharedChannel_Call struct {
+	*mock.Call
+}
+
+// SyncSharedChannel is a helper method to define mock.On call
+//   - channelID string
+func (_e *MockAPI_Expecter) SyncSharedChannel(channelID interface{}) *MockAPI_SyncSharedChannel_Call {
+	return &MockAPI_SyncSharedChannel_Call{Call: _e.mock.On("SyncSharedChannel", channelID)}
+}
+
+func (_c *MockAPI_SyncSharedChannel_Call) Run(run func(channelID string)) *MockAPI_SyncSharedChannel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_SyncSharedChannel_Call) Return(_a0 error) *MockAPI_SyncSharedChannel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_SyncSharedChannel_Call) RunAndReturn(run func(string) error) *MockAPI_SyncSharedChannel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UninviteRemoteFromChannel provides a mock function with given fields: channelID, remoteID
+func (_m *MockAPI) UninviteRemoteFromChannel(channelID string, remoteID string) error {
+	ret := _m.Called(channelID, remoteID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UninviteRemoteFromChannel")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(channelID, remoteID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAPI_UninviteRemoteFromChannel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UninviteRemoteFromChannel'
+type MockAPI_UninviteRemoteFromChannel_Call struct {
+	*mock.Call
+}
+
+// UninviteRemoteFromChannel is a helper method to define mock.On call
+//   - channelID string
+//   - remoteID string
+func (_e *MockAPI_Expecter) UninviteRemoteFromChannel(channelID interface{}, remoteID interface{}) *MockAPI_UninviteRemoteFromChannel_Call {
+	return &MockAPI_UninviteRemoteFromChannel_Call{Call: _e.mock.On("UninviteRemoteFromChannel", channelID, remoteID)}
+}
+
+func (_c *MockAPI_UninviteRemoteFromChannel_Call) Run(run func(channelID string, remoteID string)) *MockAPI_UninviteRemoteFromChannel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_UninviteRemoteFromChannel_Call) Return(_a0 error) *MockAPI_UninviteRemoteFromChannel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_UninviteRemoteFromChannel_Call) RunAndReturn(run func(string, string) error) *MockAPI_UninviteRemoteFromChannel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UnregisterCommand provides a mock function with given fields: teamID, trigger
 func (_m *MockAPI) UnregisterCommand(teamID string, trigger string) error {
 	ret := _m.Called(teamID, trigger)
@@ -9024,6 +9449,108 @@ func (_c *MockAPI_UnregisterCommand_Call) Return(_a0 error) *MockAPI_UnregisterC
 }
 
 func (_c *MockAPI_UnregisterCommand_Call) RunAndReturn(run func(string, string) error) *MockAPI_UnregisterCommand_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UnregisterPluginForSharedChannels provides a mock function with given fields: pluginID
+func (_m *MockAPI) UnregisterPluginForSharedChannels(pluginID string) error {
+	ret := _m.Called(pluginID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnregisterPluginForSharedChannels")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(pluginID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAPI_UnregisterPluginForSharedChannels_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnregisterPluginForSharedChannels'
+type MockAPI_UnregisterPluginForSharedChannels_Call struct {
+	*mock.Call
+}
+
+// UnregisterPluginForSharedChannels is a helper method to define mock.On call
+//   - pluginID string
+func (_e *MockAPI_Expecter) UnregisterPluginForSharedChannels(pluginID interface{}) *MockAPI_UnregisterPluginForSharedChannels_Call {
+	return &MockAPI_UnregisterPluginForSharedChannels_Call{Call: _e.mock.On("UnregisterPluginForSharedChannels", pluginID)}
+}
+
+func (_c *MockAPI_UnregisterPluginForSharedChannels_Call) Run(run func(pluginID string)) *MockAPI_UnregisterPluginForSharedChannels_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_UnregisterPluginForSharedChannels_Call) Return(_a0 error) *MockAPI_UnregisterPluginForSharedChannels_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_UnregisterPluginForSharedChannels_Call) RunAndReturn(run func(string) error) *MockAPI_UnregisterPluginForSharedChannels_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UnshareChannel provides a mock function with given fields: channelID
+func (_m *MockAPI) UnshareChannel(channelID string) (bool, error) {
+	ret := _m.Called(channelID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnshareChannel")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
+		return rf(channelID)
+	}
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(channelID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(channelID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_UnshareChannel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnshareChannel'
+type MockAPI_UnshareChannel_Call struct {
+	*mock.Call
+}
+
+// UnshareChannel is a helper method to define mock.On call
+//   - channelID string
+func (_e *MockAPI_Expecter) UnshareChannel(channelID interface{}) *MockAPI_UnshareChannel_Call {
+	return &MockAPI_UnshareChannel_Call{Call: _e.mock.On("UnshareChannel", channelID)}
+}
+
+func (_c *MockAPI_UnshareChannel_Call) Run(run func(channelID string)) *MockAPI_UnshareChannel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_UnshareChannel_Call) Return(unshared bool, err error) *MockAPI_UnshareChannel_Call {
+	_c.Call.Return(unshared, err)
+	return _c
+}
+
+func (_c *MockAPI_UnshareChannel_Call) RunAndReturn(run func(string) (bool, error)) *MockAPI_UnshareChannel_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -9612,6 +10139,112 @@ func (_c *MockAPI_UpdatePreferencesForUser_Call) RunAndReturn(run func(string, [
 	return _c
 }
 
+// UpdateSharedChannel provides a mock function with given fields: sc
+func (_m *MockAPI) UpdateSharedChannel(sc *model.SharedChannel) (*model.SharedChannel, error) {
+	ret := _m.Called(sc)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateSharedChannel")
+	}
+
+	var r0 *model.SharedChannel
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*model.SharedChannel) (*model.SharedChannel, error)); ok {
+		return rf(sc)
+	}
+	if rf, ok := ret.Get(0).(func(*model.SharedChannel) *model.SharedChannel); ok {
+		r0 = rf(sc)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.SharedChannel)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*model.SharedChannel) error); ok {
+		r1 = rf(sc)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_UpdateSharedChannel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateSharedChannel'
+type MockAPI_UpdateSharedChannel_Call struct {
+	*mock.Call
+}
+
+// UpdateSharedChannel is a helper method to define mock.On call
+//   - sc *model.SharedChannel
+func (_e *MockAPI_Expecter) UpdateSharedChannel(sc interface{}) *MockAPI_UpdateSharedChannel_Call {
+	return &MockAPI_UpdateSharedChannel_Call{Call: _e.mock.On("UpdateSharedChannel", sc)}
+}
+
+func (_c *MockAPI_UpdateSharedChannel_Call) Run(run func(sc *model.SharedChannel)) *MockAPI_UpdateSharedChannel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*model.SharedChannel))
+	})
+	return _c
+}
+
+func (_c *MockAPI_UpdateSharedChannel_Call) Return(_a0 *model.SharedChannel, _a1 error) *MockAPI_UpdateSharedChannel_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_UpdateSharedChannel_Call) RunAndReturn(run func(*model.SharedChannel) (*model.SharedChannel, error)) *MockAPI_UpdateSharedChannel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateSharedChannelCursor provides a mock function with given fields: channelID, remoteID, cusror
+func (_m *MockAPI) UpdateSharedChannelCursor(channelID string, remoteID string, cusror model.GetPostsSinceForSyncCursor) error {
+	ret := _m.Called(channelID, remoteID, cusror)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateSharedChannelCursor")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, model.GetPostsSinceForSyncCursor) error); ok {
+		r0 = rf(channelID, remoteID, cusror)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAPI_UpdateSharedChannelCursor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateSharedChannelCursor'
+type MockAPI_UpdateSharedChannelCursor_Call struct {
+	*mock.Call
+}
+
+// UpdateSharedChannelCursor is a helper method to define mock.On call
+//   - channelID string
+//   - remoteID string
+//   - cusror model.GetPostsSinceForSyncCursor
+func (_e *MockAPI_Expecter) UpdateSharedChannelCursor(channelID interface{}, remoteID interface{}, cusror interface{}) *MockAPI_UpdateSharedChannelCursor_Call {
+	return &MockAPI_UpdateSharedChannelCursor_Call{Call: _e.mock.On("UpdateSharedChannelCursor", channelID, remoteID, cusror)}
+}
+
+func (_c *MockAPI_UpdateSharedChannelCursor_Call) Run(run func(channelID string, remoteID string, cusror model.GetPostsSinceForSyncCursor)) *MockAPI_UpdateSharedChannelCursor_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(model.GetPostsSinceForSyncCursor))
+	})
+	return _c
+}
+
+func (_c *MockAPI_UpdateSharedChannelCursor_Call) Return(_a0 error) *MockAPI_UpdateSharedChannelCursor_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_UpdateSharedChannelCursor_Call) RunAndReturn(run func(string, string, model.GetPostsSinceForSyncCursor) error) *MockAPI_UpdateSharedChannelCursor_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateTeam provides a mock function with given fields: team
 func (_m *MockAPI) UpdateTeam(team *model.Team) (*model.Team, *model.AppError) {
 	ret := _m.Called(team)
@@ -9949,6 +10582,67 @@ func (_c *MockAPI_UpdateUserCustomStatus_Call) Return(_a0 *model.AppError) *Mock
 }
 
 func (_c *MockAPI_UpdateUserCustomStatus_Call) RunAndReturn(run func(string, *model.CustomStatus) *model.AppError) *MockAPI_UpdateUserCustomStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateUserRoles provides a mock function with given fields: userID, newRoles
+func (_m *MockAPI) UpdateUserRoles(userID string, newRoles string) (*model.User, *model.AppError) {
+	ret := _m.Called(userID, newRoles)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateUserRoles")
+	}
+
+	var r0 *model.User
+	var r1 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, string) (*model.User, *model.AppError)); ok {
+		return rf(userID, newRoles)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) *model.User); ok {
+		r0 = rf(userID, newRoles)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) *model.AppError); ok {
+		r1 = rf(userID, newRoles)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockAPI_UpdateUserRoles_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateUserRoles'
+type MockAPI_UpdateUserRoles_Call struct {
+	*mock.Call
+}
+
+// UpdateUserRoles is a helper method to define mock.On call
+//   - userID string
+//   - newRoles string
+func (_e *MockAPI_Expecter) UpdateUserRoles(userID interface{}, newRoles interface{}) *MockAPI_UpdateUserRoles_Call {
+	return &MockAPI_UpdateUserRoles_Call{Call: _e.mock.On("UpdateUserRoles", userID, newRoles)}
+}
+
+func (_c *MockAPI_UpdateUserRoles_Call) Run(run func(userID string, newRoles string)) *MockAPI_UpdateUserRoles_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_UpdateUserRoles_Call) Return(_a0 *model.User, _a1 *model.AppError) *MockAPI_UpdateUserRoles_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_UpdateUserRoles_Call) RunAndReturn(run func(string, string) (*model.User, *model.AppError)) *MockAPI_UpdateUserRoles_Call {
 	_c.Call.Return(run)
 	return _c
 }

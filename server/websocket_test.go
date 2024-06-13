@@ -637,6 +637,17 @@ func TestHandleJoin(t *testing.T) {
 	mockAPI.On("LogDebug", mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
+	mockAPI.On("LogDebug", "session has joined call",
+		"origin", mock.AnythingOfType("string"),
+		"userID", mock.AnythingOfType("string"),
+		"sessionID", mock.AnythingOfType("string"),
+		"channelID", mock.AnythingOfType("string"),
+		"callID", mock.AnythingOfType("string"),
+		"remoteAddr", mock.AnythingOfType("string"),
+		"xForwardedFor", mock.AnythingOfType("string"),
+	)
+
 	mockAPI.On("LogInfo", mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
@@ -732,8 +743,10 @@ func TestHandleJoin(t *testing.T) {
 		// Call unlock
 		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
 
-		err := p.handleJoin(userID, connID, authSessionID, CallsClientJoinData{
-			ChannelID: channelID,
+		err := p.handleJoin(userID, connID, authSessionID, callsJoinData{
+			CallsClientJoinData: CallsClientJoinData{
+				ChannelID: channelID,
+			},
 		})
 		require.NoError(t, err)
 
@@ -860,8 +873,10 @@ func TestHandleJoin(t *testing.T) {
 			// Call unlock
 			mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
 
-			err := p.handleJoin(userID, connID, authSessionID, CallsClientJoinData{
-				ChannelID: channelID,
+			err := p.handleJoin(userID, connID, authSessionID, callsJoinData{
+				CallsClientJoinData: CallsClientJoinData{
+					ChannelID: channelID,
+				},
 			})
 			require.NoError(t, err)
 		}
