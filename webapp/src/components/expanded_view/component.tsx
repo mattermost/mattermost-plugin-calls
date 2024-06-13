@@ -573,6 +573,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
+        if (prevProps.theme.type !== this.props.theme.type) {
+            this.style = this.genStyle();
+        }
+
         if (window.opener) {
             if (document.title.indexOf('Call') === -1 && this.props.channel) {
                 if (isDMChannel(this.props.channel) && this.props.connectedDMUser) {
