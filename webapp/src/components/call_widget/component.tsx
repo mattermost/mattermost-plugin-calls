@@ -964,7 +964,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (noScreenPermissions) {
             shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText!);
         }
-        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext!) : '';
+
+        // Purposely not showing the subtext on Desktop as the tooltip gets cut off otherwise.
+        const shareScreenTooltipSubtext = noScreenPermissions && !this.props.global ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext!) : '';
 
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
 
@@ -978,7 +980,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 shortcut={noScreenPermissions ? undefined : reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.16)' : ''}
                 icon={<ShareIcon style={{fill}}/>}
-                unavailable={this.state.alerts.missingScreenPermissions.active}
+                unavailable={noScreenPermissions}
                 disabled={Boolean(sharingID) && !isSharing}
             />
         );
