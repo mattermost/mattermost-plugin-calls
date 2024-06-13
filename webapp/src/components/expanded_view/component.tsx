@@ -176,17 +176,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return {
             root: {
                 display: 'flex',
-                width: '100%',
                 height: '100vh',
-                background: 'var(--calls-bg)',
                 color: 'white',
-                gridArea: 'center',
+                flex: '1',
             },
             main: {
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
                 flex: '1',
+                background: 'var(--calls-bg)',
+
+                // Minimum z-index value needed to prevent the onboarding widget on the bottom left from showing on top.
+                zIndex: '101',
             },
             headerSpreader: {
                 marginRight: 'auto',
@@ -203,6 +205,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 justifyContent: 'center',
                 padding: '12px',
                 width: '100%',
+                gap: '8px',
             },
             centerControls: {
                 display: 'flex',
@@ -571,6 +574,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
+        if (prevProps.theme.type !== this.props.theme.type) {
+            this.style = this.genStyle();
+        }
+
         if (window.opener) {
             if (document.title.indexOf('Call') === -1 && this.props.channel) {
                 if (isDMChannel(this.props.channel) && this.props.connectedDMUser) {
@@ -1390,8 +1397,16 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
             display: none;
         }
 
+        #sidebar-right {
+          position: relative;
+        }
+
         .channel-view-inner {
             padding: 0;
+        }
+
+        .sidebar--right.sidebar--right--width-holder {
+            display: none;
         }
 
         ${({callThreadSelected}) => !callThreadSelected && css`
@@ -1399,8 +1414,8 @@ const ExpandedViewGlobalsStyle = createGlobalStyle<{ callThreadSelected: boolean
                 display: none;
             }
         `}
+
         #sidebar-right {
-            z-index: 1001;
             border: 0;
         }
     }
@@ -1493,6 +1508,7 @@ const ReactionOverlay = styled.div`
     flex-direction: column;
     gap: 12px;
     pointer-events: none;
+    z-index: 102;
 `;
 
 const LiveCaptionsOverlay = styled.div`
