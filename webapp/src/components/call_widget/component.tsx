@@ -1443,6 +1443,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const isHost = this.props.callHostID === this.props.currentUserID;
 
+        const divider = (
+            <li className='MenuGroup menu-divider'/>
+        );
+
+        const showScreenShareItem = this.props.allowScreenSharing && !this.props.wider;
+
         return (
             <div
                 className='Menu'
@@ -1455,8 +1461,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
                     <li className='MenuGroup menu-divider'/>
-                    {this.props.allowScreenSharing && !this.props.wider && this.renderScreenSharingMenuItem()}
-                    <li className='MenuGroup menu-divider'/>
+                    {showScreenShareItem && this.renderScreenSharingMenuItem()}
+                    {showScreenShareItem && divider}
                     {this.props.recordingsEnabled && isHost && this.renderRecordingMenuItem()}
                     {this.renderChatThreadMenuItem()}
                 </ul>
