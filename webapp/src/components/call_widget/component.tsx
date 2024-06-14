@@ -731,6 +731,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             await this.props.startCallRecording(this.props.channel.id);
             this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.Widget, {initiator: 'button'});
         }
+
+        this.setState({showMenu: false});
     };
 
     onChatThreadButtonClick = () => {
@@ -745,6 +747,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         } else {
             this.props.selectRHSPost(this.props.callThreadID);
         }
+
+        this.setState({showMenu: false});
     };
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
@@ -1306,7 +1310,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='MenuItem'
                 >
                     <button
-                        id='calls-widget-menu-chat'
+                        id='calls-widget-menu-chat-button'
                         className='style--none'
                         style={{
                             display: 'flex',
@@ -1349,7 +1353,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='MenuItem'
                 >
                     <button
-                        id='calls-widget-menu-record'
+                        id='calls-widget-menu-record-button'
                         className='style--none'
                         style={{
                             display: 'flex',
@@ -1455,7 +1459,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const isHost = this.props.callHostID === this.props.currentUserID;
 
         return (
-            <div className='Menu'>
+            <div
+                className='Menu'
+                data-testid='calls-widget-menu'
+            >
                 <ul
                     className='Menu__content dropdown-menu'
                     style={this.style.settingsMenu}
