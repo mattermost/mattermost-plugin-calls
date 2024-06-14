@@ -131,18 +131,20 @@ type ButtonContainerProps = {
 
 const ButtonContainer = styled.button<ButtonContainerProps>`
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     margin: ${({$margin}) => $margin || '0'};
     border-radius: 8px;
     padding: 12px;
     border: none;
     background: ${({$bgColor}) => $bgColor || 'rgba(var(--button-color-rgb), 0.08)'};
+    color: ${({$fill}) => $fill || 'rgba(var(--button-color-rgb), 0.56)'};
 
     &:hover {
       background: ${({$bgColorHover}) => $bgColorHover || 'rgba(var(--button-color-rgb), 0.12)'};
       background-blend-mode: multiply;
+      color: ${({$fillHover}) => $fillHover || 'var(--button-color)'};
 
       svg {
         fill: ${({$fillHover}) => $fillHover || 'var(--button-color)'};
@@ -168,9 +170,9 @@ const ButtonContainer = styled.button<ButtonContainerProps>`
 `;
 
 const ButtonText = styled.span`
-    font-size: 14px;
+    font-size: 16px;
+    line-height: 16px;
     font-weight: 600;
-    margin-top: 12px;
 `;
 
 const ButtonIcon = styled.div`

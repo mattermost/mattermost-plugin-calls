@@ -1091,10 +1091,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <CallDuration
                             startAt={this.props.callStartAt}
                         />
-                        <span>{untranslatable('•')}</span>
-                        <span style={{whiteSpace: 'nowrap'}}>
-                            {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.sessions.length})}
-                        </span>
 
                         <div style={this.style.headerSpreader}/>
                         <ExpandedIncomingCallContainer/>
@@ -1163,6 +1159,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         }}
                                     />
                                 }
+                                text={`${this.props.sessions.length}`}
                             />
                         </div>
 
