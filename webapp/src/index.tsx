@@ -10,6 +10,7 @@ import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/g
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import React, {useEffect} from 'react';
 import ReactDOM from 'react-dom';
 import {injectIntl, IntlProvider} from 'react-intl';
@@ -24,6 +25,7 @@ import {
     getCallsStats,
     incomingCallOnChannel,
     loadProfilesByIdsIfMissing,
+    selectRHSPost,
     setClientConnecting,
     showScreenSourceModal,
     showSwitchCallModal,
@@ -466,6 +468,14 @@ export default class Plugin {
                 if (err === 'client-error') {
                     store.dispatch(displayCallErrorModal(new Error(errMsg), callID));
                 }
+            }));
+        }
+
+        if (window.desktopAPI?.onOpenThread) {
+            logDebug('registering desktopAPI.onOpenThread');
+            this.unsubscribers.push(window.desktopAPI.onOpenThread((threadID: string) => {
+                logDebug('desktopAPI.onOpenThread');
+                store.dispatch(selectRHSPost(threadID));
             }));
         }
 
@@ -931,6 +941,7 @@ declare global {
         ProductApi: {
             useWebSocketClient: () => WebSocketClient,
             WebSocketProvider: React.Context<WebSocketClient>,
+            selectRhsPost: (postId: string) => ActionFuncAsync,
         };
     }
 

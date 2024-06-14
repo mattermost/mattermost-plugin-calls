@@ -5,7 +5,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
-import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
+import {recordingPromptDismissedAt, selectRHSPost, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
 import {
     allowScreenSharing,
     callStartAtForCurrentCall,
@@ -23,6 +23,7 @@ import {
     sessionsInCurrentCall,
     sessionsInCurrentCallMap,
     sortedIncomingCalls,
+    threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
 import {alphaSortSessions, stateSortSessions} from 'src/utils';
@@ -45,6 +46,8 @@ const mapStateToProps = (state: GlobalState) => {
         .sort(stateSortSessions(screenSharingSession?.session_id || '', true));
 
     const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
+
+    const callThreadID = threadIDForCallInChannel(state, channel?.id || '');
 
     return {
         currentUserID,
@@ -69,6 +72,7 @@ const mapStateToProps = (state: GlobalState) => {
         callsIncoming: sortedIncomingCalls(state),
         transcriptionsEnabled: transcriptionsEnabled(state),
         clientConnecting: clientConnecting(state),
+        callThreadID,
     };
 };
 
@@ -77,6 +81,7 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     showScreenSourceModal,
     trackEvent,
     recordingPromptDismissedAt,
+    selectRHSPost,
 }, dispatch);
 
 export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(CallWidget));

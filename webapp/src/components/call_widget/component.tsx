@@ -20,6 +20,7 @@ import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
 import {HostNotices} from 'src/components/host_notices';
+import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ExpandIcon from 'src/components/icons/expand';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
@@ -29,6 +30,7 @@ import ParticipantsIcon from 'src/components/icons/participants';
 import PopOutIcon from 'src/components/icons/popout';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
 import RecordCircleIcon from 'src/components/icons/record_circle';
+import RecordSquareIcon from 'src/components/icons/record_square';
 import SettingsWheelIcon from 'src/components/icons/settings_wheel';
 import ShareScreenIcon from 'src/components/icons/share_screen';
 import ShowMoreIcon from 'src/components/icons/show_more';
@@ -119,6 +121,8 @@ interface Props {
     callsIncoming: IncomingCallNotification[],
     transcriptionsEnabled: boolean,
     clientConnecting: boolean,
+    callThreadID?: string,
+    selectRHSPost: (id: string) => void,
 }
 
 interface DraggingState {
@@ -696,6 +700,24 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.state.expandedViewWindow?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
     };
 
+    onRecordToggle = async () => {
+        logDebug('record!');
+    };
+
+    onChatThreadButtonClick = () => {
+        if (!this.props.callThreadID) {
+            logErr('missing thread ID');
+            return;
+        }
+
+        if (this.props.global && window.desktopAPI?.openThread) {
+            logDebug('desktopAPI.openThread');
+            window.desktopAPI.openThread(this.props.callThreadID);
+        } else {
+            this.props.selectRHSPost(this.props.callThreadID);
+        }
+    };
+
     onShareScreenToggle = async (fromShortcut?: boolean) => {
         if (!this.props.allowScreenSharing) {
             return;
@@ -1236,7 +1258,94 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         }
                     </button>
                 </li>
-                {deviceType === 'output' && <li className='MenuGroup menu-divider'/>}
+            </React.Fragment>
+        );
+    };
+
+    renderChatThreadMenuItem = () => {
+        const {formatMessage} = this.props.intl;
+
+        // If we are on global widget we should show this
+        // only if we have the matching functionality available.
+        if (this.props.global && !window.desktopAPI?.openThread) {
+            return null;
+        }
+
+        return (
+            <React.Fragment>
+                <li
+                    className='MenuItem'
+                >
+                    <button
+                        id='calls-widget-menu-chat'
+                        className='style--none'
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                        }}
+                        onClick={() => this.onChatThreadButtonClick()}
+                    >
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                width: '100%',
+                                padding: '2px 0',
+                                gap: '8px',
+                            }}
+                        >
+                            <ChatThreadIcon
+                                style={{width: '16px', height: '16px'}}
+                                fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
+                            />
+                            <span>{formatMessage({defaultMessage: 'Show chat thread'})}</span>
+                        </div>
+
+                    </button>
+                </li>
+            </React.Fragment>
+        );
+    };
+
+    renderRecordingMenuItem = () => {
+        const {formatMessage} = this.props.intl;
+
+        const recording = this.props.callRecording;
+        const isRecording = (recording?.start_at ?? 0) > (recording?.end_at ?? 0);
+        const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
+
+        return (
+            <React.Fragment>
+                <li
+                    className='MenuItem'
+                >
+                    <button
+                        id='calls-widget-menu-record'
+                        className='style--none'
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                        }}
+                        onClick={() => this.onRecordToggle()}
+                    >
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                width: '100%',
+                                padding: '2px 0',
+                                gap: '8px',
+                            }}
+                        >
+                            <RecordIcon
+                                style={{width: '16px', height: '16px'}}
+                                fill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : 'rgba(var(--center-channel-color-rgb), 0.64)'}
+                            />
+                            <span>{isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'})}</span>
+                        </div>
+
+                    </button>
+                </li>
             </React.Fragment>
         );
     };
@@ -1305,7 +1414,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                     </button>
                 </li>
-                <li className='MenuGroup menu-divider'/>
             </React.Fragment>
         );
     };
@@ -1315,15 +1423,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const isHost = this.props.callHostID === this.props.currentUserID;
+
         return (
             <div className='Menu'>
                 <ul
                     className='Menu__content dropdown-menu'
                     style={this.style.settingsMenu}
                 >
-                    {this.props.allowScreenSharing && !this.props.wider && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
+                    <li className='MenuGroup menu-divider'/>
+                    {this.props.allowScreenSharing && !this.props.wider && this.renderScreenSharingMenuItem()}
+                    <li className='MenuGroup menu-divider'/>
+                    {isHost && this.renderRecordingMenuItem()}
+                    {this.renderChatThreadMenuItem()}
                 </ul>
             </div>
         );
