@@ -1213,6 +1213,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 />
                             }
 
+                            <ReactionButton
+                                ref={this.emojiButtonRef}
+                                trackEvent={this.props.trackEvent}
+                                isHandRaised={this.isHandRaised()}
+                            />
+
                             {isHost && this.props.recordingsEnabled &&
                                 <ControlsButton
                                     id='calls-popout-record-button'
@@ -1227,12 +1233,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={<RecordIcon style={{width: '20px', height: '20px'}}/>}
                                 />
                             }
-
-                            <ReactionButton
-                                ref={this.emojiButtonRef}
-                                trackEvent={this.props.trackEvent}
-                                isHandRaised={this.isHandRaised()}
-                            />
 
                             {globalRhsSupported && (
                                 <ControlsButton
