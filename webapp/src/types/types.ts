@@ -138,16 +138,19 @@ export type CapturerSource = {
 // Reminder: obviously this is not reactive; setting data will not update the other window.
 export type CurrentCallData = {
     recordingPromptDismissedAt: number;
+    missingScreenPermissions: boolean;
 }
 
 export const CurrentCallDataDefault: CurrentCallData = {
     recordingPromptDismissedAt: 0,
+    missingScreenPermissions: false,
 };
 
 // Similar to currentCallData, callActions is a cross-window function to trigger a change in that
 // owning window. recordingPromptDismissedAt should be set by that window's init function or constructor.
 export type CallActions = {
     setRecordingPromptDismissedAt: (callId: string, dismissedAt: number) => void;
+    setMissingScreenPermissions: (missing: boolean) => void;
 }
 
 export enum ChannelType {

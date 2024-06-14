@@ -326,6 +326,27 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
+    setMissingScreenPermissions = (missing: boolean, forward?: boolean) => {
+        this.setState({
+            alerts: {
+                ...this.state.alerts,
+                missingScreenPermissions: {
+                    ...this.state.alerts.missingScreenPermissions,
+                    active: missing,
+                    show: missing,
+                },
+            },
+        });
+
+        if (forward && this.state.expandedViewWindow) {
+            this.state.expandedViewWindow.callActions?.setMissingScreenPermissions(missing);
+        }
+
+        if (window.currentCallData) {
+            window.currentCallData.missingScreenPermissions = missing;
+        }
+    };
+
     private onViewportResize = () => {
         if (window.devicePixelRatio === this.prevDevicePixelRatio) {
             return;
@@ -342,16 +363,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (ev.data.type === 'calls-error' && ev.data.message.err === 'screen-permissions') {
             logDebug('screen permissions error');
-            this.setState({
-                alerts: {
-                    ...this.state.alerts,
-                    missingScreenPermissions: {
-                        ...this.state.alerts.missingScreenPermissions,
-                        active: true,
-                        show: true,
-                    },
-                },
-            });
+            this.setMissingScreenPermissions(true, true);
         } else if (ev.data.type === 'calls-widget-share-screen') {
             this.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
         }
@@ -415,16 +427,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     logDebug('desktopAPI.onCallsError', err);
                     if (err === 'screen-permissions') {
                         logDebug('screen permissions error');
-                        this.setState({
-                            alerts: {
-                                ...this.state.alerts,
-                                missingScreenPermissions: {
-                                    ...this.state.alerts.missingScreenPermissions,
-                                    active: true,
-                                    show: true,
-                                },
-                            },
-                        });
+                        this.setMissingScreenPermissions(true, true);
                     }
                 }));
             } else {
@@ -459,6 +462,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // set cross-window actions
         window.callActions = {
             setRecordingPromptDismissedAt: this.props.recordingPromptDismissedAt,
+            setMissingScreenPermissions: this.setMissingScreenPermissions,
         };
 
         this.attachVoiceTracks(window.callsClient.getRemoteVoiceTracks());
@@ -667,32 +671,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     private shareScreen = async (sourceID: string, _withAudio: boolean) => {
-        const state = {} as State;
         const stream = await window.callsClient?.shareScreen(sourceID, hasExperimentalFlag());
         if (stream) {
-            state.screenStream = stream;
-            state.alerts = {
-                ...this.state.alerts,
-                missingScreenPermissions: {
-                    ...this.state.alerts.missingScreenPermissions,
-                    active: false,
-                    show: false,
-                },
-            };
+            this.setState({screenStream: stream});
+            this.setMissingScreenPermissions(false, true);
         } else {
-            state.alerts = {
-                ...this.state.alerts,
-                missingScreenPermissions: {
-                    ...this.state.alerts.missingScreenPermissions,
-                    active: true,
-                    show: true,
-                },
-            };
+            this.setMissingScreenPermissions(true, true);
         }
-
-        this.setState({
-            ...state,
-        });
     };
 
     dismissRecordingPrompt = () => {
