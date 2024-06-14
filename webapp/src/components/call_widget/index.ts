@@ -5,7 +5,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
-import {recordingPromptDismissedAt, selectRHSPost, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
+import {recordingPromptDismissedAt, selectRHSPost, showExpandedView, showScreenSourceModal, startCallRecording, trackEvent} from 'src/actions';
 import {
     allowScreenSharing,
     callStartAtForCurrentCall,
@@ -18,6 +18,7 @@ import {
     profilesInCurrentCallMap,
     recentlyJoinedUsersInCurrentCall,
     recordingForCurrentCall,
+    recordingsEnabled,
     screenSharingSessionForCurrentCall,
     sessionForCurrentCall,
     sessionsInCurrentCall,
@@ -27,6 +28,7 @@ import {
     transcriptionsEnabled,
 } from 'src/selectors';
 import {alphaSortSessions, stateSortSessions} from 'src/utils';
+import {modals} from 'src/webapp_globals';
 
 import CallWidget from './component';
 
@@ -73,6 +75,7 @@ const mapStateToProps = (state: GlobalState) => {
         transcriptionsEnabled: transcriptionsEnabled(state),
         clientConnecting: clientConnecting(state),
         callThreadID,
+        recordingsEnabled: recordingsEnabled(state),
     };
 };
 
@@ -82,6 +85,8 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     trackEvent,
     recordingPromptDismissedAt,
     selectRHSPost,
+    startCallRecording,
+    openModal: modals.openModal,
 }, dispatch);
 
 export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(CallWidget));

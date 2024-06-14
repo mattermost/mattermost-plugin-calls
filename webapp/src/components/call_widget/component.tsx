@@ -19,6 +19,10 @@ import {Badge} from 'src/components/badge';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
+import {
+    IDStopRecordingConfirmation,
+    StopRecordingConfirmation,
+} from 'src/components/expanded_view/stop_recording_confirmation';
 import {HostNotices} from 'src/components/host_notices';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -57,6 +61,7 @@ import {
     reverseKeyMappings,
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
+import {ModalData} from 'src/types/mattermost-webapp';
 import * as Telemetry from 'src/types/telemetry';
 import {
     AudioDevices,
@@ -123,6 +128,9 @@ interface Props {
     clientConnecting: boolean,
     callThreadID?: string,
     selectRHSPost: (id: string) => void,
+    startCallRecording: (callID: string) => void,
+    recordingsEnabled: boolean,
+    openModal: <P>(modalData: ModalData<P>) => void;
 }
 
 interface DraggingState {
@@ -701,7 +709,28 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     onRecordToggle = async () => {
-        logDebug('record!');
+        if (!this.props.channel) {
+            logErr('channel should be defined');
+            return;
+        }
+
+        const recording = this.props.callRecording;
+        const isRecording = (recording?.start_at ?? 0) > (recording?.end_at ?? 0);
+
+        if (isRecording) {
+            this.props.openModal({
+                modalId: IDStopRecordingConfirmation,
+                dialogType: StopRecordingConfirmation,
+                dialogProps: {
+                    channelID: this.props.channel.id,
+                    transcriptionsEnabled: this.props.transcriptionsEnabled,
+                },
+            });
+            this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.Widget, {initiator: 'button'});
+        } else {
+            await this.props.startCallRecording(this.props.channel.id);
+            this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.Widget, {initiator: 'button'});
+        }
     };
 
     onChatThreadButtonClick = () => {
@@ -1436,7 +1465,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <li className='MenuGroup menu-divider'/>
                     {this.props.allowScreenSharing && !this.props.wider && this.renderScreenSharingMenuItem()}
                     <li className='MenuGroup menu-divider'/>
-                    {isHost && this.renderRecordingMenuItem()}
+                    {this.props.recordingsEnabled && isHost && this.renderRecordingMenuItem()}
                     {this.renderChatThreadMenuItem()}
                 </ul>
             </div>
