@@ -29,6 +29,7 @@ export default class PlaywrightDevPage {
 
     async goto() {
         await this.page.goto(`${baseURL}/${defaultTeam}/channels/${getChannelNamesForTest()[0]}`);
+        await this.page.waitForTimeout(0);
     }
 
     async goToChannel(name: string) {
