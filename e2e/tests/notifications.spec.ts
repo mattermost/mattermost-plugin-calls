@@ -42,7 +42,7 @@ test.beforeEach(async ({page, request}, info) => {
         {mark_unread: 'all', desktop: 'default', desktop_sound: 'on'},
     );
     await devPage.goto();
-    await page.waitForTimeout(0);
+    await page.waitForTimeout(1000);
 });
 
 test.afterEach(async ({page, request}) => {
