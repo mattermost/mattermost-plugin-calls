@@ -488,7 +488,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 dialogType: StopRecordingConfirmation,
                 dialogProps: {
                     channelID: this.props.channel.id,
-                    transcriptionsEnabled: this.props.transcriptionsEnabled,
                 },
             });
             this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});

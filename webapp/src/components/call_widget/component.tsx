@@ -128,7 +128,8 @@ interface Props {
     clientConnecting: boolean,
     callThreadID?: string,
     selectRHSPost: (id: string) => void,
-    startCallRecording: (callID: string) => void,
+    startCallRecording: (channelID: string) => void,
+    stopCallRecording: (channelID: string) => void,
     recordingsEnabled: boolean,
     openModal: <P>(modalData: ModalData<P>) => void;
 }
@@ -703,14 +704,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const isRecording = (recording?.start_at ?? 0) > (recording?.end_at ?? 0);
 
         if (isRecording) {
-            this.props.openModal({
-                modalId: IDStopRecordingConfirmation,
-                dialogType: StopRecordingConfirmation,
-                dialogProps: {
-                    channelID: this.props.channel.id,
-                    transcriptionsEnabled: this.props.transcriptionsEnabled,
-                },
-            });
+            if (this.props.global) {
+                if (window.desktopAPI?.openStopRecordingModal) {
+                    logDebug('desktopAPI.openStopRecordingModal');
+                    window.desktopAPI.openStopRecordingModal(this.props.channel.id);
+                } else {
+                    this.props.stopCallRecording(this.props.channel.id);
+                }
+            } else {
+                this.props.openModal({
+                    modalId: IDStopRecordingConfirmation,
+                    dialogType: StopRecordingConfirmation,
+                    dialogProps: {
+                        channelID: this.props.channel.id,
+                    },
+                });
+            }
             this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.Widget, {initiator: 'button'});
         } else {
             await this.props.startCallRecording(this.props.channel.id);

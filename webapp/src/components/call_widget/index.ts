@@ -5,7 +5,15 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
-import {recordingPromptDismissedAt, selectRHSPost, showExpandedView, showScreenSourceModal, startCallRecording, trackEvent} from 'src/actions';
+import {
+    recordingPromptDismissedAt,
+    selectRHSPost,
+    showExpandedView,
+    showScreenSourceModal,
+    startCallRecording,
+    stopCallRecording,
+    trackEvent,
+} from 'src/actions';
 import {
     allowScreenSharing,
     callStartAtForCurrentCall,
@@ -86,7 +94,8 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     recordingPromptDismissedAt,
     selectRHSPost,
     startCallRecording,
-    openModal: modals.openModal,
+    stopCallRecording,
+    openModal: modals?.openModal,
 }, dispatch);
 
 export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(CallWidget));

@@ -57,6 +57,10 @@ import UDPServerAddress from 'src/components/admin_console_settings/udp_server_a
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
+import {
+    IDStopRecordingConfirmation,
+    StopRecordingConfirmation,
+} from 'src/components/expanded_view/stop_recording_confirmation';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
@@ -64,6 +68,7 @@ import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
 import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
+import {modals} from 'src/webapp_globals';
 
 import {
     CALL_STATE,
@@ -476,6 +481,20 @@ export default class Plugin {
             this.unsubscribers.push(window.desktopAPI.onOpenThread((threadID: string) => {
                 logDebug('desktopAPI.onOpenThread');
                 store.dispatch(selectRHSPost(threadID));
+            }));
+        }
+
+        if (window.desktopAPI?.onOpenStopRecordingModal) {
+            logDebug('registering desktopAPI.onOpenStopRecordingModal');
+            this.unsubscribers.push(window.desktopAPI.onOpenStopRecordingModal((channelID: string) => {
+                logDebug('desktopAPI.onOpenStopRecordingModal');
+                store.dispatch(modals.openModal({
+                    modalId: IDStopRecordingConfirmation,
+                    dialogType: StopRecordingConfirmation,
+                    dialogProps: {
+                        channelID,
+                    },
+                }));
             }));
         }
 
