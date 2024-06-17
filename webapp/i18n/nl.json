@@ -196,6 +196,7 @@
   "rjM2Q9": "Fout bij het verlaten van het gesprek",
   "s/N5tn": "Je bent niet verbonden met een gesprek in het huidige kanaal.",
   "sCBCDq": "Opname stoppen",
+  "sCoM27": "Opname en transcriptie stoppen",
   "sQHg4y": "Weet je zeker dat je een gesprek wilt beëindigen met {count, plural, =1 {# deelnemer} other {# deelnemers}} in {channelName}?",
   "sb3k8n": "Duurde {callDuration}",
   "tBbQCQ": "<b>{name}</b> werd verwijderd uit het gesprek",
@@ -216,5 +217,6 @@
   "yL9vD/": "Welkom bij jouw Mattermost Enterprise proefversie! Deze verloopt op {trialExpirationDate}. Je hebt nu toegang tot <rtcdDocsLink>RTCD diensten</rtcdDocsLink>, <recordingsDocsLink>gespreksopnames</recordingsDocsLink>, <guestAccountsLink>gastaccounts</guestAccountsLink>, <autoComplianceReportsLink>geautomatiseerde compliance rapporten</autoComplianceReportsLink>, en <mobileSecureNotificationsLink>mobiele secure-ID push meldingen</mobileSecureNotificationsLink>, naast vele andere functies. Bekijk alle functies in onze <documentationLink>documentatie</documentationLink>.",
   "yO68rk": "Gesprekken worden momenteel uitgevoerd in testmodus en alleen systeembeheerders kunnen ze starten. Neem rechtstreeks contact op met jouw systeembeheerder voor ondersteuning",
   "yjQNKt": "Gesprekken zijn uitgeschakeld in dit kanaal.",
+  "zUH89x": "De gespreksopname wordt verwerkt en in de gespreksdraadje geplaatst. Weet je zeker dat je de opname wilt stoppen?",
   "zx0myy": "Deelnemers"
 }
