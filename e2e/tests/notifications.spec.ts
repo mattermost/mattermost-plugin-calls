@@ -42,7 +42,7 @@ test.beforeEach(async ({page, request}, info) => {
         {mark_unread: 'all', desktop: 'default', desktop_sound: 'on'},
     );
     await devPage.goto();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 });
 
 test.afterEach(async ({page, request}) => {
@@ -193,8 +193,10 @@ test.describe('notifications', () => {
 
     test('gm channel, global desktop none', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'none'});
+        await page.waitForTimeout(2000);
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
+        await page.waitForTimeout(0);
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -218,7 +220,9 @@ test.describe('notifications', () => {
 
     test('gm channel, global desktop sound false', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'mentions', calls_desktop_sound: 'false'});
+        await page.waitForTimeout(2000);
         const devPage = new PlaywrightDevPage(page);
+        await page.waitForTimeout(0);
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -628,9 +632,11 @@ test.describe('notifications', () => {
         });
 
         await apiPutStatus(request, 'dnd');
+        await page.waitForTimeout(2000);
 
         // we need to be 'hidden' so that our desktop notifications are sent
         const devPage = new PlaywrightDevPage(page);
+        await page.waitForTimeout(0);
         await devPage.hideDocument(true);
 
         const user1 = await startDMWith(userStorages[1], usernames[0]);
