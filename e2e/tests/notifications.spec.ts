@@ -130,7 +130,6 @@ test.describe('notifications', () => {
         await apiPatchNotifyProps(request, {desktop: 'mentions', calls_desktop_sound: 'false'});
         await page.reload();
         const devPage = new PlaywrightDevPage(page);
-        await page.reload();
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -665,8 +664,8 @@ test.describe('notifications', () => {
             auto_responder_active: 'true',
             auto_responder_message: 'ooo',
         });
-        const devPage = new PlaywrightDevPage(page);
         await page.reload();
+        const devPage = new PlaywrightDevPage(page);
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eDesktopNotificationsSent = [];
