@@ -365,8 +365,6 @@ github.com/mattermost/calls-offloader v0.8.0 h1:XCAAMR11V/wSlLIJl1DuUQ8PGT8RRwPF
 github.com/mattermost/calls-offloader v0.8.0/go.mod h1:xmVZZfWM9KfTcOp2Zb8XdFRin4JBNcQqg+vcwtTmdPc=
 github.com/mattermost/calls-recorder v0.6.4 h1:LCS7a8Q4eGUbZmBkgARTwNLOUyJyxkDfrIpx/Gv26Uo=
 github.com/mattermost/calls-recorder v0.6.4/go.mod h1:v/52mE+wIXGJE7ZflpAkoyGd56hbVgC9ZuEBBaRd8KU=
-github.com/mattermost/calls-transcriber v0.2.2 h1:Fr18aYdktGvWhy8cnv+gsrXXZ9MKO1EMwshU8RV3Tao=
-github.com/mattermost/calls-transcriber v0.2.2/go.mod h1:fLUpcelaXlYpicogtpENbP7Rw237jZIi78MoHXpRS0E=
 github.com/mattermost/calls-transcriber v0.2.3-0.20240618080740-fa0a1e16fcc4 h1:XtFMe+sTKAQ5c7XXgq7zRvDiCZwriW/fWOZsuDTk8SU=
 github.com/mattermost/calls-transcriber v0.2.3-0.20240618080740-fa0a1e16fcc4/go.mod h1:DKmONUPwC3TdwYjlno8oQjuMDcgibE2yXQeXMEUSZJY=
 github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 h1:Khvh6waxG1cHc4Cz5ef9n3XVCxRWpAKUtqg9PJl5+y8=
