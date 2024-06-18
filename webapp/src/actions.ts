@@ -456,7 +456,7 @@ export const removeIncomingCallNotification = (callID: string): ActionFuncAsync 
 };
 
 export const ringForCall = (callID: string, sound: string) => {
-    return async (dispatch: DispatchFunc) => {
+    return (dispatch: DispatchFunc) => {
         notificationSounds?.ring(sound);
 
         // window.e2eNotificationsSoundedAt is added when running the e2e tests
