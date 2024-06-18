@@ -103,7 +103,6 @@ test.describe('notifications', () => {
     test('dm channel, global desktop none', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'none'});
         await page.reload();
-        await page.waitForTimeout(0);
         const devPage = new PlaywrightDevPage(page);
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
@@ -130,7 +129,6 @@ test.describe('notifications', () => {
     test('dm channel, global sound false', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'mentions', calls_desktop_sound: 'false'});
         await page.reload();
-        await page.waitForTimeout(0);
         const devPage = new PlaywrightDevPage(page);
         await page.reload();
         await page.evaluate(() => {
@@ -196,10 +194,8 @@ test.describe('notifications', () => {
     test('gm channel, global desktop none', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'none'});
         await page.reload();
-        await page.waitForTimeout(0);
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
-        await page.waitForTimeout(0);
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -224,9 +220,7 @@ test.describe('notifications', () => {
     test('gm channel, global desktop sound false', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'mentions', calls_desktop_sound: 'false'});
         await page.reload();
-        await page.waitForTimeout(0);
         const devPage = new PlaywrightDevPage(page);
-        await page.waitForTimeout(0);
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -637,7 +631,6 @@ test.describe('notifications', () => {
 
         await apiPutStatus(request, 'dnd');
         await page.reload();
-        await page.waitForTimeout(0);
 
         // we need to be 'hidden' so that our desktop notifications are sent
         const devPage = new PlaywrightDevPage(page);
@@ -674,7 +667,6 @@ test.describe('notifications', () => {
         });
         const devPage = new PlaywrightDevPage(page);
         await page.reload();
-        await page.waitForTimeout(0);
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eDesktopNotificationsSent = [];
