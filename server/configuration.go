@@ -470,6 +470,12 @@ func (c *configuration) liveCaptionsEnabled() bool {
 	return false
 }
 
+func (p *Plugin) getAdminConfig() *configuration {
+	c := p.getConfiguration()
+	c.clientConfig = p.getClientConfig()
+	return c
+}
+
 func (p *Plugin) getClientConfig() clientConfig {
 	c := p.getConfiguration()
 

@@ -1,3 +1,4 @@
+import {TranscribeAPI} from '@mattermost/calls-common/lib/types';
 import React, {ChangeEvent} from 'react';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
@@ -6,6 +7,7 @@ import {
     isCloud,
     isOnPremNotEnterprise,
     recordingsEnabled,
+    transcribeAPI,
     transcriptionsEnabled,
 } from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
@@ -15,8 +17,9 @@ const TranscribeAPIAzureSpeechRegion = (props: CustomComponentProps) => {
     const cloud = useSelector(isCloud);
     const recordingEnabled = useSelector(recordingsEnabled);
     const transcriptionEnabled = useSelector(transcriptionsEnabled);
+    const api = useSelector(transcribeAPI);
 
-    if (cloud || restricted || !recordingEnabled || !transcriptionEnabled) {
+    if (cloud || restricted || !recordingEnabled || !transcriptionEnabled || api !== TranscribeAPI.AzureAI) {
         return null;
     }
 

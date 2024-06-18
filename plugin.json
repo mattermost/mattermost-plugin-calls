@@ -193,6 +193,24 @@
         "help_text": "(Optional) When set to true, post-call transcriptions are enabled."
       },
       {
+        "key": "TranscribeAPI",
+        "display_name": "Call transcriber API",
+        "type": "dropdown",
+        "default": "whisper.cpp",
+        "help_text": "The speech-to-text API to use for post-call transcriptions.",
+        "options": [
+          {
+            "display_name": "Whisper.CPP",
+            "value": "whisper.cpp"
+          },
+          {
+            "display_name": "Azure AI",
+            "value": "azure"
+          }
+        ],
+        "hosting": "on-prem"
+      },
+      {
         "key": "TranscriberModelSize",
         "display_name": "Call transcriber model size",
         "type": "dropdown",
@@ -210,24 +228,6 @@
           {
             "display_name": "Small",
             "value": "small"
-          }
-        ],
-        "hosting": "on-prem"
-      },
-      {
-        "key": "TranscribeAPI",
-        "display_name": "Call transcriber API",
-        "type": "dropdown",
-        "default": "whisper.cpp",
-        "help_text": "The speech-to-text API to use for post-call transcriptions.",
-        "options": [
-          {
-            "display_name": "Whisper.CPP",
-            "value": "whisper.cpp"
-          },
-          {
-            "display_name": "Azure AI",
-            "value": "azure"
           }
         ],
         "hosting": "on-prem"
