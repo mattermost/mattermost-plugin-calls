@@ -49,13 +49,13 @@ export default function ControlsButton(props: Props) {
                     $isDisabled={props.disabled}
                 >
                     <div>{props.tooltipText}</div>
+                    {props.shortcut &&
+                        <Shortcut shortcut={props.shortcut}/>
+                    }
                     {props.tooltipSubtext &&
                         <TooltipSubtext>
                             {props.tooltipSubtext}
                         </TooltipSubtext>
-                    }
-                    {props.shortcut &&
-                        <Shortcut shortcut={props.shortcut}/>
                     }
                 </StyledTooltip>
             }
