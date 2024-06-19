@@ -20,6 +20,7 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/i18n"
 
 	"github.com/Masterminds/semver"
 )
@@ -219,4 +220,20 @@ func getUserIDsFromSessions(sessions map[string]*public.CallSession) []string {
 		}
 	}
 	return userIDs
+}
+
+func (p *Plugin) getTranslationFunc(locale string) i18n.TranslateFunc {
+	if locale != "" {
+		return i18n.GetUserTranslations(locale)
+	}
+
+	locale = "en"
+	cfg := p.API.GetConfig()
+	if cfg == nil {
+		p.LogError("failed to get configuration")
+	} else if cfg.LocalizationSettings.DefaultClientLocale != nil {
+		locale = *cfg.LocalizationSettings.DefaultClientLocale
+	}
+
+	return i18n.GetUserTranslations(locale)
 }

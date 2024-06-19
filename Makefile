@@ -160,6 +160,11 @@ i18n-check:
 	cd webapp && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
 	cd standalone && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
 
+	$(GO) install -modfile=go.tools.mod github.com/mattermost/mattermost-utilities/mmgotool
+	mkdir -p server/i18n
+	cd server && $(GOBIN)/mmgotool i18n clean-empty --portal-dir="" --check
+	cd server && $(GOBIN)/mmgotool i18n check-empty-src --portal-dir=""
+
 ## Runs eslint and golangci-lint
 .PHONY: check-style
 check-style: manifest-check apply golangci-lint webapp/node_modules standalone/node_modules e2e/node_modules gomod-check i18n-check
@@ -273,6 +278,7 @@ bundle:
 	mkdir -p dist/$(PLUGIN_ID)
 	./build/bin/manifest dist
 ifneq ($(wildcard $(ASSETS_DIR)/.),)
+	cp -r server/i18n $(ASSETS_DIR)/
 	cp -r $(ASSETS_DIR) dist/$(PLUGIN_ID)/
 endif
 ifneq ($(HAS_PUBLIC),)
@@ -415,10 +421,11 @@ test-e2e-update-snapshots:
 ## Extract strings for translation from the source code.
 .PHONY: i18n-extract
 i18n-extract:
-ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run extract
 	cd standalone && $(NPM) run extract
-endif
+
+	$(GO) install -modfile=go.tools.mod github.com/mattermost/mattermost-utilities/mmgotool
+	cd server && $(GOBIN)/mmgotool i18n extract --portal-dir="" --skip-dynamic
 
 ## Disable the plugin.
 .PHONY: disable

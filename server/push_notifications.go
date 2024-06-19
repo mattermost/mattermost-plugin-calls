@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/i18n"
 )
 
 func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, userID string) (*model.PushNotification, string) {
@@ -19,10 +20,16 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 		return nil, "calls plugin will handle this notification"
 	}
 
+	receiver, appErr := p.API.GetUser(userID)
+	if appErr != nil {
+		p.LogError("failed to get receiver user", "error", appErr.Error())
+		return nil, ""
+	}
+
 	// If it's a regular channel, then the user must have notifications set to all.
 	// In that case, make the notification nicer.
 	if notification.IsIdLoaded {
-		notification.Message = buildGenericPushNotificationMessage()
+		notification.Message = buildGenericPushNotificationMessage(receiver.Locale)
 		return notification, ""
 	}
 
@@ -33,7 +40,7 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 		return nil, ""
 	}
 	senderName := sender.GetDisplayName(nameFormat)
-	notification.Message = buildPushNotificationMessage(senderName)
+	notification.Message = buildPushNotificationMessage(senderName, receiver.Locale)
 
 	return notification, ""
 }
@@ -64,6 +71,12 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 			continue
 		}
 
+		receiver, appErr := p.API.GetUser(member.Id)
+		if appErr != nil {
+			p.LogError("failed to get receiver user", "error", appErr.Error())
+			continue
+		}
+
 		msg := &model.PushNotification{
 			Version:     model.PushMessageV2,
 			Type:        model.PushTypeMessage,
@@ -74,7 +87,7 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 			RootId:      threadID,
 			SenderId:    sender.Id,
 			ChannelType: channel.Type,
-			Message:     buildGenericPushNotificationMessage(),
+			Message:     buildGenericPushNotificationMessage(receiver.Locale),
 		}
 
 		// This is ugly because it's a little complicated. We need to special case IdLoaded notifications (don't expose
@@ -93,7 +106,7 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 				msg.ChannelName = ""
 			}
 			if *config.EmailSettings.PushNotificationContents == model.FullNotification {
-				msg.Message = buildPushNotificationMessage(senderName)
+				msg.Message = buildPushNotificationMessage(senderName, receiver.Locale)
 			}
 		}
 
@@ -111,12 +124,12 @@ func (p *Plugin) checkLicenseForIDLoaded() bool {
 	return *licence.Features.IDLoadedPushNotifications
 }
 
-func buildPushNotificationMessage(senderName string) string {
-	// TODO: translations https://mattermost.atlassian.net/browse/MM-54256
-	return fmt.Sprintf("\u200b%s is inviting you to a call", senderName)
+func buildPushNotificationMessage(senderName, locale string) string {
+	T := i18n.GetUserTranslations(locale)
+	return fmt.Sprintf("\u200b%s", T("app.push_notification.inviting_message", map[string]any{"SenderName": senderName}))
 }
 
-func buildGenericPushNotificationMessage() string {
-	// TODO: translations https://mattermost.atlassian.net/browse/MM-54256
-	return "You've been invited to a call"
+func buildGenericPushNotificationMessage(locale string) string {
+	T := i18n.GetUserTranslations(locale)
+	return T("app.push_notification.generic_message")
 }

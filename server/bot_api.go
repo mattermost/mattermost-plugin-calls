@@ -227,10 +227,12 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request)
 	}
 	post.AddProp("recording_files", recordingFiles)
 
+	T := p.getTranslationFunc("")
+
 	startAt, _ := post.GetProp("start_at").(int64)
-	postMsg := "Here's the call recording"
+	postMsg := T("app.call.new_recording_message")
 	if cfg := p.getConfiguration(); cfg.transcriptionsEnabled() {
-		postMsg = "Here's the call recording. Transcription is processing and will be posted when ready."
+		postMsg = T("app.call.new_recording_and_transcription_message")
 	}
 
 	if title, _ := post.GetProp("title").(string); title != "" {
@@ -334,8 +336,10 @@ func (p *Plugin) handleBotPostTranscriptions(w http.ResponseWriter, r *http.Requ
 		res.Code = http.StatusInternalServerError
 	}
 
+	T := p.getTranslationFunc("")
+
 	startAt, _ := post.GetProp("start_at").(int64)
-	postMsg := "Here's the call transcription"
+	postMsg := T("app.call.new_transcription_message")
 	if title, _ := post.GetProp("title").(string); title != "" {
 		postMsg = fmt.Sprintf("%s of %s at %s UTC", postMsg, title, time.UnixMilli(startAt).Format("3:04PM"))
 	}
