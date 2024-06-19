@@ -1019,7 +1019,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
         let muteTooltipText = isMuted ? formatMessage({defaultMessage: 'Unmute'}) : formatMessage({defaultMessage: 'Mute'});
-        let muteTooltipSubtext = '';
+        let muteTooltipSubtext = isMuted ? formatMessage({defaultMessage: 'Or hold space bar'}) : '';
 
         if (noInputDevices) {
             muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
