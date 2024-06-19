@@ -1299,7 +1299,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         return (
-            <React.Fragment>
+            <>
                 <li
                     className='MenuItem'
                 >
@@ -1330,7 +1330,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                     </button>
                 </li>
-            </React.Fragment>
+            </>
         );
     };
 
@@ -1469,7 +1469,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
-                    <li className='MenuGroup menu-divider'/>
+                    { divider }
                     {showScreenShareItem && this.renderScreenSharingMenuItem()}
                     {showScreenShareItem && divider}
                     {this.props.recordingsEnabled && isHost && this.renderRecordingMenuItem()}
