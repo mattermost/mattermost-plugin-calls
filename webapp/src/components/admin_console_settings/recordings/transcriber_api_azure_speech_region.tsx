@@ -2,7 +2,6 @@ import {TranscribeAPI} from '@mattermost/calls-common/lib/types';
 import React, {ChangeEvent} from 'react';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
-import manifest from 'src/manifest';
 import {
     isCloud,
     isOnPremNotEnterprise,
@@ -22,9 +21,6 @@ const TranscribeAPIAzureSpeechRegion = (props: CustomComponentProps) => {
     if (cloud || restricted || !recordingEnabled || !transcriptionEnabled || api !== TranscribeAPI.AzureAI) {
         return null;
     }
-
-    // Webapp doesn't pass the placeholder setting.
-    const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'TranscribeAPIAzureSpeechRegion')?.placeholder || '';
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
@@ -51,7 +47,6 @@ const TranscribeAPIAzureSpeechRegion = (props: CustomComponentProps) => {
                     id={props.id}
                     className='form-control'
                     type={'input'}
-                    placeholder={placeholder}
                     value={props.value}
                     onChange={handleChange}
                     disabled={props.disabled}
