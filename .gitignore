@@ -35,3 +35,6 @@ e2e/plugin.json
 
 # notice
 .notice-work
+
+# server bundled translations
+server/assets/i18n

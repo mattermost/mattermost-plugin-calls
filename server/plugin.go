@@ -306,13 +306,15 @@ func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, titl
 		return "", "", fmt.Errorf("failed to get configuration")
 	}
 
+	T := p.getTranslationFunc("")
+
 	showFullName := cfg.PrivacySettings.ShowFullName != nil && *cfg.PrivacySettings.ShowFullName
 
 	var postMsg string
 	if user.FirstName != "" && user.LastName != "" && showFullName {
-		postMsg = fmt.Sprintf("%s %s started a call", user.FirstName, user.LastName)
+		postMsg = T("app.call.started_message_fullname", map[string]any{"FirstName": user.FirstName, "LastName": user.LastName})
 	} else {
-		postMsg = fmt.Sprintf("%s started a call", user.Username)
+		postMsg = T("app.call.started_message", map[string]any{"Username": user.Username})
 	}
 
 	slackAttachment := model.SlackAttachment{
@@ -357,7 +359,9 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 		return 0, err
 	}
 
-	postMsg := "Call ended"
+	T := p.getTranslationFunc("")
+
+	postMsg := T("app.call.ended_message")
 	slackAttachment := model.SlackAttachment{
 		Fallback: postMsg,
 		Title:    postMsg,
