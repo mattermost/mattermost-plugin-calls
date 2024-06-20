@@ -162,7 +162,6 @@ i18n-check:
 
 	$(GO) install -modfile=go.tools.mod github.com/mattermost/mattermost-utilities/mmgotool
 	mkdir -p server/i18n
-	cd server && $(GOBIN)/mmgotool i18n clean-empty --portal-dir="" --check
 	cd server && $(GOBIN)/mmgotool i18n check-empty-src --portal-dir=""
 
 ## Runs eslint and golangci-lint
