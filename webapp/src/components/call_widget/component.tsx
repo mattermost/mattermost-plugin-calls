@@ -735,9 +735,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
-        if (this.props.global && window.desktopAPI?.openThread) {
-            logDebug('desktopAPI.openThread');
-            window.desktopAPI.openThread(this.props.callThreadID);
+        if (this.props.global && window.desktopAPI?.openThreadForCalls) {
+            logDebug('desktopAPI.openThreadForCalls');
+            window.desktopAPI.openThreadForCalls(this.props.callThreadID);
         } else {
             this.props.selectRHSPost(this.props.callThreadID);
         }
@@ -1294,7 +1294,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         // If we are on global widget we should show this
         // only if we have the matching functionality available.
-        if (this.props.global && !window.desktopAPI?.openThread) {
+        if (this.props.global && !window.desktopAPI?.openThreadForCalls) {
             return null;
         }
 

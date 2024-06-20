@@ -476,10 +476,10 @@ export default class Plugin {
             }));
         }
 
-        if (window.desktopAPI?.onOpenThread) {
-            logDebug('registering desktopAPI.onOpenThread');
-            this.unsubscribers.push(window.desktopAPI.onOpenThread((threadID: string) => {
-                logDebug('desktopAPI.onOpenThread');
+        if (window.desktopAPI?.onOpenThreadForCalls) {
+            logDebug('registering desktopAPI.onOpenThreadForCalls');
+            this.unsubscribers.push(window.desktopAPI.onOpenThreadForCalls((threadID: string) => {
+                logDebug('desktopAPI.onOpenThreadForCalls');
                 store.dispatch(selectRHSPost(threadID));
             }));
         }
