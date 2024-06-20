@@ -882,8 +882,6 @@ const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingC
         return [...state, {...action.data}];
     case REMOVE_INCOMING_CALL:
         return state.filter((ic) => ic.callID !== action.data.callID);
-    case CALL_END:
-        return state.filter((ic) => ic.callID !== action.data.callID);
     default:
         return state;
     }
