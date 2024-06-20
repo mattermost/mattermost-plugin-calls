@@ -13,7 +13,7 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
-import {ActionFuncAsync, DispatchFunc, GetStateFunc} from 'mattermost-redux/types/actions';
+import {ActionFunc, ActionFuncAsync, DispatchFunc, GetStateFunc} from 'mattermost-redux/types/actions';
 import {MessageDescriptor} from 'react-intl';
 import {AnyAction, Dispatch} from 'redux';
 import {batchActions} from 'redux-batched-actions';
@@ -26,7 +26,7 @@ import {logErr} from 'src/log';
 import RestClient from 'src/rest_client';
 import {
     callDismissedNotification,
-    calls,
+    calls, channelIDForCurrentCall,
     hostChangeAtForCurrentCall,
     idForCurrentCall,
     incomingCalls,
@@ -133,7 +133,7 @@ export const getCallsConfig = (): ActionFuncAsync<CallsConfig> => {
 
 export const getCallActive = async (channelID: string) => {
     try {
-        const res = await RestClient.fetch<{active: boolean}>(
+        const res = await RestClient.fetch<{ active: boolean }>(
             `${getPluginPath()}/calls/${channelID}/active`,
             {method: 'get'},
         );
@@ -401,9 +401,6 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
 
 export const userLeft = (channelID: string, userID: string, sessionID: string) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
-        // save for later
-        const callID = calls(getState())[channelID]?.ID || '';
-
         dispatch({
             type: USER_LEFT,
             data: {
@@ -415,24 +412,38 @@ export const userLeft = (channelID: string, userID: string, sessionID: string) =
         });
 
         if (numSessionsInCallInChannel(getState(), channelID) === 0) {
-            dispatch({
-                type: CALL_END,
-                data: {
-                    channelID,
-                    callID,
-                },
-            });
+            dispatch(callEnd(channelID));
         }
     };
 };
 
+export const callEnd = (channelID: string) => {
+    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        if (channelIDForCurrentCall(getState()) === channelID) {
+            window.callsClient?.disconnect();
+        }
+
+        const callID = calls(getState())[channelID]?.ID || '';
+
+        dispatch({
+            type: CALL_END,
+            data: {
+                channelID,
+                callID,
+            },
+        });
+
+        dispatch(removeIncomingCallNotification(callID));
+    };
+};
+
 export const dismissIncomingCallNotification = (channelID: string, callID: string) => {
-    return async (dispatch: DispatchFunc) => {
+    return (dispatch: DispatchFunc) => {
         RestClient.fetch(
             `${getPluginPath()}/calls/${channelID}/dismiss-notification`,
             {method: 'post'},
         ).catch((e) => logErr(e));
-        await dispatch(removeIncomingCallNotification(callID));
+        dispatch(removeIncomingCallNotification(callID));
         dispatch({
             type: DISMISS_CALL,
             data: {
@@ -442,8 +453,8 @@ export const dismissIncomingCallNotification = (channelID: string, callID: strin
     };
 };
 
-export const removeIncomingCallNotification = (callID: string): ActionFuncAsync => {
-    return async (dispatch: DispatchFunc) => {
+export const removeIncomingCallNotification = (callID: string): ActionFunc => {
+    return (dispatch: DispatchFunc) => {
         dispatch(stopRingingForCall(callID));
         dispatch({
             type: REMOVE_INCOMING_CALL,
@@ -478,8 +489,8 @@ export const ringForCall = (callID: string, sound: string) => {
     };
 };
 
-export const stopRingingForCall = (callID: string): ActionFuncAsync => {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export const stopRingingForCall = (callID: string): ActionFunc => {
+    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
         if (ringingForCall(getState(), callID)) {
             notificationsStopRinging();
         }
