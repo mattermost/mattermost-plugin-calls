@@ -28,6 +28,7 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {generateId} from 'mattermost-redux/utils/helpers';
 import {
+    callEnd,
     incomingCallOnChannel,
     loadCallState,
     loadProfilesByIdsIfMissing,
@@ -50,7 +51,6 @@ import {
 } from 'src/types/types';
 
 import {
-    CALL_END,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_RECORDING_STATE,
@@ -94,19 +94,7 @@ import {
 // state mutating operations.
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    if (channelIDForCurrentCall(store.getState()) === channelID) {
-        window.callsClient?.disconnect();
-    }
-
-    const callID = calls(store.getState())[channelID]?.ID || '';
-
-    store.dispatch({
-        type: CALL_END,
-        data: {
-            channelID,
-            callID,
-        },
-    });
+    store.dispatch(callEnd(channelID));
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of

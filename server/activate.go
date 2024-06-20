@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
@@ -14,6 +15,7 @@ import (
 	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/i18n"
 )
 
 func (p *Plugin) createBotSession() (*model.Session, error) {
@@ -55,6 +57,15 @@ func (p *Plugin) OnActivate() (retErr error) {
 	if os.Getenv("MM_CALLS_DISABLE") == "true" {
 		p.LogInfo("disable flag is set, exiting")
 		return fmt.Errorf("disabled by environment flag")
+	}
+
+	bundlePath, err := p.API.GetBundlePath()
+	if err != nil {
+		return fmt.Errorf("failed to get bundle path: %w", err)
+	}
+
+	if err := i18n.TranslationsPreInit(filepath.Join(bundlePath, "assets/i18n")); err != nil {
+		return fmt.Errorf("failed to load translation files: %w", err)
 	}
 
 	if err := p.initDB(); err != nil {

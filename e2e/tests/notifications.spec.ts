@@ -857,4 +857,49 @@ test.describe('notifications', () => {
         await user1.leaveCall();
         await devPage.leaveCall();
     });
+
+    test('ringing stops on last leave, and /call end', async ({page}) => {
+        await page.evaluate(() => {
+            window.e2eDesktopNotificationsRejected = [];
+            window.e2eDesktopNotificationsSent = [];
+            window.e2eNotificationsSoundedAt = [];
+            window.e2eNotificationsSoundStoppedAt = [];
+        });
+
+        const devPage = new PlaywrightDevPage(page);
+
+        const user1 = await startDMWith(userStorages[1], usernames[0]);
+        await user1.startCall();
+
+        let notification = page.getByTestId('call-incoming');
+        await expect(notification).toBeVisible();
+        await expect(notification).toContainText(`${usernames[1]} is inviting you to a call`);
+
+        // Ringing
+        await devPage.expectNotifications(1, 0, 1, 0);
+
+        await user1.leaveCall();
+
+        notification = page.getByTestId('call-incoming');
+        await expect(notification).toBeHidden();
+
+        // Stopped ringing
+        await devPage.expectNotifications(1, 0, 1, 1);
+
+        await user1.startCall();
+
+        notification = page.getByTestId('call-incoming');
+        await expect(notification).toBeVisible();
+        await expect(notification).toContainText(`${usernames[1]} is inviting you to a call`);
+
+        // Ringing
+        await devPage.expectNotifications(2, 0, 2, 1);
+
+        await user1.slashCallEnd();
+        notification = page.getByTestId('call-incoming');
+        await expect(notification).toBeHidden();
+
+        // Stopped ringing
+        await devPage.expectNotifications(2, 0, 2, 2);
+    });
 });
