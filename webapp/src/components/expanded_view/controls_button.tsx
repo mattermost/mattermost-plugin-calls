@@ -21,6 +21,9 @@ export type Props = {
     shortcut?: string,
     margin?: string,
     dataTestId?: string,
+    ariaLabel: string,
+    ariaControls?: string,
+    ariaExpanded?: boolean,
 }
 
 export default function ControlsButton(props: Props) {
@@ -63,6 +66,9 @@ export default function ControlsButton(props: Props) {
             <ButtonContainer
                 id={props.id}
                 data-testid={props.dataTestId}
+                aria-label={props.ariaLabel}
+                aria-controls={props.ariaControls}
+                aria-expanded={props.ariaExpanded}
                 onClick={onClick}
                 disabled={props.disabled}
                 $bgColor={props.bgColor}

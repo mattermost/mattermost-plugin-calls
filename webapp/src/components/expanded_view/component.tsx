@@ -990,6 +990,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <button
                         className='style--none'
                         onClick={() => this.onRecordToggle()}
+                        aria-label={formatMessage({defaultMessage: 'Click to stop recording'})}
                     >
                         {badge}
                     </button>
@@ -1069,6 +1070,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
 
+        const leaveCallTooltipText = formatMessage({defaultMessage: 'Leave call'});
+        const closeViewLabel = formatMessage({defaultMessage: 'Close window'});
+
         return (
             <div
                 ref={this.expandedRootRef}
@@ -1103,13 +1107,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             key={'close-window'}
                             overlay={
                                 <Tooltip id='tooltip-close-window'>
-                                    {formatMessage({defaultMessage: 'Close window'})}
+                                    {closeViewLabel}
                                 </Tooltip>
                             }
                         >
                             <CloseViewButton
                                 className='style--none'
                                 onClick={this.onCloseViewClick}
+                                aria-label={closeViewLabel}
                             >
                                 <CollapseIcon
                                     style={{
@@ -1148,6 +1153,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start'}}>
                             <ControlsButton
                                 id='calls-popout-participants-button'
+                                ariaLabel={participantsText}
+                                ariaControls='rhs-participant-list'
+                                ariaExpanded={this.state.showParticipantsList}
                                 onToggle={() => this.onParticipantsListToggle()}
                                 tooltipText={participantsText}
                                 shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
@@ -1170,6 +1178,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <ControlsButton
                                 id='calls-popout-mute-button'
                                 dataTestId={isMuted ? 'calls-popout-muted' : 'calls-popout-unmuted'}
+                                ariaLabel={muteTooltipText}
                                 // eslint-disable-next-line no-undefined
                                 onToggle={noInputDevices ? undefined : this.onMuteToggle}
                                 tooltipText={muteTooltipText}
@@ -1194,6 +1203,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             {this.props.allowScreenSharing &&
                                 <ControlsButton
                                     id='calls-popout-screenshare-button'
+                                    ariaLabel={shareScreenTooltipText}
                                     onToggle={() => this.onShareScreenToggle()}
                                     tooltipText={shareScreenTooltipText}
                                     tooltipSubtext={shareScreenTooltipSubtext}
@@ -1219,6 +1229,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             {isHost && this.props.recordingsEnabled &&
                                 <ControlsButton
                                     id='calls-popout-record-button'
+                                    ariaLabel={recordTooltipText}
                                     onToggle={() => this.onRecordToggle()}
                                     tooltipText={recordTooltipText}
                                     // eslint-disable-next-line no-undefined
@@ -1240,6 +1251,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             {globalRhsSupported && (
                                 <ControlsButton
                                     id='calls-popout-chat-button'
+                                    ariaLabel={chatToolTipText}
                                     onToggle={this.toggleChat}
                                     tooltipText={chatToolTipText}
                                     tooltipSubtext={chatToolTipSubtext}
@@ -1269,13 +1281,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
                             <DotMenu
                                 id='calls-popout-leave-button'
+                                ariaLabel={leaveCallTooltipText}
                                 icon={<LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>}
                                 dotMenuButton={LeaveCallButton}
                                 dropdownMenu={StyledDropdownMenu}
                                 placement={'top-end'}
                                 strategy={'fixed'}
                                 shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
-                                tooltipText={formatMessage({defaultMessage: 'Leave call'})}
+                                tooltipText={leaveCallTooltipText}
                             >
                                 <LeaveCallMenu
                                     callID={callsClient.channelID}
@@ -1289,6 +1302,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 </div>
                 {this.state.showParticipantsList &&
                     <ul
+                        id='rhs-participant-list'
                         data-testid={'rhs-participant-list'}
                         style={this.style.rhs}
                     >
@@ -1308,6 +1322,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <CloseButton
                                     className='style--none'
                                     onClick={() => this.onParticipantsListToggle()}
+                                    aria-label={participantsText}
                                 >
                                     <CompassIcon icon='close'/>
                                 </CloseButton>
