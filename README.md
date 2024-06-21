@@ -26,8 +26,8 @@ This plugin demands some network configuration changes to allow audio/video comm
 >
 > Building the plugin requires the following:
 > - Golang: version >= **1.21**
-> - NodeJS: version **16.x**
-> - NPM: version **8.x**
+> - NodeJS: version **20.11**
+> - NPM: version **10.x**
 
 Use ```make dist``` to build this plugin.
 
