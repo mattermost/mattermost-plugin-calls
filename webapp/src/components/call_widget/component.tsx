@@ -107,6 +107,7 @@ interface Props {
     callHostID: string,
     callHostChangeAt: number,
     callRecording?: CallJobReduxState,
+    isRecording: boolean,
     screenSharingSession?: UserSessionState,
     show: boolean,
     showExpandedView: () => void,
@@ -1337,9 +1338,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     renderRecordingMenuItem = () => {
         const {formatMessage} = this.props.intl;
 
-        const recording = this.props.callRecording;
-        const isRecording = (recording?.start_at ?? 0) > (recording?.end_at ?? 0);
-        const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
+        const RecordIcon = this.props.isRecording ? RecordSquareIcon : RecordCircleIcon;
 
         return (
             <React.Fragment>
@@ -1366,9 +1365,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         >
                             <RecordIcon
                                 style={{width: '16px', height: '16px'}}
-                                fill={isRecording ? 'rgb(var(--dnd-indicator-rgb))' : 'rgba(var(--center-channel-color-rgb), 0.64)'}
+                                fill={this.props.isRecording ? 'rgb(var(--dnd-indicator-rgb))' : 'rgba(var(--center-channel-color-rgb), 0.64)'}
                             />
-                            <span>{isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'})}</span>
+                            <span>{this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'})}</span>
                         </div>
 
                     </button>
