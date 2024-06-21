@@ -102,8 +102,8 @@ test.describe('notifications', () => {
 
     test('dm channel, global desktop none', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'none'});
+        await page.reload();
         const devPage = new PlaywrightDevPage(page);
-        await devPage.goto();
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -128,8 +128,8 @@ test.describe('notifications', () => {
 
     test('dm channel, global sound false', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'mentions', calls_desktop_sound: 'false'});
+        await page.reload();
         const devPage = new PlaywrightDevPage(page);
-        await devPage.goto();
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -192,6 +192,7 @@ test.describe('notifications', () => {
 
     test('gm channel, global desktop none', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'none'});
+        await page.reload();
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
         await page.evaluate(() => {
@@ -217,6 +218,7 @@ test.describe('notifications', () => {
 
     test('gm channel, global desktop sound false', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'mentions', calls_desktop_sound: 'false'});
+        await page.reload();
         const devPage = new PlaywrightDevPage(page);
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
@@ -627,6 +629,7 @@ test.describe('notifications', () => {
         });
 
         await apiPutStatus(request, 'dnd');
+        await page.reload();
 
         // we need to be 'hidden' so that our desktop notifications are sent
         const devPage = new PlaywrightDevPage(page);
@@ -661,8 +664,8 @@ test.describe('notifications', () => {
             auto_responder_active: 'true',
             auto_responder_message: 'ooo',
         });
+        await page.reload();
         const devPage = new PlaywrightDevPage(page);
-        await devPage.goto();
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eDesktopNotificationsSent = [];
@@ -853,5 +856,50 @@ test.describe('notifications', () => {
 
         await user1.leaveCall();
         await devPage.leaveCall();
+    });
+
+    test('ringing stops on last leave, and /call end', async ({page}) => {
+        await page.evaluate(() => {
+            window.e2eDesktopNotificationsRejected = [];
+            window.e2eDesktopNotificationsSent = [];
+            window.e2eNotificationsSoundedAt = [];
+            window.e2eNotificationsSoundStoppedAt = [];
+        });
+
+        const devPage = new PlaywrightDevPage(page);
+
+        const user1 = await startDMWith(userStorages[1], usernames[0]);
+        await user1.startCall();
+
+        let notification = page.getByTestId('call-incoming');
+        await expect(notification).toBeVisible();
+        await expect(notification).toContainText(`${usernames[1]} is inviting you to a call`);
+
+        // Ringing
+        await devPage.expectNotifications(1, 0, 1, 0);
+
+        await user1.leaveCall();
+
+        notification = page.getByTestId('call-incoming');
+        await expect(notification).toBeHidden();
+
+        // Stopped ringing
+        await devPage.expectNotifications(1, 0, 1, 1);
+
+        await user1.startCall();
+
+        notification = page.getByTestId('call-incoming');
+        await expect(notification).toBeVisible();
+        await expect(notification).toContainText(`${usernames[1]} is inviting you to a call`);
+
+        // Ringing
+        await devPage.expectNotifications(2, 0, 2, 1);
+
+        await user1.slashCallEnd();
+        notification = page.getByTestId('call-incoming');
+        await expect(notification).toBeHidden();
+
+        // Stopped ringing
+        await devPage.expectNotifications(2, 0, 2, 2);
     });
 });
