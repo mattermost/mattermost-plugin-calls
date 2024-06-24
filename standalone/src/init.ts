@@ -10,6 +10,7 @@ import '@mattermost/compass-icons/css/compass-icons.css';
 import {
     CallHostChangedData,
     CallJobStateData,
+    CallsClientJoinData,
     CallStartData,
     CallStateData,
     EmptyData,
@@ -76,7 +77,7 @@ import {
     handleUserVoiceOn,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
-import {CallActions, CallsClientConfig, CallsClientJoinData, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
+import {CallActions, CallsClientConfig, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     getCallID,
@@ -227,6 +228,7 @@ export default async function init(cfg: InitConfig) {
         iceServers: iceConfigs,
         authToken: getToken(),
         simulcast: callsConfig(store.getState()).EnableSimulcast,
+        enableAV1: callsConfig(store.getState()).EnableAV1,
     };
 
     connectCall(joinData, clientConfig, (ev) => {

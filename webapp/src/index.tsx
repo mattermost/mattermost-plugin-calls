@@ -514,6 +514,7 @@ export default class Plugin {
                     wsURL: getWSConnectionURL(getConfig(state)),
                     iceServers: iceConfigs,
                     simulcast: callsConfig(state).EnableSimulcast,
+                    enableAV1: callsConfig(state).EnableAV1,
                 });
                 window.currentCallData = CurrentCallDataDefault;
 
