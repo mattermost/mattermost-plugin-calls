@@ -8,6 +8,10 @@ import (
 	"net/http"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
+
+	"github.com/mattermost/mattermost/server/public/model"
+
+	"github.com/rudderlabs/analytics-go"
 )
 
 const (
@@ -17,6 +21,21 @@ const (
 	evCallUserJoined  = "call_user_joined"
 	evCallUserLeft    = "call_user_left"
 	evCallNotifyAdmin = "call_notify_admin"
+)
+
+var (
+	enterpriseSKUs = []string{model.LicenseShortSkuEnterprise}
+	// currently unused
+	// professionalSKUs = []string{model.LicenseShortSkuProfessional, model.LicenseShortSkuEnterprise}
+
+	// We only need to map events that require a SKU (i.e., licensed features). Anything available on unlicensed
+	// servers will map to null as expected.
+	eventToSkusMap = map[string][]string{
+		"user_start_recording": enterpriseSKUs,
+		"user_stop_recording":  enterpriseSKUs,
+		"live_captions_on":     enterpriseSKUs,
+		"live_captions_off":    enterpriseSKUs,
+	}
 )
 
 var (
@@ -55,19 +74,34 @@ func init() {
 }
 
 type trackEventRequest struct {
-	Event      string                 `json:"event"`
-	ClientType string                 `json:"clientType"`
-	Source     string                 `json:"source"`
-	Props      map[string]interface{} `json:"props"`
+	Event      string         `json:"event"`
+	ClientType string         `json:"clientType"`
+	Source     string         `json:"source"`
+	Props      map[string]any `json:"props"`
 }
 
-func (p *Plugin) track(ev string, props map[string]interface{}) {
+type eventFeature struct {
+	Name string   `json:"name"`
+	Skus []string `json:"skus"`
+}
+
+func (p *Plugin) track(ev string, props map[string]any) {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 	if p.telemetry == nil {
 		return
 	}
-	if err := p.telemetry.Track(ev, props); err != nil {
+
+	ctx := &analytics.Context{
+		Extra: map[string]any{
+			"feature": eventFeature{
+				Name: "Calls",
+				Skus: eventToSkusMap[ev],
+			},
+		},
+	}
+
+	if err := p.telemetry.Track(ev, props, ctx); err != nil {
 		p.LogError(err.Error())
 	}
 }
@@ -91,7 +125,7 @@ func (p *Plugin) initTelemetry(enableDiagnostics *bool) error {
 			WriteKey:     rudderWriteKey,
 			DataplaneURL: rudderDataplaneURL,
 			DiagnosticID: p.API.GetDiagnosticId(),
-			DefaultProps: map[string]interface{}{
+			DefaultProps: map[string]any{
 				"ServerVersion": p.API.GetServerVersion(),
 				"PluginVersion": manifest.Version,
 				"PluginBuild":   buildHash,
@@ -146,7 +180,7 @@ func (p *Plugin) handleTrackEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if data.Props == nil {
-		data.Props = map[string]interface{}{}
+		data.Props = map[string]any{}
 	}
 
 	if data.Source != "" {
