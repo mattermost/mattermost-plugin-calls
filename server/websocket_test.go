@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -958,6 +959,123 @@ func TestHandleJoin(t *testing.T) {
 		p.mut.RLock()
 		require.Empty(t, p.removeSessionsBatchers)
 		require.Empty(t, p.addSessionsBatchers)
+		p.mut.RUnlock()
+	})
+
+	t.Run("admin warning", func(t *testing.T) {
+		channelID := model.NewId()
+		userID := model.NewId()
+		connID := model.NewId()
+		postID := model.NewId()
+		authSessionID := ""
+
+		os.Setenv("MM_CALLS_CONCURRENT_SESSIONS_THRESHOLD", "1")
+		defer os.Unsetenv("MM_CALLS_CONCURRENT_SESSIONS_THRESHOLD")
+
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id: channelID,
+		}, nil).Twice()
+
+		mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
+			MemberCount: 1,
+		}, nil).Once()
+
+		mockAPI.On("HasPermissionTo", userID, model.PermissionManageSystem).Return(false).Once()
+
+		// Call lock
+		mockAPI.On("KVSetWithOptions", "mutex_call_"+channelID, []byte{0x1}, mock.Anything).Return(true, nil)
+
+		// We'd be starting a new call
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
+			&model.WebsocketBroadcast{UserId: userID, ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		// Call started post creation
+		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(3)
+		mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
+		createPost(t, store, postID, userID, channelID)
+
+		mockAPI.On("GetLicense").Return(&model.License{}, nil)
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockAPI.On("KVSetWithOptions", "concurrent_sessions_warning", mock.Anything, mock.Anything).Return(true, nil).Once()
+
+		mockAPI.On("GetUsers", mock.AnythingOfType("*model.UserGetOptions")).Return([]*model.User{
+			{
+				Id:     "adminID",
+				Locale: "it",
+			},
+		}, nil).Once()
+
+		mockAPI.On("GetDirectChannel", "adminID", "").Return(&model.Channel{
+			Id: "channelID",
+		}, nil).Once()
+
+		mockAPI.On("IsEnterpriseReady").Return(false).Once()
+
+		mockAPI.On("CreatePost", &model.Post{
+			UserId:    "",
+			ChannelId: "channelID",
+			Message:   ":warning: app.admin.concurrent_sessions_warning.intro\r\n\r\napp.admin.concurrent_sessions_warning.team",
+		}).Return(&model.Post{Id: "postID"}, nil).Once()
+
+		mockRTCMetrics.On("IncRTCSessions", "default").Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
+			&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}).Once()
+
+		// DEPRECATED
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserConnected, map[string]any{"userID": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, map[string]any{"session_id": connID, "user_id": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallState).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallState, mock.Anything,
+			&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketConn").Once()
+
+		// Call unlock
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+
+		mockMetrics.On("DecWebSocketConn").Once()
+		mockRTCMetrics.On("DecRTCSessions", "default").Once()
+		mockRTCMetrics.On("IncRTCConnState", "closed").Once()
+
+		// DEPRECATED
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserDisconnected, map[string]any{"userID": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
+
+		// Call unlock
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+
+		err := p.handleJoin(userID, connID, authSessionID, callsJoinData{
+			CallsClientJoinData: CallsClientJoinData{
+				ChannelID: channelID,
+			},
+		})
+		require.NoError(t, err)
+
+		// Trigger leave call
+		p.mut.RLock()
+		close(p.sessions[connID].leaveCh)
 		p.mut.RUnlock()
 	})
 }
