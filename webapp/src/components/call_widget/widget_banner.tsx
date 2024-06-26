@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import {useIntl} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
 import styled from 'styled-components';
 
@@ -42,6 +43,7 @@ export default function WidgetBanner({
     rightButton: RightButton = DefaultRightButton,
     ...props
 }: Props) {
+    const {formatMessage} = useIntl();
     const [leftButtoning, setLeftButtoning] = useState(false);
     const [rightButtoning, setRightButtoning] = useState(false);
     const [closeButtoning, setCloseButtoning] = useState(false);
@@ -65,6 +67,7 @@ export default function WidgetBanner({
             $color={colorMap[props.type]}
             $bgColor={bgMap[props.type]}
             $fadeIn={!leftButtoning && !rightButtoning && !closeButtoning}
+            role='dialog'
         >
             <Icon
                 $fill={props.iconFill}
@@ -116,6 +119,8 @@ export default function WidgetBanner({
                     $bgHover={hoverMap[props.type]}
                     data-testid={'calls-widget-banner-close'}
                     onClick={() => setCloseButtoning(true)}
+                    role='button'
+                    aria-label={formatMessage({defaultMessage: 'Dismiss'})}
                 >
                     <CompassIcon icon='close'/>
                 </CloseButton>

@@ -1,4 +1,5 @@
 import React from 'react';
+import {useIntl} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
 import styled from 'styled-components';
 
@@ -24,8 +25,12 @@ export default function InCallPrompt({
     rightButton: RightButton = DefaultRightButton,
     ...props
 }: Props) {
+    const {formatMessage} = useIntl();
     return (
-        <Prompt data-testid={props.testId}>
+        <Prompt
+            data-testid={props.testId}
+            role='dialog'
+        >
             <Icon
                 $fill={props.iconFill}
                 $color={props.iconColor}
@@ -74,6 +79,7 @@ export default function InCallPrompt({
                 <CloseButton
                     onClick={props.onCloseButtonClick}
                     data-testid={'popout-prompt-close'}
+                    aria-label={formatMessage({defaultMessage: 'Dismiss'})}
                 >
                     <CompassIcon icon='close'/>
                 </CloseButton>

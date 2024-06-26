@@ -124,6 +124,9 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
         setShowBar(false);
     };
 
+    const openPickerLabel = showPicker ? formatMessage({defaultMessage: 'Close emoji picker'}) :
+        formatMessage({defaultMessage: 'Open emoji picker'});
+
     return (
         <div
             style={{position: 'relative'}}
@@ -189,6 +192,9 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
                         <QuickSelectButton
                             onClick={toggleShowPicker}
                             $active={showPicker}
+                            aria-label={openPickerLabel}
+                            aria-expanded={showPicker}
+                            aria-controls='calls-popout-emoji-picker'
                         >
                             <CompassIcon icon='emoticon-plus-outline'/>
                         </QuickSelectButton>
@@ -197,6 +203,9 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
             }
             <ControlsButton
                 id={'calls-popout-emoji-picker-button'}
+                ariaLabel={addReactionText}
+                ariaControls='calls-popout-emoji-bar'
+                ariaExpanded={showBar}
                 onToggle={toggleReactions}
                 tooltipText={addReactionText}
                 shortcut={reverseKeyMappings.popout[MAKE_REACTION][0]}
