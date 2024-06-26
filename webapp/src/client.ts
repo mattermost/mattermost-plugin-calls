@@ -160,12 +160,14 @@ export default class CallsClient extends EventEmitter {
     public async init(joinData: CallsClientJoinData) {
         this.channelID = joinData.channelID;
 
-        if (this.config.enableAV1) {
+        if (this.config.enableAV1 && !this.config.simulcast) {
             this.av1Codec = await RTCPeer.getVideoCodec('video/AV1');
             if (this.av1Codec) {
                 logDebug('client has AV1 support');
                 joinData.av1Support = true;
             }
+        } else if (this.config.enableAV1 && this.config.simulcast) {
+            logWarn('both simulcast and av1 support are enabled');
         }
 
         if (!window.isSecureContext) {
@@ -571,14 +573,10 @@ export default class CallsClient extends EventEmitter {
         this.peer.addStream(screenStream);
 
         if (this.config.enableAV1 && this.av1Codec) {
-            if (this.config.simulcast) {
-                logWarn('both simulcast and av1 support are enabled');
-            } else {
-                logDebug('AV1 supported, sending track', this.av1Codec);
-                this.peer.addStream(screenStream, [{
-                    codec: this.av1Codec,
-                }]);
-            }
+            logDebug('AV1 supported, sending track', this.av1Codec);
+            this.peer.addStream(screenStream, [{
+                codec: this.av1Codec,
+            }]);
         }
 
         this.ws.send('screen_on', {
