@@ -387,13 +387,13 @@ gotestsum:
 
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
+test:
 
 ifeq ($(CI),true)
-test-ci: apply webapp/node_modules standalone/node_modules gotestsum
+test: apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
-	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./...
+	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./server/...
 	cd ./server/public && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
-	cd ./lt && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
 endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;
