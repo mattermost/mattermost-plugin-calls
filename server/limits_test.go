@@ -32,6 +32,9 @@ func TestShouldSendConcurrentSessionsWarning(t *testing.T) {
 	p.store = store
 
 	t.Run("rtcd in use", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		p.rtcdManager = &rtcdClientManager{}
 
 		t.Run("no sessions", func(t *testing.T) {
@@ -78,6 +81,9 @@ func TestShouldSendConcurrentSessionsWarning(t *testing.T) {
 	})
 
 	t.Run("no rtcd", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		p.rtcdManager = nil
 
 		t.Run("no sessions", func(t *testing.T) {
@@ -125,7 +131,29 @@ func TestShouldSendConcurrentSessionsWarning(t *testing.T) {
 		})
 
 		t.Run("backoff", func(t *testing.T) {
+			defer ResetTestStore(t, p.store)
+
 			mockAPI.On("KVSetWithOptions", "concurrent_sessions_warning", mock.Anything, mock.Anything).Return(false, nil).Once()
+
+			call := &public.Call{
+				ID:        model.NewId(),
+				CreateAt:  time.Now().UnixMilli(),
+				ChannelID: model.NewId(),
+				StartAt:   time.Now().UnixMilli(),
+				PostID:    model.NewId(),
+				ThreadID:  model.NewId(),
+				OwnerID:   model.NewId(),
+			}
+			err := p.store.CreateCall(call)
+			require.NoError(t, err)
+
+			err = p.store.CreateCallSession(&public.CallSession{
+				ID:     "connA",
+				CallID: call.ID,
+				UserID: "userA",
+				JoinAt: time.Now().UnixMilli(),
+			})
+			require.NoError(t, err)
 
 			ok, err := p.shouldSendConcurrentSessionsWarning(1, time.Second)
 			require.NoError(t, err)
@@ -153,6 +181,9 @@ func TestSendConcurrentSessionsWarning(t *testing.T) {
 		mock.Anything, mock.Anything)
 
 	t.Run("cloud", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		mockAPI.On("GetLicense").Return(&model.License{
 			Features: &model.Features{
 				Cloud: model.NewBool(true),
@@ -168,6 +199,9 @@ func TestSendConcurrentSessionsWarning(t *testing.T) {
 	})
 
 	t.Run("team", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		mockAPI.On("GetLicense").Return(nil).Once()
 
 		mockAPI.On("GetUsers", mock.AnythingOfType("*model.UserGetOptions")).Return([]*model.User{
@@ -194,6 +228,9 @@ func TestSendConcurrentSessionsWarning(t *testing.T) {
 	})
 
 	t.Run("e0", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		mockAPI.On("GetLicense").Return(nil).Once()
 
 		mockAPI.On("GetUsers", mock.AnythingOfType("*model.UserGetOptions")).Return([]*model.User{
@@ -220,6 +257,9 @@ func TestSendConcurrentSessionsWarning(t *testing.T) {
 	})
 
 	t.Run("professional", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		mockAPI.On("GetLicense").Return(&model.License{
 			SkuShortName: model.LicenseShortSkuProfessional,
 		}, nil).Once()
@@ -246,6 +286,9 @@ func TestSendConcurrentSessionsWarning(t *testing.T) {
 	})
 
 	t.Run("enterprise", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		mockAPI.On("GetLicense").Return(&model.License{
 			SkuShortName: model.LicenseShortSkuEnterprise,
 		}, nil).Once()
@@ -272,6 +315,9 @@ func TestSendConcurrentSessionsWarning(t *testing.T) {
 	})
 
 	t.Run("multiple admins", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		mockAPI.On("GetLicense").Return(nil).Once()
 
 		mockAPI.On("GetUsers", mock.AnythingOfType("*model.UserGetOptions")).Return([]*model.User{

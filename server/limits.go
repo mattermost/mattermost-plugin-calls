@@ -233,6 +233,7 @@ func (p *Plugin) sendConcurrentSessionsWarning() error {
 			UserId:    botID,
 			ChannelId: dm.Id,
 		}
+
 		if _, appErr := p.API.CreatePost(post); appErr != nil {
 			p.LogError("failed to create warning post",
 				"userID", admin.Id, "botID", botID, "err", appErr.Error())
