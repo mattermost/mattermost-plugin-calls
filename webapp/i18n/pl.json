@@ -105,7 +105,6 @@
   "TyskrG": "Witamy w programie próbnym Mattermost Enterprise! Wygasa on w dniu {trialExpirationDate}. Masz teraz dostęp do <recordingsDocsLink>nagrań rozmów</recordingsDocsLink>,<rtcdDocsLink>usług RTCD</rtcdDocsLink>, <guestAccountsLink>kont gości</guestAccountsLink>, <autoComplianceReportsLink>zautomatyzowanych raportów zgodności</autoComplianceReportsLink>, oraz <mobileSecureNotificationsLink>mobilnych powiadomień push secure-ID</mobileSecureNotificationsLink>, wśród wielu innych funkcji. Zobacz wszystkie funkcje w naszej dokumentacji <documentationLink></documentationLink> .",
   "UcFeI7": "Pokaż listę uczestników",
   "Ug/N7H": "Połączenia nie są dostępne w DM z nieaktywnym użytkownikiem.",
-  "UxatAw": "{count, plural, =1 {# uczestnik} other {# uczestników}}",
   "Uys4Mj": "Bliskie reakcje",
   "VLwHR0": "Ustawienia połączeń",
   "Vc8/fR": "Łączna liczba aktywnych sesji",

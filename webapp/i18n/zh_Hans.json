@@ -105,7 +105,6 @@
   "TyskrG": "欢迎使用 Mattermost 企业版试用版！它将于 {trialExpirationDate} 到期。您现在可以访问 <recordingsDocsLink>通话录音</recordingsDocsLink>、<rtcdDocsLink>RTCD 服务</rtcdDocsLink>、<guestAccountsLink>访客账户</guestAccountsLink>、<autoComplianceReportsLink>自动合规性报告</autoComplianceReportsLink> 和 <mobileSecureNotificationsLink>移动安全 ID 推送通知</mobileSecureNotificationsLink>，以及其他许多功能。在我们的 <documentationLink>文档</documentationLink> 中查看所有功能。",
   "UcFeI7": "显示参与者列表",
   "Ug/N7H": "通话在与已停用的用户的私信中不可用。",
-  "UxatAw": "{count, plural, other {# 位参与者}}",
   "Uys4Mj": "关闭反应",
   "VLwHR0": "通话设置",
   "Vc8/fR": "总活跃会话",

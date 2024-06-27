@@ -105,7 +105,6 @@
   "TyskrG": "Willkommen zu deiner Mattermost Enterprise-Testversion! Sie läuft am {trialExpirationDate} ab. Du hast jetzt Zugriff auf <recordingsDocsLink>Anrufaufzeichnungen</recordingsDocsLink>,<rtcdDocsLink>RTCD-Dienste</rtcdDocsLink>, <guestAccountsLink>Gastkonten</guestAccountsLink>, <autoComplianceReportsLink>automatische Compliance-Berichte</autoComplianceReportsLink> und <mobileSecureNotificationsLink>mobile Secure-ID-Push-Benachrichtigungen</mobileSecureNotificationsLink>, neben vielen anderen Funktionen. Alle Funktionen findest du in unserer <documentationLink>Dokumentation</documentationLink>.",
   "UcFeI7": "Teilnehmerliste anzeigen",
   "Ug/N7H": "Anrufe sind in einer Direktnachricht mit einem deaktivierten Benutzer nicht möglich.",
-  "UxatAw": "{count, plural, =1 {# Teilnehmer} other {# Teilnehmer}}",
   "Uys4Mj": "Reaktionen schließen",
   "VLwHR0": "Anruf-Einstellungen",
   "Vc8/fR": "Aktive Sitzungen insgesamt",

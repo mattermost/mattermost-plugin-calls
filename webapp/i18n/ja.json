@@ -105,7 +105,6 @@
   "TyskrG": "Mattermost Enterpriseトライアルへようこそ！期間は {trialExpirationDate} までです。<recordingsDocsLink>レコーディング</recordingsDocsLink>,<rtcdDocsLink>RTCDサービス</rtcdDocsLink>,<guestAccountsLink>ゲストアカウント</guestAccountsLink>,<autoComplianceReportsLink>コンプライアンスレポートの自動化</autoComplianceReportsLink>,<mobileSecureNotificationsLink>セキュアIDによるモバイルプッシュ通知</mobileSecureNotificationsLink>, その他多くの機能が利用可能になりました。全ての機能は<documentationLink>ドキュメント</documentationLink> から確認できます。",
   "UcFeI7": "参加者リストを表示する",
   "Ug/N7H": "無効化されたユーザーとのDMでは、通話機能は利用できません。",
-  "UxatAw": "{count, plural, =1 {# 人の参加者} other {# 人の参加者}}",
   "Uys4Mj": "リアクションを閉じる",
   "VLwHR0": "通話設定",
   "Vc8/fR": "総アクティブセッション数",
