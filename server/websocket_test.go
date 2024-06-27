@@ -707,7 +707,7 @@ func TestHandleJoin(t *testing.T) {
 			&model.WebsocketBroadcast{UserId: userID, ChannelId: channelID, ReliableClusterSend: true}).Once()
 		// Call started post creation
 		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
-		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(3)
 		mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
 		createPost(t, store, postID, userID, channelID)
 
