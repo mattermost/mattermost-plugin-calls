@@ -454,11 +454,11 @@ func (p *Plugin) handleConfig(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 
 	if isAdmin {
-		if err := json.NewEncoder(w).Encode(p.getAdminConfig()); err != nil {
+		if err := json.NewEncoder(w).Encode(p.getAdminClientConfig(p.getConfiguration())); err != nil {
 			return fmt.Errorf("error encoding config: %w", err)
 		}
 	} else {
-		if err := json.NewEncoder(w).Encode(p.getClientConfig()); err != nil {
+		if err := json.NewEncoder(w).Encode(p.getClientConfig(p.getConfiguration())); err != nil {
 			return fmt.Errorf("error encoding config: %w", err)
 		}
 	}

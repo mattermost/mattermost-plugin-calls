@@ -6,6 +6,7 @@ package main
 import (
 	"testing"
 
+	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/plugin"
@@ -226,7 +227,7 @@ func TestGetClientConfig(t *testing.T) {
 	})
 	mockAPI.On("GetConfig").Return(&model.Config{})
 
-	clientCfg := p.getClientConfig()
+	clientCfg := p.getClientConfig(p.getConfiguration())
 
 	// defaults
 	require.Equal(t, model.NewBool(true), clientCfg.AllowEnableCalls)
@@ -236,7 +237,7 @@ func TestGetClientConfig(t *testing.T) {
 
 	*p.configuration.AllowEnableCalls = false
 	*p.configuration.DefaultEnabled = true
-	clientCfg = p.getClientConfig()
+	clientCfg = p.getClientConfig(p.getConfiguration())
 	require.Equal(t, true, *clientCfg.AllowEnableCalls)
 	require.Equal(t, p.getConfiguration().DefaultEnabled, clientCfg.DefaultEnabled)
 
@@ -246,6 +247,10 @@ func TestGetClientConfig(t *testing.T) {
 	mockAPI.On("GetLicense").Return(&model.License{
 		SkuShortName: "professional",
 	})
-	clientCfg = p.getClientConfig()
+	clientCfg = p.getClientConfig(p.getConfiguration())
 	require.Equal(t, true, clientCfg.HostControlsAllowed)
+
+	// admin config
+	adminClientCfg := p.getAdminClientConfig(p.getConfiguration())
+	require.Equal(t, transcriber.TranscribeAPI(transcriber.TranscribeAPIWhisperCPP), adminClientCfg.TranscribeAPI)
 }

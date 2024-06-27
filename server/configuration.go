@@ -88,6 +88,8 @@ type configuration struct {
 	// The language to be passed to the live captions transcriber.
 	LiveCaptionsLanguage string
 
+	adminClientConfig
+
 	clientConfig
 }
 
@@ -129,6 +131,13 @@ type clientConfig struct {
 	SkuShortName string `json:"sku_short_name"`
 	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
 	HostControlsAllowed bool
+}
+
+type adminClientConfig struct {
+	clientConfig
+
+	// The speech-to-text API to use to transcribe calls.
+	TranscribeAPI transcriber.TranscribeAPI
 }
 
 const (
@@ -470,15 +479,7 @@ func (c *configuration) liveCaptionsEnabled() bool {
 	return false
 }
 
-func (p *Plugin) getAdminConfig() *configuration {
-	c := p.getConfiguration()
-	c.clientConfig = p.getClientConfig()
-	return c
-}
-
-func (p *Plugin) getClientConfig() clientConfig {
-	c := p.getConfiguration()
-
+func (p *Plugin) getClientConfig(c *configuration) clientConfig {
 	skuShortName := "starter"
 	license := p.API.GetLicense()
 	if license != nil {
@@ -501,6 +502,13 @@ func (p *Plugin) getClientConfig() clientConfig {
 		EnableRinging:        c.EnableRinging,
 		SkuShortName:         skuShortName,
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
+	}
+}
+
+func (p *Plugin) getAdminClientConfig(c *configuration) adminClientConfig {
+	return adminClientConfig{
+		clientConfig:  p.getClientConfig(c),
+		TranscribeAPI: c.TranscribeAPI,
 	}
 }
 
