@@ -523,3 +523,31 @@ test.describe('permissions', () => {
         await expect(resp.status()).toEqual(201);
     });
 });
+
+test.describe('widget menu', () => {
+    test.use({storageState: userStorages[0]});
+
+    test('menu button should open call thread', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+
+        // Verify RHS is closed.
+        await expect(page.locator('#rhsContainer')).toBeHidden();
+
+        // Open menu
+        await page.locator('#calls-widget-toggle-menu-button').click();
+
+        // Click to show chat
+        await page.locator('#calls-widget-menu-chat-button').click();
+
+        // Verify menu closed
+        await expect(page.getByTestId('calls-widget-menu')).toBeHidden();
+
+        // Verify RHS is open and call thread is showing.
+        await expect(page.locator('#rhsContainer')).toBeVisible();
+        await expect(page.locator('#rhsContainer').filter({has: page.getByText('Call started')})).toBeVisible();
+        await expect(page.locator('#rhsContainer').filter({has: page.getByText(`by ${usernames[0]}`)})).toBeVisible();
+
+        await devPage.leaveCall();
+    });
+});

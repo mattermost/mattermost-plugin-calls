@@ -671,3 +671,12 @@ export const hostMuteOthers = async (callID?: string) => {
 export const getCallsStats = async () => {
     return RestClient.fetch<CallsStats>(`${getPluginPath()}/stats`, {method: 'get'});
 };
+
+export const selectRHSPost = (postID: string): ActionFuncAsync => {
+    return async (dispatch: DispatchFunc) => {
+        if (window.ProductApi) {
+            dispatch(window.ProductApi.selectRhsPost(postID));
+        }
+        return {};
+    };
+};
