@@ -78,8 +78,8 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	debugRouter.HandleFunc("/pprof/{profile}", pprof.Index).Methods("GET")
 
 	// Config
-	router.HandleFunc("/config", func(w http.ResponseWriter, _ *http.Request) {
-		if err := p.handleConfig(w); err != nil {
+	router.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
+		if err := p.handleConfig(w, r); err != nil {
 			p.handleError(w, err)
 		}
 	}).Methods("GET")
