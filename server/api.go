@@ -447,10 +447,20 @@ func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request
 
 // handleConfig returns the client configuration, and cloud license information
 // that isn't exposed to clients yet on the webapp
-func (p *Plugin) handleConfig(w http.ResponseWriter) error {
+func (p *Plugin) handleConfig(w http.ResponseWriter, r *http.Request) error {
+	userID := r.Header.Get("Mattermost-User-Id")
+	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(p.getClientConfig()); err != nil {
-		return fmt.Errorf("error encoding config: %w", err)
+
+	if isAdmin {
+		if err := json.NewEncoder(w).Encode(p.getAdminClientConfig(p.getConfiguration())); err != nil {
+			return fmt.Errorf("error encoding config: %w", err)
+		}
+	} else {
+		if err := json.NewEncoder(w).Encode(p.getClientConfig(p.getConfiguration())); err != nil {
+			return fmt.Errorf("error encoding config: %w", err)
+		}
 	}
 
 	return nil
