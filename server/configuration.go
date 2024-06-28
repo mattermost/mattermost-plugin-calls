@@ -69,6 +69,12 @@ type configuration struct {
 	EnableRinging *bool
 	// The speech-to-text model size to use to transcribe calls.
 	TranscriberModelSize transcriber.ModelSize
+	// The speech-to-text API to use to transcribe calls.
+	TranscribeAPI transcriber.TranscribeAPI
+	// Azure Speech Services API key
+	TranscribeAPIAzureSpeechKey string
+	// Azure Speech Services API region
+	TranscribeAPIAzureSpeechRegion string
 	// The number of threads to use to transcriber calls.
 	TranscriberNumThreads *int
 	// When set to true live captions will be enabled when starting transcription jobs.
@@ -81,6 +87,8 @@ type configuration struct {
 	LiveCaptionsNumThreadsPerTranscriber *int
 	// The language to be passed to the live captions transcriber.
 	LiveCaptionsLanguage string
+
+	adminClientConfig
 
 	clientConfig
 }
@@ -125,6 +133,13 @@ type clientConfig struct {
 	HostControlsAllowed bool
 	// When set to true it enables using the AV1 codec to encode screen sharing tracks.
 	EnableAV1 *bool
+}
+
+type adminClientConfig struct {
+	clientConfig
+
+	// The speech-to-text API to use to transcribe calls.
+	TranscribeAPI transcriber.TranscribeAPI
 }
 
 const (
@@ -225,6 +240,9 @@ func (c *configuration) SetDefaults() {
 	if c.TranscriberModelSize == "" {
 		c.TranscriberModelSize = transcriber.ModelSizeDefault
 	}
+	if c.TranscribeAPI == "" {
+		c.TranscribeAPI = transcriber.TranscribeAPIDefault
+	}
 	if c.EnableLiveCaptions == nil {
 		c.EnableLiveCaptions = model.NewBool(false)
 	}
@@ -291,6 +309,10 @@ func (c *configuration) IsValid() error {
 			return fmt.Errorf("TranscriberModelSize is not valid")
 		}
 
+		if ok := c.TranscribeAPI.IsValid(); !ok {
+			return fmt.Errorf("TranscribeAPI is not valid")
+		}
+
 		if c.TranscriberNumThreads == nil || *c.TranscriberNumThreads <= 0 {
 			return fmt.Errorf("TranscriberNumThreads is not valid: should be greater than 0")
 		}
@@ -332,6 +354,9 @@ func (c *configuration) Clone() *configuration {
 	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 	cfg.RecordingQuality = c.RecordingQuality
 	cfg.TranscriberModelSize = c.TranscriberModelSize
+	cfg.TranscribeAPI = c.TranscribeAPI
+	cfg.TranscribeAPIAzureSpeechKey = c.TranscribeAPIAzureSpeechKey
+	cfg.TranscribeAPIAzureSpeechRegion = c.TranscribeAPIAzureSpeechRegion
 	cfg.LiveCaptionsModelSize = c.LiveCaptionsModelSize
 	cfg.LiveCaptionsLanguage = c.LiveCaptionsLanguage
 
@@ -463,9 +488,7 @@ func (c *configuration) liveCaptionsEnabled() bool {
 	return false
 }
 
-func (p *Plugin) getClientConfig() clientConfig {
-	c := p.getConfiguration()
-
+func (p *Plugin) getClientConfig(c *configuration) clientConfig {
 	skuShortName := "starter"
 	license := p.API.GetLicense()
 	if license != nil {
@@ -489,6 +512,13 @@ func (p *Plugin) getClientConfig() clientConfig {
 		SkuShortName:         skuShortName,
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
 		EnableAV1:            c.EnableAV1,
+	}
+}
+
+func (p *Plugin) getAdminClientConfig(c *configuration) adminClientConfig {
+	return adminClientConfig{
+		clientConfig:  p.getClientConfig(c),
+		TranscribeAPI: c.TranscribeAPI,
 	}
 }
 

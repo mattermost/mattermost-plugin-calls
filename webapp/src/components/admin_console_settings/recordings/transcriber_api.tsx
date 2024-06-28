@@ -1,24 +1,31 @@
-import {TranscribeAPI} from '@mattermost/calls-common/lib/types';
-import React, {ChangeEvent} from 'react';
-import {useSelector} from 'react-redux';
+import React, {ChangeEvent, useEffect, useState} from 'react';
+import {useDispatch, useSelector} from 'react-redux';
+import {setTranscribeAPI} from 'src/actions';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
-import {isCloud, isOnPremNotEnterprise, recordingsEnabled, transcribeAPI, transcriptionsEnabled} from 'src/selectors';
+import {isCloud, isOnPremNotEnterprise, recordingsEnabled, transcriptionsEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-const TranscriberModelSize = (props: CustomComponentProps) => {
+const TranscribeAPI = (props: CustomComponentProps) => {
+    const dispatch = useDispatch();
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const hasTranscriptions = useSelector(transcriptionsEnabled);
     const recordingEnabled = useSelector(recordingsEnabled);
-    const api = useSelector(transcribeAPI);
 
-    if (cloud || restricted || !hasTranscriptions || !recordingEnabled || api !== TranscribeAPI.WhisperCPP) {
+    const [api, setAPI] = useState(() => props.value);
+
+    // Update global state with a local state change, or props change (eg, remounting)
+    useEffect(() => {
+        dispatch(setTranscribeAPI(api));
+    }, [dispatch, api]);
+
+    if (cloud || restricted || !hasTranscriptions || !recordingEnabled) {
         return null;
     }
 
     // Webapp doesn't pass the options
-    const rawOptions = manifest.settings_schema?.settings.find((e) => e.key === 'TranscriberModelSize')?.options || [];
+    const rawOptions = manifest.settings_schema?.settings.find((e) => e.key === 'TranscribeAPI')?.options || [];
     const options = [];
     for (const {display_name, value} of rawOptions) {
         options.push(
@@ -33,6 +40,7 @@ const TranscriberModelSize = (props: CustomComponentProps) => {
 
     const handleChange = (e: ChangeEvent<HTMLSelectElement>) => {
         props.onChange(props.id, e.target.value);
+        setAPI(e.target.value);
     };
 
     return (
@@ -72,4 +80,4 @@ const TranscriberModelSize = (props: CustomComponentProps) => {
     );
 };
 
-export default TranscriberModelSize;
+export default TranscribeAPI;

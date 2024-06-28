@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallsConfig, LiveCaption, RTCStats} from '@mattermost/calls-common/lib/types';
+import {CallsConfig, LiveCaption, RTCStats, TranscribeAPI} from '@mattermost/calls-common/lib/types';
 import {MessageDescriptor} from 'react-intl';
 
 export const CallsConfigDefault: CallsConfig = {
@@ -20,6 +20,9 @@ export const CallsConfigDefault: CallsConfig = {
     EnableLiveCaptions: false,
     HostControlsAllowed: false,
     EnableAV1: false,
+    
+    // Admin only
+    TranscribeAPI: TranscribeAPI.WhisperCPP,
 };
 
 export type ChannelState = {
@@ -129,16 +132,19 @@ export type CapturerSource = {
 // Reminder: obviously this is not reactive; setting data will not update the other window.
 export type CurrentCallData = {
     recordingPromptDismissedAt: number;
+    missingScreenPermissions: boolean;
 }
 
 export const CurrentCallDataDefault: CurrentCallData = {
     recordingPromptDismissedAt: 0,
+    missingScreenPermissions: false,
 };
 
 // Similar to currentCallData, callActions is a cross-window function to trigger a change in that
 // owning window. recordingPromptDismissedAt should be set by that window's init function or constructor.
 export type CallActions = {
     setRecordingPromptDismissedAt: (callId: string, dismissedAt: number) => void;
+    setMissingScreenPermissions: (missing: boolean) => void;
 }
 
 export enum ChannelType {

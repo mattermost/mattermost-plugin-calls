@@ -70,6 +70,7 @@ import {
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
+    TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
     USER_LEFT,
     USER_SCREEN_ON,
@@ -168,6 +169,13 @@ export const setLiveCaptionsEnabled = (enabled: boolean) => (dispatch: Dispatch)
     dispatch({
         type: LIVE_CAPTIONS_ENABLED,
         data: enabled,
+    });
+};
+
+export const setTranscribeAPI = (val: string) => (dispatch: Dispatch) => {
+    dispatch({
+        type: TRANSCRIBE_API,
+        data: val,
     });
 };
 
@@ -670,4 +678,13 @@ export const hostMuteOthers = async (callID?: string) => {
 
 export const getCallsStats = async () => {
     return RestClient.fetch<CallsStats>(`${getPluginPath()}/stats`, {method: 'get'});
+};
+
+export const selectRHSPost = (postID: string): ActionFuncAsync => {
+    return async (dispatch: DispatchFunc) => {
+        if (window.ProductApi) {
+            dispatch(window.ProductApi.selectRhsPost(postID));
+        }
+        return {};
+    };
 };

@@ -193,6 +193,24 @@
         "help_text": "(Optional) When set to true, post-call transcriptions are enabled."
       },
       {
+        "key": "TranscribeAPI",
+        "display_name": "Call transcriber API",
+        "type": "dropdown",
+        "default": "whisper.cpp",
+        "help_text": "The speech-to-text API to use for post-call transcriptions.",
+        "options": [
+          {
+            "display_name": "Whisper.CPP",
+            "value": "whisper.cpp"
+          },
+          {
+            "display_name": "Azure AI",
+            "value": "azure"
+          }
+        ],
+        "hosting": "on-prem"
+      },
+      {
         "key": "TranscriberModelSize",
         "display_name": "Call transcriber model size",
         "type": "dropdown",
@@ -212,6 +230,22 @@
             "value": "small"
           }
         ],
+        "hosting": "on-prem"
+      },
+      {
+        "key": "TranscribeAPIAzureSpeechKey",
+        "display_name": "Azure Speech Services API Key",
+        "type": "text",
+        "help_text": "The API key for Azure Speech Services",
+        "default": "",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "TranscribeAPIAzureSpeechRegion",
+        "display_name": "Azure Speech Services API Region",
+        "type": "text",
+        "help_text": "The API region for Azure Speech Services",
+        "default": "",
         "hosting": "on-prem"
       },
       {
@@ -299,6 +333,6 @@
     "min_rtcd_version": "v0.17.0",
     "min_offloader_version": "v0.8.0",
     "calls_recorder_version": "v0.7.2",
-    "calls_transcriber_version": "v0.2.2"
+    "calls_transcriber_version": "v0.3.0"
   }
 }
