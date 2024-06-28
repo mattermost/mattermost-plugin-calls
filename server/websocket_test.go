@@ -961,3 +961,98 @@ func TestHandleJoin(t *testing.T) {
 		p.mut.RUnlock()
 	})
 }
+
+func TestHandleMetricMessage(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	mockMetrics := &serverMocks.MockMetrics{}
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		metrics: mockMetrics,
+		botSession: &model.Session{
+			UserId: "botID",
+		},
+	}
+
+	t.Run("live captions", func(t *testing.T) {
+		t.Run("ignored if not from bot", func(t *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+			defer mockMetrics.AssertExpectations(t)
+
+			err := p.handleMetricMessage(public.MetricLiveCaptionsWindowDropped, "userID", nil)
+			require.NoError(t, err)
+
+			err = p.handleMetricMessage(public.MetricLiveCaptionsPktPayloadChBufFull, "userID", nil)
+			require.NoError(t, err)
+
+			err = p.handleMetricMessage(public.MetricLiveCaptionsTranscriberBufFull, "userID", nil)
+			require.NoError(t, err)
+		})
+
+		t.Run("from bot", func(t *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+			defer mockMetrics.AssertExpectations(t)
+
+			mockMetrics.On("IncLiveCaptionsWindowDropped").Once()
+			mockMetrics.On("IncLiveCaptionsPktPayloadChBufFull").Once()
+			mockMetrics.On("IncLiveCaptionsTranscriberBufFull").Once()
+
+			err := p.handleMetricMessage(public.MetricLiveCaptionsWindowDropped, "botID", nil)
+			require.NoError(t, err)
+
+			err = p.handleMetricMessage(public.MetricLiveCaptionsPktPayloadChBufFull, "botID", nil)
+			require.NoError(t, err)
+
+			err = p.handleMetricMessage(public.MetricLiveCaptionsTranscriberBufFull, "botID", nil)
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("client metrics", func(t *testing.T) {
+		t.Run("invalid payload data", func(t *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+			defer mockMetrics.AssertExpectations(t)
+
+			err := p.handleMetricMessage(public.MetricClientICECandidatePair, "userID", nil)
+			require.EqualError(t, err, "invalid payload found in metric message")
+		})
+
+		t.Run("bad json", func(t *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+			defer mockMetrics.AssertExpectations(t)
+
+			err := p.handleMetricMessage(public.MetricClientICECandidatePair, "userID", "invalid")
+			require.EqualError(t, err, "failed to unmarshal payload: invalid character 'i' looking for beginning of value")
+		})
+
+		t.Run("invalid payload", func(t *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+			defer mockMetrics.AssertExpectations(t)
+
+			err := p.handleMetricMessage(public.MetricClientICECandidatePair, "userID", "{}")
+			require.EqualError(t, err, "failed to validate payload: invalid state \"\"")
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+			defer mockMetrics.AssertExpectations(t)
+
+			mockMetrics.On("IncClientICECandidatePairs", public.ClientICECandidatePairMetricPayload{
+				State: "succeeded",
+				Local: public.ICECandidateInfo{
+					Type:     "host",
+					Protocol: "udp",
+				},
+				Remote: public.ICECandidateInfo{
+					Type:     "host",
+					Protocol: "udp",
+				},
+			}).Once()
+
+			err := p.handleMetricMessage(public.MetricClientICECandidatePair, "userID", `{"state": "succeeded", "local": {"type": "host", "protocol": "udp"}, "remote": {"type": "host", "protocol": "udp"}}`)
+			require.NoError(t, err)
+		})
+	})
+}
