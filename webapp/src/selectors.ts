@@ -458,6 +458,9 @@ export const rtcdEnabled = (state: GlobalState) =>
 export const ringingEnabled = (state: GlobalState) =>
     callsConfig(state).EnableRinging;
 
+export const transcribeAPI = (state: GlobalState) =>
+    callsConfig(state).TranscribeAPI;
+
 //
 // Calls enabled/disabled logic
 //

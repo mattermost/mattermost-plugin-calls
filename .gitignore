@@ -26,6 +26,7 @@ webapp/src/manifest.ts
 webapp/mattermost-webapp/
 server/manifest.go
 server/data/
+server/assets/i18n
 
 # e2e
 config/

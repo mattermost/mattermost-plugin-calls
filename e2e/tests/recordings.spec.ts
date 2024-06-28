@@ -287,4 +287,47 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(page.locator('.ThreadViewer').locator('.post__header').last()).toContainText('BOT');
         await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
     });
+
+    test('recording - widget menu', async ({page}) => {
+        // start call
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+
+        // Open menu
+        await page.locator('#calls-widget-toggle-menu-button').click();
+
+        // Verify record menu item has the expected text
+        await expect(page.locator('#calls-widget-menu-record-button')).toContainText('Record call');
+
+        // Click to start recording
+        await page.locator('#calls-widget-menu-record-button').click();
+
+        // Verify menu closed
+        await expect(page.getByTestId('calls-widget-menu')).toBeHidden();
+
+        // Verify recording start prompt renders correctly
+        await expect(page.getByTestId('calls-widget-banner-recording')).toBeVisible();
+
+        // Give it a few of seconds to produce a decent recording
+        await devPage.wait(4000);
+
+        // Open menu
+        await page.locator('#calls-widget-toggle-menu-button').click();
+
+        // Verify record menu item has the expected text
+        await expect(page.locator('#calls-widget-menu-record-button')).toContainText('Stop recording');
+
+        // Click to stop recording
+        await page.locator('#calls-widget-menu-record-button').click();
+
+        // Verify menu closed
+        await expect(page.getByTestId('calls-widget-menu')).toBeHidden();
+
+        // Stop recording confirmation
+        await expect(page.locator('#stop_recording_confirmation')).toBeVisible();
+        await page.getByTestId('modal-confirm-button').click();
+
+        // Leave call
+        await devPage.leaveCall();
+    });
 });

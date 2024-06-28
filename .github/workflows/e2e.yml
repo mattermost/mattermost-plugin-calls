@@ -75,7 +75,7 @@ jobs:
       CONTAINER_SERVER: playwright_tests_server
       IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.8.0
       IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.7.2
-      IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.2.2
+      IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.3.0
       IMAGE_SERVER: mattermostdevelopment/mattermost-enterprise-edition:master
       IMAGE_CURL: curlimages/curl:8.7.1
       CI_NODE_INDEX: ${{ matrix.run_id }}

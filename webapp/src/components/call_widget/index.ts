@@ -5,7 +5,15 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
-import {recordingPromptDismissedAt, showExpandedView, showScreenSourceModal, trackEvent} from 'src/actions';
+import {
+    recordingPromptDismissedAt,
+    selectRHSPost,
+    showExpandedView,
+    showScreenSourceModal,
+    startCallRecording,
+    stopCallRecording,
+    trackEvent,
+} from 'src/actions';
 import {
     allowScreenSharing,
     callStartAtForCurrentCall,
@@ -15,17 +23,21 @@ import {
     hostChangeAtForCurrentCall,
     hostControlNoticesForCurrentCall,
     hostIDForCurrentCall,
+    isRecordingInCurrentCall,
     profilesInCurrentCallMap,
     recentlyJoinedUsersInCurrentCall,
     recordingForCurrentCall,
+    recordingsEnabled,
     screenSharingSessionForCurrentCall,
     sessionForCurrentCall,
     sessionsInCurrentCall,
     sessionsInCurrentCallMap,
     sortedIncomingCalls,
+    threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
 import {alphaSortSessions, stateSortSessions} from 'src/utils';
+import {modals} from 'src/webapp_globals';
 
 import CallWidget from './component';
 
@@ -46,6 +58,8 @@ const mapStateToProps = (state: GlobalState) => {
 
     const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
 
+    const callThreadID = threadIDForCallInChannel(state, channel?.id || '');
+
     return {
         currentUserID,
         channel,
@@ -60,6 +74,7 @@ const mapStateToProps = (state: GlobalState) => {
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),
         callRecording: recordingForCurrentCall(state),
+        isRecording: isRecordingInCurrentCall(state),
         screenSharingSession,
         allowScreenSharing: allowScreenSharing(state),
         show: !expandedView(state),
@@ -69,6 +84,8 @@ const mapStateToProps = (state: GlobalState) => {
         callsIncoming: sortedIncomingCalls(state),
         transcriptionsEnabled: transcriptionsEnabled(state),
         clientConnecting: clientConnecting(state),
+        callThreadID,
+        recordingsEnabled: recordingsEnabled(state),
     };
 };
 
@@ -77,6 +94,10 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     showScreenSourceModal,
     trackEvent,
     recordingPromptDismissedAt,
+    selectRHSPost,
+    startCallRecording,
+    stopCallRecording,
+    openModal: modals?.openModal,
 }, dispatch);
 
 export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(CallWidget));
