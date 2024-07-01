@@ -1284,7 +1284,10 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("invalid or missing metric_name in metric ws message")
 			return
 		}
-		p.handleMetricMessage(public.MetricName(metricName))
+		if err := p.handleMetricMessage(public.MetricName(metricName), userID, req.Data["data"]); err != nil {
+			p.LogError("handleMetricMessage failed", "err", err.Error())
+			return
+		}
 		return
 	}
 
@@ -1400,13 +1403,41 @@ func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, c
 	return nil
 }
 
-func (p *Plugin) handleMetricMessage(metricName public.MetricName) {
-	switch metricName {
-	case public.MetricLiveCaptionsWindowDropped:
-		p.metrics.IncLiveCaptionsWindowDropped()
-	case public.MetricLiveCaptionsTranscriberBufFull:
-		p.metrics.IncLiveCaptionsTranscriberBufFull()
-	case public.MetricLiveCaptionsPktPayloadChBufFull:
-		p.metrics.IncLiveCaptionsPktPayloadChBufFull()
+func (p *Plugin) handleMetricMessage(metricName public.MetricName, userID string, payload any) error {
+	// Bot only metrics
+	if userID == p.getBotID() {
+		switch metricName {
+		case public.MetricLiveCaptionsWindowDropped:
+			p.metrics.IncLiveCaptionsWindowDropped()
+		case public.MetricLiveCaptionsTranscriberBufFull:
+			p.metrics.IncLiveCaptionsTranscriberBufFull()
+		case public.MetricLiveCaptionsPktPayloadChBufFull:
+			p.metrics.IncLiveCaptionsPktPayloadChBufFull()
+		}
+
+		return nil
 	}
+
+	// User client metrics
+	switch metricName {
+	case public.MetricClientICECandidatePair:
+		data, ok := payload.(string)
+		if !ok {
+			return fmt.Errorf("invalid payload found in metric message")
+		}
+
+		var payload public.ClientICECandidatePairMetricPayload
+
+		if err := json.Unmarshal([]byte(data), &payload); err != nil {
+			return fmt.Errorf("failed to unmarshal payload: %w", err)
+		}
+
+		if err := payload.IsValid(); err != nil {
+			return fmt.Errorf("failed to validate payload: %w", err)
+		}
+
+		p.metrics.IncClientICECandidatePairs(payload)
+	}
+
+	return nil
 }

@@ -7,10 +7,14 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/mattermost/mattermost/server/public/model"
-	"github.com/mattermost/morph/models"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
+
+	"github.com/mattermost/mattermost/server/public/model"
+
+	"github.com/mattermost/morph/models"
 )
 
 type Metrics interface {
@@ -31,6 +35,7 @@ type Metrics interface {
 	ObserveAppHandlersTime(handler string, elapsed float64)
 	ObserveStoreMethodsTime(method string, elapsed float64)
 	RegisterDBMetrics(db *sql.DB, name string)
+	IncClientICECandidatePairs(p public.ClientICECandidatePairMetricPayload)
 }
 
 type StoreMetrics interface {
