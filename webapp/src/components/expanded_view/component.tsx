@@ -79,7 +79,7 @@ import {
 } from 'src/utils';
 import styled, {createGlobalStyle, css} from 'styled-components';
 
-import CallParticipant from './call_participant';
+import CallParticipant, {TileSize} from './call_participant';
 import {CallSettingsButton} from './call_settings';
 import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './controls_button';
 import GlobalBanner from './global_banner';
@@ -894,7 +894,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     renderParticipants = () => {
         const {formatMessage} = this.props.intl;
-        return this.props.sessions.map((session) => {
+        return this.props.sessions.map((session, idx) => {
             const isMuted = !session.unmuted;
             const isSpeaking = Boolean(session.voice);
             const isHandRaised = Boolean(session.raised_hand > 0);
@@ -904,10 +904,20 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 return null;
             }
 
+            let tileSize = TileSize.ExtraLarge;
+            if (idx === 1) {
+                tileSize = TileSize.Large;
+            } else if (idx === 2) {
+                tileSize = TileSize.Medium;
+            } else if (idx === 3) {
+                tileSize = TileSize.Small;
+            }
+
             return (
                 <CallParticipant
                     key={session.session_id}
                     name={`${getUserDisplayName(profile)} ${session.session_id === this.props.currentSession?.session_id ? formatMessage({defaultMessage: '(you)'}) : ''}`}
+                    size={tileSize}
                     pictureURL={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
                     isMuted={isMuted}
                     isSpeaking={isSpeaking}

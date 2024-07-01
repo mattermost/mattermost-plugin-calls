@@ -12,10 +12,18 @@ import HandEmoji from 'src/components/icons/hand';
 import MutedIcon from 'src/components/icons/muted_icon';
 import {ThreeDotsButton} from 'src/components/icons/three_dots';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
-import styled, {css, CSSObject} from 'styled-components';
+import styled, {css} from 'styled-components';
+
+export enum TileSize {
+    Small,
+    Medium,
+    Large,
+    ExtraLarge,
+}
 
 export type Props = {
     name: string,
+    size: TileSize,
     pictureURL?: string,
     isMuted: boolean,
     isHandRaised: boolean,
@@ -31,8 +39,48 @@ export type Props = {
     isSharingScreen?: boolean,
 }
 
+const tileSizePropsMap = {
+    [TileSize.Small]: {
+        avatarSize: 72,
+        fontSize: 12,
+        lineHeight: 16,
+        gap: 8,
+        padding: 12,
+        iconPadding: 4,
+        iconSize: 16,
+    },
+    [TileSize.Medium]: {
+        avatarSize: 96,
+        fontSize: 12,
+        lineHeight: 16,
+        gap: 12,
+        padding: 16,
+        iconPadding: 6,
+        iconSize: 16,
+    },
+    [TileSize.Large]: {
+        avatarSize: 120,
+        fontSize: 12,
+        lineHeight: 16,
+        gap: 12,
+        padding: 20,
+        iconPadding: 8,
+        iconSize: 20,
+    },
+    [TileSize.ExtraLarge]: {
+        avatarSize: 156,
+        fontSize: 14,
+        lineHeight: 20,
+        gap: 12,
+        padding: 26,
+        iconPadding: 8,
+        iconSize: 24,
+    },
+};
+
 export default function CallParticipant({
     name,
+    size,
     pictureURL,
     isMuted,
     isHandRaised,
@@ -60,54 +108,54 @@ export default function CallParticipant({
         <>
             <div style={{position: 'relative'}}>
                 <Avatar
-                    size={50}
-                    fontSize={18}
+                    size={tileSizePropsMap[size].avatarSize}
+                    fontSize={tileSizePropsMap[size].fontSize}
                     border={false}
                     borderGlowWidth={isSpeaking ? 3 : 0}
                     url={pictureURL}
                 />
-                <div
-                    style={{
-                        position: 'absolute',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        bottom: 0,
-                        right: 0,
-                        background: isMuted ? 'var(--calls-badge-bg)' : '#3DB887',
-                        borderRadius: '30px',
-                        width: '20px',
-                        height: '20px',
-                    }}
+
+                <MuteIconWrapper
+                    $isMuted={isMuted}
+                    $padding={tileSizePropsMap[size].iconPadding}
+                    $size={tileSizePropsMap[size].iconSize}
                 >
                     <MuteIcon
                         data-testid={isMuted ? 'muted' : 'unmuted'}
-                        fill='white'
-                        style={{width: '14px', height: '14px'}}
                     />
-                </div>
+                </MuteIconWrapper>
+
                 {isHandRaised &&
-                    <div style={styles.handRaisedContainer}>
+                    <ReactionWrapper
+                        $isHandRaised={isHandRaised}
+                        $padding={tileSizePropsMap[size].iconPadding}
+                        $size={tileSizePropsMap[size].iconSize}
+                    >
                         <HandEmoji
                             data-testid={'raised-hand'}
-                            style={{
-                                fill: 'var(--away-indicator)',
-                                width: '20px',
-                                height: '20px',
-                            }}
                         />
-                    </div>
+                    </ReactionWrapper>
                 }
                 {!isHandRaised && reaction &&
-                    <div style={{...styles.reactionContainer, background: 'var(--calls-bg)'}}>
-                        <Emoji emoji={reaction.emoji}/>
-                    </div>
+                    <ReactionWrapper
+                        $isHandRaised={isHandRaised}
+                        $padding={tileSizePropsMap[size].iconPadding}
+                        $size={tileSizePropsMap[size].iconSize}
+                    >
+                        <Emoji
+                            emoji={reaction.emoji}
+                            size={tileSizePropsMap[size].iconSize}
+                        />
+                    </ReactionWrapper>
                 }
             </div>
 
-            <span style={{fontWeight: 600, fontSize: '12px', lineHeight: '16px', textAlign: 'center'}}>
+            <StyledName
+                $fontSize={tileSizePropsMap[size].fontSize}
+                $lineHeight={tileSizePropsMap[size].lineHeight}
+            >
                 {name}
-            </span>
+            </StyledName>
 
             {isHost && <HostBadge data-testid={'host-badge'}/>}
         </>
@@ -118,6 +166,9 @@ export default function CallParticipant({
             <Participant
                 onMouseEnter={hoverOn}
                 onMouseLeave={hoverOff}
+                $width={tileSizePropsMap[size].avatarSize + (tileSizePropsMap[size].padding * 2)}
+                $padding={tileSizePropsMap[size].padding}
+                $gap={tileSizePropsMap[size].gap}
                 $hover={showHostControls}
             >
                 {showHostControls &&
@@ -148,49 +199,69 @@ export default function CallParticipant({
     }
 
     return (
-        <Participant>
+        <Participant
+            $width={tileSizePropsMap[size].avatarSize + (tileSizePropsMap[size].padding * 2)}
+            $padding={tileSizePropsMap[size].padding}
+            $gap={tileSizePropsMap[size].gap}
+        >
             {innerParticipant}
         </Participant>
     );
 }
 
-const styles: Record<string, CSSObject> = {
-    reactionContainer: {
-        position: 'absolute',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        top: -5,
-        right: -10,
-        borderRadius: '30px',
-        width: '25px',
-        height: '25px',
-        fontSize: '12px',
-    },
-    handRaisedContainer: {
-        position: 'absolute',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        top: -5,
-        right: -10,
-        background: 'white',
-        color: 'var(--away-indicator)',
-        borderRadius: '30px',
-        width: '25px',
-        height: '25px',
-        fontSize: '18px',
-    },
-};
+const MuteIconWrapper = styled.div<{$isMuted: boolean, $padding: number, $size: number}>`
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  bottom: 0;
+  right: 0;
+  border-radius: 20px;
+  padding: ${({$padding}) => $padding}px;
+  background: ${({$isMuted}) => $isMuted ? 'color-mix(in srgb, var(--calls-bg), var(--button-color) 12%)' : '#3DB887'};
 
-const Participant = styled.li<{ $hover?: boolean }>`
+  svg {
+    width: ${({$size}) => $size}px;
+    height: ${({$size}) => $size}px;
+    fill: white;
+  }
+`;
+
+const StyledName = styled.span<{$fontSize: number, $lineHeight: number}>`
+  font-weight: 600;
+  text-align: center;
+  font-size: ${({$fontSize}) => $fontSize}px;
+  line-height: ${({$lineHeight}) => $lineHeight}px;
+`;
+
+const ReactionWrapper = styled.div<{$isHandRaised: boolean, $padding: number, $size: number}>`
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  bottom: 0;
+  left: 0;
+  border-radius: 20px;
+  padding: ${({$padding}) => $padding}px;
+  background: ${({$isHandRaised}) => $isHandRaised ? 'white' : 'color-mix(in srgb, var(--calls-bg), var(--button-color) 12%)'};
+  font-size: ${({$size}) => $size}px;
+
+  svg {
+    width: ${({$size}) => $size}px;
+    height: ${({$size}) => $size}px;
+    fill: ${({$isHandRaised}) => $isHandRaised ? 'var(--away-indicator)' : 'white'};
+  }
+`;
+
+const Participant = styled.li<{ $width: number, $gap: number, $padding: number, $hover?: boolean }>`
     position: relative;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
-    gap: 12px;
-    padding: 16px;
+    width: ${({$width}) => $width}px;
+    gap: ${({$gap}) => $gap}px;
+    padding: ${({$padding}) => $padding}px;
 
     ${({$hover}) => $hover && css`
         border-radius: 8px;
