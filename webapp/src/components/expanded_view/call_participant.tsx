@@ -48,6 +48,7 @@ const tileSizePropsMap = {
         padding: 12,
         iconPadding: 4,
         iconSize: 16,
+        dotMenuIconSize: 12,
     },
     [TileSize.Medium]: {
         avatarSize: 96,
@@ -57,6 +58,7 @@ const tileSizePropsMap = {
         padding: 16,
         iconPadding: 6,
         iconSize: 16,
+        dotMenuIconSize: 16,
     },
     [TileSize.Large]: {
         avatarSize: 120,
@@ -66,6 +68,7 @@ const tileSizePropsMap = {
         padding: 20,
         iconPadding: 8,
         iconSize: 20,
+        dotMenuIconSize: 16,
     },
     [TileSize.ExtraLarge]: {
         avatarSize: 156,
@@ -75,6 +78,7 @@ const tileSizePropsMap = {
         padding: 26,
         iconPadding: 8,
         iconSize: 24,
+        dotMenuIconSize: 20,
     },
 };
 
@@ -173,13 +177,19 @@ export default function CallParticipant({
             >
                 {showHostControls &&
                     <StyledDotMenu
-                        icon={<StyledThreeDotsButton data-testid={'three-dots-button'}/>}
+                        icon={
+                            <StyledThreeDotsButton
+                                data-testid={'three-dots-button'}
+                                $size={tileSizePropsMap[size].dotMenuIconSize}
+                            />
+                        }
                         dotMenuButton={StyledDotMenuButton}
                         dropdownMenu={StyledDropdownMenu}
                         title={formatMessage({defaultMessage: 'Host controls'})}
                         placement={'bottom-start'}
                         strategy={'fixed'}
                         onOpenChange={onOpenChange}
+                        $pos={size === TileSize.Small ? 2 : 4}
                     >
                         <HostControlsMenu
                             callID={callID}
@@ -269,8 +279,10 @@ const Participant = styled.li<{ $width: number, $gap: number, $padding: number, 
     `}
 `;
 
-const StyledThreeDotsButton = styled(ThreeDotsButton)`
+const StyledThreeDotsButton = styled(ThreeDotsButton)<{ $size: number }>`
     fill: rgba(var(--sidebar-text-rgb), 0.56);
+    width: ${({$size}) => $size}px;
+    height: ${({$size}) => $size}px;
 `;
 
 const StyledDotMenuButton = styled(DotMenuButton)`
@@ -281,8 +293,8 @@ const StyledDotMenuButton = styled(DotMenuButton)`
     }
 `;
 
-const StyledDotMenu = styled(DotMenu)`
+const StyledDotMenu = styled(DotMenu)<{$pos: number}>`
     position: absolute;
-    top: 4px;
-    right: 4px;
+    top: ${({$pos}) => $pos}px;
+    right: ${({$pos}) => $pos}px;
 `;
