@@ -2208,6 +2208,8 @@ const LeaveCallButton = styled(DotMenuButton)<{ $isActive: boolean }>`
     background: var(--dnd-indicator);
     padding: 5px;
     app-region: no-drag;
+    width: 28px;
+    height: 28px;
 
     &:hover {
         background: linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
