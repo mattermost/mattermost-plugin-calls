@@ -10,7 +10,6 @@ import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 import React from 'react';
@@ -79,10 +78,10 @@ import {
 } from 'src/utils';
 import styled, {createGlobalStyle, css} from 'styled-components';
 
-import CallParticipant, {TileSize} from './call_participant';
 import {CallSettingsButton} from './call_settings';
 import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './controls_button';
 import GlobalBanner from './global_banner';
+import ParticipantsGrid from './participants_grid';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 import RecordingInfoPrompt from './recording_info_prompt';
 import {RemoveConfirmation} from './remove_confirmation';
@@ -157,8 +156,6 @@ const StyledMediaFullscreenButton = styled(MediaFullscreenButton)`
     background-color: transparent;
 `;
 
-const MaxParticipantsPerRow = 4;
-
 export default class ExpandedView extends React.PureComponent<Props, State> {
     private readonly emojiButtonRef: React.RefObject<ReactionButtonRef>;
     private expandedRootRef = React.createRef<HTMLDivElement>();
@@ -192,12 +189,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             },
             headerSpreader: {
                 marginRight: 'auto',
-            },
-            participants: {
-                display: 'grid',
-                overflow: 'auto',
-                margin: 'auto',
-                padding: '0',
             },
             controls: {
                 display: 'flex',
@@ -277,14 +268,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 padding: '0 16px',
                 height: '56px',
                 lineHeight: '56px',
-            },
-            centerView: {
-                display: 'flex',
-                flex: 1,
-                overflow: 'auto',
-                background: 'rgba(var(--button-color-rgb), 0.08)',
-                borderRadius: '8px',
-                margin: '0 12px',
             },
         };
     };
@@ -892,50 +875,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         );
     };
 
-    renderParticipants = () => {
-        const {formatMessage} = this.props.intl;
-        return this.props.sessions.map((session, idx) => {
-            const isMuted = !session.unmuted;
-            const isSpeaking = Boolean(session.voice);
-            const isHandRaised = Boolean(session.raised_hand > 0);
-            const profile = this.props.profiles[session.user_id];
-
-            if (!profile) {
-                return null;
-            }
-
-            let tileSize = TileSize.ExtraLarge;
-            if (idx === 1) {
-                tileSize = TileSize.Large;
-            } else if (idx === 2) {
-                tileSize = TileSize.Medium;
-            } else if (idx === 3) {
-                tileSize = TileSize.Small;
-            }
-
-            return (
-                <CallParticipant
-                    key={session.session_id}
-                    name={`${getUserDisplayName(profile)} ${session.session_id === this.props.currentSession?.session_id ? formatMessage({defaultMessage: '(you)'}) : ''}`}
-                    size={tileSize}
-                    pictureURL={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
-                    isMuted={isMuted}
-                    isSpeaking={isSpeaking}
-                    isHandRaised={isHandRaised}
-                    reaction={session?.reaction}
-                    isYou={session.session_id === this.props.currentSession?.session_id}
-                    isHost={profile.id === this.props.callHostID}
-                    iAmHost={this.props.currentSession?.user_id === this.props.callHostID}
-                    callID={this.props.channel?.id}
-                    userID={session.user_id}
-                    sessionID={session.session_id}
-                    isSharingScreen={this.props.screenSharingSession?.session_id === session.session_id}
-                    onRemove={() => this.onRemove(session.session_id, session.user_id)}
-                />
-            );
-        });
-    };
-
     renderParticipantsRHSList = () => {
         return this.props.sessions.map((session) => (
             <CallParticipantRHS
@@ -1131,18 +1070,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </OverlayTrigger>
                     </div>
 
-                    {!this.props.screenSharingSession &&
-                        <div style={this.style.centerView}>
-                            <ul
-                                id='calls-expanded-view-participants-grid'
-                                style={{
-                                    ...this.style.participants,
-                                    gridTemplateColumns: `repeat(${Math.min(this.props.sessions.length, MaxParticipantsPerRow)}, 1fr)`,
-                                }}
-                            >
-                                {this.renderParticipants()}
-                            </ul>
-                        </div>
+                    {!this.props.screenSharingSession && this.props.currentSession && this.props.channel &&
+                    <ParticipantsGrid
+                        callID={this.props.channel.id}
+                        callHostID={this.props.callHostID}
+                        currentSessionID={this.props.currentSession.session_id}
+                        currentUserID={this.props.currentUserID}
+                        profiles={this.props.profiles}
+                        sessions={this.props.sessions}
+                        onParticipantRemove={this.onRemove}
+                    />
                     }
                     {this.props.screenSharingSession && this.renderScreenSharingPlayer()}
 

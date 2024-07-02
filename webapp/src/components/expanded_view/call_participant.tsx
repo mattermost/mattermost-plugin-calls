@@ -242,6 +242,11 @@ const StyledName = styled.span<{$fontSize: number, $lineHeight: number}>`
   text-align: center;
   font-size: ${({$fontSize}) => $fontSize}px;
   line-height: ${({$lineHeight}) => $lineHeight}px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 `;
 
 const ReactionWrapper = styled.div<{$isHandRaised: boolean, $padding: number, $size: number}>`
