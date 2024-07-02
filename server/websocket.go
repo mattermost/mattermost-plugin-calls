@@ -783,6 +783,15 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 				return state
 			}
 		} else {
+			if ok, err := p.shouldSendConcurrentSessionsWarning(getConcurrentSessionsThreshold(),
+				getConcurrentSessionsWarningBackoffTime()); err != nil {
+				p.LogError("shouldSendConcurrentSessionsWarning failed", "err", err.Error())
+			} else if ok {
+				if err := p.sendConcurrentSessionsWarning(); err != nil {
+					p.LogError("sendConcurrentSessionsWarning failed", "err", err.Error())
+				}
+			}
+
 			if handlerID == p.nodeID {
 				cfg := rtc.SessionConfig{
 					GroupID:   "default",
@@ -965,6 +974,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
 	addSessionToCall(state)
+
 	p.unlockCall(channelID)
 
 	return nil

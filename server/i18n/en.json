@@ -1,5 +1,21 @@
 [
   {
+    "id": "app.admin.concurrent_sessions_warning.enterprise",
+    "translation": "We highly recommend [deploying the RTCD service](https://docs.mattermost.com/configure/calls-deployment.html#the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.intro",
+    "translation": "Your installation is experiencing heavy usage from Mattermost Calls that can negatively impact system performance and responsiveness."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+    "translation": "We highly recommend upgrading to [Enterprise](https://mattermost.com/pricing/) and [deploying the RTCD service](https://docs.mattermost.com/configure/calls-deployment.html#the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.team",
+    "translation": "We highly recommend switching to [Mattermost Enterprise Edition](https://docs.mattermost.com/install/enterprise-install-upgrade.html) and [deploying the RTCD service](https://docs.mattermost.com/configure/calls-deployment.html#the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
+  },
+  {
     "id": "app.call.ended_message",
     "translation": "Call ended"
   },

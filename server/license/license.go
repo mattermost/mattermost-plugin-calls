@@ -41,9 +41,7 @@ func isValidSkuShortName(license *model.License) bool {
 // Enterprise E10 License or a Mattermost Professional License, or has `EnableDeveloper` and
 // `EnableTesting` configuration settings enabled, signaling a non-production, developer mode.
 func IsE10LicensedOrDevelopment(config *model.Config, license *model.License) bool {
-	if license != nil &&
-		(license.SkuShortName == e10 || license.SkuShortName == professional ||
-			license.SkuShortName == e20 || license.SkuShortName == enterprise) {
+	if IsProfessional(license) || IsEnterprise(license) {
 		return true
 	}
 
@@ -65,7 +63,7 @@ func IsE10LicensedOrDevelopment(config *model.Config, license *model.License) bo
 // Enterprise E20 License or a Mattermost Enterprise License, or has `EnableDeveloper` and
 // `EnableTesting` configuration settings enabled, signaling a non-production, developer mode.
 func IsE20LicensedOrDevelopment(config *model.Config, license *model.License) bool {
-	if license != nil && (license.SkuShortName == e20 || license.SkuShortName == enterprise) {
+	if IsEnterprise(license) {
 		return true
 	}
 
@@ -104,4 +102,24 @@ func IsCloud(license *model.License) bool {
 	}
 
 	return *license.Features.Cloud
+}
+
+func IsCloudStarter(license *model.License) bool {
+	return license != nil && license.SkuShortName == "starter"
+}
+
+func IsEnterprise(license *model.License) bool {
+	if license != nil && (license.SkuShortName == e20 || license.SkuShortName == enterprise) {
+		return true
+	}
+
+	return false
+}
+
+func IsProfessional(license *model.License) bool {
+	if license != nil && (license.SkuShortName == e10 || license.SkuShortName == professional) {
+		return true
+	}
+
+	return false
 }
