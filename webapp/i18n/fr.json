@@ -70,7 +70,6 @@
   "Thxdph": "Cet appel est à sa capacité maximum de {count, plural, =1 {# participant} other {# participants}}.",
   "TyskrG": "Bienvenue dans votre essai Mattermost Enterprise ! Il expire le {trialExpirationDate}. Vous avez désormais accès aux <recordingsDocsLink>enregistrements d'appels</recordingsDocsLink>,<rtcdDocsLink>services RTCD</rtcdDocsLink>, <guestAccountsLink>comptes invités</guestAccountsLink>, <autoComplianceReportsLink>rapports de conformité automatisés</autoComplianceReportsLink> et <mobileSecureNotificationsLink> notifications push mobile secure-ID</mobileSecureNotificationsLink>, parmi de nombreuses autres fonctionnalités. Consultez toutes les fonctionnalités dans notre <documentationLink>documentation</documentationLink>.",
   "UcFeI7": "Montrer la liste des participants",
-  "UxatAw": "{count, plural, =1 {# participant} other {# participants}}",
   "Uys4Mj": "Fermer les réactions",
   "W9355R": "Réactiver le son",
   "WWqBr0": "Terminé à {endTime}",
