@@ -84,6 +84,8 @@ type CallsClientJoinData struct {
 	Title     string
 	ThreadID  string
 
+	AV1Support bool
+
 	// JobID is the id of the job tight to the bot connection to
 	// a call (e.g. recording, transcription). It's a parameter reserved to the
 	// Calls bot only.
@@ -766,11 +768,12 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		if p.rtcdManager != nil {
 			msg := rtcd.ClientMessage{
 				Type: rtcd.ClientMessageJoin,
-				Data: map[string]string{
-					"callID":    us.callID,
-					"userID":    userID,
-					"sessionID": connID,
-					"channelID": channelID,
+				Data: map[string]any{
+					"callID":     us.callID,
+					"userID":     userID,
+					"sessionID":  connID,
+					"channelID":  channelID,
+					"av1Support": joinData.AV1Support,
 				},
 			}
 			if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
@@ -789,8 +792,9 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 					CallID:    us.callID,
 					UserID:    userID,
 					SessionID: connID,
-					Props: map[string]any{
-						"channelID": us.channelID,
+					Props: rtc.SessionProps{
+						"channelID":  channelID,
+						"av1Support": joinData.AV1Support,
 					},
 				}
 				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID, "callID", us.callID)
@@ -816,6 +820,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 					ChannelID: channelID,
 					CallID:    us.callID,
 					SenderID:  p.nodeID,
+					SessionProps: rtc.SessionProps{
+						"channelID":  channelID,
+						"av1Support": joinData.AV1Support,
+					},
 				}, clusterMessageTypeConnect, handlerID); err != nil {
 					p.LogError("failed to send connect message", "err", err.Error())
 					go func() {
@@ -1143,15 +1151,18 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		// it will be an empty string.
 		jobID, _ := req.Data["jobID"].(string)
 
+		av1Support, _ := req.Data["av1Support"].(bool)
+
 		remoteAddr, _ := req.Data[model.WebSocketRemoteAddr].(string)
 		xff, _ := req.Data[model.WebSocketXForwardedFor].(string)
 
 		joinData := callsJoinData{
 			CallsClientJoinData{
-				channelID,
-				title,
-				threadID,
-				jobID,
+				ChannelID:  channelID,
+				Title:      title,
+				ThreadID:   threadID,
+				AV1Support: av1Support,
+				JobID:      jobID,
 			},
 			remoteAddr,
 			xff,

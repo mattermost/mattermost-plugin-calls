@@ -131,6 +131,8 @@ type clientConfig struct {
 	SkuShortName string `json:"sku_short_name"`
 	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
 	HostControlsAllowed bool
+	// When set to true it enables using the AV1 codec to encode screen sharing tracks.
+	EnableAV1 *bool
 }
 
 type adminClientConfig struct {
@@ -255,6 +257,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.LiveCaptionsLanguage == "" {
 		c.LiveCaptionsLanguage = transcriber.LiveCaptionsLanguageDefault
+	}
+	if c.EnableAV1 == nil {
+		c.EnableAV1 = model.NewBool(false)
 	}
 }
 
@@ -440,6 +445,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(*c.LiveCaptionsNumThreadsPerTranscriber)
 	}
 
+	if c.EnableAV1 != nil {
+		cfg.EnableAV1 = model.NewBool(*c.EnableAV1)
+	}
+
 	return &cfg
 }
 
@@ -502,6 +511,7 @@ func (p *Plugin) getClientConfig(c *configuration) clientConfig {
 		EnableRinging:        c.EnableRinging,
 		SkuShortName:         skuShortName,
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
+		EnableAV1:            c.EnableAV1,
 	}
 }
 
