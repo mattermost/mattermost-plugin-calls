@@ -12,11 +12,14 @@ import CallParticipant, {TileSize} from './call_participant';
 type Props = {
     callID: string,
     callHostID: string,
-    currentSessionID: string,
-    currentUserID: string,
+    currentSessionID?: string,
+    currentUserID?: string,
     profiles: IDMappedObjects<UserProfile>,
     sessions: UserSessionState[],
-    onParticipantRemove: (sessionID: string, userID: string) => void,
+    onParticipantRemove?: (sessionID: string, userID: string) => void,
+
+    // Used by the recorder client.
+    profileImages?: Record<string, string>,
 };
 
 const tileSizesMap = {
@@ -46,6 +49,7 @@ export default function ParticipantsGrid({
     profiles,
     sessions,
     onParticipantRemove,
+    profileImages,
 }: Props) {
     const {formatMessage} = useIntl();
 
@@ -140,21 +144,26 @@ export default function ParticipantsGrid({
             return (
                 <CallParticipant
                     key={session.session_id}
-                    name={`${getUserDisplayName(profile)} ${session.session_id === currentSessionID ? formatMessage({defaultMessage: '(you)'}) : ''}`}
+                    name={`${getUserDisplayName(profile)} ${currentSessionID && session.session_id === currentSessionID ? formatMessage({defaultMessage: '(you)'}) : ''}`}
                     size={tileSize}
-                    pictureURL={Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
+                    pictureURL={profileImages ? profileImages[profile.id] : Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
                     isMuted={isMuted}
                     isSpeaking={isSpeaking}
                     isHandRaised={isHandRaised}
                     reaction={session?.reaction}
-                    isYou={session.session_id === currentSessionID}
+                    isYou={currentSessionID ? session.session_id === currentSessionID : false}
                     isHost={profile.id === callHostID}
-                    iAmHost={currentUserID === callHostID}
+                    iAmHost={currentUserID ? currentUserID === callHostID : false}
                     callID={callID}
                     userID={session.user_id}
                     sessionID={session.session_id}
                     isSharingScreen={false}
-                    onRemove={() => onParticipantRemove(session.session_id, session.user_id)}
+                    onRemove={() => {
+                        if (onParticipantRemove) {
+                            onParticipantRemove(session.session_id, session.user_id);
+                        }
+                    }
+                    }
                 />
             );
         });
