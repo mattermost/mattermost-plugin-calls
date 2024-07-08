@@ -133,6 +133,8 @@ type clientConfig struct {
 	SkuShortName string `json:"sku_short_name"`
 	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
 	HostControlsAllowed bool
+	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
+	GroupCallsAllowed bool
 }
 
 type adminClientConfig struct {
@@ -504,6 +506,7 @@ func (p *Plugin) getClientConfig(c *configuration) clientConfig {
 		EnableRinging:        c.EnableRinging,
 		SkuShortName:         skuShortName,
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
+		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
 	}
 }
 

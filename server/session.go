@@ -77,7 +77,7 @@ func newUserSession(userID, channelID, connID, callID string, rtc bool) *session
 	}
 }
 
-func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, connID, channelID, jobID string) (retState *callState, retErr error) {
+func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, connID, channelID, jobID string, ct model.ChannelType) (retState *callState, retErr error) {
 	defer func(start time.Time) {
 		p.metrics.ObserveAppHandlersTime("addUserSession", time.Since(start).Seconds())
 	}(time.Now())
@@ -95,8 +95,10 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 	}()
 
 	// If there is an ongoing call, we can let anyone join.
-	if state == nil && !p.userCanStartOrJoin(userID, callsEnabled) {
-		return nil, fmt.Errorf("calls are not enabled")
+	if state == nil {
+		if err := p.userCanStartOrJoin(userID, callsEnabled, ct); err != nil {
+			return nil, err
+		}
 	}
 
 	if state == nil {
@@ -132,7 +134,7 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 		return nil, fmt.Errorf("session is already connected")
 	}
 
-	// Check for cloud limits -- needs to be done here to prevent a race condition
+	// Check for license limits -- needs to be done here to prevent a race condition
 	if allowed, err := p.joinAllowed(state); !allowed {
 		if err != nil {
 			p.LogError("joinAllowed failed", "error", err.Error())
@@ -226,12 +228,18 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 	return state, nil
 }
 
-func (p *Plugin) userCanStartOrJoin(userID string, enabled *bool) bool {
+func (p *Plugin) userCanStartOrJoin(userID string, enabled *bool, channelType model.ChannelType) error {
+	// (since v1) Calls can only be started/joined in DMs in unlicensed servers.
 	// If calls are disabled, no-one can start or join.
 	// If explicitly enabled, everyone can start or join.
 	// If not explicitly enabled and default enabled, everyone can join or start
 	// otherwise (not explicitly enabled and not default enabled), only sysadmins can start
 	// TODO: look to see what logic we should lift to the joinCall fn
+
+	if channelType != model.ChannelTypeDirect && !p.licenseChecker.GroupCallsAllowed() {
+		return fmt.Errorf("unlicensed servers only allow calls in DMs")
+	}
+
 	cfg := p.getConfiguration()
 
 	explicitlyEnabled := enabled != nil && *enabled
@@ -239,17 +247,21 @@ func (p *Plugin) userCanStartOrJoin(userID string, enabled *bool) bool {
 	defaultEnabled := cfg.DefaultEnabled != nil && *cfg.DefaultEnabled
 
 	if explicitlyDisabled {
-		return false
+		return fmt.Errorf("calls are disabled in the channel")
 	}
 	if explicitlyEnabled {
-		return true
+		return nil
 	}
 	if defaultEnabled {
-		return true
+		return nil
 	}
 
 	// must be !explicitlyEnabled and !defaultEnabled
-	return p.API.HasPermissionTo(userID, model.PermissionManageSystem)
+	if p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+		return nil
+	}
+
+	return fmt.Errorf("insufficient permissions")
 }
 
 func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, connID, channelID string) error {
@@ -456,7 +468,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 }
 
 // JoinAllowed returns true if the user is allowed to join the call, taking into
-// account cloud and configuration limits
+// account license and configuration limits
 func (p *Plugin) joinAllowed(state *callState) (bool, error) {
 	// Rules are:
 	// Cloud Starter: channels, dm/gm: limited to cfg.cloudStarterMaxParticipantsDefault

@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@floating-ui/react": "0.26.12",
-    "@mattermost/calls-common": "github:mattermost/calls-common#e463e78cc76302d1bdbd085d9e1846c456f48d45",
+    "@mattermost/calls-common": "github:mattermost/calls-common#f903bf9a89930b23f634df76325f0502de29ecee",
     "@msgpack/msgpack": "2.7.1",
     "@redux-devtools/extension": "3.2.3",
     "core-js": "3.26.1",

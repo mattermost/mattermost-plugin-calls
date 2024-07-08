@@ -84,6 +84,7 @@
   "MQr9sh": "Unable to end the call",
   "MspN+p": "Unable to start recording",
   "MtkpLO": "You are now the host",
+  "MvoyUx": "Calls are only available in DM channels.",
   "N2IrpM": "Confirm",
   "O6EeNO": "Allow call hosts to record meeting video and audio in the cloud. Recording include the entire call window view along with participants' audio track and any shared screen video. <featureLink>Learn more about this feature</featureLink>.",
   "OKhRC6": "Share",
@@ -91,8 +92,10 @@
   "Oy7urn": "Host controls",
   "P6PLpi": "Join",
   "PjoOvw": "You're sharing your screen",
+  "PuUmTL": "The maximum number of participants that can join a call. If left empty, or set to 0, it means unlimited.",
   "Q0W0k5": "Consider letting everyone know that this meeting is being recorded and transcribed.",
   "QtFGiO": "Host",
+  "RBzfy/": "Max call participants",
   "Refhfu": "Create meeting summary",
   "Ru6jT+": "Please try to record again. You can also contact your system admin for troubleshooting help.",
   "S2W9y3": "You're recording",
@@ -218,6 +221,7 @@
   "yL9vD/": "Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. You now have access to <rtcdDocsLink>RTCD services</rtcdDocsLink>, <recordingsDocsLink>call recordings</recordingsDocsLink>, <guestAccountsLink>guest accounts</guestAccountsLink>, <autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and <mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, among many other features. View all features in our <documentationLink>documentation</documentationLink>.",
   "yO68rk": "Calls are currently running in test mode and only system admins can start them. Reach out directly to your system admin for assistance",
   "yjQNKt": "Calls are disabled in this channel.",
+  "zMlIqq": "This setting is disabled as the server is unlicensed and calls are only available in DM channels.",
   "zUH89x": "The call recording will be processed and posted in the call thread. Are you sure you want to stop the recording?",
   "zx0myy": "Participants"
 }
