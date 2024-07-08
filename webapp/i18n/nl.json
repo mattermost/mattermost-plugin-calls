@@ -105,7 +105,6 @@
   "TyskrG": "Welkom bij jouw Mattermost Enterprise proefversie! Deze verloopt op {trialExpirationDate}. Je hebt nu toegang tot <recordingsDocsLink>Gespreksopnames</recordingsDocsLink>,<rtcdDocsLink>RTCD diensten</rtcdDocsLink>, <guestAccountsLink>gastaccounts</guestAccountsLink>, <autoComplianceReportsLink>geautomatiseerde compliance rapporten</autoComplianceReportsLink>, en <mobileSecureNotificationsLink>mobiele secure-ID push meldingen</mobileSecureNotificationsLink>, naast vele andere functies. Bekijk alle functies in onze <documentationLink>documentatie</documentationLink>.",
   "UcFeI7": "Toon deelnemerslijst",
   "Ug/N7H": "Gesprekken zijn niet beschikbaar in een privé-bericht met een gedeactiveerde gebruiker.",
-  "UxatAw": "{count, plural, =1 {# deelnemer} other {# deelnemers}}",
   "Uys4Mj": "Reacties sluiten",
   "VLwHR0": "Gespreksinstellingen",
   "Vc8/fR": "Totaal aantal actieve sessies",
