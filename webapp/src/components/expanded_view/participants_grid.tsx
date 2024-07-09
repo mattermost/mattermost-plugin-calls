@@ -56,15 +56,17 @@ export default function ParticipantsGrid({
     const ref = useRef<HTMLDivElement>(null);
 
     const [tileSize, setTileSize] = useState(TileSize.Small);
-    const [columns, setColumns] = useState(1);
+    const [paddingV, setPaddingV] = useState(0);
+    const [paddingH, setPaddingH] = useState(0);
 
     // This is needed to force a re-render on element resize and recalculate the dynamic sizes.
     const [resize, setResize] = useState(false);
 
     const computeSizes = () => {
         const res = {
-            columns: 1,
             tileSize: TileSize.Small,
+            paddingV: 0,
+            paddingH: 0,
         };
 
         if (!ref.current) {
@@ -77,6 +79,9 @@ export default function ParticipantsGrid({
         const hMargin = Math.min(0.12 * width, 150);
         const vMargin = 0.12 * height;
 
+        res.paddingV = Math.floor(vMargin);
+        res.paddingH = Math.floor(hMargin);
+
         const availableWidth = width - (2 * hMargin);
         const availableHeight = height - (2 * vMargin);
 
@@ -88,8 +93,6 @@ export default function ParticipantsGrid({
 
             // Calculate how many tiles can fit in a single row and the number of required rows
             const tilesPerRow = Math.floor((availableWidth + tileSpacing) / tileWidthWithSpacing); // Adjust for effective width with spacing
-
-            res.columns = Math.min(sessions.length, tilesPerRow);
 
             // Calculate rows needed based on tiles per row
             const requiredRows = Math.ceil(sessions.length / tilesPerRow);
@@ -127,7 +130,8 @@ export default function ParticipantsGrid({
     useEffect(() => {
         const res = computeSizes();
         setTileSize(res.tileSize);
-        setColumns(res.columns);
+        setPaddingH(res.paddingH);
+        setPaddingV(res.paddingV);
     }, [sessions.length, resize]);
 
     const renderParticipants = () => {
@@ -170,10 +174,13 @@ export default function ParticipantsGrid({
     };
 
     return (
-        <ParticipantsGridContainer ref={ref}>
+        <ParticipantsGridContainer
+            ref={ref}
+            $paddingV={paddingV}
+            $paddingH={paddingH}
+        >
             <ParticipantsList
                 id='calls-expanded-view-participants-grid'
-                $columns={columns}
             >
                 {renderParticipants()}
             </ParticipantsList>
@@ -181,21 +188,22 @@ export default function ParticipantsGrid({
     );
 }
 
-const ParticipantsList = styled.ul<{$columns: number}>`
-  display: grid;
-  overflow: auto;
+const ParticipantsList = styled.ul`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
   margin: auto;
   padding: 0;
-  grid-gap: 8px;
-  grid-template-columns: repeat(${({$columns}) => $columns}, 1fr);
 `;
 
-const ParticipantsGridContainer = styled.div`
+const ParticipantsGridContainer = styled.div<{$paddingH: number, $paddingV: number}>`
   display: flex;
   flex: 1;
   overflow: auto;
   background: rgba(var(--button-color-rgb), 0.08);
   border-radius: 8px;
   margin: 0 12px;
+  padding: ${({$paddingV}) => $paddingV}px ${({$paddingH}) => $paddingH}px;
 `;
 
