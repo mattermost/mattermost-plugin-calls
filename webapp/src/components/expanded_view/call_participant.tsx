@@ -247,6 +247,8 @@ const StyledName = styled.span<{$fontSize: number, $lineHeight: number}>`
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow-wrap: break-word;
+  width: 100%;
 `;
 
 const ReactionWrapper = styled.div<{$isHandRaised: boolean, $padding: number, $size: number}>`
