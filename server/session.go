@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -19,6 +20,10 @@ import (
 
 const (
 	msgChSize = 50
+)
+
+var (
+	errGroupCallsNotAllowed = fmt.Errorf("unlicensed servers only allow calls in DMs")
 )
 
 type session struct {
@@ -97,6 +102,18 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 	// If there is an ongoing call, we can let anyone join.
 	if state == nil {
 		if err := p.userCanStartOrJoin(userID, callsEnabled, ct); err != nil {
+			if errors.Is(err, errGroupCallsNotAllowed) {
+				T := p.getTranslationFunc("")
+				// Sending a message for unsupported clients (e.g. older mobile apps).
+				p.API.SendEphemeralPost(
+					userID,
+					&model.Post{
+						UserId:    p.getBotID(),
+						ChannelId: channelID,
+						Message:   T("app.add_user_session.group_calls_not_allowed_error"),
+					},
+				)
+			}
 			return nil, err
 		}
 	}
@@ -237,7 +254,7 @@ func (p *Plugin) userCanStartOrJoin(userID string, enabled *bool, channelType mo
 	// TODO: look to see what logic we should lift to the joinCall fn
 
 	if channelType != model.ChannelTypeDirect && !p.licenseChecker.GroupCallsAllowed() {
-		return fmt.Errorf("unlicensed servers only allow calls in DMs")
+		return errGroupCallsNotAllowed
 	}
 
 	cfg := p.getConfiguration()

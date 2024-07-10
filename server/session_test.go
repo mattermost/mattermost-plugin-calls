@@ -111,24 +111,39 @@ func TestAddUserSession(t *testing.T) {
 		defer mockMetrics.AssertExpectations(t)
 		defer ResetTestStore(t, p.store)
 
-		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(3)
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(6)
 		mockAPI.On("GetLicense").Return(&model.License{}, nil).Times(3)
 
 		t.Run("public channel", func(t *testing.T) {
+			mockAPI.On("SendEphemeralPost", "userA", &model.Post{
+				ChannelId: "channelID",
+				Message:   "app.add_user_session.group_calls_not_allowed_error",
+			}).Return(nil).Once()
+
 			retState, err := p.addUserSession(nil, model.NewBool(true), "userA", "connA", "channelID", "", model.ChannelTypeOpen)
-			require.EqualError(t, err, "unlicensed servers only allow calls in DMs")
+			require.Equal(t, errGroupCallsNotAllowed, err)
 			require.Nil(t, retState)
 		})
 
 		t.Run("private channel", func(t *testing.T) {
+			mockAPI.On("SendEphemeralPost", "userA", &model.Post{
+				ChannelId: "channelID",
+				Message:   "app.add_user_session.group_calls_not_allowed_error",
+			}).Return(nil).Once()
+
 			retState, err := p.addUserSession(nil, model.NewBool(true), "userA", "connA", "channelID", "", model.ChannelTypePrivate)
-			require.EqualError(t, err, "unlicensed servers only allow calls in DMs")
+			require.Equal(t, errGroupCallsNotAllowed, err)
 			require.Nil(t, retState)
 		})
 
 		t.Run("group channel", func(t *testing.T) {
+			mockAPI.On("SendEphemeralPost", "userA", &model.Post{
+				ChannelId: "channelID",
+				Message:   "app.add_user_session.group_calls_not_allowed_error",
+			}).Return(nil).Once()
+
 			retState, err := p.addUserSession(nil, model.NewBool(true), "userA", "connA", "channelID", "", model.ChannelTypeGroup)
-			require.EqualError(t, err, "unlicensed servers only allow calls in DMs")
+			require.Equal(t, errGroupCallsNotAllowed, err)
 			require.Nil(t, retState)
 		})
 
