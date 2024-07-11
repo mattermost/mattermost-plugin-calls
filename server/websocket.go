@@ -1251,14 +1251,13 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	case clientMessageTypeCaption:
 		// Sent from the transcriber.
 		p.metrics.IncWebSocketEvent("in", msg.Type)
+		if us.userID != p.getBotID() {
+			p.LogWarn("unexpected caption message not coming from bot")
+			return
+		}
 		sessionID, ok := req.Data["session_id"].(string)
 		if !ok {
 			p.LogError("invalid or missing session_id in caption ws message")
-			return
-		}
-		userID, ok := req.Data["user_id"].(string)
-		if !ok {
-			p.LogError("invalid or missing user_id in caption ws message")
 			return
 		}
 		text, ok := req.Data["text"].(string)
@@ -1271,7 +1270,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("invalid or missing new_audio_len_ms in caption ws message")
 			return
 		}
-		if err := p.handleCaptionMessage(us.callID, us.channelID, sessionID, userID, text, newAudioLenMs); err != nil {
+		if err := p.handleCaptionMessage(us.callID, us.channelID, sessionID, text, newAudioLenMs); err != nil {
 			p.LogError("handleCaptionMessage failed", "err", err.Error(), "userID", userID, "connID", connID)
 			return
 		}
@@ -1378,16 +1377,21 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 	return nil
 }
 
-func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, captionFromUserID, text string, newAudioLenMs float64) error {
+func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, text string, newAudioLenMs float64) error {
 	sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})
 	if err != nil {
 		return fmt.Errorf("failed to get call sessions: %w", err)
 	}
 
-	p.publishWebSocketEvent(clientMessageTypeCaption, map[string]interface{}{
+	captionSession, ok := sessions[captionFromSessionID]
+	if !ok {
+		return fmt.Errorf("user session for caption missing from call")
+	}
+
+	p.publishWebSocketEvent(wsEventCaption, map[string]interface{}{
 		"channel_id": channelID,
-		"user_id":    captionFromUserID,
-		"session_id": captionFromSessionID,
+		"user_id":    captionSession.UserID,
+		"session_id": captionSession.ID,
 		"text":       text,
 	}, &WebSocketBroadcast{
 		ChannelID:           channelID,

@@ -36,6 +36,7 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
+import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import {getCallActive, getCallsConfig, setClientConnecting} from 'plugin/actions';
 import CallsClient from 'plugin/client';
 import {
@@ -339,6 +340,9 @@ declare global {
         e2eNotificationsSoundStoppedAt?: number[],
         e2eRingLength?: number,
         WebappUtils: WebAppUtils,
+        ProductApi: {
+            selectRhsPost: (postId: string) => ActionFuncAsync,
+        },
     }
 
     interface HTMLVideoElement {

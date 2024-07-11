@@ -321,6 +321,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             // Set the inter-window actions
             window.callActions = {
                 setRecordingPromptDismissedAt: this.props.recordingPromptDismissedAt,
+                setMissingScreenPermissions: this.setMissingScreenPermissions,
             };
 
             // Set the current state
@@ -343,6 +344,23 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             node.srcObject = this.state.screenStream;
         }
         this.screenPlayer = node;
+    };
+
+    setMissingScreenPermissions = (missing: boolean, forward?: boolean) => {
+        this.setState({
+            alerts: {
+                ...this.state.alerts,
+                missingScreenPermissions: {
+                    ...this.state.alerts.missingScreenPermissions,
+                    active: missing,
+                    show: missing,
+                },
+            },
+        });
+
+        if (forward && window.opener?.callActions?.setMissingScreenPermissions) {
+            window.opener.callActions.setMissingScreenPermissions(missing);
+        }
     };
 
     handleBlur = () => {
@@ -470,7 +488,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 dialogType: StopRecordingConfirmation,
                 dialogProps: {
                     channelID: this.props.channel.id,
-                    transcriptionsEnabled: this.props.transcriptionsEnabled,
                 },
             });
             this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
@@ -501,35 +518,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 sendDesktopEvent('desktop-sources-modal-request');
             } else {
-                const state = {} as State;
                 const stream = await getScreenStream('', hasExperimentalFlag());
                 if (window.opener && stream) {
                     window.screenSharingTrackId = stream.getVideoTracks()[0].id;
                 }
                 if (stream) {
                     callsClient?.setScreenStream(stream);
-                    state.screenStream = stream;
 
-                    state.alerts = {
-                        ...this.state.alerts,
-                        missingScreenPermissions: {
-                            ...this.state.alerts.missingScreenPermissions,
-                            active: false,
-                            show: false,
-                        },
-                    };
+                    this.setState({screenStream: stream});
+                    this.setMissingScreenPermissions(false, true);
                 } else {
-                    state.alerts = {
-                        ...this.state.alerts,
-                        missingScreenPermissions: {
-                            ...this.state.alerts.missingScreenPermissions,
-                            active: true,
-                            show: true,
-                        },
-                    };
+                    this.setMissingScreenPermissions(true, true);
                 }
-
-                this.setState(state);
             }
             this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
@@ -691,6 +691,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     // prefetch to get initial unreads
                     this.props.prefetchThread(this.props.threadID);
                 }
+            }
+
+            if (window.opener.currentCallData.missingScreenPermissions) {
+                this.setMissingScreenPermissions(true);
             }
         }
 
@@ -1095,10 +1099,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <CallDuration
                             startAt={this.props.callStartAt}
                         />
-                        <span>{untranslatable('•')}</span>
-                        <span style={{whiteSpace: 'nowrap'}}>
-                            {formatMessage({defaultMessage: '{count, plural, =1 {# participant} other {# participants}}'}, {count: this.props.sessions.length})}
-                        </span>
 
                         <div style={this.style.headerSpreader}/>
                         <ExpandedIncomingCallContainer/>
@@ -1171,6 +1171,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         }}
                                     />
                                 }
+                                text={`${this.props.sessions.length}`}
                             />
                         </div>
 
@@ -1226,6 +1227,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 />
                             }
 
+                            <ReactionButton
+                                ref={this.emojiButtonRef}
+                                trackEvent={this.props.trackEvent}
+                                isHandRaised={this.isHandRaised()}
+                            />
+
                             {isHost && this.props.recordingsEnabled &&
                                 <ControlsButton
                                     id='calls-popout-record-button'
@@ -1241,12 +1248,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     icon={<RecordIcon style={{width: '20px', height: '20px'}}/>}
                                 />
                             }
-
-                            <ReactionButton
-                                ref={this.emojiButtonRef}
-                                trackEvent={this.props.trackEvent}
-                                isHandRaised={this.isHandRaised()}
-                            />
 
                             {globalRhsSupported && (
                                 <ControlsButton

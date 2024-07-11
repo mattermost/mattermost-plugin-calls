@@ -72,27 +72,7 @@ jobs:
           echo "We had ${{ steps.stats.outputs.SUCCESSES }} successes" >> "${GITHUB_STEP_SUMMARY}"
           echo "You can find the report [here](${{ steps.stats.outputs.S3_REPORT }})" >> "${GITHUB_STEP_SUMMARY}"
 
-      - name: e2e-report/send-failure-status
-        if: ${{ fromJson(steps.stats.outputs.FAILURES) > 0 }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # 7.0.1
-        with:
-          script: |
-            try {
-              await github.rest.repos.createCommitStatus({
-                owner: 'mattermost',
-                repo: 'mattermost-plugin-calls',
-                sha: '${{ github.event.workflow_run.head_sha }}',
-                context: 'e2e/report-summary',
-                description: '${{ steps.stats.outputs.FAILURES }}/${{ steps.stats.outputs.TOTAL }} E2E tests failed',
-                state: 'failure',
-                target_url: '${{ steps.stats.outputs.S3_REPORT }}'
-              });
-            } catch (err) {
-              core.setFailed(`Action failed with error: ${err}`);
-            }
-
       - name: e2e-report/send-success-status
-        if: ${{ fromJson(steps.stats.outputs.FAILURES) == 0 }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # 7.0.1
         with:
           script: |

@@ -71,7 +71,6 @@
   "Thxdph": "이 통화의 최대 수용 인원에 도달했습니다 {count, plural, =1 {# participant} other {# participants}}.",
   "TyskrG": "매터모스트 엔터프라이즈 평가판에 오신 것을 환영합니다! {trialExpirationDate} 에서 만료됩니다. 이제 <recordingsDocsLink>통화 녹음</recordingsDocsLink>,<rtcdDocsLink>RTCD 서비스</rtcdDocsLink>, <guestAccountsLink>게스트 계정</guestAccountsLink>, <autoComplianceReportsLink>자동화된 규정 준수 보고서</autoComplianceReportsLink>, <mobileSecureNotificationsLink>모바일 보안 ID 푸시 알림</mobileSecureNotificationsLink> 등 다양한 기능에 액세스할 수 있습니다. <documentationLink> 문서</documentationLink> 에서 모든 기능을 확인하세요.",
   "UcFeI7": "참가자 목록 표시",
-  "UxatAw": "{count, plural, =1 {# participant} other {# participants}}",
   "Uys4Mj": "반응 닫기",
   "W9355R": "뮤트 해제",
   "WWqBr0": "{endTime}에 종료됨",

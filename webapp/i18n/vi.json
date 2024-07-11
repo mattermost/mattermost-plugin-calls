@@ -71,7 +71,6 @@
   "Thxdph": "Cuộc gọi này có dung lượng tối đa là {count, plural, =1 {# người tham gia} other {# người tham gia}}.",
   "TyskrG": "Chào mừng bạn đến với bản dùng thử Mattermost Enterprise của bạn! Nó sẽ hết hạn vào {trialExpirationDate}. Giờ đây, bạn có quyền truy cập vào <recordingsDocsLink>Bản ghi âm cuộc gọi</recordingsDocsLink>, <rtcdDocsLink>Dịch vụ RTCD</rtcdDocsLink>, <guestAccountsLink>tài khoản khách</guestAccountsLink>, <autoComplianceReportsLink>báo cáo tuân thủ tự động</autoComplianceReportsLink> và <mobileSecureNotificationsLink>thông báo đẩy ID bảo mật di động</mobileSecureNotificationsLink>, trong số nhiều tính năng khác. Xem tất cả các tính năng trong <documentationLink>tài liệu</documentationLink> của chúng tôi.",
   "UcFeI7": "Hiển thị danh sách người tham gia",
-  "UxatAw": "{count, plural, =1 {# người tham gia} other {# người tham gia}}",
   "Uys4Mj": "Đóng phản ứng",
   "W9355R": "Bỏ tắt tiếng",
   "WWqBr0": "Đã kết thúc lúc {endTime}",

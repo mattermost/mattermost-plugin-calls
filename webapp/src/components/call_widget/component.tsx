@@ -19,7 +19,12 @@ import {Badge} from 'src/components/badge';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
+import {
+    IDStopRecordingConfirmation,
+    StopRecordingConfirmation,
+} from 'src/components/expanded_view/stop_recording_confirmation';
 import {HostNotices} from 'src/components/host_notices';
+import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CompassIcon from 'src/components/icons/compassIcon';
 import ExpandIcon from 'src/components/icons/expand';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
@@ -29,6 +34,7 @@ import ParticipantsIcon from 'src/components/icons/participants';
 import PopOutIcon from 'src/components/icons/popout';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
 import RecordCircleIcon from 'src/components/icons/record_circle';
+import RecordSquareIcon from 'src/components/icons/record_square';
 import SettingsWheelIcon from 'src/components/icons/settings_wheel';
 import ShareScreenIcon from 'src/components/icons/share_screen';
 import ShowMoreIcon from 'src/components/icons/show_more';
@@ -55,6 +61,7 @@ import {
     reverseKeyMappings,
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
+import {ModalData} from 'src/types/mattermost-webapp';
 import * as Telemetry from 'src/types/telemetry';
 import {
     AudioDevices,
@@ -100,6 +107,7 @@ interface Props {
     callHostID: string,
     callHostChangeAt: number,
     callRecording?: CallJobReduxState,
+    isRecording: boolean,
     screenSharingSession?: UserSessionState,
     show: boolean,
     showExpandedView: () => void,
@@ -119,6 +127,12 @@ interface Props {
     callsIncoming: IncomingCallNotification[],
     transcriptionsEnabled: boolean,
     clientConnecting: boolean,
+    callThreadID?: string,
+    selectRHSPost: (id: string) => void,
+    startCallRecording: (channelID: string) => void,
+    stopCallRecording: (channelID: string) => void,
+    recordingsEnabled: boolean,
+    openModal: <P>(modalData: ModalData<P>) => void;
 }
 
 interface DraggingState {
@@ -314,6 +328,27 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
+    setMissingScreenPermissions = (missing: boolean, forward?: boolean) => {
+        this.setState({
+            alerts: {
+                ...this.state.alerts,
+                missingScreenPermissions: {
+                    ...this.state.alerts.missingScreenPermissions,
+                    active: missing,
+                    show: missing,
+                },
+            },
+        });
+
+        if (forward && this.state.expandedViewWindow) {
+            this.state.expandedViewWindow.callActions?.setMissingScreenPermissions(missing);
+        }
+
+        if (window.currentCallData) {
+            window.currentCallData.missingScreenPermissions = missing;
+        }
+    };
+
     private onViewportResize = () => {
         if (window.devicePixelRatio === this.prevDevicePixelRatio) {
             return;
@@ -330,16 +365,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (ev.data.type === 'calls-error' && ev.data.message.err === 'screen-permissions') {
             logDebug('screen permissions error');
-            this.setState({
-                alerts: {
-                    ...this.state.alerts,
-                    missingScreenPermissions: {
-                        ...this.state.alerts.missingScreenPermissions,
-                        active: true,
-                        show: true,
-                    },
-                },
-            });
+            this.setMissingScreenPermissions(true, true);
         } else if (ev.data.type === 'calls-widget-share-screen') {
             this.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
         }
@@ -403,16 +429,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     logDebug('desktopAPI.onCallsError', err);
                     if (err === 'screen-permissions') {
                         logDebug('screen permissions error');
-                        this.setState({
-                            alerts: {
-                                ...this.state.alerts,
-                                missingScreenPermissions: {
-                                    ...this.state.alerts.missingScreenPermissions,
-                                    active: true,
-                                    show: true,
-                                },
-                            },
-                        });
+                        this.setMissingScreenPermissions(true, true);
                     }
                 }));
             } else {
@@ -447,6 +464,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // set cross-window actions
         window.callActions = {
             setRecordingPromptDismissedAt: this.props.recordingPromptDismissedAt,
+            setMissingScreenPermissions: this.setMissingScreenPermissions,
         };
 
         this.attachVoiceTracks(window.callsClient.getRemoteVoiceTracks());
@@ -655,32 +673,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     private shareScreen = async (sourceID: string, _withAudio: boolean) => {
-        const state = {} as State;
         const stream = await window.callsClient?.shareScreen(sourceID, hasExperimentalFlag());
         if (stream) {
-            state.screenStream = stream;
-            state.alerts = {
-                ...this.state.alerts,
-                missingScreenPermissions: {
-                    ...this.state.alerts.missingScreenPermissions,
-                    active: false,
-                    show: false,
-                },
-            };
+            this.setState({screenStream: stream});
+            this.setMissingScreenPermissions(false, true);
         } else {
-            state.alerts = {
-                ...this.state.alerts,
-                missingScreenPermissions: {
-                    ...this.state.alerts.missingScreenPermissions,
-                    active: true,
-                    show: true,
-                },
-            };
+            this.setMissingScreenPermissions(true, true);
         }
-
-        this.setState({
-            ...state,
-        });
     };
 
     dismissRecordingPrompt = () => {
@@ -694,6 +693,57 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         // Dismiss the expanded window's prompt.
         this.state.expandedViewWindow?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
+    };
+
+    onRecordToggle = async () => {
+        if (!this.props.channel) {
+            logErr('channel should be defined');
+            return;
+        }
+
+        const recording = this.props.callRecording;
+        const isRecording = (recording?.start_at ?? 0) > (recording?.end_at ?? 0);
+
+        if (isRecording) {
+            if (this.props.global) {
+                if (window.desktopAPI?.openStopRecordingModal) {
+                    logDebug('desktopAPI.openStopRecordingModal');
+                    window.desktopAPI.openStopRecordingModal(this.props.channel.id);
+                } else {
+                    this.props.stopCallRecording(this.props.channel.id);
+                }
+            } else {
+                this.props.openModal({
+                    modalId: IDStopRecordingConfirmation,
+                    dialogType: StopRecordingConfirmation,
+                    dialogProps: {
+                        channelID: this.props.channel.id,
+                    },
+                });
+            }
+            this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.Widget, {initiator: 'button'});
+        } else {
+            await this.props.startCallRecording(this.props.channel.id);
+            this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.Widget, {initiator: 'button'});
+        }
+
+        this.setState({showMenu: false});
+    };
+
+    onChatThreadButtonClick = () => {
+        if (!this.props.callThreadID) {
+            logErr('missing thread ID');
+            return;
+        }
+
+        if (this.props.global && window.desktopAPI?.openThreadForCalls) {
+            logDebug('desktopAPI.openThreadForCalls');
+            window.desktopAPI.openThreadForCalls(this.props.callThreadID);
+        } else {
+            this.props.selectRHSPost(this.props.callThreadID);
+        }
+
+        this.setState({showMenu: false});
     };
 
     onShareScreenToggle = async (fromShortcut?: boolean) => {
@@ -978,7 +1028,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (noScreenPermissions) {
             shareScreenTooltipText = formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipText!);
         }
-        const shareScreenTooltipSubtext = noScreenPermissions ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext!) : '';
+
+        // Purposely not showing the subtext on Desktop as the tooltip gets cut off otherwise.
+        const shareScreenTooltipSubtext = noScreenPermissions && !this.props.global ? formatMessage(CallAlertConfigs.missingScreenPermissions.tooltipSubtext!) : '';
 
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
 
@@ -993,7 +1045,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 shortcut={noScreenPermissions ? undefined : reverseKeyMappings.widget[SHARE_UNSHARE_SCREEN][0]}
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.16)' : ''}
                 icon={<ShareIcon style={{fill}}/>}
-                unavailable={this.state.alerts.missingScreenPermissions.active}
+                unavailable={noScreenPermissions}
                 disabled={Boolean(sharingID) && !isSharing}
             />
         );
@@ -1247,7 +1299,92 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         }
                     </button>
                 </li>
-                {deviceType === 'output' && <li className='MenuGroup menu-divider'/>}
+            </React.Fragment>
+        );
+    };
+
+    renderChatThreadMenuItem = () => {
+        const {formatMessage} = this.props.intl;
+
+        // If we are on global widget we should show this
+        // only if we have the matching functionality available.
+        if (this.props.global && !window.desktopAPI?.openThreadForCalls) {
+            return null;
+        }
+
+        return (
+            <>
+                <li
+                    className='MenuItem'
+                >
+                    <button
+                        id='calls-widget-menu-chat-button'
+                        className='style--none'
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                        }}
+                        onClick={() => this.onChatThreadButtonClick()}
+                    >
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                width: '100%',
+                                padding: '2px 0',
+                                gap: '8px',
+                            }}
+                        >
+                            <ChatThreadIcon
+                                style={{width: '16px', height: '16px'}}
+                                fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
+                            />
+                            <span>{formatMessage({defaultMessage: 'Show chat thread'})}</span>
+                        </div>
+
+                    </button>
+                </li>
+            </>
+        );
+    };
+
+    renderRecordingMenuItem = () => {
+        const {formatMessage} = this.props.intl;
+
+        const RecordIcon = this.props.isRecording ? RecordSquareIcon : RecordCircleIcon;
+
+        return (
+            <React.Fragment>
+                <li
+                    className='MenuItem'
+                >
+                    <button
+                        id='calls-widget-menu-record-button'
+                        className='style--none'
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                        }}
+                        onClick={() => this.onRecordToggle()}
+                    >
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                width: '100%',
+                                padding: '2px 0',
+                                gap: '8px',
+                            }}
+                        >
+                            <RecordIcon
+                                style={{width: '16px', height: '16px'}}
+                                fill={this.props.isRecording ? 'rgb(var(--dnd-indicator-rgb))' : 'rgba(var(--center-channel-color-rgb), 0.64)'}
+                            />
+                            <span>{this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'})}</span>
+                        </div>
+
+                    </button>
+                </li>
             </React.Fragment>
         );
     };
@@ -1316,7 +1453,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                     </button>
                 </li>
-                <li className='MenuGroup menu-divider'/>
             </React.Fragment>
         );
     };
@@ -1328,21 +1464,34 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const isHost = this.props.callHostID === this.props.currentUserID;
+
+        const divider = (
+            <li className='MenuGroup menu-divider'/>
+        );
+
+        const showScreenShareItem = this.props.allowScreenSharing && !this.props.wider;
+
         return (
             <div
                 className='Menu'
                 id='calls-widget-settings-menu'
                 role='menu'
                 aria-label={formatMessage({defaultMessage: 'Settings menu'})}
+                data-testid='calls-widget-menu'
             >
                 <ul
                     className='Menu__content dropdown-menu'
                     style={this.style.settingsMenu}
                     role='menu'
                 >
-                    {this.props.allowScreenSharing && !this.props.wider && this.renderScreenSharingMenuItem()}
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
+                    { divider }
+                    {showScreenShareItem && this.renderScreenSharingMenuItem()}
+                    {showScreenShareItem && divider}
+                    {this.props.recordingsEnabled && isHost && this.renderRecordingMenuItem()}
+                    {this.renderChatThreadMenuItem()}
                 </ul>
             </div>
         );

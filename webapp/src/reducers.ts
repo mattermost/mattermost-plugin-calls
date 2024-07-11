@@ -47,6 +47,7 @@ import {
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
+    TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
     UNINIT,
     USER_JOINED,
@@ -792,6 +793,8 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
         return {...state, EnableTranscriptions: action.data};
     case LIVE_CAPTIONS_ENABLED:
         return {...state, EnableLiveCaptions: action.data};
+    case TRANSCRIBE_API:
+        return {...state, TranscribeAPI: action.data};
     default:
         return state;
     }
@@ -881,8 +884,6 @@ const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingC
     case ADD_INCOMING_CALL:
         return [...state, {...action.data}];
     case REMOVE_INCOMING_CALL:
-        return state.filter((ic) => ic.callID !== action.data.callID);
-    case CALL_END:
         return state.filter((ic) => ic.callID !== action.data.callID);
     default:
         return state;
