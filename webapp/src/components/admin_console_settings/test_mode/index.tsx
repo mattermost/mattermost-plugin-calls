@@ -3,7 +3,7 @@
 
 import React, {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
-import {leftCol, rightCol} from 'src/components/admin_console_settings/common';
+import {leftCol, RadioInput, RadioInputLabel, rightCol} from 'src/components/admin_console_settings/common';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const TestMode = (props: CustomComponentProps) => {
@@ -30,20 +30,8 @@ const TestMode = (props: CustomComponentProps) => {
                 {props.label}
             </label>
             <div className={rightCol}>
-                <label className='radio-inline'>
-                    <input
-                        data-testid={props.id + '_off'}
-                        type='radio'
-                        value='off'
-                        id={props.id + '_off'}
-                        name={props.id + '_off'}
-                        checked={testMode === 'off'}
-                        onChange={handleChange}
-                    />
-                    {formatMessage({defaultMessage: 'Off'})}
-                </label>
-                <label className='radio-inline'>
-                    <input
+                <RadioInputLabel>
+                    <RadioInput
                         data-testid={props.id + '_on'}
                         type='radio'
                         value='on'
@@ -52,8 +40,20 @@ const TestMode = (props: CustomComponentProps) => {
                         checked={testMode === 'on'}
                         onChange={handleChange}
                     />
-                    {formatMessage({defaultMessage: 'On'})}
-                </label>
+                    <span>{formatMessage({defaultMessage: 'True'})}</span>
+                </RadioInputLabel>
+                <RadioInputLabel>
+                    <RadioInput
+                        data-testid={props.id + '_off'}
+                        type='radio'
+                        value='off'
+                        id={props.id + '_off'}
+                        name={props.id + '_off'}
+                        checked={testMode === 'off'}
+                        onChange={handleChange}
+                    />
+                    <span>{formatMessage({defaultMessage: 'False'})}</span>
+                </RadioInputLabel>
                 <div
                     data-testid={props.id + 'help-text'}
                     className='help-text'

@@ -52,6 +52,10 @@ import TranscribeAPIAzureSpeechRegion from 'src/components/admin_console_setting
 import TranscriberModelSize from 'src/components/admin_console_settings/recordings/transcriber_model_size';
 import TranscriberNumThreads from 'src/components/admin_console_settings/recordings/transcriber_num_threads';
 import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
+import CallLiveCaptionsSection from 'src/components/admin_console_settings/sections/call_live_captions';
+import CallRecordingsSection from 'src/components/admin_console_settings/sections/call_recordings';
+import CallTranscriptionsSection from 'src/components/admin_console_settings/sections/call_transcriptions';
+import RTCDServiceSection from 'src/components/admin_console_settings/sections/rtcd_service';
 import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
 import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
 import TCPServerPort from 'src/components/admin_console_settings/tcp_server_port';
@@ -413,6 +417,12 @@ export default class Plugin {
         };
 
         registerChannelHeaderMenuButton();
+
+        // Custom sections
+        registry.registerAdminConsoleCustomSection('RTCDService', RTCDServiceSection);
+        registry.registerAdminConsoleCustomSection('CallRecordings', CallRecordingsSection);
+        registry.registerAdminConsoleCustomSection('CallTranscriptions', CallTranscriptionsSection);
+        registry.registerAdminConsoleCustomSection('CallLiveCaptions', CallLiveCaptionsSection);
 
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
 

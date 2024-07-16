@@ -5,7 +5,7 @@ import React, {ChangeEvent, useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {setTranscriptionsEnabled} from 'src/actions';
-import {leftCol, rightCol} from 'src/components/admin_console_settings/common';
+import {leftCol, RadioInput, RadioInputLabel, rightCol} from 'src/components/admin_console_settings/common';
 import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
@@ -45,8 +45,8 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
                 {props.label}
             </label>
             <div className={rightCol}>
-                <label className='radio-inline'>
-                    <input
+                <RadioInputLabel>
+                    <RadioInput
                         data-testid={props.id + 'true'}
                         type='radio'
                         value='true'
@@ -55,10 +55,10 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
                         checked={checked}
                         onChange={handleChange}
                     />
-                    {formatMessage({defaultMessage: 'true'})}
-                </label>
-                <label className='radio-inline'>
-                    <input
+                    {formatMessage({defaultMessage: 'True'})}
+                </RadioInputLabel>
+                <RadioInputLabel>
+                    <RadioInput
                         data-testid={props.id + 'false'}
                         type='radio'
                         value='false'
@@ -67,8 +67,8 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
                         checked={!checked}
                         onChange={handleChange}
                     />
-                    {formatMessage({defaultMessage: 'false'})}
-                </label>
+                    {formatMessage({defaultMessage: 'False'})}
+                </RadioInputLabel>
                 <div
                     data-testid={props.id + 'help-text'}
                     className='help-text'

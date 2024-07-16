@@ -57,6 +57,9 @@ export const LeftBox = styled.div`
 `;
 
 export const Title = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-family: 'Metropolis', sans-serif;
     font-weight: 600;
     font-size: 16px;
@@ -77,6 +80,8 @@ export const Footer = styled.div`
 `;
 
 export const FooterText = styled.div`
+    display: flex;
+    align-items: center;
     font-family: 'Open Sans', sans-serif;
     font-weight: 400;
     font-size: 10px;
@@ -108,4 +113,69 @@ export const ModalFooterContainer = styled.div`
 
 export const StyledModal = styled(GenericModal)`
     text-align: center;
+`;
+
+export const RadioInput = styled.input`
+&& {
+  display: grid;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1px solid rgba(var(--center-channel-color-rgb),0.24);
+  border-radius: 50%;
+  color: rgba(var(--center-channel-color-rgb),0.24);
+  appearance: none;
+  place-content: center;
+  cursor: pointer;
+  background-color: white;
+  margin: 0;
+
+  &:checked {
+    border-color: var(--denim-button-bg);
+  }
+
+  &::before {
+    width: 8px;
+    height: 8px;
+    background: var(--denim-button-bg);
+    content: "";
+    border-radius: 50%;
+    transform: scale(0);
+    transform-origin: center center;
+    transition: 200ms transform ease-in-out;
+  }
+
+  &:checked::before {
+    transform: scale(1);
+  }
+}
+`;
+
+export const RadioInputLabel = styled.label`
+  display: inline-flex;
+  margin-top: 8px;
+  margin-right: 24px;
+  width: fit-content;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  gap: 8px;
+  line-height: 20px;
+`;
+
+export const SectionTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+export const UnavailableSubtitle = styled.div`
+  color: var(--center-channel-color-72);
+  font-family: "Open Sans";
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 20px;
 `;

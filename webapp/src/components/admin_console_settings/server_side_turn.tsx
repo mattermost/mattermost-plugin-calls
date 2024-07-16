@@ -4,7 +4,7 @@
 import React, {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-import {leftCol, rightCol} from 'src/components/admin_console_settings/common';
+import {leftCol, RadioInput, RadioInputLabel, rightCol} from 'src/components/admin_console_settings/common';
 import {useHelptext} from 'src/components/admin_console_settings/hooks';
 import {rtcdEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
@@ -33,8 +33,8 @@ export const ServerSideTURN = (props: CustomComponentProps) => {
                 {props.label}
             </label>
             <div className={rightCol}>
-                <label className='radio-inline'>
-                    <input
+                <RadioInputLabel>
+                    <RadioInput
                         data-testid={props.id + '_on'}
                         type='radio'
                         value='on'
@@ -45,9 +45,9 @@ export const ServerSideTURN = (props: CustomComponentProps) => {
                         disabled={isRTCDEnabled}
                     />
                     {formatMessage({defaultMessage: 'On'})}
-                </label>
-                <label className='radio-inline'>
-                    <input
+                </RadioInputLabel>
+                <RadioInputLabel>
+                    <RadioInput
                         data-testid={props.id + '_off'}
                         type='radio'
                         value='off'
@@ -58,7 +58,7 @@ export const ServerSideTURN = (props: CustomComponentProps) => {
                         disabled={isRTCDEnabled}
                     />
                     {formatMessage({defaultMessage: 'Off'})}
-                </label>
+                </RadioInputLabel>
                 <div
                     data-testid={props.id + 'help-text'}
                     className='help-text'
