@@ -51,7 +51,7 @@ const EnableRecordings = (props: CustomComponentProps) => {
             </div>
             <div className={rightCol}>
                 <a id={props.id}/>
-                <RadioInputLabel>
+                <RadioInputLabel $disabled={props.disabled}>
                     <RadioInput
                         data-testid={props.id + 'true'}
                         id={props.id + 'true'}
@@ -64,7 +64,7 @@ const EnableRecordings = (props: CustomComponentProps) => {
                     <FormattedMessage defaultMessage='True'/>
                 </RadioInputLabel>
 
-                <RadioInputLabel>
+                <RadioInputLabel $disabled={props.disabled}>
                     <RadioInput
                         data-testid={props.id + 'false'}
                         id={props.id + 'false'}

@@ -115,7 +115,7 @@ export const StyledModal = styled(GenericModal)`
     text-align: center;
 `;
 
-export const RadioInput = styled.input`
+export const RadioInput = styled.input<{disabled: boolean}>`
 && {
   display: grid;
   width: 1.6rem;
@@ -128,6 +128,8 @@ export const RadioInput = styled.input`
   cursor: pointer;
   background-color: white;
   margin: 0;
+  opacity: ${({disabled}) => (disabled ? 0.5 : 1.0)};
+  cursor: ${({disabled}) => (disabled ? 'not-allowed' : 'pointer')};
 
   &:checked {
     border-color: var(--denim-button-bg);
@@ -150,7 +152,7 @@ export const RadioInput = styled.input`
 }
 `;
 
-export const RadioInputLabel = styled.label`
+export const RadioInputLabel = styled.label<{$disabled: boolean}>`
   display: inline-flex;
   margin-top: 8px;
   margin-right: 24px;
@@ -163,6 +165,9 @@ export const RadioInputLabel = styled.label`
   font-weight: 400;
   gap: 8px;
   line-height: 20px;
+
+  opacity: ${({$disabled}) => ($disabled ? 0.5 : 1.0)};
+  cursor: ${({$disabled}) => ($disabled ? 'not-allowed' : 'pointer')};
 `;
 
 export const SectionTitle = styled.div`
@@ -178,4 +183,10 @@ export const UnavailableSubtitle = styled.div`
   font-style: italic;
   font-weight: 400;
   line-height: 20px;
+`;
+
+export const TextInput = styled.input<{disabled: boolean}>`
+&& {
+  cursor: ${({disabled}) => (disabled ? 'not-allowed' : 'auto')};
+}
 `;

@@ -30,7 +30,7 @@ export const EnableIPv6 = (props: CustomComponentProps) => {
                 {props.label}
             </label>
             <div className={rightCol}>
-                <RadioInputLabel>
+                <RadioInputLabel $disabled={props.disabled || isRTCDEnabled}>
                     <RadioInput
                         data-testid={props.id + 'true'}
                         type='radio'
@@ -39,11 +39,11 @@ export const EnableIPv6 = (props: CustomComponentProps) => {
                         name={props.id + 'true'}
                         checked={checked}
                         onChange={handleChange}
-                        disabled={isRTCDEnabled}
+                        disabled={props.disabled || isRTCDEnabled}
                     />
                     {formatMessage({defaultMessage: 'True'})}
                 </RadioInputLabel>
-                <RadioInputLabel>
+                <RadioInputLabel $disabled={props.disabled || isRTCDEnabled}>
                     <RadioInput
                         data-testid={props.id + 'false'}
                         type='radio'
@@ -52,7 +52,7 @@ export const EnableIPv6 = (props: CustomComponentProps) => {
                         name={props.id + 'false'}
                         checked={!checked}
                         onChange={handleChange}
-                        disabled={isRTCDEnabled}
+                        disabled={props.disabled || isRTCDEnabled}
                     />
                     {formatMessage({defaultMessage: 'False'})}
                 </RadioInputLabel>

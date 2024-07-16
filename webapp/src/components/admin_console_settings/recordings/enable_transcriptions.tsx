@@ -45,7 +45,7 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
                 {props.label}
             </label>
             <div className={rightCol}>
-                <RadioInputLabel>
+                <RadioInputLabel $disabled={props.disabled}>
                     <RadioInput
                         data-testid={props.id + 'true'}
                         type='radio'
@@ -54,10 +54,11 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
                         name={props.id + 'true'}
                         checked={checked}
                         onChange={handleChange}
+                        disabled={props.disabled}
                     />
                     {formatMessage({defaultMessage: 'True'})}
                 </RadioInputLabel>
-                <RadioInputLabel>
+                <RadioInputLabel $disabled={props.disabled}>
                     <RadioInput
                         data-testid={props.id + 'false'}
                         type='radio'
@@ -66,6 +67,7 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
                         name={props.id + 'false'}
                         checked={!checked}
                         onChange={handleChange}
+                        disabled={props.disabled}
                     />
                     {formatMessage({defaultMessage: 'False'})}
                 </RadioInputLabel>

@@ -4,7 +4,7 @@
 import React, {ChangeEvent} from 'react';
 import {useSelector} from 'react-redux';
 import {
-    LabelRow, leftCol, rightCol,
+    LabelRow, leftCol, rightCol, TextInput,
 } from 'src/components/admin_console_settings/common';
 import {useHelptext} from 'src/components/admin_console_settings/hooks';
 import manifest from 'src/manifest';
@@ -38,7 +38,7 @@ const TCPServerAddress = (props: CustomComponentProps) => {
                 </LabelRow>
             </div>
             <div className={rightCol}>
-                <input
+                <TextInput
                     data-testid={props.id + 'input'}
                     id={props.id}
                     className='form-control'

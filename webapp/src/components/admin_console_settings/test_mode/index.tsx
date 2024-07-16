@@ -30,7 +30,7 @@ const TestMode = (props: CustomComponentProps) => {
                 {props.label}
             </label>
             <div className={rightCol}>
-                <RadioInputLabel>
+                <RadioInputLabel $disabled={props.disabled}>
                     <RadioInput
                         data-testid={props.id + '_on'}
                         type='radio'
@@ -39,10 +39,11 @@ const TestMode = (props: CustomComponentProps) => {
                         name={props.id + '_on'}
                         checked={testMode === 'on'}
                         onChange={handleChange}
+                        disabled={props.disabled}
                     />
                     <span>{formatMessage({defaultMessage: 'True'})}</span>
                 </RadioInputLabel>
-                <RadioInputLabel>
+                <RadioInputLabel $disabled={props.disabled}>
                     <RadioInput
                         data-testid={props.id + '_off'}
                         type='radio'
@@ -51,6 +52,7 @@ const TestMode = (props: CustomComponentProps) => {
                         name={props.id + '_off'}
                         checked={testMode === 'off'}
                         onChange={handleChange}
+                        disabled={props.disabled}
                     />
                     <span>{formatMessage({defaultMessage: 'False'})}</span>
                 </RadioInputLabel>

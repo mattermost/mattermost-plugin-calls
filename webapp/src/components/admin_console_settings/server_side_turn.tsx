@@ -33,7 +33,7 @@ export const ServerSideTURN = (props: CustomComponentProps) => {
                 {props.label}
             </label>
             <div className={rightCol}>
-                <RadioInputLabel>
+                <RadioInputLabel $disabled={props.disabled || isRTCDEnabled}>
                     <RadioInput
                         data-testid={props.id + '_on'}
                         type='radio'
@@ -42,11 +42,11 @@ export const ServerSideTURN = (props: CustomComponentProps) => {
                         name={props.id + '_on'}
                         checked={checked}
                         onChange={handleChange}
-                        disabled={isRTCDEnabled}
+                        disabled={props.disabled || isRTCDEnabled}
                     />
                     {formatMessage({defaultMessage: 'On'})}
                 </RadioInputLabel>
-                <RadioInputLabel>
+                <RadioInputLabel $disabled={props.disabled || isRTCDEnabled}>
                     <RadioInput
                         data-testid={props.id + '_off'}
                         type='radio'
@@ -55,7 +55,7 @@ export const ServerSideTURN = (props: CustomComponentProps) => {
                         name={props.id + '_off'}
                         checked={!checked}
                         onChange={handleChange}
-                        disabled={isRTCDEnabled}
+                        disabled={props.disabled || isRTCDEnabled}
                     />
                     {formatMessage({defaultMessage: 'Off'})}
                 </RadioInputLabel>
