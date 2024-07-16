@@ -19,8 +19,8 @@ export default function CallTranscriptionsSection(props: {settingsList: React.Re
         return null;
     }
 
-    const subtitleMsg = recordingEnabled ? formatMessage({defaultMessage: 'Allows calls to be transcribed to text files. Recordings must be enabled.'}) :
-        formatMessage({defaultMessage: 'Allows calls to be transcribed to text files. To enable call transcriptions, recordings must be enabled first.'});
+    const subtitleMsg = recordingEnabled ? formatMessage({defaultMessage: 'Allows calls to be transcribed to text files. Recordings must be enabled'}) :
+        formatMessage({defaultMessage: 'Allows calls to be transcribed to text files. To enable call transcriptions, recordings must be enabled first'});
 
     const subtitle = recordingEnabled ? (
         <div className='section-subtitle'>

@@ -42,7 +42,7 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
             className='form-group'
         >
             <label className={'control-label ' + leftCol}>
-                {props.label}
+                {formatMessage({defaultMessage: 'Enable call transcriptions (Experimental)'})}
             </label>
             <div className={rightCol}>
                 <RadioInputLabel $disabled={props.disabled}>
@@ -75,7 +75,7 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: '(Optional) When set to true, post-call transcriptions are enabled.'})}
                 </div>
             </div>
         </div>);

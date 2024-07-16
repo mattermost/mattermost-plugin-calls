@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {ChangeEvent} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {
     LabelRow, leftCol, rightCol, TextInput,
@@ -12,8 +13,9 @@ import {rtcdEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const UDPServerAddress = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const isRTCDEnabled = useSelector(rtcdEnabled);
-    const helpText = useHelptext(props.helpText);
+    const helpText = useHelptext(formatMessage({defaultMessage: 'The local IP address used by the RTC server to listen on for UDP connections.'}));
 
     // Webapp doesn't pass the placeholder setting.
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'UDPServerAddress')?.placeholder || '';
@@ -33,7 +35,7 @@ const UDPServerAddress = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'RTC Server Address (UDP)'})}
                     </label>
                 </LabelRow>
             </div>

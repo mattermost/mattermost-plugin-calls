@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {ChangeEvent} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {
     LabelRow, leftCol, rightCol,
@@ -12,8 +13,9 @@ import {rtcdEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const ICEHostOverride = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const isRTCDEnabled = useSelector(rtcdEnabled);
-    const helpText = useHelptext(props.helpText);
+    const helpText = useHelptext(formatMessage({defaultMessage: '(Optional) The IP (or hostname) to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.'}));
 
     // Webapp doesn't pass the placeholder setting.
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'ICEHostOverride')?.placeholder || '';
@@ -33,7 +35,7 @@ const ICEHostOverride = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'ICE Host Override'})}
                     </label>
                 </LabelRow>
             </div>

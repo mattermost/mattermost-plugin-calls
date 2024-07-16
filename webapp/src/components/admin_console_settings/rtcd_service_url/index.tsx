@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {ChangeEvent, useEffect, useState} from 'react';
+import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {setRTCDEnabled} from 'src/actions';
 import {
@@ -13,7 +14,8 @@ import manifest from 'src/manifest';
 import {isOnPremNotEnterprise} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-const RTCDServiceUrl = (props: CustomComponentProps) => {
+const RTCDServiceURL = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const restricted = useSelector(isOnPremNotEnterprise);
 
@@ -43,7 +45,7 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'RTCD service URL'})}
                     </label>
                 </LabelRow>
             </div>
@@ -62,10 +64,10 @@ const RTCDServiceUrl = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: '(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.'})}
                 </div>
             </div>
         </div>);
 };
 
-export default RTCDServiceUrl;
+export default RTCDServiceURL;

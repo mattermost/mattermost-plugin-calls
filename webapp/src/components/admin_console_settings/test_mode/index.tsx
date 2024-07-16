@@ -27,7 +27,7 @@ const TestMode = (props: CustomComponentProps) => {
             className='form-group'
         >
             <label className={'control-label ' + leftCol}>
-                {props.label}
+                {formatMessage({defaultMessage: 'Test mode'})}
             </label>
             <div className={rightCol}>
                 <RadioInputLabel $disabled={props.disabled}>
@@ -60,7 +60,7 @@ const TestMode = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: 'When test mode is enabled, only system admins are able to start calls in channels. This allows testing to confirm calls are working as expected.'})}
                 </div>
             </div>
         </div>);

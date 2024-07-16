@@ -12,7 +12,7 @@ import {CustomComponentProps} from 'src/types/mattermost-webapp';
 export const ServerSideTURN = (props: CustomComponentProps) => {
     const {formatMessage} = useIntl();
     const isRTCDEnabled = useSelector(rtcdEnabled);
-    const helpText = useHelptext(props.helpText);
+    const helpText = useHelptext(formatMessage({defaultMessage: '(Optional) When set to on it will pass and use configured TURN candidates to server initiated connections.'}));
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const newVal = e.target.value === 'on';
@@ -30,7 +30,7 @@ export const ServerSideTURN = (props: CustomComponentProps) => {
             className='form-group'
         >
             <label className={'control-label ' + leftCol}>
-                {props.label}
+                {formatMessage({defaultMessage: 'Server Side TURN'})}
             </label>
             <div className={rightCol}>
                 <RadioInputLabel $disabled={props.disabled || isRTCDEnabled}>

@@ -1,5 +1,6 @@
 import {TranscribeAPI} from '@mattermost/calls-common/lib/types';
 import React, {ChangeEvent} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
@@ -7,6 +8,7 @@ import {isCloud, isOnPremNotEnterprise, recordingsEnabled, transcribeAPI, transc
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const TranscriberNumThreads = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const hasTranscriptions = useSelector(transcriptionsEnabled);
@@ -35,7 +37,7 @@ const TranscriberNumThreads = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'Call transcriber threads'})}
                     </label>
                 </LabelRow>
             </div>
@@ -54,7 +56,7 @@ const TranscriberNumThreads = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: 'The number of threads used by the post-call transcriber. This must be in the range [1, numCPUs].'})}
                 </div>
             </div>
         </div>

@@ -132,6 +132,9 @@ export default function RTCDServiceSection(props: {settingsList: React.ReactNode
                             {formatMessage({defaultMessage: 'RTCD Service'})}
                             {!cloud && <EnterprisePill>{untranslatable('Enterprise')}</EnterprisePill>}
                         </SectionTitle>
+                        <div className='section-subtitle'>
+                            {formatMessage({defaultMessage: 'Configure a dedicated service used to offload calls and efficiently support scalable and secure deployments'})}
+                        </div>
                     </div>
                     <div className='section-body'>
                         {props.settingsList}

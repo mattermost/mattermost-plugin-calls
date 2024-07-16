@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {ChangeEvent, useEffect, useState} from 'react';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {setRecordingsEnabled} from 'src/actions';
 import {LabelRow,
@@ -14,6 +14,7 @@ import {isCloud} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const EnableRecordings = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const cloud = useSelector(isCloud);
 
@@ -45,7 +46,7 @@ const EnableRecordings = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'Enable call recordings (Beta)'})}
                     </label>
                 </LabelRow>
             </div>
@@ -81,7 +82,7 @@ const EnableRecordings = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: '(Optional) When set to true, call recordings are enabled.'})}
                 </div>
             </div>
         </div>

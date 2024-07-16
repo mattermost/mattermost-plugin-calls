@@ -31,9 +31,14 @@ import {
     showSwitchCallModal,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
+import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
+import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
+import EnableSimulcast from 'src/components/admin_console_settings/enable_simulcast';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
+import ICEServersConfigs from 'src/components/admin_console_settings/ice_servers_configs';
+import MaxCallParticipants from 'src/components/admin_console_settings/max_call_participants';
 import EnableLiveCaptions from 'src/components/admin_console_settings/recordings/enable_live_captions';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
@@ -51,15 +56,20 @@ import TranscribeAPIAzureSpeechKey from 'src/components/admin_console_settings/r
 import TranscribeAPIAzureSpeechRegion from 'src/components/admin_console_settings/recordings/transcriber_api_azure_speech_region';
 import TranscriberModelSize from 'src/components/admin_console_settings/recordings/transcriber_model_size';
 import TranscriberNumThreads from 'src/components/admin_console_settings/recordings/transcriber_num_threads';
-import RTCDServiceUrl from 'src/components/admin_console_settings/rtcd_service_url';
+import RTCDServiceURL from 'src/components/admin_console_settings/rtcd_service_url';
 import CallLiveCaptionsSection from 'src/components/admin_console_settings/sections/call_live_captions';
 import CallRecordingsSection from 'src/components/admin_console_settings/sections/call_recordings';
 import CallTranscriptionsSection from 'src/components/admin_console_settings/sections/call_transcriptions';
+import GeneralSettingsSection from 'src/components/admin_console_settings/sections/general_settings';
+import ICEAndTURNSection from 'src/components/admin_console_settings/sections/ice_and_turn';
+import RTCServerSection from 'src/components/admin_console_settings/sections/rtc_server';
 import RTCDServiceSection from 'src/components/admin_console_settings/sections/rtcd_service';
 import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
 import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
 import TCPServerPort from 'src/components/admin_console_settings/tcp_server_port';
 import TestMode from 'src/components/admin_console_settings/test_mode';
+import TURNCredentialsExpirationMinutes from 'src/components/admin_console_settings/turn_credentials_expiration_minutes';
+import TURNStaticAuthSecret from 'src/components/admin_console_settings/turn_static_auth_secret';
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
@@ -418,41 +428,61 @@ export default class Plugin {
 
         registerChannelHeaderMenuButton();
 
-        // Custom sections
-        registry.registerAdminConsoleCustomSection('RTCDService', RTCDServiceSection);
-        registry.registerAdminConsoleCustomSection('CallRecordings', CallRecordingsSection);
-        registry.registerAdminConsoleCustomSection('CallTranscriptions', CallTranscriptionsSection);
-        registry.registerAdminConsoleCustomSection('CallLiveCaptions', CallLiveCaptionsSection);
+        // Admin settings and sections. Every setting or section should have a matching custom component
+        // to allow for complete i18n support.
 
+        // General settings
+        registry.registerAdminConsoleCustomSection('GeneralSettings', GeneralSettingsSection);
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
+        registry.registerAdminConsoleCustomSetting('MaxCallParticipants', MaxCallParticipants);
+        registry.registerAdminConsoleCustomSetting('AllowScreenSharing', AllowScreenSharing);
+        registry.registerAdminConsoleCustomSetting('EnableSimulcast', EnableSimulcast);
+        registry.registerAdminConsoleCustomSetting('EnableRinging', EnableRinging);
 
-        // EnableRecording turns on/off the following:
-        registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
-        registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
-        registry.registerAdminConsoleCustomSetting('RecordingQuality', RecordingQuality);
-        registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
-        registry.registerAdminConsoleCustomSetting('EnableTranscriptions', EnableTranscriptions);
-        registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
-        registry.registerAdminConsoleCustomSetting('TranscribeAPI', TranscribeAPI);
-        registry.registerAdminConsoleCustomSetting('TranscribeAPIAzureSpeechKey', TranscribeAPIAzureSpeechKey);
-        registry.registerAdminConsoleCustomSetting('TranscribeAPIAzureSpeechRegion', TranscribeAPIAzureSpeechRegion);
-        registry.registerAdminConsoleCustomSetting('TranscriberNumThreads', TranscriberNumThreads);
-        registry.registerAdminConsoleCustomSetting('EnableLiveCaptions', EnableLiveCaptions);
-        registry.registerAdminConsoleCustomSetting('LiveCaptionsModelSize', LiveCaptionsModelSize);
-        registry.registerAdminConsoleCustomSetting('LiveCaptionsNumTranscribers', LiveCaptionsNumTranscribers);
-        registry.registerAdminConsoleCustomSetting('LiveCaptionsNumThreadsPerTranscriber', LiveCaptionsNumThreadsPerTranscriber);
-        registry.registerAdminConsoleCustomSetting('LiveCaptionsLanguage', LiveCaptionsLanguage);
+        // RTCD Service
+        registry.registerAdminConsoleCustomSection('RTCDService', RTCDServiceSection);
+        registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceURL);
 
-        // RTCD server turns on/off the following:
-        registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceUrl);
+        // RTC Server
+        registry.registerAdminConsoleCustomSection('RTCServer', RTCServerSection);
         registry.registerAdminConsoleCustomSetting('UDPServerAddress', UDPServerAddress);
         registry.registerAdminConsoleCustomSetting('UDPServerPort', UDPServerPort);
         registry.registerAdminConsoleCustomSetting('TCPServerAddress', TCPServerAddress);
         registry.registerAdminConsoleCustomSetting('TCPServerPort', TCPServerPort);
         registry.registerAdminConsoleCustomSetting('EnableIPv6', EnableIPv6);
+
+        // ICE and TURN
+        registry.registerAdminConsoleCustomSection('ICEAndTURN', ICEAndTURNSection);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
         registry.registerAdminConsoleCustomSetting('ICEHostPortOverride', ICEHostPortOverride);
+        registry.registerAdminConsoleCustomSetting('ICEServersConfigs', ICEServersConfigs);
+        registry.registerAdminConsoleCustomSetting('TURNStaticAuthSecret', TURNStaticAuthSecret);
+        registry.registerAdminConsoleCustomSetting('TURNCredentialsExpirationMinutes', TURNCredentialsExpirationMinutes);
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
+
+        // Recordings
+        registry.registerAdminConsoleCustomSection('CallRecordings', CallRecordingsSection);
+        registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
+        registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
+        registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
+        registry.registerAdminConsoleCustomSetting('RecordingQuality', RecordingQuality);
+
+        // Transcriptions
+        registry.registerAdminConsoleCustomSection('CallTranscriptions', CallTranscriptionsSection);
+        registry.registerAdminConsoleCustomSetting('EnableTranscriptions', EnableTranscriptions);
+        registry.registerAdminConsoleCustomSetting('TranscribeAPI', TranscribeAPI);
+        registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
+        registry.registerAdminConsoleCustomSetting('TranscriberNumThreads', TranscriberNumThreads);
+        registry.registerAdminConsoleCustomSetting('TranscribeAPIAzureSpeechKey', TranscribeAPIAzureSpeechKey);
+        registry.registerAdminConsoleCustomSetting('TranscribeAPIAzureSpeechRegion', TranscribeAPIAzureSpeechRegion);
+
+        // Live Captions
+        registry.registerAdminConsoleCustomSection('CallLiveCaptions', CallLiveCaptionsSection);
+        registry.registerAdminConsoleCustomSetting('EnableLiveCaptions', EnableLiveCaptions);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsModelSize', LiveCaptionsModelSize);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsNumTranscribers', LiveCaptionsNumTranscribers);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsNumThreadsPerTranscriber', LiveCaptionsNumThreadsPerTranscriber);
+        registry.registerAdminConsoleCustomSetting('LiveCaptionsLanguage', LiveCaptionsLanguage);
 
         registry.registerSiteStatisticsHandler(async () => {
             let stats: Record<string, PluginAnalyticsRow> = {};

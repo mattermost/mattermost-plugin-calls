@@ -4,7 +4,7 @@ import {useSelector} from 'react-redux';
 import {rtcdEnabled} from 'src/selectors';
 import {untranslatable} from 'src/utils';
 
-export const useHelptext = (propsHelpText: JSX.Element | null) => {
+export const useHelptext = (propsHelpText: string | JSX.Element | null) => {
     const {formatMessage} = useIntl();
     const isRTCDEnabled = useSelector(rtcdEnabled);
 
