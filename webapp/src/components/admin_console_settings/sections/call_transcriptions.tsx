@@ -33,7 +33,10 @@ export default function CallTranscriptionsSection(props: {settingsList: React.Re
     );
 
     return (
-        <div className='config-section'>
+        <div
+            className='config-section'
+            data-testid={'calls-transcriptions-section'}
+        >
             <div className='admin-console__wrapper'>
                 <div className='admin-console__content'>
                     <div className='section-header'>

@@ -7,13 +7,11 @@ toolchain go1.21.9
 require (
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/mattermost/mattermost-plugin-starter-template/build v0.0.0-20210825072926-a80b0661954e
-	github.com/mattermost/mattermost/server/public v0.0.12
+	github.com/mattermost/mattermost/server/public v0.1.6-0.20240715104057-5709cd832fc0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 	sigs.k8s.io/yaml v1.2.0
 )
-
-replace github.com/mattermost/mattermost/server/public => ../../mattermost/server/public
 
 require (
 	github.com/Microsoft/go-winio v0.4.16 // indirect

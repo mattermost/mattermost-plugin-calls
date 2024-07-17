@@ -124,7 +124,10 @@ export default function RTCDServiceSection(props: {settingsList: React.ReactNode
     }
 
     return (
-        <div className='config-section'>
+        <div
+            className='config-section'
+            data-testid={'calls-rtcd-service-section'}
+        >
             <div className='admin-console__wrapper'>
                 <div className='admin-console__content'>
                     <div className='section-header'>

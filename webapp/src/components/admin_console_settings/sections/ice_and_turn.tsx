@@ -5,7 +5,10 @@ export default function ICEAndTURNSection(props: {settingsList: React.ReactNode[
     const {formatMessage} = useIntl();
 
     return (
-        <div className='config-section'>
+        <div
+            className='config-section'
+            data-testid={'calls-ice-and-turn-section'}
+        >
             <div className='admin-console__wrapper'>
                 <div className='admin-console__content'>
                     <div className='section-header'>
