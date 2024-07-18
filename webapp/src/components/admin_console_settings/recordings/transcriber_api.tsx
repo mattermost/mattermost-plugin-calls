@@ -19,7 +19,9 @@ const TranscribeAPI = (props: CustomComponentProps) => {
 
     // Update global state with a local state change, or props change (eg, remounting)
     useEffect(() => {
-        dispatch(setTranscribeAPI(api));
+        if (api) {
+            dispatch(setTranscribeAPI(api));
+        }
     }, [dispatch, api]);
 
     if (cloud || restricted || !hasTranscriptions || !recordingEnabled) {
