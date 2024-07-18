@@ -41,6 +41,7 @@ const AudioDevicesList = ({deviceType, devices, currentDevice, onDeviceClick}: A
                 className='MenuItem'
                 key={`audio-${deviceType}-device-${device.deviceId}`}
                 role='menuitem'
+                aria-label={makeDeviceLabel(device)}
             >
                 <AudioDeviceButton
                     className='style--none'
@@ -218,6 +219,7 @@ const AudioDevices = ({deviceType, isActive, onToggle}: AudioDevicesProps) => {
             <li
                 className='MenuItem'
                 role='menuitem'
+                aria-label={deviceTypeLabel}
             >
                 <AudioDeviceTypeButton
                     id={`calls-popout-audio-${deviceType}-button`}
@@ -329,6 +331,8 @@ const CallSettingsMenuButton = ({id, icon, label, onClick}: CallSettingsMenuButt
     return (
         <li
             className='MenuItem'
+            role='menuitem'
+            aria-label={label}
         >
             <CallSettingsMenuButtonWrapper
                 id={id}

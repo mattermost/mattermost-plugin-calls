@@ -1118,6 +1118,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     className='MenuItem'
                     key={`audio-${deviceType}-device-${device.deviceId}`}
                     role='menuitem'
+                    aria-label={makeDeviceLabel(device)}
                 >
                     <button
                         className='style--none'
@@ -1235,6 +1236,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <li
                     className='MenuItem'
                     role='menuitem'
+                    aria-label={deviceTypeLabel}
                 >
                     <button
                         id={`calls-widget-audio-${deviceType}-button`}
@@ -1312,10 +1314,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const showChatThreadLabel = formatMessage({defaultMessage: 'Show chat thread'});
+
         return (
             <>
                 <li
                     className='MenuItem'
+                    role='menuitem'
+                    aria-label={showChatThreadLabel}
                 >
                     <button
                         id='calls-widget-menu-chat-button'
@@ -1339,7 +1345,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 style={{width: '16px', height: '16px'}}
                                 fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
                             />
-                            <span>{formatMessage({defaultMessage: 'Show chat thread'})}</span>
+                            <span>{showChatThreadLabel}</span>
                         </div>
 
                     </button>
@@ -1353,10 +1359,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const RecordIcon = this.props.isRecording ? RecordSquareIcon : RecordCircleIcon;
 
+        const recordingActionLabel = this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) :
+            formatMessage({defaultMessage: 'Record call'});
+
         return (
             <React.Fragment>
                 <li
                     className='MenuItem'
+                    role='menuitem'
+                    aria-label={recordingActionLabel}
                 >
                     <button
                         id='calls-widget-menu-record-button'
@@ -1380,7 +1391,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 style={{width: '16px', height: '16px'}}
                                 fill={this.props.isRecording ? 'rgb(var(--dnd-indicator-rgb))' : 'rgba(var(--center-channel-color-rgb), 0.64)'}
                             />
-                            <span>{this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'})}</span>
+                            <span>{recordingActionLabel}</span>
                         </div>
 
                     </button>
@@ -1397,11 +1408,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const noPermissions = this.state.alerts.missingScreenPermissions.active;
 
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
+        const screenSharingActionLabel = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) :
+            formatMessage({defaultMessage: 'Start presenting'});
 
         return (
             <React.Fragment>
                 <li
                     className='MenuItem'
+                    role='menuitem'
+                    aria-label={screenSharingActionLabel}
                 >
                     <button
                         id='calls-widget-menu-screenshare'
@@ -1434,7 +1449,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 unavailable={noPermissions}
                                 margin={'0 8px 0 0'}
                             />
-                            <span>{isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'})}</span>
+                            <span>{screenSharingActionLabel}</span>
                         </div>
 
                         {noPermissions &&
