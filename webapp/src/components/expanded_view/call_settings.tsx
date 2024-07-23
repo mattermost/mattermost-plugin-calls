@@ -309,7 +309,7 @@ const AudioDeviceIcon = styled.div<{$isDisabled: boolean}>`
 }
 `;
 
-const AudioDeviceTypeButton = styled.div<{$active: boolean, disabled: boolean}>`
+const AudioDeviceTypeButton = styled.button<{$active: boolean, disabled: boolean}>`
 &&& {
     display: flex;
     align-items: start;
