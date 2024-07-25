@@ -133,6 +133,7 @@ interface Props {
     stopCallRecording: (channelID: string) => void,
     recordingsEnabled: boolean,
     openModal: <P>(modalData: ModalData<P>) => void;
+    openCallsUserSettings: () => void;
 }
 
 interface DraggingState {
@@ -746,6 +747,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     };
 
+    onCallsSettingsButtonClick = () => {
+        if (this.props.global && window.desktopAPI?.openCallsUserSettings) {
+            logDebug('desktopAPI.openCallsUserSettings');
+            window.desktopAPI.openCallsUserSettings();
+        } else {
+            this.props.openCallsUserSettings();
+        }
+
+        this.setState({showMenu: false});
+    };
+
     onShareScreenToggle = async (fromShortcut?: boolean) => {
         if (!this.props.allowScreenSharing) {
             return;
@@ -1292,6 +1304,56 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
+    renderAdditionalSettingsMenuItem = () => {
+        const {formatMessage} = this.props.intl;
+
+        // We should show this only if we have the matching functionality available.
+        if (this.props.global && !window.desktopAPI?.openCallsUserSettings) {
+            return null;
+        } else if (!this.props.global && !window.WebappUtils.openUserSettings) {
+            return null;
+        }
+
+        const label = formatMessage({defaultMessage: 'Additional settings'});
+
+        return (
+            <>
+                <li
+                    className='MenuItem'
+                    role='menuitem'
+                    aria-label={label}
+                >
+                    <button
+                        id='calls-widget-menu-additional-settings-button'
+                        className='style--none'
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                        }}
+                        onClick={() => this.onCallsSettingsButtonClick()}
+                    >
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                width: '100%',
+                                padding: '2px 0',
+                                gap: '8px',
+                            }}
+                        >
+                            <SettingsWheelIcon
+                                style={{width: '16px', height: '16px'}}
+                                fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
+                            />
+                            <span>{label}</span>
+                        </div>
+
+                    </button>
+                </li>
+            </>
+        );
+    };
+
     renderChatThreadMenuItem = () => {
         const {formatMessage} = this.props.intl;
 
@@ -1475,6 +1537,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {showScreenShareItem && divider}
                     {this.props.recordingsEnabled && isHost && this.renderRecordingMenuItem()}
                     {this.renderChatThreadMenuItem()}
+                    {this.renderAdditionalSettingsMenuItem()}
                 </ul>
             </div>
         );

@@ -25,6 +25,7 @@ import {
     getCallsStats,
     incomingCallOnChannel,
     loadProfilesByIdsIfMissing,
+    openCallsUserSettings,
     selectRHSPost,
     setClientConnecting,
     showScreenSourceModal,
@@ -66,6 +67,7 @@ import {
 } from 'src/components/expanded_view/stop_recording_confirmation';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
+import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
@@ -317,6 +319,18 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(EndCallModal));
         registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
 
+        registry.registerUserSettings({
+            id: pluginId,
+            uiName: 'Calls',
+            icon: 'icon-phone-in-talk',
+            sections: [
+                {
+                    title: 'Audio devices settings',
+                    component: AudioDevicesSettingsSection,
+                },
+            ],
+        });
+
         registry.registerFilePreviewComponent((fi, post) => {
             return String(post?.type) === CALL_RECORDING_POST_TYPE;
         }, RecordingsFilePreview);
@@ -501,6 +515,14 @@ export default class Plugin {
                         channelID,
                     },
                 }));
+            }));
+        }
+
+        if (window.desktopAPI?.onOpenCallsUserSettings) {
+            logDebug('registering desktopAPI.onOpenCallsUserSettings');
+            this.unsubscribers.push(window.desktopAPI.onOpenCallsUserSettings(() => {
+                logDebug('desktopAPI.onOpenCallsUserSettings');
+                store.dispatch(openCallsUserSettings());
             }));
         }
 

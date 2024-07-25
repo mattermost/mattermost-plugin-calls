@@ -688,3 +688,12 @@ export const selectRHSPost = (postID: string): ActionFuncAsync => {
         return {};
     };
 };
+
+export const openCallsUserSettings = (): ActionFuncAsync => {
+    return async (dispatch: DispatchFunc) => {
+        if (window.WebappUtils && window.WebappUtils.openUserSettings) {
+            dispatch(window.WebappUtils.openUserSettings({activeTab: 'com.mattermost.calls', isContentProductSettings: true}));
+        }
+        return {};
+    };
+};

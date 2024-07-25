@@ -114,6 +114,8 @@ module.exports = {
         'react-bootstrap': 'ReactBootstrap',
         'react-router-dom': 'ReactRouterDom',
         'react-intl': 'ReactIntl',
+        'react-select': 'ReactSelect',
+        'styled-components': 'StyledComponents',
     },
     output: {
         devtoolNamespace: PLUGIN_ID,
