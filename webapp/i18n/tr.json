@@ -100,7 +100,6 @@
   "TyskrG": "Mattermost Enterprise deneme sürümünüze hoş geldiniz! Deneme süreniz {trialExpirationDate} tarihinde sona erecek. Şimdi <recordingsDocsLink>çağrı kaydetme</recordingsDocsLink>,<rtcdDocsLink>RTCD hizmetleri</rtcdDocsLink>, <guestAccountsLink>konuk hesapları</guestAccountsLink>, <autoComplianceReportsLink>otomatik uyumluluk raporları</autoComplianceReportsLink> ve <mobileSecureNotificationsLink>mobil güvenli kimlikli anında bildirimler</mobileSecureNotificationsLink> gibi birçok özelliği kullanabilirsiniz. Tüm özellikleri görmek için <documentationLink>belgelerimize</documentationLink> bakabilirsiniz.",
   "UcFeI7": "Katılımcı listesini görüntüle",
   "Ug/N7H": "Etkin olmayan bir kullanıcı ile doğrudan iletide çağrı yapılamaz.",
-  "UxatAw": "{count, plural, =1 {# katılımcı} other {# katılımcı}}",
   "Uys4Mj": "Tepkileri kapat",
   "VLwHR0": "Çağrı ayarları",
   "W9355R": "Sesi aç",

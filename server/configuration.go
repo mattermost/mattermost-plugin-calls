@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/license"
+
 	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
 	"github.com/mattermost/rtcd/service/rtc"
 
@@ -653,7 +655,7 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.AllowEnableCalls = model.NewBool(true)
 
-	if license := p.API.GetLicense(); license != nil && isCloud(license) {
+	if l := p.API.GetLicense(); l != nil && license.IsCloud(l) {
 		// On Cloud installations we want calls enabled in all channels so we
 		// override it since the plugin's default is now false.
 		*cfg.DefaultEnabled = true
@@ -666,9 +668,9 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 		} else {
 			p.LogError("setOverrides", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
 		}
-	} else if license := p.API.GetLicense(); license != nil && isCloud(license) {
+	} else if l := p.API.GetLicense(); l != nil && license.IsCloud(l) {
 		// otherwise, if this is a cloud installation, set it at the default
-		if isCloudStarter(license) {
+		if license.IsCloudStarter(l) {
 			*cfg.MaxCallParticipants = cloudStarterMaxParticipantsDefault
 		} else {
 			*cfg.MaxCallParticipants = cloudPaidMaxParticipantsDefault

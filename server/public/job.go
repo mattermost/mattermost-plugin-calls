@@ -61,7 +61,6 @@ type Transcriptions []Transcription
 
 type CaptionMsg struct {
 	SessionID     string  `json:"session_id"`
-	UserID        string  `json:"user_id"`
 	Text          string  `json:"text"`
 	NewAudioLenMs float64 `json:"new_audio_len_ms"`
 }

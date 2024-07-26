@@ -64,7 +64,6 @@
   "Thxdph": "Šio pokalbio didžiausias pajėgumas yra {count, plural, =1 {# dalyvis} other {# dalyviai}}.",
   "TyskrG": "Sveiki atvykę į Mattermost Enterprise bandomąją versiją! Ji baigiasi {trialExpirationDate}. Dabar turite prieigą prie <recordingsDocsLink>Pokalbių įrašų</recordingsDocsLink>, <rtcdDocsLink>RTCD paslaugų</rtcdDocsLink>, <guestAccountsLink>Svečių paskyrų</guestAccountsLink>, <autoComplianceReportsLink>automatizuotos atitikties ataskaitos</autoComplianceReportsLink> ir<mobileSecureNotificationsLink>mobiliųjų saugaus ID tiesioginių pranešimų</mobileSecureNotificationsLink>, bei daugelio kitų funkcijų. Peržiūrėkite visas mūsų funkcijas <documentationLink>dokumentacijoje</documentationLink>.",
   "UcFeI7": "Rodyti dalyvių sąrašą",
-  "UxatAw": "{count, plural, =1 {# dalyvis} other {# dalyviai}}",
   "Uys4Mj": "Uždaryti reakcijas",
   "WWqBr0": "Baigėsi {endTime}",
   "WhiGBX": "Nustoti bendrinti",

@@ -87,7 +87,6 @@
   "TyskrG": "Tvoja probna Mattermost Enterprise verzija! Isteče {trialExpirationDate}. Sada imate pristup <recordingsDocsLink>snimkama poziva</recordingsDocsLink>, <rtcdDocsLink>RTCD uslugama</rtcdDocsLink>, <guestAccountsLink>računima gostiju</guestAccountsLink>, <autoComplianceReportsLink>automatskim izvještajima o usklađenosti</autoComplianceReportsLink> i <mobileSecureNotificationsLink> mobilnim sigurnosnim ID push obavijestima</mobileSecureNotificationsLink>, uz razne druge značajke. Pogledaj sve značajke u našoj <documentationLink>dokumentaciji</documentationLink>.",
   "UcFeI7": "Prikaži popis sudionika",
   "Ug/N7H": "Pozivi u izravnim porukama nisu dostupni s deaktiviranim korisnikom.",
-  "UxatAw": "{count, plural, =1 {# sudionik} few {# sudionika} other {# sudionika}}",
   "Uys4Mj": "Zatvori reakcije",
   "W9355R": "Uključi zvuk",
   "WWqBr0": "Završeno {endTime}",

@@ -16,11 +16,12 @@ import (
 
 const (
 	// server-side events
-	evCallStarted     = "call_started"
-	evCallEnded       = "call_ended"
-	evCallUserJoined  = "call_user_joined"
-	evCallUserLeft    = "call_user_left"
-	evCallNotifyAdmin = "call_notify_admin"
+	evCallStarted                   = "call_started"
+	evCallEnded                     = "call_ended"
+	evCallUserJoined                = "call_user_joined"
+	evCallUserLeft                  = "call_user_left"
+	evCallNotifyAdmin               = "call_notify_admin"
+	evCallConcurrentSessionsWarning = "call_concurrent_sessions_warning"
 )
 
 var (

@@ -95,7 +95,6 @@
   "TyskrG": "Vítejte ve zkušební verzi Mattermost Enterprise! Její platnost vyprší {trialExpirationDate}. Máte teď přístup k <recordingsDocsLink>nahrávání hovorů</recordingsDocsLink>, <rtcdDocsLink>službám RTCD</rtcdDocsLink>, <guestAccountsLink>účtům pro hosty</guestAccountsLink>, <autoComplianceReportsLink>automatickým zprávám o dodržování předpisů</autoComplianceReportsLink>, <mobileSecureNotificationsLink>mobilním push notifikacím</mobileSecureNotificationsLink> a mnoha dalším funkcím. Prohlédněte si všechny funkce v naší <documentationLink>dokumentaci</documentationLink> .",
   "UcFeI7": "Zobrazit seznam účastníků",
   "Ug/N7H": "Hovory v přímé zprávě s deaktivovaným uživatelem nejsou k dispozici.",
-  "UxatAw": "{count, plural, =1 {# účastník} =2 {# účastníci} =3 {# účastníci} =4 {# účastníci} other {# účastníků}}",
   "Uys4Mj": "Zavřít reakce",
   "W9355R": "Zrušit ztlumení",
   "WWqBr0": "Ukončeno {endTime}",
