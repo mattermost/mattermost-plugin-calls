@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -651,9 +652,6 @@ func TestHandleJoin(t *testing.T) {
 	mockAPI.On("LogInfo", mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	mockAPI.On("LogWarn", mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
 	rtcServer, err := rtc.NewServer(rtc.ServerConfig{
 		ICEPortUDP: 33443,
@@ -677,10 +675,12 @@ func TestHandleJoin(t *testing.T) {
 	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
-	mockMetrics.On("IncStoreOp", "KVGet")
-	mockMetrics.On("IncStoreOp", "KVSet")
 
 	t.Run("no batching", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer mockRTCMetrics.AssertExpectations(t)
+
 		channelID := model.NewId()
 		userID := model.NewId()
 		connID := model.NewId()
@@ -695,8 +695,6 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
 			MemberCount: 10,
 		}, nil).Once()
-
-		mockAPI.On("HasPermissionTo", userID, model.PermissionManageSystem).Return(false).Once()
 
 		// Call lock
 		mockAPI.On("KVSetWithOptions", "mutex_call_"+channelID, []byte{0x1}, mock.Anything).Return(true, nil)
@@ -810,8 +808,25 @@ func TestHandleJoin(t *testing.T) {
 	})
 
 	t.Run("batching", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer mockRTCMetrics.AssertExpectations(t)
+
 		channelID := model.NewId()
 		postID := model.NewId()
+
+		// Call lock
+		mockAPI.On("KVSetWithOptions", "mutex_call_"+channelID, []byte{0x1}, mock.Anything).Return(true, nil)
+		// Call unlock
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+
+		// Who gets to be host is non deterministic as it depends on the order in which sessions leave
+		// so can only make a generic assertion.
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Unset()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything, mock.Anything)
+		defer mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything, mock.Anything).Unset()
+
 		for i := 0; i < 10; i++ {
 			userID := model.NewId()
 			connID := model.NewId()
@@ -826,28 +841,23 @@ func TestHandleJoin(t *testing.T) {
 				MemberCount: int64(minMembersCountForBatching),
 			}, nil).Once()
 
-			mockAPI.On("HasPermissionTo", userID, model.PermissionManageSystem).Return(false).Once()
+			if i == 0 {
+				// Call started post creation
+				mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
+				mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(3)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
+				createPost(t, store, postID, userID, channelID)
 
-			// Call lock
-			mockAPI.On("KVSetWithOptions", "mutex_call_"+channelID, []byte{0x1}, mock.Anything).Return(true, nil)
+				mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Once()
+				mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
+					&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
-			// We'd be starting a new call
-			mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Once()
-			mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
-				&model.WebsocketBroadcast{UserId: userID, ChannelId: channelID, ReliableClusterSend: true}).Once()
-			// Call started post creation
-			mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
-			mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
-			mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
-			createPost(t, store, postID, userID, channelID)
+				mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+					Id: channelID,
+				}, nil).Once()
+			}
 
 			mockAPI.On("GetLicense").Return(&model.License{}, nil)
-			mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-				Id: channelID,
-			}, nil).Once()
-			mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Once()
-			mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
-				&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
 			mockRTCMetrics.On("IncRTCSessions", "default").Once()
 
@@ -869,9 +879,6 @@ func TestHandleJoin(t *testing.T) {
 				&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}).Once()
 
 			mockMetrics.On("IncWebSocketConn").Once()
-
-			// Call unlock
-			mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
 
 			err := p.handleJoin(userID, connID, authSessionID, callsJoinData{
 				CallsClientJoinData: CallsClientJoinData{
@@ -917,10 +924,6 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Times(10)
 
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
-			mock.Anything).Times(10)
-
 		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
 
 		// Call unlock
@@ -959,6 +962,130 @@ func TestHandleJoin(t *testing.T) {
 		require.Empty(t, p.removeSessionsBatchers)
 		require.Empty(t, p.addSessionsBatchers)
 		p.mut.RUnlock()
+	})
+
+	t.Run("admin warning", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer mockRTCMetrics.AssertExpectations(t)
+
+		channelID := model.NewId()
+		userID := model.NewId()
+		connID := model.NewId()
+		postID := model.NewId()
+		authSessionID := ""
+
+		os.Setenv("MM_CALLS_CONCURRENT_SESSIONS_THRESHOLD", "1")
+		defer os.Unsetenv("MM_CALLS_CONCURRENT_SESSIONS_THRESHOLD")
+
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id: channelID,
+		}, nil).Twice()
+
+		mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
+			MemberCount: 1,
+		}, nil).Once()
+
+		// Call lock
+		mockAPI.On("KVSetWithOptions", "mutex_call_"+channelID, []byte{0x1}, mock.Anything).Return(true, nil)
+
+		// We'd be starting a new call
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
+			&model.WebsocketBroadcast{UserId: userID, ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		// Call started post creation
+		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(3)
+		mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
+		createPost(t, store, postID, userID, channelID)
+
+		mockAPI.On("GetLicense").Return(&model.License{}, nil)
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockAPI.On("KVSetWithOptions", "concurrent_sessions_warning", mock.Anything, mock.Anything).Return(true, nil).Once()
+
+		mockAPI.On("GetUsers", mock.AnythingOfType("*model.UserGetOptions")).Return([]*model.User{
+			{
+				Id:     "adminID",
+				Locale: "it",
+			},
+		}, nil).Once()
+
+		mockAPI.On("GetDirectChannel", "adminID", "").Return(&model.Channel{
+			Id: "channelID",
+		}, nil).Once()
+
+		mockAPI.On("IsEnterpriseReady").Return(false).Once()
+
+		mockAPI.On("CreatePost", &model.Post{
+			UserId:    "",
+			ChannelId: "channelID",
+			Message:   ":warning: app.admin.concurrent_sessions_warning.intro\r\n\r\napp.admin.concurrent_sessions_warning.team",
+		}).Return(&model.Post{Id: "postID"}, nil).Once()
+
+		mockRTCMetrics.On("IncRTCSessions", "default").Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
+			&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}).Once()
+
+		// DEPRECATED
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserConnected, map[string]any{"userID": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, map[string]any{"session_id": connID, "user_id": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallState).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallState, mock.Anything,
+			&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketConn").Once()
+
+		// Call unlock
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
+
+		mockAPI.On("LogWarn", "The number of active call sessions is high. Consider deploying a dedicated RTCD service.", mock.Anything, mock.Anything)
+
+		err := p.handleJoin(userID, connID, authSessionID, callsJoinData{
+			CallsClientJoinData: CallsClientJoinData{
+				ChannelID: channelID,
+			},
+		})
+		require.NoError(t, err)
+
+		mockMetrics.On("DecWebSocketConn").Once()
+		mockRTCMetrics.On("DecRTCSessions", "default").Once()
+		mockRTCMetrics.On("IncRTCConnState", "closed").Once()
+
+		// DEPRECATED
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserDisconnected, map[string]any{"userID": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		// Call unlock
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+
+		// Trigger leave call
+		p.mut.RLock()
+		close(p.sessions[connID].leaveCh)
+		p.mut.RUnlock()
+
+		// We need to give it some time as leaving happens in a goroutine.
+		time.Sleep(2 * time.Second)
 	})
 }
 

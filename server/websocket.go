@@ -84,6 +84,8 @@ type CallsClientJoinData struct {
 	Title     string
 	ThreadID  string
 
+	AV1Support bool
+
 	// JobID is the id of the job tight to the bot connection to
 	// a call (e.g. recording, transcription). It's a parameter reserved to the
 	// Calls bot only.
@@ -766,11 +768,12 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		if p.rtcdManager != nil {
 			msg := rtcd.ClientMessage{
 				Type: rtcd.ClientMessageJoin,
-				Data: map[string]string{
-					"callID":    us.callID,
-					"userID":    userID,
-					"sessionID": connID,
-					"channelID": channelID,
+				Data: map[string]any{
+					"callID":     us.callID,
+					"userID":     userID,
+					"sessionID":  connID,
+					"channelID":  channelID,
+					"av1Support": joinData.AV1Support,
 				},
 			}
 			if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
@@ -783,14 +786,24 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 				return state
 			}
 		} else {
+			if ok, err := p.shouldSendConcurrentSessionsWarning(getConcurrentSessionsThreshold(),
+				getConcurrentSessionsWarningBackoffTime()); err != nil {
+				p.LogError("shouldSendConcurrentSessionsWarning failed", "err", err.Error())
+			} else if ok {
+				if err := p.sendConcurrentSessionsWarning(); err != nil {
+					p.LogError("sendConcurrentSessionsWarning failed", "err", err.Error())
+				}
+			}
+
 			if handlerID == p.nodeID {
 				cfg := rtc.SessionConfig{
 					GroupID:   "default",
 					CallID:    us.callID,
 					UserID:    userID,
 					SessionID: connID,
-					Props: map[string]any{
-						"channelID": us.channelID,
+					Props: rtc.SessionProps{
+						"channelID":  channelID,
+						"av1Support": joinData.AV1Support,
 					},
 				}
 				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID, "callID", us.callID)
@@ -816,6 +829,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 					ChannelID: channelID,
 					CallID:    us.callID,
 					SenderID:  p.nodeID,
+					SessionProps: rtc.SessionProps{
+						"channelID":  channelID,
+						"av1Support": joinData.AV1Support,
+					},
 				}, clusterMessageTypeConnect, handlerID); err != nil {
 					p.LogError("failed to send connect message", "err", err.Error())
 					go func() {
@@ -965,6 +982,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
 	addSessionToCall(state)
+
 	p.unlockCall(channelID)
 
 	return nil
@@ -1143,15 +1161,18 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		// it will be an empty string.
 		jobID, _ := req.Data["jobID"].(string)
 
+		av1Support, _ := req.Data["av1Support"].(bool)
+
 		remoteAddr, _ := req.Data[model.WebSocketRemoteAddr].(string)
 		xff, _ := req.Data[model.WebSocketXForwardedFor].(string)
 
 		joinData := callsJoinData{
 			CallsClientJoinData{
-				channelID,
-				title,
-				threadID,
-				jobID,
+				ChannelID:  channelID,
+				Title:      title,
+				ThreadID:   threadID,
+				AV1Support: av1Support,
+				JobID:      jobID,
 			},
 			remoteAddr,
 			xff,
@@ -1251,14 +1272,13 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	case clientMessageTypeCaption:
 		// Sent from the transcriber.
 		p.metrics.IncWebSocketEvent("in", msg.Type)
+		if us.userID != p.getBotID() {
+			p.LogWarn("unexpected caption message not coming from bot")
+			return
+		}
 		sessionID, ok := req.Data["session_id"].(string)
 		if !ok {
 			p.LogError("invalid or missing session_id in caption ws message")
-			return
-		}
-		userID, ok := req.Data["user_id"].(string)
-		if !ok {
-			p.LogError("invalid or missing user_id in caption ws message")
 			return
 		}
 		text, ok := req.Data["text"].(string)
@@ -1271,7 +1291,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("invalid or missing new_audio_len_ms in caption ws message")
 			return
 		}
-		if err := p.handleCaptionMessage(us.callID, us.channelID, sessionID, userID, text, newAudioLenMs); err != nil {
+		if err := p.handleCaptionMessage(us.callID, us.channelID, sessionID, text, newAudioLenMs); err != nil {
 			p.LogError("handleCaptionMessage failed", "err", err.Error(), "userID", userID, "connID", connID)
 			return
 		}
@@ -1381,16 +1401,21 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 	return nil
 }
 
-func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, captionFromUserID, text string, newAudioLenMs float64) error {
+func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, text string, newAudioLenMs float64) error {
 	sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})
 	if err != nil {
 		return fmt.Errorf("failed to get call sessions: %w", err)
 	}
 
-	p.publishWebSocketEvent(clientMessageTypeCaption, map[string]interface{}{
+	captionSession, ok := sessions[captionFromSessionID]
+	if !ok {
+		return fmt.Errorf("user session for caption missing from call")
+	}
+
+	p.publishWebSocketEvent(wsEventCaption, map[string]interface{}{
 		"channel_id": channelID,
-		"user_id":    captionFromUserID,
-		"session_id": captionFromSessionID,
+		"user_id":    captionSession.UserID,
+		"session_id": captionSession.ID,
 		"text":       text,
 	}, &WebSocketBroadcast{
 		ChannelID:           channelID,

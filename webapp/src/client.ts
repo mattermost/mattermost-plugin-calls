@@ -1,12 +1,13 @@
 /* eslint-disable max-lines */
 // eslint-disable-next-line simple-import-sort/imports
 import {parseRTCStats, RTCMonitor, RTCPeer} from '@mattermost/calls-common';
-import {EmojiData} from '@mattermost/calls-common/lib/types';
+import type {EmojiData, CallsClientJoinData} from '@mattermost/calls-common/lib/types';
+
 import {EventEmitter} from 'events';
 
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate';
-import {AudioDevices, CallsClientConfig, CallsClientJoinData, CallsClientStats, TrackInfo} from 'src/types/types';
+import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo} from 'src/types/types';
 
 import {logDebug, logErr, logInfo, logWarn} from './log';
 import {getScreenStream} from './utils';
@@ -44,6 +45,7 @@ export default class CallsClient extends EventEmitter {
     private connected = false;
     public initTime = Date.now();
     private rtcMonitor: RTCMonitor | null = null;
+    private av1Codec: RTCRtpCodecCapability | null = null;
 
     constructor(config: CallsClientConfig) {
         super();
@@ -215,6 +217,16 @@ export default class CallsClient extends EventEmitter {
 
     public async init(joinData: CallsClientJoinData) {
         this.channelID = joinData.channelID;
+
+        if (this.config.enableAV1 && !this.config.simulcast) {
+            this.av1Codec = await RTCPeer.getVideoCodec('video/AV1');
+            if (this.av1Codec) {
+                logDebug('client has AV1 support');
+                joinData.av1Support = true;
+            }
+        } else if (this.config.enableAV1 && this.config.simulcast) {
+            logWarn('both simulcast and av1 support are enabled');
+        }
 
         if (!window.isSecureContext) {
             throw insecureContextErr;
@@ -593,6 +605,7 @@ export default class CallsClient extends EventEmitter {
         this.localScreenTrack = screenTrack;
 
         const screenAudioTrack = screenStream.getAudioTracks()[0];
+
         if (screenAudioTrack) {
             screenStream = new MediaStream([screenTrack, screenAudioTrack]);
         } else {
@@ -617,7 +630,16 @@ export default class CallsClient extends EventEmitter {
         };
 
         logDebug('adding stream to peer', screenStream.id);
+
+        // Always send a fallback track (VP8 encoded) for receivers that don't yet support AV1.
         this.peer.addStream(screenStream);
+
+        if (this.config.enableAV1 && this.av1Codec) {
+            logDebug('AV1 supported, sending track', this.av1Codec);
+            this.peer.addStream(screenStream, [{
+                codec: this.av1Codec,
+            }]);
+        }
 
         this.ws.send('screen_on', {
             data: JSON.stringify({
