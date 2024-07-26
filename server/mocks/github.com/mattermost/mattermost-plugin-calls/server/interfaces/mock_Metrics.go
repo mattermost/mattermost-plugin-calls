@@ -7,6 +7,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	public "github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	rtc "github.com/mattermost/rtcd/service/rtc"
 
 	sql "database/sql"
@@ -100,6 +102,39 @@ func (_c *MockMetrics_Handler_Call) Return(_a0 http.Handler) *MockMetrics_Handle
 }
 
 func (_c *MockMetrics_Handler_Call) RunAndReturn(run func() http.Handler) *MockMetrics_Handler_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IncClientICECandidatePairs provides a mock function with given fields: p
+func (_m *MockMetrics) IncClientICECandidatePairs(p public.ClientICECandidatePairMetricPayload) {
+	_m.Called(p)
+}
+
+// MockMetrics_IncClientICECandidatePairs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncClientICECandidatePairs'
+type MockMetrics_IncClientICECandidatePairs_Call struct {
+	*mock.Call
+}
+
+// IncClientICECandidatePairs is a helper method to define mock.On call
+//   - p public.ClientICECandidatePairMetricPayload
+func (_e *MockMetrics_Expecter) IncClientICECandidatePairs(p interface{}) *MockMetrics_IncClientICECandidatePairs_Call {
+	return &MockMetrics_IncClientICECandidatePairs_Call{Call: _e.mock.On("IncClientICECandidatePairs", p)}
+}
+
+func (_c *MockMetrics_IncClientICECandidatePairs_Call) Run(run func(p public.ClientICECandidatePairMetricPayload)) *MockMetrics_IncClientICECandidatePairs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(public.ClientICECandidatePairMetricPayload))
+	})
+	return _c
+}
+
+func (_c *MockMetrics_IncClientICECandidatePairs_Call) Return() *MockMetrics_IncClientICECandidatePairs_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockMetrics_IncClientICECandidatePairs_Call) RunAndReturn(run func(public.ClientICECandidatePairMetricPayload)) *MockMetrics_IncClientICECandidatePairs_Call {
 	_c.Call.Return(run)
 	return _c
 }

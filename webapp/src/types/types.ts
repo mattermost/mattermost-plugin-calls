@@ -20,7 +20,7 @@ export const CallsConfigDefault: CallsConfig = {
     EnableLiveCaptions: false,
     HostControlsAllowed: false,
     EnableAV1: false,
-    TranscribeAPI: TranscribeAPI.WhisperCPP, // Admin only
+    TranscribeAPI: TranscribeAPI.WhisperCPP,
 };
 
 export type ChannelState = {

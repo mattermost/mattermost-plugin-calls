@@ -157,6 +157,64 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
+    private collectICEStats() {
+        const start = Date.now();
+        const seenMap: {[key: string]: string} = {};
+
+        const gatherStats = async () => {
+            if (!this.ws || !this.peer) {
+                return;
+            }
+
+            try {
+                const stats = parseRTCStats(await this.peer.getStats()).iceStats;
+                for (const state of Object.keys(stats)) {
+                    for (const pair of stats[state]) {
+                        const seenState = seenMap[pair.id];
+                        seenMap[pair.id] = pair.state;
+
+                        if (seenState !== pair.state) {
+                            logDebug('ice candidate pair stats', JSON.stringify(pair));
+                        }
+
+                        if (seenState === 'succeeded' || state !== 'succeeded') {
+                            continue;
+                        }
+
+                        if (!pair.local || !pair.remote) {
+                            continue;
+                        }
+
+                        this.ws.send('metric', {
+                            metric_name: 'client_ice_candidate_pair',
+                            data: JSON.stringify({
+                                state: pair.state,
+                                local: {
+                                    type: pair.local.candidateType,
+                                    protocol: pair.local.protocol,
+                                },
+                                remote: {
+                                    type: pair.remote.candidateType,
+                                    protocol: pair.remote.protocol,
+                                },
+                            }),
+                        });
+                    }
+                }
+            } catch (err) {
+                logErr('failed to parse ICE stats', err);
+            }
+
+            // Repeat the check for at most 30 seconds.
+            if (Date.now() < start + 30000) {
+                // We check every two seconds.
+                setTimeout(gatherStats, 2000);
+            }
+        };
+
+        gatherStats();
+    }
+
     public async init(joinData: CallsClientJoinData) {
         this.channelID = joinData.channelID;
 
@@ -240,6 +298,8 @@ export default class CallsClient extends EventEmitter {
 
             this.peer = peer;
 
+            this.collectICEStats();
+
             this.rtcMonitor = new RTCMonitor({
                 peer,
                 logger: {
@@ -300,6 +360,7 @@ export default class CallsClient extends EventEmitter {
 
             peer.on('connect', () => {
                 logDebug('rtc connected');
+
                 this.emit('connect');
                 this.rtcMonitor?.start();
                 this.connected = true;
@@ -307,6 +368,7 @@ export default class CallsClient extends EventEmitter {
 
             peer.on('close', () => {
                 logDebug('rtc closed');
+
                 if (!this.closed) {
                     this.disconnect(rtcPeerCloseErr);
                 }
