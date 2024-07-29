@@ -25,7 +25,6 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media/oggreader"
 
 	"github.com/aws/aws-sdk-go/service/polly"
-	"gopkg.in/hraban/opus.v2"
 )
 
 var (
@@ -93,6 +92,9 @@ type User struct {
 	speechTextCh   chan string
 	doneSpeakingCh chan struct{}
 
+	// Used to inject the CGO dependency (speech) without requiring it for the base case (i.e. ./cmd/lt binary).
+	newOpusEncoder func() (OpusEncoder, error)
+
 	log *slog.Logger
 }
 
@@ -101,6 +103,16 @@ type Option func(u *User)
 func WithLogger(log *slog.Logger) Option {
 	return func(u *User) {
 		u.log = log
+	}
+}
+
+type OpusEncoder interface {
+	Encode(samples []int16, data []byte) (int, error)
+}
+
+func WithOpusEncoderFactory(f func() (OpusEncoder, error)) Option {
+	return func(u *User) {
+		u.newOpusEncoder = f
 	}
 }
 
@@ -329,7 +341,7 @@ func (u *User) transmitSpeech() {
 		os.Exit(1)
 	}
 
-	enc, err := opus.NewEncoder(24000, 1, opus.AppVoIP)
+	enc, err := u.newOpusEncoder()
 	if err != nil {
 		u.log.Error("failed to create opus encoder", slog.String("err", err.Error()))
 	}
