@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/testutils"
 
@@ -84,5 +85,21 @@ func TestSetupConn(t *testing.T) {
 				require.Equal(t, 45, db.Stats().MaxOpenConnections)
 			})
 		})
+	}
+}
+
+func TestGenLast12MonthsMap(t *testing.T) {
+	daysInMonth := func(m time.Month, year int) int {
+		return time.Date(year, m+1, 0, 0, 0, 0, 0, time.UTC).Day()
+	}
+
+	for year := 2023; year < 4545; year++ {
+		for month := time.January; month < time.December; month++ {
+			for i := 0; i < daysInMonth(month, year); i++ {
+				d := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
+				m := genLast12MonthsMap(d)
+				require.Len(t, m, 12)
+			}
+		}
 	}
 }
