@@ -228,11 +228,9 @@ func (s *jobService) StopJob(channelID, jobID, botUserID, botConnID string) erro
 		return fmt.Errorf("botUserID should not be empty")
 	}
 
-	// A job can be stopped before the bot is able to join. In such case there's
-	// no point in sending an event. The bot isn't allowed to join back.
+	// A job can be stopped before the bot is able to join.
 	if botConnID == "" {
 		s.ctx.LogDebug("stopping job with empty connID", "channelID", channelID)
-		return nil
 	}
 
 	s.ctx.publishWebSocketEvent(wsEventJobStop, map[string]interface{}{
