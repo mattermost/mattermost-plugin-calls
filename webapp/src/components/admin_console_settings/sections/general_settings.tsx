@@ -20,22 +20,6 @@ export default function GeneralSettingsSection(props: {settingsList: React.React
                         </div>
                     </div>
                     <div className='section-body'>
-                        <div className='banner'>
-                            <FormattedMessage
-                                defaultMessage={'Calls plugin enables voice calls with screensharing in channels. See <docLink>documentation</docLink> to learn more.'}
-                                values={{
-                                    docLink: (text: string) => (
-                                        <a
-                                            href='https://docs.mattermost.com/channels/make-calls.html'
-                                            target='_blank'
-                                            rel='noreferrer'
-                                        >
-                                            {text}
-                                        </a>
-                                    ),
-                                }}
-                            />
-                        </div>
                         {props.settingsList}
                     </div>
                 </div>
