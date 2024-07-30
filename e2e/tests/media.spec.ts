@@ -1,5 +1,6 @@
 import {expect, test} from '@playwright/test';
 
+import {apiSetEnableAV1} from '../config';
 import PlaywrightDevPage from '../page';
 import {getUserStoragesForTest, startCall} from '../utils';
 
@@ -122,6 +123,150 @@ test.describe('screen sharing', () => {
 
         await devPage.leaveCall();
         await userPage.leaveCall();
+    });
+
+    test('av1', async ({page}) => {
+        // Enabling AV1
+        await apiSetEnableAV1(true);
+
+        const receiverPage = await startCall(userStorages[1]);
+
+        const senderPage = new PlaywrightDevPage(page);
+        await senderPage.joinCall();
+
+        await page.locator('#calls-widget-toggle-menu-button').click();
+        await page.locator('#calls-widget-menu-screenshare').click();
+
+        await expect(page.locator('#screen-player')).toBeVisible();
+        await expect(receiverPage.page.locator('#screen-player')).toBeVisible();
+
+        let screenStreamID = await (await receiverPage.page.waitForFunction(() => {
+            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        })).evaluate(() => {
+            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        });
+        expect(screenStreamID).toContain('screen_');
+
+        // Give it a couple of seconds for encoders/decoders stats to be available.
+        await senderPage.wait(2000);
+
+        type rtcCodecStats = {
+            type: string,
+            mimeType: string,
+        };
+
+        type rtcCodecs = {
+            vp8?: rtcCodecStats,
+            av1?: rtcCodecStats,
+        };
+
+        let rxCodecs = await receiverPage.page.evaluate(async () => {
+            const stats = await window.callsClient.peer.pc.getStats();
+            const codecs: rtcCodecs = {};
+            stats.forEach((report: rtcCodecStats) => {
+                if (report.type === 'codec') {
+                    if (report.mimeType === 'video/VP8') {
+                        codecs.vp8 = report;
+                    } else if (report.mimeType === 'video/AV1') {
+                        codecs.av1 = report;
+                    }
+                }
+            });
+            return codecs;
+        });
+        expect(rxCodecs.av1).toBeDefined();
+
+        let txCodecs = await senderPage.page.evaluate(async () => {
+            const stats = await window.callsClient.peer.pc.getStats();
+            const codecs: rtcCodecs = {};
+            stats.forEach((report: rtcCodecStats) => {
+                if (report.type === 'codec') {
+                    if (report.mimeType === 'video/VP8') {
+                        codecs.vp8 = report;
+                    } else if (report.mimeType === 'video/AV1') {
+                        codecs.av1 = report;
+                    }
+                }
+            });
+            return codecs;
+        });
+        expect(txCodecs.vp8).toBeDefined();
+        expect(txCodecs.av1).toBeDefined();
+
+        await page.getByTestId('calls-widget-stop-screenshare').click();
+
+        await expect(page.locator('#screen-player')).toBeHidden();
+        await expect(receiverPage.page.locator('#screen-player')).toBeHidden();
+
+        await senderPage.leaveCall();
+        await receiverPage.leaveCall();
+
+        // Disabling AV1
+        await apiSetEnableAV1(false);
+
+        // need to refresh for the updated config to be loaded
+        await Promise.all([senderPage.page.reload(), receiverPage.page.reload()]);
+
+        await receiverPage.startCall();
+        await senderPage.joinCall();
+
+        await page.locator('#calls-widget-toggle-menu-button').click();
+        await page.locator('#calls-widget-menu-screenshare').click();
+
+        await expect(page.locator('#screen-player')).toBeVisible();
+        await expect(receiverPage.page.locator('#screen-player')).toBeVisible();
+
+        screenStreamID = await (await receiverPage.page.waitForFunction(() => {
+            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        })).evaluate(() => {
+            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        });
+        expect(screenStreamID).toContain('screen_');
+
+        // Give it a couple of seconds for encoders/decoders stats to be available.
+        await senderPage.wait(2000);
+
+        rxCodecs = await receiverPage.page.evaluate(async () => {
+            const stats = await window.callsClient.peer.pc.getStats();
+            const codecs: rtcCodecs = {};
+            stats.forEach((report: rtcCodecStats) => {
+                if (report.type === 'codec') {
+                    if (report.mimeType === 'video/VP8') {
+                        codecs.vp8 = report;
+                    } else if (report.mimeType === 'video/AV1') {
+                        codecs.av1 = report;
+                    }
+                }
+            });
+            return codecs;
+        });
+        expect(rxCodecs.vp8).toBeDefined();
+        expect(rxCodecs.av1).not.toBeDefined();
+
+        txCodecs = await senderPage.page.evaluate(async () => {
+            const stats = await window.callsClient.peer.pc.getStats();
+            const codecs: rtcCodecs = {};
+            stats.forEach((report: rtcCodecStats) => {
+                if (report.type === 'codec') {
+                    if (report.mimeType === 'video/VP8') {
+                        codecs.vp8 = report;
+                    } else if (report.mimeType === 'video/AV1') {
+                        codecs.av1 = report;
+                    }
+                }
+            });
+            return codecs;
+        });
+        expect(txCodecs.vp8).toBeDefined();
+        expect(txCodecs.av1).not.toBeDefined();
+
+        await page.getByTestId('calls-widget-stop-screenshare').click();
+
+        await expect(page.locator('#screen-player')).toBeHidden();
+        await expect(receiverPage.page.locator('#screen-player')).toBeHidden();
+
+        await senderPage.leaveCall();
+        await receiverPage.leaveCall();
     });
 });
 

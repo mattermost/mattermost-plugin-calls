@@ -662,13 +662,20 @@
         "type": "bool",
         "default": false,
         "help_text": "When set to true, ringing functionality is enabled: participants in DM and GM channels will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart."
+      },
+      {
+        "key": "EnableAV1",
+        "display_name": "Enable AV1 codec for screen sharing (Experimental)",
+        "type": "bool",
+        "default": false,
+        "help_text": "When set to true it enables using the AV1 codec to encode screen sharing tracks. This can result in improved screen sharing quality for clients that support it.\nNote: this setting won't apply when EnableSimulcast is true."
       }
     ]
   },
   "props": {
-    "min_rtcd_version": "v0.12.0",
+    "min_rtcd_version": "v0.17.0",
     "min_offloader_version": "v0.8.0",
-    "calls_recorder_version": "v0.7.2",
-    "calls_transcriber_version": "v0.3.0"
+    "calls_recorder_version": "v0.7.3",
+    "calls_transcriber_version": "v0.3.1"
   }
 }

@@ -80,15 +80,13 @@ type Plugin struct {
 	removeSessionsBatchers map[string]*batching.Batcher
 }
 
-func (p *Plugin) startSession(us *session, senderID string) {
+func (p *Plugin) startSession(us *session, senderID string, props rtc.SessionProps) {
 	cfg := rtc.SessionConfig{
 		GroupID:   "default",
 		CallID:    us.callID,
 		UserID:    us.userID,
 		SessionID: us.connID,
-		Props: map[string]any{
-			"channelID": us.channelID,
-		},
+		Props:     props,
 	}
 	if err := p.rtcServer.InitSession(cfg, func() error {
 		p.LogDebug("rtc session close cb", "sessionID", us.connID)
@@ -162,7 +160,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 		us = newUserSession(msg.UserID, msg.ChannelID, msg.ConnID, msg.CallID, true)
 		p.sessions[msg.ConnID] = us
-		go p.startSession(us, msg.SenderID)
+		go p.startSession(us, msg.SenderID, msg.SessionProps)
 		return nil
 	case clusterMessageTypeReconnect:
 		p.LogDebug("reconnect event", "UserID", msg.UserID, "ConnID", msg.ConnID)

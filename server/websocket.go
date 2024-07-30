@@ -84,6 +84,8 @@ type CallsClientJoinData struct {
 	Title     string
 	ThreadID  string
 
+	AV1Support bool
+
 	// JobID is the id of the job tight to the bot connection to
 	// a call (e.g. recording, transcription). It's a parameter reserved to the
 	// Calls bot only.
@@ -766,11 +768,12 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		if p.rtcdManager != nil {
 			msg := rtcd.ClientMessage{
 				Type: rtcd.ClientMessageJoin,
-				Data: map[string]string{
-					"callID":    us.callID,
-					"userID":    userID,
-					"sessionID": connID,
-					"channelID": channelID,
+				Data: map[string]any{
+					"callID":     us.callID,
+					"userID":     userID,
+					"sessionID":  connID,
+					"channelID":  channelID,
+					"av1Support": joinData.AV1Support,
 				},
 			}
 			if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
@@ -783,14 +786,24 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 				return state
 			}
 		} else {
+			if ok, err := p.shouldSendConcurrentSessionsWarning(getConcurrentSessionsThreshold(),
+				getConcurrentSessionsWarningBackoffTime()); err != nil {
+				p.LogError("shouldSendConcurrentSessionsWarning failed", "err", err.Error())
+			} else if ok {
+				if err := p.sendConcurrentSessionsWarning(); err != nil {
+					p.LogError("sendConcurrentSessionsWarning failed", "err", err.Error())
+				}
+			}
+
 			if handlerID == p.nodeID {
 				cfg := rtc.SessionConfig{
 					GroupID:   "default",
 					CallID:    us.callID,
 					UserID:    userID,
 					SessionID: connID,
-					Props: map[string]any{
-						"channelID": us.channelID,
+					Props: rtc.SessionProps{
+						"channelID":  channelID,
+						"av1Support": joinData.AV1Support,
 					},
 				}
 				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID, "callID", us.callID)
@@ -816,6 +829,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 					ChannelID: channelID,
 					CallID:    us.callID,
 					SenderID:  p.nodeID,
+					SessionProps: rtc.SessionProps{
+						"channelID":  channelID,
+						"av1Support": joinData.AV1Support,
+					},
 				}, clusterMessageTypeConnect, handlerID); err != nil {
 					p.LogError("failed to send connect message", "err", err.Error())
 					go func() {
@@ -965,6 +982,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
 	addSessionToCall(state)
+
 	p.unlockCall(channelID)
 
 	return nil
@@ -1143,15 +1161,18 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		// it will be an empty string.
 		jobID, _ := req.Data["jobID"].(string)
 
+		av1Support, _ := req.Data["av1Support"].(bool)
+
 		remoteAddr, _ := req.Data[model.WebSocketRemoteAddr].(string)
 		xff, _ := req.Data[model.WebSocketXForwardedFor].(string)
 
 		joinData := callsJoinData{
 			CallsClientJoinData{
-				channelID,
-				title,
-				threadID,
-				jobID,
+				ChannelID:  channelID,
+				Title:      title,
+				ThreadID:   threadID,
+				AV1Support: av1Support,
+				JobID:      jobID,
 			},
 			remoteAddr,
 			xff,
@@ -1283,7 +1304,10 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("invalid or missing metric_name in metric ws message")
 			return
 		}
-		p.handleMetricMessage(public.MetricName(metricName))
+		if err := p.handleMetricMessage(public.MetricName(metricName), userID, req.Data["data"]); err != nil {
+			p.LogError("handleMetricMessage failed", "err", err.Error())
+			return
+		}
 		return
 	}
 
@@ -1404,13 +1428,41 @@ func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, t
 	return nil
 }
 
-func (p *Plugin) handleMetricMessage(metricName public.MetricName) {
-	switch metricName {
-	case public.MetricLiveCaptionsWindowDropped:
-		p.metrics.IncLiveCaptionsWindowDropped()
-	case public.MetricLiveCaptionsTranscriberBufFull:
-		p.metrics.IncLiveCaptionsTranscriberBufFull()
-	case public.MetricLiveCaptionsPktPayloadChBufFull:
-		p.metrics.IncLiveCaptionsPktPayloadChBufFull()
+func (p *Plugin) handleMetricMessage(metricName public.MetricName, userID string, payload any) error {
+	// Bot only metrics
+	if userID == p.getBotID() {
+		switch metricName {
+		case public.MetricLiveCaptionsWindowDropped:
+			p.metrics.IncLiveCaptionsWindowDropped()
+		case public.MetricLiveCaptionsTranscriberBufFull:
+			p.metrics.IncLiveCaptionsTranscriberBufFull()
+		case public.MetricLiveCaptionsPktPayloadChBufFull:
+			p.metrics.IncLiveCaptionsPktPayloadChBufFull()
+		}
+
+		return nil
 	}
+
+	// User client metrics
+	switch metricName {
+	case public.MetricClientICECandidatePair:
+		data, ok := payload.(string)
+		if !ok {
+			return fmt.Errorf("invalid payload found in metric message")
+		}
+
+		var payload public.ClientICECandidatePairMetricPayload
+
+		if err := json.Unmarshal([]byte(data), &payload); err != nil {
+			return fmt.Errorf("failed to unmarshal payload: %w", err)
+		}
+
+		if err := payload.IsValid(); err != nil {
+			return fmt.Errorf("failed to validate payload: %w", err)
+		}
+
+		p.metrics.IncClientICECandidatePairs(payload)
+	}
+
+	return nil
 }
