@@ -187,10 +187,12 @@ func (s *Store) GetCallsByChannelType() (map[string]int64, error) {
 }
 
 func (s *Store) GetCallsByMonth() (map[string]int64, error) {
+	now := time.Now()
+
 	s.metrics.IncStoreOp("GetCallsByMonth")
 	defer func(start time.Time) {
 		s.metrics.ObserveStoreMethodsTime("GetCallsByMonth", time.Since(start).Seconds())
-	}(time.Now())
+	}(now)
 
 	qb := getQueryBuilder(s.driverName).
 		Select("to_char(to_timestamp(startat / 1000), 'YYYY-MM') AS Month, COUNT(*) AS Count")
@@ -201,7 +203,7 @@ func (s *Store) GetCallsByMonth() (map[string]int64, error) {
 	qb = qb.From("calls").Where(sq.And{
 		sq.Expr("EndAt > calls.StartAt"),
 		sq.Eq{"DeleteAt": 0},
-		sq.GtOrEq{"StartAt": time.Now().AddDate(0, -12, 0).UnixMilli()},
+		sq.GtOrEq{"StartAt": now.AddDate(0, -12, 0).UnixMilli()},
 	}).GroupBy("Month").OrderBy("Month").Limit(12)
 
 	q, args, err := qb.ToSql()
@@ -219,11 +221,7 @@ func (s *Store) GetCallsByMonth() (map[string]int64, error) {
 		return nil, fmt.Errorf("failed to run query: %w", err)
 	}
 
-	m := make(map[string]int64, 12)
-	for i := 0; i < 12; i++ {
-		m[time.Now().AddDate(0, -i, 0).Format("2006-01")] = 0
-	}
-
+	m := genLast12MonthsMap(now)
 	for _, row := range rows {
 		m[row.Month] = row.Count
 	}
@@ -232,10 +230,12 @@ func (s *Store) GetCallsByMonth() (map[string]int64, error) {
 }
 
 func (s *Store) GetCallsByDay() (map[string]int64, error) {
+	now := time.Now()
+
 	s.metrics.IncStoreOp("GetCallsByDay")
 	defer func(start time.Time) {
 		s.metrics.ObserveStoreMethodsTime("GetCallsByDay", time.Since(start).Seconds())
-	}(time.Now())
+	}(now)
 
 	qb := getQueryBuilder(s.driverName).
 		Select("to_char(to_timestamp(startat / 1000), 'YYYY-MM-DD') AS Day, COUNT(*) AS Count")
@@ -246,7 +246,7 @@ func (s *Store) GetCallsByDay() (map[string]int64, error) {
 	qb = qb.From("calls").Where(sq.And{
 		sq.Expr("EndAt > calls.StartAt"),
 		sq.Eq{"DeleteAt": 0},
-		sq.GtOrEq{"StartAt": time.Now().AddDate(0, 0, -30).UnixMilli()},
+		sq.GtOrEq{"StartAt": now.AddDate(0, 0, -30).UnixMilli()},
 	}).GroupBy("Day").OrderBy("Day").Limit(30)
 
 	q, args, err := qb.ToSql()
@@ -266,7 +266,7 @@ func (s *Store) GetCallsByDay() (map[string]int64, error) {
 
 	m := make(map[string]int64, 30)
 	for i := 0; i < 30; i++ {
-		m[time.Now().AddDate(0, 0, -i).Format("2006-01-02")] = 0
+		m[now.AddDate(0, 0, -i).Format("2006-01-02")] = 0
 	}
 
 	for _, row := range rows {
