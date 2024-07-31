@@ -89,7 +89,7 @@ const AudioDevicesSelection = forwardRef<AudioDevicesSelectionHandle, AudioDevic
 });
 
 const StyledReactSelect = styled(ReactSelect)`
-  width: 320px;
+  width: 260px;
 `;
 
 const SelectionWrapper = styled.div`
@@ -99,8 +99,9 @@ const SelectionWrapper = styled.div`
 `;
 
 const SelectLabel = styled.label`
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
   margin: 0;
 `;
 
@@ -109,8 +110,8 @@ export default function AudioDevicesSettingsSection() {
     const [active, setActive] = useState(false);
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
-    const title = formatMessage({defaultMessage: 'Audio devices settings'});
-    const subtitle = formatMessage({defaultMessage: 'Setup audio input and output devices used in calls'});
+    const title = formatMessage({defaultMessage: 'Audio devices'});
+    const description = formatMessage({defaultMessage: 'Set up audio devices to be used for Mattermost calls'});
     const editLabel = formatMessage({defaultMessage: 'Edit'});
 
     const audioInputsRef = useRef<AudioDevicesSelectionHandle>(null);
@@ -181,84 +182,65 @@ export default function AudioDevicesSettingsSection() {
                     </button>
                 </div>
                 <div className='section-min__describe'>
-                    <span>{subtitle}</span>
+                    <span>{description}</span>
                 </div>
             </div>
         );
     }
 
     return (
-        <Section>
-            <SectionHeader>
-                <SectionTitle>{title}</SectionTitle>
-                <SectionSubtitle>{subtitle}</SectionSubtitle>
-            </SectionHeader>
-            <SectionBody>
-                <AudioDevicesSelection
-                    deviceType='inputs'
-                    devices={devices.filter((device) => device.kind === 'audioinput')}
-                    ref={audioInputsRef}
-                />
-                <AudioDevicesSelection
-                    deviceType='outputs'
-                    devices={devices.filter((device) => device.kind === 'audiooutput')}
-                    ref={audioOutputsRef}
-                />
-            </SectionBody>
-            <SectionFooter>
-                <button
-                    type='submit'
-                    className='btn btn-primary'
-                    onClick={handleSave}
+        <section className='section-max form-horizontal'>
+            <h4 className='col-sm-12 section-title'>
+                <span>{title}</span>
+            </h4>
+            <div className='sectionContent col-sm-10 col-sm-offset-2'>
+                <div
+                    tabIndex={-1}
+                    className='setting-list'
                 >
-                    {formatMessage({defaultMessage: 'Save'})}
-                </button>
-                <button
-                    className='btn btn-tertiary'
-                    onClick={() => setActive(false)}
-                >
-                    {formatMessage({defaultMessage: 'Cancel'})}
-                </button>
-            </SectionFooter>
-        </Section>
+                    <div className='setting-list-item'>
+                        <Fieldset>
+                            <AudioDevicesSelection
+                                deviceType='inputs'
+                                devices={devices.filter((device) => device.kind === 'audioinput')}
+                                ref={audioInputsRef}
+                            />
+                            <AudioDevicesSelection
+                                deviceType='outputs'
+                                devices={devices.filter((device) => device.kind === 'audiooutput')}
+                                ref={audioOutputsRef}
+                            />
+                            <Description>{description}</Description>
+                        </Fieldset>
+                    </div>
+                    <div className='setting-list-item'>
+                        <hr/>
+                        <button
+                            type='submit'
+                            className='btn btn-primary'
+                            onClick={handleSave}
+                        >
+                            {formatMessage({defaultMessage: 'Save'})}
+                        </button>
+                        <button
+                            className='btn btn-tertiary'
+                            onClick={() => setActive(false)}
+                        >
+                            {formatMessage({defaultMessage: 'Cancel'})}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
     );
 }
 
-const Section = styled.div`
+const Description = styled.span`
+  margin-top: 8px;
+`;
+
+const Fieldset = styled.fieldset`
     display: flex;
     flex-direction: column;
-    padding: 14px;
-    gap: 24px;
-    align-items: flex-start;
-    background: rgba(var(--center-channel-color-rgb), 0.04);
-`;
-
-const SectionHeader = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-`;
-
-const SectionBody = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-self: stretch;
-    gap: 24px;
-`;
-
-const SectionTitle = styled.span`
-    font-weight: 600;
-    font-size: 16px;
-    line-height: 24px;
-    color: var(--center-channel-color);
-`;
-
-const SectionSubtitle = styled.span`
-    font-size: 12px;
-    line-height: 16px;
-    color: var(--center-channel-color-64);
-`;
-
-const SectionFooter = styled.div`
-    display: flex;
+    gap: 16px;
 `;
