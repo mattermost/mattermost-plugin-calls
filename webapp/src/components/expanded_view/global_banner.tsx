@@ -29,6 +29,8 @@ export type Props = {
 export default function GlobalBanner(props: Props) {
     const {formatMessage} = useIntl();
 
+    const dismissLabel = formatMessage({defaultMessage: 'Dismiss'});
+
     return (
         <Banner
             $color={colorMap[props.type]}
@@ -44,7 +46,7 @@ export default function GlobalBanner(props: Props) {
                     key={'dismiss-banner'}
                     overlay={
                         <Tooltip id='dismiss-banner'>
-                            {formatMessage({defaultMessage: 'Dismiss'})}
+                            {dismissLabel}
                         </Tooltip>
                     }
                 >
@@ -52,6 +54,7 @@ export default function GlobalBanner(props: Props) {
                         $bgHover={hoverMap[props.type]}
                         className='style--none'
                         onClick={props.onClose}
+                        aria-label={dismissLabel}
                     >
                         <CompassIcon icon='close'/>
                     </CloseButton>

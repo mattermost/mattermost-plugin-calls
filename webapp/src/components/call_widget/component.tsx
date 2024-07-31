@@ -1049,6 +1049,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <WidgetButton
                 id='share-screen'
+                ariaLabel={shareScreenTooltipText}
                 onToggle={() => this.onShareScreenToggle()}
                 tooltipText={shareScreenTooltipText}
                 tooltipSubtext={shareScreenTooltipSubtext}
@@ -1128,6 +1129,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 <li
                     className='MenuItem'
                     key={`audio-${deviceType}-device-${device.deviceId}`}
+                    role='menuitem'
+                    aria-label={makeDeviceLabel(device)}
                 >
                     <button
                         className='style--none'
@@ -1175,6 +1178,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     style={this.style.audioDevicesMenu}
                     // eslint-disable-next-line no-undefined
                     ref={this.props.global ? this.audioDevicesMenuRefCb : undefined}
+                    role='menu'
                 >
                     {deviceList}
                 </ul>
@@ -1229,18 +1233,27 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             color: isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : '',
         };
 
+        let showSubMenu = false;
         if ((deviceType === 'input' && this.state.showAudioInputDevicesMenu) || (deviceType === 'output' && this.state.showAudioOutputDevicesMenu)) {
             buttonStyle.background = 'rgba(var(--center-channel-color-rgb), 0.08)';
+            showSubMenu = devices.length > 0;
         }
+
+        const deviceTypeLabel = deviceType === 'input' ?
+            formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio output'});
 
         return (
             <React.Fragment>
                 {devices.length > 0 && this.renderAudioDevicesList(deviceType, devices)}
                 <li
                     className='MenuItem'
+                    role='menuitem'
+                    aria-label={deviceTypeLabel}
                 >
                     <button
                         id={`calls-widget-audio-${deviceType}-button`}
+                        aria-controls={`calls-widget-audio-${deviceType}s-menu`}
+                        aria-expanded={showSubMenu}
                         className='style--none'
                         style={buttonStyle}
                         onClick={onClickHandler}
@@ -1271,7 +1284,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 className='MenuItem__primary-text'
                                 style={{padding: '0', lineHeight: '18px'}}
                             >
-                                {deviceType === 'input' ? formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio output'})}
+                                {deviceTypeLabel}
                             </span>
 
                             <span
@@ -1363,10 +1376,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        const showChatThreadLabel = formatMessage({defaultMessage: 'Show chat thread'});
+
         return (
             <>
                 <li
                     className='MenuItem'
+                    role='menuitem'
+                    aria-label={showChatThreadLabel}
                 >
                     <button
                         id='calls-widget-menu-chat-button'
@@ -1390,7 +1407,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 style={{width: '16px', height: '16px'}}
                                 fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
                             />
-                            <span>{formatMessage({defaultMessage: 'Show chat thread'})}</span>
+                            <span>{showChatThreadLabel}</span>
                         </div>
 
                     </button>
@@ -1404,10 +1421,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const RecordIcon = this.props.isRecording ? RecordSquareIcon : RecordCircleIcon;
 
+        const recordingActionLabel = this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) :
+            formatMessage({defaultMessage: 'Record call'});
+
         return (
             <React.Fragment>
                 <li
                     className='MenuItem'
+                    role='menuitem'
+                    aria-label={recordingActionLabel}
                 >
                     <button
                         id='calls-widget-menu-record-button'
@@ -1431,7 +1453,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 style={{width: '16px', height: '16px'}}
                                 fill={this.props.isRecording ? 'rgb(var(--dnd-indicator-rgb))' : 'rgba(var(--center-channel-color-rgb), 0.64)'}
                             />
-                            <span>{this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'})}</span>
+                            <span>{recordingActionLabel}</span>
                         </div>
 
                     </button>
@@ -1448,11 +1470,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const noPermissions = this.state.alerts.missingScreenPermissions.active;
 
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
+        const screenSharingActionLabel = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) :
+            formatMessage({defaultMessage: 'Start presenting'});
 
         return (
             <React.Fragment>
                 <li
                     className='MenuItem'
+                    role='menuitem'
+                    aria-label={screenSharingActionLabel}
                 >
                     <button
                         id='calls-widget-menu-screenshare'
@@ -1485,7 +1511,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 unavailable={noPermissions}
                                 margin={'0 8px 0 0'}
                             />
-                            <span>{isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'})}</span>
+                            <span>{screenSharingActionLabel}</span>
                         </div>
 
                         {noPermissions &&
@@ -1509,6 +1535,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     renderMenu = () => {
+        const {formatMessage} = this.props.intl;
+
         if (!this.state.showMenu) {
             return null;
         }
@@ -1524,11 +1552,15 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return (
             <div
                 className='Menu'
+                id='calls-widget-settings-menu'
+                role='menu'
+                aria-label={formatMessage({defaultMessage: 'Settings menu'})}
                 data-testid='calls-widget-menu'
             >
                 <ul
                     className='Menu__content dropdown-menu'
                     style={this.style.settingsMenu}
+                    role='menu'
                 >
                     {this.renderAudioDevices('output')}
                     {this.renderAudioDevices('input')}
@@ -2080,6 +2112,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const isHost = this.props.callHostID === this.props.currentUserID;
         const showLeaveMenuShim = !(this.state.showMenu || this.state.showParticipantsList || this.props.screenSharingSession) && this.state.leaveMenuOpen;
 
+        const openPopOutLabel = formatMessage({defaultMessage: 'Open in new window'});
+        const showParticipantsListLabel = this.state.showParticipantsList ?
+            formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'});
+        const settingsButtonLabel = formatMessage({defaultMessage: 'Settings'});
+        const leaveMenuLabel = formatMessage({defaultMessage: 'Leave call'});
+
         return (
             <div
                 id='calls-widget'
@@ -2145,8 +2183,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                         <WidgetButton
                             id='calls-widget-expand-button'
+                            ariaLabel={openPopOutLabel}
                             onToggle={this.onExpandClick}
-                            tooltipText={formatMessage({defaultMessage: 'Open in new window'})}
+                            tooltipText={openPopOutLabel}
                             tooltipPosition='left'
                             bgColor=''
                             icon={
@@ -2164,9 +2203,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                         <WidgetButton
                             id='calls-widget-participants-button'
+                            ariaLabel={showParticipantsListLabel}
+                            ariaControls='calls-widget-participants-menu'
+                            ariaExpanded={this.state.showParticipantsList}
                             onToggle={this.onParticipantsButtonClick}
                             bgColor={this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
-                            tooltipText={this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'})}
+                            tooltipText={showParticipantsListLabel}
                             shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
                             icon={
                                 <ParticipantsIcon
@@ -2188,6 +2230,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                         <WidgetButton
                             id='voice-mute-unmute'
+                            ariaLabel={muteTooltipText}
                             // eslint-disable-next-line no-undefined
                             onToggle={noInputDevices ? undefined : this.onMuteToggle}
                             // eslint-disable-next-line no-undefined
@@ -2208,6 +2251,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         {!isDMChannel(this.props.channel) &&
                             <WidgetButton
                                 id='raise-hand'
+                                ariaLabel={handTooltipText}
                                 onToggle={() => this.onRaiseHandToggle()}
                                 shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
                                 tooltipText={handTooltipText}
@@ -2226,8 +2270,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                         <WidgetButton
                             id='calls-widget-toggle-menu-button'
+                            ariaLabel={settingsButtonLabel}
+                            ariaControls='calls-widget-settings-menu'
+                            ariaExpanded={this.state.showMenu}
                             onToggle={this.onMenuClick}
-                            tooltipText={formatMessage({defaultMessage: 'Settings'})}
+                            tooltipText={settingsButtonLabel}
                             icon={
                                 <MenuIcon
                                     style={{
@@ -2240,12 +2287,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <DotMenu
                             id='calls-widget-leave-button'
                             icon={<LeaveCallIcon style={{fill: 'white'}}/>}
+                            ariaLabel={leaveMenuLabel}
                             dotMenuButton={LeaveCallButton}
                             placement={'top-start'}
                             strategy={'fixed'}
                             onOpenChange={this.onLeaveMenuOpen}
                             shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
-                            tooltipText={formatMessage({defaultMessage: 'Leave call'})}
+                            tooltipText={leaveMenuLabel}
                         >
                             <LeaveCallMenu
                                 callID={this.props.channel.id}
