@@ -20,8 +20,8 @@ export default function CallLiveCaptionsSection(props: {settingsList: React.Reac
         return null;
     }
 
-    const subtitleMsg = recordingEnabled && transcriptionEnabled ? formatMessage({defaultMessage: 'Allows to show the spoken words as captions during a call. Recordings and transcriptions must be enabled'}) :
-        formatMessage({defaultMessage: 'Allows to show the spoken words as captions during a call. To enable live captions, recordings and transcriptions must be enabled first'});
+    const subtitleMsg = recordingEnabled && transcriptionEnabled ? formatMessage({defaultMessage: 'Displays spoken words as text captions during a call. Recordings and transcriptions must be enabled'}) :
+        formatMessage({defaultMessage: 'Displays spoken words as text captions during a call. To enable live captions, recordings and transcriptions must be enabled first'});
 
     const subtitle = recordingEnabled && transcriptionEnabled ? (
         <div className='section-subtitle'>

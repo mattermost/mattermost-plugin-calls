@@ -36,7 +36,7 @@
             "key": "MaxCallParticipants",
             "display_name": "Max call participants",
             "type": "number",
-            "help_text": "The maximum number of participants that can join a call. If left empty, or set to 0, it means unlimited.",
+            "help_text": "The maximum number of participants that can join a call. If left empty, or set to 0, an unlimited number of participants can join.",
             "default": 0,
             "hosting": "on-prem"
           },
@@ -45,21 +45,21 @@
             "display_name": "Allow screen sharing",
             "type": "bool",
             "default": true,
-            "help_text": "When set to true it allows call participants to share their screen."
+            "help_text": "When set to true, call participants can share their screen."
           },
           {
             "key": "EnableSimulcast",
             "display_name": "Enable simulcast for screen sharing (Experimental)",
             "type": "bool",
             "default": false,
-            "help_text": "When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality."
+            "help_text": "When set to true, simulcast for screen sharing is enabled. This can help to improve screen sharing quality."
           },
           {
             "key": "EnableRinging",
             "display_name": "Enable call ringing (Beta)",
             "type": "bool",
             "default": false,
-            "help_text": "When set to true, ringing functionality is enabled: participants in DM and GM channels will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart."
+            "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart."
           }
         ]
       },
@@ -121,7 +121,7 @@
             "key": "EnableIPv6",
             "display_name": "(Experimental) Enable IPv6 support",
             "type": "bool",
-            "help_text": "When set to true the RTC service will work in dual-stack mode, listening for IPv6 connections and generating candidates in addition to IPv4 ones.",
+            "help_text": "When set to true, the RTC service will work in dual-stack mode, listening for IPv6 connections and generating candidates in addition to IPv4 ones.",
             "default": false,
             "hosting": "on-prem"
           }
@@ -176,7 +176,7 @@
             "display_name": "Server Side TURN",
             "type": "bool",
             "default": false,
-            "help_text": "(Optional) When set to on it will pass and use configured TURN candidates to server initiated connections.",
+            "help_text": "(Optional) When enabled, it will pass and use the configured TURN candidates to server initiated connections.",
             "hosting": "on-prem"
           }
         ]
@@ -434,7 +434,7 @@
         "key": "MaxCallParticipants",
         "display_name": "Max call participants",
         "type": "number",
-        "help_text": "The maximum number of participants that can join a call. If left empty, or set to 0, it means unlimited.",
+        "help_text": "The maximum number of participants that can join a call. If left empty, or set to 0, an unlimited number of participants can join.",
         "default": 0,
         "hosting": "on-prem"
       },
@@ -468,7 +468,7 @@
         "display_name": "Server Side TURN",
         "type": "bool",
         "default": false,
-        "help_text": "(Optional) When set to on it will pass and use configured TURN candidates to server initiated connections.",
+        "help_text": "(Optional) When enabled, it will pass and use the configured TURN candidates to server initiated connections.",
         "hosting": "on-prem"
       },
       {
@@ -476,14 +476,14 @@
         "display_name": "Allow screen sharing",
         "type": "bool",
         "default": true,
-        "help_text": "When set to true it allows call participants to share their screen."
+        "help_text": "When set to true, call participants can share their screen."
       },
       {
         "key": "EnableSimulcast",
         "display_name": "Enable simulcast for screen sharing (Experimental)",
         "type": "bool",
         "default": false,
-        "help_text": "When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality."
+        "help_text": "When set to true, simulcast for screen sharing is enabled. This can help to improve screen sharing quality."
       },
       {
         "key": "EnableRecordings",
@@ -652,7 +652,7 @@
         "key": "EnableIPv6",
         "display_name": "(Experimental) Enable IPv6 support",
         "type": "bool",
-        "help_text": "When set to true the RTC service will work in dual-stack mode, listening for IPv6 connections and generating candidates in addition to IPv4 ones.",
+        "help_text": "When set to true, the RTC service will work in dual-stack mode, listening for IPv6 connections and generating candidates in addition to IPv4 ones.",
         "default": false,
         "hosting": "on-prem"
       },
@@ -661,7 +661,7 @@
         "display_name": "Enable call ringing (Beta)",
         "type": "bool",
         "default": false,
-        "help_text": "When set to true, ringing functionality is enabled: participants in DM and GM channels will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart."
+        "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart."
       },
       {
         "key": "EnableAV1",

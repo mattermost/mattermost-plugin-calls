@@ -52,7 +52,7 @@ export default function EnableSimulcast(props: CustomComponentProps) {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: 'When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.'})}
+                    {formatMessage({defaultMessage: 'When set to true, simulcast for screen sharing is enabled. This can help to improve screen sharing quality.'})}
                 </div>
             </div>
         </div>

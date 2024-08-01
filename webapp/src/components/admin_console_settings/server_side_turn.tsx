@@ -12,7 +12,7 @@ import {CustomComponentProps} from 'src/types/mattermost-webapp';
 export const ServerSideTURN = (props: CustomComponentProps) => {
     const {formatMessage} = useIntl();
     const isRTCDEnabled = useSelector(rtcdEnabled);
-    const helpText = useHelptext(formatMessage({defaultMessage: '(Optional) When set to on it will pass and use configured TURN candidates to server initiated connections.'}));
+    const helpText = useHelptext(formatMessage({defaultMessage: '(Optional) When enabled, it will pass and use the configured TURN candidates to server initiated connections.'}));
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const newVal = e.target.value === 'on';

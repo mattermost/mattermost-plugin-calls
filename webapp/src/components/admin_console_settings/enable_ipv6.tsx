@@ -12,7 +12,7 @@ import {CustomComponentProps} from 'src/types/mattermost-webapp';
 export const EnableIPv6 = (props: CustomComponentProps) => {
     const {formatMessage} = useIntl();
     const isRTCDEnabled = useSelector(rtcdEnabled);
-    const helpText = useHelptext(formatMessage({defaultMessage: 'When set to true the RTC service will work in dual-stack mode, listening for IPv6 connections and generating candidates in addition to IPv4 ones.'}));
+    const helpText = useHelptext(formatMessage({defaultMessage: 'When set to true, the RTC service will work in dual-stack mode, listening for IPv6 connections and generating candidates in addition to IPv4 ones.'}));
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value === 'true');

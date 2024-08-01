@@ -46,7 +46,7 @@ export default function MaxCallParticipants(props: CustomComponentProps) {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: 'The maximum number of participants that can join a call. If left empty, or set to 0, it means unlimited.'})}
+                    {formatMessage({defaultMessage: 'The maximum number of participants that can join a call. If left empty, or set to 0, an unlimited number of participants can join.'})}
                 </div>
             </div>
         </div>

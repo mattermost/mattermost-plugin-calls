@@ -52,7 +52,7 @@ export default function AllowScreenSharing(props: CustomComponentProps) {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: 'When set to true it allows call participants to share their screen.'})}
+                    {formatMessage({defaultMessage: 'When set to true, call participants can share their screen.'})}
                 </div>
             </div>
         </div>

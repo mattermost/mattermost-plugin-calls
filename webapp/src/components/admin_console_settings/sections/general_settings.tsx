@@ -17,7 +17,7 @@ export default function GeneralSettingsSection(props: {settingsList: React.React
                             {formatMessage({defaultMessage: 'General settings'})}
                         </SectionTitle>
                         <div className='section-subtitle'>
-                            {formatMessage({defaultMessage: 'Settings for participants, screen sharing, ringing and more'})}
+                            {formatMessage({defaultMessage: 'Settings for participants, screen sharing, ringing, and more'})}
                         </div>
                     </div>
                     <div className='section-body'>
