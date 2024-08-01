@@ -1,5 +1,6 @@
 import React from 'react';
 import {useIntl} from 'react-intl';
+import {SectionTitle} from 'src/components/admin_console_settings/common';
 
 export default function ICEAndTURNSection(props: {settingsList: React.ReactNode[]}) {
     const {formatMessage} = useIntl();
@@ -12,9 +13,9 @@ export default function ICEAndTURNSection(props: {settingsList: React.ReactNode[
             <div className='admin-console__wrapper'>
                 <div className='admin-console__content'>
                     <div className='section-header'>
-                        <div className='section-title'>
+                        <SectionTitle className='section-title'>
                             {formatMessage({defaultMessage: 'ICE and TURN'})}
-                        </div>
+                        </SectionTitle>
                     </div>
                     <div className='section-body'>
                         {props.settingsList}

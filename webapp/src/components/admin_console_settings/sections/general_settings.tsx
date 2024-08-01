@@ -1,5 +1,6 @@
 import React from 'react';
-import {FormattedMessage, useIntl} from 'react-intl';
+import {useIntl} from 'react-intl';
+import {SectionTitle} from 'src/components/admin_console_settings/common';
 
 export default function GeneralSettingsSection(props: {settingsList: React.ReactNode[]}) {
     const {formatMessage} = useIntl();
@@ -12,9 +13,9 @@ export default function GeneralSettingsSection(props: {settingsList: React.React
             <div className='admin-console__wrapper'>
                 <div className='admin-console__content'>
                     <div className='section-header'>
-                        <div className='section-title'>
+                        <SectionTitle className='section-title'>
                             {formatMessage({defaultMessage: 'General settings'})}
-                        </div>
+                        </SectionTitle>
                         <div className='section-subtitle'>
                             {formatMessage({defaultMessage: 'Settings for participants, screen sharing, ringing and more'})}
                         </div>
