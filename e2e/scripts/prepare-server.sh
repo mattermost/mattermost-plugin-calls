@@ -6,11 +6,10 @@ docker network create ${DOCKER_NETWORK}
 
 # Start server dependencies
 echo "Starting server dependencies ... "
-docker-compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
-timeout --foreground 90s bash -c "until docker-compose -f ${DOCKER_COMPOSE_FILE} exec -T postgres pg_isready ; do sleep 5 ; done"
+docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
+timeout --foreground 90s bash -c "until docker compose -f ${DOCKER_COMPOSE_FILE} exec -T postgres pg_isready ; do sleep 5 ; done"
 
-cat ${DOCKER_COMPOSE_TEST_DATA} | docker-compose -f ${DOCKER_COMPOSE_FILE} exec -T openldap bash -c 'ldapadd -x -D "cn=admin,dc=mm,dc=test,dc=com" -w mostest'
-docker-compose -f ${DOCKER_COMPOSE_FILE} exec -d -T minio sh -c 'mkdir -p /data/mattermost-test'
+docker compose -f ${DOCKER_COMPOSE_FILE} exec -d -T minio sh -c 'mkdir -p /data/mattermost-test'
 
 echo "Pulling ${IMAGE_CALLS_RECORDER} and ${IMAGE_CALLS_TRANSCRIBER} in order to be quickly accessible ... "
 # Pull calls-recorder and calls-transcriber images to be used by calls-offloader.
