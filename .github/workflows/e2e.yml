@@ -128,7 +128,6 @@ jobs:
           COMPOSE_HTTP_TIMEOUT: 120
           ## Should relative to mattermost/server/build/
           DOCKER_COMPOSE_FILE: gitlab-dc.postgres.yml
-          DOCKER_COMPOSE_TEST_DATA: ../tests/test-data.ldif
         run: |
           mkdir -p ${{ github.workspace }}/logs
           mkdir -p ${{ github.workspace }}/config
