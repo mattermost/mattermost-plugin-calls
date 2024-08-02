@@ -596,7 +596,7 @@ func (p *Plugin) wsWriter() {
 			p.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 				"data":   string(msg.Data),
 				"connID": msg.SessionID,
-			}, &WebSocketBroadcast{UserID: us.userID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{ConnectionID: msg.SessionID, ReliableClusterSend: true})
 		case <-p.stopCh:
 			return
 		}
@@ -848,7 +848,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		// send successful join response
 		p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
 			"connID": connID,
-		}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ConnectionID: connID, ReliableClusterSend: true})
 
 		if len(state.sessionsForUser(userID)) == 1 {
 			// Only send event on first session join.
@@ -1184,7 +1184,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
 					"connID": connID,
-				}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
+				}, &WebSocketBroadcast{ConnectionID: connID, ReliableClusterSend: true})
 				return
 			}
 		}()

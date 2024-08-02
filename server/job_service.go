@@ -228,23 +228,14 @@ func (s *jobService) StopJob(channelID, jobID, botUserID, botConnID string) erro
 		return fmt.Errorf("botUserID should not be empty")
 	}
 
-	// A job can be stopped before the bot is able to join. In such case there's
-	// no point in sending an event. The bot isn't allowed to join back.
+	// A job can be stopped before the bot is able to join.
 	if botConnID == "" {
 		s.ctx.LogDebug("stopping job with empty connID", "channelID", channelID)
-		return nil
 	}
 
 	s.ctx.publishWebSocketEvent(wsEventJobStop, map[string]interface{}{
 		"job_id": jobID,
 	}, &WebSocketBroadcast{UserID: botUserID, ReliableClusterSend: true})
-
-	// DEPRECATED in favor of the new wsEventJobStop event.
-	// Since MM-52346, stopping a job really means signaling the bot it's time to leave
-	// the call. We do this implicitly by sending a fake call end event.
-	s.ctx.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{
-		"channelID": channelID,
-	}, &WebSocketBroadcast{ConnectionID: botConnID, ReliableClusterSend: true})
 
 	return nil
 }

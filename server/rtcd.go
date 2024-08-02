@@ -655,7 +655,7 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 	m.ctx.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 		"data":   string(rtcMsg.Data),
 		"connID": rtcMsg.SessionID,
-	}, &WebSocketBroadcast{UserID: rtcMsg.UserID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ConnectionID: rtcMsg.SessionID, ReliableClusterSend: true})
 
 	return nil
 }
