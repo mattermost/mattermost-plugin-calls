@@ -108,7 +108,7 @@ func testGetStats(t *testing.T, store *Store) {
 
 			if i == 0 {
 				// In the current month we'll have N calls where N is the current day in the month.
-				callsInMonth = d.Day()
+				callsInMonth = now.Day()
 			} else if nCalls < 100 {
 				// Previous months will have 1 call per day until we reach our target (100).
 				callsInMonth = min(daysInMonth, 100-nCalls)
