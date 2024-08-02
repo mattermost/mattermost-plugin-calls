@@ -1,10 +1,12 @@
 {
   "/WMCDd": "Noe gikk galt!",
+  "/c+F8S": "Anrop fra <b>{callerName}</b> med <b>{others}</b>",
   "/n/Skb": "Blir med i samtalen …",
   "0Ihpmc": "Ta opp samtale",
   "0LuKMT": "Du er allerede i en samtale",
   "0cE6s2": "Samtaler kan ikke initieres i en usikker kontekst",
   "0fFRUQ": "Begynn å presentere",
+  "1QvHUW": "Opptaket ditt vil avsluttes om {count, plural, =1 {# minute} other {# minutes}}.",
   "1vzfaf": "Avslutt samtalen for alle",
   "22Lra1": "Her er opptaket av samtalen",
   "2NqRta": "Du forlot kanalen",
