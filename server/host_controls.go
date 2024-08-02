@@ -224,12 +224,18 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 		return ErrNotInCall
 	}
 
+	// Here we purposely broadcast to all the connected participants in order
+	// to show the "User was removed from the call" notice.
 	p.publishWebSocketEvent(wsEventHostRemoved, map[string]interface{}{
 		"call_id":    state.Call.ID,
 		"channel_id": channelID,
 		"session_id": sessionID,
 		"user_id":    ust.UserID,
-	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{
+		ChannelID:           channelID,
+		ReliableClusterSend: true,
+		UserIDs:             getUserIDsFromSessions(state.sessions),
+	})
 
 	go func() {
 		// Wait a few seconds for the client to end their session cleanly. If they don't (like for an

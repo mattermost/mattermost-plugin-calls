@@ -8,18 +8,22 @@ docker network create ${DOCKER_NETWORK}
 echo "Starting server dependencies ... "
 docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
 timeout --foreground 90s bash -c "until docker compose -f ${DOCKER_COMPOSE_FILE} exec -T postgres pg_isready ; do sleep 5 ; done"
-
 docker compose -f ${DOCKER_COMPOSE_FILE} exec -d -T minio sh -c 'mkdir -p /data/mattermost-test'
 
-echo "Pulling ${IMAGE_CALLS_RECORDER} and ${IMAGE_CALLS_TRANSCRIBER} in order to be quickly accessible ... "
-# Pull calls-recorder and calls-transcriber images to be used by calls-offloader.
-docker pull --quiet ${IMAGE_CALLS_RECORDER}
-docker pull --quiet ${IMAGE_CALLS_TRANSCRIBER}
+echo "Pulling ${IMAGE_CALLS_RECORDER} in order to be quickly accessible ... "
+# Pull calls-recorder image to be used by calls-offloader.
+docker pull ${IMAGE_CALLS_RECORDER}
+
+## Load calls-transcriber image
+docker load --input ${TRANSCRIBER_IMAGE_PATH}
+
 # We retag the official images so they can be run instead of the expected local
 # one (DEV_MODE=true). Alternatively we'd have to build our own image from scratch or make
 # some CI specific changes on the offloader.
 docker image tag ${IMAGE_CALLS_RECORDER} calls-recorder:master
-docker image tag ${IMAGE_CALLS_TRANSCRIBER} calls-transcriber:master
+
+## Print images info
+docker images
 
 echo "Spawning calls-offloader service with docker host access ..."
 # Spawn calls offloader image as root to access local docker socket
