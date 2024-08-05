@@ -21,7 +21,6 @@ export const CallsConfigDefault: CallsConfig = {
     HostControlsAllowed: false,
     EnableAV1: false,
     TranscribeAPI: TranscribeAPI.WhisperCPP,
-    EnableAV1: false,
     GroupCallsAllowed: false,
 };
 
