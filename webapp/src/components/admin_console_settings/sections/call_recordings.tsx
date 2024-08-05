@@ -77,7 +77,7 @@ export default function CallRecordingsSection(props: {settingsList: React.ReactN
                                     values={{
                                         featureLink: (text: string) => (
                                             <a
-                                                href='https://docs.mattermost.com/configure/calls-deployment.html#call-recording'
+                                                href='https://mattermost.com/pl/calls-deployment-recordings'
                                                 target='_blank'
                                                 rel='noreferrer'
                                             >

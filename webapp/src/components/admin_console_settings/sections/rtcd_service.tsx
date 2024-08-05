@@ -72,7 +72,7 @@ export default function RTCDServiceSection(props: {settingsList: React.ReactNode
                                     values={{
                                         featureLink: (text: string) => (
                                             <a
-                                                href='https://docs.mattermost.com/configure/calls-deployment.html'
+                                                href='https://mattermost.com/pl/calls-deployment-the-rtcd-service'
                                                 target='_blank'
                                                 rel='noreferrer'
                                             >
