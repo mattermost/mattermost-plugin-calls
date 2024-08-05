@@ -14,6 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/polly"
 
+	"gopkg.in/hraban/opus.v2"
+
 	"github.com/mattermost/mattermost-plugin-calls/lt/client"
 )
 
@@ -82,7 +84,9 @@ func performScript(filename string) error {
 			TeamID:       teamID,
 			PollySession: svc,
 			PollyVoiceID: aws.String(script.voiceIDs[i]),
-		})
+		}, client.WithOpusEncoderFactory(func() (client.OpusEncoder, error) {
+			return opus.NewEncoder(24000, 1, opus.AppVoIP)
+		}))
 		userClients = append(userClients, user)
 
 		userWg.Add(1)

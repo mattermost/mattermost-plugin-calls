@@ -7,16 +7,19 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/mattermost/rtcd/service/rtc"
+
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
 type clusterMessage struct {
-	ConnID        string        `json:"conn_id,omitempty"`
-	UserID        string        `json:"user_id,omitempty"`
-	ChannelID     string        `json:"channel_id,omitempty"`
-	CallID        string        `json:"call_id,omitempty"`
-	SenderID      string        `json:"sender_id,omitempty"`
-	ClientMessage clientMessage `json:"client_message,omitempty"`
+	ConnID        string           `json:"conn_id,omitempty"`
+	UserID        string           `json:"user_id,omitempty"`
+	ChannelID     string           `json:"channel_id,omitempty"`
+	CallID        string           `json:"call_id,omitempty"`
+	SenderID      string           `json:"sender_id,omitempty"`
+	SessionProps  rtc.SessionProps `json:"session_props,omitempty"`
+	ClientMessage clientMessage    `json:"client_message,omitempty"`
 }
 
 type clusterMessageType string

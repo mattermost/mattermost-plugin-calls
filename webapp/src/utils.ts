@@ -473,6 +473,9 @@ export function getTranslations(locale: string) {
         case 'zh-TW':
             locale = 'zh_Hant';
             break;
+        case 'pt-BR':
+            locale = 'pt_BR';
+            break;
         }
 
         // synchronously loading all translation files from bundle (MM-50811).

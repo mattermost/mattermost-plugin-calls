@@ -78,8 +78,10 @@ func testGetStats(t *testing.T, store *Store) {
 	t.Run("calls", func(t *testing.T) {
 		defer resetStore(t, store)
 
+		now := time.Now()
+
 		for i := 0; i < 100; i++ {
-			createCall(time.Now().AddDate(0, 0, -i), 0, "")
+			createCall(now.AddDate(0, 0, -i), 0, "")
 		}
 
 		stats, err := store.GetCallsStats()
@@ -100,18 +102,21 @@ func testGetStats(t *testing.T, store *Store) {
 
 		nCalls := 0
 		for i := 0; i < 12; i++ {
-			d := time.Now().AddDate(0, -i, 0)
-			month := d.Format("2006-01")
-			daysInMonth := 32 - time.Date(time.Now().Year(), d.Month(), 32, 0, 0, 0, 0, time.UTC).Day()
-			if i == 0 {
-				daysInMonth = d.Day()
-			}
+			d := time.Date(now.Year(), now.Month()-time.Month(i), 1, 0, 0, 0, 0, time.UTC)
+			daysInMonth := time.Date(d.Year(), d.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
 			callsInMonth := 0
-			if nCalls < 100 {
+
+			if i == 0 {
+				// In the current month we'll have N calls where N is the current day in the month.
+				callsInMonth = now.Day()
+			} else if nCalls < 100 {
+				// Previous months will have 1 call per day until we reach our target (100).
 				callsInMonth = min(daysInMonth, 100-nCalls)
-				nCalls += callsInMonth
 			}
-			require.Equal(t, int64(callsInMonth), stats.CallsByMonth[month])
+
+			nCalls += callsInMonth
+
+			require.Equal(t, int64(callsInMonth), stats.CallsByMonth[d.Format("2006-01")])
 		}
 	})
 

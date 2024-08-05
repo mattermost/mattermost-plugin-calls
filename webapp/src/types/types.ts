@@ -19,6 +19,7 @@ export const CallsConfigDefault: CallsConfig = {
     EnableTranscriptions: false,
     EnableLiveCaptions: false,
     HostControlsAllowed: false,
+    EnableAV1: false,
     TranscribeAPI: TranscribeAPI.WhisperCPP,
     EnableAV1: false,
     GroupCallsAllowed: false,
@@ -29,22 +30,12 @@ export type ChannelState = {
     enabled?: boolean;
 }
 
-export type CallsClientJoinData = {
-    channelID: string;
-    title?: string;
-    threadID?: string;
-
-    // Calls bot only
-    // jobID is the id of the job tight to the bot connection to
-    // a call (e.g. recording, transcription).
-    jobID?: string;
-}
-
 export type CallsClientConfig = {
     wsURL: string;
     authToken?: string;
     iceServers: RTCIceServer[];
     simulcast?: boolean;
+    enableAV1: boolean;
 }
 
 export type AudioDevices = {

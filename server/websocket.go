@@ -84,6 +84,8 @@ type CallsClientJoinData struct {
 	Title     string
 	ThreadID  string
 
+	AV1Support bool
+
 	// JobID is the id of the job tight to the bot connection to
 	// a call (e.g. recording, transcription). It's a parameter reserved to the
 	// Calls bot only.
@@ -594,7 +596,7 @@ func (p *Plugin) wsWriter() {
 			p.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 				"data":   string(msg.Data),
 				"connID": msg.SessionID,
-			}, &WebSocketBroadcast{UserID: us.userID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{ConnectionID: msg.SessionID, ReliableClusterSend: true})
 		case <-p.stopCh:
 			return
 		}
@@ -770,11 +772,12 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		if p.rtcdManager != nil {
 			msg := rtcd.ClientMessage{
 				Type: rtcd.ClientMessageJoin,
-				Data: map[string]string{
-					"callID":    us.callID,
-					"userID":    userID,
-					"sessionID": connID,
-					"channelID": channelID,
+				Data: map[string]any{
+					"callID":     us.callID,
+					"userID":     userID,
+					"sessionID":  connID,
+					"channelID":  channelID,
+					"av1Support": joinData.AV1Support,
 				},
 			}
 			if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
@@ -802,8 +805,9 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 					CallID:    us.callID,
 					UserID:    userID,
 					SessionID: connID,
-					Props: map[string]any{
-						"channelID": us.channelID,
+					Props: rtc.SessionProps{
+						"channelID":  channelID,
+						"av1Support": joinData.AV1Support,
 					},
 				}
 				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID, "callID", us.callID)
@@ -829,6 +833,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 					ChannelID: channelID,
 					CallID:    us.callID,
 					SenderID:  p.nodeID,
+					SessionProps: rtc.SessionProps{
+						"channelID":  channelID,
+						"av1Support": joinData.AV1Support,
+					},
 				}, clusterMessageTypeConnect, handlerID); err != nil {
 					p.LogError("failed to send connect message", "err", err.Error())
 					go func() {
@@ -844,7 +852,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		// send successful join response
 		p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
 			"connID": connID,
-		}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
+		}, &WebSocketBroadcast{ConnectionID: connID, ReliableClusterSend: true})
 
 		if len(state.sessionsForUser(userID)) == 1 {
 			// Only send event on first session join.
@@ -1157,15 +1165,18 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		// it will be an empty string.
 		jobID, _ := req.Data["jobID"].(string)
 
+		av1Support, _ := req.Data["av1Support"].(bool)
+
 		remoteAddr, _ := req.Data[model.WebSocketRemoteAddr].(string)
 		xff, _ := req.Data[model.WebSocketXForwardedFor].(string)
 
 		joinData := callsJoinData{
 			CallsClientJoinData{
-				channelID,
-				title,
-				threadID,
-				jobID,
+				ChannelID:  channelID,
+				Title:      title,
+				ThreadID:   threadID,
+				AV1Support: av1Support,
+				JobID:      jobID,
 			},
 			remoteAddr,
 			xff,
@@ -1177,7 +1188,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
 					"connID": connID,
-				}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
+				}, &WebSocketBroadcast{ConnectionID: connID, ReliableClusterSend: true})
 				return
 			}
 		}()
@@ -1265,14 +1276,13 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	case clientMessageTypeCaption:
 		// Sent from the transcriber.
 		p.metrics.IncWebSocketEvent("in", msg.Type)
+		if us.userID != p.getBotID() {
+			p.LogWarn("unexpected caption message not coming from bot")
+			return
+		}
 		sessionID, ok := req.Data["session_id"].(string)
 		if !ok {
 			p.LogError("invalid or missing session_id in caption ws message")
-			return
-		}
-		userID, ok := req.Data["user_id"].(string)
-		if !ok {
-			p.LogError("invalid or missing user_id in caption ws message")
 			return
 		}
 		text, ok := req.Data["text"].(string)
@@ -1285,7 +1295,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("invalid or missing new_audio_len_ms in caption ws message")
 			return
 		}
-		if err := p.handleCaptionMessage(us.callID, us.channelID, sessionID, userID, text, newAudioLenMs); err != nil {
+		if err := p.handleCaptionMessage(us.callID, us.channelID, sessionID, text, newAudioLenMs); err != nil {
 			p.LogError("handleCaptionMessage failed", "err", err.Error(), "userID", userID, "connID", connID)
 			return
 		}
@@ -1298,7 +1308,10 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("invalid or missing metric_name in metric ws message")
 			return
 		}
-		p.handleMetricMessage(public.MetricName(metricName))
+		if err := p.handleMetricMessage(public.MetricName(metricName), userID, req.Data["data"]); err != nil {
+			p.LogError("handleMetricMessage failed", "err", err.Error())
+			return
+		}
 		return
 	}
 
@@ -1392,16 +1405,21 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 	return nil
 }
 
-func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, captionFromUserID, text string, newAudioLenMs float64) error {
+func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, text string, newAudioLenMs float64) error {
 	sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})
 	if err != nil {
 		return fmt.Errorf("failed to get call sessions: %w", err)
 	}
 
-	p.publishWebSocketEvent(clientMessageTypeCaption, map[string]interface{}{
+	captionSession, ok := sessions[captionFromSessionID]
+	if !ok {
+		return fmt.Errorf("user session for caption missing from call")
+	}
+
+	p.publishWebSocketEvent(wsEventCaption, map[string]interface{}{
 		"channel_id": channelID,
-		"user_id":    captionFromUserID,
-		"session_id": captionFromSessionID,
+		"user_id":    captionSession.UserID,
+		"session_id": captionSession.ID,
 		"text":       text,
 	}, &WebSocketBroadcast{
 		ChannelID:           channelID,
@@ -1414,13 +1432,41 @@ func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, c
 	return nil
 }
 
-func (p *Plugin) handleMetricMessage(metricName public.MetricName) {
-	switch metricName {
-	case public.MetricLiveCaptionsWindowDropped:
-		p.metrics.IncLiveCaptionsWindowDropped()
-	case public.MetricLiveCaptionsTranscriberBufFull:
-		p.metrics.IncLiveCaptionsTranscriberBufFull()
-	case public.MetricLiveCaptionsPktPayloadChBufFull:
-		p.metrics.IncLiveCaptionsPktPayloadChBufFull()
+func (p *Plugin) handleMetricMessage(metricName public.MetricName, userID string, payload any) error {
+	// Bot only metrics
+	if userID == p.getBotID() {
+		switch metricName {
+		case public.MetricLiveCaptionsWindowDropped:
+			p.metrics.IncLiveCaptionsWindowDropped()
+		case public.MetricLiveCaptionsTranscriberBufFull:
+			p.metrics.IncLiveCaptionsTranscriberBufFull()
+		case public.MetricLiveCaptionsPktPayloadChBufFull:
+			p.metrics.IncLiveCaptionsPktPayloadChBufFull()
+		}
+
+		return nil
 	}
+
+	// User client metrics
+	switch metricName {
+	case public.MetricClientICECandidatePair:
+		data, ok := payload.(string)
+		if !ok {
+			return fmt.Errorf("invalid payload found in metric message")
+		}
+
+		var payload public.ClientICECandidatePairMetricPayload
+
+		if err := json.Unmarshal([]byte(data), &payload); err != nil {
+			return fmt.Errorf("failed to unmarshal payload: %w", err)
+		}
+
+		if err := payload.IsValid(); err != nil {
+			return fmt.Errorf("failed to validate payload: %w", err)
+		}
+
+		p.metrics.IncClientICECandidatePairs(payload)
+	}
+
+	return nil
 }

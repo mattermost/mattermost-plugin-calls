@@ -24,6 +24,7 @@ func TestCallsSessionsStore(t *testing.T) {
 		"TestGetCallSessions":      testGetCallSessions,
 		"TestDeleteCallsSessions":  testDeleteCallsSessions,
 		"TestGetCallSessionsCount": testGetCallSessionsCount,
+		"TestIsUserInCall":         testIsUserInCall,
 	})
 }
 
@@ -251,5 +252,62 @@ func testGetCallSessionsCount(t *testing.T, store *Store) {
 		cnt, err := store.GetCallSessionsCount(callID, GetCallSessionOpts{})
 		require.NoError(t, err)
 		require.Equal(t, 10, cnt)
+	})
+}
+
+func testIsUserInCall(t *testing.T, store *Store) {
+	t.Run("no sessions", func(t *testing.T) {
+		ok, err := store.IsUserInCall(model.NewId(), model.NewId(), GetCallSessionOpts{})
+		require.NoError(t, err)
+		require.False(t, ok)
+	})
+
+	t.Run("multiple sessions, user not in call", func(t *testing.T) {
+		sessions := map[string]*public.CallSession{}
+		callID := model.NewId()
+		for i := 0; i < 10; i++ {
+			session := &public.CallSession{
+				ID:     model.NewId(),
+				CallID: callID,
+				UserID: model.NewId(),
+				JoinAt: time.Now().UnixMilli(),
+			}
+
+			err := store.CreateCallSession(session)
+			require.NoError(t, err)
+
+			sessions[session.ID] = session
+		}
+
+		ok, err := store.IsUserInCall(model.NewId(), callID, GetCallSessionOpts{})
+		require.NoError(t, err)
+		require.False(t, ok)
+	})
+
+	t.Run("multiple sessions, user in call", func(t *testing.T) {
+		sessions := map[string]*public.CallSession{}
+		callID := model.NewId()
+		userID := model.NewId()
+		for i := 0; i < 10; i++ {
+			if i > 0 {
+				userID = model.NewId()
+			}
+
+			session := &public.CallSession{
+				ID:     model.NewId(),
+				CallID: callID,
+				UserID: userID,
+				JoinAt: time.Now().UnixMilli(),
+			}
+
+			err := store.CreateCallSession(session)
+			require.NoError(t, err)
+
+			sessions[session.ID] = session
+		}
+
+		ok, err := store.IsUserInCall(userID, callID, GetCallSessionOpts{})
+		require.NoError(t, err)
+		require.True(t, ok)
 	})
 }

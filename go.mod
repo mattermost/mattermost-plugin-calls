@@ -3,9 +3,9 @@ module github.com/mattermost/mattermost-plugin-calls
 go 1.21.9
 
 require (
-	github.com/pion/ice/v2 v2.3.24 // indirect
+	github.com/pion/ice/v2 v2.3.25 // indirect
 	github.com/pion/rtcp v1.2.14 // indirect
-	github.com/pion/webrtc/v3 v3.2.40 // indirect
+	github.com/pion/webrtc/v3 v3.2.42 // indirect
 	github.com/prometheus/client_golang v1.16.0
 	github.com/stretchr/testify v1.9.0
 )
@@ -18,13 +18,13 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
 	github.com/mattermost/calls-offloader v0.8.0
-	github.com/mattermost/calls-recorder v0.6.4
-	github.com/mattermost/calls-transcriber v0.3.0
+	github.com/mattermost/calls-recorder v0.7.3
+	github.com/mattermost/calls-transcriber v0.3.1
 	github.com/mattermost/logr/v2 v2.0.21
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.1.5-0.20240613070149-4b0ae20ef7b4
 	github.com/mattermost/morph v1.1.0
-	github.com/mattermost/rtcd v0.16.0
+	github.com/mattermost/rtcd v0.16.3-0.20240726081546-8b783d9cd2d4
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
@@ -138,13 +138,14 @@ require (
 	go.opentelemetry.io/otel v1.19.0 // indirect
 	go.opentelemetry.io/otel/metric v1.19.0 // indirect
 	go.opentelemetry.io/otel/trace v1.19.0 // indirect
-	golang.org/x/crypto v0.23.0 // indirect
+	golang.org/x/crypto v0.24.0 // indirect
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea // indirect
-	golang.org/x/mod v0.16.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
-	golang.org/x/tools v0.18.0 // indirect
+	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/net v0.26.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240227224415-6ceb2ff114de // indirect
 	google.golang.org/grpc v1.62.0 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect

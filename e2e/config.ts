@@ -5,6 +5,7 @@ import {adminState, baseURL, pluginID} from './constants';
 type CallsConfig = {
     enabletranscriptions?: boolean;
     enablelivecaptions?: boolean;
+    enableav1?: boolean;
 };
 
 export const apiPatchConfig = async (cfg: CallsConfig) => {
@@ -38,5 +39,11 @@ export const apiSetEnableTranscriptions = async (enabled: boolean) => {
 export const apiSetEnableLiveCaptions = async (enabled: boolean) => {
     return apiPatchConfig({
         enablelivecaptions: enabled,
+    });
+};
+
+export const apiSetEnableAV1 = async (enabled: boolean) => {
+    return apiPatchConfig({
+        enableav1: enabled,
     });
 };

@@ -71,7 +71,6 @@
   "Thxdph": "Esta chamada atingiu sua capacidade máxima de {count, plural, =1 {# participante} other {# participantes}}.",
   "TyskrG": "Bem-vindo ao seu período de avaliação do Mattermost Enterprise! Ele expira em {trialExpirationDate}. Agora você tem acesso a <recordingsDocsLink>gravações de chamadas</recordingsDocsLink>, <rtcdDocsLink>serviços RTCD</rtcdDocsLink>, <guestAccountsLink>contas de convidados</guestAccountsLink>, <autoComplianceReportsLink>relatórios de conformidade automatizados</autoComplianceReportsLink> e <mobileSecureNotificationsLink>notificações push seguras</mobileSecureNotificationsLink>, além de muitos outros recursos. Veja todos os recursos em nossa <documentationLink>documentação</documentationLink>.",
   "UcFeI7": "Mostrar lista de participantes",
-  "UxatAw": "{count, plural, =1 {# participante} other {# participantes}}",
   "Uys4Mj": "Desativar reações",
   "W9355R": "Ativar som",
   "WWqBr0": "Finalizada às {endTime}",

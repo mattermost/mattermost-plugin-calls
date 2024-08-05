@@ -1,13 +1,31 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/i18n"
 )
 
 func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, userID string) (*model.PushNotification, string) {
+	// If the user is in a call we suppress notifications for replies to the call thread.
+	call, err := p.store.GetActiveCallByChannelID(notification.ChannelId, db.GetCallOpts{})
+	if err == nil && call.ThreadID == notification.RootId {
+		isUserInCall, err := p.store.IsUserInCall(userID, call.ID, db.GetCallSessionOpts{})
+		if err != nil {
+			p.LogError("store.IsUserInCall failed", "err", err.Error())
+		} else if isUserInCall {
+			msg := "calls: suppressing notification on call thread for connected user"
+			p.LogDebug(msg, "userID", userID, "channelID", notification.ChannelId, "threadID", call.ThreadID, "callID", call.ID)
+			return nil, msg
+		}
+	} else if err != nil && !errors.Is(err, db.ErrNotFound) {
+		p.LogError("store.GetActiveCallByChannelID failed", "err", err.Error())
+	}
+
 	// We will use our own notifications if:
 	// 1. This is a call start post
 	// 2. We have enabled ringing

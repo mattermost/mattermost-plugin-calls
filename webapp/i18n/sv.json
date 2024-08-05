@@ -81,7 +81,6 @@
   "TyskrG": "Välkommen till din Mattermost Enterprise testperiod! Den avslutas den {trialExpirationDate}. Nu har du tillgång till <recordingsDocsLink>Samtalsinspelningar</recordingsDocsLink>,<rtcdDocsLink>RTCD services</rtcdDocsLink>, <guestAccountsLink>gästkonton</guestAccountsLink>, <autoComplianceReportsLink>automatiserade efterlevnadsrapporter</autoComplianceReportsLink>, och <mobileSecureNotificationsLink>säkra push-meddelanden för mobiler</mobileSecureNotificationsLink> och många andra funktioner. Se alla funktioner i <documentationLink>dokumentationen</documentationLink> .",
   "UcFeI7": "Visa listan med delatagare",
   "Ug/N7H": "Calls är inte tillgängligt i DM med en avaktiverad användare.",
-  "UxatAw": "{count, plural, =1 {# deltagare} other {# deltagare}}",
   "Uys4Mj": "Stäng reaktioner",
   "W9355R": "Avmjuta",
   "WWqBr0": "Slutade {endTime}",
