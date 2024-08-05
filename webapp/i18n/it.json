@@ -1,13 +1,18 @@
 {
   "/WMCDd": "Qualcosa è andato storto!",
+  "/c+F8S": "Chiamata da <b>{callerName}</b> con <b>{others}</b>",
   "0Ihpmc": "Registra la chiamata",
   "0LuKMT": "Sei già in una chiamata",
   "0cE6s2": "Le chiamate non possono essere avviate in un contesto non sicuro",
   "0fFRUQ": "Inizia a presentare",
   "1QvHUW": "La tua registrazione terminerà tra {count, plural, =1 {# minuto} other {# minuti}}.",
+  "1vzfaf": "Termina la chiamata per tutti",
   "22Lra1": "Ecco la registrazione della chiamata",
+  "23eRB2": "Connessione alla chiamata fallita",
+  "2NqRta": "Hai lasciato il canale",
   "2T4EGD": "Sei già in una chiamata con {participant}.",
   "2n0xcg": "Abilita le chiamate",
+  "3WdZyZ": "Sei stato rimosso dal canale, e disconnesso dalla chiamata.",
   "3wS4fn": "Fai l'upgrade per usare le chiamate nei Canali",
   "47FYwb": "Annulla",
   "4Jcytp": "Notifica all'admin",
@@ -15,6 +20,7 @@
   "6AKf56": "Partecipa alla chiamata",
   "6XllQM": "Permetti a Mattermost di accedere al microfono.",
   "6aGJYU": "Non c'è nessuna chiamata in corso nel canale.",
+  "6y1672": "Chiamate Mensili",
   "7YLq3n": "pochi secondi",
   "7cVXct": "Mostra i partecipanti",
   "7gVR9m": "Si è verificato un errore interno che ti ha impedito di partecipare alla chiamata. Per favore, riprova.",
@@ -34,5 +40,10 @@
   "Tg9Lia": "Le chiamate attualmente non sono abilitate",
   "UcFeI7": "Mostra lista partecipanti",
   "cIAiR2": "Nascondi partecipanti",
-  "qR+5t1": "sta parlando…"
+  "qR+5t1": "sta parlando…",
+  "vxEY29": "Abbandona la chiamata",
+  "x82IOl": "Silenzia",
+  "xYhChH": "Sei sicuro di voler rimuovere <b>{userName}</b> dalla chiamata?",
+  "yjQNKt": "In questo canale, le chiamate sono disabilitate.",
+  "zx0myy": "Partecipanti"
 }

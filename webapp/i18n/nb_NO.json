@@ -1,1 +1,27 @@
-{}
+{
+  "/WMCDd": "Noe gikk galt!",
+  "/c+F8S": "Anrop fra <b>{callerName}</b> med <b>{others}</b>",
+  "/n/Skb": "Blir med i samtalen …",
+  "0Ihpmc": "Ta opp samtale",
+  "0LuKMT": "Du er allerede i en samtale",
+  "0cE6s2": "Samtaler kan ikke initieres i en usikker kontekst",
+  "0fFRUQ": "Begynn å presentere",
+  "1QvHUW": "Opptaket ditt vil avsluttes om {count, plural, =1 {# minute} other {# minutes}}.",
+  "1vzfaf": "Avslutt samtalen for alle",
+  "22Lra1": "Her er opptaket av samtalen",
+  "2NqRta": "Du forlot kanalen",
+  "2T4EGD": "Du er allerede i en samtale med {participant}.",
+  "2n0xcg": "Aktiver samtaler",
+  "3WdZyZ": "Du har blitt fjernet fra kanalen, og har blitt koblet fra samtalen.",
+  "3wS4fn": "Oppgrader for å bruke samtaler i kanaler",
+  "47FYwb": "Avbryt",
+  "4Jcytp": "Varsle admin",
+  "4lj46b": "Du kan finne opptaket og transkripsjonen i denne samtalens chattråd når den er ferdig prosessert.",
+  "5+bTjM": "Mattermost Cloud Professional-funksjon",
+  "5ClUrE": "Noe gikk galt med opptaket",
+  "5yUTF3": "Opptaks- og transkripsjonsfilene for samtalen vil bli behandlet og lagt ut i samtaletråden. Er du sikker på at du vil stoppe opptaket og transkripsjonen?",
+  "6AKf56": "Bli med i samtalen",
+  "6XllQM": "Tillat mikrofontilgang til Mattermost.",
+  "6aGJYU": "Det er ingen pågående samtale i kanalen.",
+  "qR+5t1": "snakker…"
+}
