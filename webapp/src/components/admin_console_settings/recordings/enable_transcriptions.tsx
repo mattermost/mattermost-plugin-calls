@@ -42,7 +42,7 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
             className='form-group'
         >
             <label className={'control-label ' + leftCol}>
-                {formatMessage({defaultMessage: 'Enable call transcriptions (Experimental)'})}
+                {formatMessage({defaultMessage: 'Enable call transcriptions (Beta)'})}
             </label>
             <div className={rightCol}>
                 <RadioInputLabel $disabled={props.disabled}>
