@@ -53,7 +53,6 @@ func RunPostgresContainerLocal(ctx context.Context) (string, func(), error) {
 // RunPostgresContainer creates and runs a postgres container
 func RunPostgresContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (*postgres.PostgresContainer, func(), error) {
 	opts = append([]tc.ContainerCustomizer{
-		tc.WithImage(PostgresImage),
 		postgres.WithDatabase(DBName),
 		postgres.WithUsername(DBUser),
 		postgres.WithPassword(DBPass),
@@ -63,7 +62,7 @@ func RunPostgresContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (
 				WithStartupTimeout(15 * time.Second)),
 	}, opts...)
 
-	cnt, err := postgres.RunContainer(ctx, opts...)
+	cnt, err := postgres.Run(ctx, PostgresImage, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to run container: %w", err)
 	}
@@ -78,13 +77,12 @@ func RunPostgresContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (
 // RunMySQLContainer creates and runs a mysql container
 func RunMySQLContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (*mysql.MySQLContainer, func(), error) {
 	opts = append([]tc.ContainerCustomizer{
-		tc.WithImage(MySQLImage),
 		mysql.WithDatabase(DBName),
 		mysql.WithUsername(DBUser),
 		mysql.WithPassword(DBPass),
 	}, opts...)
 
-	cnt, err := mysql.RunContainer(ctx, opts...)
+	cnt, err := mysql.Run(ctx, MySQLImage, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to run container: %w", err)
 	}

@@ -215,6 +215,8 @@ func TestConfigurationIsValid(t *testing.T) {
 func TestGetClientConfig(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 
+	defer mockAPI.AssertExpectations(t)
+
 	p := &Plugin{
 		MattermostPlugin: plugin.MattermostPlugin{
 			API: mockAPI,
