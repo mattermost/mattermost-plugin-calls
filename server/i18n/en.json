@@ -1,5 +1,9 @@
 [
   {
+    "id": "app.add_user_session.group_calls_not_allowed_error",
+    "translation": "Calls on unlicensed servers are only available in DMs."
+  },
+  {
     "id": "app.admin.concurrent_sessions_warning.enterprise",
     "translation": "We highly recommend [deploying the RTCD service](https://docs.mattermost.com/configure/calls-deployment.html#the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
   },

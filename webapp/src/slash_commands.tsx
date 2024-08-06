@@ -17,6 +17,7 @@ import * as Telemetry from 'src/types/telemetry';
 
 import {logDebug} from './log';
 import {
+    areGroupCallsAllowed,
     channelHasCall,
     channelIDForCurrentCall,
     hostIDForCallInChannel,
@@ -24,7 +25,7 @@ import {
     isRecordingInCurrentCall,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
-import {getCallsClient, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
+import {getCallsClient, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
 type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string) => void;
 
@@ -46,7 +47,21 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
 
     switch (subCmd) {
     case 'join':
-    case 'start':
+    case 'start': {
+        let channel = getChannel(store.getState(), args.channel_id);
+        if (!channel) {
+            const res = await store.dispatch(getChannelAction(args.channel_id)) as ActionResult;
+            channel = res.data;
+        }
+
+        if (!isDMChannel(channel) && !areGroupCallsAllowed(store.getState())) {
+            store.dispatch(displayGenericErrorModal(
+                defineMessage({defaultMessage: 'Unable to join call'}),
+                defineMessage({defaultMessage: 'Calls are only available in DM channels.'}),
+            ));
+            return {};
+        }
+
         if (subCmd === 'start') {
             if (channelHasCall(store.getState(), args.channel_id)) {
                 store.dispatch(displayGenericErrorModal(
@@ -64,11 +79,6 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
 
             let team_id = args?.team_id;
             if (!team_id) {
-                let channel = getChannel(store.getState(), args.channel_id);
-                if (!channel) {
-                    const res = await store.dispatch(getChannelAction(args.channel_id)) as ActionResult;
-                    channel = res.data;
-                }
                 team_id = channel?.team_id;
             }
 
@@ -93,6 +103,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             defineMessage({defaultMessage: 'You\'re already connected to a call in the current channel.'}),
         ));
         return {};
+    }
     case 'leave':
         if (connectedID && args.channel_id === connectedID) {
             const win = window.opener || window;

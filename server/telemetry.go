@@ -25,9 +25,8 @@ const (
 )
 
 var (
-	enterpriseSKUs = []string{model.LicenseShortSkuEnterprise}
-	// currently unused
-	// professionalSKUs = []string{model.LicenseShortSkuProfessional, model.LicenseShortSkuEnterprise}
+	enterpriseSKUs   = []string{model.LicenseShortSkuEnterprise}
+	professionalSKUs = []string{model.LicenseShortSkuProfessional, model.LicenseShortSkuEnterprise}
 
 	// We only need to map events that require a SKU (i.e., licensed features). Anything available on unlicensed
 	// servers will map to null as expected.
@@ -93,11 +92,19 @@ func (p *Plugin) track(ev string, props map[string]any) {
 		return
 	}
 
+	skus := eventToSkusMap[ev]
+
+	if ev == evCallStarted && props != nil {
+		if ct, _ := props["ChannelType"].(model.ChannelType); ct != model.ChannelTypeDirect {
+			skus = professionalSKUs
+		}
+	}
+
 	ctx := &analytics.Context{
 		Extra: map[string]any{
 			"feature": eventFeature{
 				Name: "Calls",
-				Skus: eventToSkusMap[ev],
+				Skus: skus,
 			},
 		},
 	}
