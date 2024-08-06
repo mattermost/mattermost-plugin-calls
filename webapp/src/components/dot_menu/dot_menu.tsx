@@ -12,11 +12,9 @@ import Dropdown from './dropdown';
 
 export const DotMenuButton = styled.div<{ $isActive: boolean }>`
     display: inline-flex;
-    padding: 0;
     border: none;
     border-radius: 4px;
-    width: 28px;
-    height: 28px;
+    padding: 4px;
     align-items: center;
     justify-content: center;
     fill: rgba(var(--center-channel-color-rgb), 0.56);
