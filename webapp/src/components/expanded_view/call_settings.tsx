@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
+import {openCallsUserSettings} from 'src/actions';
 import CCIcon from 'src/components/icons/cc_icon';
 import SettingsWheelIcon from 'src/components/icons/settings_wheel';
 import ShowMoreIcon from 'src/components/icons/show_more';
@@ -373,6 +374,7 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
     const [showAudioOutputs, setShowAudioOutputs] = useState(false);
     const showCCButton = useSelector(areLiveCaptionsAvailableInCurrentCall);
     const {formatMessage} = useIntl();
+    const dispatch = useDispatch();
 
     const onToggle = (deviceType: string) => {
         if (deviceType === 'input') {
@@ -383,6 +385,12 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
             setShowAudioInputs(false);
         }
     };
+
+    const onAdditionalSettingsClick = () => {
+        dispatch(openCallsUserSettings());
+    };
+
+    const showAdditionalSetttingsButton = Boolean(window.WebappUtils.openUserSettings);
 
     return (
         <div
@@ -404,9 +412,10 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
                     isActive={showAudioInputs}
                     onToggle={onToggle}
                 />
+
+                { (showCCButton || showAdditionalSetttingsButton) && <li className='MenuGroup menu-divider'/>}
                 { showCCButton &&
                 <>
-                    <li className='MenuGroup menu-divider'/>
                     <CallSettingsMenuButton
                         id='calls-popout-cc-button'
                         icon={<CCIcon/>}
@@ -414,6 +423,14 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
                         onClick={onLiveCaptionsToggle}
                     />
                 </>
+                }
+                { showAdditionalSetttingsButton &&
+                <CallSettingsMenuButton
+                    id='calls-popout-additional-settings-button'
+                    icon={<SettingsWheelIcon/>}
+                    label={formatMessage({defaultMessage: 'Additional settings'})}
+                    onClick={onAdditionalSettingsClick}
+                />
                 }
             </MenuList>
         </div>

@@ -6,6 +6,7 @@ import {injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
 import {
+    openCallsUserSettings,
     recordingPromptDismissedAt,
     selectRHSPost,
     showExpandedView,
@@ -98,6 +99,7 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     startCallRecording,
     stopCallRecording,
     openModal: modals?.openModal,
+    openCallsUserSettings,
 }, dispatch);
 
 export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(CallWidget));

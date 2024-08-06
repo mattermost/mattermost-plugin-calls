@@ -1,8 +1,10 @@
 import {Channel} from '@mattermost/types/channels';
 import {CommandArgs} from '@mattermost/types/integrations';
+import {PluginConfiguration} from '@mattermost/types/plugins/user_settings';
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {PluginSiteStatsHandler} from '@mattermost/types/store/plugin';
+import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import {Store as BaseStore} from 'redux';
 import {ThunkDispatch} from 'redux-thunk';
 import {RealNewPostMessageProps} from 'src/types/types';
@@ -73,6 +75,8 @@ export interface PluginRegistry {
     registerFilePreviewComponent(overrideFn: (fi: FileInfo, post?: Post) => boolean, component: React.ElementType);
 
     registerSiteStatisticsHandler(handler: PluginSiteStatsHandler);
+
+    registerUserSettings(settings: PluginConfiguration);
 }
 
 export type SlashCommandWillBePostedReturn = { error: string } | { message: string, args: CommandArgs } | unknown;
@@ -115,4 +119,5 @@ export type WebAppUtils = {
     modals: { openModal, ModalIdentifiers },
     notificationSounds: { ring: (sound: string) => void, stopRing: () => void },
     sendDesktopNotificationToMe: (title: string, body: string, channel: Channel, teamId: string, silent: boolean, soundName: string, url: string) => (dispatch: DispatchFunc) => void,
+    openUserSettings: (dialogProps: {activeTab: string, isContentProductSettings: boolean}) => ActionFuncAsync;
 };

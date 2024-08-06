@@ -46,7 +46,7 @@
     "@babel/preset-typescript": "7.16.0",
     "@formatjs/cli": "6.0.4",
     "@mattermost/client": "file:../webapp/mattermost-webapp/webapp/platform/client",
-    "@mattermost/desktop-api": "5.9.0-1",
+    "@mattermost/desktop-api": "5.10.0-1",
     "@mattermost/eslint-plugin": "1.1.0-0",
     "@mattermost/types": "file:../webapp/mattermost-webapp/webapp/platform/types",
     "@types/jest": "27.0.2",
