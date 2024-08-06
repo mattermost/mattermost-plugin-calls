@@ -33,6 +33,9 @@ func TestHandleBotWSReconnect(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 	mockMetrics := &serverMocks.MockMetrics{}
 
+	defer mockAPI.AssertExpectations(t)
+	defer mockMetrics.AssertExpectations(t)
+
 	p := Plugin{
 		MattermostPlugin: plugin.MattermostPlugin{
 			API: mockAPI,
@@ -52,8 +55,6 @@ func TestHandleBotWSReconnect(t *testing.T) {
 	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
-	mockMetrics.On("IncStoreOp", "KVGet")
-	mockMetrics.On("IncStoreOp", "KVSet")
 
 	channelID := model.NewId()
 
@@ -269,6 +270,8 @@ func TestWSReader(t *testing.T) {
 		})
 
 		t.Run("valid session", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+
 			mockAPI.On("GetSession", "authSessionID").Return(&model.Session{
 				Id:        "authSessionID",
 				ExpiresAt: time.Now().UnixMilli() + 60000,
@@ -289,6 +292,8 @@ func TestWSReader(t *testing.T) {
 		})
 
 		t.Run("valid session, no expiration", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+
 			mockAPI.On("GetSession", "authSessionID").Return(&model.Session{
 				Id: "authSessionID",
 			}, nil).Once()
@@ -308,6 +313,8 @@ func TestWSReader(t *testing.T) {
 		})
 
 		t.Run("expired session", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+
 			expiresAt := time.Now().UnixMilli()
 			us := newUserSession("userID", "channelID", "connID", "callID", false)
 
@@ -339,6 +346,8 @@ func TestWSReader(t *testing.T) {
 		})
 
 		t.Run("revoked session", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+
 			us := newUserSession("userID", "channelID", "connID", "callID", false)
 
 			mockAPI.On("GetSession", "authSessionID").Return(nil,
@@ -372,6 +381,9 @@ func TestHandleCallStateRequest(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 	mockMetrics := &serverMocks.MockMetrics{}
 
+	defer mockAPI.AssertExpectations(t)
+	defer mockMetrics.AssertExpectations(t)
+
 	p := Plugin{
 		MattermostPlugin: plugin.MattermostPlugin{
 			API: mockAPI,
@@ -391,8 +403,6 @@ func TestHandleCallStateRequest(t *testing.T) {
 	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
-	mockMetrics.On("IncStoreOp", "KVGet")
-	mockMetrics.On("IncStoreOp", "KVSet")
 
 	channelID := model.NewId()
 	userID := model.NewId()
@@ -424,7 +434,6 @@ func TestHandleCallStateRequest(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
 		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(true).Once()
 		mockMetrics.On("IncWebSocketEvent", "out", "call_state").Once()
 		mockAPI.On("PublishWebSocketEvent", "call_state", mock.Anything, mock.Anything).Once()
@@ -504,6 +513,9 @@ func TestPublishWebSocketEvent(t *testing.T) {
 		})
 
 		t.Run("broadcast", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+			defer mockMetrics.AssertExpectations(t)
+
 			data := map[string]any{}
 			bc := &WebSocketBroadcast{
 				ChannelID: callChannelID,
@@ -528,6 +540,9 @@ func TestPublishWebSocketEvent(t *testing.T) {
 		})
 
 		t.Run("specified users, including bot", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+			defer mockMetrics.AssertExpectations(t)
+
 			data := map[string]any{}
 			bc := &WebSocketBroadcast{
 				ChannelID: callChannelID,
@@ -561,13 +576,16 @@ func TestPublishWebSocketEvent(t *testing.T) {
 				},
 			}).Once()
 
-			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserReacted).Times(3)
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserReacted).Times(2)
 
 			p.publishWebSocketEvent(wsEventUserReacted, data, bc)
 		})
 	})
 
 	t.Run("connection specific", func(_ *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		data := map[string]any{
 			"session_id": "userSessionID",
 		}
@@ -586,6 +604,9 @@ func TestPublishWebSocketEvent(t *testing.T) {
 	})
 
 	t.Run("specified users", func(_ *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		data := map[string]any{}
 		bc := &WebSocketBroadcast{
 			ChannelID: callChannelID,
@@ -595,7 +616,7 @@ func TestPublishWebSocketEvent(t *testing.T) {
 				"userD",
 			},
 		}
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserMuted).Twice()
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserMuted).Once()
 
 		mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, data, &model.WebsocketBroadcast{
 			ChannelId: callChannelID,
