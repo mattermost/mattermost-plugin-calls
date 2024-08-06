@@ -449,7 +449,8 @@ export default class Plugin {
         registry.registerSiteStatisticsHandler(async () => {
             let stats: Record<string, PluginAnalyticsRow> = {};
             try {
-                stats = convertStatsToPanels(await getCallsStats(), getServerVersion(store.getState()));
+                const locale = getCurrentUserLocale(store.getState()) || 'en';
+                stats = convertStatsToPanels(await getCallsStats(), getServerVersion(store.getState()), getTranslations(locale));
             } catch (err) {
                 logErr(err);
             }

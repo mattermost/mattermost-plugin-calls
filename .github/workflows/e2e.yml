@@ -154,6 +154,12 @@ jobs:
           name: mattermost-plugin-calls-transcriber-image
           path: ${{ github.workspace }}
 
+      - name: e2e/docker-login
+        uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
+        with:
+          username: ${{ secrets.DOCKERHUB_DEV_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_DEV_TOKEN }}
+
       - name: e2e/prepare-server
         env:
           DOCKER_CLIENT_TIMEOUT: 120
