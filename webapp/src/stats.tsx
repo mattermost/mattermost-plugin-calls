@@ -1,10 +1,11 @@
 import {AnalyticsVisualizationType, PluginAnalyticsRow} from '@mattermost/types/admin';
+import {General} from 'mattermost-redux/constants';
 import {isMinimumServerVersion} from 'mattermost-redux/utils/helpers';
 import React from 'react';
-import {FormattedMessage} from 'react-intl';
+import {defineMessage, FormattedMessage, MessageDescriptor} from 'react-intl';
 import {CallsStats} from 'src/types/types';
 
-export function convertStatsToPanels(data: CallsStats, serverVersion: string): Record<string, PluginAnalyticsRow> {
+export function convertStatsToPanels(data: CallsStats, serverVersion: string, translations: Record<string, string>): Record<string, PluginAnalyticsRow> {
     const stats: Record<string, PluginAnalyticsRow> = {};
     stats.total_calls = {
         visualizationType: AnalyticsVisualizationType.Count,
@@ -82,12 +83,19 @@ export function convertStatsToPanels(data: CallsStats, serverVersion: string): R
             },
         };
 
+        const channelLabelsMap: Record<string, MessageDescriptor> = {
+            [General.DM_CHANNEL]: defineMessage({defaultMessage: 'Direct'}),
+            [General.GM_CHANNEL]: defineMessage({defaultMessage: 'Group'}),
+            [General.OPEN_CHANNEL]: defineMessage({defaultMessage: 'Public'}),
+            [General.PRIVATE_CHANNEL]: defineMessage({defaultMessage: 'Private'}),
+        };
+
         stats.calls_by_channel_type = {
             visualizationType: AnalyticsVisualizationType.DoughnutChart,
             name: <FormattedMessage defaultMessage='Calls by Channel Type'/>,
             id: 'calls_by_channel_type',
             value: {
-                labels: Object.keys(data.calls_by_channel_type),
+                labels: Object.keys(data.calls_by_channel_type).map((t) => translations[channelLabelsMap[t].id!] ?? t),
                 datasets: [{
                     data: Object.values(data.calls_by_channel_type),
                     backgroundColor: ['#46BFBD', '#FDB45C', '#3CB470', '#502D86'],
