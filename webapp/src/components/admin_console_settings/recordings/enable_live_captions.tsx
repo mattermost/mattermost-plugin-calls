@@ -43,7 +43,7 @@ export const EnableLiveCaptions = (props: CustomComponentProps) => {
             className='form-group'
         >
             <label className={'control-label ' + leftCol}>
-                {formatMessage({defaultMessage: 'Enable live captions (Experimental)'})}
+                {formatMessage({defaultMessage: 'Enable live captions (Beta)'})}
             </label>
             <div className={rightCol}>
                 <RadioInputLabel $disabled={props.disabled}>

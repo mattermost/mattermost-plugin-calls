@@ -56,7 +56,7 @@
           },
           {
             "key": "EnableRinging",
-            "display_name": "Enable call ringing (Beta)",
+            "display_name": "Enable call ringing",
             "type": "bool",
             "default": false,
             "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart."
@@ -187,7 +187,7 @@
         "settings": [
           {
             "key": "EnableRecordings",
-            "display_name": "Enable call recordings (Beta)",
+            "display_name": "Enable call recordings",
             "type": "bool",
             "default": false,
             "help_text": "(Optional) When set to true, call recordings are enabled."
@@ -236,7 +236,7 @@
         "settings": [
           {
             "key": "EnableTranscriptions",
-            "display_name": "Enable call transcriptions (Experimental)",
+            "display_name": "Enable call transcriptions (Beta)",
             "type": "bool",
             "default": false,
             "help_text": "(Optional) When set to true, post-call transcriptions are enabled."
@@ -312,7 +312,7 @@
         "settings": [
           {
             "key": "EnableLiveCaptions",
-            "display_name": "Enable live captions (Experimental)",
+            "display_name": "Enable live captions (Beta)",
             "type": "bool",
             "default": false,
             "help_text": "(Optional) When set to true, live captions are enabled."
@@ -487,7 +487,7 @@
       },
       {
         "key": "EnableRecordings",
-        "display_name": "Enable call recordings (Beta)",
+        "display_name": "Enable call recordings",
         "type": "bool",
         "default": false,
         "help_text": "(Optional) When set to true, call recordings are enabled."
@@ -650,7 +650,7 @@
       },
       {
         "key": "EnableIPv6",
-        "display_name": "(Experimental) Enable IPv6 support",
+        "display_name": "Enable IPv6 support (Experimental)",
         "type": "bool",
         "help_text": "When set to true, the RTC service will work in dual-stack mode, listening for IPv6 connections and generating candidates in addition to IPv4 ones.",
         "default": false,
@@ -658,7 +658,7 @@
       },
       {
         "key": "EnableRinging",
-        "display_name": "Enable call ringing (Beta)",
+        "display_name": "Enable call ringing",
         "type": "bool",
         "default": false,
         "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart."

@@ -27,7 +27,7 @@ export const EnableIPv6 = (props: CustomComponentProps) => {
             className='form-group'
         >
             <label className={'control-label ' + leftCol}>
-                {formatMessage({defaultMessage: '(Experimental) Enable IPv6 support'})}
+                {formatMessage({defaultMessage: 'Enable IPv6 support (Experimental)'})}
             </label>
             <div className={rightCol}>
                 <RadioInputLabel $disabled={props.disabled || isRTCDEnabled}>

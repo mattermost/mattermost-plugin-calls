@@ -46,7 +46,7 @@ const EnableRecordings = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {formatMessage({defaultMessage: 'Enable call recordings (Beta)'})}
+                        {formatMessage({defaultMessage: 'Enable call recordings'})}
                     </label>
                 </LabelRow>
             </div>
