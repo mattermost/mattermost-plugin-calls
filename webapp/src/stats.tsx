@@ -103,6 +103,35 @@ export function convertStatsToPanels(data: CallsStats, serverVersion: string, tr
                 }],
             },
         };
+
+        // Render call recordings panels only if we have something to show.
+        if (Object.values(data.recording_jobs_by_day).some(val => val > 0)) {
+            stats.recording_jobs_by_day = {
+                visualizationType: AnalyticsVisualizationType.LineChart,
+                name: <FormattedMessage defaultMessage='Daily Call Recordings'/>,
+                id: 'calls_recording_jobs_by_day',
+                value: {
+                    labels: Object.keys(data.recording_jobs_by_day),
+                    datasets: [{
+                        ...lineChartStyle,
+                        data: Object.values(data.recording_jobs_by_day),
+                    }],
+                },
+            };
+
+            stats.recording_jobs_by_month = {
+                visualizationType: AnalyticsVisualizationType.LineChart,
+                name: <FormattedMessage defaultMessage='Monthly Call Recordings'/>,
+                id: 'calls_recording_jobs_by_month',
+                value: {
+                    labels: Object.keys(data.recording_jobs_by_month),
+                    datasets: [{
+                        ...lineChartStyle,
+                        data: Object.values(data.recording_jobs_by_month),
+                    }],
+                },
+            };
+        }
     }
 
     return stats;
