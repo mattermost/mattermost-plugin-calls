@@ -1,4 +1,5 @@
 import React, {ChangeEvent} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
@@ -12,6 +13,7 @@ import {
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const LiveCaptionsNumTranscribers = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const recordingEnabled = useSelector(recordingsEnabled);
@@ -40,7 +42,7 @@ const LiveCaptionsNumTranscribers = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'Live captions: Number of transcribers used per call'})}
                     </label>
                 </LabelRow>
             </div>
@@ -59,7 +61,7 @@ const LiveCaptionsNumTranscribers = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: 'The number of separate live-captions transcribers for each call. Each transcribes one audio stream at a time. The product of LiveCaptionsNumTranscribers * LiveCaptionsNumThreadsPerTranscriber must be in the range [1, numCPUs].'})}
                 </div>
             </div>
         </div>

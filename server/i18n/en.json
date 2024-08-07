@@ -1,7 +1,7 @@
 [
   {
     "id": "app.admin.concurrent_sessions_warning.enterprise",
-    "translation": "We highly recommend [deploying the RTCD service](https://docs.mattermost.com/configure/calls-deployment.html#the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
+    "translation": "We highly recommend [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
   },
   {
     "id": "app.admin.concurrent_sessions_warning.intro",
@@ -9,11 +9,11 @@
   },
   {
     "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
-    "translation": "We highly recommend upgrading to [Enterprise](https://mattermost.com/pricing/) and [deploying the RTCD service](https://docs.mattermost.com/configure/calls-deployment.html#the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
+    "translation": "We highly recommend upgrading to [Enterprise](https://mattermost.com/pricing/) and [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
   },
   {
     "id": "app.admin.concurrent_sessions_warning.team",
-    "translation": "We highly recommend switching to [Mattermost Enterprise Edition](https://docs.mattermost.com/install/enterprise-install-upgrade.html) and [deploying the RTCD service](https://docs.mattermost.com/configure/calls-deployment.html#the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
+    "translation": "We highly recommend switching to [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) and [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
   },
   {
     "id": "app.call.ended_message",

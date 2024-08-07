@@ -73,6 +73,8 @@ export interface PluginRegistry {
     registerFilePreviewComponent(overrideFn: (fi: FileInfo, post?: Post) => boolean, component: React.ElementType);
 
     registerSiteStatisticsHandler(handler: PluginSiteStatsHandler);
+
+    registerAdminConsoleCustomSection(key: string, component: React.FunctionComponent<{ settingsList: ReactNode[]; }>);
 }
 
 export type SlashCommandWillBePostedReturn = { error: string } | { message: string, args: CommandArgs } | unknown;

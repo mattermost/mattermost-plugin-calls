@@ -1,4 +1,5 @@
 import React, {ChangeEvent, useEffect, useState} from 'react';
+import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {setTranscribeAPI} from 'src/actions';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
@@ -7,6 +8,7 @@ import {isCloud, isOnPremNotEnterprise, recordingsEnabled, transcriptionsEnabled
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const TranscribeAPI = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
@@ -17,7 +19,9 @@ const TranscribeAPI = (props: CustomComponentProps) => {
 
     // Update global state with a local state change, or props change (eg, remounting)
     useEffect(() => {
-        dispatch(setTranscribeAPI(api));
+        if (api) {
+            dispatch(setTranscribeAPI(api));
+        }
     }, [dispatch, api]);
 
     if (cloud || restricted || !hasTranscriptions || !recordingEnabled) {
@@ -54,7 +58,7 @@ const TranscribeAPI = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'Call transcriber API'})}
                     </label>
                 </LabelRow>
             </div>
@@ -73,7 +77,7 @@ const TranscribeAPI = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: 'The speech-to-text API to use for post-call transcriptions.'})}
                 </div>
             </div>
         </div>

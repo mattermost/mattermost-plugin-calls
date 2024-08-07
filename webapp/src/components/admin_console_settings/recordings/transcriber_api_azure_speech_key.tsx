@@ -1,5 +1,6 @@
 import {TranscribeAPI} from '@mattermost/calls-common/lib/types';
 import React, {ChangeEvent} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import {
@@ -12,6 +13,7 @@ import {
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const TranscribeAPIAzureSpeechKey = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const recordingEnabled = useSelector(recordingsEnabled);
@@ -37,7 +39,7 @@ const TranscribeAPIAzureSpeechKey = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'Azure API Key'})}
                     </label>
                 </LabelRow>
             </div>
@@ -55,7 +57,7 @@ const TranscribeAPIAzureSpeechKey = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: 'The API key for Azure Speech Services'})}
                 </div>
             </div>
         </div>

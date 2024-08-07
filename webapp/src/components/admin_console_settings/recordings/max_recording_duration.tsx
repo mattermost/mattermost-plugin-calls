@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {ChangeEvent} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {
     LabelRow, leftCol, rightCol,
@@ -11,6 +12,7 @@ import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const MaxRecordingDuration = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const recordingEnabled = useSelector(recordingsEnabled);
@@ -37,7 +39,7 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'Maximum call recording duration'})}
                     </label>
                 </LabelRow>
             </div>
@@ -56,7 +58,7 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: 'The maximum duration (in minutes) for call recordings. Value must be in the range [15, 180].'})}
                 </div>
             </div>
         </div>

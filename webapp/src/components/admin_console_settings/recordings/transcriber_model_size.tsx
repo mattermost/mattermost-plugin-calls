@@ -1,5 +1,6 @@
 import {TranscribeAPI} from '@mattermost/calls-common/lib/types';
 import React, {ChangeEvent} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
@@ -7,6 +8,7 @@ import {isCloud, isOnPremNotEnterprise, recordingsEnabled, transcribeAPI, transc
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const TranscriberModelSize = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const hasTranscriptions = useSelector(transcriptionsEnabled);
@@ -46,7 +48,7 @@ const TranscriberModelSize = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'Call transcriber model size'})}
                     </label>
                 </LabelRow>
             </div>
@@ -65,7 +67,7 @@ const TranscriberModelSize = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: 'The speech-to-text model size to use for post-call transcriptions. Heavier models will produce more accurate results at the expense of processing time and resources usage.'})}
                 </div>
             </div>
         </div>

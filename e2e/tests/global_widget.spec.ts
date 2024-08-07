@@ -1,10 +1,26 @@
 import {expect, test} from '@playwright/test';
 
+import {apiSetEnableLiveCaptions, apiSetEnableTranscriptions} from '../config';
 import PlaywrightDevPage from '../page';
-import {getChannelNamesForTest, getUserStoragesForTest} from '../utils';
+import {acquireLock, getChannelNamesForTest, getUserStoragesForTest, releaseLock} from '../utils';
 
 test.describe('global widget', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
+
+    test.beforeEach(async () => {
+        test.setTimeout(200000);
+
+        // We acquire a file system lock so that we don't cause a conflict with other
+        // tests that update the config.
+        await acquireLock('calls-config-lock');
+
+        await apiSetEnableTranscriptions(false);
+        await apiSetEnableLiveCaptions(false);
+    });
+
+    test.afterEach(() => {
+        releaseLock('calls-config-lock');
+    });
 
     test('start call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
