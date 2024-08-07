@@ -22,6 +22,13 @@ const (
 	evCallUserLeft                  = "call_user_left"
 	evCallNotifyAdmin               = "call_notify_admin"
 	evCallConcurrentSessionsWarning = "call_concurrent_sessions_warning"
+	evHostChangeHost                = "host_change_host"
+	evHostMuteParticipant           = "host_mute_participant"
+	evHostMuteOthers                = "host_mute_others"
+	evHostStopScreenshare           = "host_stop_screenshare"
+	evHostLowerHand                 = "host_lower_hand"
+	evHostRemoveParticipant         = "host_remove_participant"
+	evHostEndCall                   = "host_end_call"
 )
 
 var (
@@ -31,10 +38,17 @@ var (
 	// We only need to map events that require a SKU (i.e., licensed features). Anything available on unlicensed
 	// servers will map to null as expected.
 	eventToSkusMap = map[string][]string{
-		"user_start_recording": enterpriseSKUs,
-		"user_stop_recording":  enterpriseSKUs,
-		"live_captions_on":     enterpriseSKUs,
-		"live_captions_off":    enterpriseSKUs,
+		"user_start_recording":  enterpriseSKUs,
+		"user_stop_recording":   enterpriseSKUs,
+		"live_captions_on":      enterpriseSKUs,
+		"live_captions_off":     enterpriseSKUs,
+		evHostChangeHost:        professionalSKUs,
+		evHostMuteParticipant:   professionalSKUs,
+		evHostMuteOthers:        professionalSKUs,
+		evHostStopScreenshare:   professionalSKUs,
+		evHostLowerHand:         professionalSKUs,
+		evHostRemoveParticipant: professionalSKUs,
+		evHostEndCall:           professionalSKUs,
 	}
 )
 
