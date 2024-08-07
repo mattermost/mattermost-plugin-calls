@@ -238,4 +238,47 @@ test.describe('desktop', () => {
         // Verify error is getting sent
         expect(desktopAPICalls.leaveCall).toBe(true);
     });
+
+    test('desktop: /call stats command', async ({page}) => {
+        // start call in global widget
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.openWidget(getChannelNamesForTest()[0]);
+        await devPage.leaveCall();
+
+        // Need to wait a moment since the the leave call happens in
+        // a setTimeout handler.
+        await devPage.wait(500);
+
+        // Go back to center channel view
+        await devPage.goto();
+
+        // Issue slash command
+        await devPage.sendSlashCommand('/call stats');
+        await devPage.wait(500);
+
+        // Veirfy call stats have been returned
+        await expect(page.locator('.post__body').last()).toContainText('"initTime"');
+        await expect(page.locator('.post__body').last()).toContainText('"callID"');
+    });
+
+    test('desktop: /call logs command', async ({page}) => {
+        // start call in global widget
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.openWidget(getChannelNamesForTest()[0]);
+        await devPage.leaveCall();
+
+        // Need to wait a moment since the the leave call happens in
+        // a setTimeout handler.
+        await devPage.wait(500);
+
+        // Go back to center channel view
+        await devPage.goto();
+
+        // Issue slash command
+        await devPage.sendSlashCommand('/call logs');
+        await devPage.wait(500);
+
+        // Veirfy call logs have been returned
+        await expect(page.locator('.post__body').last()).toContainText('join ack received, initializing connection');
+    });
 });
