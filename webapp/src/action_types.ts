@@ -56,4 +56,5 @@ export const RECEIVED_CALLS_USER_PREFERENCES = pluginId + '_received_calls_user_
 export const DESKTOP_WIDGET_CONNECTED = pluginId + '_desktop_widget_connected';
 
 export const CLIENT_CONNECTING = pluginId + '_client_connecting';
+export const LOCAL_SESSION_CLOSE = pluginId + '_local_session_close';
 
