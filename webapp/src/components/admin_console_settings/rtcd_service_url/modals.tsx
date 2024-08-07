@@ -61,7 +61,7 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                         trialExpirationDate: trialEndDate,
                         rtcdDocsLink: (text: string) => (
                             <a
-                                href='https://mattermost.com/pl/calls-deployment-the-rtcd-service'
+                                href='https://mattermost.com/pl/calls-deployment-the-rtcd-service?utm_source=mattermost&utm_medium=in-product&utm_content=calls_start_trial_form_modal'
                                 target='_blank'
                                 rel='noreferrer'
                             >
@@ -70,7 +70,7 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                         ),
                         recordingsDocsLink: (text: string) => (
                             <a
-                                href='https://mattermost.com/pl/calls-deployment-recordings'
+                                href='https://mattermost.com/pl/calls-deployment-recordings?utm_source=mattermost&utm_medium=in-product&utm_content=calls_start_trial_form_modal'
                                 target='_blank'
                                 rel='noreferrer'
                             >
@@ -100,7 +100,7 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                         ),
                         documentationLink: (text: string) => (
                             <a
-                                href='https://mattermost.com/pl/calls-deployment'
+                                href='https://mattermost.com/pl/calls-deployment?utm_source=mattermost&utm_medium=in-product&utm_content=calls_start_trial_form_modal'
                                 target='_blank'
                                 rel='noreferrer'
                             >
