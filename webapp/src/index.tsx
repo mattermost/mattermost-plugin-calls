@@ -25,6 +25,7 @@ import {
     getCallsStats,
     incomingCallOnChannel,
     loadProfilesByIdsIfMissing,
+    localSessionClose,
     selectRHSPost,
     setClientConnecting,
     showScreenSourceModal,
@@ -601,6 +602,7 @@ export default class Plugin {
                         if (err) {
                             store.dispatch(displayCallErrorModal(err, window.callsClient.channelID));
                         }
+                        store.dispatch(localSessionClose(window.callsClient.channelID));
                         window.callsClient.destroy();
                         delete window.callsClient;
                         delete window.currentCallData;
