@@ -85,5 +85,5 @@ Please join the [Developers: Calls](https://community.mattermost.com/core/channe
 
 ## License
 
-See [LICENSE](LICENSE) and [LICENSE.enterprise](server/enterprise/LICENSE) for license rights and limitations.
+See [LICENSE](./LICENSE) and [LICENSE.enterprise](server/enterprise/LICENSE) for license rights and limitations.
 
