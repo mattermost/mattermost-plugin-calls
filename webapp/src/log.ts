@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 
 import {STORAGE_CALLS_CLIENT_LOGS_KEY} from 'src/constants';
+import {getPersistentStorage} from 'src/utils';
 
 import {pluginId} from './manifest';
 
@@ -11,14 +12,12 @@ function appendClientLog(level: string, ...args: unknown[]) {
 }
 
 export function persistClientLogs() {
-    const storage = window.desktop ? localStorage : sessionStorage;
-    storage.setItem(STORAGE_CALLS_CLIENT_LOGS_KEY, clientLogs);
+    getPersistentStorage().setItem(STORAGE_CALLS_CLIENT_LOGS_KEY, clientLogs);
     clientLogs = '';
 }
 
 export function getClientLogs() {
-    const storage = window.desktop ? localStorage : sessionStorage;
-    return storage.getItem(STORAGE_CALLS_CLIENT_LOGS_KEY) || '';
+    return getPersistentStorage().getItem(STORAGE_CALLS_CLIENT_LOGS_KEY) || '';
 }
 
 export function logErr(...args: unknown[]) {

@@ -10,7 +10,7 @@ import {deflate} from 'pako/lib/deflate';
 import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo} from 'src/types/types';
 
 import {logDebug, logErr, logInfo, logWarn, persistClientLogs} from './log';
-import {getScreenStream} from './utils';
+import {getScreenStream, getPersistentStorage} from './utils';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 import {
     STORAGE_CALLS_CLIENT_STATS_KEY,
@@ -490,8 +490,7 @@ export default class CallsClient extends EventEmitter {
         this.closed = true;
         if (this.peer) {
             this.getStats().then((stats) => {
-                const storage = window.desktop ? localStorage : sessionStorage;
-                storage.setItem(STORAGE_CALLS_CLIENT_STATS_KEY, JSON.stringify(stats));
+                getPersistentStorage().setItem(STORAGE_CALLS_CLIENT_STATS_KEY, JSON.stringify(stats));
             }).catch((statsErr) => {
                 logErr(statsErr);
             });

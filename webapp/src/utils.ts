@@ -606,3 +606,7 @@ export function getWebappUtils() {
 
     return utils;
 }
+
+export function getPersistentStorage() {
+    return window.desktop ? localStorage : sessionStorage;
+}

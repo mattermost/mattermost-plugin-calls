@@ -28,7 +28,7 @@ import {
     isRecordingInCurrentCall,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
-import {getCallsClient, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
+import {getCallsClient, getPersistentStorage, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
 type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string) => void;
 
@@ -167,8 +167,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
                 return {error: {message: err}};
             }
         }
-        const storage = window.desktop ? localStorage : sessionStorage;
-        const data = storage.getItem(STORAGE_CALLS_CLIENT_STATS_KEY) || '{}';
+        const data = getPersistentStorage().getItem(STORAGE_CALLS_CLIENT_STATS_KEY) || '{}';
         return {message: `/call stats ${btoa(data)}`, args};
     }
     case 'logs': {
