@@ -6,7 +6,7 @@ set -o pipefail
 echo "Installing playbooks ..."
 docker exec \
   ${CONTAINER_SERVER} \
-  sh -c "/mattermost/bin/mmctl --local plugin add /mattermost/prepackaged_plugins/mattermost-plugin-playbooks-*.tar.gz && /mattermost/bin/mmctl --local plugin enable playbooks"
+  sh -c "/mattermost/bin/mmctl --local plugin add /mattermost/prepackaged_plugins/mattermost-plugin-playbooks-v2*.tar.gz && /mattermost/bin/mmctl --local plugin enable playbooks"
 
 # Copy built plugin into server
 echo "Copying calls plugin into ${CONTAINER_SERVER} server container ..."
