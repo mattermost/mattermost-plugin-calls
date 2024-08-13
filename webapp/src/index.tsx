@@ -35,6 +35,7 @@ import {navigateToURL} from 'src/browser_routing';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
+import MaxCallParticipants from 'src/components/admin_console_settings/max_participants';
 import EnableLiveCaptions from 'src/components/admin_console_settings/recordings/enable_live_captions';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
@@ -416,6 +417,7 @@ export default class Plugin {
         registerChannelHeaderMenuButton();
 
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
+        registry.registerAdminConsoleCustomSetting('MaxCallParticipants', MaxCallParticipants);
 
         // EnableRecording turns on/off the following:
         registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
