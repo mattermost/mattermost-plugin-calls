@@ -689,6 +689,15 @@ export const selectRHSPost = (postID: string): ActionFuncAsync => {
     };
 };
 
+export const openCallsUserSettings = (): ActionFuncAsync => {
+    return async (dispatch: DispatchFunc) => {
+        if (window.WebappUtils && window.WebappUtils.openUserSettings) {
+            dispatch(window.WebappUtils.openUserSettings({activeTab: 'com.mattermost.calls', isContentProductSettings: true}));
+        }
+        return {};
+    };
+};
+
 export const localSessionClose = (channelID: string) => (dispatch: Dispatch) => {
     dispatch({
         type: LOCAL_SESSION_CLOSE,
