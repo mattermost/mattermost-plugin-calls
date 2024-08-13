@@ -21,6 +21,7 @@ export const CallsConfigDefault: CallsConfig = {
     HostControlsAllowed: false,
     EnableAV1: false,
     TranscribeAPI: TranscribeAPI.WhisperCPP,
+    GroupCallsAllowed: false,
 };
 
 export type ChannelState = {
@@ -216,6 +217,8 @@ export type CallsStats = {
     calls_by_channel_type: Record<string, number>;
     avg_duration: number;
     avg_participants: number;
+    recording_jobs_by_day: Record<string, number>;
+    recording_jobs_by_month: Record<string, number>;
 };
 
 // Desktop types

@@ -25,6 +25,8 @@ import {
     getCallsStats,
     incomingCallOnChannel,
     loadProfilesByIdsIfMissing,
+    localSessionClose,
+    openCallsUserSettings,
     selectRHSPost,
     setClientConnecting,
     showScreenSourceModal,
@@ -34,6 +36,7 @@ import {navigateToURL} from 'src/browser_routing';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
+import MaxCallParticipants from 'src/components/admin_console_settings/max_participants';
 import EnableLiveCaptions from 'src/components/admin_console_settings/recordings/enable_live_captions';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
@@ -66,6 +69,7 @@ import {
 } from 'src/components/expanded_view/stop_recording_confirmation';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
+import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
@@ -317,6 +321,18 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(EndCallModal));
         registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
 
+        registry.registerUserSettings({
+            id: pluginId,
+            uiName: 'Calls',
+            icon: 'icon-phone-in-talk',
+            sections: [
+                {
+                    title: 'Audio devices settings',
+                    component: AudioDevicesSettingsSection,
+                },
+            ],
+        });
+
         registry.registerFilePreviewComponent((fi, post) => {
             return String(post?.type) === CALL_RECORDING_POST_TYPE;
         }, RecordingsFilePreview);
@@ -415,6 +431,7 @@ export default class Plugin {
         registerChannelHeaderMenuButton();
 
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
+        registry.registerAdminConsoleCustomSetting('MaxCallParticipants', MaxCallParticipants);
 
         // EnableRecording turns on/off the following:
         registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
@@ -502,6 +519,14 @@ export default class Plugin {
                         channelID,
                     },
                 }));
+            }));
+        }
+
+        if (window.desktopAPI?.onOpenCallsUserSettings) {
+            logDebug('registering desktopAPI.onOpenCallsUserSettings');
+            this.unsubscribers.push(window.desktopAPI.onOpenCallsUserSettings(() => {
+                logDebug('desktopAPI.onOpenCallsUserSettings');
+                store.dispatch(openCallsUserSettings());
             }));
         }
 
@@ -599,6 +624,7 @@ export default class Plugin {
                         if (err) {
                             store.dispatch(displayCallErrorModal(err, window.callsClient.channelID));
                         }
+                        store.dispatch(localSessionClose(window.callsClient.channelID));
                         window.callsClient.destroy();
                         delete window.callsClient;
                         delete window.currentCallData;

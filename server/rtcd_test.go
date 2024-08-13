@@ -42,6 +42,11 @@ func TestGetHostForNewCall(t *testing.T) {
 		mockClientB := &rtcdMocks.MockRTCDClient{}
 		mockClientC := &rtcdMocks.MockRTCDClient{}
 
+		defer mockClientA.AssertExpectations(t)
+		defer mockClientB.AssertExpectations(t)
+		defer mockClientC.AssertExpectations(t)
+		defer mockAPI.AssertExpectations(t)
+
 		mockClientA.On("Connected").Return(true).Once()
 		mockClientB.On("Connected").Return(true).Once()
 		mockClientC.On("Connected").Return(true).Once()
@@ -100,6 +105,11 @@ func TestGetHostForNewCall(t *testing.T) {
 		mockClientB := &rtcdMocks.MockRTCDClient{}
 		mockClientC := &rtcdMocks.MockRTCDClient{}
 
+		defer mockClientA.AssertExpectations(t)
+		defer mockClientB.AssertExpectations(t)
+		defer mockClientC.AssertExpectations(t)
+		defer mockAPI.AssertExpectations(t)
+
 		mockClientA.On("Connected").Return(false).Once()
 		mockClientB.On("Connected").Return(false).Once()
 		mockClientC.On("Connected").Return(false).Once()
@@ -154,6 +164,11 @@ func TestGetHostForNewCall(t *testing.T) {
 		mockClientA := &rtcdMocks.MockRTCDClient{}
 		mockClientB := &rtcdMocks.MockRTCDClient{}
 		mockClientC := &rtcdMocks.MockRTCDClient{}
+
+		defer mockClientA.AssertExpectations(t)
+		defer mockClientB.AssertExpectations(t)
+		defer mockClientC.AssertExpectations(t)
+		defer mockAPI.AssertExpectations(t)
 
 		m := &rtcdClientManager{
 			ctx: &Plugin{

@@ -13,6 +13,7 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/batching"
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
+	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	serverMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost-plugin-calls/server/interfaces"
@@ -31,6 +32,9 @@ import (
 func TestHandleBotWSReconnect(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 	mockMetrics := &serverMocks.MockMetrics{}
+
+	defer mockAPI.AssertExpectations(t)
+	defer mockMetrics.AssertExpectations(t)
 
 	p := Plugin{
 		MattermostPlugin: plugin.MattermostPlugin{
@@ -51,8 +55,6 @@ func TestHandleBotWSReconnect(t *testing.T) {
 	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
-	mockMetrics.On("IncStoreOp", "KVGet")
-	mockMetrics.On("IncStoreOp", "KVSet")
 
 	channelID := model.NewId()
 
@@ -268,6 +270,8 @@ func TestWSReader(t *testing.T) {
 		})
 
 		t.Run("valid session", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+
 			mockAPI.On("GetSession", "authSessionID").Return(&model.Session{
 				Id:        "authSessionID",
 				ExpiresAt: time.Now().UnixMilli() + 60000,
@@ -288,6 +292,8 @@ func TestWSReader(t *testing.T) {
 		})
 
 		t.Run("valid session, no expiration", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+
 			mockAPI.On("GetSession", "authSessionID").Return(&model.Session{
 				Id: "authSessionID",
 			}, nil).Once()
@@ -307,6 +313,8 @@ func TestWSReader(t *testing.T) {
 		})
 
 		t.Run("expired session", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+
 			expiresAt := time.Now().UnixMilli()
 			us := newUserSession("userID", "channelID", "connID", "callID", false)
 
@@ -338,6 +346,8 @@ func TestWSReader(t *testing.T) {
 		})
 
 		t.Run("revoked session", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+
 			us := newUserSession("userID", "channelID", "connID", "callID", false)
 
 			mockAPI.On("GetSession", "authSessionID").Return(nil,
@@ -371,6 +381,9 @@ func TestHandleCallStateRequest(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 	mockMetrics := &serverMocks.MockMetrics{}
 
+	defer mockAPI.AssertExpectations(t)
+	defer mockMetrics.AssertExpectations(t)
+
 	p := Plugin{
 		MattermostPlugin: plugin.MattermostPlugin{
 			API: mockAPI,
@@ -390,8 +403,6 @@ func TestHandleCallStateRequest(t *testing.T) {
 	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64"))
 	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
-	mockMetrics.On("IncStoreOp", "KVGet")
-	mockMetrics.On("IncStoreOp", "KVSet")
 
 	channelID := model.NewId()
 	userID := model.NewId()
@@ -423,7 +434,6 @@ func TestHandleCallStateRequest(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
 		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(true).Once()
 		mockMetrics.On("IncWebSocketEvent", "out", "call_state").Once()
 		mockAPI.On("PublishWebSocketEvent", "call_state", mock.Anything, mock.Anything).Once()
@@ -503,6 +513,9 @@ func TestPublishWebSocketEvent(t *testing.T) {
 		})
 
 		t.Run("broadcast", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+			defer mockMetrics.AssertExpectations(t)
+
 			data := map[string]any{}
 			bc := &WebSocketBroadcast{
 				ChannelID: callChannelID,
@@ -527,6 +540,9 @@ func TestPublishWebSocketEvent(t *testing.T) {
 		})
 
 		t.Run("specified users, including bot", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+			defer mockMetrics.AssertExpectations(t)
+
 			data := map[string]any{}
 			bc := &WebSocketBroadcast{
 				ChannelID: callChannelID,
@@ -560,13 +576,16 @@ func TestPublishWebSocketEvent(t *testing.T) {
 				},
 			}).Once()
 
-			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserReacted).Times(3)
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserReacted).Times(2)
 
 			p.publishWebSocketEvent(wsEventUserReacted, data, bc)
 		})
 	})
 
 	t.Run("connection specific", func(_ *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		data := map[string]any{
 			"session_id": "userSessionID",
 		}
@@ -585,6 +604,9 @@ func TestPublishWebSocketEvent(t *testing.T) {
 	})
 
 	t.Run("specified users", func(_ *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		data := map[string]any{}
 		bc := &WebSocketBroadcast{
 			ChannelID: callChannelID,
@@ -594,7 +616,7 @@ func TestPublishWebSocketEvent(t *testing.T) {
 				"userD",
 			},
 		}
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserMuted).Twice()
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserMuted).Once()
 
 		mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, data, &model.WebsocketBroadcast{
 			ChannelId: callChannelID,
@@ -633,6 +655,8 @@ func TestHandleJoin(t *testing.T) {
 		addSessionsBatchers:    map[string]*batching.Batcher{},
 		removeSessionsBatchers: map[string]*batching.Batcher{},
 	}
+
+	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
 
 	mockMetrics.On("RTCMetrics").Return(mockRTCMetrics).Once()
 	mockAPI.On("LogDebug", mock.Anything, mock.Anything, mock.Anything,
@@ -689,7 +713,8 @@ func TestHandleJoin(t *testing.T) {
 
 		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
 		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-			Id: channelID,
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
 		}, nil).Once()
 
 		mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
@@ -705,13 +730,20 @@ func TestHandleJoin(t *testing.T) {
 			&model.WebsocketBroadcast{UserId: userID, ChannelId: channelID, ReliableClusterSend: true}).Once()
 		// Call started post creation
 		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
-		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(3)
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(4)
 		mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
 		createPost(t, store, postID, userID, channelID)
 
-		mockAPI.On("GetLicense").Return(&model.License{}, nil)
+		mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil)
+		defer mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil).Unset()
+
 		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-			Id: channelID,
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
 		}, nil).Once()
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
@@ -820,6 +852,10 @@ func TestHandleJoin(t *testing.T) {
 		// Call unlock
 		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
 
+		defer mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil).Unset()
+
 		// Who gets to be host is non deterministic as it depends on the order in which sessions leave
 		// so can only make a generic assertion.
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged)
@@ -834,7 +870,8 @@ func TestHandleJoin(t *testing.T) {
 
 			mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
 			mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-				Id: channelID,
+				Id:   channelID,
+				Type: model.ChannelTypeOpen,
 			}, nil).Once()
 
 			mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
@@ -844,7 +881,7 @@ func TestHandleJoin(t *testing.T) {
 			if i == 0 {
 				// Call started post creation
 				mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
-				mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(3)
+				mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(4)
 				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
 				createPost(t, store, postID, userID, channelID)
 
@@ -853,11 +890,14 @@ func TestHandleJoin(t *testing.T) {
 					&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
 				mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-					Id: channelID,
+					Id:   channelID,
+					Type: model.ChannelTypeOpen,
 				}, nil).Once()
 			}
 
-			mockAPI.On("GetLicense").Return(&model.License{}, nil)
+			mockAPI.On("GetLicense").Return(&model.License{
+				SkuShortName: "enterprise",
+			}, nil)
 
 			mockRTCMetrics.On("IncRTCSessions", "default").Once()
 
@@ -980,12 +1020,15 @@ func TestHandleJoin(t *testing.T) {
 
 		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
 		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-			Id: channelID,
+			Id:   channelID,
+			Type: model.ChannelTypeDirect,
 		}, nil).Twice()
 
 		mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
 			MemberCount: 1,
 		}, nil).Once()
+
+		mockAPI.On("GetUsersInChannel", channelID, "username", 0, 8).Return(nil, nil)
 
 		// Call lock
 		mockAPI.On("KVSetWithOptions", "mutex_call_"+channelID, []byte{0x1}, mock.Anything).Return(true, nil)
@@ -1086,100 +1129,5 @@ func TestHandleJoin(t *testing.T) {
 
 		// We need to give it some time as leaving happens in a goroutine.
 		time.Sleep(2 * time.Second)
-	})
-}
-
-func TestHandleMetricMessage(t *testing.T) {
-	mockAPI := &pluginMocks.MockAPI{}
-	mockMetrics := &serverMocks.MockMetrics{}
-
-	p := Plugin{
-		MattermostPlugin: plugin.MattermostPlugin{
-			API: mockAPI,
-		},
-		metrics: mockMetrics,
-		botSession: &model.Session{
-			UserId: "botID",
-		},
-	}
-
-	t.Run("live captions", func(t *testing.T) {
-		t.Run("ignored if not from bot", func(t *testing.T) {
-			defer mockAPI.AssertExpectations(t)
-			defer mockMetrics.AssertExpectations(t)
-
-			err := p.handleMetricMessage(public.MetricLiveCaptionsWindowDropped, "userID", nil)
-			require.NoError(t, err)
-
-			err = p.handleMetricMessage(public.MetricLiveCaptionsPktPayloadChBufFull, "userID", nil)
-			require.NoError(t, err)
-
-			err = p.handleMetricMessage(public.MetricLiveCaptionsTranscriberBufFull, "userID", nil)
-			require.NoError(t, err)
-		})
-
-		t.Run("from bot", func(t *testing.T) {
-			defer mockAPI.AssertExpectations(t)
-			defer mockMetrics.AssertExpectations(t)
-
-			mockMetrics.On("IncLiveCaptionsWindowDropped").Once()
-			mockMetrics.On("IncLiveCaptionsPktPayloadChBufFull").Once()
-			mockMetrics.On("IncLiveCaptionsTranscriberBufFull").Once()
-
-			err := p.handleMetricMessage(public.MetricLiveCaptionsWindowDropped, "botID", nil)
-			require.NoError(t, err)
-
-			err = p.handleMetricMessage(public.MetricLiveCaptionsPktPayloadChBufFull, "botID", nil)
-			require.NoError(t, err)
-
-			err = p.handleMetricMessage(public.MetricLiveCaptionsTranscriberBufFull, "botID", nil)
-			require.NoError(t, err)
-		})
-	})
-
-	t.Run("client metrics", func(t *testing.T) {
-		t.Run("invalid payload data", func(t *testing.T) {
-			defer mockAPI.AssertExpectations(t)
-			defer mockMetrics.AssertExpectations(t)
-
-			err := p.handleMetricMessage(public.MetricClientICECandidatePair, "userID", nil)
-			require.EqualError(t, err, "invalid payload found in metric message")
-		})
-
-		t.Run("bad json", func(t *testing.T) {
-			defer mockAPI.AssertExpectations(t)
-			defer mockMetrics.AssertExpectations(t)
-
-			err := p.handleMetricMessage(public.MetricClientICECandidatePair, "userID", "invalid")
-			require.EqualError(t, err, "failed to unmarshal payload: invalid character 'i' looking for beginning of value")
-		})
-
-		t.Run("invalid payload", func(t *testing.T) {
-			defer mockAPI.AssertExpectations(t)
-			defer mockMetrics.AssertExpectations(t)
-
-			err := p.handleMetricMessage(public.MetricClientICECandidatePair, "userID", "{}")
-			require.EqualError(t, err, "failed to validate payload: invalid state \"\"")
-		})
-
-		t.Run("valid", func(t *testing.T) {
-			defer mockAPI.AssertExpectations(t)
-			defer mockMetrics.AssertExpectations(t)
-
-			mockMetrics.On("IncClientICECandidatePairs", public.ClientICECandidatePairMetricPayload{
-				State: "succeeded",
-				Local: public.ICECandidateInfo{
-					Type:     "host",
-					Protocol: "udp",
-				},
-				Remote: public.ICECandidateInfo{
-					Type:     "host",
-					Protocol: "udp",
-				},
-			}).Once()
-
-			err := p.handleMetricMessage(public.MetricClientICECandidatePair, "userID", `{"state": "succeeded", "local": {"type": "host", "protocol": "udp"}, "remote": {"type": "host", "protocol": "udp"}}`)
-			require.NoError(t, err)
-		})
 	})
 }

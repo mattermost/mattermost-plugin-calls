@@ -135,6 +135,8 @@ type clientConfig struct {
 	HostControlsAllowed bool
 	// When set to true it enables using the AV1 codec to encode screen sharing tracks.
 	EnableAV1 *bool
+	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
+	GroupCallsAllowed bool
 }
 
 type adminClientConfig struct {
@@ -514,6 +516,7 @@ func (p *Plugin) getClientConfig(c *configuration) clientConfig {
 		SkuShortName:         skuShortName,
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
 		EnableAV1:            c.EnableAV1,
+		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
 	}
 }
 
