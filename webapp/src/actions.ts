@@ -62,6 +62,7 @@ import {
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
     LIVE_CAPTIONS_ENABLED,
+    LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
@@ -415,7 +416,6 @@ export const userLeft = (channelID: string, userID: string, sessionID: string) =
                 channelID,
                 userID,
                 session_id: sessionID,
-                currentUserID: getCurrentUserId(getState()),
             },
         });
 
@@ -687,4 +687,22 @@ export const selectRHSPost = (postID: string): ActionFuncAsync => {
         }
         return {};
     };
+};
+
+export const openCallsUserSettings = (): ActionFuncAsync => {
+    return async (dispatch: DispatchFunc) => {
+        if (window.WebappUtils && window.WebappUtils.openUserSettings) {
+            dispatch(window.WebappUtils.openUserSettings({activeTab: 'com.mattermost.calls', isContentProductSettings: true}));
+        }
+        return {};
+    };
+};
+
+export const localSessionClose = (channelID: string) => (dispatch: Dispatch) => {
+    dispatch({
+        type: LOCAL_SESSION_CLOSE,
+        data: {
+            channelID,
+        },
+    });
 };
