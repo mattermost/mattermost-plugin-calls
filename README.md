@@ -29,7 +29,7 @@ This plugin demands some network configuration changes to allow audio/video comm
 > - NodeJS: version **20.11**
 > - NPM: version **10.x**
 
-Use ```make dist``` to build this plugin.
+Use `make dist` to build this plugin.
 
 Use `make deploy` to deploy the plugin to your local server.
 
@@ -40,37 +40,37 @@ For more details on how to develop a plugin refer to the official [documentation
 To trigger a release, follow these steps:
 
 1. **For Patch Release:** Run the following command:
-    ```
+    ```bash
     make patch
     ```
    This will release a patch change.
 
 2. **For Minor Release:** Run the following command:
-    ```
+    ```bash
     make minor
     ```
    This will release a minor change.
 
 3. **For Major Release:** Run the following command:
-    ```
+    ```bash
     make major
     ```
    This will release a major change.
 
 4. **For Patch Release Candidate (RC):** Run the following command:
-    ```
+    ```bash
     make patch-rc
     ```
    This will release a patch release candidate.
 
 5. **For Minor Release Candidate (RC):** Run the following command:
-    ```
+    ```bash
     make minor-rc
     ```
    This will release a minor release candidate.
 
 6. **For Major Release Candidate (RC):** Run the following command:
-    ```
+    ```bash
     make major-rc
     ```
    This will release a major release candidate.

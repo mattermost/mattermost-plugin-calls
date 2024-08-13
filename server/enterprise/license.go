@@ -4,6 +4,8 @@
 package enterprise
 
 import (
+	"os"
+
 	"github.com/mattermost/mattermost-plugin-calls/server/license"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -53,4 +55,8 @@ func (e *LicenseChecker) TranscriptionsAllowed() bool {
 
 func (e *LicenseChecker) HostControlsAllowed() bool {
 	return e.isAtLeastE10Licensed()
+}
+
+func (e *LicenseChecker) GroupCallsAllowed() bool {
+	return e.isAtLeastE10Licensed() || os.Getenv("MM_CALLS_GROUP_CALLS_ALLOWED") == "true"
 }

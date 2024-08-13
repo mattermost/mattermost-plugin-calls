@@ -25,6 +25,7 @@ import {
     getCallsStats,
     incomingCallOnChannel,
     loadProfilesByIdsIfMissing,
+    localSessionClose,
     openCallsUserSettings,
     selectRHSPost,
     setClientConnecting,
@@ -35,6 +36,7 @@ import {navigateToURL} from 'src/browser_routing';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
+import MaxCallParticipants from 'src/components/admin_console_settings/max_participants';
 import EnableLiveCaptions from 'src/components/admin_console_settings/recordings/enable_live_captions';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
@@ -429,6 +431,7 @@ export default class Plugin {
         registerChannelHeaderMenuButton();
 
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
+        registry.registerAdminConsoleCustomSetting('MaxCallParticipants', MaxCallParticipants);
 
         // EnableRecording turns on/off the following:
         registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
@@ -461,7 +464,8 @@ export default class Plugin {
         registry.registerSiteStatisticsHandler(async () => {
             let stats: Record<string, PluginAnalyticsRow> = {};
             try {
-                stats = convertStatsToPanels(await getCallsStats(), getServerVersion(store.getState()));
+                const locale = getCurrentUserLocale(store.getState()) || 'en';
+                stats = convertStatsToPanels(await getCallsStats(), getServerVersion(store.getState()), getTranslations(locale));
             } catch (err) {
                 logErr(err);
             }
@@ -620,6 +624,7 @@ export default class Plugin {
                         if (err) {
                             store.dispatch(displayCallErrorModal(err, window.callsClient.channelID));
                         }
+                        store.dispatch(localSessionClose(window.callsClient.channelID));
                         window.callsClient.destroy();
                         delete window.callsClient;
                         delete window.currentCallData;
