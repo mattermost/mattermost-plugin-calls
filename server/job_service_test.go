@@ -69,20 +69,15 @@ func TestJobServiceStopJob(t *testing.T) {
 	})
 
 	t.Run("sending events", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventJobStop).Once()
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
 
 		mockAPI.On("PublishWebSocketEvent", wsEventJobStop, map[string]any{
 			"job_id": "jobID",
 		}, &model.WebsocketBroadcast{
 			UserId:              "botUserID",
-			ReliableClusterSend: true,
-		}).Once()
-
-		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{
-			"channelID": "callChannelID",
-		}, &model.WebsocketBroadcast{
-			ConnectionId:        "botConnID",
 			ReliableClusterSend: true,
 		}).Once()
 
