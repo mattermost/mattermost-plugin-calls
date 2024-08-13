@@ -12,10 +12,14 @@ import {
     stopCallRecording,
     trackEvent,
 } from 'src/actions';
-import {DisabledCallsErr} from 'src/constants';
+import {
+    DisabledCallsErr,
+    STORAGE_CALLS_CLIENT_STATS_KEY,
+    STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY,
+} from 'src/constants';
 import * as Telemetry from 'src/types/telemetry';
 
-import {logDebug} from './log';
+import {getClientLogs, logDebug} from './log';
 import {
     areGroupCallsAllowed,
     channelHasCall,
@@ -25,7 +29,7 @@ import {
     isRecordingInCurrentCall,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
-import {getCallsClient, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
+import {getCallsClient, getPersistentStorage, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
 type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string) => void;
 
@@ -158,11 +162,11 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             break;
         }
         if (fields[2] === 'on') {
-            window.localStorage.setItem('calls_experimental_features', 'on');
+            window.localStorage.setItem(STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY, 'on');
             logDebug('experimental features enabled');
         } else if (fields[2] === 'off') {
             logDebug('experimental features disabled');
-            window.localStorage.removeItem('calls_experimental_features');
+            window.localStorage.removeItem(STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY);
         }
         break;
     case 'stats': {
@@ -174,8 +178,11 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
                 return {error: {message: err}};
             }
         }
-        const data = sessionStorage.getItem('calls_client_stats') || '{}';
+        const data = getPersistentStorage().getItem(STORAGE_CALLS_CLIENT_STATS_KEY) || '{}';
         return {message: `/call stats ${btoa(data)}`, args};
+    }
+    case 'logs': {
+        return {message: `/call logs ${btoa(getClientLogs())}`, args};
     }
     case 'recording': {
         if (fields.length < 3 || (fields[2] !== 'start' && fields[2] !== 'stop')) {
