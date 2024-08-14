@@ -36,6 +36,7 @@ import {
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
     LIVE_CAPTIONS_ENABLED,
+    LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CHANNEL_STATE,
@@ -532,12 +533,10 @@ export type callsJobState = {
     [callID: string]: CallJobState;
 }
 
-type userDisconnectedAction = {
+type localSessionCloseAction = {
     type: string;
     data: {
         channelID: string;
-        userID: string;
-        currentUserID: string;
     };
 }
 
@@ -557,18 +556,15 @@ type disclaimerDismissedAction = {
     };
 }
 
-const recordings = (state: callsJobState = {}, action: jobStateAction | userDisconnectedAction | disclaimerDismissedAction) => {
+const recordings = (state: callsJobState = {}, action: jobStateAction | localSessionCloseAction | disclaimerDismissedAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
-    case USER_LEFT: {
-        const theAction = action as userDisconnectedAction;
-        if (theAction.data.currentUserID === theAction.data.userID) {
-            const nextState = {...state};
-            delete nextState[theAction.data.channelID];
-            return nextState;
-        }
-        return state;
+    case LOCAL_SESSION_CLOSE: {
+        const theAction = action as localSessionCloseAction;
+        const nextState = {...state};
+        delete nextState[theAction.data.channelID];
+        return nextState;
     }
     case CALL_RECORDING_STATE: {
         const theAction = action as jobStateAction;

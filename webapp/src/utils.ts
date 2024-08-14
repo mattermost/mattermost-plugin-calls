@@ -16,6 +16,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 import CallsClient from 'src/client';
+import {STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY} from 'src/constants';
 import RestClient from 'src/rest_client';
 import {notificationSounds} from 'src/webapp_globals';
 
@@ -334,7 +335,7 @@ export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
 }
 
 export function hasExperimentalFlag() {
-    return window.localStorage.getItem('calls_experimental_features') === 'on';
+    return window.localStorage.getItem(STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY) === 'on';
 }
 
 export function split<T>(list: T[], i: number, pad = false): [list: T[], overflowed?: T[]] {
@@ -604,4 +605,8 @@ export function getWebappUtils() {
     }
 
     return utils;
+}
+
+export function getPersistentStorage() {
+    return window.desktop ? localStorage : sessionStorage;
 }

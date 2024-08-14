@@ -578,6 +578,8 @@ export const isAtLeastProfessional = (state: GlobalState): boolean => {
 
 export const areHostControlsAllowed = (state: GlobalState): boolean => callsConfig(state).HostControlsAllowed;
 
+export const areGroupCallsAllowed = (state: GlobalState): boolean => callsConfig(state).GroupCallsAllowed;
+
 export const adminStats = (state: GlobalState) => state.entities.admin.analytics;
 
 export const getChannelUrlAndDisplayName = (state: GlobalState, channel?: Channel) => {

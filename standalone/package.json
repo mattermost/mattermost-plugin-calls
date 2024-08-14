@@ -18,7 +18,7 @@
     "extract": "formatjs extract 'src/**/*.{ts,tsx}' --ignore 'src/**/*.d.ts' --out-file i18n/temp.json --id-interpolation-pattern '[sha512:contenthash:base64:6]' && formatjs compile 'i18n/temp.json' --out-file i18n/en.json && rm i18n/temp.json"
   },
   "dependencies": {
-    "@mattermost/calls-common": "github:mattermost/calls-common#5cc5598fe9574125a61a3b54501deb6b65fcc70f",
+    "@mattermost/calls-common": "github:mattermost/calls-common#1ce6defb1ee0c1e0f106ddff8f46c37d10d60b76",
     "@mattermost/compass-icons": "0.1.31",
     "@msgpack/msgpack": "2.7.1",
     "bootstrap": "3.4.1",
@@ -46,7 +46,7 @@
     "@babel/preset-typescript": "7.16.0",
     "@formatjs/cli": "6.0.4",
     "@mattermost/client": "file:../webapp/mattermost-webapp/webapp/platform/client",
-    "@mattermost/desktop-api": "5.9.0-1",
+    "@mattermost/desktop-api": "5.10.0-1",
     "@mattermost/eslint-plugin": "1.1.0-0",
     "@mattermost/types": "file:../webapp/mattermost-webapp/webapp/platform/types",
     "@types/jest": "27.0.2",

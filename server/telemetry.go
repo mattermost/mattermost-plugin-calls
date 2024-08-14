@@ -22,20 +22,33 @@ const (
 	evCallUserLeft                  = "call_user_left"
 	evCallNotifyAdmin               = "call_notify_admin"
 	evCallConcurrentSessionsWarning = "call_concurrent_sessions_warning"
+	evHostChangeHost                = "host_change_host"
+	evHostMuteParticipant           = "host_mute_participant"
+	evHostMuteOthers                = "host_mute_others"
+	evHostStopScreenshare           = "host_stop_screenshare"
+	evHostLowerHand                 = "host_lower_hand"
+	evHostRemoveParticipant         = "host_remove_participant"
+	evHostEndCall                   = "host_end_call"
 )
 
 var (
-	enterpriseSKUs = []string{model.LicenseShortSkuEnterprise}
-	// currently unused
-	// professionalSKUs = []string{model.LicenseShortSkuProfessional, model.LicenseShortSkuEnterprise}
+	enterpriseSKUs   = []string{model.LicenseShortSkuEnterprise}
+	professionalSKUs = []string{model.LicenseShortSkuProfessional, model.LicenseShortSkuEnterprise}
 
 	// We only need to map events that require a SKU (i.e., licensed features). Anything available on unlicensed
 	// servers will map to null as expected.
 	eventToSkusMap = map[string][]string{
-		"user_start_recording": enterpriseSKUs,
-		"user_stop_recording":  enterpriseSKUs,
-		"live_captions_on":     enterpriseSKUs,
-		"live_captions_off":    enterpriseSKUs,
+		"user_start_recording":  enterpriseSKUs,
+		"user_stop_recording":   enterpriseSKUs,
+		"live_captions_on":      enterpriseSKUs,
+		"live_captions_off":     enterpriseSKUs,
+		evHostChangeHost:        professionalSKUs,
+		evHostMuteParticipant:   professionalSKUs,
+		evHostMuteOthers:        professionalSKUs,
+		evHostStopScreenshare:   professionalSKUs,
+		evHostLowerHand:         professionalSKUs,
+		evHostRemoveParticipant: professionalSKUs,
+		evHostEndCall:           professionalSKUs,
 	}
 )
 
@@ -93,11 +106,19 @@ func (p *Plugin) track(ev string, props map[string]any) {
 		return
 	}
 
+	skus := eventToSkusMap[ev]
+
+	if ev == evCallStarted && props != nil {
+		if ct, _ := props["ChannelType"].(model.ChannelType); ct != model.ChannelTypeDirect {
+			skus = professionalSKUs
+		}
+	}
+
 	ctx := &analytics.Context{
 		Extra: map[string]any{
 			"feature": eventFeature{
 				Name: "Calls",
-				Skus: eventToSkusMap[ev],
+				Skus: skus,
 			},
 		},
 	}
