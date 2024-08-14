@@ -18,13 +18,13 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
 	github.com/mattermost/calls-offloader v0.8.0
-	github.com/mattermost/calls-recorder v0.7.3
-	github.com/mattermost/calls-transcriber v0.3.1
+	github.com/mattermost/calls-recorder v0.7.4
+	github.com/mattermost/calls-transcriber v0.4.0
 	github.com/mattermost/logr/v2 v2.0.21
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.1.5-0.20240613070149-4b0ae20ef7b4
 	github.com/mattermost/morph v1.1.0
-	github.com/mattermost/rtcd v0.16.3-0.20240726081546-8b783d9cd2d4
+	github.com/mattermost/rtcd v0.17.0
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
