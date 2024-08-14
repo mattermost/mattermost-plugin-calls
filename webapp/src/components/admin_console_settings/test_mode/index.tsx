@@ -41,7 +41,7 @@ const TestMode = (props: CustomComponentProps) => {
                         onChange={handleChange}
                         disabled={props.disabled}
                     />
-                    <span>{formatMessage({defaultMessage: 'True'})}</span>
+                    {formatMessage({defaultMessage: 'On'})}
                 </RadioInputLabel>
                 <RadioInputLabel $disabled={props.disabled}>
                     <RadioInput
@@ -54,7 +54,7 @@ const TestMode = (props: CustomComponentProps) => {
                         onChange={handleChange}
                         disabled={props.disabled}
                     />
-                    <span>{formatMessage({defaultMessage: 'False'})}</span>
+                    {formatMessage({defaultMessage: 'Off'})}
                 </RadioInputLabel>
                 <div
                     data-testid={props.id + 'help-text'}
