@@ -4,7 +4,7 @@
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import Avatar from 'plugin/components/avatar/avatar';
-import CallParticipant from 'plugin/components/expanded_view/call_participant';
+import ParticipantsGrid from 'plugin/components/expanded_view/participants_grid';
 import {logErr} from 'plugin/log';
 import {alphaSortSessions, getUserDisplayName, stateSortSessions, untranslatable} from 'plugin/utils';
 import React, {useCallback, useEffect, useState} from 'react';
@@ -20,8 +20,6 @@ import {
     screenSharingSessionForCurrentCall,
     sessionsInCurrentCall,
 } from 'src/selectors';
-
-const MaxParticipantsPerRow = 10;
 
 const RecordingView = () => {
     const {formatMessage} = useIntl();
@@ -134,37 +132,6 @@ const RecordingView = () => {
         );
     };
 
-    const renderParticipants = () => {
-        return sessions.map((session) => {
-            const isMuted = !session.unmuted;
-            const isSpeaking = Boolean(session.voice);
-            const isHandRaised = Boolean(session.raised_hand > 0);
-
-            const profile = profiles[session.user_id];
-            if (!profile) {
-                return null;
-            }
-
-            return (
-                <CallParticipant
-                    key={session.session_id}
-                    name={getUserDisplayName(profile)}
-                    pictureURL={profileImages[profile.id]}
-                    isMuted={isMuted}
-                    isSpeaking={isSpeaking}
-                    isHandRaised={isHandRaised}
-                    reaction={session?.reaction}
-                    isHost={profile.id === hostID}
-                    iAmHost={false}
-                    isYou={false}
-                    userID={session.user_id}
-                    sessionID={session.session_id}
-                    onRemove={() => null}
-                />
-            );
-        });
-    };
-
     const renderSpeaking = () => {
         let speakingProfile;
         for (let i = 0; i < sessions.length; i++) {
@@ -210,17 +177,13 @@ const RecordingView = () => {
             style={style.root}
         >
             {!hasScreenShare &&
-                <div style={style.main}>
-                    <ul
-                        id='calls-recording-view-participants-grid'
-                        style={{
-                            ...style.participants,
-                            gridTemplateColumns: `repeat(${Math.min(sessions.length, MaxParticipantsPerRow)}, 1fr)`,
-                        }}
-                    >
-                        {renderParticipants()}
-                    </ul>
-                </div>
+            <ParticipantsGrid
+                callID={callsClient.channelID}
+                callHostID={hostID}
+                profiles={profiles}
+                sessions={sessions}
+                profileImages={profileImages}
+            />
             }
             {hasScreenShare && renderScreenSharingPlayer()}
 
@@ -254,17 +217,6 @@ const style = {
         height: '100%',
         background: '#1E1E1E',
         color: 'white',
-    },
-    main: {
-        display: 'flex',
-        flex: '1',
-        overflow: 'auto',
-    },
-    participants: {
-        display: 'grid',
-        overflow: 'auto',
-        margin: 'auto',
-        padding: '0',
     },
     screenContainer: {
         position: 'relative',

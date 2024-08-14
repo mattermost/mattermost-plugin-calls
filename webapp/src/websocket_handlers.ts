@@ -185,7 +185,7 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
     }
 
     if (ringingEnabled(store.getState()) && userID === currentUserID) {
-        const callID = calls(store.getState())[channelID].ID || '';
+        const callID = calls(store.getState())[channelID]?.ID || '';
         store.dispatch(removeIncomingCallNotification(callID));
         notificationsStopRinging(); // And stop ringing for _any_ incoming call.
     }
