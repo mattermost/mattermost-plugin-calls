@@ -8,6 +8,7 @@ import {useSelector} from 'react-redux';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {Header, Spinner, SubHeader} from 'src/components/shared';
 import {
+    areGroupCallsAllowed,
     callsShowButton,
     channelIDForCurrentCall,
     clientConnecting,
@@ -36,13 +37,14 @@ const ChannelHeaderButton = () => {
     const maxCallParticipants = useSelector(maxParticipants);
     const isChannelArchived = channel && channel.delete_at > 0;
     const isClientConnecting = useSelector(clientConnecting);
+    const callsAllowed = useSelector(areGroupCallsAllowed) || isDMChannel(channel);
 
     const {formatMessage} = useIntl();
 
     const [joining, setJoining] = useState(false); // doesn't matter, will be set below
     const onClick = () => setJoining(hasCall);
 
-    if (!show || !channel) {
+    if (!show || !channel || !callsAllowed) {
         return null;
     }
 

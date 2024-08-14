@@ -1,16 +1,22 @@
 /* eslint-disable max-lines */
 // eslint-disable-next-line simple-import-sort/imports
 import {parseRTCStats, RTCMonitor, RTCPeer} from '@mattermost/calls-common';
-import {EmojiData} from '@mattermost/calls-common/lib/types';
+import type {EmojiData, CallsClientJoinData} from '@mattermost/calls-common/lib/types';
+
 import {EventEmitter} from 'events';
 
 // @ts-ignore
 import {deflate} from 'pako/lib/deflate';
-import {AudioDevices, CallsClientConfig, CallsClientJoinData, CallsClientStats, TrackInfo} from 'src/types/types';
+import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo} from 'src/types/types';
 
-import {logDebug, logErr, logInfo, logWarn} from './log';
-import {getScreenStream} from './utils';
+import {logDebug, logErr, logInfo, logWarn, persistClientLogs} from './log';
+import {getScreenStream, getPersistentStorage} from './utils';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
+import {
+    STORAGE_CALLS_CLIENT_STATS_KEY,
+    STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
+    STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
+} from 'src/constants';
 
 export const AudioInputPermissionsError = new Error('missing audio input permissions');
 export const AudioInputMissingError = new Error('no audio input available');
@@ -44,6 +50,7 @@ export default class CallsClient extends EventEmitter {
     private connected = false;
     public initTime = Date.now();
     private rtcMonitor: RTCMonitor | null = null;
+    private av1Codec: RTCRtpCodecCapability | null = null;
 
     constructor(config: CallsClientConfig) {
         super();
@@ -97,8 +104,8 @@ export default class CallsClient extends EventEmitter {
             };
         }
 
-        const defaultInputID = window.localStorage.getItem('calls_default_audio_input');
-        const defaultOutputID = window.localStorage.getItem('calls_default_audio_output');
+        const defaultInputID = window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY);
+        const defaultOutputID = window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY);
         if (defaultInputID && !this.currentAudioInputDevice) {
             const devices = this.audioDevices.inputs.filter((dev) => {
                 return dev.deviceId === defaultInputID;
@@ -112,7 +119,7 @@ export default class CallsClient extends EventEmitter {
                 this.currentAudioInputDevice = devices[0];
             } else {
                 logDebug('audio input device not found');
-                window.localStorage.removeItem('calls_default_audio_input');
+                window.localStorage.removeItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY);
             }
         }
 
@@ -126,7 +133,7 @@ export default class CallsClient extends EventEmitter {
                 this.currentAudioOutputDevice = devices[0];
             } else {
                 logDebug('audio output device not found');
-                window.localStorage.removeItem('calls_default_audio_output');
+                window.localStorage.removeItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY);
             }
         }
 
@@ -155,8 +162,76 @@ export default class CallsClient extends EventEmitter {
         }
     }
 
+    private collectICEStats() {
+        const start = Date.now();
+        const seenMap: {[key: string]: string} = {};
+
+        const gatherStats = async () => {
+            if (!this.ws || !this.peer) {
+                return;
+            }
+
+            try {
+                const stats = parseRTCStats(await this.peer.getStats()).iceStats;
+                for (const state of Object.keys(stats)) {
+                    for (const pair of stats[state]) {
+                        const seenState = seenMap[pair.id];
+                        seenMap[pair.id] = pair.state;
+
+                        if (seenState !== pair.state) {
+                            logDebug('ice candidate pair stats', JSON.stringify(pair));
+                        }
+
+                        if (seenState === 'succeeded' || state !== 'succeeded') {
+                            continue;
+                        }
+
+                        if (!pair.local || !pair.remote) {
+                            continue;
+                        }
+
+                        this.ws.send('metric', {
+                            metric_name: 'client_ice_candidate_pair',
+                            data: JSON.stringify({
+                                state: pair.state,
+                                local: {
+                                    type: pair.local.candidateType,
+                                    protocol: pair.local.protocol,
+                                },
+                                remote: {
+                                    type: pair.remote.candidateType,
+                                    protocol: pair.remote.protocol,
+                                },
+                            }),
+                        });
+                    }
+                }
+            } catch (err) {
+                logErr('failed to parse ICE stats', err);
+            }
+
+            // Repeat the check for at most 30 seconds.
+            if (Date.now() < start + 30000) {
+                // We check every two seconds.
+                setTimeout(gatherStats, 2000);
+            }
+        };
+
+        gatherStats();
+    }
+
     public async init(joinData: CallsClientJoinData) {
         this.channelID = joinData.channelID;
+
+        if (this.config.enableAV1 && !this.config.simulcast) {
+            this.av1Codec = await RTCPeer.getVideoCodec('video/AV1');
+            if (this.av1Codec) {
+                logDebug('client has AV1 support');
+                joinData.av1Support = true;
+            }
+        } else if (this.config.enableAV1 && this.config.simulcast) {
+            logWarn('both simulcast and av1 support are enabled');
+        }
 
         if (!window.isSecureContext) {
             throw insecureContextErr;
@@ -228,6 +303,8 @@ export default class CallsClient extends EventEmitter {
 
             this.peer = peer;
 
+            this.collectICEStats();
+
             this.rtcMonitor = new RTCMonitor({
                 peer,
                 logger: {
@@ -288,6 +365,7 @@ export default class CallsClient extends EventEmitter {
 
             peer.on('connect', () => {
                 logDebug('rtc connected');
+
                 this.emit('connect');
                 this.rtcMonitor?.start();
                 this.connected = true;
@@ -295,6 +373,7 @@ export default class CallsClient extends EventEmitter {
 
             peer.on('close', () => {
                 logDebug('rtc closed');
+
                 if (!this.closed) {
                     this.disconnect(rtcPeerCloseErr);
                 }
@@ -333,6 +412,7 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('mos');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices?.removeEventListener('devicechange', this.onDeviceChange);
+        persistClientLogs();
     }
 
     public async setAudioInputDevice(device: MediaDeviceInfo) {
@@ -340,7 +420,7 @@ export default class CallsClient extends EventEmitter {
             return;
         }
 
-        window.localStorage.setItem('calls_default_audio_input', device.deviceId);
+        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, device.deviceId);
         this.currentAudioInputDevice = device;
 
         // We emit this event so it's easier to keep state in sync between widget and pop out.
@@ -390,7 +470,7 @@ export default class CallsClient extends EventEmitter {
         if (!this.peer) {
             return;
         }
-        window.localStorage.setItem('calls_default_audio_output', device.deviceId);
+        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, device.deviceId);
         this.currentAudioOutputDevice = device;
 
         // We emit this event so it's easier to keep state in sync between widget and pop out.
@@ -410,7 +490,7 @@ export default class CallsClient extends EventEmitter {
         this.closed = true;
         if (this.peer) {
             this.getStats().then((stats) => {
-                sessionStorage.setItem('calls_client_stats', JSON.stringify(stats));
+                getPersistentStorage().setItem(STORAGE_CALLS_CLIENT_STATS_KEY, JSON.stringify(stats));
             }).catch((statsErr) => {
                 logErr(statsErr);
             });
@@ -531,6 +611,7 @@ export default class CallsClient extends EventEmitter {
         this.localScreenTrack = screenTrack;
 
         const screenAudioTrack = screenStream.getAudioTracks()[0];
+
         if (screenAudioTrack) {
             screenStream = new MediaStream([screenTrack, screenAudioTrack]);
         } else {
@@ -555,7 +636,16 @@ export default class CallsClient extends EventEmitter {
         };
 
         logDebug('adding stream to peer', screenStream.id);
+
+        // Always send a fallback track (VP8 encoded) for receivers that don't yet support AV1.
         this.peer.addStream(screenStream);
+
+        if (this.config.enableAV1 && this.av1Codec) {
+            logDebug('AV1 supported, sending track', this.av1Codec);
+            this.peer.addStream(screenStream, [{
+                codec: this.av1Codec,
+            }]);
+        }
 
         this.ws.send('screen_on', {
             data: JSON.stringify({

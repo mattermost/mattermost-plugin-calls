@@ -10,6 +10,7 @@ import '@mattermost/compass-icons/css/compass-icons.css';
 import {
     CallHostChangedData,
     CallJobStateData,
+    CallsClientJoinData,
     CallStartData,
     CallStateData,
     EmptyData,
@@ -37,7 +38,7 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
-import {getCallActive, getCallsConfig, setClientConnecting} from 'plugin/actions';
+import {getCallActive, getCallsConfig, localSessionClose, setClientConnecting} from 'plugin/actions';
 import CallsClient from 'plugin/client';
 import {
     logDebug,
@@ -77,7 +78,7 @@ import {
     handleUserVoiceOn,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
-import {CallActions, CallsClientConfig, CallsClientJoinData, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
+import {CallActions, CallsClientConfig, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 
 import {
     getCallID,
@@ -115,6 +116,9 @@ function connectCall(
 
         window.callsClient.on('close', (err?: Error) => {
             store.dispatch(setClientConnecting(false));
+            if (window.callsClient) {
+                store.dispatch(localSessionClose(window.callsClient.channelID));
+            }
             if (closeCb) {
                 closeCb(err);
             }
@@ -228,6 +232,7 @@ export default async function init(cfg: InitConfig) {
         iceServers: iceConfigs,
         authToken: getToken(),
         simulcast: callsConfig(store.getState()).EnableSimulcast,
+        enableAV1: callsConfig(store.getState()).EnableAV1,
     };
 
     connectCall(joinData, clientConfig, (ev) => {

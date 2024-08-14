@@ -20,6 +20,11 @@ export type Props = {
     shortcut?: string,
     style?: CSSProperties,
     children?: React.ReactNode,
+
+    // Accessibility
+    ariaLabel: string,
+    ariaControls?: string,
+    ariaExpanded?: boolean,
 }
 
 export default function WidgetButton(props: Props) {
@@ -42,6 +47,9 @@ export default function WidgetButton(props: Props) {
                 $bgColorHover={props.bgColorHover}
                 $isDisabled={props.disabled}
                 $isUnavailable={props.unavailable}
+                aria-label={props.ariaLabel}
+                aria-controls={props.ariaControls}
+                aria-expanded={props.ariaExpanded}
             >
                 <UnavailableIconWrapper
                     icon={props.icon}

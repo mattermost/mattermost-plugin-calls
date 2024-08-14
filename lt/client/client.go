@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -25,7 +27,6 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media/oggreader"
 
 	"github.com/aws/aws-sdk-go/service/polly"
-	"gopkg.in/hraban/opus.v2"
 )
 
 var (
@@ -38,6 +39,17 @@ var (
 	}
 	rtpVideoCodecVP8 = webrtc.RTPCodecCapability{
 		MimeType:    "video/VP8",
+		ClockRate:   90000,
+		SDPFmtpLine: "",
+		RTCPFeedback: []webrtc.RTCPFeedback{
+			{Type: "goog-remb", Parameter: ""},
+			{Type: "ccm", Parameter: "fir"},
+			{Type: "nack", Parameter: ""},
+			{Type: "nack", Parameter: "pli"},
+		},
+	}
+	rtpVideoCodecAV1 = webrtc.RTPCodecCapability{
+		MimeType:    webrtc.MimeTypeAV1,
 		ClockRate:   90000,
 		SDPFmtpLine: "",
 		RTCPFeedback: []webrtc.RTCPFeedback{
@@ -93,6 +105,9 @@ type User struct {
 	speechTextCh   chan string
 	doneSpeakingCh chan struct{}
 
+	// Used to inject the CGO dependency (speech) without requiring it for the base case (i.e. ./cmd/lt binary).
+	newOpusEncoder func() (OpusEncoder, error)
+
 	log *slog.Logger
 }
 
@@ -101,6 +116,16 @@ type Option func(u *User)
 func WithLogger(log *slog.Logger) Option {
 	return func(u *User) {
 		u.log = log
+	}
+}
+
+type OpusEncoder interface {
+	Encode(samples []int16, data []byte) (int, error)
+}
+
+func WithOpusEncoderFactory(f func() (OpusEncoder, error)) Option {
+	return func(u *User) {
+		u.newOpusEncoder = f
 	}
 }
 
@@ -134,19 +159,28 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 		return 0
 	}
 
+	var payloader rtp.Payloader
+	payloader = &codecs.VP8Payloader{
+		EnablePictureID: true,
+	}
+	filename := fmt.Sprintf("./samples/screen_%s.ivf", track.RID())
+	if track.Codec().MimeType == webrtc.MimeTypeAV1 {
+		u.log.Info("sending AV1 screen track")
+		payloader = &codecs.AV1Payloader{}
+		filename = fmt.Sprintf("./samples/screen_av1_%s.ivf", track.RID())
+	}
+
 	packetizer := rtp.NewPacketizer(
 		sendMTU,
 		0,
 		0,
-		&codecs.VP8Payloader{
-			EnablePictureID: true,
-		},
+		payloader,
 		rtp.NewRandomSequencer(),
-		rtpVideoCodecVP8.ClockRate,
+		track.Codec().ClockRate,
 	)
 
 	// Open a IVF file and start reading using our IVFReader
-	file, ivfErr := os.Open(fmt.Sprintf("./samples/screen_%s.ivf", track.RID()))
+	file, ivfErr := os.Open(filename)
 	if ivfErr != nil {
 		u.log.Error(ivfErr.Error())
 		os.Exit(1)
@@ -189,7 +223,7 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 			os.Exit(1)
 		}
 
-		packets := packetizer.Packetize(frame, rtpVideoCodecVP8.ClockRate/header.TimebaseDenominator)
+		packets := packetizer.Packetize(frame, track.Codec().ClockRate/header.TimebaseDenominator)
 		for _, p := range packets {
 			if u.callsConfig["EnableSimulcast"].(bool) {
 				if err := p.Header.SetExtension(getExtensionID(rtpVideoExtensions[0]), []byte(trx.Mid())); err != nil {
@@ -212,7 +246,15 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 func (u *User) transmitScreen() {
 	streamID := model.NewId()
 
-	trackHigh, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelHigh))
+	enableSimulcast, _ := u.callsConfig["EnableSimulcast"].(bool)
+	enableAV1, _ := u.callsConfig["EnableAV1"].(bool)
+
+	rtpVideoCodec := rtpVideoCodecVP8
+	if enableAV1 && !enableSimulcast {
+		rtpVideoCodec = rtpVideoCodecAV1
+	}
+
+	trackHigh, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodec, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelHigh))
 	if err != nil {
 		u.log.Error(err.Error())
 		os.Exit(1)
@@ -221,7 +263,7 @@ func (u *User) transmitScreen() {
 	tracks := []webrtc.TrackLocal{trackHigh}
 
 	var trackLow *webrtc.TrackLocalStaticRTP
-	if u.callsConfig["EnableSimulcast"].(bool) {
+	if enableSimulcast {
 		trackLow, err = webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelLow))
 		if err != nil {
 			u.log.Error(err.Error())
@@ -236,8 +278,21 @@ func (u *User) transmitScreen() {
 		os.Exit(1)
 	}
 
-	if u.callsConfig["EnableSimulcast"].(bool) {
+	if enableSimulcast {
 		go u.sendVideoFile(trackLow, trx)
+	} else if enableAV1 {
+		// Fallback VP8 track
+		fallbackTrack, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelHigh))
+		if err != nil {
+			u.log.Error(err.Error())
+			os.Exit(1)
+		}
+		trx2, err := u.callsClient.StartScreenShare([]webrtc.TrackLocal{fallbackTrack})
+		if err != nil {
+			u.log.Error(err.Error())
+			os.Exit(1)
+		}
+		go u.sendVideoFile(fallbackTrack, trx2)
 	}
 
 	u.sendVideoFile(trackHigh, trx)
@@ -329,7 +384,7 @@ func (u *User) transmitSpeech() {
 		os.Exit(1)
 	}
 
-	enc, err := opus.NewEncoder(24000, 1, opus.AppVoIP)
+	enc, err := u.newOpusEncoder()
 	if err != nil {
 		u.log.Error("failed to create opus encoder", slog.String("err", err.Error()))
 	}
@@ -431,6 +486,29 @@ func (u *User) onConnect() {
 	}
 }
 
+func (u *User) getCallsConfig() (map[string]any, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	res, err := u.apiClient.DoAPIRequest(ctx, http.MethodGet,
+		fmt.Sprintf("%s/plugins/com.mattermost.calls/config", u.cfg.SiteURL), "", "")
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("unexpected response status code %d", res.StatusCode)
+	}
+
+	dec := json.NewDecoder(res.Body)
+	var config map[string]any
+	if err := dec.Decode(&config); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return config, nil
+}
+
 func (u *User) Connect(stopCh chan struct{}) error {
 	u.log.Debug("connecting user")
 
@@ -512,22 +590,25 @@ func (u *User) Connect(stopCh chan struct{}) error {
 
 	u.log.Debug("creating calls client")
 
+	callsConfig, err := u.getCallsConfig()
+	if err != nil {
+		return fmt.Errorf("failed to get calls config: %w", err)
+	}
+	u.callsConfig = callsConfig
+
+	enableAV1, _ := u.callsConfig["EnableAV1"].(bool)
+
 	callsClient, err := client.New(client.Config{
 		SiteURL:   u.cfg.SiteURL,
 		AuthToken: apiClient.AuthToken,
 		ChannelID: u.cfg.ChannelID,
+		EnableAV1: enableAV1,
 	}, client.WithLogger(u.log))
 	if err != nil {
 		return fmt.Errorf("failed to create calls client: %w", err)
 	}
 
-	callsConfig, err := callsClient.GetCallsConfig()
-	if err != nil {
-		return fmt.Errorf("failed to get calls config: %w", err)
-	}
-
 	u.callsClient = callsClient
-	u.callsConfig = callsConfig
 
 	u.log.Debug("connecting to call")
 

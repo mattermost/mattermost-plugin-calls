@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
+import {openCallsUserSettings} from 'src/actions';
 import CCIcon from 'src/components/icons/cc_icon';
 import SettingsWheelIcon from 'src/components/icons/settings_wheel';
 import ShowMoreIcon from 'src/components/icons/show_more';
@@ -40,6 +41,8 @@ const AudioDevicesList = ({deviceType, devices, currentDevice, onDeviceClick}: A
             <li
                 className='MenuItem'
                 key={`audio-${deviceType}-device-${device.deviceId}`}
+                role='menuitem'
+                aria-label={makeDeviceLabel(device)}
             >
                 <AudioDeviceButton
                     className='style--none'
@@ -60,7 +63,10 @@ const AudioDevicesList = ({deviceType, devices, currentDevice, onDeviceClick}: A
     });
 
     return (
-        <div className='Menu'>
+        <div
+            className='Menu'
+            role='menu'
+        >
             <DevicesList
                 id={`calls-popout-audio-${deviceType}s-menu`}
                 className='Menu__content dropdown-menu'
@@ -198,6 +204,9 @@ const AudioDevices = ({deviceType, isActive, onToggle}: AudioDevicesProps) => {
         audioDevices.outputs?.filter((device) => device.deviceId && device.label);
     const isDisabled = devices.length === 0;
 
+    const deviceTypeLabel = isInput ?
+        formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio output'});
+
     return (
         <>
             {isActive &&
@@ -210,6 +219,8 @@ const AudioDevices = ({deviceType, isActive, onToggle}: AudioDevicesProps) => {
             }
             <li
                 className='MenuItem'
+                role='menuitem'
+                aria-label={deviceTypeLabel}
             >
                 <AudioDeviceTypeButton
                     id={`calls-popout-audio-${deviceType}-button`}
@@ -217,6 +228,8 @@ const AudioDevices = ({deviceType, isActive, onToggle}: AudioDevicesProps) => {
                     disabled={isDisabled}
                     onClick={() => onToggle(deviceType)}
                     $active={isActive}
+                    aria-controls={`calls-popout-audio-${deviceType}s-menu`}
+                    aria-expanded={isActive}
                 >
                     <AudioDeviceIcon $isDisabled={isDisabled}>
                         <DeviceIcon/>
@@ -226,7 +239,7 @@ const AudioDevices = ({deviceType, isActive, onToggle}: AudioDevicesProps) => {
                         <AudioDeviceTypeLabel
                             className='MenuItem__primary-text'
                         >
-                            {isInput ? formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio output'})}
+                            {deviceTypeLabel}
                         </AudioDeviceTypeLabel>
                         <AudioDeviceLabel $isDisabled={isDisabled}>
                             {label}
@@ -297,7 +310,7 @@ const AudioDeviceIcon = styled.div<{$isDisabled: boolean}>`
 }
 `;
 
-const AudioDeviceTypeButton = styled.div<{$active: boolean, disabled: boolean}>`
+const AudioDeviceTypeButton = styled.button<{$active: boolean, disabled: boolean}>`
 &&& {
     display: flex;
     align-items: start;
@@ -319,6 +332,8 @@ const CallSettingsMenuButton = ({id, icon, label, onClick}: CallSettingsMenuButt
     return (
         <li
             className='MenuItem'
+            role='menuitem'
+            aria-label={label}
         >
             <CallSettingsMenuButtonWrapper
                 id={id}
@@ -359,6 +374,7 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
     const [showAudioOutputs, setShowAudioOutputs] = useState(false);
     const showCCButton = useSelector(areLiveCaptionsAvailableInCurrentCall);
     const {formatMessage} = useIntl();
+    const dispatch = useDispatch();
 
     const onToggle = (deviceType: string) => {
         if (deviceType === 'input') {
@@ -370,10 +386,21 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
         }
     };
 
+    const onAdditionalSettingsClick = () => {
+        dispatch(openCallsUserSettings());
+    };
+
+    const showAdditionalSetttingsButton = Boolean(window.WebappUtils.openUserSettings);
+
     return (
-        <div className='Menu'>
+        <div
+            className='Menu'
+            id='calls-popout-settings-menu'
+            role='menu'
+        >
             <MenuList
                 className='Menu__content dropdown-menu'
+                role='menu'
             >
                 <AudioDevices
                     deviceType='output'
@@ -385,9 +412,10 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
                     isActive={showAudioInputs}
                     onToggle={onToggle}
                 />
+
+                { (showCCButton || showAdditionalSetttingsButton) && <li className='MenuGroup menu-divider'/>}
                 { showCCButton &&
                 <>
-                    <li className='MenuGroup menu-divider'/>
                     <CallSettingsMenuButton
                         id='calls-popout-cc-button'
                         icon={<CCIcon/>}
@@ -395,6 +423,14 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
                         onClick={onLiveCaptionsToggle}
                     />
                 </>
+                }
+                { showAdditionalSetttingsButton &&
+                <CallSettingsMenuButton
+                    id='calls-popout-additional-settings-button'
+                    icon={<SettingsWheelIcon/>}
+                    label={formatMessage({defaultMessage: 'Additional settings'})}
+                    onClick={onAdditionalSettingsClick}
+                />
                 }
             </MenuList>
         </div>
@@ -453,6 +489,8 @@ export function CallSettingsButton({onLiveCaptionsToggle, showLiveCaptions}: Cal
         setShowCallSettings(false);
     };
 
+    const toolTipText = formatMessage({defaultMessage: 'Call settings'});
+
     return (
         <CallSettingsButtonWrapper
             ref={ref}
@@ -465,13 +503,16 @@ export function CallSettingsButton({onLiveCaptionsToggle, showLiveCaptions}: Cal
             )}
             <ControlsButton
                 id='calls-popout-settings-button'
+                ariaLabel={toolTipText}
+                ariaControls='calls-popout-settings-menu'
+                ariaExpanded={showCallSettings}
                 onToggle={() => setShowCallSettings(!showCallSettings)}
                 icon={
                     <SettingsWheelIcon
                         style={{width: '20px', height: '20px'}}
                     />
                 }
-                tooltipText={formatMessage({defaultMessage: 'Call settings'})}
+                tooltipText={toolTipText}
                 bgColor={showCallSettings ? 'white' : ''}
                 bgColorHover={showCallSettings ? 'rgba(255, 255, 255, 0.92)' : ''}
                 iconFill={showCallSettings ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}

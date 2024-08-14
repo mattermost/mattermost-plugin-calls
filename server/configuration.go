@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/license"
+
 	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
 	"github.com/mattermost/rtcd/service/rtc"
 
@@ -131,6 +133,10 @@ type clientConfig struct {
 	SkuShortName string `json:"sku_short_name"`
 	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
 	HostControlsAllowed bool
+	// When set to true it enables using the AV1 codec to encode screen sharing tracks.
+	EnableAV1 *bool
+	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
+	GroupCallsAllowed bool
 }
 
 type adminClientConfig struct {
@@ -255,6 +261,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.LiveCaptionsLanguage == "" {
 		c.LiveCaptionsLanguage = transcriber.LiveCaptionsLanguageDefault
+	}
+	if c.EnableAV1 == nil {
+		c.EnableAV1 = model.NewBool(false)
 	}
 }
 
@@ -440,6 +449,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(*c.LiveCaptionsNumThreadsPerTranscriber)
 	}
 
+	if c.EnableAV1 != nil {
+		cfg.EnableAV1 = model.NewBool(*c.EnableAV1)
+	}
+
 	return &cfg
 }
 
@@ -502,6 +515,8 @@ func (p *Plugin) getClientConfig(c *configuration) clientConfig {
 		EnableRinging:        c.EnableRinging,
 		SkuShortName:         skuShortName,
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
+		EnableAV1:            c.EnableAV1,
+		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
 	}
 }
 
@@ -643,7 +658,7 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.AllowEnableCalls = model.NewBool(true)
 
-	if license := p.API.GetLicense(); license != nil && isCloud(license) {
+	if l := p.API.GetLicense(); l != nil && license.IsCloud(l) {
 		// On Cloud installations we want calls enabled in all channels so we
 		// override it since the plugin's default is now false.
 		*cfg.DefaultEnabled = true
@@ -656,9 +671,9 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 		} else {
 			p.LogError("setOverrides", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
 		}
-	} else if license := p.API.GetLicense(); license != nil && isCloud(license) {
+	} else if l := p.API.GetLicense(); l != nil && license.IsCloud(l) {
 		// otherwise, if this is a cloud installation, set it at the default
-		if isCloudStarter(license) {
+		if license.IsCloudStarter(l) {
 			*cfg.MaxCallParticipants = cloudStarterMaxParticipantsDefault
 		} else {
 			*cfg.MaxCallParticipants = cloudPaidMaxParticipantsDefault

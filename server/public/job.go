@@ -61,22 +61,8 @@ type Transcriptions []Transcription
 
 type CaptionMsg struct {
 	SessionID     string  `json:"session_id"`
-	UserID        string  `json:"user_id"`
 	Text          string  `json:"text"`
 	NewAudioLenMs float64 `json:"new_audio_len_ms"`
-}
-
-type MetricName string
-
-const (
-	MetricLiveCaptionsWindowDropped       MetricName = "live_captions_window_dropped"
-	MetricLiveCaptionsTranscriberBufFull  MetricName = "live_captions_transcriber_buf_full"
-	MetricLiveCaptionsPktPayloadChBufFull MetricName = "live_captions_pktPayloadCh_buf_full"
-)
-
-type MetricMsg struct {
-	SessionID  string     `json:"session_id"`
-	MetricName MetricName `json:"metric_name"`
 }
 
 type TranscribingJobInfo struct {

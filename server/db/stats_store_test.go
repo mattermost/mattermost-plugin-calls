@@ -75,11 +75,28 @@ func testGetStats(t *testing.T, store *Store) {
 		require.NoError(t, err)
 	}
 
+	createJob := func(startAt time.Time, jt public.JobType) {
+		job := &public.CallJob{
+			Type:      jt,
+			ID:        model.NewId(),
+			CreatorID: model.NewId(),
+			CallID:    model.NewId(),
+			InitAt:    startAt.UnixMilli(),
+			StartAt:   startAt.UnixMilli(),
+			EndAt:     startAt.Add(time.Hour).UnixMilli(),
+		}
+
+		err := store.CreateCallJob(job)
+		require.NoError(t, err)
+	}
+
 	t.Run("calls", func(t *testing.T) {
 		defer resetStore(t, store)
 
+		now := time.Now()
+
 		for i := 0; i < 100; i++ {
-			createCall(time.Now().AddDate(0, 0, -i), 0, "")
+			createCall(now.AddDate(0, 0, -i), 0, "")
 		}
 
 		stats, err := store.GetCallsStats()
@@ -100,18 +117,21 @@ func testGetStats(t *testing.T, store *Store) {
 
 		nCalls := 0
 		for i := 0; i < 12; i++ {
-			d := time.Now().AddDate(0, -i, 0)
-			month := d.Format("2006-01")
-			daysInMonth := 32 - time.Date(time.Now().Year(), d.Month(), 32, 0, 0, 0, 0, time.UTC).Day()
-			if i == 0 {
-				daysInMonth = d.Day()
-			}
+			d := time.Date(now.Year(), now.Month()-time.Month(i), 1, 0, 0, 0, 0, time.UTC)
+			daysInMonth := time.Date(d.Year(), d.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
 			callsInMonth := 0
-			if nCalls < 100 {
+
+			if i == 0 {
+				// In the current month we'll have N calls where N is the current day in the month.
+				callsInMonth = now.Day()
+			} else if nCalls < 100 {
+				// Previous months will have 1 call per day until we reach our target (100).
 				callsInMonth = min(daysInMonth, 100-nCalls)
-				nCalls += callsInMonth
 			}
-			require.Equal(t, int64(callsInMonth), stats.CallsByMonth[month])
+
+			nCalls += callsInMonth
+
+			require.Equal(t, int64(callsInMonth), stats.CallsByMonth[d.Format("2006-01")])
 		}
 	})
 
@@ -182,5 +202,44 @@ func testGetStats(t *testing.T, store *Store) {
 			"G": 47,
 			"D": 48,
 		}, stats.CallsByChannelType)
+	})
+
+	t.Run("recording jobs", func(t *testing.T) {
+		defer resetStore(t, store)
+
+		now := time.Now()
+
+		for i := 0; i < 100; i++ {
+			createJob(now.AddDate(0, 0, -i), public.JobTypeRecording)
+		}
+
+		stats, err := store.GetCallsStats()
+		require.NoError(t, err)
+
+		require.Len(t, stats.RecordingJobsByDay, 30)
+		require.Len(t, stats.RecordingJobsByMonth, 12)
+
+		for day := range stats.RecordingJobsByDay {
+			require.Equal(t, int64(1), stats.RecordingJobsByDay[day])
+		}
+
+		nJobs := 0
+		for i := 0; i < 12; i++ {
+			d := time.Date(now.Year(), now.Month()-time.Month(i), 1, 0, 0, 0, 0, time.UTC)
+			daysInMonth := time.Date(d.Year(), d.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+			jobsInMonth := 0
+
+			if i == 0 {
+				// In the current month we'll have N jobs where N is the current day in the month.
+				jobsInMonth = now.Day()
+			} else if nJobs < 100 {
+				// Previous months will have 1 job per day until we reach our target (100).
+				jobsInMonth = min(daysInMonth, 100-nJobs)
+			}
+
+			nJobs += jobsInMonth
+
+			require.Equal(t, int64(jobsInMonth), stats.RecordingJobsByMonth[d.Format("2006-01")])
+		}
 	})
 }

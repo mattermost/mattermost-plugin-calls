@@ -51,18 +51,12 @@ func TestJobServiceStopJob(t *testing.T) {
 	})
 
 	t.Run("missing botConnID", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
 		mockAPI.On("LogDebug", "stopping job with empty connID", "origin", mock.AnythingOfType("string"),
 			"channelID", "callChannelID").Once()
-
-		err := p.jobService.StopJob("callChannelID", "jobID", "botUserID", "")
-		require.NoError(t, err)
-		mockAPI.AssertNotCalled(t, "PublishWebSocketEvent")
-	})
-
-	t.Run("sending events", func(t *testing.T) {
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventJobStop).Once()
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
-
 		mockAPI.On("PublishWebSocketEvent", wsEventJobStop, map[string]any{
 			"job_id": "jobID",
 		}, &model.WebsocketBroadcast{
@@ -70,10 +64,20 @@ func TestJobServiceStopJob(t *testing.T) {
 			ReliableClusterSend: true,
 		}).Once()
 
-		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{
-			"channelID": "callChannelID",
+		err := p.jobService.StopJob("callChannelID", "jobID", "botUserID", "")
+		require.NoError(t, err)
+	})
+
+	t.Run("sending events", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventJobStop).Once()
+
+		mockAPI.On("PublishWebSocketEvent", wsEventJobStop, map[string]any{
+			"job_id": "jobID",
 		}, &model.WebsocketBroadcast{
-			ConnectionId:        "botConnID",
+			UserId:              "botUserID",
 			ReliableClusterSend: true,
 		}).Once()
 

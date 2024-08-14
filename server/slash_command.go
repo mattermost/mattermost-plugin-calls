@@ -25,6 +25,7 @@ const (
 	endCommandTrigger          = "end"
 	recordingCommandTrigger    = "recording"
 	hostCommandTrigger         = "host"
+	logsCommandTrigger         = "logs"
 )
 
 var subCommands = []string{
@@ -36,6 +37,7 @@ var subCommands = []string{
 	endCommandTrigger,
 	statsCommandTrigger,
 	recordingCommandTrigger,
+	logsCommandTrigger,
 }
 
 func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
@@ -49,6 +51,7 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(linkCommandTrigger, "", "Generate a link to join a call in the current channel."))
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Show client-generated statistics about the call."))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately."))
+	data.AddCommand(model.NewAutocompleteData(logsCommandTrigger, "", "Show client logs."))
 
 	experimentalCmdData := model.NewAutocompleteData(experimentalCommandTrigger, "", "Turn experimental features on or off.")
 	experimentalCmdData.AddTextArgument("Available options: on, off", "", "on|off")
@@ -157,6 +160,22 @@ func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 	}, nil
 }
 
+func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
+	if len(fields) < 3 {
+		return nil, fmt.Errorf("Empty logs")
+	}
+
+	logs, err := base64.StdEncoding.DecodeString(fields[2])
+	if err != nil {
+		return nil, fmt.Errorf("Failed to decode payload: %w", err)
+	}
+
+	return &model.CommandResponse{
+		ResponseType: model.CommandResponseTypeEphemeral,
+		Text:         fmt.Sprintf("```\n%s\n```", logs),
+	}, nil
+}
+
 func (p *Plugin) handleEndCallCommand() (*model.CommandResponse, error) {
 	return &model.CommandResponse{}, nil
 }
@@ -212,8 +231,7 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	subCmd := fields[1]
 
-	if subCmd == linkCommandTrigger {
-		resp, err := p.handleLinkCommand(args)
+	buildCommandResponse := func(resp *model.CommandResponse, err error) (*model.CommandResponse, *model.AppError) {
 		if err != nil {
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,
@@ -221,61 +239,34 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 			}, nil
 		}
 		return resp, nil
+	}
+
+	if subCmd == linkCommandTrigger {
+		return buildCommandResponse(p.handleLinkCommand(args))
 	}
 
 	if subCmd == experimentalCommandTrigger {
-		resp, err := handleExperimentalCommand(fields)
-		if err != nil {
-			return &model.CommandResponse{
-				ResponseType: model.CommandResponseTypeEphemeral,
-				Text:         fmt.Sprintf("Error: %s", err.Error()),
-			}, nil
-		}
-		return resp, nil
+		return buildCommandResponse(handleExperimentalCommand(fields))
 	}
 
 	if subCmd == statsCommandTrigger {
-		resp, err := handleStatsCommand(fields)
-		if err != nil {
-			return &model.CommandResponse{
-				ResponseType: model.CommandResponseTypeEphemeral,
-				Text:         fmt.Sprintf("Error: %s", err.Error()),
-			}, nil
-		}
-		return resp, nil
+		return buildCommandResponse(handleStatsCommand(fields))
+	}
+
+	if subCmd == logsCommandTrigger {
+		return buildCommandResponse(handleLogsCommand(fields))
 	}
 
 	if subCmd == endCommandTrigger {
-		resp, err := p.handleEndCallCommand()
-		if err != nil {
-			return &model.CommandResponse{
-				ResponseType: model.CommandResponseTypeEphemeral,
-				Text:         fmt.Sprintf("Error: %s", err.Error()),
-			}, nil
-		}
-		return resp, nil
+		return buildCommandResponse(p.handleEndCallCommand())
 	}
 
 	if subCmd == recordingCommandTrigger {
-		resp, err := p.handleRecordingCommand(fields)
-		if err != nil {
-			return &model.CommandResponse{
-				ResponseType: model.CommandResponseTypeEphemeral,
-				Text:         fmt.Sprintf("Error: %s", err.Error()),
-			}, nil
-		}
-		return resp, nil
+		return buildCommandResponse(p.handleRecordingCommand(fields))
 	}
 
 	if subCmd == hostCommandTrigger && p.licenseChecker.HostControlsAllowed() {
-		resp, err := p.handleHostCommand(args, fields)
-		if err != nil {
-			return &model.CommandResponse{
-				ResponseType: model.CommandResponseTypeEphemeral,
-				Text:         fmt.Sprintf("Error: %s", err.Error()),
-			}, nil
-		}
-		return resp, nil
+		return buildCommandResponse(p.handleHostCommand(args, fields))
 	}
 
 	for _, cmd := range subCommands {

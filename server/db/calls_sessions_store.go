@@ -215,3 +215,34 @@ func (s *Store) GetCallSessionsCount(callID string, opts GetCallSessionOpts) (in
 
 	return count, nil
 }
+
+func (s *Store) IsUserInCall(userID, callID string, opts GetCallSessionOpts) (bool, error) {
+	s.metrics.IncStoreOp("IsUserInCall")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("IsUserInCall", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder(s.driverName).Select("1").
+		From("calls_sessions").
+		Where(
+			sq.And{
+				sq.Eq{"CallID": callID},
+				sq.Eq{"UserID": userID},
+			})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return false, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var ok bool
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &ok, q, args...); err == sql.ErrNoRows {
+		return false, nil
+	} else if err != nil {
+		return false, fmt.Errorf("failed to get user in call: %w", err)
+	}
+
+	return ok, nil
+}

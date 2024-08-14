@@ -69,6 +69,7 @@ type DotMenuProps = {
     shortcut?: string,
     tooltipText?: string,
     tooltipSubtext?: string,
+    ariaLabel?: string,
 };
 
 type DropdownProps = Omit<ComponentProps<typeof Dropdown>, 'target' | 'children' | 'isOpen'>;
@@ -88,6 +89,7 @@ const DotMenu = ({
     shortcut,
     tooltipText,
     tooltipSubtext,
+    ariaLabel,
     ...props
 }: DotMenuProps & DropdownProps) => {
     const [isOpen, setOpen] = useState(false);
@@ -121,6 +123,7 @@ const DotMenu = ({
                 role={'button'}
                 disabled={disabled ?? false}
                 data-testid={'menuButton' + (title ?? '')}
+                aria-label={ariaLabel}
             >
                 {icon}
             </MenuButton>

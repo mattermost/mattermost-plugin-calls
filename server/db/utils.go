@@ -105,3 +105,14 @@ func getQueryPlaceholder(driverName string) sq.PlaceholderFormat {
 	}
 	return sq.Question
 }
+
+func genLast12MonthsMap(now time.Time) map[string]int64 {
+	// To avoid skews due to how AddDate works, we always normalize to the first day of the current month.
+	date := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	m := make(map[string]int64, 12)
+	for i := 0; i < 12; i++ {
+		m[date.AddDate(0, -i, 0).Format("2006-01")] = 0
+	}
+
+	return m
+}

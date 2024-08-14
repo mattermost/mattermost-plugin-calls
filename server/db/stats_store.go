@@ -186,24 +186,21 @@ func (s *Store) GetCallsByChannelType() (map[string]int64, error) {
 	return m, nil
 }
 
-func (s *Store) GetCallsByMonth() (map[string]int64, error) {
-	s.metrics.IncStoreOp("GetCallsByMonth")
-	defer func(start time.Time) {
-		s.metrics.ObserveStoreMethodsTime("GetCallsByMonth", time.Since(start).Seconds())
-	}(time.Now())
-
-	qb := getQueryBuilder(s.driverName).
+func getByMonthQueryBase(driverName string, now time.Time) sq.SelectBuilder {
+	qb := getQueryBuilder(driverName).
 		Select("to_char(to_timestamp(startat / 1000), 'YYYY-MM') AS Month, COUNT(*) AS Count")
-	if s.driverName == model.DatabaseDriverMysql {
-		qb = getQueryBuilder(s.driverName).
+	if driverName == model.DatabaseDriverMysql {
+		qb = getQueryBuilder(driverName).
 			Select("DATE_FORMAT(FROM_UNIXTIME(startat / 1000), '%Y-%m') AS Month, COUNT(*) AS Count")
 	}
-	qb = qb.From("calls").Where(sq.And{
-		sq.Expr("EndAt > calls.StartAt"),
-		sq.Eq{"DeleteAt": 0},
-		sq.GtOrEq{"StartAt": time.Now().AddDate(0, -12, 0).UnixMilli()},
-	}).GroupBy("Month").OrderBy("Month").Limit(12)
 
+	return qb.Where(sq.And{
+		sq.Expr("EndAt > StartAt"),
+		sq.GtOrEq{"StartAt": now.AddDate(0, -12, 0).UnixMilli()},
+	}).GroupBy("Month").OrderBy("Month").Limit(12)
+}
+
+func (s *Store) getByMonth(qb sq.SelectBuilder, now time.Time) (map[string]int64, error) {
 	q, args, err := qb.ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare query: %w", err)
@@ -219,11 +216,7 @@ func (s *Store) GetCallsByMonth() (map[string]int64, error) {
 		return nil, fmt.Errorf("failed to run query: %w", err)
 	}
 
-	m := make(map[string]int64, 12)
-	for i := 0; i < 12; i++ {
-		m[time.Now().AddDate(0, -i, 0).Format("2006-01")] = 0
-	}
-
+	m := genLast12MonthsMap(now)
 	for _, row := range rows {
 		m[row.Month] = row.Count
 	}
@@ -231,24 +224,31 @@ func (s *Store) GetCallsByMonth() (map[string]int64, error) {
 	return m, nil
 }
 
-func (s *Store) GetCallsByDay() (map[string]int64, error) {
-	s.metrics.IncStoreOp("GetCallsByDay")
-	defer func(start time.Time) {
-		s.metrics.ObserveStoreMethodsTime("GetCallsByDay", time.Since(start).Seconds())
-	}(time.Now())
+func (s *Store) GetCallsByMonth() (map[string]int64, error) {
+	now := time.Now()
 
-	qb := getQueryBuilder(s.driverName).
+	s.metrics.IncStoreOp("GetCallsByMonth")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetCallsByMonth", time.Since(start).Seconds())
+	}(now)
+
+	return s.getByMonth(getByMonthQueryBase(s.driverName, now).Where(sq.Eq{"DeleteAt": 0}).From("calls"), now)
+}
+
+func getByDayQueryBase(driverName string, now time.Time) sq.SelectBuilder {
+	qb := getQueryBuilder(driverName).
 		Select("to_char(to_timestamp(startat / 1000), 'YYYY-MM-DD') AS Day, COUNT(*) AS Count")
-	if s.driverName == model.DatabaseDriverMysql {
-		qb = getQueryBuilder(s.driverName).
+	if driverName == model.DatabaseDriverMysql {
+		qb = getQueryBuilder(driverName).
 			Select("DATE_FORMAT(FROM_UNIXTIME(startat / 1000), '%Y-%m-%d') AS Day, COUNT(*) AS Count")
 	}
-	qb = qb.From("calls").Where(sq.And{
-		sq.Expr("EndAt > calls.StartAt"),
-		sq.Eq{"DeleteAt": 0},
-		sq.GtOrEq{"StartAt": time.Now().AddDate(0, 0, -30).UnixMilli()},
+	return qb.Where(sq.And{
+		sq.Expr("EndAt > StartAt"),
+		sq.GtOrEq{"StartAt": now.AddDate(0, 0, -30).UnixMilli()},
 	}).GroupBy("Day").OrderBy("Day").Limit(30)
+}
 
+func (s *Store) getByDay(qb sq.SelectBuilder, now time.Time) (map[string]int64, error) {
 	q, args, err := qb.ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare query: %w", err)
@@ -266,7 +266,7 @@ func (s *Store) GetCallsByDay() (map[string]int64, error) {
 
 	m := make(map[string]int64, 30)
 	for i := 0; i < 30; i++ {
-		m[time.Now().AddDate(0, 0, -i).Format("2006-01-02")] = 0
+		m[now.AddDate(0, 0, -i).Format("2006-01-02")] = 0
 	}
 
 	for _, row := range rows {
@@ -274,6 +274,39 @@ func (s *Store) GetCallsByDay() (map[string]int64, error) {
 	}
 
 	return m, nil
+}
+
+func (s *Store) GetCallsByDay() (map[string]int64, error) {
+	now := time.Now()
+
+	s.metrics.IncStoreOp("GetCallsByDay")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetCallsByDay", time.Since(start).Seconds())
+	}(now)
+
+	return s.getByDay(getByDayQueryBase(s.driverName, now).Where(sq.Eq{"DeleteAt": 0}).From("calls"), now)
+}
+
+func (s *Store) GetRecordingJobsByMonth() (map[string]int64, error) {
+	now := time.Now()
+
+	s.metrics.IncStoreOp("GetRecordingJobsByMonth")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetRecordingJobsByMonth", time.Since(start).Seconds())
+	}(now)
+
+	return s.getByMonth(getByMonthQueryBase(s.driverName, now).From("calls_jobs").Where(sq.Eq{"type": public.JobTypeRecording}), now)
+}
+
+func (s *Store) GetRecordingJobsByDay() (map[string]int64, error) {
+	now := time.Now()
+
+	s.metrics.IncStoreOp("GetRecordingJobsByDay")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetRecordingJobsByDay", time.Since(start).Seconds())
+	}(now)
+
+	return s.getByDay(getByDayQueryBase(s.driverName, now).From("calls_jobs").Where(sq.Eq{"type": public.JobTypeRecording}), now)
 }
 
 func (s *Store) GetCallsStats() (*public.CallsStats, error) {
@@ -321,6 +354,16 @@ func (s *Store) GetCallsStats() (*public.CallsStats, error) {
 	}
 
 	stats.AvgParticipants, err = s.GetAvgCallParticipants()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.RecordingJobsByDay, err = s.GetRecordingJobsByDay()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.RecordingJobsByMonth, err = s.GetRecordingJobsByMonth()
 	if err != nil {
 		return nil, err
 	}
