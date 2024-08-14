@@ -5,7 +5,7 @@
   "homepage_url": "https://github.com/mattermost/mattermost-plugin-calls/",
   "support_url": "https://github.com/mattermost/mattermost-plugin-calls/issues",
   "icon_path": "assets/plugin_icon.svg",
-  "min_server_version": "9.5.0",
+  "min_server_version": "10.0.0",
   "server": {
     "executables": {
       "linux-amd64": "server/dist/plugin-linux-amd64",
@@ -682,7 +682,7 @@
   "props": {
     "min_rtcd_version": "v0.17.0",
     "min_offloader_version": "v0.8.0",
-    "calls_recorder_version": "v0.7.3",
+    "calls_recorder_version": "v0.7.4",
     "calls_transcriber_version": "v0.4.0"
   }
 }
