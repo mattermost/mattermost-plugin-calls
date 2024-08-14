@@ -53,9 +53,6 @@ const config: PlaywrightTestConfig = {
                 ...devices['Desktop Chrome'],
             },
         },
-        {
-            name: 'webkit',
-        },
     ],
     reporter: process.env.CI ? [
         ['html', {open: 'never'}],
