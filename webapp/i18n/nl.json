@@ -1,4 +1,8 @@
 {
+  "+8GJY8": "De API-sleutel voor Azure Speech Services",
+  "+DMPFa": "TURN Statisch Authenticatie Geheim",
+  "+Y8Kh/": "Oproeptranscripties",
+  "+hqq/q": "(Optioneel) Als dit is ingesteld op waar, zijn live ondertitels ingeschakeld.",
   "/WMCDd": "Er ging iets mis!",
   "/c+F8S": "Oproep van <b>{callerName}</b> met <b>{others}</b>",
   "/n/Skb": "Verbinding maken…",
