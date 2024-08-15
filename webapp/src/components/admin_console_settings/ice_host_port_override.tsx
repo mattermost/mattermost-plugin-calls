@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {ChangeEvent} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {
     LabelRow, leftCol, rightCol,
@@ -12,8 +13,9 @@ import {rtcdEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const ICEHostPortOverride = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const isRTCDEnabled = useSelector(rtcdEnabled);
-    const helpText = useHelptext(props.helpText);
+    const helpText = useHelptext(formatMessage({defaultMessage: '(Optional) A port number to be used as an override for host candidates in place of the one used to listen on.\nNote: this port will apply to both UDP and TCP host candidates.'}));
 
     // Webapp doesn't pass the placeholder setting.
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'ICEHostPortOverride')?.placeholder || '';
@@ -33,7 +35,7 @@ const ICEHostPortOverride = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'ICE Host Port Override'})}
                     </label>
                 </LabelRow>
             </div>

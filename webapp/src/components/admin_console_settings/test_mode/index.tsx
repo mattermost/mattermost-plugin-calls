@@ -3,7 +3,7 @@
 
 import React, {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
-import {leftCol, rightCol} from 'src/components/admin_console_settings/common';
+import {leftCol, RadioInput, RadioInputLabel, rightCol} from 'src/components/admin_console_settings/common';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const TestMode = (props: CustomComponentProps) => {
@@ -27,23 +27,11 @@ const TestMode = (props: CustomComponentProps) => {
             className='form-group'
         >
             <label className={'control-label ' + leftCol}>
-                {props.label}
+                {formatMessage({defaultMessage: 'Test mode'})}
             </label>
             <div className={rightCol}>
-                <label className='radio-inline'>
-                    <input
-                        data-testid={props.id + '_off'}
-                        type='radio'
-                        value='off'
-                        id={props.id + '_off'}
-                        name={props.id + '_off'}
-                        checked={testMode === 'off'}
-                        onChange={handleChange}
-                    />
-                    {formatMessage({defaultMessage: 'Off'})}
-                </label>
-                <label className='radio-inline'>
-                    <input
+                <RadioInputLabel $disabled={props.disabled}>
+                    <RadioInput
                         data-testid={props.id + '_on'}
                         type='radio'
                         value='on'
@@ -51,14 +39,28 @@ const TestMode = (props: CustomComponentProps) => {
                         name={props.id + '_on'}
                         checked={testMode === 'on'}
                         onChange={handleChange}
+                        disabled={props.disabled}
                     />
                     {formatMessage({defaultMessage: 'On'})}
-                </label>
+                </RadioInputLabel>
+                <RadioInputLabel $disabled={props.disabled}>
+                    <RadioInput
+                        data-testid={props.id + '_off'}
+                        type='radio'
+                        value='off'
+                        id={props.id + '_off'}
+                        name={props.id + '_off'}
+                        checked={testMode === 'off'}
+                        onChange={handleChange}
+                        disabled={props.disabled}
+                    />
+                    {formatMessage({defaultMessage: 'Off'})}
+                </RadioInputLabel>
                 <div
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: 'When test mode is enabled, only system admins are able to start calls in channels. This allows testing to confirm calls are working as expected.'})}
                 </div>
             </div>
         </div>);
