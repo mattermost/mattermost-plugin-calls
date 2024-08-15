@@ -159,6 +159,8 @@ manifest-check:
 .PHONY: apply
 apply:
 	./build/bin/manifest apply
+	cat ./server/manifest.go
+	cat ./webapp/src/manifest.ts
 
 ## Check go mod files consistency
 .PHONY: gomod-check
