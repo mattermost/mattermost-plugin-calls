@@ -1,4 +1,5 @@
 import React, {ChangeEvent} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
@@ -12,6 +13,7 @@ import {
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const LiveCaptionsLanguage = (props: CustomComponentProps) => {
+    const {formatMessage} = useIntl();
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const recordingEnabled = useSelector(recordingsEnabled);
@@ -40,7 +42,7 @@ const LiveCaptionsLanguage = (props: CustomComponentProps) => {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {props.label}
+                        {formatMessage({defaultMessage: 'Live captions language'})}
                     </label>
                 </LabelRow>
             </div>
@@ -59,7 +61,7 @@ const LiveCaptionsLanguage = (props: CustomComponentProps) => {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {props.helpText}
+                    {formatMessage({defaultMessage: 'The language passed to the live captions transcriber. Should be a 2-letter ISO 639 Set 1 language code, e.g. \'en\'. If blank, will be set to English \'en\' as default.'})}
                 </div>
             </div>
         </div>

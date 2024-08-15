@@ -3,7 +3,7 @@ import {expect, test} from '@playwright/test';
 import {apiSetEnableLiveCaptions, apiSetEnableTranscriptions} from '../config';
 import {baseURL} from '../constants';
 import PlaywrightDevPage from '../page';
-import {getUserStoragesForTest} from '../utils';
+import {acquireLock, getUserStoragesForTest, releaseLock} from '../utils';
 
 test.beforeEach(async ({page}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -13,9 +13,25 @@ test.beforeEach(async ({page}) => {
 test.describe('call recordings, transcriptions, live-captions', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('slash command, popout + buttons', async ({page, context, request}) => {
-        test.setTimeout(150000);
+    test.beforeEach(async () => {
+        // Only the first test requires locking.
+        if (test.info().title === 'slash command, popout + buttons') {
+            test.setTimeout(200000);
 
+            // We acquire a file system lock so that we don't cause a conflict with other
+            // tests that update the config.
+            await acquireLock('calls-config-lock');
+        }
+    });
+
+    test.afterEach(() => {
+        // Only the first test requires locking.
+        if (test.info().title === 'slash command, popout + buttons') {
+            releaseLock('calls-config-lock');
+        }
+    });
+
+    test('slash command, popout + buttons', async ({page, context, request}) => {
         await apiSetEnableTranscriptions(false);
 
         // start call

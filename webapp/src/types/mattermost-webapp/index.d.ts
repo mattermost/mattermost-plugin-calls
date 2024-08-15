@@ -76,6 +76,8 @@ export interface PluginRegistry {
 
     registerSiteStatisticsHandler(handler: PluginSiteStatsHandler);
 
+    registerAdminConsoleCustomSection(key: string, component: React.FunctionComponent<{ settingsList: ReactNode[]; }>);
+
     registerUserSettings(settings: PluginConfiguration);
 }
 

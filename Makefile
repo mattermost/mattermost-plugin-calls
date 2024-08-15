@@ -203,7 +203,7 @@ endif
 
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set
 .PHONY: server
-server:
+server: manifest-check
 ifneq ($(HAS_SERVER),)
 	mkdir -p server/dist;
 ifeq ($(MM_DEBUG),)
@@ -230,7 +230,7 @@ endif
 
 ## Builds the server on ci -- only build for linux-amd64, linux-arm64, freebsd-amd64 and openbsd-amd64 (for now)
 .PHONY: server-ci
-server-ci:
+server-ci: manifest-check
 ifneq ($(HAS_SERVER),)
 	mkdir -p server/dist;
 ifneq ($(MM_SERVICESETTINGS_ENABLEDEVELOPER),)
