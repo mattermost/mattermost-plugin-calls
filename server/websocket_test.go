@@ -1039,8 +1039,11 @@ func TestHandleJoin(t *testing.T) {
 		}, nil)
 		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil)
 		mockAPI.On("GetConfig").Return(&model.Config{}, nil)
-		mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil)
+		defer mockAPI.On("GetConfig").Return(&model.Config{}, nil).Unset()
+		mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{Id: postID}, nil)
+		defer mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{Id: postID}, nil).Unset()
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
@@ -1051,28 +1054,45 @@ func TestHandleJoin(t *testing.T) {
 			SkuShortName: "enterprise",
 		}, nil)
 		mockRTCMetrics.On("IncRTCSessions", "default")
+		defer mockRTCMetrics.On("IncRTCSessions", "default").Unset()
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventJoin, mock.Anything, mock.Anything)
+		defer mockAPI.On("PublishWebSocketEvent", wsEventJoin, mock.Anything, mock.Anything).Unset()
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserConnected, map[string]any{"userID": userID},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, mock.Anything, mock.Anything)
+		defer mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, mock.Anything, mock.Anything).Unset()
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallState)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventCallState).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventCallState, mock.Anything,
 			&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
+		defer mockAPI.On("PublishWebSocketEvent", wsEventCallState, mock.Anything,
+			&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}).Unset()
 		mockMetrics.On("IncWebSocketConn")
+		defer mockMetrics.On("IncWebSocketConn").Unset()
 
 		// Session leaving call path
 		mockMetrics.On("DecWebSocketConn")
+		defer mockMetrics.On("DecWebSocketConn").Unset()
 		mockRTCMetrics.On("DecRTCSessions", "default")
+		defer mockRTCMetrics.On("DecRTCSessions", "default").Unset()
 		mockRTCMetrics.On("IncRTCConnState", "closed")
+		defer mockRTCMetrics.On("IncRTCConnState", "closed").Unset()
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserDisconnected, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		defer mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Unset()
 		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil)
 		mockAPI.On("LogError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
