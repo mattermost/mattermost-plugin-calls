@@ -111,3 +111,7 @@ func (b *Batcher) Stop() {
 	close(b.stopCh)
 	<-b.doneCh
 }
+
+func (b *Batcher) Empty() bool {
+	return len(b.itemsCh) == 0
+}
