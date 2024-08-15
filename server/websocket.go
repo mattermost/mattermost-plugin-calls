@@ -73,6 +73,9 @@ var (
 	// at the cost of added latency when joining. Maybe we could make it a function of the members count.
 	// One step further could be an adaptive algorithm but it may be a little overcomplicating.
 	joinLeaveBatchingInterval = time.Second
+
+	// This indirection is needed as it makes it possible to mock in tests
+	newBatcher = batching.NewBatcher
 )
 
 var (
@@ -937,7 +940,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		if batcher == nil {
 			batchMaxSize := min(int(channelStats.MemberCount), maxJoinLeaveOpsBatchSize)
 			p.LogDebug("creating new addSessionsBatcher for call", "channelID", channelID, "batchMaxSize", batchMaxSize)
-			batcher, err = batching.NewBatcher(batching.Config{
+			batcher, err = newBatcher(batching.Config{
 				Interval: joinLeaveBatchingInterval,
 				Size:     batchMaxSize,
 				PreRunCb: func(ctx batching.Context) error {
