@@ -306,4 +306,53 @@ test.describe('sending voice', () => {
         await devPage.leaveCall();
         await userPage.leaveCall();
     });
+
+    test('unmuting after ws reconnect', async ({page}) => {
+        const userPage = await startCall(userStorages[1]);
+
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.joinCall();
+
+        const reconnectHandler = () => {
+            return new Promise((resolve) => {
+                window.callsClient.ws.on('open', (connID: string, originalConnID: string, isReconnect: boolean) => {
+                    resolve(isReconnect);
+                });
+                window.callsClient.ws.ws.close();
+            });
+        };
+
+        // Trigger a WS reconnect on userA
+        const reconnectedA = await page.evaluate(reconnectHandler);
+        expect(reconnectedA).toBe(true);
+
+        // Trigger a WS reconnect on userB
+        const reconnectedB = await userPage.page.evaluate(reconnectHandler);
+        expect(reconnectedB).toBe(true);
+
+        await page.locator('#voice-mute-unmute').click();
+
+        let voiceTrackID = await (await userPage.page.waitForFunction(() => {
+            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
+        })).evaluate(() => {
+            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
+        });
+
+        await expect(userPage.page.getByTestId(voiceTrackID)).toBeHidden();
+        await expect(userPage.page.getByTestId(voiceTrackID)).toHaveAttribute('autoplay', '');
+
+        await userPage.page.locator('#voice-mute-unmute').click();
+
+        voiceTrackID = await (await devPage.page.waitForFunction(() => {
+            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
+        })).evaluate(() => {
+            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
+        });
+
+        await expect(page.getByTestId(voiceTrackID)).toBeHidden();
+        await expect(page.getByTestId(voiceTrackID)).toHaveAttribute('autoplay', '');
+
+        await devPage.leaveCall();
+        await userPage.leaveCall();
+    });
 });

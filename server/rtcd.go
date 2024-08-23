@@ -652,10 +652,16 @@ func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
 	}
 
 	m.ctx.LogDebug("relaying ws message", "sessionID", rtcMsg.SessionID, "userID", rtcMsg.UserID)
+
+	us := m.ctx.getSessionByOriginalID(rtcMsg.SessionID)
+	if us == nil {
+		return fmt.Errorf("failed to find session by originalConnID: %s", rtcMsg.SessionID)
+	}
+
 	m.ctx.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 		"data":   string(rtcMsg.Data),
 		"connID": rtcMsg.SessionID,
-	}, &WebSocketBroadcast{ConnectionID: rtcMsg.SessionID, ReliableClusterSend: true})
+	}, &WebSocketBroadcast{ConnectionID: us.connID, ReliableClusterSend: true})
 
 	return nil
 }
