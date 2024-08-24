@@ -1,4 +1,10 @@
 {
+  "+8GJY8": "Azure Speech Services 的 API 密钥",
+  "+DMPFa": "TURN 静态认证密钥",
+  "+Y8Kh/": "通话转录",
+  "+hqq/q": "(可选) 当设为是时，启用实时字幕。",
+  "+y3UCQ": "任务服务 URL",
+  "/BxyxW": "RTC 服务器监听的 UDP 端口。",
   "/WMCDd": "出了点问题!",
   "/c+F8S": "来自<b>{callerName}</b>和<b>{others}</b>的通话",
   "/n/Skb": "加入通话中…",
