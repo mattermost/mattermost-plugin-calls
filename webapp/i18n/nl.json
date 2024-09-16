@@ -2,7 +2,7 @@
   "+8GJY8": "De API-sleutel voor Azure Speech Services",
   "+DMPFa": "TURN Statisch Authenticatie Geheim",
   "+Y8Kh/": "Oproeptranscripties",
-  "+hqq/q": "(Optioneel) Als dit is ingesteld op waar, zijn live ondertitels ingeschakeld.",
+  "+hqq/q": "(Optioneel) Als dit is actief is, zijn live ondertitels ingeschakeld.",
   "+y3UCQ": "Job service URL",
   "/BxyxW": "De UDP-poort waarop de RTC-server zal luisteren.",
   "/ROIGq": "(Optioneel) De URL naar een RTCD-service-instantie die de oproepen moet hosten. Als dit is ingesteld (niet leeg) worden alle oproepen afgehandeld door de externe service.",
