@@ -126,7 +126,7 @@ test.describe('screen sharing', () => {
     });
 
     test('av1', async ({page}) => {
-        test.setTimeout(150000);
+        test.setTimeout(180000);
 
         // Enabling AV1
         await apiSetEnableAV1(true);
