@@ -13,19 +13,10 @@
   "EmailSettings": {
     "SMTPServer": "inbucket"
   },
-  # Disable automatic installation of prepackaged plugins
   "PluginSettings": {
     "EnableUploads": true,
-    "AutomaticPrepackagedPlugins": false,
-    "Plugins": {
-      "com.mattermost.calls": {
-        "icehostoverride": "",
-        "iceserversconfigs": "",
-        "enablerecordings": true,
-        "defaultenabled": true,
-        "jobserviceurl": "http://calls-offloader:4545"
-      }
-    }
+    # Disable automatic installation of prepackaged plugins
+    "AutomaticPrepackagedPlugins": false
   },
   "ServiceSettings": {
     "SiteURL": "http://mm-server:8065",
@@ -46,9 +37,6 @@
   "AnnouncementSettings": {
     "UserNoticesEnabled": false,
     "AdminNoticesEnabled": false
-  },
-  "FeatureFlags": {
-    "CallsEnabled": true
   },
   "ExperimentalSettings": {
     "DisableAppBar": false
