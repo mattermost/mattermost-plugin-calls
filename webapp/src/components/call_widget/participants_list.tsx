@@ -8,7 +8,7 @@ import {useIntl} from 'react-intl';
 import {hostMuteOthers} from 'src/actions';
 import {Participant} from 'src/components/call_widget/participant';
 import {useHostControls} from 'src/components/expanded_view/hooks';
-import CompassIcon from 'src/components/icons/compassIcon';
+import MutedIcon from 'src/components/icons/muted_icon';
 import styled from 'styled-components';
 
 type Props = {
@@ -68,7 +68,10 @@ export const ParticipantsList = ({
                     {formatMessage({defaultMessage: 'Participants'})}
                     {showMuteOthers &&
                         <MuteOthersButton onClick={() => hostMuteOthers(callID)}>
-                            <CompassIcon icon={'microphone-off'}/>
+                            <MutedIcon
+                                fill='var(--button-bg)'
+                                style={{width: '12px', height: '12px'}}
+                            />
                             {formatMessage({defaultMessage: 'Mute others'})}
                         </MuteOthersButton>
                     }
@@ -113,12 +116,13 @@ const MuteOthersButton = styled.button`
     padding: 4px 10px;
     margin-right: 8px;
     margin-left: auto;
-    gap: 2px;
+    gap: 6px;
     font-family: 'Open Sans', sans-serif;
     font-size: 11px;
     font-weight: 600;
     line-height: 16px;
     color: var(--button-bg);
+    align-items: center;
 
     border: none;
     background: none;
