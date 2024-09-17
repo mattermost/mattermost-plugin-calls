@@ -530,7 +530,7 @@ func (p *Plugin) removeSession(us *session) error {
 		if !p.hasSessionsForCall(callID) {
 			p.LogDebug("no more local sessions for this call", "channelID", channelID, "callID", callID)
 
-			if batcher := p.addSessionsBatchers[channelID]; batcher != nil {
+			if batcher := p.addSessionsBatchers[channelID]; batcher != nil && batcher.Empty() {
 				p.LogDebug("stopping addSessionsBatcher for call", "channelID", channelID, "callID", callID)
 				p.addSessionsBatchers[channelID] = nil
 				delete(p.addSessionsBatchers, channelID)
@@ -541,7 +541,7 @@ func (p *Plugin) removeSession(us *session) error {
 				}()
 			}
 
-			if batcher := p.removeSessionsBatchers[channelID]; batcher != nil {
+			if batcher := p.removeSessionsBatchers[channelID]; batcher != nil && batcher.Empty() {
 				p.LogDebug("stopping removeSessionsBatcher for call", "channelID", channelID, "callID", callID)
 				p.removeSessionsBatchers[channelID] = nil
 				delete(p.removeSessionsBatchers, channelID)
@@ -573,7 +573,7 @@ func (p *Plugin) removeSession(us *session) error {
 		if batcher == nil {
 			p.LogDebug("creating new removeSessionsBatcher for call", "channelID", us.channelID, "batchMaxSize", sessionsCount)
 
-			batcher, err = batching.NewBatcher(batching.Config{
+			batcher, err = newBatcher(batching.Config{
 				Interval: joinLeaveBatchingInterval,
 				Size:     sessionsCount,
 				PreRunCb: func(ctx batching.Context) error {

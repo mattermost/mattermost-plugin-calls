@@ -1004,6 +1004,216 @@ func TestHandleJoin(t *testing.T) {
 		p.mut.RUnlock()
 	})
 
+	t.Run("batching - concurrent join and leave", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer mockRTCMetrics.AssertExpectations(t)
+
+		channelID := model.NewId()
+		postID := model.NewId()
+		userID := model.NewId()
+
+		// Call lock
+		mockAPI.On("KVSetWithOptions", "mutex_call_"+channelID, []byte{0x1}, mock.Anything).Return(true, nil)
+		// Call unlock
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+
+		defer mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil).Unset()
+
+		// Who gets to be host is non deterministic as it depends on the order in which sessions leave
+		// so can only make a generic assertion.
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Unset()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything, mock.Anything)
+		defer mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything, mock.Anything).Unset()
+
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true)
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
+		}, nil)
+		mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
+			MemberCount: int64(minMembersCountForBatching),
+		}, nil)
+		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil)
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil)
+		defer mockAPI.On("GetConfig").Return(&model.Config{}, nil).Unset()
+		mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{Id: postID}, nil)
+		defer mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{Id: postID}, nil).Unset()
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Unset()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
+		}, nil)
+		mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil)
+		mockRTCMetrics.On("IncRTCSessions", "default")
+		defer mockRTCMetrics.On("IncRTCSessions", "default").Unset()
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Unset()
+		mockAPI.On("PublishWebSocketEvent", wsEventJoin, mock.Anything, mock.Anything)
+		defer mockAPI.On("PublishWebSocketEvent", wsEventJoin, mock.Anything, mock.Anything).Unset()
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected).Unset()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserConnected, map[string]any{"userID": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined).Unset()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, mock.Anything, mock.Anything)
+		defer mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, mock.Anything, mock.Anything).Unset()
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallState)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventCallState).Unset()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallState, mock.Anything,
+			&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true})
+		defer mockAPI.On("PublishWebSocketEvent", wsEventCallState, mock.Anything,
+			&model.WebsocketBroadcast{UserId: userID, ReliableClusterSend: true}).Unset()
+		mockMetrics.On("IncWebSocketConn")
+		defer mockMetrics.On("IncWebSocketConn").Unset()
+
+		// Session leaving call path
+		mockMetrics.On("DecWebSocketConn")
+		defer mockMetrics.On("DecWebSocketConn").Unset()
+		mockRTCMetrics.On("DecRTCSessions", "default")
+		defer mockRTCMetrics.On("DecRTCSessions", "default").Unset()
+		mockRTCMetrics.On("IncRTCConnState", "closed")
+		defer mockRTCMetrics.On("IncRTCConnState", "closed").Unset()
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected).Unset()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserDisconnected, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Unset()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		defer mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Unset()
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil)
+		mockAPI.On("LogError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
+		defer func(min int) {
+			minMembersCountForBatching = min
+			newBatcher = batching.NewBatcher
+		}(minMembersCountForBatching)
+		minMembersCountForBatching = 1
+
+		var processedItems int
+
+		newBatcher = func(_ batching.Config) (*batching.Batcher, error) {
+			return batching.NewBatcher(batching.Config{
+				Interval: 50 * time.Millisecond,
+				Size:     10,
+				PreRunCb: func(ctx batching.Context) error {
+					state, err := p.lockCallReturnState(channelID)
+					require.NoError(t, err)
+					ctx["callState"] = state
+					return nil
+				},
+				PostRunCb: func(ctx batching.Context) error {
+					p.mut.Lock()
+					processedItems += ctx[batching.ContextBatchSizeKey].(int)
+					p.mut.Unlock()
+					p.unlockCall(channelID)
+					return nil
+				},
+			})
+		}
+
+		// Initialize batchers
+		joinBatcher, err := batching.NewBatcher(batching.Config{
+			Interval: 50 * time.Millisecond,
+			Size:     10,
+			PreRunCb: func(ctx batching.Context) error {
+				state, err := p.lockCallReturnState(channelID)
+				require.NoError(t, err)
+				ctx["callState"] = state
+				return nil
+			},
+			PostRunCb: func(ctx batching.Context) error {
+				state := ctx["callState"].(*callState)
+				p.mut.Lock()
+				for sessionID := range state.sessions {
+					select {
+					case <-p.sessions[sessionID].leaveCh:
+					default:
+						close(p.sessions[sessionID].leaveCh)
+					}
+				}
+				processedItems += ctx[batching.ContextBatchSizeKey].(int)
+				p.mut.Unlock()
+				p.unlockCall(channelID)
+				return nil
+			},
+		})
+		require.NoError(t, err)
+		p.mut.Lock()
+		p.addSessionsBatchers[channelID] = joinBatcher
+		p.mut.Unlock()
+		joinBatcher.Start()
+
+		leaveBatcher, err := batching.NewBatcher(batching.Config{
+			Interval: 50 * time.Millisecond,
+			Size:     10,
+			PreRunCb: func(ctx batching.Context) error {
+				state, err := p.lockCallReturnState(channelID)
+				require.NoError(t, err)
+				ctx["callState"] = state
+
+				return nil
+			},
+			PostRunCb: func(ctx batching.Context) error {
+				p.mut.Lock()
+				processedItems += ctx[batching.ContextBatchSizeKey].(int)
+				p.mut.Unlock()
+
+				p.unlockCall(channelID)
+				return nil
+			},
+		})
+		require.NoError(t, err)
+		p.mut.Lock()
+		p.removeSessionsBatchers[channelID] = leaveBatcher
+		p.mut.Unlock()
+		leaveBatcher.Start()
+
+		for i := 0; i < 10; i++ {
+			connID := model.NewId()
+			authSessionID := ""
+
+			go func(i int) {
+				time.Sleep(time.Duration(10*i) * time.Millisecond)
+				err := p.handleJoin(userID, connID, authSessionID, callsJoinData{
+					CallsClientJoinData: CallsClientJoinData{
+						ChannelID: channelID,
+					},
+				})
+				require.NoError(t, err)
+			}(i)
+		}
+
+		// Give enough time for the batches to run
+		time.Sleep(5 * time.Second)
+
+		// Verify user sessions were removed
+		p.mut.RLock()
+		require.Empty(t, p.sessions)
+		p.mut.RUnlock()
+
+		// Verify batches were cleaned up
+		p.mut.RLock()
+		require.Empty(t, p.addSessionsBatchers)
+		require.Empty(t, p.removeSessionsBatchers)
+		p.mut.RUnlock()
+
+		// Verify all the expected batch items were executed
+		require.Equal(t, 10*2, processedItems)
+	})
+
 	t.Run("admin warning", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)

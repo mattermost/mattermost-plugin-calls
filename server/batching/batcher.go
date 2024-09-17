@@ -111,3 +111,8 @@ func (b *Batcher) Stop() {
 	close(b.stopCh)
 	<-b.doneCh
 }
+
+// Empty returns whether or not the are more items left in the batcher's queue.
+func (b *Batcher) Empty() bool {
+	return len(b.itemsCh) == 0
+}
