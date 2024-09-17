@@ -1263,7 +1263,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <ToTheRight/>
                                 {showMuteOthers &&
                                     <MuteOthersButton onClick={() => hostMuteOthers(this.props.channel?.id)}>
-                                        <CompassIcon icon={'microphone-off'}/>
+                                        <MutedIcon
+                                            fill='var(--button-bg)'
+                                            style={{width: '12px', height: '12px'}}
+                                        />
                                         {formatMessage({defaultMessage: 'Mute others'})}
                                     </MuteOthersButton>
                                 }
@@ -1392,12 +1395,13 @@ const MuteOthersButton = styled.button`
     display: flex;
     padding: 8px 8px;
     margin-right: 6px;
-    gap: 2px;
+    gap: 6px;
     font-family: 'Open Sans', sans-serif;
     font-size: 11px;
     font-weight: 600;
     line-height: 16px;
     color: var(--button-bg);
+    align-items: center;
 
     border: none;
     background: none;

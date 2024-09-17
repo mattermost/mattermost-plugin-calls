@@ -182,10 +182,7 @@ const DropdownMenuItemStyled = styled.div`
     text-decoration: unset;
     display: inline-flex;
     align-items: center;
-
-    > .icon {
-        margin-right: 8px;
-    }
+    gap: 12px;
 
     &:hover {
         background: rgba(var(--center-channel-color-rgb), 0.08);
