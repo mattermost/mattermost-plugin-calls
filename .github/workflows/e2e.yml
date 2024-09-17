@@ -68,6 +68,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs:
       - build-mattermost-plugin-calls
+      - build-calls-transcriber
       - generate-matrix
     env:
       COMPOSE_PROJECT_NAME: playwright_tests
@@ -143,6 +144,7 @@ jobs:
           echo "MM_LICENSE=${{ secrets.MM_PLUGIN_CALLS_TEST_LICENSE }}" >> dotenv/app.private.env
           echo "MM_FEATUREFLAGS_BoardsProduct=true" >> dotenv/app.private.env
           echo "MM_SERVICEENVIRONMENT=test" >> dotenv/app.private.env
+          echo "MM_CALLS_JOB_SERVICE_URL=http://calls-offloader:4545" >> dotenv/app.private.env
 
           sudo chown -R 2000:2000 ${{ github.workspace }}/logs
           sudo chown -R 2000:2000 ${{ github.workspace }}/config

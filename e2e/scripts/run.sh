@@ -12,11 +12,21 @@ docker exec \
 echo "Copying calls plugin into ${CONTAINER_SERVER} server container ..."
 docker cp dist/*.tar.gz ${CONTAINER_SERVER}:/mattermost/bin/calls
 
+# Copy config patch into server container
+echo "Copying calls config patch into ${CONTAINER_SERVER} server container ..."
+docker cp e2e/config-patch.json ${CONTAINER_SERVER}:/mattermost
+
 # Install Calls
 echo "Installing calls ..."
 docker exec \
   ${CONTAINER_SERVER} \
   sh -c "/mattermost/bin/mmctl --local plugin add bin/calls"
+
+# Patch config
+echo "Patching calls config ..."
+docker exec \
+  ${CONTAINER_SERVER} \
+  sh -c "/mattermost/bin/mmctl --local plugin disable com.mattermost.calls && /mattermost/bin/mmctl --local config patch /mattermost/config-patch.json && /mattermost/bin/mmctl --local plugin enable com.mattermost.calls"
 
 # Generates a sysadmin that Playwright can use
 echo "Generating sample data with mmctl ..."
