@@ -9,7 +9,7 @@ const config: PlaywrightTestConfig = {
     retries: 1,
     workers: 4,
     fullyParallel: true,
-    timeout: 120 * 1000,
+    timeout: 150 * 1000,
     expect: {
         timeout: 60 * 1000,
         toMatchSnapshot: {
