@@ -8,9 +8,14 @@ import {EventEmitter} from 'events';
 import {deflate} from 'pako/lib/deflate';
 import {AudioDevices, CallsClientConfig, CallsClientJoinData, CallsClientStats, TrackInfo} from 'src/types/types';
 
-import {logDebug, logErr, logInfo, logWarn} from './log';
-import {getScreenStream} from './utils';
+import {logDebug, logErr, logInfo, logWarn, persistClientLogs} from './log';
+import {getScreenStream, getPersistentStorage} from './utils';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
+import {
+    STORAGE_CALLS_CLIENT_STATS_KEY,
+    STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
+    STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
+} from 'src/constants';
 
 export const AudioInputPermissionsError = new Error('missing audio input permissions');
 export const AudioInputMissingError = new Error('no audio input available');
@@ -97,8 +102,8 @@ export default class CallsClient extends EventEmitter {
             };
         }
 
-        const defaultInputID = window.localStorage.getItem('calls_default_audio_input');
-        const defaultOutputID = window.localStorage.getItem('calls_default_audio_output');
+        const defaultInputID = window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY);
+        const defaultOutputID = window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY);
         if (defaultInputID && !this.currentAudioInputDevice) {
             const devices = this.audioDevices.inputs.filter((dev) => {
                 return dev.deviceId === defaultInputID;
@@ -112,7 +117,7 @@ export default class CallsClient extends EventEmitter {
                 this.currentAudioInputDevice = devices[0];
             } else {
                 logDebug('audio input device not found');
-                window.localStorage.removeItem('calls_default_audio_input');
+                window.localStorage.removeItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY);
             }
         }
 
@@ -126,7 +131,7 @@ export default class CallsClient extends EventEmitter {
                 this.currentAudioOutputDevice = devices[0];
             } else {
                 logDebug('audio output device not found');
-                window.localStorage.removeItem('calls_default_audio_output');
+                window.localStorage.removeItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY);
             }
         }
 
@@ -333,6 +338,7 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('mos');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices?.removeEventListener('devicechange', this.onDeviceChange);
+        persistClientLogs();
     }
 
     public async setAudioInputDevice(device: MediaDeviceInfo) {
@@ -340,7 +346,7 @@ export default class CallsClient extends EventEmitter {
             return;
         }
 
-        window.localStorage.setItem('calls_default_audio_input', device.deviceId);
+        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, device.deviceId);
         this.currentAudioInputDevice = device;
 
         // We emit this event so it's easier to keep state in sync between widget and pop out.
@@ -390,7 +396,7 @@ export default class CallsClient extends EventEmitter {
         if (!this.peer) {
             return;
         }
-        window.localStorage.setItem('calls_default_audio_output', device.deviceId);
+        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, device.deviceId);
         this.currentAudioOutputDevice = device;
 
         // We emit this event so it's easier to keep state in sync between widget and pop out.
@@ -410,7 +416,7 @@ export default class CallsClient extends EventEmitter {
         this.closed = true;
         if (this.peer) {
             this.getStats().then((stats) => {
-                sessionStorage.setItem('calls_client_stats', JSON.stringify(stats));
+                getPersistentStorage().setItem(STORAGE_CALLS_CLIENT_STATS_KEY, JSON.stringify(stats));
             }).catch((statsErr) => {
                 logErr(statsErr);
             });
