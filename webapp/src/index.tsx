@@ -35,6 +35,7 @@ import {
 import {navigateToURL} from 'src/browser_routing';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
+import EnableDCSignaling from 'src/components/admin_console_settings/enable_dc_signaling';
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
 import EnableSimulcast from 'src/components/admin_console_settings/enable_simulcast';
@@ -458,6 +459,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('EnableSimulcast', EnableSimulcast);
         registry.registerAdminConsoleCustomSetting('EnableAV1', EnableAV1);
         registry.registerAdminConsoleCustomSetting('EnableRinging', EnableRinging);
+        registry.registerAdminConsoleCustomSetting('EnableDCSignaling', EnableDCSignaling);
 
         // RTCD Service
         if (registry.registerAdminConsoleCustomSection) {
@@ -631,6 +633,7 @@ export default class Plugin {
                     iceServers: iceConfigs,
                     simulcast: callsConfig(state).EnableSimulcast,
                     enableAV1: callsConfig(state).EnableAV1,
+                    dcSignaling: callsConfig(state).EnableDCSignaling,
                 });
                 window.currentCallData = CurrentCallDataDefault;
 

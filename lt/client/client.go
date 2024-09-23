@@ -597,12 +597,14 @@ func (u *User) Connect(stopCh chan struct{}) error {
 	u.callsConfig = callsConfig
 
 	enableAV1, _ := u.callsConfig["EnableAV1"].(bool)
+	enableDCSignaling, _ := u.callsConfig["EnableDCSignaling"].(bool)
 
 	callsClient, err := client.New(client.Config{
-		SiteURL:   u.cfg.SiteURL,
-		AuthToken: apiClient.AuthToken,
-		ChannelID: u.cfg.ChannelID,
-		EnableAV1: enableAV1,
+		SiteURL:           u.cfg.SiteURL,
+		AuthToken:         apiClient.AuthToken,
+		ChannelID:         u.cfg.ChannelID,
+		EnableAV1:         enableAV1,
+		EnableDCSignaling: enableDCSignaling,
 	}, client.WithLogger(u.log))
 	if err != nil {
 		return fmt.Errorf("failed to create calls client: %w", err)

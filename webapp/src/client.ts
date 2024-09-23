@@ -53,6 +53,7 @@ export default class CallsClient extends EventEmitter {
     private av1Codec: RTCRtpCodecCapability | null = null;
 
     constructor(config: CallsClientConfig) {
+        logDebug('creating new calls client', JSON.stringify(config));
         super();
         this.ws = null;
         this.peer = null;
@@ -233,6 +234,11 @@ export default class CallsClient extends EventEmitter {
             logWarn('both simulcast and av1 support are enabled');
         }
 
+        if (this.config.dcSignaling) {
+            logDebug('enabling DC signaling on client');
+            joinData.dcSignaling = true;
+        }
+
         if (!window.isSecureContext) {
             throw insecureContextErr;
         }
@@ -299,6 +305,7 @@ export default class CallsClient extends EventEmitter {
                     logInfo,
                 },
                 simulcast: this.config.simulcast,
+                dcSignaling: this.config.dcSignaling,
             });
 
             this.peer = peer;
