@@ -22,17 +22,17 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: e2e/checkout-mattermost-plugin-calls-repo
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: e2e/setup-go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
       - name: e2e/setup-node
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: e2e/checkout-transcriber-repo
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
         with:
           repository: mattermost/calls-transcriber
           path: calls-transcriber
@@ -111,10 +111,10 @@ jobs:
       matrix: ${{ fromJson(needs.generate-matrix.outputs.parallelism-matrix) }}
     steps:
       - name: e2e/checkout-mattermost-plugin-calls-repo
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
 
       - name: e2e/checkout-mattermost-repo
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
         with:
           repository: mattermost/mattermost
           path: mattermost
@@ -123,7 +123,7 @@ jobs:
         uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb # v3.3.0
 
       - name: e2e/setup-go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@v5
         with:
           go-version-file: mattermost/server/go.mod
 
