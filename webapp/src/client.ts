@@ -5,8 +5,7 @@ import type {EmojiData, CallsClientJoinData} from '@mattermost/calls-common/lib/
 
 import {EventEmitter} from 'events';
 
-// @ts-ignore
-import {deflate} from 'pako/lib/deflate';
+import {zlibSync, strToU8} from 'fflate';
 import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo} from 'src/types/types';
 
 import {logDebug, logErr, logInfo, logWarn, persistClientLogs} from './log';
@@ -324,19 +323,19 @@ export default class CallsClient extends EventEmitter {
             });
             this.rtcMonitor.on('mos', (mos: number) => this.emit('mos', mos));
 
-            peer.on('offer', (sdp) => {
-                logDebug(`local signal: ${JSON.stringify(sdp)}`);
-                ws.send('sdp', {
-                    data: deflate(JSON.stringify(sdp)),
-                }, true);
-            });
+            const sdpHandler = (sdp: RTCSessionDescription) => {
+                const payload = JSON.stringify(sdp);
+                logDebug(`local signal: ${payload}`);
 
-            peer.on('answer', (sdp) => {
-                logDebug(`local signal: ${JSON.stringify(sdp)}`);
+                // SDP data is compressed using zlib since it's text based
+                // and can grow substantially, potentially hitting the maximum
+                // message size (4KB).
                 ws.send('sdp', {
-                    data: deflate(JSON.stringify(sdp)),
+                    data: zlibSync(strToU8(payload)),
                 }, true);
-            });
+            };
+            peer.on('offer', sdpHandler);
+            peer.on('answer', sdpHandler);
 
             peer.on('candidate', (candidate) => {
                 logDebug(`local candidate: ${JSON.stringify(candidate)}`);
