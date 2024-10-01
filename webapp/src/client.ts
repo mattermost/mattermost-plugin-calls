@@ -325,7 +325,6 @@ export default class CallsClient extends EventEmitter {
 
             const sdpHandler = (sdp: RTCSessionDescription) => {
                 const payload = JSON.stringify(sdp);
-                logDebug(`local signal: ${payload}`);
 
                 // SDP data is compressed using zlib since it's text based
                 // and can grow substantially, potentially hitting the maximum
@@ -338,8 +337,6 @@ export default class CallsClient extends EventEmitter {
             peer.on('answer', sdpHandler);
 
             peer.on('candidate', (candidate) => {
-                logDebug(`local candidate: ${JSON.stringify(candidate)}`);
-
                 ws.send('ice', {
                     data: JSON.stringify(candidate),
                 });
@@ -390,9 +387,6 @@ export default class CallsClient extends EventEmitter {
             const msg = JSON.parse(data);
             if (!msg) {
                 return;
-            }
-            if (msg.type !== 'ping') {
-                logDebug('remote signal', data);
             }
             if (msg.type === 'answer' || msg.type === 'offer' || msg.type === 'candidate') {
                 if (this.peer) {
