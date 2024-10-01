@@ -468,6 +468,10 @@ func (u *User) Speak(text string) chan struct{} {
 }
 
 func (u *User) onConnect() {
+	// Waiting a second before transmitting to avoid
+	// the known race between incoming and outgoing track.
+	// This is needed as pion doesn't support perfect negotiation yet.
+	time.Sleep(time.Second)
 	if u.cfg.Unmuted {
 		go u.transmitAudio()
 	} else if u.cfg.Speak {
