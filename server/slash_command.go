@@ -277,6 +277,6 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
-		Text:         fmt.Sprintf("Invalid subcommand: " + subCmd),
+		Text:         "Invalid subcommand: " + subCmd,
 	}, nil
 }

@@ -58,13 +58,13 @@ docker ps -a
 docker logs "${COMPOSE_PROJECT_NAME}_callsoffloader"
 
 # Print transcriber job logs in case of failure.
-for ID in $(docker ps -a --filter=ancestor="calls-transcriber:master" --format "{{.ID}}")
+for ID in $(docker ps -a --filter=ancestor="calls-transcriber:master" --filter=status="exited" --format "{{.ID}}")
 do
   docker logs $ID
 done
 
 # Print recorder job logs in case of failure.
-for ID in $(docker ps -a --filter=ancestor="calls-recorder:master" --format "{{.ID}}")
+for ID in $(docker ps -a --filter=ancestor="calls-recorder:master" --filter=status="exited" --format "{{.ID}}")
 do
   docker logs $ID
 done
