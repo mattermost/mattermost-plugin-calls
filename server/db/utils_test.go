@@ -21,10 +21,10 @@ import (
 func TestSetupConn(t *testing.T) {
 	mockLogger := &mlogMocks.MockLoggerIFace{}
 	mockLogger.On("Info", mock.Anything).Run(func(args mock.Arguments) {
-		log.Printf(args.Get(0).(string))
+		log.Print(args.Get(0).(string))
 	})
 	mockLogger.On("Debug", mock.Anything).Run(func(args mock.Arguments) {
-		log.Printf(args.Get(0).(string))
+		log.Print(args.Get(0).(string))
 	})
 
 	for _, driverName := range []string{model.DatabaseDriverPostgres, model.DatabaseDriverMysql} {

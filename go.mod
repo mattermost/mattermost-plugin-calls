@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-calls
 
-go 1.21.9
+go 1.22.7
 
 require (
 	github.com/pion/ice/v2 v2.3.25 // indirect
@@ -17,14 +17,14 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.7
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
-	github.com/mattermost/calls-offloader v0.8.0
-	github.com/mattermost/calls-recorder v0.7.4
-	github.com/mattermost/calls-transcriber v0.4.0
+	github.com/mattermost/calls-offloader v0.8.1-0.20240925183132-f81d68d229b8
+	github.com/mattermost/calls-recorder v0.7.6-0.20240925183149-030e2c11508d
+	github.com/mattermost/calls-transcriber v0.4.1-0.20240925183146-a4131b656fa5
 	github.com/mattermost/logr/v2 v2.0.21
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.1.5-0.20240613070149-4b0ae20ef7b4
 	github.com/mattermost/morph v1.1.0
-	github.com/mattermost/rtcd v0.17.1
+	github.com/mattermost/rtcd v0.17.2-0.20240925183117-466f6a8ed02f
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible

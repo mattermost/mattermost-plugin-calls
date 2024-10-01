@@ -16,16 +16,16 @@ This plugin demands some network configuration changes to allow audio/video comm
 
 ## Documentation
 
-[End-user documentation](https://docs.mattermost.com/channels/make-calls.html)  
-[Calls self-hosted deployment](https://docs.mattermost.com/configure/calls-deployment.html)  
-[Configuration settings](https://docs.mattermost.com/configure/plugins-configuration-settings.html#calls)  
+[End-user documentation](https://docs.mattermost.com/channels/make-calls.html)
+[Calls self-hosted deployment](https://docs.mattermost.com/configure/calls-deployment.html)
+[Configuration settings](https://docs.mattermost.com/configure/plugins-configuration-settings.html#calls)
 
 ## Development
 
 > **_Note_**
 >
 > Building the plugin requires the following:
-> - Golang: version >= **1.21**
+> - Golang: version >= **1.22**
 > - NodeJS: version **20.11**
 > - NPM: version **10.x**
 

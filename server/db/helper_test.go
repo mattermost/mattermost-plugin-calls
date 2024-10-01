@@ -131,10 +131,10 @@ func newPostgresStore(t *testing.T, binaryParams bool) (*Store, func()) {
 	settings.DriverName = model.NewString(model.DatabaseDriverPostgres)
 
 	mockLogger.On("Info", mock.Anything).Run(func(args mock.Arguments) {
-		log.Printf(args.Get(0).(string))
+		log.Print(args.Get(0).(string))
 	})
 	mockLogger.On("Debug", mock.Anything).Run(func(args mock.Arguments) {
-		log.Printf(args.Get(0).(string))
+		log.Print(args.Get(0).(string))
 	})
 	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
 	mockMetrics.On("ObserveStoreMethodsTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
@@ -173,10 +173,10 @@ func newMySQLStore(t *testing.T) (*Store, func()) {
 	require.NotNil(t, conn)
 
 	mockLogger.On("Info", mock.Anything).Run(func(args mock.Arguments) {
-		log.Printf(args.Get(0).(string))
+		log.Print(args.Get(0).(string))
 	})
 	mockLogger.On("Debug", mock.Anything).Run(func(args mock.Arguments) {
-		log.Printf(args.Get(0).(string))
+		log.Print(args.Get(0).(string))
 	})
 	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
 	mockMetrics.On("ObserveStoreMethodsTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))

@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-calls/server/public
 
-go 1.19
+go 1.22.7
 
 require github.com/stretchr/testify v1.8.4
 
