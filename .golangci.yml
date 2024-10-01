@@ -22,7 +22,7 @@ linters:
     - ineffassign   # Detects when assignments to existing variables are not used
     - unconvert     # Removes unnecessary type conversions
     - unused        # Checks Go code for unused constants, variables, functions and types
-    - exportloopref # Checks for pointers to enclosing loop variables
+    - copyloopvar   # Checks for pointers to enclosing loop variables
     - errcheck      # Detects unchecked errors
     - misspell      # Finds commonly misspelled English words
     - goimports     # Check import statements are formatted according to the 'goimports' command

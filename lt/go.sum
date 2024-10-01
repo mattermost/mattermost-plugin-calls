@@ -85,8 +85,8 @@ github.com/mattermost/logr/v2 v2.0.21 h1:CMHsP+nrbRlEC4g7BwOk1GAnMtHkniFhlSQPXy5
 github.com/mattermost/logr/v2 v2.0.21/go.mod h1:kZkB/zqKL9e+RY5gB3vGpsyenC+TpuiOenjMkvJJbzc=
 github.com/mattermost/mattermost/server/public v0.0.12 h1:iunc9q4/XkArOrndEUn73uFw6v9TOEXEtp6Nm6Iv218=
 github.com/mattermost/mattermost/server/public v0.0.12/go.mod h1:Bk+atJcELCIk9Yeq5FoqTr+gra9704+X4amrlwlTgSc=
-github.com/mattermost/rtcd v0.17.1 h1:LsThJFMRuWKf6F7k7IilYUm/9oWb3uQ0N0wBnq3pa+k=
-github.com/mattermost/rtcd v0.17.1/go.mod h1:bpGyHeb+JDkDzbrQheenpbrqfPhphW0jr09Jh+rpmpY=
+github.com/mattermost/rtcd v0.17.2-0.20240925183117-466f6a8ed02f h1:bJiMgr9Lub1HR0S8yQ/QeXRlHUd0WmmYek72hW3sTk8=
+github.com/mattermost/rtcd v0.17.2-0.20240925183117-466f6a8ed02f/go.mod h1:twellAs4hvfjDI/8PIq5viG5ej2zoBzvTGzFscbjKZc=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/microcosm-cc/bluemonday v1.0.1/go.mod h1:hsXNsILzKxV+sX77C5b8FSuKF00vh2OMYv+xgHpAMF4=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
