@@ -140,7 +140,7 @@
       "jest-canvas-mock"
     ],
     "setupFilesAfterEnv": [
-      "<rootDir>/tests/setup.js"
+      "<rootDir>/src/setup_jest.ts"
     ],
     "testURL": "http://localhost:8065",
     "testEnvironment": "jsdom"
