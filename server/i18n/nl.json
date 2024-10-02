@@ -1,0 +1,58 @@
+[
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "Je installatie wordt intensief gebruikt door Mattermost-calls die de systeemprestaties en reactiesnelheid negatief kunnen beïnvloeden."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "We raden ten zeerste aan om over te schakelen naar [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) en [de RTCD service in te zetten](https://mattermost.com/pl/calls-deployment-the-rtcd-service) om het verwerken van oproepen te offloaden naar een aparte instantie om de prestaties, schaalbaarheid en betrouwbaarheid van je belangrijkste Mattermost-server te behouden."
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "Oproep beëindigd"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "Hier is de opname van het gesprek. De transcriptie is in behandeling en zal worden gepost zodra deze klaar is."
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "Hier vind je de gespreksopname"
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "Hier is de transcriptie van het gesprek"
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Gebruikersnaam}} is een oproep begonnen"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}} is een oproep begonnen"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "Je bent uitgenodigd voor een oproep"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "Fout bij het bewaren van de configuratie."
+    },
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "Calls op servers zonder licentie zijn alleen beschikbaar in privé-berichten."
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}} nodigt je uit voor een gesprek"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "We raden ten zeerste aan om [de RTCD service te implementeren](https://mattermost.com/pl/calls-deployment-the-rtcd-service) om het verwerken van oproepen te offloaden naar een aparte instantie om de prestaties, schaalbaarheid en betrouwbaarheid van je belangrijkste Mattermostserver te behouden."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "We raden ten zeerste aan om te upgraden naar [Enterprise](https://mattermost.com/pricing/) en [de RTCD service in te zetten](https://mattermost.com/pl/calls-deployment-the-rtcd-service) om het verwerken van oproepen te offloaden naar een aparte instantie om de prestaties, schaalbaarheid en betrouwbaarheid van je belangrijkste Mattermost-server te behouden."
+    }
+]

@@ -1,0 +1,58 @@
+[
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "在未授权的服务器上，通话仅在私信中可用。"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "Mattermost Calls 占用了您的部署的过多资源，可能对系统性能和响应能力造成负面影响。"
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "通话已结束"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "这是通话录音。转录正在处理中，将在完成后发布。"
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "这是通话录音"
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "这是通话转录"
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Username}} 开始了一次通话"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "您被邀请至通话"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}}开始了一次通话"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "保存配置失败。"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "我们非常推荐[部署 RTCD 服务](https://mattermost.com/pl/calls-deployment-the-rtcd-service)以将通话处理分载到一个独立的实例上，以保持您的主 Mattermost 服务器的性能、可扩展性，和可靠性。"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "我们非常推荐升级到[企业版](https://mattermost.com/pricing/)并[部署 RTCD 服务](https://mattermost.com/pl/calls-deployment-the-rtcd-service)以将通话处理分载到一个独立的实例上，以保持您的主 Mattermost 服务器的性能、可扩展性，和可靠性。"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "我们非常推荐切换到 [Mattermost 企业版](https://mattermost.com/pl/install-enterprise-install-upgrade)并[部署 RTCD 服务](https://mattermost.com/pl/calls-deployment-the-rtcd-service)以将通话处理分载到一个独立的实例上，以保持您的主 Mattermost 服务器的性能、可扩展性，和可靠性。"
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}}正在邀请您至通话"
+    }
+]

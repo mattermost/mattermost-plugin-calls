@@ -1,0 +1,58 @@
+[
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "Połączenia na nielicencjonowanych serwerach są dostępne tylko w DM."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "Twoja instalacja jest intensywnie wykorzystywana przez połączenia Mattermost, co może negatywnie wpływać na wydajność i szybkość reakcji systemu."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "Zdecydowanie zalecamy przejście na [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) i [wdrożenie usługi RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), aby odciążyć przetwarzanie połączeń do oddzielnej instancji w celu utrzymania wydajności, skalowalności i niezawodności głównego serwera Mattermost."
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "Połączenie zakończone"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "Oto nagranie rozmowy. Transkrypcja jest w trakcie przetwarzania i zostanie opublikowana, gdy będzie gotowa."
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "Oto nagranie rozmowy"
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "Oto transkrypcja rozmowy"
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Username}} rozpoczął połączenie"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}} rozpoczął połączenie"
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}} zaprasza Cię na rozmowę telefoniczną"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "Nie udało się zapisać konfiguracji."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "Zdecydowanie zalecamy [wdrożenie usługi RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), aby odciążyć przetwarzanie połączeń do oddzielnej instancji w celu utrzymania wydajności, skalowalności i niezawodności głównego serwera Mattermost."
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "Zostałeś zaproszony do rozmowy"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "Zdecydowanie zalecamy aktualizację do wersji [Enterprise](https://mattermost.com/pricing/) i [wdrożenie usługi RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), aby odciążyć przetwarzanie połączeń do oddzielnej instancji w celu utrzymania wydajności, skalowalności i niezawodności głównego serwera Mattermost."
+    }
+]
