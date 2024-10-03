@@ -1,9 +1,13 @@
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import {useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
-import {endCall} from 'src/actions';
+import {useDispatch, useSelector} from 'react-redux';
+import {
+    EndCallConfirmation,
+    IDEndCallConfirmation,
+} from 'src/components/call_widget/end_call_confirmation';
 import {DropdownMenuItem, DropdownMenuSeparator} from 'src/components/dot_menu/dot_menu';
+import {modals} from 'src/webapp_globals';
 import styled from 'styled-components';
 
 type Props = {
@@ -17,12 +21,23 @@ export const LeaveCallMenu = ({callID, isHost, numParticipants, leaveCall}: Prop
     const {formatMessage} = useIntl();
     const isAdmin = useSelector(isCurrentUserSystemAdmin);
     const showEndCall = (isHost || isAdmin) && numParticipants > 1;
+    const dispatch = useDispatch();
+
+    const endCallHandler = () => {
+        dispatch(modals?.openModal({
+            modalId: IDEndCallConfirmation,
+            dialogType: EndCallConfirmation,
+            dialogProps: {
+                callID,
+            },
+        }));
+    };
 
     return (
         <>
             {showEndCall &&
                 <>
-                    <DropdownMenuItem onClick={() => endCall(callID)}>
+                    <DropdownMenuItem onClick={() => endCallHandler()}>
                         <RedText>{formatMessage({defaultMessage: 'End call for everyone'})}</RedText>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator/>
