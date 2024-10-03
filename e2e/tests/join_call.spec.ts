@@ -113,7 +113,7 @@ test.describe('join call', () => {
         // We then verify that call button is disabled if the other user is already in a call with us.
         await userBPage.startCall();
 
-        // joinWe have both users send a message so it's much easier to
+        // We have both users send a message so it's much easier to
         // consistently find the proper selector to open the profile.
         await userAPage.locator('#post_textbox').fill('messageA');
         await userAPage.locator('[data-testid=SendMessageButton]').click();
