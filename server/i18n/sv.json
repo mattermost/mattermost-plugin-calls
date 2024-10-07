@@ -1,1 +1,58 @@
-[]
+[
+    {
+        "id": "app.call.ended_message",
+        "translation": "Samtalet avslutades"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "Här är inspelningen av samtalet. Transkriberingen håller på att bearbetas och kommer publiceras när den är klar."
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "Här är transkriptionen av samtalet"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}} startade ett samtal"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "Du har blivit inbjuden till ett samtal"
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}} bjuder in dig till ett samtal"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "Misslyckades med att spara konfigurationen."
+    },
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "Calls är bara tillgänglig i DM:s med en olicensierad Mattermost-server."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "Vi rekommenderar starkt att [implementera RTCD-tjänsten](https://mattermost.com/pl/calls-deployment-the-rtcd-service) och hantera samtalsfunktionerna på en separat instans för att bibehålla prestanda, skalbarhet och tillförlitlighet för din primära Mattermost-server."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "Din användning av Mattermost Calls är hög och det kan påverka systemets prestanda och svarstid negativt."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "Vi rekommenderar starkt att du uppgraderar till [Enterprise] (https://mattermost.com/pricing/) och att [RTCD-tjänsten implementeras](https://mattermost.com/pl/calls-deployment-the-rtcd-service) för att hantera samtalsfunktionerna på en separat instans för att bibehålla prestanda, skalbarhet och tillförlitlighet för din primära Mattermost-server."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "Vi rekommenderar starkt att du byter till [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) och att [RTCD-tjänsten implementeras](https://mattermost.com/pl/calls-deployment-the-rtcd-service) för att hantera samtalsfunktionerna på en separat instans för att bibehålla prestanda, skalbarhet och tillförlitlighet för din primära Mattermost-server."
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "Här finns inspelningen"
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Username}} startade ett samtal"
+    }
+]
