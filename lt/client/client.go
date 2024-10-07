@@ -636,6 +636,7 @@ func (u *User) Connect(stopCh chan struct{}) error {
 		ChannelID:         u.cfg.ChannelID,
 		EnableAV1:         enableAV1,
 		EnableDCSignaling: enableDCSignaling,
+		EnableRTCMonitor:  true,
 	}, client.WithLogger(u.log))
 	if err != nil {
 		return fmt.Errorf("failed to create calls client: %w", err)
