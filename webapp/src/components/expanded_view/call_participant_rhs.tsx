@@ -165,7 +165,7 @@ const ParticipantListItem = styled.li<{ $hover: boolean }>`
     align-items: center;
     padding: 6px 16px;
     gap: 8px;
-    height: 40px;
+    min-height: 40px;
 
     ${({$hover}) => $hover && css`
         background: rgba(var(--center-channel-color-rgb), 0.08);
@@ -173,6 +173,7 @@ const ParticipantListItem = styled.li<{ $hover: boolean }>`
 `;
 
 const StyledDotMenu = styled(DotMenu)`
+    display: flex;
     margin-right: -4px;
 `;
 
