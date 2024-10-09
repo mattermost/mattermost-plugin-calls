@@ -1,7 +1,7 @@
 import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {getUsernamesForTest, getUserStoragesForTest, joinCall, startCall, startDMWith} from '../utils';
+import {getUserIdxForTest, getUsernamesForTest, getUserStoragesForTest, joinCall, startCall, startCallAndPopout, startDMWith} from '../utils';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
@@ -165,5 +165,77 @@ test.describe('join call', () => {
         await sessionAPage.leaveCall();
         await sessionBPage.leaveCall();
         await sessionCPage.leaveCall();
+    });
+});
+
+test.describe('end call', () => {
+    test.use({storageState: userStorages[0]});
+    const userIdx = getUserIdxForTest();
+
+    test('widget', async ({page}) => {
+        // userA starts a call
+        const userAPage = new PlaywrightDevPage(page);
+        await userAPage.startCall();
+
+        // userB joins
+        const userBPage = await joinCall(userStorages[1]);
+
+        // userA ends call
+        await page.locator('#calls-widget-leave-button').click();
+        const menu = page.getByTestId('dropdownmenu');
+        await menu.getByText('End call for everyone').click();
+        await expect(page.locator('#end_call_confirmation')).toBeVisible();
+        await page.getByTestId('modal-confirm-button').getByText('End call').click();
+
+        // verify call has ended
+        await expect(page.locator('#calls-widget')).toBeHidden();
+        await expect(page.locator('#calls-channel-toast')).toBeHidden();
+        await expect(page.locator(`#sidebarItem_calls${userIdx}`).getByTestId('calls-sidebar-active-call-icon')).toBeHidden();
+        await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
+    });
+
+    test('post card', async ({page}) => {
+        // userA starts a call
+        const userAPage = new PlaywrightDevPage(page);
+        await userAPage.startCall();
+
+        // userB joins
+        const userBPage = await joinCall(userStorages[1]);
+
+        // userA ends call
+        const leaveCallButton = page.locator('.post__body').last().getByRole('button', {name: 'Leave'});
+        await expect(leaveCallButton).toBeVisible();
+        await leaveCallButton.click();
+        const menu = page.getByTestId('dropdownmenu');
+        await menu.getByText('End call for everyone').click();
+        await expect(page.locator('#end_call_confirmation')).toBeVisible();
+        await page.getByTestId('modal-confirm-button').getByText('End call').click();
+
+        // verify call has ended
+        await expect(page.locator('#calls-widget')).toBeHidden();
+        await expect(page.locator('#calls-channel-toast')).toBeHidden();
+        await expect(page.locator(`#sidebarItem_calls${userIdx}`).getByTestId('calls-sidebar-active-call-icon')).toBeHidden();
+        await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
+    });
+
+    test('popout', async () => {
+        const [page, popOut] = await startCallAndPopout(userStorages[0]);
+        await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
+
+        // userB joins
+        const userBPage = await joinCall(userStorages[1]);
+
+        // userA ends call
+        await popOut.page.locator('#calls-popout-leave-button').click();
+        const menu = popOut.page.getByTestId('dropdownmenu');
+        await menu.getByText('End call for everyone').click();
+        await expect(popOut.page.locator('#end_call_confirmation')).toBeVisible();
+        await popOut.page.getByTestId('modal-confirm-button').getByText('End call').click();
+
+        // verify call has ended
+        await expect(page.page.locator('#calls-widget')).toBeHidden();
+        await expect(page.page.locator('#calls-channel-toast')).toBeHidden();
+        await expect(page.page.locator(`#sidebarItem_calls${userIdx}`).getByTestId('calls-sidebar-active-call-icon')).toBeHidden();
+        await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
     });
 });
