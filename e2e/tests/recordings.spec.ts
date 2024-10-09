@@ -290,8 +290,8 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         // forcefully end call
         await page.locator('#post_textbox').fill('/call end');
         await page.getByTestId('SendMessageButton').click();
-        await expect(page.locator('#calls-end-call-modal')).toBeVisible();
-        await page.locator('#calls-end-call-modal').locator('button', {hasText: 'End call'}).click();
+        await expect(page.locator('#end_call_confirmation')).toBeVisible();
+        await page.getByTestId('modal-confirm-button').getByText('End call').click();
 
         // verify user has been kicked out
         await page.waitForFunction(() => !window.callsClient || window.callsClient.closed);

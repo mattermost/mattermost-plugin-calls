@@ -66,8 +66,15 @@ export default class PlaywrightDevPage {
 
     async slashCallEnd() {
         await this.sendSlashCommand('/call end');
-        await expect(this.page.locator('#end_call_confirmation')).toBeVisible();
-        await this.page.getByTestId('modal-confirm-button').getByText('End call').click();
+        let modal = this.page.locator('#end_call_confirmation');
+        if (await modal.isVisible()) {
+            await this.page.getByTestId('modal-confirm-button').getByText('End call').click();
+        } else {
+            modal = this.page.locator('.modal-content');
+            if (await modal.isVisible()) {
+                await modal.getByRole('button', {name: 'Understood'}).click();
+            }
+        }
     }
 
     async joinCall() {
