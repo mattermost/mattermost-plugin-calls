@@ -67,6 +67,13 @@
             "type": "bool",
             "default": false,
             "help_text": "When set to true it enables using the AV1 codec to encode screen sharing tracks. This can result in improved screen sharing quality for clients that support it.\nNote: this setting won't apply when EnableSimulcast is true."
+          },
+          {
+            "key": "EnableDCSignaling",
+            "display_name": "Use data channels for signaling (Experimental)",
+            "type": "bool",
+            "default": false,
+            "help_text": "When set to true, clients will use WebRTC data channels for signaling of new media tracks. This can result in a more efficient and less race-prone process, especially in case of frequent WebSocket disconnections."
           }
         ]
       },
@@ -676,6 +683,13 @@
         "type": "bool",
         "default": false,
         "help_text": "When set to true it enables using the AV1 codec to encode screen sharing tracks. This can result in improved screen sharing quality for clients that support it.\nNote: this setting won't apply when EnableSimulcast is true."
+      },
+      {
+        "key": "EnableDCSignaling",
+        "display_name": "Use data channels for signaling (Experimental)",
+        "type": "bool",
+        "default": false,
+        "help_text": "When set to true, clients will use WebRTC data channels for signaling of new media tracks. This can result in a more efficient and less race-prone process, especially in case of frequent WebSocket disconnections."
       }
     ]
   },
