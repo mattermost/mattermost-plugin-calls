@@ -233,6 +233,7 @@ export default async function init(cfg: InitConfig) {
         authToken: getToken(),
         simulcast: callsConfig(store.getState()).EnableSimulcast,
         enableAV1: callsConfig(store.getState()).EnableAV1,
+        dcSignaling: callsConfig(store.getState()).EnableDCSignaling,
     };
 
     connectCall(joinData, clientConfig, (ev) => {
