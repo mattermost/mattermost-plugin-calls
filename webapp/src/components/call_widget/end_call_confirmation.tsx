@@ -7,10 +7,10 @@ import styled from 'styled-components';
 export const IDEndCallConfirmation = 'end_call_confirmation';
 
 type Props = Partial<ComponentProps<typeof GenericModal>> & {
-    callID: string;
+    channelID: string;
 };
 
-export const EndCallConfirmation = ({callID, ...modalProps}: Props) => {
+export const EndCallConfirmation = ({channelID, ...modalProps}: Props) => {
     const {formatMessage} = useIntl();
 
     const title = formatMessage({defaultMessage: 'End call for everyone'});
@@ -26,7 +26,7 @@ export const EndCallConfirmation = ({callID, ...modalProps}: Props) => {
             confirmButtonText={confirmText}
             cancelButtonText={cancelText}
             isConfirmDestructive={true}
-            handleConfirm={() => endCall(callID)}
+            handleConfirm={() => endCall(channelID)}
             showCancel={true}
             onHide={() => null}
             components={{FooterContainer}}

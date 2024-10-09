@@ -156,7 +156,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             modalId: IDEndCallConfirmation,
             dialogType: EndCallConfirmation,
             dialogProps: {
-                callID: args.channel_id,
+                channelID: args.channel_id,
             },
         }));
 

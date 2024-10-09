@@ -75,6 +75,10 @@ import TURNCredentialsExpirationMinutes from 'src/components/admin_console_setti
 import TURNStaticAuthSecret from 'src/components/admin_console_settings/turn_static_auth_secret';
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
+import {
+    EndCallConfirmation,
+    IDEndCallConfirmation,
+} from 'src/components/call_widget/end_call_confirmation';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import {
@@ -117,7 +121,7 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
-import {logDebug, logErr} from './log';
+import {logDebug, logErr, logWarn} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
@@ -319,6 +323,33 @@ export default class Plugin {
         this.unsubscribers.push(() => {
             document.getElementById('calls')?.remove();
         });
+
+        if (window.desktop) {
+            const widgetCh = new BroadcastChannel('calls_widget');
+            this.unsubscribers.push(() => {
+                widgetCh.close();
+            });
+
+            widgetCh.onmessage = (ev) => {
+                switch (ev.data?.type) {
+                case 'show_end_call_modal': {
+                    const channelID = channelIDForCurrentCall(store.getState());
+                    if (channelID) {
+                        store.dispatch(modals.openModal({
+                            modalId: IDEndCallConfirmation,
+                            dialogType: EndCallConfirmation,
+                            dialogProps: {
+                                channelID,
+                            },
+                        }));
+                    }
+                    break;
+                }
+                default:
+                    logWarn('invalid message on widget channel', ev.data);
+                }
+            };
+        }
 
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
