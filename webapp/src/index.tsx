@@ -111,7 +111,6 @@ import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import ChannelLinkLabel from './components/channel_link_label';
 import PostType from './components/custom_post_types/post_type';
 import {PostTypeTranscription} from './components/custom_post_types/post_type_transcription';
-import EndCallModal from './components/end_call_modal';
 import ExpandedView from './components/expanded_view';
 import ScreenSourceModal from './components/screen_source_modal';
 import SwitchCallModal from './components/switch_call_modal';
@@ -332,7 +331,6 @@ export default class Plugin {
         registry.registerNeedsTeamRoute('/expanded', injectIntl(ExpandedView));
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
         registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
-        registry.registerGlobalComponent(injectIntl(EndCallModal));
         registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
 
         registry.registerUserSettings({

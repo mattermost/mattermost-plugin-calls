@@ -5,7 +5,6 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionResult} from 'mattermost-redux/types/actions';
 import {defineMessage} from 'react-intl';
-import {SHOW_END_CALL_MODAL} from 'src/action_types';
 import {
     displayGenericErrorModal,
     startCallRecording,
@@ -13,11 +12,16 @@ import {
     trackEvent,
 } from 'src/actions';
 import {
+    EndCallConfirmation,
+    IDEndCallConfirmation,
+} from 'src/components/call_widget/end_call_confirmation';
+import {
     DisabledCallsErr,
     STORAGE_CALLS_CLIENT_STATS_KEY,
     STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY,
 } from 'src/constants';
 import * as Telemetry from 'src/types/telemetry';
+import {modals} from 'src/webapp_globals';
 
 import {getClientLogs, logDebug} from './log';
 import {
@@ -148,12 +152,14 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             return {};
         }
 
-        store.dispatch({
-            type: SHOW_END_CALL_MODAL,
-            data: {
-                targetID: args.channel_id,
+        store.dispatch(modals?.openModal({
+            modalId: IDEndCallConfirmation,
+            dialogType: EndCallConfirmation,
+            dialogProps: {
+                callID: args.channel_id,
             },
-        });
+        }));
+
         return {};
     case 'link':
         break;
