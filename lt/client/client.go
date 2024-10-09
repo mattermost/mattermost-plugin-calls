@@ -513,6 +513,33 @@ func (u *User) getCallsConfig() (map[string]any, error) {
 	return config, nil
 }
 
+func (u *User) handleTrack(ctx any) error {
+	m, ok := ctx.(map[string]any)
+	if !ok || m == nil {
+		return fmt.Errorf("failed to convert map")
+	}
+
+	track, ok := m["track"].(*webrtc.TrackRemote)
+	if !ok || track == nil {
+		return fmt.Errorf("failed to convert track")
+	}
+
+	// We don't currently do anything with the packets but we should still read
+	// them to properly calculate client stats.
+	buf := make([]byte, receiveMTU)
+	for {
+		_, _, readErr := track.Read(buf)
+		if readErr != nil {
+			if !errors.Is(readErr, io.EOF) {
+				u.log.Error("failed to read RTP packet for track",
+					slog.String("err", readErr.Error()),
+					slog.String("trackID", track.ID()))
+			}
+			return nil
+		}
+	}
+}
+
 func (u *User) Connect(stopCh chan struct{}) error {
 	u.log.Debug("connecting user")
 
@@ -609,9 +636,13 @@ func (u *User) Connect(stopCh chan struct{}) error {
 		ChannelID:         u.cfg.ChannelID,
 		EnableAV1:         enableAV1,
 		EnableDCSignaling: enableDCSignaling,
+		EnableRTCMonitor:  true,
 	}, client.WithLogger(u.log))
 	if err != nil {
 		return fmt.Errorf("failed to create calls client: %w", err)
+	}
+	if err := callsClient.On(client.RTCTrackEvent, u.handleTrack); err != nil {
+		return fmt.Errorf("failed to add track handler: %w", err)
 	}
 
 	u.callsClient = callsClient
