@@ -220,6 +220,108 @@ func (_c *MockMetrics_IncRTPTracks_Call) RunAndReturn(run func(string, string, s
 	return _c
 }
 
+// ObserveRTCClientJitter provides a mock function with given fields: groupID, val
+func (_m *MockMetrics) ObserveRTCClientJitter(groupID string, val float64) {
+	_m.Called(groupID, val)
+}
+
+// MockMetrics_ObserveRTCClientJitter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObserveRTCClientJitter'
+type MockMetrics_ObserveRTCClientJitter_Call struct {
+	*mock.Call
+}
+
+// ObserveRTCClientJitter is a helper method to define mock.On call
+//   - groupID string
+//   - val float64
+func (_e *MockMetrics_Expecter) ObserveRTCClientJitter(groupID interface{}, val interface{}) *MockMetrics_ObserveRTCClientJitter_Call {
+	return &MockMetrics_ObserveRTCClientJitter_Call{Call: _e.mock.On("ObserveRTCClientJitter", groupID, val)}
+}
+
+func (_c *MockMetrics_ObserveRTCClientJitter_Call) Run(run func(groupID string, val float64)) *MockMetrics_ObserveRTCClientJitter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(float64))
+	})
+	return _c
+}
+
+func (_c *MockMetrics_ObserveRTCClientJitter_Call) Return() *MockMetrics_ObserveRTCClientJitter_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockMetrics_ObserveRTCClientJitter_Call) RunAndReturn(run func(string, float64)) *MockMetrics_ObserveRTCClientJitter_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ObserveRTCClientLossRate provides a mock function with given fields: groupID, val
+func (_m *MockMetrics) ObserveRTCClientLossRate(groupID string, val float64) {
+	_m.Called(groupID, val)
+}
+
+// MockMetrics_ObserveRTCClientLossRate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObserveRTCClientLossRate'
+type MockMetrics_ObserveRTCClientLossRate_Call struct {
+	*mock.Call
+}
+
+// ObserveRTCClientLossRate is a helper method to define mock.On call
+//   - groupID string
+//   - val float64
+func (_e *MockMetrics_Expecter) ObserveRTCClientLossRate(groupID interface{}, val interface{}) *MockMetrics_ObserveRTCClientLossRate_Call {
+	return &MockMetrics_ObserveRTCClientLossRate_Call{Call: _e.mock.On("ObserveRTCClientLossRate", groupID, val)}
+}
+
+func (_c *MockMetrics_ObserveRTCClientLossRate_Call) Run(run func(groupID string, val float64)) *MockMetrics_ObserveRTCClientLossRate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(float64))
+	})
+	return _c
+}
+
+func (_c *MockMetrics_ObserveRTCClientLossRate_Call) Return() *MockMetrics_ObserveRTCClientLossRate_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockMetrics_ObserveRTCClientLossRate_Call) RunAndReturn(run func(string, float64)) *MockMetrics_ObserveRTCClientLossRate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ObserveRTCClientRTT provides a mock function with given fields: groupID, val
+func (_m *MockMetrics) ObserveRTCClientRTT(groupID string, val float64) {
+	_m.Called(groupID, val)
+}
+
+// MockMetrics_ObserveRTCClientRTT_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObserveRTCClientRTT'
+type MockMetrics_ObserveRTCClientRTT_Call struct {
+	*mock.Call
+}
+
+// ObserveRTCClientRTT is a helper method to define mock.On call
+//   - groupID string
+//   - val float64
+func (_e *MockMetrics_Expecter) ObserveRTCClientRTT(groupID interface{}, val interface{}) *MockMetrics_ObserveRTCClientRTT_Call {
+	return &MockMetrics_ObserveRTCClientRTT_Call{Call: _e.mock.On("ObserveRTCClientRTT", groupID, val)}
+}
+
+func (_c *MockMetrics_ObserveRTCClientRTT_Call) Run(run func(groupID string, val float64)) *MockMetrics_ObserveRTCClientRTT_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(float64))
+	})
+	return _c
+}
+
+func (_c *MockMetrics_ObserveRTCClientRTT_Call) Return() *MockMetrics_ObserveRTCClientRTT_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockMetrics_ObserveRTCClientRTT_Call) RunAndReturn(run func(string, float64)) *MockMetrics_ObserveRTCClientRTT_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObserveRTPTracksWrite provides a mock function with given fields: groupID, trackType, dur
 func (_m *MockMetrics) ObserveRTPTracksWrite(groupID string, trackType string, dur float64) {
 	_m.Called(groupID, trackType, dur)

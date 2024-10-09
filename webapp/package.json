@@ -20,15 +20,15 @@
   },
   "dependencies": {
     "@floating-ui/react": "0.26.12",
-    "@mattermost/calls-common": "github:mattermost/calls-common#93c0c8b657f66d16434854e26391c79113aa9a71",
+    "@mattermost/calls-common": "github:mattermost/calls-common#8d2b13bd2f10847a4be461dd4225fef2ade06ab9",
     "@msgpack/msgpack": "2.7.1",
     "@redux-devtools/extension": "3.2.3",
     "core-js": "3.26.1",
     "css-vars-ponyfill": "2.4.8",
     "emoji-picker-react": "4.4.7",
+    "fflate": "0.8.2",
     "highlight.js": "11.6.0",
     "media-chrome": "0.16.0",
-    "pako": "2.0.4",
     "react": "17.0.2",
     "react-dom": "17.0.2",
     "react-redux": "7.2.4",
@@ -140,7 +140,7 @@
       "jest-canvas-mock"
     ],
     "setupFilesAfterEnv": [
-      "<rootDir>/tests/setup.js"
+      "<rootDir>/src/setup_jest.ts"
     ],
     "testURL": "http://localhost:8065",
     "testEnvironment": "jsdom"
