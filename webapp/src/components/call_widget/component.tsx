@@ -2296,7 +2296,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             tooltipText={leaveMenuLabel}
                         >
                             <LeaveCallMenu
-                                callID={this.props.channel.id}
+                                channelID={this.props.channel.id}
                                 isHost={isHost}
                                 numParticipants={this.props.sessions.length}
                                 leaveCall={this.onDisconnectClick}

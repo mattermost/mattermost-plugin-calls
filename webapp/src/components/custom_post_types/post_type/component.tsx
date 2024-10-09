@@ -175,7 +175,7 @@ const PostType = ({
             portal={true}
         >
             <LeaveCallMenu
-                callID={post.channel_id}
+                channelID={post.channel_id}
                 isHost={isHost}
                 numParticipants={profiles.length}
                 leaveCall={onLeaveButtonClick}

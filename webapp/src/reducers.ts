@@ -27,7 +27,6 @@ import {
     DID_NOTIFY_FOR_CALL,
     DID_RING_FOR_CALL,
     DISMISS_CALL,
-    HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
@@ -44,7 +43,6 @@ import {
     REMOVE_INCOMING_CALL,
     RINGING_FOR_CALL,
     RTCD_ENABLED,
-    SHOW_END_CALL_MODAL,
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
@@ -752,20 +750,6 @@ const switchCallModal = (state = {
     }
 };
 
-const endCallModal = (state = {
-    show: false,
-    targetID: '',
-}, action: { type: string, data?: { targetID: string } }) => {
-    switch (action.type) {
-    case SHOW_END_CALL_MODAL:
-        return {show: true, targetID: action.data?.targetID};
-    case HIDE_END_CALL_MODAL:
-        return {show: false, targetID: ''};
-    default:
-        return state;
-    }
-};
-
 const screenSourceModal = (state = false, action: { type: string }) => {
     switch (action.type) {
     case UNINIT:
@@ -1015,7 +999,6 @@ export default combineReducers({
     screenSharingIDs,
     expandedView,
     switchCallModal,
-    endCallModal,
     screenSourceModal,
     callsConfig,
     rtcdEnabled,

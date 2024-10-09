@@ -57,7 +57,6 @@ import {
     CLIENT_CONNECTING,
     DID_RING_FOR_CALL,
     DISMISS_CALL,
-    HIDE_END_CALL_MODAL,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
@@ -102,12 +101,6 @@ export const showSwitchCallModal = (targetID?: string) => (dispatch: Dispatch) =
 export const hideSwitchCallModal = () => (dispatch: Dispatch) => {
     dispatch({
         type: HIDE_SWITCH_CALL_MODAL,
-    });
-};
-
-export const hideEndCallModal = () => (dispatch: Dispatch) => {
-    dispatch({
-        type: HIDE_END_CALL_MODAL,
     });
 };
 

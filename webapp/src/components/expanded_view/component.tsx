@@ -1239,7 +1239,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 tooltipText={leaveCallTooltipText}
                             >
                                 <LeaveCallMenu
-                                    callID={callsClient.channelID}
+                                    channelID={callsClient.channelID}
                                     isHost={isHost}
                                     numParticipants={this.props.sessions.length}
                                     leaveCall={this.onDisconnectClick}

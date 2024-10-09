@@ -75,6 +75,10 @@ import TURNCredentialsExpirationMinutes from 'src/components/admin_console_setti
 import TURNStaticAuthSecret from 'src/components/admin_console_settings/turn_static_auth_secret';
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
+import {
+    EndCallConfirmation,
+    IDEndCallConfirmation,
+} from 'src/components/call_widget/end_call_confirmation';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import {
@@ -88,7 +92,7 @@ import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
-import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
+import {CallActions, CurrentCallData, CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
 
 import {
@@ -111,14 +115,13 @@ import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import ChannelLinkLabel from './components/channel_link_label';
 import PostType from './components/custom_post_types/post_type';
 import {PostTypeTranscription} from './components/custom_post_types/post_type_transcription';
-import EndCallModal from './components/end_call_modal';
 import ExpandedView from './components/expanded_view';
 import ScreenSourceModal from './components/screen_source_modal';
 import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
-import {logDebug, logErr} from './log';
+import {logDebug, logErr, logWarn} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
@@ -321,6 +324,33 @@ export default class Plugin {
             document.getElementById('calls')?.remove();
         });
 
+        if (window.desktop) {
+            const widgetCh = new BroadcastChannel('calls_widget');
+            this.unsubscribers.push(() => {
+                widgetCh.close();
+            });
+
+            widgetCh.onmessage = (ev) => {
+                switch (ev.data?.type) {
+                case DesktopMessageType.ShowEndCallModal: {
+                    const channelID = channelIDForCurrentCall(store.getState());
+                    if (channelID) {
+                        store.dispatch(modals.openModal({
+                            modalId: IDEndCallConfirmation,
+                            dialogType: EndCallConfirmation,
+                            dialogProps: {
+                                channelID,
+                            },
+                        }));
+                    }
+                    break;
+                }
+                default:
+                    logWarn('invalid message on widget channel', ev.data);
+                }
+            };
+        }
+
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
@@ -332,7 +362,6 @@ export default class Plugin {
         registry.registerNeedsTeamRoute('/expanded', injectIntl(ExpandedView));
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
         registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
-        registry.registerGlobalComponent(injectIntl(EndCallModal));
         registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
 
         registry.registerUserSettings({
