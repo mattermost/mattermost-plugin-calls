@@ -22,6 +22,7 @@ export const CallsConfigDefault: CallsConfig = {
     EnableAV1: false,
     TranscribeAPI: TranscribeAPI.WhisperCPP,
     GroupCallsAllowed: false,
+    EnableDCSignaling: false,
 };
 
 export type ChannelState = {
@@ -35,6 +36,7 @@ export type CallsClientConfig = {
     iceServers: RTCIceServer[];
     simulcast?: boolean;
     enableAV1: boolean;
+    dcSignaling: boolean;
 }
 
 export type AudioDevices = {

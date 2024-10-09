@@ -137,6 +137,8 @@ type clientConfig struct {
 	EnableAV1 *bool
 	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
 	GroupCallsAllowed bool
+	// When set to true it enables experimental support for using the data channel for signaling.
+	EnableDCSignaling *bool
 }
 
 type adminClientConfig struct {
@@ -264,6 +266,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.EnableAV1 == nil {
 		c.EnableAV1 = model.NewBool(false)
+	}
+	if c.EnableDCSignaling == nil {
+		c.EnableDCSignaling = model.NewBool(false)
 	}
 }
 
@@ -453,6 +458,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.EnableAV1 = model.NewBool(*c.EnableAV1)
 	}
 
+	if c.EnableDCSignaling != nil {
+		cfg.EnableDCSignaling = model.NewBool(*c.EnableDCSignaling)
+	}
+
 	return &cfg
 }
 
@@ -517,6 +526,7 @@ func (p *Plugin) getClientConfig(c *configuration) clientConfig {
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
 		EnableAV1:            c.EnableAV1,
 		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
+		EnableDCSignaling:    c.EnableDCSignaling,
 	}
 }
 
