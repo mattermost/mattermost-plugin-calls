@@ -92,7 +92,7 @@ import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
-import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
+import {CallActions, CurrentCallData, CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
 
 import {
@@ -332,7 +332,7 @@ export default class Plugin {
 
             widgetCh.onmessage = (ev) => {
                 switch (ev.data?.type) {
-                case 'show_end_call_modal': {
+                case DesktopMessageType.ShowEndCallModal: {
                     const channelID = channelIDForCurrentCall(store.getState());
                     if (channelID) {
                         store.dispatch(modals.openModal({
