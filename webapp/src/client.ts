@@ -26,7 +26,7 @@ export const insecureContextErr = new Error('insecure context');
 export const userRemovedFromChannelErr = new Error('user was removed from channel');
 export const userLeftChannelErr = new Error('user has left channel');
 
-const rtcMonitorInterval = 4000;
+const rtcMonitorInterval = 10000;
 
 export default class CallsClient extends EventEmitter {
     public channelID: string;
