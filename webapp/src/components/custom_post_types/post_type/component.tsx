@@ -92,7 +92,7 @@ const PostType = ({
         </RecordingsContainer>
     ) : null;
 
-    const subMessage = callProps.start_at && callProps.end_at ? (
+    const subMessage = callProps.start_at > 0 && callProps.end_at > 0 ? (
         <>
             <span>
                 {formatMessage(
@@ -159,7 +159,7 @@ const PostType = ({
 
     const compactTitle = compactDisplay && !isRHS ? <br/> : <></>;
     const title = callProps.title ? <h3 className='markdown__heading'>{callProps.title}</h3> : compactTitle;
-    const callActive = !callProps.end_at;
+    const callActive = callProps.end_at === 0;
     const inCall = connectedID === post.channel_id;
     const iconAndText = (
         <>
@@ -189,14 +189,14 @@ const PostType = ({
             <Main data-testid={'call-thread'}>
                 <SubMain>
                     <Left>
-                        <CallIndicator $ended={Boolean(callProps.end_at)}>
-                            {!callProps.end_at &&
+                        <CallIndicator $ended={!callActive}>
+                            {callActive &&
                                 <ActiveCallIcon
                                     fill='var(--center-channel-bg)'
                                     style={{width: '20px', height: '20px'}}
                                 />
                             }
-                            {callProps.end_at &&
+                            {!callActive &&
                                 <LeaveCallIcon
                                     fill={'rgba(var(--center-channel-color-rgb), 0.72)'}
                                     style={{width: '24px', height: '20px'}}
@@ -205,10 +205,10 @@ const PostType = ({
                         </CallIndicator>
                         <MessageWrapper>
                             <Message>
-                                {!callProps.end_at &&
+                                {callActive &&
                                     formatMessage({defaultMessage: 'Call started'})
                                 }
-                                {callProps.end_at &&
+                                {!callActive &&
                                     formatMessage({defaultMessage: 'Call ended'})
                                 }
                             </Message>

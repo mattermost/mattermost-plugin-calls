@@ -575,25 +575,29 @@ export function notificationsStopRinging() {
     }
 }
 
+function isValidObject(v: any) {
+    return typeof v === 'object' && !Array.isArray(v) && v !== null;
+}
+
 export function getCallPropsFromPost(post: Post): CallPostProps {
     return {
-        title: post.props?.title,
-        start_at: post.props?.start_at,
-        end_at: post.props?.end_at,
-        recordings: post.props?.recordings || [],
-        transcriptions: post.props?.transcriptions || [],
-        participants: post.props?.participants || [],
+        title: typeof post.props?.title === 'string' ? post.props.title : '',
+        start_at: typeof post.props?.start_at === 'number' ? post.props.start_at : 0,
+        end_at: typeof post.props?.end_at === 'number' ? post.props.end_at : 0,
+        recordings: isValidObject(post.props?.recordings) ? post.props.recordings : {},
+        transcriptions: isValidObject(post.props?.transcriptions) ? post.props.transcriptions : {},
+        participants: Array.isArray(post.props?.participants) ? post.props.participants : [],
 
         // DEPRECATED
-        recording_files: post.props?.recording_files || [],
+        recording_files: Array.isArray(post.props?.recording_files) ? post.props.recording_files : [],
     };
 }
 
 export function getCallRecordingPropsFromPost(post: Post): CallRecordingPostProps {
     return {
-        call_post_id: post.props?.call_post_id,
-        recording_id: post.props?.recording_id,
-        captions: post.props?.captions || [],
+        call_post_id: typeof post.props?.call_post_id === 'string' ? post.props.call_post_id : '',
+        recording_id: typeof post.props?.recording_id === 'string' ? post.props.recording_id : '',
+        captions: Array.isArray(post.props?.captions) ? post.props.captions : [],
     };
 }
 
