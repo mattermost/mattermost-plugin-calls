@@ -1,5 +1,5 @@
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@mattermost/calls-common';
-import {CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallJobMetadata, CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
 import {Post} from '@mattermost/types/posts';
@@ -579,13 +579,26 @@ function isValidObject(v: any) {
     return typeof v === 'object' && !Array.isArray(v) && v !== null;
 }
 
+function getJobMetadataMap(obj: {[key: string]: CallJobMetadata}) {
+    const out : {[key: string]: CallJobMetadata} = {};
+    for (const [key, value] of Object.entries(obj)) {
+        out[key] = {
+            file_id: typeof value?.file_id === 'string' ? value.file_id : '',
+            post_id: typeof value?.post_id === 'string' ? value.post_id : '',
+            ...(typeof value?.rec_id === 'string') && {rec_id: value.rec_id},
+            ...(typeof value?.tr_id === 'string') && {tr_id: value.tr_id},
+        };
+    }
+    return out;
+}
+
 export function getCallPropsFromPost(post: Post): CallPostProps {
     return {
         title: typeof post.props?.title === 'string' ? post.props.title : '',
         start_at: typeof post.props?.start_at === 'number' ? post.props.start_at : 0,
         end_at: typeof post.props?.end_at === 'number' ? post.props.end_at : 0,
-        recordings: isValidObject(post.props?.recordings) ? post.props.recordings : {},
-        transcriptions: isValidObject(post.props?.transcriptions) ? post.props.transcriptions : {},
+        recordings: isValidObject(post.props?.recordings) ? getJobMetadataMap(post.props.recordings) : {},
+        transcriptions: isValidObject(post.props?.transcriptions) ? getJobMetadataMap(post.props.transcriptions) : {},
         participants: Array.isArray(post.props?.participants) ? post.props.participants : [],
 
         // DEPRECATED
