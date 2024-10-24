@@ -1,1 +1,58 @@
-[]
+[
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "Mattermostサーバー自体のパフォーマンス、スケーラビリティ、信頼性を維持するために、通話処理を別のインスタンスにオフロード可能な[RTCDサービス](https://mattermost.com/pl/calls-deployment-the-rtcd-service)をデプロイすることを強く推奨します。"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "Mattermost Callsの使用量が多く、システムのパフォーマンスと応答性に悪影響を及ぼしている可能性があります。"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "Mattermostサーバー自体のパフォーマンス、スケーラビリティ、信頼性を維持するために、[Enterprise版](https://mattermost.com/pricing/)にアップグレードし、[RTCDサービス](https://mattermost.com/pl/calls-deployment-the-rtcd-service)をデプロイすることで、通話処理を別のインスタンスにオフロードすることを強く推奨します。"
+    },
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "ライセンス非適用のサーバにおける通話機能は、DMでのみ利用可能です。"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "Mattermostサーバ自体のパフォーマンス、スケーラビリティ、および信頼性を維持するために、[Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) と [RTCDサービス](https://mattermost.com/pl/calls-deployment-the-rtcd-service) の利用に切り替え、通話処理を別のインスタンスにオフロードすることを強く推奨します。"
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "通話が終了しました"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "通話のレコーディングです。文字起こしは、準備が出来次第、投稿されます。"
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "通話のレコーディングです"
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "通話の文字起こしです"
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Username}} が通話を開始しました"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}}が通話を開始しました"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "通話に招待されました"
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}}が通話に招待しています"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "設定を保存できませんでした。"
+    }
+]
