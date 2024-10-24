@@ -306,6 +306,72 @@ describe('utils', () => {
             expect(props.participants.length).toBe(0);
         });
 
+        test('invalid job data', () => {
+            const callProps = {
+                recordings: {
+                    recA: {
+                        file_id: true,
+                        post_id: null,
+                        tr_id: 45,
+                        rec_id: 45,
+                    },
+                    45: {
+                    },
+                    recB: {
+                        file_id: 'recFileID',
+                    },
+                },
+                transcriptions: {
+                    trA: {
+                        file_id: true,
+                        post_id: null,
+                        tr_id: 45,
+                        rec_id: 45,
+                    },
+                    45: {
+                    },
+                    trB: {
+                        file_id: 'trFileID',
+                    },
+                },
+            };
+
+            const post = {
+                props: callProps as unknown,
+            } as Post;
+
+            const props = getCallPropsFromPost(post);
+
+            expect(props.recordings).toStrictEqual({
+                recA: {
+                    file_id: '',
+                    post_id: '',
+                },
+                45: {
+                    file_id: '',
+                    post_id: '',
+                },
+                recB: {
+                    file_id: 'recFileID',
+                    post_id: '',
+                },
+            });
+            expect(props.transcriptions).toStrictEqual({
+                trA: {
+                    file_id: '',
+                    post_id: '',
+                },
+                45: {
+                    file_id: '',
+                    post_id: '',
+                },
+                trB: {
+                    file_id: 'trFileID',
+                    post_id: '',
+                },
+            });
+        });
+
         test('full props', () => {
             const callProps = {
                 title: 'call title',
@@ -348,9 +414,9 @@ describe('utils', () => {
             expect(props.title).toBe(post.props.title);
             expect(props.start_at).toBe(post.props.start_at);
             expect(props.end_at).toBe(post.props.end_at);
-            expect(props.recordings).toBe(post.props.recordings);
+            expect(props.recordings).toStrictEqual(post.props.recordings);
             expect(props.recording_files).toBe(post.props.recording_files);
-            expect(props.transcriptions).toBe(post.props.transcriptions);
+            expect(props.transcriptions).toStrictEqual(post.props.transcriptions);
             expect(props.participants).toBe(post.props.participants);
         });
     });

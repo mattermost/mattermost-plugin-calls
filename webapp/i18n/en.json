@@ -319,6 +319,7 @@
   "yO68rk": "Calls are currently running in test mode and only system admins can start them. Reach out directly to your system admin for assistance",
   "yfYHc5": "ICE Host Override",
   "yjQNKt": "Calls are disabled in this channel.",
+  "yx0b7N": "{count, plural, =1 {# transcription} other {# transcriptions}}",
   "zMlIqq": "This setting is disabled as the server is unlicensed and calls are only available in DM channels.",
   "zUH89x": "The call recording will be processed and posted in the call thread. Are you sure you want to stop the recording?",
   "zx0myy": "Participants",
