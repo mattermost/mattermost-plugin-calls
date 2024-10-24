@@ -77,6 +77,7 @@ test.describe('start new call', () => {
         await page.locator('#post_textbox').fill('/call leave');
         await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeHidden();
+        await expect(page.locator('#postCreateFooter .has-error')).toBeHidden();
     });
 
     test('dm channel', async ({page}) => {
@@ -120,6 +121,7 @@ test.describe('start new call', () => {
         await page.locator('#reply_textbox').fill('/call start');
         await page.locator('#reply_textbox').press('Control+Enter');
         await expect(page.locator('#calls-widget')).toBeVisible();
+        await expect(page.locator('#postCreateFooter .has-error')).toBeHidden();
 
         // verify the call post is created in the thread.
         await expect(page.locator('#rhsContainer').filter({has: page.getByText('Call started')})).toBeVisible();
