@@ -6,9 +6,8 @@ docker network create ${DOCKER_NETWORK}
 
 # Start server dependencies
 echo "Starting server dependencies ... "
-docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
+DOCKER_NETWORK=${DOCKER_NETWORK} docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
 timeout --foreground 90s bash -c "until docker compose -f ${DOCKER_COMPOSE_FILE} exec -T postgres pg_isready ; do sleep 5 ; done"
-docker compose -f ${DOCKER_COMPOSE_FILE} exec -d -T minio sh -c 'mkdir -p /data/mattermost-test'
 
 echo "Pulling ${IMAGE_CALLS_RECORDER} in order to be quickly accessible ... "
 # Pull calls-recorder image to be used by calls-offloader.
