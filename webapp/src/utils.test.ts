@@ -255,11 +255,12 @@ describe('utils', () => {
 
             const props = getCallPropsFromPost(post);
 
-            expect(props.start_at).toBeUndefined();
-            expect(props.end_at).toBeUndefined();
-            expect(props.recordings.length).toBe(0);
+            expect(props.title).toBe('');
+            expect(props.start_at).toBe(0);
+            expect(props.end_at).toBe(0);
+            expect(props.recordings).toStrictEqual({});
             expect(props.recording_files.length).toBe(0);
-            expect(props.transcriptions.length).toBe(0);
+            expect(props.transcriptions).toStrictEqual({});
             expect(props.participants.length).toBe(0);
         });
 
@@ -270,12 +271,105 @@ describe('utils', () => {
 
             const props = getCallPropsFromPost(post);
 
-            expect(props.start_at).toBeUndefined();
-            expect(props.end_at).toBeUndefined();
-            expect(props.recordings.length).toBe(0);
+            expect(props.title).toBe('');
+            expect(props.start_at).toBe(0);
+            expect(props.end_at).toBe(0);
+            expect(props.recordings).toStrictEqual({});
             expect(props.recording_files.length).toBe(0);
-            expect(props.transcriptions.length).toBe(0);
+            expect(props.transcriptions).toStrictEqual({});
             expect(props.participants.length).toBe(0);
+        });
+
+        test('invalid props', () => {
+            const callProps = {
+                title: {},
+                start_at: 'invalid',
+                end_at: [],
+                recordings: null,
+                transcriptions: 45,
+                participants: 'invalid',
+                recording_files: 45,
+            };
+
+            const post = {
+                props: callProps as unknown,
+            } as Post;
+
+            const props = getCallPropsFromPost(post);
+
+            expect(props.title).toBe('');
+            expect(props.start_at).toBe(0);
+            expect(props.end_at).toBe(0);
+            expect(props.recordings).toStrictEqual({});
+            expect(props.recording_files.length).toBe(0);
+            expect(props.transcriptions).toStrictEqual({});
+            expect(props.participants.length).toBe(0);
+        });
+
+        test('invalid job data', () => {
+            const callProps = {
+                recordings: {
+                    recA: {
+                        file_id: true,
+                        post_id: null,
+                        tr_id: 45,
+                        rec_id: 45,
+                    },
+                    45: {
+                    },
+                    recB: {
+                        file_id: 'recFileID',
+                    },
+                },
+                transcriptions: {
+                    trA: {
+                        file_id: true,
+                        post_id: null,
+                        tr_id: 45,
+                        rec_id: 45,
+                    },
+                    45: {
+                    },
+                    trB: {
+                        file_id: 'trFileID',
+                    },
+                },
+            };
+
+            const post = {
+                props: callProps as unknown,
+            } as Post;
+
+            const props = getCallPropsFromPost(post);
+
+            expect(props.recordings).toStrictEqual({
+                recA: {
+                    file_id: '',
+                    post_id: '',
+                },
+                45: {
+                    file_id: '',
+                    post_id: '',
+                },
+                recB: {
+                    file_id: 'recFileID',
+                    post_id: '',
+                },
+            });
+            expect(props.transcriptions).toStrictEqual({
+                trA: {
+                    file_id: '',
+                    post_id: '',
+                },
+                45: {
+                    file_id: '',
+                    post_id: '',
+                },
+                trB: {
+                    file_id: 'trFileID',
+                    post_id: '',
+                },
+            });
         });
 
         test('full props', () => {
@@ -320,9 +414,9 @@ describe('utils', () => {
             expect(props.title).toBe(post.props.title);
             expect(props.start_at).toBe(post.props.start_at);
             expect(props.end_at).toBe(post.props.end_at);
-            expect(props.recordings).toBe(post.props.recordings);
+            expect(props.recordings).toStrictEqual(post.props.recordings);
             expect(props.recording_files).toBe(post.props.recording_files);
-            expect(props.transcriptions).toBe(post.props.transcriptions);
+            expect(props.transcriptions).toStrictEqual(post.props.transcriptions);
             expect(props.participants).toBe(post.props.participants);
         });
     });
@@ -333,8 +427,8 @@ describe('utils', () => {
 
             const props = getCallRecordingPropsFromPost(post);
 
-            expect(props.call_post_id).toBeUndefined();
-            expect(props.recording_id).toBeUndefined();
+            expect(props.call_post_id).toBe('');
+            expect(props.recording_id).toBe('');
             expect(props.captions.length).toBe(0);
         });
 
@@ -345,8 +439,26 @@ describe('utils', () => {
 
             const props = getCallRecordingPropsFromPost(post);
 
-            expect(props.call_post_id).toBeUndefined();
-            expect(props.recording_id).toBeUndefined();
+            expect(props.call_post_id).toBe('');
+            expect(props.recording_id).toBe('');
+            expect(props.captions.length).toBe(0);
+        });
+
+        test('invalid props', () => {
+            const recProps = {
+                call_post_id: 45,
+                recording_id: {},
+                captions: 'invalid',
+            };
+
+            const post = {
+                props: recProps as unknown,
+            } as Post;
+
+            const props = getCallRecordingPropsFromPost(post);
+
+            expect(props.call_post_id).toBe('');
+            expect(props.recording_id).toBe('');
             expect(props.captions.length).toBe(0);
         });
 
