@@ -6,9 +6,8 @@ docker network create ${DOCKER_NETWORK}
 
 # Start server dependencies
 echo "Starting server dependencies ... "
-docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
+DOCKER_NETWORK=${DOCKER_NETWORK} docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
 timeout --foreground 90s bash -c "until docker compose -f ${DOCKER_COMPOSE_FILE} exec -T postgres pg_isready ; do sleep 5 ; done"
-docker compose -f ${DOCKER_COMPOSE_FILE} exec -d -T minio sh -c 'mkdir -p /data/mattermost-test'
 
 echo "Pulling ${IMAGE_CALLS_RECORDER} in order to be quickly accessible ... "
 # Pull calls-recorder image to be used by calls-offloader.
@@ -40,6 +39,3 @@ docker run -d --quiet --user root --name "${COMPOSE_PROJECT_NAME}_callsoffloader
 
 # Check that calls-offloader is up and ready
 docker run --rm --quiet --name "${COMPOSE_PROJECT_NAME}_curl_callsoffloader" --net ${DOCKER_NETWORK} ${IMAGE_CURL} sh -c "until curl -fs http://calls-offloader:4545/version; do echo Waiting for calls-offloader; sleep 5; done; echo calls-offloader is up"
-
-# Check that elasticsearch is ready
-docker run --rm --quiet --name "${COMPOSE_PROJECT_NAME}_curl_elasticsearch" --net ${DOCKER_NETWORK} ${IMAGE_CURL} sh -c "until curl --max-time 5 --output - http://elasticsearch:9200; do echo Waiting for elasticsearch; sleep 5; done; echo elasticsearch is up"
