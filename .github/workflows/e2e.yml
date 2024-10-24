@@ -167,8 +167,7 @@ jobs:
         env:
           DOCKER_CLIENT_TIMEOUT: 120
           COMPOSE_HTTP_TIMEOUT: 120
-          ## Should relative to mattermost/server/build/
-          DOCKER_COMPOSE_FILE: gitlab-dc.postgres.yml
+          DOCKER_COMPOSE_FILE: ${{ github.workspace }}/e2e/docker/docker-compose.yaml
           TRANSCRIBER_IMAGE_PATH: ${{ github.workspace }}/calls-transcriber.tar
         run: |
           mkdir -p ${{ github.workspace }}/logs
