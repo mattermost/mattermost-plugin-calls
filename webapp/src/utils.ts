@@ -1,5 +1,5 @@
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@mattermost/calls-common';
-import {CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallJobMetadata, CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
 import {Post} from '@mattermost/types/posts';
@@ -571,25 +571,42 @@ export function notificationsStopRinging() {
     }
 }
 
+function isValidObject(v: any) {
+    return typeof v === 'object' && !Array.isArray(v) && v !== null;
+}
+
+function getJobMetadataMap(obj: {[key: string]: CallJobMetadata}) {
+    const out : {[key: string]: CallJobMetadata} = {};
+    for (const [key, value] of Object.entries(obj)) {
+        out[key] = {
+            file_id: typeof value?.file_id === 'string' ? value.file_id : '',
+            post_id: typeof value?.post_id === 'string' ? value.post_id : '',
+            ...(typeof value?.rec_id === 'string') && {rec_id: value.rec_id},
+            ...(typeof value?.tr_id === 'string') && {tr_id: value.tr_id},
+        };
+    }
+    return out;
+}
+
 export function getCallPropsFromPost(post: Post): CallPostProps {
     return {
-        title: post.props?.title,
-        start_at: post.props?.start_at,
-        end_at: post.props?.end_at,
-        recordings: post.props?.recordings || [],
-        transcriptions: post.props?.transcriptions || [],
-        participants: post.props?.participants || [],
+        title: typeof post.props?.title === 'string' ? post.props.title : '',
+        start_at: typeof post.props?.start_at === 'number' ? post.props.start_at : 0,
+        end_at: typeof post.props?.end_at === 'number' ? post.props.end_at : 0,
+        recordings: isValidObject(post.props?.recordings) ? getJobMetadataMap(post.props.recordings) : {},
+        transcriptions: isValidObject(post.props?.transcriptions) ? getJobMetadataMap(post.props.transcriptions) : {},
+        participants: Array.isArray(post.props?.participants) ? post.props.participants : [],
 
         // DEPRECATED
-        recording_files: post.props?.recording_files || [],
+        recording_files: Array.isArray(post.props?.recording_files) ? post.props.recording_files : [],
     };
 }
 
 export function getCallRecordingPropsFromPost(post: Post): CallRecordingPostProps {
     return {
-        call_post_id: post.props?.call_post_id,
-        recording_id: post.props?.recording_id,
-        captions: post.props?.captions || [],
+        call_post_id: typeof post.props?.call_post_id === 'string' ? post.props.call_post_id : '',
+        recording_id: typeof post.props?.recording_id === 'string' ? post.props.recording_id : '',
+        captions: Array.isArray(post.props?.captions) ? post.props.captions : [],
     };
 }
 
