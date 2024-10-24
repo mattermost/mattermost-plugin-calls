@@ -39,6 +39,3 @@ docker run -d --quiet --user root --name "${COMPOSE_PROJECT_NAME}_callsoffloader
 
 # Check that calls-offloader is up and ready
 docker run --rm --quiet --name "${COMPOSE_PROJECT_NAME}_curl_callsoffloader" --net ${DOCKER_NETWORK} ${IMAGE_CURL} sh -c "until curl -fs http://calls-offloader:4545/version; do echo Waiting for calls-offloader; sleep 5; done; echo calls-offloader is up"
-
-# Check that elasticsearch is ready
-docker run --rm --quiet --name "${COMPOSE_PROJECT_NAME}_curl_elasticsearch" --net ${DOCKER_NETWORK} ${IMAGE_CURL} sh -c "until curl --max-time 5 --output - http://elasticsearch:9200; do echo Waiting for elasticsearch; sleep 5; done; echo elasticsearch is up"
